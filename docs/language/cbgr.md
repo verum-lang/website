@@ -47,17 +47,19 @@ a length (for slices) or a vtable pointer (for `dyn`).
 ## What a header looks like
 
 ```
-┌──────────┬────────┬──────────┬────────────┐
-│   gen    │ epoch  │  flags   │   layout   │
-│ (4 bytes)│(4 bytes│ (4 bytes)│  (4 bytes) │
-└──────────┴────────┴──────────┴────────────┘
-                   AllocationHeader — 16 bytes,
-                   cache-aligned before the object.
+┌────────┬─────────┬─────────┬───────┬──────────────┬─────────┬───────┬──────────┐
+│  size  │  align  │   gen   │ epoch │ capabilities │ type_id │ flags │ reserved │
+│  (u32) │  (u32)  │  (u32)  │ (u16) │    (u16)     │  (u32)  │ (u32) │  (u64)   │
+└────────┴─────────┴─────────┴───────┴──────────────┴─────────┴───────┴──────────┘
+              AllocationHeader — 32 bytes, 32-byte (cache-line) aligned,
+              immediately before the object payload.
 ```
 
-The header sits immediately before the object payload. Freeing an
-object atomically increments its generation; any outstanding reference
-now has a stale generation.
+`generation` (u32) and `epoch` (u16) are laid out so they fit into a
+single 64-bit atomic load on the fast path; freeing an object
+`Release`-increments that word, and every reader does an `Acquire`
+load before comparing. See **[architecture → CBGR internals](/docs/architecture/cbgr-internals#allocationheader)**
+for the exact bit layout.
 
 ## The check
 
@@ -92,28 +94,45 @@ the runtime.
 
 ## Capability bits
 
-The `epoch / caps` field of a reference is partitioned between:
-- epoch identity (for wraparound safety);
-- **capability bits** that encode a subset of `Read`, `Write`, `Admin`,
-  and application-defined capabilities.
+The `epoch / caps` word of a reference is partitioned between the
+epoch identity and **eight capability bits**, drawn from a fixed set
+with **monotonic attenuation** (capabilities can only be removed as
+the reference is passed around):
 
-This is how `Database with [Read]` becomes a value at runtime — the
-`Database` reference carries only the `Read` capability bit set; calls
-to `Database.write(...)` fail a capability check.
+| Bit | Name | Meaning |
+|-----|------|---------|
+| 0 | `READ`       | reads permitted (set for every live reference) |
+| 1 | `WRITE`      | writes permitted |
+| 2 | `EXECUTE`    | the target is callable |
+| 3 | `DELEGATE`   | can be handed to another context |
+| 4 | `REVOKE`     | the holder can revoke outstanding copies |
+| 5 | `BORROWED`   | this is a borrow, not an owner |
+| 6 | `MUTABLE`    | `&mut` semantics (exclusive access) |
+| 7 | `NO_ESCAPE`  | optimisation hint — cannot escape |
+
+This is how `Database with [READ]` becomes a value at runtime — the
+`Database` reference has `WRITE` cleared, and a call to
+`Database.write(...)` fails a capability check that is one AND plus
+one branch (~1 ns). Reducing the set (`db.readonly()`) is always
+allowed; re-expanding it is rejected by the compiler.
 
 ## When the check is elided
 
-The compiler emits the full 15 ns check for `&T`. It emits **nothing**
-for `&checked T` — escape analysis has proved the check unnecessary.
-The proof is witnessed in the compilation artefacts; you can inspect
-which references got promoted with:
+The compiler emits the full ~15 ns check for `&T`. It emits **nothing**
+for `&checked T` — escape analysis (one of eleven compile-time
+analyses in `verum_cbgr`) has proved the check unnecessary. The proof
+is witnessed in the compilation artefacts; you can inspect which
+references got promoted with:
 
 ```bash
-$ verum analyze --report cbgr ./src/main.vr
+$ verum analyze --escape ./src/main.vr
 function     total   tier0   tier1   tier2   promoted
 process        42       3      39       0          39/42 (92.9%)
 tight_loop      8       0       8       0           8/8  (100%)
 ```
+
+Or dump the full analysis suite with `verum analyze --all`. On
+idiomatic code the typical promotion rate is 60–95 %.
 
 ## Tiered execution
 
