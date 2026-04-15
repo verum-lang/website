@@ -173,6 +173,46 @@ identity operations in the bytecode. The cost model:
 - First-time reading of Verum. Start with refinements, graduate when
   you have a reason.
 
+## Tensors — shape in the type
+
+The stdlib's `Tensor<T: Numeric, meta Shape: [USize]>` is the
+production use of dependent types. The shape is a compile-time list
+of sizes; the compiler checks every operation against it.
+
+```verum
+mount std.tensor.{Tensor, matmul, softmax, reshape};
+
+fn attention<
+    T: Numeric,
+    meta B: USize,          // batch
+    meta H: USize,          // heads
+    meta L: USize,          // sequence length
+    meta D: USize,          // per-head dimension
+>(
+    q: &Tensor<T, [B, H, L, D]>,
+    k: &Tensor<T, [B, H, L, D]>,
+    v: &Tensor<T, [B, H, L, D]>,
+) -> Tensor<T, [B, H, L, D]> {
+    let kt = k.transpose::<[0, 1, 3, 2]>();              // [B, H, D, L]
+    let scores: Tensor<T, [B, H, L, L]> = matmul(q, &kt);
+    let probs = softmax::<_, _, 3>(&scores);             // softmax on last dim
+    matmul(&probs, v)
+}
+```
+
+Everything load-bearing is *type-checked*:
+
+- `matmul(a: [M, K], b: [K, N]) -> [M, N]` — a dimensions mismatch
+  would be a compile error, not a runtime `DimensionError`.
+- `transpose::<Perm>` carries `where meta Perm.is_permutation_of(0..ndim)`.
+- `softmax::<_, _, Dim>` carries `where meta Dim < ndim`.
+- `reshape<NewShape>` carries `where meta Shape.product() == NewShape.product()`.
+
+The same `Tensor` type is the code path for CPU SIMD, GPU (MLIR),
+and autodiff (`@differentiable`). Dropping down to runtime shapes is
+explicit — `DynTensor<T>` with a `try_static::<Shape>() ->
+Maybe<Tensor<T, Shape>>` conversion at boundaries.
+
 ## Worked example — a shape-safe matrix API
 
 ```verum

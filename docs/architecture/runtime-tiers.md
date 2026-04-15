@@ -155,6 +155,36 @@ Calling from AOT into the interpreter downgrades `&checked T` to
 `&T` — safety is preserved but the recipient pays the ~100 ns check.
 This is invisible unless you're profiling the interpreter.
 
+## Memory costs across tiers
+
+Allocation is shared across all tiers — every tier sees the same
+mimalloc-inspired heap described in **[memory
+model](/docs/language/memory-model#allocation-internals)**. What
+changes per tier is how many of the allocator's safety checks are
+executed versus proven away at compile time.
+
+| Tier           | Alloc fast path | CBGR deref | Cross-thread free | Notes |
+|----------------|-----------------|-----------|-------------------|-------|
+| T0 Interpreter | ~80 ns | 25–40 ns | ~70 ns | every check runs; VBC bookkeeping |
+| T1 Baseline JIT| ~25 ns | 15–20 ns | ~55 ns | direct-array fast path inlined |
+| T2 Optimising  | ~15 ns | 5–10 ns  | ~50 ns | escape analysis elides 40–60 % of checks |
+| T3 AOT         | < 20 ns | < 5 ns (or zero for `&checked`) | ~50 ns | 70–90 % of CBGR checks elided |
+| T4 GPU         | device allocator | N/A | N/A | kernel scratchpad only |
+
+Allocator scalability is tier-independent: thread-local heaps stay
+contention-free up to roughly 32 threads regardless of tier; beyond
+that, abandoned-segment reclamation starts to dominate and cross-thread
+free latency rises. The lazy purge window (10 ms) is the same across
+tiers, so heap size does not depend on how fast code is running.
+
+### Tier-local vs global state
+
+Each tier has its own JIT-code cache and its own specialisation state;
+they all share **one** allocator, **one** CBGR epoch manager, and
+**one** task scheduler. This is what makes cross-tier calls free — no
+trampolines, no marshalling, just a normal call through a VBC
+descriptor.
+
 ## Cross-tier transitions
 
 Calls between tiers go through a standard ABI — VBC-compatible layout
