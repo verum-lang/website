@@ -1,0 +1,172 @@
+---
+sidebar_position: 17
+title: Metaprogramming
+---
+
+# Metaprogramming
+
+Verum's metaprogramming system has three parts:
+
+1. **`@attribute` invocation** — how macros are _called_.
+2. **`meta fn`** — compile-time functions.
+3. **`quote { ... }`** — structured AST templates.
+
+No `!` suffix. No opaque syntax macro transformers. All expansions
+are visible, hygienic, and debuggable.
+
+## Calling a macro
+
+```verum
+@derive(Clone, Eq, Debug)
+type User is { id: Int, name: Text };
+
+@repeat(3, { print("warming"); })
+fn warmup() using [IO] { ... }
+
+@sql_query("""
+    SELECT id, name FROM users WHERE id = :id
+""")
+fn get_user(id: Int) -> User using [Database] { ... }
+```
+
+- `@name(args)` — macro invocation with parenthesised args.
+- `@name[tokens]` — token-tree form for DSLs.
+- `@name{tokens}` — brace form for block-like macros.
+
+## Built-in `meta` functions
+
+| Macro | Purpose |
+|-------|---------|
+| `@derive(...)` | synthesise protocol impls |
+| `@repr(C)`, `@repr(transparent)`, `@repr(align(N))` | control memory layout |
+| `@cfg(feature = "x")` | conditional compilation |
+| `@const expr` | force compile-time evaluation |
+| `@cold`, `@hot`, `@inline`, `@never_inline` | optimisation hints |
+| `@unused`, `@must_use` | parameter / return-value markers |
+| `@file`, `@line`, `@column`, `@module`, `@function` | source-location info |
+| `@type_name`, `@type_fields`, `@variants_of` | reflection |
+| `@implements(Protocol)` | compile-time protocol check |
+| `@verify(mode)` | set verification strategy |
+| `@extern("C")` | FFI linkage |
+| `@test`, `@bench` | test / benchmark markers |
+
+## `meta fn`
+
+A `meta fn` runs at compile time. Its arguments are `quote`d token
+streams; its return value is a `quote` to splice back in.
+
+```verum
+meta fn repeat(n: meta Int, body: quote) -> quote {
+    quote {
+        for _ in 0..${n} { ${body} }
+    }
+}
+
+// Callers:
+fn demo() using [IO] {
+    @repeat(3, { print("tick") })
+}
+```
+
+## `quote { ... }`
+
+`quote { ... }` builds a hygienic AST:
+
+```verum
+let call = quote { println("hello", ${name}) };
+// `call` is a token tree; `name` is substituted at quote-expansion time.
+```
+
+Splicing forms:
+- `${expr}` — splice an expression or token tree.
+- `$var` — short form for a single identifier.
+- `$[for x in xs { ... }]` — iterate to produce a sequence.
+- `$$var` — double-escape (for multi-stage quotes).
+
+## Multi-stage quoting
+
+```verum
+meta(2) fn double_stage() -> quote(2) {
+    quote(2) { meta fn generated() -> quote { quote { 42 } } }
+}
+```
+
+`meta(N)` means "this function produces code that itself produces
+code N-1 times." Useful for generic code generators.
+
+## `lift(value)`
+
+Converts a compile-time value into a token that can be spliced:
+
+```verum
+meta fn make_greeting(who: meta Text) -> quote {
+    let msg = f"Hello, {who}!";
+    quote { print(${lift(msg)}); }
+}
+```
+
+## Derives
+
+`@derive(P)` expands into `implement P for T { ... }`. The expansion is
+deterministic and inspectable with `verum expand-macros`.
+
+Standard derives live in `core::derives`: `Clone`, `Copy`, `Debug`,
+`Display`, `Eq`, `Hash`, `Ord`, `PartialEq`, `PartialOrd`, `Default`,
+`Builder`, `Serialize`, `Deserialize`, `Error`, `From`, `Into`.
+
+## Procedural macros
+
+User-defined procedural macros are `meta fn`s exported as macros:
+
+```verum
+@meta_macro
+meta fn sql_query(query: quote) -> quote {
+    let parsed = sql::parse(&query.to_text()?)?;
+    let sig    = parsed.to_function_signature();
+    let body   = parsed.to_binding_code();
+    quote {
+        fn _inner(${sig.params}) -> ${sig.ret} using [Database] {
+            ${body}
+        }
+    }
+}
+```
+
+## Capability-gated execution
+
+A `meta fn` is pure by default — it can:
+- inspect types (via `@type_fields`, `@variants_of`);
+- produce diagnostics (via `CompileDiag`);
+- access build-time assets (via `BuildAssets`);
+- evaluate other `meta` functions.
+
+It **cannot** perform IO, network, or file access — unless it
+explicitly requests the capability:
+
+```verum
+meta fn read_schema() -> quote using [meta.BuildAssets] {
+    let content = BuildAssets.load("schema.sql")?;
+    quote { ${lift(content)} }
+}
+```
+
+This keeps compilation deterministic and caches valid.
+
+## Debugging
+
+```bash
+$ verum expand-macros src/main.vr
+$ verum expand-macros --filter "@derive"
+```
+
+Emits the post-expansion source so you can read what `@derive(Clone)`
+actually produced.
+
+## See also
+
+- **[Stdlib → meta](/docs/stdlib/meta)** — `TokenStream`, `quote`,
+  reflection types.
+- **[Attributes](/docs/language/attributes)** — the full registry of
+  `@` annotations.
+- **[Reference → attribute registry](/docs/reference/attribute-registry)**
+  — every standard `@` with target and semantics.

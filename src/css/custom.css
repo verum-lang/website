@@ -1,0 +1,216 @@
+/**
+ * Verum Documentation — Custom CSS
+ *
+ * Color palette inspired by the prismatic "V" logo:
+ *   - Deep violet (primary)
+ *   - Amber accent (proof / verification)
+ *   - Teal accent (types / safety)
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --ifm-color-primary: #7c3aed;
+  --ifm-color-primary-dark: #6d28d9;
+  --ifm-color-primary-darker: #5b21b6;
+  --ifm-color-primary-darkest: #4c1d95;
+  --ifm-color-primary-light: #8b5cf6;
+  --ifm-color-primary-lighter: #a78bfa;
+  --ifm-color-primary-lightest: #c4b5fd;
+
+  --verum-accent-amber: #f59e0b;
+  --verum-accent-teal: #14b8a6;
+  --verum-accent-rose: #e11d48;
+
+  --verum-gradient: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #f59e0b 100%);
+  --verum-gradient-subtle: linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(219,39,119,0.08) 50%, rgba(245,158,11,0.06) 100%);
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'SF Mono', Monaco, Menlo, 'Courier New', monospace;
+  --verum-font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
+  --ifm-heading-font-family: var(--verum-font-display);
+  --ifm-code-font-size: 92%;
+  --ifm-heading-font-weight: 600;
+  --ifm-h1-font-size: 2.4rem;
+  --ifm-h2-font-size: 1.85rem;
+  --ifm-h3-font-size: 1.4rem;
+
+  --docusaurus-highlighted-code-line-bg: rgba(124, 58, 237, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #a78bfa;
+  --ifm-color-primary-dark: #8b5cf6;
+  --ifm-color-primary-darker: #7c3aed;
+  --ifm-color-primary-darkest: #6d28d9;
+  --ifm-color-primary-light: #c4b5fd;
+  --ifm-color-primary-lighter: #ddd6fe;
+  --ifm-color-primary-lightest: #ede9fe;
+
+  --ifm-background-color: #0f0b1a;
+  --ifm-background-surface-color: #171026;
+  --ifm-navbar-background-color: rgba(15, 11, 26, 0.75);
+  --ifm-footer-background-color: #0a0612;
+
+  --docusaurus-highlighted-code-line-bg: rgba(167, 139, 250, 0.15);
+}
+
+html {
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+/* Display font tuning — Fraunces variable axes */
+h1, h2, h3, h4, h5, h6,
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+  font-family: var(--verum-font-display);
+  font-variation-settings: 'opsz' 96, 'SOFT' 30, 'WONK' 0;
+  letter-spacing: -0.018em;
+  font-feature-settings: 'ss01', 'ss02';
+}
+
+/* The hero "V" — turn up the personality at extreme display sizes */
+.verum-gradient-text {
+  font-family: var(--verum-font-display);
+  font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;
+  letter-spacing: -0.04em;
+}
+
+code {
+  font-variant-ligatures: contextual;
+  background-color: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+[data-theme='dark'] code {
+  background-color: rgba(167, 139, 250, 0.12);
+  border-color: rgba(167, 139, 250, 0.25);
+}
+
+pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Navbar */
+.navbar {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom: 1px solid rgba(167, 139, 250, 0.15);
+}
+
+.navbar__logo img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.navbar__title {
+  font-family: var(--verum-font-display);
+  font-variation-settings: 'opsz' 24, 'SOFT' 50, 'WONK' 1;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-size: 1.2rem;
+  background: var(--verum-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Headings */
+.markdown h1 {
+  letter-spacing: -0.025em;
+}
+
+.markdown h2 {
+  letter-spacing: -0.015em;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  padding-bottom: 0.35rem;
+  margin-top: 3rem;
+}
+
+/* Tables */
+table {
+  border-radius: 10px;
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table thead tr {
+  background: var(--verum-gradient-subtle);
+}
+
+/* Admonitions */
+.theme-admonition {
+  border-radius: 10px;
+  border-left-width: 4px;
+}
+
+/* Code blocks */
+.prism-code {
+  border-radius: 10px;
+  font-size: 0.9em;
+}
+
+/* Footer */
+.footer--dark {
+  background: linear-gradient(180deg, #0a0612 0%, #050308 100%);
+  border-top: 1px solid rgba(167, 139, 250, 0.1);
+}
+
+.footer__title {
+  font-family: var(--verum-font-display);
+  font-variation-settings: 'opsz' 18, 'SOFT' 40, 'WONK' 0;
+  background: var(--verum-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Sidebar */
+.menu__link--active {
+  background: var(--verum-gradient-subtle);
+  font-weight: 600;
+}
+
+/* Hero gradient utility */
+.verum-gradient-text {
+  background: var(--verum-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Buttons */
+.button--primary {
+  background: var(--verum-gradient);
+  border: none;
+  color: white !important;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+}
+
+.button--secondary {
+  background: transparent;
+  border: 1.5px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+}
+
+.button--secondary:hover {
+  background: var(--verum-gradient-subtle);
+}
