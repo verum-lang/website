@@ -31,8 +31,9 @@ risks.
 - **Cryptographic correctness** — use vetted cogs (`crypto.aead`,
   `crypto.sig`). Don't roll your own.
 - **Constant-time code** — the compiler doesn't guarantee side-channel
-  resistance by default. Use `@verify(ct)` attributes from the
-  crypto cog.
+  resistance by default. The `crypto` cog provides primitives whose
+  implementations are manually verified as constant-time; avoid
+  branching on secret bytes in your own code.
 - **Supply-chain trust** — see the [trust model](/docs/tooling/cog-packages#trust-model)
   for cog signatures and advisories.
 - **Resource exhaustion** — DoS via memory, open FDs, task queues.
@@ -71,7 +72,8 @@ risks.
 ### Secrets
 
 - Never log `Labeled<T: Secret>` values (the stdlib logger refuses).
-- Zeroise on drop: `@derive(Zeroize)` on types holding key material.
+- For types holding key material, implement `Drop` to zero the buffer
+  explicitly before release.
 - Environment variables over on-disk plaintext; container secrets
   over env vars where possible.
 
@@ -120,10 +122,12 @@ risks.
 ## Auditing
 
 ```bash
-verum audit                     # scan deps against advisory DB
-verum analyze --report capabilities   # what @cap does each function hold?
-verum analyze --report cbgr           # reference tier distribution
-verum analyze --report smt            # verification coverage
+verum audit                      # scan deps against advisory DB
+verum analyze --context          # capability context surface per function
+verum analyze --escape           # reference-tier distribution
+verum analyze --refinement       # refinement / verification coverage
+verum analyze --all              # everything in one pass
+verum smt-stats                  # solver-routing stats from the last build
 ```
 
 ## Reporting vulnerabilities

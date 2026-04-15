@@ -130,7 +130,7 @@ if the panic is recoverable; otherwise let it propagate.
 
 ### "My hot loop is slow"
 
-Run `verum analyze --report cbgr`:
+Run `verum analyze --escape`:
 
 ```
 function          total   tier0   tier1   tier2   promoted
