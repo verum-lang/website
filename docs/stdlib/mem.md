@@ -1,156 +1,389 @@
 ---
 sidebar_position: 4
 title: mem
+description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 ---
 
 # `core::mem` — Memory management
 
-The `mem` module is the implementation of CBGR and the allocator
-stack. Most code does not import it directly — `Heap`, `Shared`, and
-references are in `base`. This page is for the internals.
+The implementation of CBGR (Capability-Based Generational References),
+the three-tier reference model, and the allocator stack. User code
+typically interacts with `Heap`, `Shared`, and references via
+[`base`](/docs/stdlib/base); this page documents the full `mem` API
+for systems programmers.
 
-## `Heap<T>`
+| File | What's in it |
+|---|---|
+| `allocator.vr` | `Allocator` protocol, `cbgr_alloc`/`cbgr_dealloc`/`cbgr_realloc`, `Layout`, `AllocError` |
+| `header.vr` | `AllocationHeader` (32-byte CBGR metadata) |
+| `thin_ref.vr` | `ThinRef<T>` (16 bytes) |
+| `fat_ref.vr` | `FatRef<T>` (32 bytes) |
+| `hazard.vr` | `HazardGuard<T>` — concurrent-safe deref protection |
+| `epoch.vr` | `EpochManager` — generation wraparound safety |
+| `capability.vr` | `Capability` bits — read/write/admin/etc. |
+| `arena.vr` | `GenerationalArena<T>` — O(1) mass invalidation |
+| `segment.vr` | `Segment` — 32 MiB virtual regions |
+| `size_class.vr` | 73-bin size class table (Mimalloc-style) |
+| `heap.vr` | `LocalHeap` — thread-local allocation |
+| `raw_ops.vr` | `memcpy`, `memmove`, `memset`, `memcmp`, `strlen`, `strcmp` |
 
-Owned, single-owner heap allocation. Dropped when the owner is dropped.
+---
+
+## References — three tiers
+
+### `ThinRef<T>` — 16 bytes
 
 ```verum
-let x: Heap<Tree> = Heap(Tree.Leaf);
+type ThinRef<T> is {
+    ptr: *unsafe T,
+    generation: UInt32,
+    epoch_caps: UInt32,       // high 16 bits: epoch; low 16: capability flags
+};
 ```
 
-Layout: `pointer + CBGR header` (32 bytes of metadata).
+Used for `&T` when `T: Sized`. The `generation` and `epoch_caps` are
+fixed at reference creation; the CBGR check compares them against the
+allocation's `AllocationHeader` on every deref.
 
-## `Shared<T>`
-
-Atomically reference-counted. `Send` if `T: Send + Sync`.
+### `FatRef<T>` — 32 bytes
 
 ```verum
-let cfg = Shared(Config::default());
-let clone = cfg.clone();    // bump refcount
+type FatRef<T> is {
+    ptr: *unsafe T,
+    generation: UInt32,
+    epoch_caps: UInt32,
+    len_or_vtable: Int,       // slice length or dyn-protocol vtable pointer
+};
 ```
 
-## `Rc<T>`
+Used when `T` is unsized — slices (`[T]`) and trait objects (`dyn P`).
 
-Non-atomic reference-counted (`!Send`). Cheaper than `Shared` when
-single-threaded.
+### `AllocationHeader` — 32 bytes, cache-aligned
 
-## Allocators
+```verum
+type AllocationHeader is {
+    generation: UInt32,       // incremented on free
+    epoch:      UInt32,       // wraparound-safety
+    flags:      UInt32,       // drop impl, pinned, capabilities
+    layout_size: UInt32,      // for realloc / sanity
+    _padding:   UInt64,       // align to 32 bytes
+    layout:     Layout,       // size, align
+};
+```
+
+Prepended to every CBGR-tracked allocation. The header lives in the
+same cache line as (or adjacent to) the object, so the CBGR check is
+typically a hot L1 hit.
+
+### CBGR check sequence (conceptual)
+
+```verum
+fn deref<T>(r: ThinRef<T>) -> &T {
+    let hdr = header_of(r.ptr);
+    if hdr.generation != r.generation {
+        handle_use_after_free(&r, &hdr);
+    }
+    if (r.epoch_caps >> 16) != hdr.epoch {
+        handle_epoch_mismatch(&r, &hdr);
+    }
+    unsafe { &*r.ptr }
+}
+```
+
+Measured: ~15 ns on an M3 Max.
+
+---
+
+## `Heap<T>` — unique owned allocation
+
+```verum
+Heap::new(value) -> Heap<T>                      // panics on OOM
+Heap::new_default() -> Heap<T>                   // T: Default
+Heap::new_zeroed() -> Heap<T>
+Heap::try_new(value) -> Result<Heap<T>, AllocError>
+Heap::from_raw(ptr) -> Heap<T>                   // unsafe
+```
+
+### Introspection
+
+```verum
+h.as_ref() -> &T                   h.as_mut() -> &mut T
+h.into_inner() -> T                h.into_raw() -> &unsafe T   (leaks)
+h.leak() -> &mut T                 // leaks; returns static-lifetime mut ref
+h.generation() -> UInt32
+h.epoch() -> UInt16
+h.capabilities() -> UInt16
+h.is_valid() -> Bool
+h.is_allocated() / h.is_freed() -> Bool
+h.header_generation() / h.header_epoch() / h.header_size()
+```
+
+### Implements
+
+`Deref`, `DerefMut`, `Drop`, `Clone` (deep-copy if `T: Clone`),
+`Debug`, `Eq`, `Ord`, `Hash`, `Default` (if `T: Default`).
+
+---
+
+## `Shared<T>` — atomically ref-counted
+
+```verum
+Shared::new(value) -> Shared<T>
+s.clone() -> Shared<T>              // bumps refcount
+s.weak() -> Weak<T>                 // does not bump strong count
+Shared::strong_count(&s) -> Int
+Shared::weak_count(&s) -> Int
+Shared::try_unwrap(s) -> Result<T, Shared<T>>   // succeeds if strong_count == 1
+Shared::get_mut(&mut s) -> Maybe<&mut T>         // Some if unique
+```
+
+`Weak<T>.upgrade() -> Maybe<Shared<T>>` — returns `Some` if the target
+is still live. Used to break reference cycles.
+
+---
+
+## Allocator protocol
 
 ```verum
 type Allocator is protocol {
     fn alloc(&self, layout: Layout) -> Result<*mut Byte, AllocError>;
     fn dealloc(&self, ptr: *mut Byte, layout: Layout);
-    fn realloc(&self, ptr: *mut Byte, old: Layout, new: Layout) -> Result<*mut Byte, AllocError>;
-};
+    fn realloc(&self, ptr: *mut Byte, old: Layout, new: Layout)
+        -> Result<*mut Byte, AllocError>;
+}
 
 type Layout is { size: Int, align: Int };
+type AllocError is OutOfMemory | InvalidLayout | Refused;
 ```
 
-The default allocator is `cbgr_alloc` — a Mimalloc-style segmented
-allocator with generation tracking.
-
-## CBGR primitives
+### Default allocator — `cbgr_alloc`
 
 ```verum
-type AllocationHeader is {       // 32 bytes, cache-aligned
-    generation: UInt32,
-    epoch:      UInt32,
-    flags:      UInt32,
-    layout:     Layout,
-};
-
-type ThinRef<T> is {             // 16 bytes
-    ptr: *unsafe T,
-    generation: UInt32,
-    epoch_caps: UInt32,
-};
-
-type FatRef<T>  is {             // 32 bytes (for unsized T)
-    ptr: *unsafe T,
-    generation: UInt32,
-    epoch_caps: UInt32,
-    len_or_vtable: Int,
-};
+unsafe fn cbgr_alloc(layout: Layout) -> *mut Byte
+unsafe fn cbgr_alloc_zeroed(layout: Layout) -> *mut Byte
+unsafe fn cbgr_dealloc(ptr: *mut Byte, layout: Layout)
+unsafe fn cbgr_realloc(ptr: *mut Byte, old: Layout, new: Layout) -> *mut Byte
 ```
 
-User code rarely constructs these directly; the compiler emits them
-for `&T`.
+### Context-scoped allocator
+
+```verum
+set_context_allocator(alloc: &dyn Allocator)
+ctx_alloc(layout: Layout) -> Result<*mut Byte, AllocError>       using [Allocator]
+ctx_dealloc(ptr, layout)                                          using [Allocator]
+```
+
+Using an arena or slab allocator for a task tree:
+
+```verum
+let arena = GenerationalArena::new(capacity: 1 << 20);
+provide Allocator = arena in {
+    build_parse_tree(source).await
+};
+// Dropping the scope drops all arena memory in O(1).
+```
+
+---
+
+## Alignment
+
+```verum
+fn align_up(x: Int, align: Int) -> Int
+fn align_down(x: Int, align: Int) -> Int
+fn is_aligned(x: Int, align: Int) -> Bool
+```
+
+---
 
 ## Hazard pointers
 
 ```verum
 type HazardGuard<T> is { ... };
-// Protects a `*mut T` from concurrent revocation while held.
+HazardGuard::acquire(slot: Int, ptr: *const T) -> HazardGuard<T>
+guard.release()                       // explicit drop also works
 ```
 
-Used internally by the allocator to prevent race conditions between
-free and concurrent deref.
+Used internally to keep reads safe against a concurrent `free`. A
+reader installs its target in a hazard slot before the CBGR check; a
+freer scans all hazard slots before returning memory to the pool.
 
-## Generational arenas
+---
+
+## Epoch manager
 
 ```verum
-let arena: GenerationalArena<Node> = GenerationalArena::new(capacity: 1024);
-let h1 = arena.insert(Node::new());
-// Drop the entire arena in O(1) by advancing the generation;
-// all outstanding handles are invalidated atomically.
+type EpochManager is { ... };
+
+EpochManager::global() -> &EpochManager
+mgr.current() -> UInt32
+mgr.advance()                         // bump epoch (typically timer-driven)
+mgr.register_thread()
+mgr.retire(callback: fn())
 ```
 
-Useful for game loops, parser ASTs, request-scoped allocation.
+Epochs are the safety net for 32-bit generation wraparound: each
+thread carries an epoch that advances periodically (~1 kHz), and a
+reference with a stale epoch fails the check even if the generation
+field collided.
 
-## Segment allocator
+---
 
-```
-Segment: 32 MiB chunk, lazy-committed.
-PageHeader: metadata per page within a segment.
-LocalHeap: thread-local heap, lock-free fast path.
-```
-
-73 size classes spaced at 12.5% intervals. Allocations under the page
-size go through the thread-local heap; larger allocations use mmap
-directly.
-
-## `os_alloc` / `os_free`
+## Capabilities
 
 ```verum
-unsafe fn os_alloc(layout: Layout) -> *mut Byte;
-unsafe fn os_free(ptr: *mut Byte, layout: Layout);
+type Capability is UInt16;           // bitflags
+
+const CAP_READ:   UInt16 = 0x0001;
+const CAP_WRITE:  UInt16 = 0x0002;
+const CAP_ADMIN:  UInt16 = 0x0004;
+const CAP_DELEGATE: UInt16 = 0x0008;
+const CAP_REVOKE:   UInt16 = 0x0010;
+// Application-defined: bits 5..15
 ```
 
-Platform-direct allocation. Bypasses CBGR entirely. Used for the
-segment allocator's backing store and for allocations that must never
-have generation bookkeeping (e.g., memory passed to the kernel for DMA).
+Embedded in the low 16 bits of the `epoch_caps` field of references.
+`Database with [Read]` compiles to a reference with only `CAP_READ`
+set; attempts to call a write method hit a compile-time check against
+the method's required capability set.
 
-## Alignment
+---
+
+## `GenerationalArena<T>`
 
 ```verum
-fn align_up(x: Int, align: Int) -> Int;
-fn align_down(x: Int, align: Int) -> Int;
-fn is_aligned(x: Int, align: Int) -> Bool;
+type GenerationalArena<T> is { ... };
+
+GenerationalArena::new(capacity) -> GenerationalArena<T>
+a.insert(value) -> ArenaHandle<T>
+a.get(handle) -> Maybe<&T>
+a.get_mut(handle) -> Maybe<&mut T>
+a.remove(handle) -> Maybe<T>
+a.clear()                     // O(1) mass invalidation via epoch bump
+a.len() / a.is_empty() / a.capacity()
 ```
 
-## Errors
+Arenas are the idiomatic choice for:
+- AST trees (parser lifetimes)
+- Game engine objects (frame-scoped)
+- Request-scoped data (web-server tasks)
+
+---
+
+## Segment allocator (internal)
 
 ```verum
-type UseAfterFreeError is { ptr: *unsafe Byte, gen_expected: UInt32, gen_actual: UInt32 };
-type RevocationError   is { ptr: *unsafe Byte };
-type AllocError        is
-    | OutOfMemory
-    | InvalidLayout
-    | Refused;
+const SEGMENT_SIZE:  Int = 32 * 1024 * 1024;   // 32 MiB
+const SLICE_SIZE:    Int = 512 * 1024;         // 512 KiB
+const BIN_COUNT:     Int = 73;                 // size classes
+
+type Segment is { ... };
+type PageKind is Small | Medium | Large | Huge;
+type SizeClass is { bin: Int, size: Int };
+
+fn size_to_bin(size: Int) -> Int
+fn bin_to_size(bin: Int) -> Int
+fn size_class(size: Int) -> SizeClass
 ```
 
-## Performance constants
+Allocations are grouped into 73 size classes spaced at ~12.5%
+intervals. Small objects (< 8 KiB) come from thread-local segments;
+medium / large allocations are bookkept separately.
+
+---
+
+## `LocalHeap`
+
+```verum
+type LocalHeap is { ... };
+
+LocalHeap::current() -> &LocalHeap
+heap.alloc(layout) -> Result<*mut Byte, AllocError>
+heap.free(ptr, layout)
+heap.stats() -> AllocStats
+```
+
+Thread-local heap. Lock-free fast path; spills into the global heap
+for cross-thread frees.
+
+---
+
+## Raw memory operations
+
+```verum
+unsafe fn memcpy(dst: *mut Byte, src: *const Byte, n: Int)
+unsafe fn memmove(dst: *mut Byte, src: *const Byte, n: Int)   // overlap-safe
+unsafe fn memset(dst: *mut Byte, byte: Byte, n: Int)
+unsafe fn memcmp(a: *const Byte, b: *const Byte, n: Int) -> Int
+unsafe fn strlen(ptr: *const Byte) -> Int                      // NUL-terminated
+unsafe fn strcmp(a: *const Byte, b: *const Byte) -> Int
+```
+
+These bypass CBGR. Use only in allocator implementations, FFI
+boundaries, or when you can prove safety by other means.
+
+---
+
+## Constants
 
 ```verum
 const GEN_INITIAL:     UInt32 = 1;
 const GEN_MAX:         UInt32 = 0xFFFF_FFFE;
 const GEN_UNALLOCATED: UInt32 = 0;
-const PAGE_SIZE:       Int    = 4096;    // architecture-dependent
+
+const EPOCH_INITIAL:   UInt32 = 1;
+const EPOCH_INTERVAL_MS: Int = 1;             // advance 1000×/s
+
+const SSO_CAPACITY:    Int = 23;              // Text inline capacity
+const PAGE_SIZE:       Int = 4096;            // architecture-dependent
 ```
 
-## See also
+---
 
-- **[Language → CBGR](/docs/language/cbgr)** — the user-level
-  semantics.
-- **[Architecture → CBGR internals](/docs/architecture/cbgr-internals)**
-  — the full implementation.
-- **[sys](/docs/stdlib/sys)** — the V-LLSI layer underlying `mem`.
+## Errors
+
+```verum
+type UseAfterFreeError is {
+    ptr: *unsafe Byte,
+    gen_expected: UInt32,
+    gen_actual:   UInt32,
+    epoch_expected: UInt32,
+    epoch_actual:   UInt32,
+};
+
+type RevocationError is { ptr: *unsafe Byte, revoker: Text };
+type AllocError      is OutOfMemory | InvalidLayout | Refused;
+```
+
+On a CBGR violation, the runtime:
+1. Constructs a `UseAfterFreeError` with full diagnostic context.
+2. Invokes the installed panic handler (default: abort with stack
+   trace).
+
+---
+
+## CBGR execution tiers
+
+```verum
+type CbgrTier is Interpreter | BaselineJit | OptimizingJit | Aot;
+
+fn current_tier() -> CbgrTier
+fn tier_promote()                   // hint: function is worth promoting
+fn is_interpreted() -> Bool
+```
+
+Tier affects where the CBGR check runs:
+- **Interpreter**: software check every deref.
+- **Baseline JIT**: same, inlined at call sites.
+- **Optimizing JIT / AOT**: escape-analysed; most checks elided to
+  `&checked T`.
+
+---
+
+## Cross-references
+
+- **[Language → memory model](/docs/language/memory-model)** — the user-level story.
+- **[Language → references](/docs/language/references)** — `&T` / `&checked T` / `&unsafe T`.
+- **[Language → CBGR](/docs/language/cbgr)** — conceptual model.
+- **[Architecture → CBGR internals](/docs/architecture/cbgr-internals)** — data structures + algorithms.
+- **[intrinsics](/docs/stdlib/intrinsics)** — `ptr_read`, `ptr_write`, `volatile_load/store`.
+- **[sys](/docs/stdlib/sys)** — OS-level `os_alloc` / `os_free` under the segment allocator.
