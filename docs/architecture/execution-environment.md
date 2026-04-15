@@ -22,7 +22,7 @@ uniform.
 ```verum
 struct MemoryContext {
     allocator: &dyn Allocator,
-    tier:      ExecutionTier,        // Interpreter | BaselineJit | OptJit | Aot
+    tier:      ExecutionTier,        // Interpreter | Aot
     generation: UInt32,
     epoch:      UInt32,
 }

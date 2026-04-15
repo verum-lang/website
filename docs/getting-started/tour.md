@@ -45,13 +45,14 @@ fn depth<T>(t: &Tree<T>) -> Int {
 
 ```verum
 type Eq is protocol {
-    fn equals(&self, other: &Self) -> Bool;
+    fn eq(&self, other: &Self) -> Bool;
+    fn ne(&self, other: &Self) -> Bool { !self.eq(other) }
 };
 
 implement<T: Eq> Eq for List<T> {
-    fn equals(&self, other: &List<T>) -> Bool {
+    fn eq(&self, other: &List<T>) -> Bool {
         self.len() == other.len() &&
-        self.iter().zip(other.iter()).all(|(a, b)| a.equals(b))
+        self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
     }
 }
 ```
