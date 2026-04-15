@@ -308,9 +308,6 @@ function Hero() {
     <header className={styles.hero}>
       <div className={styles.heroInner}>
         <div className={styles.heroText}>
-          <div className={styles.pill}>
-            <span className={styles.pillDot} /> version 0.32 · phase D complete
-          </div>
           <h1 className={styles.heroTitle}>
             <span className="verum-gradient-text">Verum</span>
           </h1>
