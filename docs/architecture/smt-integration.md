@@ -6,7 +6,11 @@ title: SMT Integration
 # SMT Integration
 
 `verum_smt` is the bridge between the type checker and the SMT
-solvers. It runs during phase 5 of compilation.
+solvers. It runs during **Phase 3a** (contract verification) and
+the refinement / dependent-verifier sub-step of **Phase 4**
+(semantic analysis) — see the **[verification pipeline](/docs/architecture/verification-pipeline)**
+for the subsystem-internal stages (5.1–5.7 below are the solver's
+own numbering, not public compilation phases).
 
 ## Architecture
 

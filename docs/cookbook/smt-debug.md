@@ -222,4 +222,4 @@ This is exceedingly rare and indicates a potential solver bug. Action:
 - **[Verification → proofs](/docs/verification/proofs)** — when SMT
   isn't enough, write a proof.
 - **[Architecture → verification pipeline](/docs/architecture/verification-pipeline)**
-  — internal architecture of Phase 5.
+  — internal architecture of the SMT verification subsystem.
