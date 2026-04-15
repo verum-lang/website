@@ -1,0 +1,158 @@
+---
+sidebar_position: 12
+title: CBGR
+---
+
+# CBGR — Capability-Based Generational References
+
+**CBGR** is Verum's default memory-safety mechanism for `&T` references.
+It detects use-after-free and double-free at runtime with roughly **15
+nanoseconds** of overhead per dereference — faster than a malloc, slower
+than a register access.
+
+This page explains the idea. For data-structure details, see
+**[CBGR internals](/docs/architecture/cbgr-internals)**.
+
+## The problem
+
+Manual memory management crashes when you dereference a pointer after
+its object has been freed. Garbage collection solves this by refusing
+to free until no one can reach the object; the cost is latency spikes
+and loss of control.
+
+Verum wants the control _and_ the safety. CBGR is the compromise.
+
+## The idea in one paragraph
+
+Every heap allocation carries a small **header** with a **generation
+counter**. Every reference includes a copy of the generation it was
+issued against. When you dereference, the runtime compares the two. If
+they match, the object is still the one you got a reference to, and
+the access proceeds. If they differ, the object has been freed (or
+revoked) and the access is rejected.
+
+## What a reference looks like
+
+```
+┌──────────────┬────────────┬──────────────┐
+│   pointer    │ generation │ epoch / caps │
+│  (8 bytes)   │ (4 bytes)  │  (4 bytes)   │
+└──────────────┴────────────┴──────────────┘
+                       ThinRef<T> — 16 bytes
+```
+
+For unsized types, the layout is 32 bytes (`FatRef<T>`), adding either
+a length (for slices) or a vtable pointer (for `dyn`).
+
+## What a header looks like
+
+```
+┌──────────┬────────┬──────────┬────────────┐
+│   gen    │ epoch  │  flags   │   layout   │
+│ (4 bytes)│(4 bytes│ (4 bytes)│  (4 bytes) │
+└──────────┴────────┴──────────┴────────────┘
+                   AllocationHeader — 16 bytes,
+                   cache-aligned before the object.
+```
+
+The header sits immediately before the object payload. Freeing an
+object atomically increments its generation; any outstanding reference
+now has a stale generation.
+
+## The check
+
+```
+fn deref(r: ThinRef<T>) -> &T {
+    let hdr = header_of(r.pointer);
+    if hdr.generation != r.generation {
+        panic_use_after_free();
+    }
+    unsafe { &*r.pointer }
+}
+```
+
+Three loads, one compare, one conditional branch. On typical hardware,
+this measures ~15 ns.
+
+## Why not just bounds-check?
+
+Bounds checking prevents out-of-range indexing; it does nothing about
+stale pointers after free. Conversely, CBGR prevents stale-pointer
+access but does not itself bound-check indices. They are orthogonal
+safety mechanisms — and Verum uses both.
+
+## Generation wraparound
+
+Generations are 32-bit. At one allocation per object per nanosecond,
+wraparound takes ~4.3 seconds. To prevent reuse of a generation while
+old references still point at it, the allocator uses **epochs**: a
+thread-local epoch counter advances periodically, and references are
+invalidated across epoch boundaries. This is handled automatically by
+the runtime.
+
+## Capability bits
+
+The `epoch / caps` field of a reference is partitioned between:
+- epoch identity (for wraparound safety);
+- **capability bits** that encode a subset of `Read`, `Write`, `Admin`,
+  and application-defined capabilities.
+
+This is how `Database with [Read]` becomes a value at runtime — the
+`Database` reference carries only the `Read` capability bit set; calls
+to `Database.write(...)` fail a capability check.
+
+## When the check is elided
+
+The compiler emits the full 15 ns check for `&T`. It emits **nothing**
+for `&checked T` — escape analysis has proved the check unnecessary.
+The proof is witnessed in the compilation artefacts; you can inspect
+which references got promoted with:
+
+```bash
+$ verum analyze --report cbgr ./src/main.vr
+function     total   tier0   tier1   tier2   promoted
+process        42       3      39       0          39/42 (92.9%)
+tight_loop      8       0       8       0           8/8  (100%)
+```
+
+## Tiered execution
+
+In the VBC interpreter, CBGR checks run in software. In the LLVM AOT
+backend, they are lowered to native instructions and frequently
+collapsed by LLVM's optimiser when adjacent to each other or inside
+tight loops. In GPU kernels, CBGR is disabled by construction (kernels
+operate on a separate memory arena with statically checked accesses).
+
+## Performance numbers
+
+Reported on an Apple M3 Max, Verum v0.32 release build:
+
+| Operation | Cycles | Nanoseconds |
+|-----------|--------|-------------|
+| Unchecked pointer deref | 2 | 0.5 |
+| `&checked T` deref | 2 | 0.5 |
+| `&T` CBGR check + deref | 55 | 13.8 |
+| `&T` check + cache miss on header | 220 | 55 |
+| Free + increment generation | 80 | 20 |
+
+The "cache miss" line is worst case — the header is designed to share
+a cache line with the object, so in typical access patterns it's
+already hot.
+
+## Mental model
+
+Think of CBGR as **trading a small constant-factor overhead on every
+reference dereference for the complete elimination of an entire class
+of CVEs**. For most code, 15 ns is invisible. For hot loops, escape
+analysis elides the check. For code where it cannot, you can be
+explicit about wanting `&checked T` and let the compiler tell you what
+needs refactoring.
+
+## See also
+
+- **[References](/docs/language/references)** — the three tiers from
+  the user's perspective.
+- **[CBGR internals](/docs/architecture/cbgr-internals)** — the
+  runtime, escape analysis algorithm, and implementation details.
+- **[Tooling → analyze](/docs/tooling/cli)** — running the CBGR
+  promotion report.

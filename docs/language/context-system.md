@@ -1,0 +1,183 @@
+---
+sidebar_position: 14
+title: Context System
+---
+
+# Context System
+
+The context system replaces ambient state — globals, thread-locals,
+singletons, "magic" dependency injection — with typed, explicitly
+declared capabilities.
+
+## Two levels
+
+Verum offers two complementary DI mechanisms.
+
+### Level 1: static `@injectable`
+
+Compile-time dependency injection with zero runtime cost.
+
+```verum
+@injectable(Scope.Singleton)
+type Logger is { level: LogLevel };
+
+fn process(msg: Message) {
+    let log: &Logger = inject Logger;
+    log.info(f"processing {msg.id}");
+}
+```
+
+The `inject Logger` expression is resolved at compile time. The
+compiler walks the injector graph, stitches together singleton /
+request / transient instances per scope, and hands `process` the
+already-built `&Logger`.
+
+### Level 2: dynamic `provide` / `using`
+
+Runtime DI with ~5–30 ns overhead (task-local lookup).
+
+```verum
+context Logger {
+    fn info(&self, msg: Text);
+    fn error(&self, msg: Text);
+};
+
+fn fetch_user(id: UserId) -> User using [Logger, Database] {
+    Logger.info(f"fetching {id}");
+    Database.query(id)
+}
+
+fn main() using [IO] {
+    let log = ConsoleLogger::new(LogLevel.Info);
+    let db  = PostgresDatabase::connect(...)?;
+    provide Logger = log;
+    provide Database = db in {
+        fetch_user(UserId(42));
+    };
+}
+```
+
+The `provide ... in { ... }` scope injects the value. `using [Logger,
+Database]` declares the function's effects. Within the provided scope,
+`Logger.info(...)` routes to the installed backend.
+
+## Choosing between the two
+
+| Use static `@injectable` | Use dynamic `provide`/`using` |
+|--------------------------|------------------------------|
+| Singleton / well-known backends | Request-scoped or runtime-selected |
+| Zero-overhead required | Flexible late binding acceptable |
+| Protocols with a single sensible instance | Protocols with multiple viable instances |
+
+You can mix them. A `Database` context might be dynamically provided
+per-request; a `Metrics` context might be a compile-time singleton.
+
+## Context clause syntax
+
+```verum
+fn f() using [A, B, C] { ... }           // required contexts
+fn f() using [A, !IO] { ... }            // required A, forbidden IO
+fn f() using [A if cfg.debug] { ... }    // conditional
+fn f() using [A.readonly()] { ... }      // transformed capability
+fn f() using [A as primary] { ... }      // aliased
+```
+
+### Negative contexts
+
+`!IO` means "this function may not perform IO." A caller that provides
+`IO` to the function violates the contract at compile time. This is
+how Verum encodes "pure" code:
+
+```verum
+using Pure = [!IO, !State<_>, !Random];
+
+fn sum(xs: &List<Int>) -> Int using Pure {
+    xs.iter().sum()
+}
+```
+
+### Context groups
+
+```verum
+using WebRequest = [Database, Logger, Cache, Metrics, Clock];
+
+fn handle(req: Request) -> Response using [WebRequest] { ... }
+```
+
+Groups are just named lists. They compose.
+
+### Transformed contexts
+
+```verum
+fn analyse(db: Database) using [Database.readonly()] { ... }
+```
+
+The callee receives a `Database` with only read capabilities. If the
+function tries to call a mutating method, the compiler rejects it
+immediately — no runtime error.
+
+## Propagation across async boundaries
+
+Context stacks are **task-local**. Async and structured concurrency
+preserve them:
+
+- **`spawn`** clones the parent's context stack.
+- **`.await`** preserves the stack across the suspension.
+- **`for await`** in a generator preserves stacks per yield.
+- **`nursery`** inherits stacks into child tasks.
+- **Channel `send`/`recv`** does _not_ propagate — channels are data
+  pipes, not capability pipes.
+
+```verum
+async fn handle(req: Request) using [Database, Logger] {
+    nursery {
+        spawn background_task();     // inherits Database + Logger
+        primary_flow(req).await
+    }
+}
+```
+
+## Context protocols
+
+A `context protocol` is both a protocol (types implement it) and a
+context (functions request it). This is the dual role that lets
+`Logger` appear in both `implement Logger for Console {}` and `using
+[Logger]`.
+
+```verum
+context protocol Clock {
+    fn now(&self) -> Instant;
+    fn elapsed(&self, since: Instant) -> Duration {
+        self.now() - since
+    }
+}
+```
+
+## Where contexts are erased
+
+Contexts provided statically (via `@injectable` with compile-time
+resolution, or `provide` in a monomorphic call graph) are **entirely
+erased** — the generated code calls the concrete function directly.
+
+Dynamically provided contexts cost one pointer load from task-local
+storage per access (~5–30 ns).
+
+## Grammar
+
+From `grammar/verum.ebnf`:
+
+```
+context_clause = "using" "[" context_spec { "," context_spec } "]" ;
+context_spec   = [ "!" ] context_path [ context_transform ] [ context_cond ] [ "as" identifier ] ;
+provide_stmt   = "provide" context_path [ "as" identifier ] "=" expr
+                 [ "in" block ] ";" ;
+```
+
+## See also
+
+- **[Stdlib → context](/docs/stdlib/context)** — the `Provider`, `Scope`,
+  and `ContextError` types.
+- **[Async and concurrency](/docs/language/async-concurrency)** —
+  how contexts flow across tasks.
+- **[Architecture → runtime tiers](/docs/architecture/runtime-tiers)**
+  — how the runtime implements task-local storage.
