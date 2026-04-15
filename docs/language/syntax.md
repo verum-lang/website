@@ -79,10 +79,17 @@ extern "C" { fn c_fn(x: Int) -> Int; } // FFI
 
 ### Visibility
 
+Five levels (documented in detail in
+**[modules → visibility](/docs/language/modules#visibility)**):
+
 - `pub` — exported from the cog.
-- `internal` — visible within the cog.
-- (none) — visible within the defining module.
-- `protected` — visible to subtypes (types and impl blocks only).
+- `pub(super)` — visible in the parent module and descendants.
+- `pub(in path)` — visible within the named subtree.
+- `internal` (= `pub(crate)`) — visible within the cog.
+- (none) — private to the defining module.
+
+Plus `protected` as a protocol-local refinement (visible to subtypes
+and impls).
 
 ## Expression-oriented
 

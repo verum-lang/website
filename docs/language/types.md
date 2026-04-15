@@ -12,16 +12,18 @@ follows the `is` determines what kind of type you get.
 
 | Type | Description |
 |------|-------------|
-| `Bool` | `true` or `false` |
-| `Int` | platform-sized signed integer (usually 64-bit) |
+| `Bool` | `true` or `false` (1 byte) |
+| `Int` | canonical 64-bit signed integer |
 | `Int8`, `Int16`, `Int32`, `Int64`, `Int128` | sized signed |
-| `UInt`, `UInt8..UInt128` | unsigned |
-| `Float`, `Float32`, `Float64` | IEEE 754 |
-| `Char` | Unicode scalar value |
-| `Text` | UTF-8 string |
+| `UInt8..UInt128` | sized unsigned |
+| `ISize`, `USize` | platform-pointer-sized |
+| `Float` / `Float64` | canonical 64-bit IEEE 754 |
+| `Float32` | 32-bit IEEE 754 |
+| `Char` | Unicode scalar value (4 bytes, U+0000..U+10FFFF) |
+| `Text` | UTF-8 string (heap-backed, in `std`) |
 | `Byte` | alias for `UInt8` |
-| `()` | unit |
-| `!` | never (bottom) |
+| `()` | unit (0 bytes) |
+| `!` / `Never` | never (uninhabited bottom) |
 | `unknown` | top |
 
 ## Records (product types)
@@ -208,12 +210,21 @@ type affine Resource is { handle: Int, ... };
 
 ## Capability-restricted types
 
-```verum
-type Database.ReadOnly is Database with [Read];
-type Database.Full     is Database with [Read, Write, Admin];
+CBGR references carry a monotonically-attenuating capability set
+drawn from the eight bits `READ | WRITE | EXECUTE | DELEGATE |
+REVOKE | BORROWED | MUTABLE | NO_ESCAPE`. A capability-restricted
+reference declares which subset it carries:
 
-fn analyse(db: Database with [Read]) -> Stats { ... }
+```verum
+type Database.ReadOnly is Database with [READ];
+type Database.Full     is Database with [READ, WRITE];
+
+fn analyse(db: Database with [READ]) -> Stats { ... }
 ```
 
-A capability set restricts which methods are callable on the value.
-The full database reduces to a read-only view for this function.
+A capability set restricts which methods are callable on the value;
+reducing the set (`db.readonly()`) is always allowed, but expanding
+it is not — the compiler enforces monotonic attenuation across every
+conversion. See
+**[architecture → CBGR internals](/docs/architecture/cbgr-internals#capability-bits)**
+for the full 8-bit table.
