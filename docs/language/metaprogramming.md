@@ -83,16 +83,135 @@ Splicing forms:
 - `$[for x in xs { ... }]` — iterate to produce a sequence.
 - `$$var` — double-escape (for multi-stage quotes).
 
-## Multi-stage quoting
+## Hygiene
+
+Verum quotes are **opaque by default**: identifiers introduced inside
+`quote { ... }` cannot accidentally capture bindings from the caller,
+and references inside the quote resolve at the quote's *definition
+site*, not the expansion site.
 
 ```verum
-meta(2) fn double_stage() -> quote(2) {
-    quote(2) { meta fn generated() -> quote { quote { 42 } } }
+meta fn opaque() -> quote {
+    quote {
+        let x = 200;   // introduced by the macro
+        x              // resolves to 200, not to any caller's `x`
+    }
+}
+
+fn caller() {
+    let x = 100;
+    @opaque();         // `caller.x` is untouched; macro's `x` is fresh
 }
 ```
 
-`meta(N)` means "this function produces code that itself produces
-code N-1 times." Useful for generic code generators.
+### How it works
+
+Every identifier carries a **syntax context** — an expansion chain
+plus a set of *marks*. When the quote expander enters a quote block
+it stamps a fresh mark on every binding it introduces. Two
+identifiers resolve to the same binding only if their mark sets are
+compatible. Caller marks never collide with callee marks, so capture
+is impossible without an explicit opt-in.
+
+### Splicing preserves hygiene
+
+```verum
+meta fn assign(name: Ident, value: Int) -> quote {
+    quote {
+        let $name = ${value};   // $name carries caller-site marks;
+                                // ${value} evaluates in the macro
+    }                           // before being stamped and spliced in
+}
+```
+
+Spliced identifiers retain the marks of where they originated, so a
+spliced name shadows exactly what the *caller* expected it to shadow.
+
+### Intentional capture
+
+If you *want* to refer to a caller binding, say so explicitly. These
+attributes control the default transparency:
+
+| Attribute | Effect |
+|-----------|--------|
+| `@transparent` | Inherit the caller's scope entirely (like an inline function). |
+| `@semi_transparent` | Caller types visible, caller values not. |
+| `@capture(x, y)` | Opaque, except `x` and `y` are bound from the caller. |
+
+Without one of these, referring to a caller binding is rejected with
+`M408 capture not declared`.
+
+### `gensym` for fresh, unnameable identifiers
+
+```verum
+meta fn with_guard() -> quote {
+    let g = gensym("guard");
+    quote {
+        let $g = acquire_lock();
+        critical_section();
+        drop($g);
+    }
+}
+```
+
+`gensym(prefix)` mints an identifier that is guaranteed not to shadow
+or collide with anything in the caller's scope, even if the caller
+happens to have a binding of the same source name.
+
+## Multi-stage quoting
+
+A `meta(N) fn` produces code that produces code N−1 times. Each stage
+has its own hygiene context; references across stages require an
+explicit bridge.
+
+```verum
+meta(2) fn double_stage() -> quote(2) {
+    quote(2) {
+        meta fn generated() -> quote {
+            quote { 42 }
+        }
+    }
+}
+```
+
+### Cross-stage references
+
+Values bound at stage N are invisible to stage N−1 quotes unless you
+transport them with `lift` (value) or `${ expr }` (expression
+evaluated now):
+
+```verum
+meta fn cross_stage() -> quote {
+    let x = 42;              // stage 1 binding
+    quote {
+        // let y = x;        // M405 stage mismatch — x lives at stage 1
+        let y = lift(x);     // OK — lifts 42 into the stage-0 AST
+        let z = ${x + 1};    // OK — computes 43 at stage 1, splices the literal
+    }
+}
+```
+
+### Stage-escaped splices
+
+`$(stage N){ expr }` evaluates `expr` at stage N and splices the
+result into the enclosing quote. It is the explicit form of the `${ }`
+shorthand and is the only way to reach into a higher stage from a
+lower one.
+
+## Error codes
+
+| Code  | Meaning |
+|-------|---------|
+| M400 | malformed quote expression |
+| M401 | `$` or unquote used outside a quote |
+| M402 | hygiene violation — accidental capture |
+| M403 | gensym collision (internal) |
+| M404 | cannot resolve identifier inside quote |
+| M405 | stage mismatch in quote / unquote |
+| M406 | cannot `lift` a value of this type |
+| M407 | malformed token tree |
+| M408 | capture attempted without `@capture` / `@transparent` |
+| M409 | length mismatch in `$[for ...]` expansion |
 
 ## `lift(value)`
 
