@@ -29,9 +29,11 @@ promotes references in your specific code.
 
 ```bash
 verum bench                              # run all @bench functions
-verum profile target/release/myprog      # pprof-compatible profiler
-verum analyze --report cbgr              # reference-tier promotion report
-verum analyze --report smt               # verification cost report
+verum profile --cpu [file.vr]            # sampling profile + hot functions
+verum profile --memory [file.vr]         # CBGR tier 0/1/2 breakdown
+verum profile --compilation [file.vr]    # per-phase compilation timings
+verum analyze --escape                   # reference-tier promotion report
+verum analyze --refinement               # refinement coverage
 verum build --timings                    # per-phase compile time
 ```
 
@@ -88,7 +90,7 @@ has. For release binaries shipped to heterogeneous hardware, use
 
 ### 4. CBGR tier promotion
 
-If `verum analyze --report cbgr` shows a low promotion rate on a hot
+If `verum analyze --escape` shows a low promotion rate on a hot
 function, rewrite so the compiler can prove local scope. Common causes
 of escape:
 
