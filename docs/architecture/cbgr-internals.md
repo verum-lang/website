@@ -13,18 +13,27 @@ mechanics. For the user-facing view, see
 
 ### AllocationHeader
 
-32 bytes, prepended to every CBGR-tracked allocation, cache-aligned.
+32 bytes, prepended to every CBGR-tracked allocation, 32-byte aligned
+(one full cache line on x86_64 / aarch64).
 
 ```c
+// stdlib/mem/header.vr, @repr(C, align(32))
 struct AllocationHeader {
-    uint32_t generation;  // incremented on free
-    uint32_t epoch;       // wraparound-safety counter
-    uint32_t flags;       // drop impl, pinned, capabilities
-    uint32_t layout_size; // for realloc / sanity check
-    uint64_t _padding;    // align to 32 bytes
-    Layout   layout;      // size, align
+    uint32_t size;          //  4 B — payload size
+    uint32_t alignment;     //  4 B — payload alignment
+    uint32_t generation;    //  4 B — CBGR counter, bumped on free
+    uint16_t epoch;         //  2 B — wraparound-safety counter
+    uint16_t capabilities;  //  2 B — 8 capability flags
+    uint32_t type_id;       //  4 B — runtime type info
+    uint32_t flags;         //  4 B — drop impl, pinned, etc.
+    uint32_t reserved[2];   //  8 B — reserved for future use
 };
 ```
+
+`generation` + `epoch` are laid out so they can be loaded in a single
+64-bit atomic — `load_generation_epoch_combined()` does exactly that
+on the fast path with `Acquire` ordering. Free uses `Release` on the
+same word so reader visibility is guaranteed without a full fence.
 
 ### ThinRef\<T\>
 
@@ -112,35 +121,69 @@ effectively infinite for any practical workload.
 
 ## Capability bits
 
-16 bits of the `epoch_caps` word encode the reference's capabilities:
+The low 8 bits of the `capabilities` field (and the mirrored 8 bits in
+`ThinRef.epoch_caps`) encode a monotonically attenuating capability
+set:
 
-- `Read` (always set)
-- `Write`
-- `Admin`
-- 13 application-defined.
+| Bit | Name | Meaning |
+|-----|------|---------|
+| 0 | `CAP_READ` | reads permitted (always set for a live reference) |
+| 1 | `CAP_WRITE` | writes permitted |
+| 2 | `CAP_EXECUTE` | the target is callable (function pointers) |
+| 3 | `CAP_DELEGATE` | the reference can be handed off to another context |
+| 4 | `CAP_REVOKE` | the holder can revoke outstanding copies |
+| 5 | `CAP_BORROWED` | this is a borrow, not an owner |
+| 6 | `CAP_MUTABLE` | `&mut` semantics (exclusive access) |
+| 7 | `CAP_NO_ESCAPE` | optimisation hint: cannot escape the function |
+
+**Monotonic attenuation**: capabilities can only be *removed* as a
+reference is passed around — a `Database.readonly()` transformation
+clears `CAP_WRITE` once and the result can never regain it. The
+compiler enforces this at every conversion point.
 
 A method dispatch for `Database.write(...)` emits a capability check:
 
 ```c
-assert((r.epoch_caps & CAP_WRITE) != 0);
+assert((r.capabilities & CAP_WRITE) != 0);
 ```
 
 The check is one AND + one branch — ~1 ns, dominated by the branch
 predictor.
 
-## Escape analysis
+## Compile-time analysis suite
 
-`verum_cbgr::analysis` runs a whole-function points-to analysis:
+The tier decisions that let the compiler emit `&checked T` or
+`&unsafe T` instead of the Tier 0 `&T` come from a battery of
+analyses in `verum_cbgr`:
 
-1. **Build the pointer-flow graph**: every reference assignment, return,
-   parameter-pass, field-store is an edge.
-2. **Classify escape**: each reference is tagged with one of six
-   categories — `Heap`, `Stack`, `Return`, `Param`, `Field`, `Indirect`.
-3. **Promote**: references that never escape the function body (or
-   escape into known-safe locations) are promoted from `&T` to `&checked T`.
-4. **Emit**: the VBC uses `DerefUnchecked` instead of `DerefChecked`.
+| Module | Role |
+|--------|------|
+| `tier_analysis.rs`          | unified API — composes the results below into per-reference tier decisions |
+| `escape_analysis.rs`        | forward dataflow; four states: `NoEscape`, `MayEscape`, `Escapes`, `Unknown` |
+| `escape_categories.rs`      | refines `Escapes` with provenance data for SBGL decisions |
+| `ownership_analysis.rs`     | tracks move/borrow/consume per reference |
+| `concurrency_analysis.rs`   | data-race detection driven by `Send`/`Sync` |
+| `lifetime_analysis.rs`      | classic borrow checking |
+| `nll_analysis.rs`           | non-lexical lifetimes (fine-grained region inference) |
+| `polonius_analysis.rs`      | Polonius-style origin tracking for hard cases |
+| `dominance_analysis.rs`     | dominator-based promotion |
+| `points_to_analysis.rs`     | Andersen-style points-to graph |
+| `smt_alias_verification.rs` | Z3-backed alias proofs when the others are inconclusive |
 
-Typical promotion rate: 60–95% of `&T` occurrences.
+The pipeline walks references through each analysis, producing a
+`TierAnalysisResult` that records decisions per `RefId` along with
+statistics used for the optimiser's tier distribution report.
+
+### Promotion rule
+
+Only references classified as `NoEscape` are eligible for SBGL
+(stack-backed generation-less) promotion. `MayEscape` and `Escapes`
+stay at Tier 0. When the purely syntactic analyses are inconclusive,
+`smt_alias_verification.rs` asks Z3 whether two references can alias
+— proofs beyond "no" fall back to Tier 0 as well.
+
+Typical promotion rate on idiomatic code: 60–95 % of `&T` occurrences
+land at Tier 1.
 
 ## Performance numbers (M3 Max)
 
@@ -154,6 +197,55 @@ Typical promotion rate: 60–95% of `&T` occurrences.
 | Free + gen++ | 80 | 20 |
 | Realloc (in place) | 60 | 15 |
 | Realloc (moving) | depends | – |
+
+## VBC tier opcodes
+
+Each tier is a distinct VBC instruction, so the tier decision is
+visible all the way down to the bytecode — the interpreter, baseline
+JIT, MLIR JIT, and AOT compiler all read the same opcode.
+
+| Opcode | Mnemonic | Meaning |
+|--------|----------|---------|
+| 0x70 | `Ref`         | Tier 0 immutable borrow |
+| 0x71 | `RefMut`      | Tier 0 mutable borrow |
+| 0x72 | `Deref`       | deref with CBGR validation |
+| 0x73 | `DerefMut`    | mutable deref with validation |
+| 0x74 | `ChkRef`      | explicit validation check (guard) |
+| 0x75 | `RefChecked`  | Tier 1 — compiler-proven safe, 0 ns deref |
+| 0x76 | `RefUnsafe`   | Tier 2 — unsafe, 0 ns deref |
+| 0x77 | `DropRef`     | drop a reference (bookkeeping only) |
+
+### Tier behaviour across executors
+
+| Executor | Tier 0 deref | Tier 1 deref | Tier 2 deref |
+|----------|--------------|--------------|--------------|
+| Interpreter       | full check  | full check (safety first)  | full check (safety first) |
+| Baseline JIT      | full check  | direct load | direct load |
+| Optimising / AOT  | full check (sometimes elided) | direct load | direct load |
+
+The interpreter intentionally validates *every* deref regardless of
+tier — it is the safe-by-default executor. Tier 1 and Tier 2 give
+their 0 ns benefit in the JITs and AOT, where the check is proven
+away statically.
+
+### MLIR lowering
+
+The `verum.cbgr` dialect mirrors the VBC opcodes:
+
+```
+verum.cbgr.borrow        / verum.cbgr.borrow_mut
+verum.cbgr.deref         / verum.cbgr.deref_mut
+verum.cbgr.store
+verum.cbgr.drop
+```
+
+Lowering strategy is one of:
+
+- `CbgrValidated` — Tier 0, emits a call into `stdlib/mem`'s
+  validation function.
+- `DirectLoad` — Tier 1, lowers to `llvm.load` directly.
+- `UncheckedLoad` — Tier 2, lowers to `llvm.load` with no
+  metadata decorations.
 
 ## Threads and concurrency
 

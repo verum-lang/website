@@ -88,6 +88,39 @@ This means:
 - Embedded targets are first-class.
 - Upgrading the compiler does not change stdlib ABI.
 
+## `core` vs `std` — the allocator boundary
+
+The standard library splits in two at the **allocator line**:
+
+- **`core`** (this is the *root* cog) is **allocator-free**. It has no
+  `Heap<T>`, no `Shared<T>`, no dynamic `List<T>`, no heap-backed
+  `Text`. Everything lives on the stack or in static storage. `core`
+  is the library you can link into a bare-metal target with a 16 KiB
+  image budget.
+- **`std`** (also spelled `core.*` in imports) is everything else —
+  the CBGR allocator, `List`, `Map`, `Set`, `Text`, async runtime, IO,
+  network, TUI, tensors. `std` depends on `core`; `core` depends on
+  nothing but compiler intrinsics.
+
+| Feature | In `core` | In `std` |
+|---------|-----------|----------|
+| Primitives (`Int`, `Float`, …) | ✓ | — |
+| `Maybe<T>`, `Result<T, E>`, `Ordering` | ✓ | — |
+| `Eq`, `Ord`, `Hash`, `Clone`, `Copy`, `Default`, `Debug`, `Display`, `Drop`, `Send`, `Sync`, `Sized` | ✓ | — |
+| Operator protocols (`Add`, `Sub`, …, `Try`) | ✓ | — |
+| `MaybeUninit<T>`, `@intrinsic("...")` | ✓ | — |
+| Panic handling (abort-based) | ✓ | — |
+| `Heap<T>`, `Shared<T>`, `Weak<T>` | — | ✓ |
+| `List<T>`, `Text`, `Map<K,V>`, `Set<T>` | — | ✓ |
+| Async runtime, channels, timers | — | ✓ |
+| IO, network, TLS, DNS | — | ✓ |
+| `math`, `simd`, `tensor`, `gpu` | — | ✓ |
+
+Embedded and `no_heap` targets automatically compile with `core`
+only; attempting to `mount` an `std`-only module triggers a
+compile-time error that names the profile mismatch rather than
+producing a cryptic link error.
+
 ## Tier-specific availability
 
 Some stdlib features require a runtime that supports them:
