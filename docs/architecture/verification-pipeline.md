@@ -1,18 +1,32 @@
 ---
 sidebar_position: 8
 title: Verification Pipeline
-description: Phase 5 internal architecture — VCGen, routing, portfolio, proof extraction, caching.
+description: The SMT verification subsystem — VCGen, routing, portfolio, proof extraction, caching.
 ---
 
 # Verification Pipeline
 
-This page documents the internal architecture of **Phase 5
-(Verification)** for compiler developers. For the user-facing model,
-see [Gradual verification](/docs/verification/gradual-verification);
-for the solver-selection policy, see
-[SMT routing](/docs/verification/smt-routing).
+This page documents the internal architecture of Verum's **SMT
+verification subsystem** for compiler developers. The subsystem has
+two invocation points in the compilation pipeline:
 
-## Pipeline overview
+- **Phase 3a — contract verification** — discharges
+  `contract#"..."` literals before the type checker sees the
+  annotated function.
+- **Phase 4 — refinement / dependent verification** — runs as a
+  sub-step of semantic analysis (the `DependentVerifier`), collecting
+  refinement-type obligations, `ensures` / `requires` clauses, and
+  loop invariants.
+
+Results from both flow into Phase 5 VBC codegen as tier-promotion
+and bounds-elimination hints. For the user-facing model, see
+**[Gradual verification](/docs/verification/gradual-verification)**;
+for the solver-selection policy, see **[SMT routing](/docs/verification/smt-routing)**.
+
+## Sub-phase overview
+
+The internal numbering (5.1–5.7) below is the subsystem's own
+internal stages — the solver work, not the public pipeline phases.
 
 ```
 Verified HIR (from Phase 4)
@@ -186,10 +200,10 @@ type ProofTerm is
 5. On success, the proof term is serialised into the VBC archive's
    `proof_certificates` section.
 
-**Proof erasure** (release mode): proof terms are marked and
-eliminated during Phase 6 optimisation. The final binary carries
-**no runtime proof verification cost** — only metadata required to
-reconstruct proofs offline.
+**Proof erasure** (default, controlled by `[codegen] proof_erasure`):
+proof terms are marked and stripped before Phase 5 VBC codegen. The
+final binary carries **no runtime proof verification cost** — only
+metadata required to reconstruct proofs offline.
 
 ## 5.6 — Caching
 
@@ -202,24 +216,26 @@ tuple.
 **Invalidation**:
 - Obligation text change → new hash, no hit.
 - Solver upgrade → version-tuple mismatch, invalidate.
-- Manual: `verum proof-cache clear`.
+- Manual: delete `target/.verum-cache/smt/` or run `verum clean --all`.
 
 Observed hit rate: 60–70% on typical incremental builds.
 
 ## 5.7 — Bounds elimination & CBGR hints
 
-The verifier's results feed back into Phase 6:
+Verifier results feed forward into Phase 5 VBC codegen and Phase 6
+monomorphization:
 
 - **Array-bounds elimination**: if the solver proves `i < xs.len()`
-  for every call site, the bounds check is removed.
+  for every call site, the bounds check is removed before codegen.
 - **Reference-tier promotion**: if escape analysis + refinement
   results prove a `&T` reference is never stored beyond its scope,
-  it's promoted to `&checked T` — zero-cost.
+  it's promoted to `&checked T` — codegen emits `RefChecked` instead
+  of `Ref`, zero-cost.
 - **Capability elision**: a `Database with [Read]` that never reaches
   a `Write`-requiring method skips the capability check.
 
-The `Phase5Output` carries a `HintTable` consumed by Phase 6's
-optimisation passes.
+The subsystem's output carries a `HintTable` consumed by VBC codegen
+and by later refinement-aware passes (`passes/cbgr_integration.rs`).
 
 ## Performance
 

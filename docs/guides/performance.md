@@ -299,10 +299,10 @@ lto = "thin"
 
 `verum build --timings` shows where the time goes. Typical hotspots:
 
-- Phase 3 (infer) in generics-heavy code.
-- Phase 5 (verify) when many `@verify(smt)` functions have large
-  obligations.
-- Phase 7 (codegen) when LTO is `full`.
+- Phase 4 (semantic + CBGR) in generics-heavy code.
+- Phase 3a / Phase 4 verification when many `@verify(smt)` functions
+  have large obligations.
+- Phase 7 (AOT: VBC → LLVM) when LTO is `full`.
 
 ## See also
 

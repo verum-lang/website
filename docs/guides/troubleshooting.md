@@ -153,10 +153,12 @@ verum build --timings
 ```
 
 shows per-phase time. Usual culprits:
-- Phase 5 (verify) on a large file with many `@verify(smt)` functions:
-  scope down what needs SMT.
-- Phase 6 (codegen) on a big crate: increase `codegen-units` in
-  `Verum.toml [profile]` (more parallelism, slightly less inlining).
+- Phase 3a contracts or Phase 4 refinement verification on a large
+  file with many `@verify(smt)` functions: scope down what needs SMT,
+  or raise `[verify] solver_timeout_ms` only for the functions that
+  need it via `[verify.modules.*]`.
+- Phase 7 (AOT: VBC → LLVM) on a big crate: increase `codegen_units`
+  in `[profile.release]` (more parallelism, slightly less inlining).
 
 ### "Release binary too large"
 

@@ -100,7 +100,7 @@ target/.verum-cache/
 ## Build flow
 
 ```
-Phase 6 (MIR lowering & optimisation)
+Phase 5 (VBC codegen)
    │
    For each function:
    │   new_fp = compute_fingerprint(fn, deps, config)
@@ -110,15 +110,16 @@ Phase 6 (MIR lowering & optimisation)
    │      compile and write artefacts to cache.
    │
    ▼
-Phase 7 (Codegen)
-   │   collect (cached + newly-compiled) .o files
+Phase 6 (monomorphization)
+   │   dedupe specialisations against cached instantiations
    │
    ▼
-Phase 8 (Link)
+Phase 7 (execute: Tier 0 interp or Tier 1 AOT)
+   │   Tier 1 collects (cached + newly-compiled) .o files
+   │
+   ▼
+Phase 7.5 (link, AOT only)
    │   link final binary with LTO.
-   │
-   ▼
-Phase 9 (Emit)
 ```
 
 ### Cache invalidation triggers
