@@ -112,9 +112,9 @@ risks.
 
 ### Verification
 
-- Safety-critical code: `@verify(portfolio)`.
+- Safety-critical code: `@verify(thorough)`.
 - Security-critical lemmas: `@verify(certified)` with a proof term.
-- `@verify(cross_validate)` in CI for any module touching crypto,
+- `@verify(certified)` in CI for any module touching crypto,
   auth, or raw memory.
 
 ## Auditing
@@ -135,5 +135,5 @@ with a PoC. The team follows a 90-day coordinated-disclosure policy.
 
 - **[security stdlib](/docs/stdlib/security)** — labels, regions.
 - **[Tooling → cog packages → trust](/docs/tooling/cog-packages#trust-model)** — supply-chain trust.
-- **[Verification → portfolio](/docs/verification/smt-routing#4-portfolio--both-cross-validated)** — solver cross-validation.
+- **[Verification → thorough strategy](/docs/verification/smt-routing#verifythorough--verifyreliable--portfolio)** — solver cross-validation.
 - **[FFI](/docs/language/ffi)** — boundary contracts.

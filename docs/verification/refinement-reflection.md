@@ -34,7 +34,7 @@ fn is_sorted(xs: &List<Int>) -> Bool {
 // Now usable in refinements:
 type Sorted is List<Int> { is_sorted(self) };
 
-@verify(smt)
+@verify(formal)
 fn merge(a: &Sorted, b: &Sorted) -> Sorted { ... }
 // The SMT solver knows what `is_sorted` means.
 ```
@@ -118,7 +118,7 @@ Useful for debugging obligations that mysteriously fail.
 
 ## Reflection + portfolio
 
-When `@verify(portfolio)` is set, both Z3 and CVC5 receive the same
+When `@verify(thorough)` is set, both Z3 and CVC5 receive the same
 reflected axioms. A disagreement indicates a bug in one of the solvers
 and is reported:
 

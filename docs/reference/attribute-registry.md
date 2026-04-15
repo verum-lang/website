@@ -39,16 +39,24 @@ attribute, its valid targets, and a one-line semantics.
 
 ## Verification
 
+The `@verify` attribute takes a **semantic strategy** — the underlying
+solver (Z3, CVC5, portfolio, …) is an implementation detail picked by
+the capability router. The full set, from `grammar/verum.ebnf`:
+
 | Attribute | Targets | Semantics |
 |-----------|---------|-----------|
-| `@verify(runtime)` | fn, type | refinements → `assert`, run at runtime |
-| `@verify(static)` | fn, type | dataflow + CBGR + refinement typing (default) |
-| `@verify(smt)` | fn, type | discharge via Z3/CVC5 via router |
-| `@verify(z3)` | fn, type | force Z3 |
-| `@verify(cvc5)` | fn, type | force CVC5 |
-| `@verify(portfolio)` | fn, type | Z3 + CVC5 cross-validated |
-| `@verify(cross_validate)` | fn, type | portfolio, disagreement = error |
-| `@verify(certified)` | fn, type | proof term required and machine-checked |
+| `@verify(runtime)`    | fn, type | runtime assertion check only; no formal proof |
+| `@verify(static)`     | fn, type | static type-level verification only |
+| `@verify(formal)`     | fn, type | formal verification with the default strategy (recommended) |
+| `@verify(proof)`      | fn, type | alias of `formal`, emphasising proof extraction |
+| `@verify(fast)`       | fn, type | optimise for fast verification; may sacrifice completeness on hard goals |
+| `@verify(thorough)`   | fn, type | maximum completeness; races multiple strategies, returns the first success |
+| `@verify(reliable)`   | fn, type | alias of `thorough`, emphasising result reliability |
+| `@verify(certified)`  | fn, type | independently cross-verified; required for proof-certificate export (Coq/Lean/Dedukti/Metamath) |
+| `@verify(synthesize)` | fn, type | synthesis mode — generate a term satisfying the spec rather than checking it |
+
+Project-wide defaults and per-module overrides live in the `[verify]`
+section of `verum.toml` — see **[reference → verum.toml](/docs/reference/verum-toml#verify--formal-verification)**.
 
 ## FFI
 
@@ -58,6 +66,18 @@ attribute, its valid targets, and a one-line semantics.
 | `@extern("C", calling_convention = "X")` | fn | override calling convention |
 | `@ownership(transfer_to = "caller" \| "callee")` | ffi item | ownership transfer at boundary |
 | `@ownership(borrow = [...])` | ffi item | params are borrowed, not transferred |
+
+## Target & dispatch
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@device(cpu)` | fn | run on CPU (default, usually implicit) |
+| `@device(gpu)` | fn | route through MLIR GPU pipeline — triggers `VbcToMlirGpuLowering` in Phase 7 |
+| `@gpu.kernel` | fn | mark as a GPU kernel (implies `@device(gpu)`) with kernel-launch semantics |
+| `@differentiable` | fn | synthesise a VJP companion in Phase 4a autodiff |
+| `@thread_local` | static | per-thread storage |
+| `@naked` | fn | no prologue / epilogue (assembly trampolines only) |
+| `@intrinsic("name")` | fn | compiler-provided primitive (forward decl) |
 
 ## Optimisation
 

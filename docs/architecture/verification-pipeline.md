@@ -165,12 +165,12 @@ Three execution strategies:
 
 | Mode | Behaviour | Trigger |
 |---|---|---|
-| **Single** | Dispatch to routed solver; wait for result | `@verify(smt)` or `@verify(z3)` / `@verify(cvc5)` |
-| **Portfolio** | Both solvers in parallel; first answer wins | `@verify(portfolio)` |
-| **Cross-validate** | Both in parallel; require agreement; error on disagreement | `@verify(cross_validate)` |
+| **Single** | Dispatch to the router's choice of solver; wait for result | `@verify(formal)` |
+| **Portfolio** | Both solvers plus proof search in parallel; first answer wins | `@verify(thorough)` / `@verify(reliable)` |
+| **Cross-validate** | Portfolio plus an orthogonal technique; require agreement; error on disagreement | `@verify(certified)` |
 
 Timeout: default 5 s per obligation, configurable via
-`Verum.toml [verification] smt_timeout_ms`. On timeout, the fallback
+`Verum.toml [verify] solver_timeout_ms`. On timeout, the fallback
 strategy (`other-solver` by default) retries with the non-preferred
 solver.
 

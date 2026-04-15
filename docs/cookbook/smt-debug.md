@@ -5,7 +5,7 @@ description: "When the solver can't prove your obligation — a diagnostic playb
 
 # Debugging SMT failures
 
-You added `@verify(smt)` to a function, the compiler says the
+You added `@verify(formal)` to a function, the compiler says the
 solver can't prove the postcondition, and you don't know why. This
 page is the playbook.
 
@@ -111,13 +111,17 @@ forall x: Int where 0 <= x && x <= max. P(x)
 
 #### 5. Nonlinear arithmetic
 
-Z3's nonlinear engine is limited; CVC5's is better.
+Z3's nonlinear engine is limited; CVC5's is better. The capability
+router already sends nonlinear goals to CVC5, but if that's still
+not enough, escalate:
 
 ```verum
-@verify(cvc5) fn nonlinear_fn(...) -> ... { ... }
+@verify(thorough) fn nonlinear_fn(...) -> ... { ... }
 ```
 
-Or supply lemmas that linearise the reasoning.
+`thorough` races Z3, CVC5, and tactic-based proof search in
+parallel and takes the first success. Otherwise, supply lemmas that
+linearise the reasoning.
 
 #### 6. Missing `@logic` axiom
 
@@ -138,20 +142,25 @@ goals are easier.
    issue):
 
    ```toml
-   [verification]
-   smt_timeout_ms = 30_000
+   [verify]
+   solver_timeout_ms = 30_000
    ```
 
 2. **Simplify the body**. Extract intermediate computations into
    helper functions with their own contracts. Split conjunctive
    postconditions.
 
-3. **Switch backend**:
+3. **Escalate the strategy**:
 
    ```verum
-   @verify(cvc5)    // nonlinear, strings, finite-model finding
-   @verify(z3)      // LIA, bitvectors, arrays
+   @verify(thorough)    // races Z3 + CVC5 + proof search in parallel
+   @verify(certified)   // thorough + orthogonal cross-validation
    ```
+
+   The capability router already picks CVC5 for nonlinear / string
+   / finite-model-finding goals and Z3 for LIA / bitvectors / arrays,
+   so you do not need to pin a backend — escalating the strategy is
+   the right lever.
 
 4. **Supply inductive hints**:
 
@@ -186,7 +195,7 @@ goals are easier.
 
 ### Playbook — "portfolio disagreement"
 
-With `@verify(portfolio)`, a disagreement means Z3 and CVC5 returned
+With `@verify(thorough)`, a disagreement means Z3 and CVC5 returned
 conflicting verdicts:
 
 ```
@@ -207,11 +216,11 @@ This is exceedingly rare and indicates a potential solver bug. Action:
 ### General tips
 
 - **Start small**: verify one short function completely before
-  adding `@verify(smt)` project-wide.
+  adding `@verify(formal)` project-wide.
 - **Incremental proving**: prove sub-claims as named `lemma`s that
   the main theorem can `apply`.
 - **Cache awareness**: if you edit only the body and the solver
-  suddenly complains, try `verum proof-cache clear`.
+  suddenly complains, try `verum smt-stats --reset`.
 - **Print debug info**: `verum verify --trace obligation_id=push_postcond#1`
   shows the SMT interaction step by step.
 

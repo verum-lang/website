@@ -21,7 +21,7 @@ native binaries. Tier 1 of the two-tier execution model.
 any number of immutable (`&T`), or exactly one mutable (`&mut T`).
 
 **Attribute** — A compile-time annotation written with `@` prefix, such
-as `@derive(Clone)` or `@verify(smt)`.
+as `@derive(Clone)` or `@verify(formal)`.
 
 ## C
 

@@ -218,7 +218,7 @@ fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
 
 type Sorted<T: Ord> is List<T> { is_sorted(self) };
 
-@verify(smt)
+@verify(formal)
 fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
     where ensures is_sorted(result)
 {

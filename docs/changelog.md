@@ -36,7 +36,7 @@ Version scheme: [semver](https://semver.org/).
 
 ### Added
 
-- `@verify(portfolio)` and `@verify(cross_validate)` — dual-solver
+- `@verify(thorough)` and `@verify(certified)` — dual-solver
   execution.
 - `@verify(certified)` — requires proof term; machine-checked.
 - `is_reflectable()` gate for `@logic` functions (pure + total +
@@ -97,7 +97,7 @@ Version scheme: [semver](https://semver.org/).
 - **Playbook TUI**: session replay; context binding; inline
   verification diagnostics.
 - **CLI**: `verum analyze --report cbgr | refinements | smt |
-  capabilities`; `verum proof-cache stats`; `verum expand-macros`;
+  capabilities`; `verum smt-stats`; `verum expand-macros`;
   `verum target install <triple>`.
 - **Package registry**: `verum publish`, `verum search`,
   `registry.verum-lang.org`; content-addressed storage with
@@ -135,7 +135,7 @@ Cache hit rate: **68%** average on incremental builds.
 **From v0.31**:
 
 - `r#"..."#` raw strings → `"""..."""`. Automated by `verum fmt`.
-- `@verify(smt)` semantics unchanged. Portfolio / certified are
+- `@verify(formal)` semantics unchanged. Portfolio / certified are
   new, opt-in.
 - New type properties `T.size` / `T.alignment` are source-
   compatible; `size_of<T>()` still works but emits a deprecation
@@ -179,7 +179,7 @@ CBGR optimisation to 11.8–14.5 ns shipped in that session.
 
 - CVC5 backend (`cvc5-sys` 1.3.2).
 - Capability-based router in `verum_smt::capability_router`.
-- `@verify(portfolio)` attribute.
+- `@verify(thorough)` attribute.
 
 ### Changed
 
@@ -195,7 +195,7 @@ CBGR optimisation to 11.8–14.5 ns shipped in that session.
 - Σ-types via `type T is n: Int, data: [Int; n]`.
 - Π-types (implicit — dependent return types over parameters).
 - Higher-kinded type parameters: `F<_>`.
-- `@verify(smt)` integration with dependent obligations.
+- `@verify(formal)` integration with dependent obligations.
 
 ---
 

@@ -29,9 +29,9 @@ panic    = "abort"             # abort | unwind
 debug    = false
 incremental = false            # force clean build per change
 
-[profile.release.verification]
-default_level = "smt"
-smt_timeout_ms = 10_000
+[verify]
+default_strategy  = "formal"
+solver_timeout_ms = 10_000
 ```
 
 ## Incremental compilation

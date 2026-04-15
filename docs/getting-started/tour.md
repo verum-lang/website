@@ -129,7 +129,7 @@ async fn fetch_all(ids: &List<Id>) -> List<Data>
 ## 8. Verification
 
 ```verum
-@verify(smt)
+@verify(formal)
 fn binary_search(xs: &List<Int>, key: Int) -> Maybe<Int>
     where ensures result is Some(i) => xs[i] == key
 {
@@ -151,7 +151,7 @@ fn binary_search(xs: &List<Int>, key: Int) -> Maybe<Int>
 
 - `where ensures ...` is a postcondition.
 - `invariant` and `decreases` make the loop discharge automatically.
-- `@verify(smt)` requests SMT-level verification.
+- `@verify(formal)` requests SMT-level verification.
 
 ## 9. Metaprogramming
 

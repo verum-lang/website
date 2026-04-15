@@ -1,9 +1,9 @@
 ---
-title: Adding `@verify(smt)` to an existing function
+title: Adding `@verify(formal)` to an existing function
 description: Walk a plain function up the verification ladder.
 ---
 
-# Adding `@verify(smt)`
+# Adding `@verify(formal)`
 
 Existing code already gets `@verify(static)` — dataflow + CBGR +
 basic refinements. Here's how to graduate one function up to SMT.
@@ -45,7 +45,7 @@ fn clamp(lo: Int, hi: Int { self >= lo }, x: Int) -> Int
 ### Step 3 — turn on SMT
 
 ```verum
-@verify(smt)
+@verify(formal)
 fn clamp(lo: Int, hi: Int { self >= lo }, x: Int) -> Int
     where ensures result >= lo,
           ensures result <= hi,
@@ -60,15 +60,16 @@ fn clamp(lo: Int, hi: Int { self >= lo }, x: Int) -> Int
 Build:
 
 ```
-[verification] clamp   ✓ (z3, 6 ms)
+[verify] clamp   ✓ (formal/z3, 6 ms)
 ```
 
-Done — the postcondition is proven by Z3 across every branch.
+Done — the capability router dispatched to Z3 and the postcondition
+is proven across every branch.
 
 ### Graduating a loop — add invariants
 
 ```verum
-@verify(smt)
+@verify(formal)
 fn sum_to(n: Int { self >= 0 }) -> Int
     where ensures result == n * (n + 1) / 2
 {
@@ -97,7 +98,7 @@ Three ingredients:
 For the critical 1% of your code:
 
 ```verum
-@verify(portfolio)
+@verify(thorough)
 fn critical_security_function(...) -> ... { ... }
 ```
 
@@ -116,8 +117,9 @@ nonlinearity, or a predicate the solver can't decompose.
   the proof.
 - Move a complex predicate into a named `@logic fn` that the solver
   can reuse.
-- Try `@verify(cvc5)` — CVC5 handles nonlinear arithmetic and strings
-  better than Z3.
+- Escalate to `@verify(thorough)` — races Z3, CVC5, and tactic-based
+  proof search in parallel; CVC5 handles nonlinear arithmetic and
+  strings better than Z3 so this often unblocks hard goals.
 - Bound quantifiers: `forall x: Int. P(x)` → `forall x in 0..n. P(x)`.
 
 **"Counter-example: …"**: the solver found an input that violates
@@ -140,8 +142,8 @@ Start strict, loosen if needed:
 ```
 @verify(runtime)      →   prototype; asserts only
 @verify(static)       →   default; free
-@verify(smt)          →   annotate invariants; Z3/CVC5 proves
-@verify(portfolio)    →   safety-critical; both solvers
+@verify(formal)          →   annotate invariants; Z3/CVC5 proves
+@verify(thorough)    →   safety-critical; both solvers
 @verify(certified)    →   kernel-class; proof term required
 ```
 

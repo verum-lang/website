@@ -16,7 +16,7 @@ This page is an overview. The comprehensive list is the
 
 ```verum
 @derive(Clone)                             // on a type
-@verify(portfolio)                         // on a function
+@verify(thorough)                         // on a function
 @cfg(feature = "gpu")                      // on any item
 @test                                      // marks a test
 pub fn api_entry() { ... }
@@ -56,12 +56,16 @@ Each derive is a procedural macro under `core::derives`.
 ```verum
 @verify(runtime)      // assertions only
 @verify(static)       // dataflow + CBGR (default)
-@verify(smt)          // discharge refinements to SMT
-@verify(portfolio)    // Z3 + CVC5 cross-validated
-@verify(certified)    // machine-checked proof
-@verify(z3)           // force Z3 backend
-@verify(cvc5)         // force CVC5 backend
+@verify(formal)       // formal verification (recommended)
+@verify(fast)         // short timeout; may give up on hard goals
+@verify(thorough)     // race multiple strategies in parallel
+@verify(certified)    // cross-validated + exportable proof certificate
+@verify(synthesize)   // synthesise a term from the spec
 ```
+
+The solver (Z3, CVC5, or portfolio) is picked by the capability
+router, not by you — see
+**[verification → SMT routing](/docs/verification/smt-routing)**.
 
 ### FFI — `@extern`
 
@@ -192,7 +196,7 @@ Multiple attributes stack top-to-bottom:
 ```verum
 @cfg(feature = "gpu")
 @derive(Debug, Clone)
-@verify(portfolio)
+@verify(thorough)
 pub fn gpu_entry() { ... }
 ```
 

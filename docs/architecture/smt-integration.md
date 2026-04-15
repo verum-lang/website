@@ -105,7 +105,7 @@ up in capability table.
    - one unsat, one sat → **disagreement**; flagged.
    - timeouts handled per policy.
 
-Used for `@verify(portfolio)` and `@verify(cross_validate)`.
+Used for `@verify(thorough)` and `@verify(certified)`.
 
 ## Caching
 

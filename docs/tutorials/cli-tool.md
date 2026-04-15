@@ -246,6 +246,6 @@ $ cp target/release/wordcount ~/bin/
 ## Next
 
 - **[A verified data structure](/docs/tutorials/verified-data-structure)** —
-  add `@verify(smt)` proofs to a stateful type.
+  add `@verify(formal)` proofs to a stateful type.
 - **[Cookbook → cli-tool](/docs/cookbook/cli-tool)** — subcommands,
   coloured errors, spinners.

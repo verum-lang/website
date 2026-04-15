@@ -15,7 +15,7 @@ cycling.
 - **Invoke**: call functions interactively with typed argument prompts.
 - **Inspect**: view results with pretty-printing for every stdlib type.
 - **Profile**: measure execution time, allocations, SMT time.
-- **Verify**: run `@verify(smt)` on the function at cursor; see
+- **Verify**: run `@verify(formal)` on the function at cursor; see
   obligations discharged live.
 - **Replay**: re-run prior invocations with modified arguments.
 

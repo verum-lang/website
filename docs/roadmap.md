@@ -28,7 +28,7 @@ Production-ready:
   11.8–14.5 ns per check, escape analysis, promotion to
   `&checked T`.
 - **Verification**: gradual from `@verify(runtime)` through
-  `@verify(portfolio)` to `@verify(certified)`; Z3 + CVC5 with
+  `@verify(thorough)` to `@verify(certified)`; Z3 + CVC5 with
   capability-based routing; proof extraction; cache with 60–70%
   hit rate.
 - **Concurrency**: `async fn`, `.await`, structured concurrency via

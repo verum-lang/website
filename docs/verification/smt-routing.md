@@ -30,56 +30,48 @@ No single SMT solver is best at everything. Empirically:
 Verum's **capability router** classifies each obligation by the
 theories it uses and dispatches accordingly.
 
-## Four strategies
+## How you request routing
 
-Set via `@verify(...)` per item or in `Verum.toml`:
+You do not select solvers directly. The capability router picks the
+solver based on the obligation's theory mix; you pick the *strategy*
+(how much effort to spend). The strategies that touch the SMT layer:
 
-### 1. `smt` — auto routing (default)
+### `@verify(formal)` — single solver via the router (default)
 
 The router inspects each obligation. If it uses only LIA + bitvectors
-+ arrays, Z3 gets the call. If strings, nonlinear, or finite model
++ arrays, Z3 gets the call. If strings, nonlinear, or finite-model
 finding appear, CVC5 gets it. Mixed obligations go to whichever solver
-supports all the theories involved; if both support them, Z3 goes first
-(benchmarks favour Z3 for generic cases).
+supports all the theories involved; if both support them, Z3 goes
+first (benchmarks favour Z3 for generic cases).
 
-### 2. `z3` — force Z3
+### `@verify(fast)` — single solver, tight timeout
 
-```verum
-@verify(z3) fn f() { ... }
-```
+Same router decision, but the solver gets 30 % of the base timeout
+and expensive techniques (portfolio, proof extraction) are skipped.
+Obligations that don't resolve quickly come back as `unknown` and
+fall through to a runtime check.
 
-Explicitly route to Z3. Useful when you know the obligation is
-purely arithmetic and want to avoid router overhead.
+### `@verify(thorough)` / `@verify(reliable)` — portfolio
 
-### 3. `cvc5` — force CVC5
+Each obligation is dispatched to **both** solvers plus tactic-based
+proof search, all in parallel. The first `unsat` wins:
 
-```verum
-@verify(cvc5) fn f() { ... }
-```
+- Both `unsat`: accepted.
+- Both `sat` with matching counter-examples: rejected with the
+  counter-example.
+- `unsat` from one, `sat` from the other: **solver disagreement** —
+  the goal is flagged and requires manual review (very rare).
+- Timeouts: handled per `[verify]` policy.
 
-Useful for heavily string- or nonlinear-arithmetic-dominated code.
+Timeout multiplier: 2× the base. Recommended for safety-critical
+code.
 
-### 4. `portfolio` — both, cross-validated
+### `@verify(certified)` — portfolio plus orthogonal cross-validation
 
-```verum
-@verify(portfolio) fn f() { ... }
-```
-
-- Each obligation is sent to **both** solvers in parallel.
-- The router expects them to agree.
-- Disagreements:
-  - Both `unsat`: accepted.
-  - Both `sat`: counter-example reported, verification fails.
-  - One `unsat`, one `sat`: **solver disagreement**. The obligation is
-    flagged as `sat=unknown` and requires manual review. Rare.
-  - Timeouts: handled per `Verum.toml` timeout policy.
-
-Recommended for safety-critical code.
-
-### 5. `cross_validate` — like portfolio but strict
-
-Same as `portfolio` but any disagreement or timeout is a hard error,
-not a warning. Used in CI for critical components.
+Runs `thorough` and additionally re-checks the resulting proof with
+an orthogonal technique. Disagreement is a hard build error. The
+resulting proof term is embedded in the VBC archive as an exportable
+certificate (Coq / Lean / Dedukti / Metamath). Timeout multiplier: 3×.
 
 ## Classification
 
@@ -120,9 +112,13 @@ cvc5 timeout →  z3
 Configurable via `Verum.toml`:
 
 ```toml
-[verification]
-smt_timeout_ms     = 5000
-fallback_strategy  = "other-solver"  # or "fail"
+[verify]
+default_strategy  = "formal"
+solver_timeout_ms = 5000
+
+[verify.modules."crypto.signing"]
+strategy          = "certified"
+solver_timeout_ms = 60000
 ```
 
 ## Caching
@@ -138,8 +134,8 @@ provenance) are cached across builds. The cache:
 Inspect:
 
 ```bash
-$ verum proof-cache stats
-$ verum proof-cache clear      # force full re-verification
+$ verum smt-stats
+$ verum smt-stats --reset      # force full re-verification
 ```
 
 ## Telemetry
@@ -170,7 +166,9 @@ as feedback.
   (1506/1507 passing as of v0.32), but solver behaviour is not
   bit-reproducible across versions.
 - The router is tuned against a benchmark set; unusual workloads may
-  see suboptimal routing. Use `@verify(z3)` / `@verify(cvc5)` to force.
+  see suboptimal routing. Escalate the strategy (`@verify(thorough)`)
+  rather than forcing a solver — the router always picks correctly
+  given enough time.
 
 ## See also
 

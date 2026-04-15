@@ -44,10 +44,9 @@ serde     = "1.4"
 http      = { version = "0.8", features = ["tls"] }
 my-utils  = { path = "../utils" }
 
-[verification]
-default_level    = "static"      # runtime | static | smt | portfolio | certified
-smt_timeout_ms   = 5000
-portfolio_quorum = 2              # both solvers must agree for portfolio
+[verify]
+default_strategy  = "static"     # runtime | static | formal | fast | thorough | certified | synthesize
+solver_timeout_ms = 5000
 
 [build]
 optimize     = "aggressive"       # none | balanced | aggressive
