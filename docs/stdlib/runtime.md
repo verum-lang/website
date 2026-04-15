@@ -120,7 +120,7 @@ type ConcurrencyContext is {
     task_id: TaskId,
 };
 
-type ExecutionTier is Interpreter | BaselineJit | OptimizingJit | Aot;
+type ExecutionTier is Interpreter | Aot;
 ```
 
 ### Accessors

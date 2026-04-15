@@ -5,104 +5,135 @@ title: Runtime Tiers
 
 # Runtime Tiers
 
-Verum runs at four tiers of increasing performance and specialisation.
-A single program can move values between tiers seamlessly.
+Verum ships with a **two-tier execution model** (v2.1). A single
+program can move values between tiers seamlessly.
 
-## Tier 0 — Interpreter
+| Tier   | Mode          | What it is | Used for |
+|--------|---------------|------------|----------|
+| **0**  | `Interpreter` | Direct VBC interpretation | `verum run`, REPL, Playbook, tests, `meta fn` evaluation |
+| **1**  | `Aot`         | Ahead-of-time compilation via LLVM | `verum build`, production binaries |
+| —      | `Check`       | Type check only, no code | `verum check`, editor diagnostics |
 
-The VBC interpreter (`verum_vbc::interpreter`) — where all `verum run`
-execution starts. Used during development, in the Playbook TUI, in the
-REPL, and inside `meta fn` evaluation.
+`verum run` is interpreter-first by default — startup is instant and
+every VBC opcode is supported, including cubical / HoTT. Pass `--aot`
+to compile through LLVM for production-speed execution.
+
+## Tier 0 — VBC Interpreter
+
+The VBC interpreter (`verum_vbc::interpreter`) is where most
+development happens — you get instant startup, full diagnostics, and
+no LLVM dependency.
 
 - **Compile time**: seconds (only to VBC).
 - **Execution**: ~5–20× slower than native.
-- **Features**: every VBC opcode supported, including cubical.
-- **Use when**: iterating, testing, compile-time evaluation.
+- **CBGR**: every check runs (~100 ns/deref); tier optimisation is
+  intentionally disabled in the interpreter — safety first.
+- **Features**: every VBC opcode, including cubical + HoTT + autodiff.
+- **Use when**: iterating, testing, running `meta fn`, the REPL, the
+  Playbook TUI.
 
-## Tier 1 — Baseline JIT
+## Tier 1 — AOT (LLVM)
 
-A simple single-pass translator from VBC to machine code. Emitted for
-hot functions identified by runtime profiling.
-
-- **Compile time**: microseconds per function.
-- **Execution**: ~1.5–3× slower than optimising AOT.
-- **Features**: no inlining, no loop optimisation.
-- **Use when**: long-running programs with hot paths that justify the
-  warmup cost.
-
-## Tier 2 — Optimising JIT (MLIR)
-
-MLIR-based JIT with full optimisation passes. Experimental; on by
-default for `@hot` functions when `runtime.jit = "optimising"`.
-
-- **Compile time**: milliseconds per function.
-- **Execution**: ~0.95–1.0× of AOT.
-- **Features**: inlining, vectorisation, dataflow optimisation.
-- **Use when**: you want close-to-AOT performance without a prior
-  build step.
-
-## Tier 3 — AOT (LLVM)
-
-Ahead-of-time compilation through LLVM — the default for `verum
-build --release`.
+Ahead-of-time compilation through LLVM — the default for
+`verum build --release` and `verum run --aot`.
 
 - **Compile time**: seconds per function, dominated by LLVM.
-- **Execution**: 0.85–1.0× of equivalent C.
-- **Features**: full LLVM optimisation stack, LTO, PGO.
+- **Execution**: 0.85–0.95× of equivalent C.
+- **CBGR**: tier-aware. `&T` references emit the ~15 ns check;
+  `&checked T` and `&unsafe T` compile to direct loads (0 ns).
+  Escape analysis elides 50–90 % of remaining Tier 0 checks.
+- **Features**: full LLVM optimisation stack, LTO, PGO, cross-target
+  support through MLIR-aware target triples.
 - **Use when**: shipping production binaries.
 
-## Tier 4 — GPU (MLIR → Metal / Vulkan)
+## Dual-path compilation (CPU vs GPU)
 
-`@gpu.kernel` functions compile through MLIR's GPU dialect to Metal IR
-(Apple) or SPIR-V / Vulkan.
+MLIR is not a tier. It is used **only for the GPU path**. CPU code
+lowers directly through LLVM:
 
-- **Compile time**: per-kernel, bundled into the main binary.
-- **Execution**: native GPU performance.
-- **Features**: no CBGR (kernels use a separate arena), no async.
-- **Use when**: compute-heavy data-parallel workloads.
+```
+VBC bytecode
+    │
+    ├── CPU path: VBC → LLVM IR → native x86_64 / aarch64
+    │   (pipeline.rs::run_native_compilation)
+    │   (verum_codegen::llvm::VbcToLlvmLowering)
+    │
+    └── GPU path: VBC → MLIR (verum.tensor → linalg → gpu → …)
+        → PTX / HSACO / SPIR-V / Metal
+        (pipeline.rs::run_mlir_aot)
+        (verum_codegen::mlir::VbcToMlirGpuLowering)
+        — triggered by @device(GPU) or a tensor-op threshold.
+```
+
+See **[codegen](/docs/architecture/codegen)** for the MLIR dialect
+stack and per-target tile sizes.
+
+## Internal JIT infrastructure (not a tier)
+
+`verum_codegen` includes ORC-based JIT infrastructure that is used
+internally for REPL evaluation, incremental compilation, and hot
+reload in dev mode. **It is not exposed as an execution tier** — user
+code always runs at Tier 0 or Tier 1. Future versions may promote JIT
+to a first-class tier; for now, assume two tiers.
 
 ## Async scheduler
 
 The runtime uses a work-stealing executor:
 
-- **Per-core worker threads**: number = `num_cpus()` by default.
+- **Per-core worker threads**: number = `num_cpus()` by default
+  (`async_worker_threads = 0` in `[runtime]`).
 - **Per-worker deque**: local tasks pushed / popped LIFO; stolen FIFO.
 - **Global queue**: for tasks spawned from outside the executor.
-- **IO reactor**: one thread driving `io_uring` / `kqueue` / `IOCP`.
+- **IO reactor**: one thread driving `io_uring` (Linux) / `kqueue`
+  (macOS/BSD) / `IOCP` (Windows).
 
-Task context (`ExecutionEnv`, including context stack) is saved /
-restored at each `.await` suspension. Context stacks are cloned on
-`spawn`.
+Task context (`ExecutionEnv`, including the capability-context stack)
+is saved and restored at each `.await`. Context stacks are cloned on
+`spawn` so child tasks inherit the parent's capabilities.
 
 ## Memory: unified CBGR arena
 
-All four tiers share the same CBGR-managed heap. A value allocated in
-the interpreter can outlive the `verum run` session and be passed into
-AOT code via persistence (cog packages); CBGR headers mean the
-validity check is consistent across tiers.
+Both tiers share the same CBGR-managed heap (the mimalloc-inspired
+allocator documented in **[memory
+model](/docs/language/memory-model#allocation-internals)**). A value
+allocated in the interpreter can be passed into AOT code and back
+without copying — the CBGR header makes validity checks consistent
+across tiers.
 
 ## Tier selection
 
-Per-function annotations:
+### Per-invocation
 
-```verum
-@tier(aot)              // always emit AOT code
-@tier(jit)              // JIT-only (no AOT), used in tests
-@tier(interpret)        // never compile
+```bash
+verum run          # Tier 0 (interpreter, default)
+verum run --aot    # Tier 1 (LLVM AOT)
+verum build        # Tier 1 (debug profile)
+verum build --release
 ```
 
-Per-project default in `Verum.toml`:
+### Per-project (`Verum.toml`)
 
 ```toml
-[build]
-default_tier = "aot"
-jit = "baseline"         # baseline | optimising | off
+[codegen]
+tier = "aot"                     # interpret | aot | check
 ```
+
+Or override per profile:
+
+```toml
+[profile.release]
+tier = "1"                       # aliases: "aot" | "release" | "native"
+
+[profile.dev]
+tier = "0"                       # aliases: "interpreter" | "interp"
+```
+
+The CLI flag `--tier 0|1` overrides both.
 
 ## CBGR performance across tiers
 
-The `&T` managed-reference check has different costs at different
-tiers, and different amounts are eliminated by analysis.
+The `&T` managed-reference check behaves differently per tier and
+different amounts of work are elided by analysis.
 
 ### Tier 0 — interpreter
 
@@ -111,13 +142,20 @@ deref(&T) = 1 load (pointer) + 1 load (header) + 1 compare + 1 branch
           ≈ 90–120 ns   (tree-walker overhead dominates)
 ```
 
-- Full check on every deref.
-- No elision.
+- Full check on every deref regardless of the reference's static tier.
+- No elision — safety over speed.
 - Fine for REPL / tests / short scripts.
 
-### Tier 1 — baseline JIT
+### Tier 1 — AOT
 
-Check compiles to:
+**Tier-aware lowering**. Each VBC reference opcode maps to a distinct
+code sequence:
+
+- `Ref` / `RefMut` (Tier 0) → CBGR validation call, ~15 ns.
+- `RefChecked` (Tier 1) → direct `llvm.load`, 0 ns.
+- `RefUnsafe` (Tier 2) → direct `llvm.load`, 0 ns.
+
+The hot path for a surviving Tier 0 check compiles to:
 
 ```
 mov  rax, [rdi]                ; load pointer
@@ -126,77 +164,51 @@ cmp  ecx, [rdi + 8]            ; compare reference.generation
 jne  .use_after_free
 ```
 
-- ~15 ns per check on modern x86_64 (6–9 cycles).
-- Basic inlining + escape analysis elides 60–80% of checks in
-  typical code.
+Typical check-elision rate: 60–80 % at `--profile debug`,
+90–98 % at `--profile release` with LTO (whole-program escape
+analysis + refinement-informed bounds elimination).
 
-### Tier 2 — optimising JIT (MLIR)
-
-Dataflow-based escape analysis plus loop-invariant code motion:
-
-- ~5–15 ns per check where a check remains.
-- 0 ns for checks hoisted out of loops.
-- 80–95% of checks eliminated on average.
-
-### Tier 3 — AOT (LLVM)
-
-**Debug profile** (`--profile debug`): ~15 ns per remaining check;
-~60–80% elision via intraprocedural escape analysis.
-
-**Release profile** (`--profile release` with LTO):
-- 0 ns for `&checked T` (proven).
-- ~15 ns for remaining `&T` (rare in hot paths).
-- 90–98% of checks eliminated via whole-program escape analysis +
-  refinement-informed bounds elimination.
-
-### Cross-tier reference downgrade
-
-Calling from AOT into the interpreter downgrades `&checked T` to
-`&T` — safety is preserved but the recipient pays the ~100 ns check.
-This is invisible unless you're profiling the interpreter.
-
-## Memory costs across tiers
-
-Allocation is shared across all tiers — every tier sees the same
-mimalloc-inspired heap described in **[memory
-model](/docs/language/memory-model#allocation-internals)**. What
-changes per tier is how many of the allocator's safety checks are
-executed versus proven away at compile time.
-
-| Tier           | Alloc fast path | CBGR deref | Cross-thread free | Notes |
-|----------------|-----------------|-----------|-------------------|-------|
-| T0 Interpreter | ~80 ns | 25–40 ns | ~70 ns | every check runs; VBC bookkeeping |
-| T1 Baseline JIT| ~25 ns | 15–20 ns | ~55 ns | direct-array fast path inlined |
-| T2 Optimising  | ~15 ns | 5–10 ns  | ~50 ns | escape analysis elides 40–60 % of checks |
-| T3 AOT         | < 20 ns | < 5 ns (or zero for `&checked`) | ~50 ns | 70–90 % of CBGR checks elided |
-| T4 GPU         | device allocator | N/A | N/A | kernel scratchpad only |
-
-Allocator scalability is tier-independent: thread-local heaps stay
-contention-free up to roughly 32 threads regardless of tier; beyond
-that, abandoned-segment reclamation starts to dominate and cross-thread
-free latency rises. The lazy purge window (10 ms) is the same across
-tiers, so heap size does not depend on how fast code is running.
-
-### Tier-local vs global state
-
-Each tier has its own JIT-code cache and its own specialisation state;
-they all share **one** allocator, **one** CBGR epoch manager, and
-**one** task scheduler. This is what makes cross-tier calls free — no
-trampolines, no marshalling, just a normal call through a VBC
-descriptor.
-
-## Cross-tier transitions
+### Cross-tier transitions
 
 Calls between tiers go through a standard ABI — VBC-compatible layout
 with CBGR headers. Crossing from interpreter to AOT adds no overhead
-beyond a normal C call. Inlining across the boundary happens when the
-optimising JIT or AOT has visibility into both sides.
+beyond a normal C call. Values flowing *from* AOT *into* the
+interpreter have their references downgraded to Tier 0 (the
+interpreter always validates), so the recipient pays the ~100 ns
+check. This is invisible unless you're profiling the interpreter.
+
+## Memory costs across tiers
+
+Allocation is shared across both tiers. What changes is how many
+safety checks run versus are proven away at compile time.
+
+| Tier           | Alloc fast path | CBGR deref | Cross-thread free | Notes |
+|----------------|-----------------|-----------|-------------------|-------|
+| T0 Interpreter | ~80 ns  | ~100 ns (always) | ~70 ns | every check runs; VBC bookkeeping |
+| T1 AOT (debug) | ~20 ns  | ~15 ns (surviving checks) | ~55 ns | 60–80 % of Tier 0 checks elided |
+| T1 AOT (release + LTO) | < 20 ns | < 5 ns (or 0 for `&checked`) | ~50 ns | 90–98 % of Tier 0 checks elided |
+| GPU path       | device allocator | N/A | N/A | kernel scratchpad only |
+
+Allocator scalability is tier-independent: thread-local heaps stay
+contention-free up to roughly 32 threads; beyond that, abandoned-
+segment reclamation starts to dominate and cross-thread free latency
+rises.
+
+### Shared vs per-tier state
+
+Each tier maintains its own code cache and specialisation state. Both
+share **one** allocator, **one** CBGR epoch manager, and **one** task
+scheduler. That is what makes cross-tier calls free — no trampolines,
+no marshalling, just a normal call through a VBC descriptor.
 
 ## See also
 
-- **[VBC bytecode](/docs/architecture/vbc-bytecode)** — the IR all
+- **[VBC bytecode](/docs/architecture/vbc-bytecode)** — the IR both
   tiers share.
-- **[Codegen](/docs/architecture/codegen)** — AOT LLVM pipeline.
-- **[CBGR internals](/docs/architecture/cbgr-internals)** — memory
-  model across tiers.
+- **[Codegen](/docs/architecture/codegen)** — AOT LLVM pipeline plus
+  MLIR dual-path GPU.
+- **[CBGR internals](/docs/architecture/cbgr-internals)** — references
+  across tiers, the 0x70–0x77 opcode row.
 - **[Stdlib → runtime](/docs/stdlib/runtime)** — runtime configuration.
+- **[Reference → verum.toml](/docs/reference/verum-toml)** —
+  `[codegen] tier`, `[profile.*] tier`, `[runtime]`.
