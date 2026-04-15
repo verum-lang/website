@@ -16,7 +16,8 @@ const config: Config = {
   organizationName: process.env.GH_ORG_NAME || 'verum-lang',
   projectName: process.env.GH_PROJECT_NAME || 'verum',
   trailingSlash: false,
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
 
   i18n: {
     defaultLocale: 'en',
@@ -64,11 +65,30 @@ const config: Config = {
     mermaid: true,
     format: 'md',
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 
+  clientModules: [
+    require.resolve('./src/theme/prismVerum.ts'),
+  ],
+
   plugins: [
+    // Silence a benign webpack warning from vscode-languageserver-types,
+    // a transitive dep of the search plugin's indexer.
+    function silenceVscodeWarning() {
+      return {
+        name: 'silence-vscode-warning',
+        configureWebpack() {
+          return {
+            ignoreWarnings: [
+              {module: /vscode-languageserver-types/},
+            ],
+            module: { exprContextCritical: false },
+          };
+        },
+      };
+    },
     [
       '@easyops-cn/docusaurus-search-local',
       {
@@ -109,7 +129,6 @@ const config: Config = {
       },
     },
     navbar: {
-      title: 'Verum',
       logo: {
         alt: 'Verum Logo',
         src: 'img/logo.png',
@@ -210,6 +229,14 @@ const config: Config = {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
       additionalLanguages: ['rust', 'haskell', 'bash', 'toml', 'json', 'diff'],
+      // Map Verum's file extension and a couple of friendly aliases.
+      magicComments: [
+        {
+          className: 'theme-code-block-highlighted-line',
+          line: 'highlight-next-line',
+          block: {start: 'highlight-start', end: 'highlight-end'},
+        },
+      ],
     },
     mermaid: {
       theme: {light: 'neutral', dark: 'dark'},

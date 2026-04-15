@@ -1,88 +1,133 @@
 ---
 sidebar_position: 2
 title: simd
+description: Portable SIMD — Vec<T,N>, Mask<N>, arithmetic, reduction, shuffle, gather/scatter, GPU.
 ---
 
 # `core::simd` — Portable SIMD
 
-Portable vector types. The compiler emits SSE/AVX/AVX-512 on x86_64,
-NEON on aarch64, and scalar fallbacks elsewhere.
+Vectorised data types with platform dispatch. On x86_64 you get
+SSE/AVX/AVX-512 where available; on aarch64 you get NEON/SVE; scalar
+fallbacks on other targets.
+
+| File | What's in it |
+|---|---|
+| `mod.vr` | `SimdElement`, `Vec<T,N>`, `Mask<N>`, arithmetic, reduction, shuffle, gather/scatter, CPU flags |
+| `gpu.vr` | `GpuDevice`, `GpuBackend`, `GpuConfig`, `GpuBuffer<T>`, `Grid`, `Block`, device intrinsics |
+
+---
 
 ## `Vec<T, N>`
 
 ```verum
-let a: Vec<Float, 4> = Vec::splat(1.5);
-let b: Vec<Float, 4> = Vec::from_array([1.0, 2.0, 3.0, 4.0]);
-let c = a + b;
+type SimdElement is protocol {
+    const BITS: Int;
+    const LANES_128: Int;
+    const LANES_256: Int;
+    const LANES_512: Int;
+}
 
-let sum = c.reduce_add();
+type Vec<T: SimdElement, N: meta USize> is (/* opaque — SIMD register */);
 ```
 
-Element types: `Float`, `Float32`, `Float64`, `Int8`…`Int64`,
-`UInt8`…`UInt64`, `Bool`.
-
-## Type aliases (common widths)
-
-```
-128-bit:   Vec4f, Vec2d, Vec4i, Vec2l, Vec16b, Vec8s
-256-bit:   Vec8f, Vec4d, Vec8i, Vec4l, Vec32b, Vec16s
-512-bit:   Vec16f, Vec8d, Vec16i, Vec8l, Vec64b, Vec32s
-```
-
-## Arithmetic
+### Aliases (most commonly used widths)
 
 ```verum
-a + b     a - b     a * b     a / b
-fma(a, b, c)          // a * b + c
-abs(a)    neg(a)      min(a, b)     max(a, b)
+// 128-bit
+type Vec4f  = Vec<Float32, 4>;
+type Vec2d  = Vec<Float64, 2>;
+type Vec4i  = Vec<Int32, 4>;
+type Vec2l  = Vec<Int64, 2>;
+type Vec16b = Vec<Int8, 16>;
+type Vec8s  = Vec<Int16, 8>;
+
+// 256-bit
+type Vec8f, Vec4d, Vec8i, Vec4l, Vec32b, Vec16s;
+
+// 512-bit
+type Vec16f, Vec8d, Vec16i, Vec8l, Vec64b, Vec32s;
 ```
 
-## Reduction
+### Construction
 
 ```verum
-a.reduce_add()    a.reduce_mul()
-a.reduce_min()    a.reduce_max()
+Vec<T, N>::splat(value: T) -> Vec<T, N>                   // broadcast scalar
+Vec<T, N>::from_array(arr: [T; N]) -> Vec<T, N>
+v.to_array() -> [T; N]
+
+Vec<T, N>::load_aligned(ptr: *const T) -> Vec<T, N>       // aligned
+Vec<T, N>::load_unaligned(ptr: *const T) -> Vec<T, N>
+v.store_aligned(ptr: *mut T)
+v.store_unaligned(ptr: *mut T)
 ```
 
-## Comparison
+### Arithmetic
 
 ```verum
-let mask: Mask<4> = a.lt(b);
-mask.all()        mask.any()    mask.count()
+v.add(&other)    v.sub(&other)    v.mul(&other)    v.div(&other)
+v.fma(&b, &c)                           // (self * b) + c, single rounding
+v.abs()          v.neg()
+v.min(&other)    v.max(&other)
 ```
 
-## Masks
+### Reduction
 
 ```verum
-let m: Mask<8> = Mask::from_array([true, false, true, false, true, false, true, false]);
-let result = m.select(a, b);    // where m is true, pick a, else b
+v.reduce_add() -> T        v.reduce_mul() -> T
+v.reduce_min() -> T        v.reduce_max() -> T
 ```
 
-## Memory
+### Comparison → `Mask<N>`
 
 ```verum
-let v = Vec::<Float, 4>::load_aligned(&data[0]);
-v.store_aligned(&mut out[0]);
-
-let v = Vec::<Float, 4>::load_unaligned(&data[0]);
-v.store_unaligned(&mut out[0]);
+v.cmp_lt(&other) -> Mask<N>        v.cmp_le(&other)
+v.cmp_gt(&other)                    v.cmp_ge(&other)
+v.cmp_eq(&other)                    v.cmp_ne(&other)
 ```
 
-## Gather / scatter
+### Conditional operations via masks
 
 ```verum
-let values = Vec::<Float, 4>::gather(&table, indices);
-values.scatter(&mut output, indices);
+Vec<T, N>::select(mask: Mask<N>, a: Vec<T, N>, b: Vec<T, N>) -> Vec<T, N>
+v.masked_load(ptr, mask: Mask<N>) -> Vec<T, N>
+v.masked_store(ptr, mask: Mask<N>)
 ```
 
-## Shuffle
+### Shuffle / permute
 
 ```verum
-let rev = v.shuffle::<[3, 2, 1, 0]>();
-let dup = v.shuffle::<[0, 0, 1, 1]>();
+v.shuffle<const MASK: [UInt32; N]>(&other) -> Vec<T, N>
+v.reverse() -> Vec<T, N>
+v.rotate_left<const COUNT: USize>() -> Vec<T, N>
 ```
 
-## CPU feature flags
+### Gather / scatter
+
+```verum
+Vec<T, N>::gather(base: *const T, indices: Vec<Int32, N>) -> Vec<T, N>
+v.scatter(base: *mut T, indices: Vec<Int32, N>)
+Vec<T, N>::masked_gather(base, indices, mask: Mask<N>, default) -> Vec<T, N>
+v.masked_scatter(base, indices, mask: Mask<N>)
+```
+
+---
+
+## `Mask<N>`
+
+```verum
+type Mask<N: meta USize> is (/* opaque — SIMD mask */);
+
+// Aliases
+type Mask4, Mask8, Mask16;
+
+Mask<N>::all()     Mask<N>::none()
+m.count() -> USize              m.any() -> Bool      m.all_active() -> Bool
+m.and(&other) / m.or(&other) / m.not()
+```
+
+---
+
+## CPU feature flags (compile-time constants)
 
 ```verum
 const HAS_SSE42:  Bool;
@@ -92,22 +137,134 @@ const HAS_AVX512: Bool;
 const HAS_NEON:   Bool;
 ```
 
-Used for conditional compilation:
+Used with `@cfg` for conditional compilation:
 
 ```verum
 @cfg(HAS_AVX2)
-fn fast_path(data: &[Float]) { ... }
+fn fast_dot(a: &[Float32], b: &[Float32]) -> Float32 {
+    let mut acc = Vec8f::splat(0.0);
+    for chunk in (0..a.len()).step_by(8) {
+        let va = Vec8f::load_aligned(&a[chunk]);
+        let vb = Vec8f::load_aligned(&b[chunk]);
+        acc = va.fma(&vb, acc);
+    }
+    acc.reduce_add()
+}
 ```
 
-## Runtime dispatch
+The `@multiversion` attribute emits several variants and dispatches
+via CPUID at runtime — see [intrinsics → platform](/docs/stdlib/intrinsics#platform).
+
+---
+
+## GPU (`simd::gpu`)
+
+SIMT primitives for `@gpu.kernel` functions and device orchestration.
+
+### Types
 
 ```verum
-@multiversion
-fn sum(data: &[Float]) -> Float { ... }
-// Compiler emits multiple versions; the runtime picks one via CPUID.
+type GpuBackend is Cuda | Rocm | Metal | Vulkan;
+
+type GpuDevice is {
+    id: Int,
+    name: Text,
+    compute_capability: Int,
+    memory_bytes: Int,
+    max_threads_per_block: Int,
+    max_shared_memory: Int,
+    warp_size: Int,
+};
+
+type GpuConfig is {
+    backend: GpuBackend,
+    opt_level: Int,
+    enable_tensor_cores: Bool,
+    max_shared_memory: Int,
+    default_block_size: Int,
+    enable_async_copy: Bool,
+    compute_capability: Int,
+};
+
+type GpuBuffer<T> is { ptr: Int, len: Int, size_bytes: Int, device_id: Int };
+
+type TransferKind is HostToDevice | DeviceToHost | DeviceToDevice;
+
+type Grid  is { x: Int, y: Int, z: Int };
+type Block is { x: Int, y: Int, z: Int };
 ```
 
-## See also
+### Grid & Block helpers
 
-- **[math](/docs/stdlib/math)** — SIMD-accelerated math routines.
-- **[intrinsics](/docs/stdlib/intrinsics)** — lower-level SIMD intrinsics.
+```verum
+Grid::d1(x)  Grid::d2(x, y)  Grid::d3(x, y, z)
+Block::d1(x) Block::d2(x, y) Block::d3(x, y, z)
+block.total_threads() -> Int
+```
+
+### Config factories
+
+```verum
+GpuConfig::metal() -> GpuConfig          GpuConfig::cuda(sm_version: Int)
+GpuConfig::rocm() -> GpuConfig           GpuConfig::vulkan() -> GpuConfig
+GpuConfig::auto() -> GpuConfig            // probe and pick
+```
+
+### Thread intrinsics (inside `@device(gpu)` scope)
+
+```verum
+thread_id_x() -> Int       thread_id_y() -> Int       thread_id_z() -> Int
+block_id_x() -> Int        block_id_y() -> Int        block_id_z() -> Int
+block_dim_x() -> Int       block_dim_y() -> Int       block_dim_z() -> Int
+grid_dim_x() -> Int        grid_dim_y() -> Int        grid_dim_z() -> Int
+
+sync_threads()             sync_warp()
+warp_size() -> Int
+global_thread_id() -> Int
+global_thread_id_2d() -> (Int, Int)
+```
+
+### Shared memory
+
+```verum
+shared_alloc(size_bytes: Int) -> Int
+shared_load_i64(ptr, offset) -> Int
+shared_store_i64(ptr, offset, value: Int)
+shared_load_f64(ptr, offset) -> Float
+shared_store_f64(ptr, offset, value: Float)
+
+shared_atomic_add_i64(ptr, offset, value) -> Int
+shared_atomic_add_f64(ptr, offset, value) -> Float
+```
+
+### Example — element-wise vector addition
+
+```verum
+@gpu.kernel
+fn vec_add(a: &[Float], b: &[Float], c: &mut [Float], n: Int) {
+    let i = global_thread_id();
+    if i < n {
+        c[i] = a[i] + b[i];
+    }
+}
+
+fn main() using [IO, GpuDevice] {
+    let cfg = GpuConfig::auto();
+    let a = GpuBuffer::from_slice(&[1.0, 2.0, 3.0, 4.0]);
+    let b = GpuBuffer::from_slice(&[10.0, 20.0, 30.0, 40.0]);
+    let mut c = GpuBuffer::<Float>::allocate(4);
+
+    vec_add<<<Grid::d1(1), Block::d1(4)>>>(&a, &b, &mut c, 4);
+
+    let host = c.to_host();
+    print(f"{host:?}");    // [11.0, 22.0, 33.0, 44.0]
+}
+```
+
+---
+
+## Cross-references
+
+- **[math → tensor](/docs/stdlib/math)** — tensor operations built on SIMD/GPU.
+- **[intrinsics → simd / gpu / lowlevel](/docs/stdlib/intrinsics)** — the lower-level intrinsic functions.
+- **[Language → attributes](/docs/language/attributes)** — `@multiversion`, `@vectorize`, `@gpu.kernel`.

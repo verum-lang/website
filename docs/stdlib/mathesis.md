@@ -1,92 +1,272 @@
 ---
 sidebar_position: 3
 title: mathesis
+description: ∞-Topos of formal theories — Yoneda loading, Kan translation, descent coherence.
 ---
 
 # `core::mathesis` — ∞-Topos of formal theories
 
-`mathesis` is a research-facing module for organising, translating,
-and auditing formal theories as objects in an ∞-topos.
+A research-facing module: organise, translate, and audit formal
+theories as objects in an ∞-topos. Used by proof infrastructure and
+by external tooling (e.g. LLM-driven theorem translation) via the
+JSON-RPC protocol.
 
-:::caution
-`mathesis` is advanced. If you are writing application code, you do
-not need this module. If you are writing a proof assistant on top of
-Verum, you do.
+:::caution Audience
+If you are writing application code you do not need this module. If
+you are building a theorem-prover on top of Verum or integrating
+external automated reasoners, read on.
 :::
 
-## Core concepts
+| File | What's in it |
+|---|---|
+| `core.vr` | `MathesisRegistry`, `LoadedTheory`, `TranslationResult`, `CoherenceResult`, `AuditResult`, core operations |
+| `protocol.vr` | JSON-RPC 2.0 wire protocol (`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `MathesisServer`, `serve_request`) |
+| `mod.vr` | re-exports |
 
-A **theory** in Mathesis is a structured document: axioms, definitions,
-theorems, tactics, and their proofs. Mathesis provides:
+Foundations come from the [`math`](/docs/stdlib/math) sub-modules
+`epistemic`, `infinity_topos`, `kan_extension`, `quantum_logic`,
+`giry`, `cohesive`, `day_convolution`.
 
-- **Registry**: load, find, list theories.
-- **Translation**: apply a Kan extension to translate one theory into
-  another (change of base).
-- **Coherence**: descent-based checking that translated theorems still
-  hold.
-- **Auditing**: generate audit trails.
+---
 
-## Types
+## Core types
+
+### Registry
 
 ```verum
-type MathesisRegistry;
-type LoadedTheory is { id: TheoryId, statements: List<Statement>, ... };
+type MathesisRegistry is { ... };
 
-fn load_theory(path: Path) -> Result<LoadedTheory, LoadError>;
-fn find_theory(id: TheoryId) -> Maybe<LoadedTheory>;
-fn list_theories() -> List<TheoryId>;
+new_registry() -> MathesisRegistry
+registry.load(path: &Path) -> Result<TheoryId, LoadError>
+registry.find(id: TheoryId) -> Maybe<&LoadedTheory>
+registry.list() -> List<TheoryId>
+registry.unload(id: TheoryId) -> Bool
+registry.size() -> Int
 ```
+
+### `LoadedTheory`
+
+```verum
+type LoadedTheory is {
+    id: TheoryId,
+    name: Text,
+    version: Text,
+    statements: List<Statement>,          // axioms, definitions, theorems
+    dependencies: List<TheoryId>,
+    metadata: TheoryMetadata,
+};
+
+type Statement is
+    | Axiom       { name: Text, body: Text }
+    | Definition  { name: Text, body: Text }
+    | Theorem     { name: Text, body: Text, proof: Maybe<Text> }
+    | Tactic      { name: Text, body: Text };
+```
+
+### Loading
+
+```verum
+load_theory(path: &Path) -> Result<LoadedTheory, LoadError>
+find_theory(registry: &MathesisRegistry, id: TheoryId) -> Maybe<&LoadedTheory>
+list_theories(registry: &MathesisRegistry) -> List<TheoryId>
+```
+
+Conceptually, loading is a **Yoneda embedding**: the theory becomes a
+presheaf over its own syntactic category, and the registry tracks all
+such presheaves.
+
+---
 
 ## Translation
 
+### `TranslationResult`
+
 ```verum
 type TranslationResult is {
-    source:  TheoryId,
-    target:  TheoryId,
-    mapping: ExtensionMap,
-    preserved: List<Statement>,
-    lost:     List<Statement>,
+    source_id: TheoryId,
+    target_id: TheoryId,
+    mapping: ExtensionMap,             // symbol map + sort map
+    preserved: List<Statement>,        // statements translated successfully
+    lost: List<Statement>,             // statements that could not be translated
+    records: List<TranslationRecord>,
 };
-
-fn translate(src: &LoadedTheory, tgt: &LoadedTheory) -> TranslationResult;
-fn translate_with_oracle(src: &LoadedTheory, oracle: &LlmOracle) -> TranslationResult;
+type TranslationRecord is {
+    kind: TranslationKind,
+    statement: Text,
+    justification: Text,
+};
+type TranslationKind is
+    | Identity
+    | ParameterInstantiation
+    | KanExtension
+    | OracleGuidance
+    | Descent;
 ```
+
+### Operations
+
+```verum
+translate(src: &LoadedTheory, tgt: &LoadedTheory) -> TranslationResult
+translate_with_oracle(src: &LoadedTheory, oracle: &LlmOracle) -> TranslationResult
+```
+
+Translation is implemented as a **Kan extension** along the shared
+language between source and target theories:
+- **Left Kan extension** when translating *from* a richer theory to a
+  coarser one (lossy, but syntactically minimal).
+- **Right Kan extension** when translating *to* a richer theory (fills
+  in universally-quantified details).
+
+The LLM oracle variant is used to suggest mappings for unrecognised
+statements; the compiler ultimately checks every oracle suggestion for
+coherence (see below).
+
+---
 
 ## Coherence
 
+A translation is **coherent** iff it respects the descent conditions
+of the ∞-topos: the translated image of every gluing condition in
+the source remains gluing in the target.
+
+### `CoherenceResult`
+
 ```verum
 type CoherenceResult is {
-    ok:        Bool,
+    ok: Bool,
     obstructions: List<DescentObstruction>,
 };
-
-fn check_coherence(t: &LoadedTheory) -> CoherenceResult;
+type DescentObstruction is {
+    statement: Text,
+    witness_required: Text,
+    reason: Text,
+};
 ```
 
-## JSON-RPC server
-
-Mathesis can run as a service, exposing its operations over JSON-RPC
-2.0 — useful for integration with external tooling:
+### Operations
 
 ```verum
-let server = MathesisServer::new(Config::default());
-server.serve("tcp://0.0.0.0:4711").await?;
+check_coherence(t: &LoadedTheory) -> CoherenceResult
+check_translation_coherence(r: &TranslationResult) -> CoherenceResult
 ```
 
-## Foundations
+An incoherent translation is still a partial function; it simply
+cannot be trusted as a theorem-transporting map. Users can:
 
-`mathesis` builds on `math` modules:
+- reduce the target theory (drop gluing conditions);
+- enrich the translation (supply more witnesses);
+- accept the incoherence and operate piecewise.
 
-- `math.epistemic` — theories as sites.
-- `math.infinity_topos` — the topos of theories.
-- `math.kan_extension` — translation as Kan extension.
-- `math.quantum_logic` — orthomodular lattices for epistemic contexts.
-- `math.giry` — probabilistic semantics.
-- `math.cohesive` — cohesive structure.
-- `math.day_convolution` — cognitive extensions.
+---
+
+## Auditing
+
+```verum
+type AuditResult is {
+    theory_id: TheoryId,
+    checks_passed: Int,
+    checks_failed: Int,
+    findings: List<AuditFinding>,
+};
+type AuditFinding is {
+    severity: Severity,              // Info | Warning | Error
+    statement: Text,
+    message: Text,
+};
+
+audit_theory(t: &LoadedTheory) -> AuditResult
+audit_meta(registry: &MathesisRegistry) -> AuditResult    // audit all loaded theories
+```
+
+The audit checks: unbound names, type mismatches, circular definitions,
+missing proofs for theorems, statements whose justifications the
+coherence check cannot replay.
+
+---
+
+## JSON-RPC protocol (`protocol.vr`)
+
+Mathesis can run as a service — handy for integrations with external
+tools (notebooks, LLM harnesses, proof-browsers).
+
+### Envelope types
+
+```verum
+type JsonRpcRequest is {
+    jsonrpc: Text,                    // "2.0"
+    method: Text,                     // "load_theory", "translate", "check_coherence", ...
+    params: JsonValue,
+    id: Maybe<JsonValue>,
+};
+type JsonRpcResponse is {
+    jsonrpc: Text,
+    result: Maybe<JsonValue>,
+    error: Maybe<JsonRpcError>,
+    id: Maybe<JsonValue>,
+};
+type JsonRpcError is { code: Int, message: Text, data: Maybe<JsonValue> };
+```
+
+### Server
+
+```verum
+type MathesisServer is { registry: MathesisRegistry, config: ServerConfig };
+
+new_server(config: ServerConfig) -> MathesisServer
+server.serve_request(&req: &JsonRpcRequest) -> JsonRpcResponse
+server.serve(&"tcp://0.0.0.0:4711").await -> IoResult<()>    using [IO]
+```
+
+### Method catalogue
+
+| Method | Purpose |
+|---|---|
+| `load_theory` | load a theory from path |
+| `list_theories` | enumerate loaded theories |
+| `translate` | produce a translation record |
+| `translate_with_oracle` | LLM-guided translation |
+| `check_coherence` | descent check |
+| `audit_theory` | one-theory audit |
+| `audit_meta` | whole-registry audit |
+
+---
+
+## Example
+
+```verum
+fn main() using [IO] {
+    let mut reg = new_registry();
+    let zfc = reg.load(&Path::from("theories/zfc.math"))?;
+    let hott = reg.load(&Path::from("theories/hott.math"))?;
+
+    let zfc_theory = reg.find(zfc).unwrap();
+    let hott_theory = reg.find(hott).unwrap();
+
+    let tr = translate(zfc_theory, hott_theory);
+    for lost in &tr.lost {
+        eprint(f"could not translate: {lost:?}");
+    }
+
+    match check_coherence(hott_theory) {
+        CoherenceResult { ok: true, .. } => print("theory is coherent"),
+        CoherenceResult { obstructions, .. } => {
+            for o in &obstructions {
+                eprint(f"obstruction: {o.reason}");
+            }
+        }
+    }
+}
+```
+
+---
 
 ## See also
 
-- **[math](/docs/stdlib/math)** — the mathematical foundation.
-- **[Verification → proofs](/docs/verification/proofs)** — proof DSL
-  that interacts with Mathesis theories.
+- **[math → infinity_topos](/docs/stdlib/math)** — the underlying
+  ∞-topos constructions.
+- **[math → kan_extension](/docs/stdlib/math)** — theorem-preserving
+  functorial translation.
+- **[proof](/docs/stdlib/proof)** — proof certificates for translated
+  theorems.
+- **[Verification → proofs](/docs/verification/proofs)** — how
+  Mathesis-translated theorems become Verum `theorem` declarations.

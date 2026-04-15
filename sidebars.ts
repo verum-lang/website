@@ -51,6 +51,51 @@ const sidebars: SidebarsConfig = {
         'tooling/repl',
       ],
     },
+    {
+      type: 'category',
+      label: 'Tutorials',
+      link: {type: 'doc', id: 'tutorials/overview'},
+      items: [
+        'tutorials/cli-tool',
+        'tutorials/verified-data-structure',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Cookbook',
+      link: {type: 'doc', id: 'cookbook/overview'},
+      items: [
+        'cookbook/file-io',
+        'cookbook/json',
+        'cookbook/http-server',
+        'cookbook/nursery',
+        'cookbook/refinements',
+        'cookbook/cli-tool',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Migrating',
+      link: {type: 'generated-index', slug: '/category/migrating'},
+      items: [
+        'migrating/from-rust',
+        'migrating/from-typescript',
+        'migrating/from-go',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Guides',
+      link: {type: 'generated-index', slug: '/category/guides'},
+      items: [
+        'guides/faq',
+        'guides/style-guide',
+        'guides/best-practices',
+        'guides/troubleshooting',
+        'guides/performance',
+        'guides/security',
+      ],
+    },
   ],
   language: [
     'language/overview',
@@ -156,6 +201,17 @@ const sidebars: SidebarsConfig = {
       items: [
         'stdlib/context',
         'stdlib/security',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Foundations',
+      link: {type: 'generated-index', slug: '/category/stdlib-foundations'},
+      items: [
+        'stdlib/eval',
+        'stdlib/control',
+        'stdlib/concurrency',
+        'stdlib/logic',
       ],
     },
   ],

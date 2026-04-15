@@ -1,95 +1,424 @@
 ---
 sidebar_position: 1
 title: meta
+description: Compile-time programming — tokens, AST, reflection, quote, capability contexts.
 ---
 
 # `core::meta` — Compile-time programming
 
-`meta` provides the types and capabilities for writing `meta fn`s —
-functions that run at compile time.
+The stdlib side of metaprogramming. Defines the **13 capability
+contexts** a `meta fn` may request, the `TokenStream` / `TokenTree`
+types, reflection data (`TypeKind`, `FieldInfo`, `VariantInfo`,
+`ProtocolInfo`, `GenericParam`, `FunctionInfo`, `Attribute`), the
+`QuoteBuilder`, and the `Span` / `SourceLocation` / `SourceFile` types.
 
-## Capabilities (context groups)
+| File | What's in it |
+|---|---|
+| `contexts.vr` | 13 compiler-provided meta contexts + 8+ composite groups |
+| `reflection.vr` | `TypeKind`, `FieldInfo`, `VariantInfo`, `GenericParam`, `ProtocolInfo`, `FunctionInfo`, `TraitBound`, `LifetimeParam`, `OwnershipInfo`, `MethodResolution`, `MethodSource` |
+| `token.vr` | `TokenStream`, `Token`, `TokenTree`, `TokenKind`, `Delimiter`, `Spacing`, `LiteralKind`, `Keyword` |
+| `span.vr` | `Span`, `SourceLocation`, `SourceFile`, `SpanRange` |
+| `quote.vr` | `QuoteBuilder` |
+| `attribute.vr` | `Attribute`, `AttributeArg` |
+| `tactic.vr` | (optional) tactic DSL integration |
+| `oracle.vr` | (optional) LLM oracle integration for meta |
+| `mod.vr` | re-exports |
 
-Meta functions are pure by default. To access build assets, emit
-diagnostics, or introspect source, request a capability:
+User-level syntax (`meta fn`, `quote { … }`, `@derive(…)`, `lift(x)`)
+is in [Language → Metaprogramming](/docs/language/metaprogramming).
+This page enumerates the types and contexts those constructs map to.
+
+---
+
+## The 13 capability contexts
+
+All are `@compiler_provided` — the compiler implements them; you
+declare which ones your `meta fn` needs via `using [ ... ]`.
+
+### `BuildAssets` — read compile-time assets
 
 ```verum
-meta fn load_schema() -> quote using [meta.BuildAssets] {
-    let sql = BuildAssets.load("schema.sql")?;
-    quote { const SCHEMA: Text = ${lift(sql)}; }
+context BuildAssets {
+    fn load(path: Text) -> MetaResult<List<Byte>>;
+    fn load_text(path: Text) -> MetaResult<Text>;
+    fn exists(path: Text) -> Bool;
+    fn list_dir(path: Text) -> MetaResult<List<Text>>;
+    fn metadata(path: Text) -> MetaResult<AssetMetadata>;
+    fn project_root() -> Text;
+    fn asset_dirs() -> List<Text>;
+}
+
+type AssetMetadata is {
+    size: UInt64,
+    modified_ns: UInt64,
+    is_directory: Bool,
+    is_file: Bool,
+    is_symlink: Bool,
+};
+```
+
+### `TypeInfo` — type introspection
+
+```verum
+context TypeInfo {
+    fn name_of<T>() -> Text;                   // fully-qualified
+    fn simple_name_of<T>() -> Text;            // just the terminal segment
+    fn module_of<T>() -> Text;
+    fn kind_of<T>() -> TypeKind;
+    fn fields_of<T>() -> List<FieldInfo>;
+    fn variants_of<T>() -> List<VariantInfo>;
+    fn generics_of<T>() -> List<GenericParam>;
+    fn protocols_of<T>() -> List<ProtocolInfo>;
+    fn implements<T, P>() -> Bool;
+
+    @deprecated fn size_of<T>() -> Int;        // use T.size
+    @deprecated fn align_of<T>() -> Int;       // use T.alignment
 }
 ```
 
-Available capabilities:
-
-| Capability | Purpose |
-|------------|---------|
-| `BuildAssets` | read build-time assets |
-| `TypeInfo` | introspect types, fields, variants |
-| `AstAccess` | parse / emit AST nodes |
-| `CompileDiag` | emit errors / warnings |
-| `MetaRuntime` | configure meta recursion / timeout limits |
-| `MacroState` | cross-invocation caching |
-| `StageInfo` | staged metaprogramming info |
-| `CodeSearch` | query the codebase |
-| `ProjectInfo` | read `Verum.toml` metadata |
-| `SourceMap` | access source locations |
-| `Schema` | validate generated code |
-| `DepGraph` | dependency graph |
-| `MetaBench` | compile-time benchmarking |
-
-Context groups combine these: `MetaCore`, `MetaSafe`, `MetaFull`, etc.
-
-## Tokens and AST
+### `AstAccess` — parse and emit AST fragments
 
 ```verum
-type Token;
-type TokenKind is Ident | Literal | Punct | Group | ... ;
-type TokenTree is Token | Group;
-type TokenStream;
-
-type Span;                   // source location
-type SourceLocation is { file: Text, line: Int, column: Int };
-```
-
-## Reflection
-
-```verum
-@type_fields(T)     -> List<FieldInfo>
-@variants_of(T)     -> List<VariantInfo>
-@type_name(T)       -> Text
-@implements(T, P)   -> Bool
-
-type FieldInfo    is { name: Text, ty: TypeKind, attributes: List<Attribute> };
-type VariantInfo  is { name: Text, payload: VariantPayload };
-type ProtocolInfo is { name: Text, methods: List<FunctionInfo>, ... };
-```
-
-## `quote` / splice
-
-```verum
-let ast: TokenStream = quote { fn foo() -> Int { 42 } };
-let name_tokens = quote { foo };
-let call = quote { ${name_tokens}() };
-
-// In a macro expansion:
-quote {
-    @derive(Debug)
-    pub type ${struct_name} is {
-        $[for f in fields { ${f.name}: ${f.ty}, }]
-    }
+context AstAccess {
+    fn parse_expr(source: Text) -> MetaResult<TokenStream>;
+    fn parse_type(source: Text) -> MetaResult<TokenStream>;
+    fn parse_item(source: Text) -> MetaResult<TokenStream>;
+    fn parse_pattern(source: Text) -> MetaResult<TokenStream>;
+    fn emit(tokens: TokenStream);              // insert into surrounding module
+    fn splice_here(tokens: TokenStream);       // splice at the invocation site
 }
 ```
 
-## `lift`
+### `CompileDiag` — emit diagnostics
 
 ```verum
-meta fn inline_const(x: meta Int) -> quote {
-    quote { const X: Int = ${lift(x)}; }
+context CompileDiag {
+    fn emit_error(span: Span, message: Text);
+    fn emit_warning(span: Span, message: Text);
+    fn emit_note(span: Span, message: Text);
+    fn abort() -> !;                           // stop compilation
 }
 ```
 
-## Errors
+### `MetaRuntime` — meta-execution limits
+
+```verum
+context MetaRuntime {
+    fn recursion_limit() -> Int;
+    fn iteration_limit() -> Int;
+    fn memory_limit_bytes() -> Int;
+    fn timeout_ms() -> Int;
+    fn current_stage() -> Int;
+    fn target_family() -> Text;                // "unix" | "windows" | "wasm"
+    fn target_os() -> Text;                    // "linux" | "macos" | "windows" | ...
+    fn target_arch() -> Text;                  // "x86_64" | "aarch64" | ...
+    fn target_pointer_width() -> Int;
+}
+```
+
+### `MacroState` — caching across invocations
+
+```verum
+context MacroState {
+    fn cache_get(key: Text) -> Maybe<TokenStream>;
+    fn cache_put(key: Text, value: TokenStream);
+    fn record_dependency(path: Text);          // trigger re-expansion on change
+}
+```
+
+### `StageInfo` — staged metaprogramming
+
+```verum
+context StageInfo {
+    fn current_stage() -> Int;
+    fn target_stage() -> Int;
+    fn can_lower_to(stage: Int) -> Bool;
+}
+```
+
+### Advanced contexts
+
+```verum
+context CodeSearch {        // search the whole codebase
+    fn find_items(name: Text) -> List<Path>;
+    fn find_implementations(protocol: Path) -> List<Path>;
+    fn find_callers(function: Path) -> List<Path>;
+}
+
+context ProjectInfo {       // manifest metadata
+    fn cog_name() -> Text;
+    fn cog_version() -> Text;
+    fn features_enabled() -> List<Text>;
+    fn dependencies() -> List<DependencyInfo>;
+}
+
+context SourceMap {         // map span ↔ source
+    fn source_of(span: Span) -> &SourceFile;
+    fn source_between(from: Span, to: Span) -> Text;
+}
+
+context Schema {            // validate generated code
+    fn validate(tokens: &TokenStream, schema: Text) -> MetaResult<()>;
+}
+
+context DepGraph {          // inspect cog dependency graph
+    fn direct_deps() -> List<Text>;
+    fn transitive_deps() -> List<Text>;
+}
+
+context MetaBench {         // micro-benchmark macro expansions
+    fn measure(name: Text, thunk: fn() -> TokenStream) -> BenchReport;
+}
+```
+
+---
+
+## Composite context groups
+
+Predefined unions of the above:
+
+| Group | Expands to |
+|---|---|
+| `MetaCore` | `TypeInfo, AstAccess, CompileDiag` |
+| `MetaSafe` | `TypeInfo, AstAccess, CompileDiag, MetaRuntime, MacroState, StageInfo` |
+| `MetaFull` | every standard context |
+| `MetaTypes` | `TypeInfo, AstAccess, CompileDiag` |
+| `MetaDerive` | `TypeInfo, AstAccess, CompileDiag, MacroState` |
+| `MetaAttr` | `BuildAssets, TypeInfo, AstAccess, CompileDiag, MacroState` |
+| `MetaNoIO` | `TypeInfo, AstAccess, CompileDiag, MacroState, StageInfo` |
+| `MetaStaged` | `AstAccess, CompileDiag, StageInfo, MacroState` |
+| `MetaAnalysis` | `TypeInfo, CodeSearch, DepGraph, CompileDiag` |
+| `MetaProject` | `ProjectInfo, BuildAssets, CompileDiag` |
+| `MetaSourced` | `SourceMap, AstAccess, CompileDiag` |
+| `MetaValidated` | `AstAccess, Schema, CompileDiag` |
+| `MetaDeps` | `DepGraph, ProjectInfo, CompileDiag` |
+| `MetaProfiled` | `MetaBench, CompileDiag` |
+| `MetaTooling` | `ProjectInfo, DepGraph, SourceMap, CompileDiag` |
+
+---
+
+## `TokenStream` and friends
+
+```verum
+@compiler_type
+type TokenStream is {
+    tokens: List<TokenTree>,
+    span: Span,
+};
+
+TokenStream::empty()
+TokenStream::from_token(t)
+TokenStream::from_tree(tree)
+TokenStream::from_trees(&trees)
+TokenStream::from_str(&source) -> Result<TokenStream, LexError>
+TokenStream::ident(&name) -> TokenStream
+
+ts.append(&other)           ts.prepend(&other)
+ts.concat(&others)          ts.iter() -> Iterator<&TokenTree>
+ts.is_empty() / ts.len() / ts.get(i) / ts.drain(range)
+ts.as_bytes() -> &[Byte]
+```
+
+```verum
+type Token is { kind: TokenKind, span: Span };
+
+type TokenTree is Leaf(Token) | Group(Delimiter, TokenStream);
+
+type TokenKind is
+    | Literal(LiteralKind)
+    | Ident(Text)
+    | Keyword(Keyword)
+    | Punct(Char, Spacing)
+    | Whitespace
+    | LineComment
+    | BlockComment
+    | Error(Text);
+
+type Delimiter is Paren | Brace | Bracket;
+type Spacing   is Joint | Alone;
+```
+
+---
+
+## Reflection data
+
+### `TypeKind`
+
+```verum
+@repr(UInt8)
+type TypeKind is
+    | Struct | Enum | Newtype | Unit | Protocol | Tuple
+    | Array | Slice | Reference | Pointer | Function
+    | TypeParam | Associated | Primitive | Never | Infer | Unknown;
+
+k.is_compound() -> Bool       k.is_reference() -> Bool       k.is_primitive() -> Bool
+k.name() -> Text
+```
+
+### `FieldInfo`
+
+```verum
+type FieldInfo is {
+    name: Text,
+    index: Int,
+    type_name: Text,
+    type_kind: TypeKind,
+    visibility: Visibility,
+    is_mutable: Bool,
+    attributes: List<Attribute>,
+    doc: Maybe<Text>,
+    span: Span,
+};
+
+f.has_attribute(&name) -> Bool      f.get_attribute(&name) -> Maybe<&Attribute>
+f.is_public() / is_private() -> Bool
+f.is_tuple_field() -> Bool
+f.accessor() -> Text               // ".0", ".name", etc.
+```
+
+### `VariantInfo`
+
+```verum
+type VariantInfo is {
+    name: Text,
+    index: Int,
+    payload: VariantPayload,
+    discriminant: Maybe<Int>,
+    attributes: List<Attribute>,
+    doc: Maybe<Text>,
+};
+type VariantPayload is
+    | Unit
+    | Tuple(List<FieldInfo>)
+    | Record(List<FieldInfo>);
+```
+
+### `GenericParam`
+
+```verum
+type GenericParam is {
+    name: Text,
+    kind: GenericKind,
+    bounds: List<TraitBound>,
+    default: Maybe<Text>,
+};
+type GenericKind is TypeParam | ConstParam | LifetimeParam | ContextParam | UniverseParam;
+```
+
+### `ProtocolInfo`
+
+```verum
+type ProtocolInfo is {
+    name: Text,
+    module: Text,
+    methods: List<FunctionInfo>,
+    associated_types: List<Text>,
+    supertraits: List<Text>,
+};
+```
+
+### `FunctionInfo`
+
+```verum
+type FunctionInfo is {
+    name: Text,
+    generics: List<GenericParam>,
+    parameters: List<FieldInfo>,       // field-shaped (name + type)
+    return_type: Text,
+    contexts: List<Text>,              // using [...]
+    throws: List<Text>,
+    attributes: List<Attribute>,
+    doc: Maybe<Text>,
+    is_async: Bool,
+    is_pure: Bool,
+    is_unsafe: Bool,
+};
+```
+
+### `TraitBound`, `LifetimeParam`, `OwnershipInfo`, `MethodResolution`, `MethodSource`
+
+Further reflection data for advanced macros.
+
+### `Visibility`
+
+```verum
+type Visibility is Public | Internal | Protected | Private;
+```
+
+---
+
+## `QuoteBuilder`
+
+The surface syntax `quote { … }` desugars to a sequence of builder
+calls. You can build quotes imperatively too:
+
+```verum
+QuoteBuilder::new() -> Self
+QuoteBuilder::with_span(span: Span) -> Self
+
+b.ident(&name)               b.keyword(&kw)
+b.punct_joint(c)             b.punct(c)
+b.operator(&op)              // ->, =>, ::, |>
+b.int_lit(n)                 b.float_lit(f)
+b.text_lit(&t)               b.char_lit(c)               b.byte_lit(b)
+
+b.brace_open() / b.brace_close()
+b.paren_open() / b.paren_close()
+b.bracket_open() / b.bracket_close()
+
+b.group(Delimiter.Brace, inner_stream)
+b.interpolate(ts: TokenStream)
+b.lift<T: ToTokens>(value: T)
+
+b.build() -> TokenStream
+```
+
+---
+
+## `Span` and source metadata
+
+```verum
+type Span is { /* compiler-internal */ };
+
+Span::call_site() -> Span
+Span::def_site() -> Span
+Span::mixed_site() -> Span
+
+sp.line() -> UInt32
+sp.column() -> UInt32
+sp.source_file() -> Maybe<&SourceFile>
+sp.start_byte() / sp.end_byte() -> Int
+sp.join(&other) -> Span
+sp.located_within(&parent) -> Bool
+
+type SourceLocation is { file: Text, line: UInt32, column: UInt32 };
+type SourceFile is { path: Text, source: Text, lines: List<Text> };
+type SpanRange is { start: Span, end: Span };
+```
+
+---
+
+## Attributes
+
+```verum
+type Attribute is {
+    name: Text,
+    args: List<AttributeArg>,
+    span: Span,
+};
+type AttributeArg is
+    | Literal(LiteralValue)
+    | Ident(Text)
+    | KeyValue(Text, Heap<AttributeArg>)
+    | List(List<AttributeArg>);
+
+attr.get(&key) -> Maybe<&AttributeArg>
+attr.is_present(&key) -> Bool
+```
+
+---
+
+## `MetaError` and `MetaResult`
 
 ```verum
 type MetaError is
@@ -110,27 +439,42 @@ type MetaError is
 type MetaResult<T> = Result<T, MetaError>;
 ```
 
-## Limits
+### Defaults (override in `Verum.toml [meta]`)
 
 ```verum
 const DEFAULT_RECURSION_LIMIT: Int = 256;
 const DEFAULT_ITERATION_LIMIT: Int = 1_000_000;
-const DEFAULT_MEMORY_LIMIT:    Int = 64 * 1024 * 1024;     // 64 MiB
-const DEFAULT_TIMEOUT_MS:      Int = 30_000;               // 30 s
+const DEFAULT_MEMORY_LIMIT:    Int = 64 * 1024 * 1024;   // 64 MiB
+const DEFAULT_TIMEOUT_MS:      Int = 30_000;              // 30 s
 ```
 
-Override in `Verum.toml`:
+---
 
-```toml
-[meta]
-recursion_limit = 512
-memory_limit_mb = 128
-timeout_ms      = 60000
+## End-to-end: writing `@derive(Debug)`
+
+```verum
+@meta_macro
+meta fn derive_debug<T>() -> TokenStream using [TypeInfo, AstAccess, CompileDiag] {
+    let name = TypeInfo.name_of::<T>();
+    let fields = TypeInfo.fields_of::<T>();
+    quote {
+        implement Debug for ${name} {
+            fn fmt_debug(&self, f: &mut Formatter) -> FmtResult {
+                f.debug_struct(${lift(name)})
+                    $[for field in fields {
+                        .field(${lift(field.name)}, &self.${field.name})
+                    }]
+                    .finish()
+            }
+        }
+    }
+}
 ```
+
+---
 
 ## See also
 
-- **[Language → metaprogramming](/docs/language/metaprogramming)** —
-  user-level guide.
-- **[Language → attributes](/docs/language/attributes)** — `@derive`
-  and friends.
+- **[Language → metaprogramming](/docs/language/metaprogramming)** — user surface.
+- **[Language → attributes](/docs/language/attributes)** — the `@` forms this module supports.
+- **[proof](/docs/stdlib/proof)** — proof reflection consumes `TypeInfo` / `FunctionInfo`.

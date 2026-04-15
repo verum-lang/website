@@ -1,54 +1,203 @@
 ---
 sidebar_position: 2
 title: proof
+description: Proof-carrying code bundles and refinement reflection — every public type.
 ---
 
-# `core::proof` — Proof-carrying code
+# `core::proof` — Proof infrastructure
 
-Support types for `@verify(certified)` and proof-carrying bytecode.
+Runtime support for `@verify(certified)` and proof-carrying bytecode.
+Two public files; one legacy.
 
-## Reflection protocol
+| File | What's in it |
+|---|---|
+| `pcc.vr` | `GoalHash`, `ProofCertificate`, `ProofBundle`, `BundleMetadata`, `BundleCert`, bundle ops |
+| `reflection.vr` | `ReflectedFunction`, `ReflectabilityVerdict`, reflection SMT-LIB rendering |
+| `contracts_old.vr` | legacy contract machinery (internal; replaced by Hoare logic in `verum_verification`) |
+
+---
+
+## Proof-Carrying Code — `pcc.vr`
+
+The Necula-style proof bundle: a VBC module can carry certificates
+for the SMT goals its compilation discharged, so downstream consumers
+can re-verify the proofs without invoking the whole compiler.
+
+### `GoalHash`
 
 ```verum
-type Reflect is protocol {
-    type Reflected;
-    fn reflect(&self) -> Self.Reflected;
-};
+type GoalHash is { digest: Text };         // SHA-256 of the SMT-LIB goal
+
+fn goal_hash(digest: Text) -> GoalHash
 ```
 
-Types implementing `Reflect` expose a machine-readable version of
-themselves to `@logic` functions and the SMT solver.
-
-## Proof-carrying code
+### `ProofCertificate`
 
 ```verum
 type ProofCertificate is {
-    obligation: SmtObligation,
-    proof:      ProofTerm,
-    verifier:   Text,        // "z3", "cvc5", "portfolio", "manual"
-    checked_at: SystemTime,
+    goal_text: Text,                     // rendered SMT-LIB goal
+    solver: Text,                        // "z3" | "cvc5" | "portfolio" | "manual"
+    proof_object: Text,                  // solver-native proof term (base64)
+    duration_ms: Int { >= 0 },
+    timestamp: Text,                     // ISO-8601
 };
 
-fn embed_certificate(module: &mut Module, cert: ProofCertificate);
-fn verify_certificate(cert: &ProofCertificate) -> Result<(), VerifyError>;
+fn proof_certificate(
+    goal_text: Text,
+    solver: Text,
+    proof_object: Text,
+    duration_ms: Int { >= 0 },
+    timestamp: Text,
+) -> ProofCertificate
 ```
 
-VBC modules compiled with `@verify(certified)` embed certificates
-alongside the bytecode. A loader can verify them offline via
-`verify_certificate` — without running the full compiler.
+### `BundleMetadata`
 
-## Contracts
+```verum
+type BundleMetadata is {
+    compiler_version: Text,
+    source_path: Text,
+    certificate_count: Int { >= 0 },
+    total_duration_ms: Int { >= 0 },
+};
+```
 
-The older `contracts_old.vr` module defines the contract machinery
-(`requires`, `ensures`, `invariant`, `decreases`) at the AST level.
-Modern user-facing surfaces live in the language proper; this module
-provides the implementation hooks.
+### `ProofBundle`
 
-## See also
+```verum
+type BundleCert is { hash: GoalHash, cert: ProofCertificate };
 
-- **[Verification → proofs](/docs/verification/proofs)** — the proof
-  DSL.
-- **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
-  — `@logic` functions.
-- **[Architecture → SMT integration](/docs/architecture/smt-integration)**
-  — how proof terms are validated.
+type ProofBundle is {
+    certificates: List<BundleCert>,
+    metadata: BundleMetadata,
+};
+
+fn empty_bundle(compiler_version: Text, source_path: Text) -> ProofBundle
+fn bundle_add(b: ProofBundle, h: GoalHash, c: ProofCertificate) -> ProofBundle
+fn bundle_lookup(b: &ProofBundle, digest: Text) -> Maybe<&ProofCertificate>
+fn bundle_size(b: &ProofBundle) -> Int
+fn bundle_total_duration_ms(b: &ProofBundle) -> Int
+fn bundle_merge(a: ProofBundle, b: ProofBundle) -> ProofBundle
+```
+
+### Example
+
+```verum
+let mut bundle = empty_bundle("verum-0.32", "src/main.vr");
+
+let cert = proof_certificate(
+    "(assert (not (forall ((x Int)) (=> (> x 0) (> (+ x 1) 0)))))",
+    "z3",
+    BASE64_PROOF_BLOB,
+    duration_ms = 3,
+    timestamp = "2026-04-15T20:30:00Z",
+);
+bundle = bundle_add(bundle, goal_hash("g/binary_search/postcond#1"), cert);
+
+if let Maybe.Some(c) = bundle_lookup(&bundle, "g/binary_search/postcond#1") {
+    print(f"verified by {c.solver} in {c.duration_ms} ms");
+}
+```
+
+### Embedding into VBC
+
+`verum_vbc` serialises a `ProofBundle` into the VBC archive's
+`proof_certificates` section when `@verify(certified)` is in effect.
+A consumer can:
+
+- **trust** the certificate and skip verification;
+- **re-verify** offline by feeding `cert.goal_text` + `cert.proof_object`
+  back into the named `solver`;
+- **reject** if the bundle is missing or invalid.
+
+---
+
+## Refinement reflection — `reflection.vr`
+
+Lets user-defined `@logic` functions appear as axioms in the SMT
+solver. The **soundness gate** enforces that only pure + total +
+closed functions are reflectable — the rest are rejected by the
+compiler.
+
+### `ReflectedFunction`
+
+```verum
+type ReflectedFunction is {
+    name: Text,
+    parameters: List<Text>,
+    body_smtlib: Text,
+    return_sort: Text,
+    parameter_sorts: List<Text>,
+};
+
+fn reflected_fn(
+    name: Text,
+    parameters: List<Text>,
+    body_smtlib: Text,
+    return_sort: Text,
+    parameter_sorts: List<Text>,
+) -> ReflectedFunction
+```
+
+### `ReflectabilityVerdict`
+
+```verum
+type ReflectabilityVerdict is
+    | Reflectable
+    | NotReflectable { reason: Text };
+
+fn is_reflectable(
+    name: Text,
+    is_pure: Bool,
+    is_total: Bool,
+    is_closed: Bool,
+) -> ReflectabilityVerdict
+```
+
+A function is reflectable iff all three conditions hold. Typical
+failure reasons: calls to IO, non-structural recursion without a
+decreases measure, free variables captured from environment.
+
+### SMT-LIB rendering
+
+```verum
+fn to_smtlib_decl(f: &ReflectedFunction) -> Text
+fn to_smtlib_axiom(f: &ReflectedFunction) -> Text
+```
+
+- `to_smtlib_decl` emits a `declare-fun` for uninterpreted use.
+- `to_smtlib_axiom` emits a `define-fun-rec` with the function's body.
+
+### Example
+
+```verum
+@logic
+fn is_sorted(xs: &List<Int>) -> Bool {
+    forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
+}
+
+// Compiler generates equivalent ReflectedFunction:
+let r = reflected_fn(
+    "is_sorted",
+    list!["xs"],
+    "(forall ((i Int)) (=> (and (>= i 0) (< i (- (List.len xs) 1))) (<= (List.get xs i) (List.get xs (+ i 1)))))",
+    "Bool",
+    list!["(List Int)"],
+);
+
+// The axiom form is what the solver sees:
+let ax = to_smtlib_axiom(&r);
+```
+
+Now `Sorted<Int> is List<Int> { is_sorted(self) }` is a usable
+refinement, with `is_sorted` as a named predicate the SMT solver can
+unfold on demand.
+
+---
+
+## Cross-references
+
+- **[Verification → refinement reflection](/docs/verification/refinement-reflection)** — user surface.
+- **[Verification → proofs](/docs/verification/proofs)** — theorem / lemma DSL producing these certificates.
+- **[Architecture → SMT integration](/docs/architecture/smt-integration)** — how the solver consumes these types.
+- **[Architecture → VBC bytecode](/docs/architecture/vbc-bytecode)** — the `proof_certificates` section of a VBC archive.
