@@ -15,7 +15,7 @@ compiler forbids duplication but allows discarding. Declared with
 `type affine T is ...`.
 
 **AOT** — Ahead-of-Time compilation. Verum's LLVM backend that produces
-native binaries. Tier 3 of the execution model.
+native binaries. Tier 1 of the two-tier execution model.
 
 **Aliasing** — Multiple references to the same value. Verum's rules:
 any number of immutable (`&T`), or exactly one mutable (`&mut T`).
@@ -26,8 +26,10 @@ as `@derive(Clone)` or `@verify(smt)`.
 ## C
 
 **Capability** — (1) In the context system, a typed effect like
-`Database` or `Logger`. (2) In CBGR, a bit indicating a reference's
-allowed operations (`Read`, `Write`, `Admin`).
+`Database` or `Logger`. (2) In CBGR, one of eight bits indicating a
+reference's allowed operations (`READ`, `WRITE`, `EXECUTE`,
+`DELEGATE`, `REVOKE`, `BORROWED`, `MUTABLE`, `NO_ESCAPE`), subject to
+monotonic attenuation.
 
 **CBGR** — Capability-Based Generational References. Verum's default
 memory safety mechanism: ~15 ns runtime check per deref.
