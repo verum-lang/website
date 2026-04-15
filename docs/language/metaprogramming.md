@@ -162,11 +162,57 @@ $ verum expand-macros --filter "@derive"
 Emits the post-expansion source so you can read what `@derive(Clone)`
 actually produced.
 
+## Worked example — a small `@derive(DisplayAll)`
+
+```verum
+@meta_macro
+pub meta fn derive_display_all<T>() -> TokenStream
+    using [TypeInfo, AstAccess, CompileDiag]
+{
+    let name = TypeInfo::name_of::<T>();
+    let fields = TypeInfo::fields_of::<T>();
+
+    quote {
+        implement Display for ${name} {
+            fn fmt(&self, f: &mut Formatter) -> FmtResult {
+                f.write_str(&f"${lift(name)} {{")?;
+                $[for (i, field) in fields.iter().enumerate() {
+                    $[if i > 0 { f.write_str(&", ")?; }]
+                    f.write_str(&${lift(field.name.clone())})?;
+                    f.write_str(&": ")?;
+                    self.${field.name}.fmt(f)?;
+                }]
+                f.write_str(&"}")?;
+                Result.Ok(())
+            }
+        }
+    }
+}
+```
+
+Usage:
+
+```verum
+@derive(DisplayAll)
+type User is { id: Int, name: Text, email: Text };
+
+print(&f"{User { id: 42, name: \"Alice\".to_string(), email: \"a@b.c\".to_string() }}");
+// => User {id: 42, name: Alice, email: a@b.c}
+```
+
+See **[Writing a derive](/docs/cookbook/write-a-derive)** for a
+full walk-through (debugging with `verum expand-macros`, handling
+variants, using `CompileDiag`).
+
 ## See also
 
 - **[Stdlib → meta](/docs/stdlib/meta)** — `TokenStream`, `quote`,
-  reflection types.
+  reflection types, the 13 capability contexts.
 - **[Attributes](/docs/language/attributes)** — the full registry of
   `@` annotations.
 - **[Reference → attribute registry](/docs/reference/attribute-registry)**
   — every standard `@` with target and semantics.
+- **[Cookbook → write a derive](/docs/cookbook/write-a-derive)** —
+  task-oriented walkthrough.
+- **[Cookbook → `@logic` functions](/docs/cookbook/logic-functions)** —
+  how `meta` composes with SMT reflection.

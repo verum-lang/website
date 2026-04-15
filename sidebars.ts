@@ -124,6 +124,17 @@ const sidebars: SidebarsConfig = {
         'guides/security',
       ],
     },
+    {
+      type: 'category',
+      label: 'Community',
+      link: {type: 'generated-index', slug: '/category/community'},
+      items: [
+        'community/contributing',
+        'community/code-of-conduct',
+      ],
+    },
+    'roadmap',
+    'changelog',
   ],
   language: [
     'language/overview',

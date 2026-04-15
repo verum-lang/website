@@ -179,8 +179,69 @@ Or use a build script for complex setups. See **[Build system](/docs/tooling/bui
 - **No auto-marshalling**: `Text` does not silently become `char*`.
   You write the conversion.
 
+## Worked example — a minimal `libsodium` binding
+
+```verum
+ffi Sodium {
+    @extern("C")
+    fn sodium_init() -> Int;
+
+    @extern("C")
+    fn randombytes_buf(buf: *mut Byte, size: Int);
+
+    @extern("C")
+    fn crypto_secretbox_easy(
+        ciphertext: *mut Byte,
+        message:    *const Byte,
+        message_len: Int,
+        nonce:      *const Byte,
+        key:        *const Byte,
+    ) -> Int;
+
+    requires      message_len >= 0;
+    memory_effects = Reads(message, nonce, key), Writes(ciphertext);
+    thread_safe   = true;
+    errors_via    = ReturnCode(result != 0);
+    @ownership(borrow = [message, nonce, key, ciphertext])
+}
+
+const KEY_BYTES:    Int = 32;
+const NONCE_BYTES:  Int = 24;
+const MAC_BYTES:    Int = 16;
+
+pub fn seal(message: &[Byte], key: &[Byte; 32]) -> List<Byte> {
+    assert(Sodium::sodium_init() >= 0);
+
+    let mut nonce = [0u8; NONCE_BYTES];
+    unsafe {
+        Sodium::randombytes_buf(nonce.as_mut_ptr(), NONCE_BYTES);
+    }
+
+    let mut out = List::with_capacity(message.len() + MAC_BYTES);
+    out.resize(message.len() + MAC_BYTES, 0);
+    let rc = unsafe {
+        Sodium::crypto_secretbox_easy(
+            out.as_mut_ptr(), message.as_ptr(), message.len(),
+            nonce.as_ptr(), key.as_ptr(),
+        )
+    };
+    assert(rc == 0);
+
+    let mut framed = List::from(nonce);
+    framed.extend(out);
+    framed
+}
+```
+
+Every unsafe block is narrowly scoped, the boundary contract pins down
+what the library reads and writes, and SMT discharges the `requires`
+at each call site. See **[Cookbook → FFI](/docs/cookbook/ffi)** for a
+full walkthrough including error translation.
+
 ## See also
 
+- **[Cookbook → FFI](/docs/cookbook/ffi)** — end-to-end walkthrough
+  with `build.vr` and header generation.
 - **[Language → attributes](/docs/language/attributes)** — `@extern`,
   `@repr`.
 - **[Stdlib → sys](/docs/stdlib/sys)** — the V-LLSI kernel bootstrap

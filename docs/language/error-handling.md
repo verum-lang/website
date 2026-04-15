@@ -168,6 +168,64 @@ A value's `drop` method cannot throw. If cleanup can fail, expose a
 fallible `close()` method and document that dropping without closing
 may hide errors.
 
+## Worked example — composing the five layers
+
+A resilient client for a flaky remote service touches every layer
+in the right order:
+
+```verum
+type Error is
+    | InvalidInput(Text)
+    | Upstream { status: Int, body: Text }
+    | CircuitOpen
+    | Exhausted;
+
+type NonEmpty<T> is List<T> { self.len() > 0 };
+
+async fn push_all(events: NonEmpty<Event>) -> Result<(), Error>
+    using [Http, Logger]
+{
+    let breaker = CircuitBreaker::new(CircuitBreakerConfig {
+        failure_threshold: 3, cooldown: 10.seconds,
+    });
+    let retry = RetryConfig {
+        attempts: 4, backoff: Backoff.Exponential(200.ms),
+    };
+
+    for ev in events.iter() {
+        let outcome = retry.execute(|| async {
+            breaker.call(|| post_event(ev)).await
+        }).await;
+
+        match outcome {
+            Result.Ok(_)                 => Logger.info(&f"sent {ev.id}"),
+            Result.Err(Error.CircuitOpen) => return Result.Err(Error.CircuitOpen),
+            Result.Err(e) if retry.exhausted() =>
+                return Result.Err(Error.Exhausted),
+            Result.Err(e) => Logger.warn(&f"retrying {ev.id}: {e}"),
+        }
+    }
+    Result.Ok(())
+}
+```
+
+Layer-by-layer:
+
+1. **Prevent** — `events: NonEmpty<Event>` removes the empty-batch
+   edge case at the call boundary.
+2. **Verify** — `retry.exhausted()` is refinement-tracked so the
+   compiler knows the branch is reachable only after the retry budget
+   is spent.
+3. **Handle** — `Result` is threaded through, no `?`-shortcuts that
+   would hide the circuit-open signal.
+4. **Tolerate** — `CircuitBreaker` and `RetryConfig` compose; a
+   supervisor above this function would restart it on panic.
+5. **Contain** — no `panic` anywhere; the caller always sees a typed
+   `Error`.
+
+See **[Cookbook → resilience](/docs/cookbook/resilience)** for the
+supervision-tree wiring around this function.
+
 ## See also
 
 - **[Functions](/docs/language/functions)** — `throws`, `ensures`,
@@ -176,3 +234,7 @@ may hide errors.
   types.
 - **[Verification → contracts](/docs/verification/contracts)** — how
   contracts turn errors into compile-time obligations.
+- **[Cookbook → resilience](/docs/cookbook/resilience)** — retry +
+  circuit breaker + supervision in a full pipeline.
+- **[Async & concurrency](/docs/language/async-concurrency)** —
+  structured concurrency and cancellation interact with error flow.
