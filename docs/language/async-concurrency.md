@@ -173,9 +173,73 @@ kind = "full"                # full | single_thread | no_async | embedded
 - `no_async` — async/await compiled to synchronous calls.
 - `embedded` — stack allocation only, no heap.
 
+## Worked patterns
+
+### Fan-out / fan-in with bounded concurrency
+
+```verum
+async fn process_bounded<T, U>(items: List<T>, workers: Int,
+                               f: fn(T) -> Future<Output=U>) -> List<U>
+{
+    let sem = Shared::new(Semaphore::new(workers));
+    nursery(on_error: cancel_all) {
+        let handles: List<_> = items.into_iter().map(|item| {
+            let sem = sem.clone();
+            spawn async move {
+                let _permit = sem.acquire().await;
+                f(item).await
+            }
+        }).collect();
+        join_all(handles).await
+    }
+}
+```
+
+See **[Cookbook → nursery](/docs/cookbook/nursery)** for more.
+
+### Producer / consumer with backpressure
+
+```verum
+let (tx, mut rx) = channel::<Event>(capacity: 128);
+
+nursery {
+    spawn async move {
+        while let Maybe.Some(ev) = fetch_next().await {
+            tx.send(ev).await.unwrap();          // suspends if full
+        }
+    };
+    spawn async move {
+        while let Maybe.Some(ev) = rx.recv().await {
+            process(ev).await;
+        }
+    };
+}
+```
+
+Full pipeline in the **[async pipeline tutorial](/docs/tutorials/async-pipeline)**.
+
+### Racing with timeout
+
+```verum
+async fn fetch_or_fail(url: &Text) -> Result<Bytes, Error> using [Http] {
+    timeout(5.seconds(), Http.get(url)).await?.body().await
+}
+```
+
+See **[Cookbook → resilience](/docs/cookbook/resilience)** for retry +
+circuit breaker composition.
+
 ## See also
 
 - **[Stdlib → async](/docs/stdlib/async)** — futures, executors, timers.
 - **[Stdlib → sync](/docs/stdlib/sync)** — atomics, locks, barriers.
 - **[Context system](/docs/language/context-system)** — propagation.
 - **[Runtime tiers](/docs/architecture/runtime-tiers)** — how it works.
+- **[Architecture → execution environment (θ+)](/docs/architecture/execution-environment)**
+  — per-task context structure.
+- **[Cookbook → async basics](/docs/cookbook/async-basics)**
+- **[Cookbook → channels](/docs/cookbook/channels)**
+- **[Cookbook → generators](/docs/cookbook/generators)**
+- **[Cookbook → nursery](/docs/cookbook/nursery)**
+- **[Cookbook → scheduler](/docs/cookbook/scheduler)**
+- **[Async pipeline tutorial](/docs/tutorials/async-pipeline)**

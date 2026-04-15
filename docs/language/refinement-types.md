@@ -181,3 +181,70 @@ error[V3402]: refinement violated at call site
 For invariants that span mutation, see
 **[Contracts](/docs/verification/contracts)** and loop invariants in
 **[Functions](/docs/language/functions)**.
+
+## Worked examples
+
+### A refined bank-account record (system boundaries)
+
+```verum
+type Positive  is Float { self >= 0.0 };
+type BankAccount is {
+    balance: Positive,
+    account_number: Text { self.len() == 10 },
+    owner: Text { !self.is_empty() },
+};
+
+fn transfer(from: &mut BankAccount, to: &mut BankAccount, amount: Positive)
+    where requires from != to,
+          requires from.balance >= amount,
+          ensures  from.balance == old(from.balance) - amount,
+          ensures  to.balance   == old(to.balance)   + amount
+{
+    from.balance -= amount;
+    to.balance   += amount;
+}
+```
+
+The SMT solver discharges the postconditions — provided the caller
+establishes `from != to` and `from.balance >= amount`.
+
+### A verified sorted-list invariant
+
+```verum
+@logic
+fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+    forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
+}
+
+type Sorted<T: Ord> is List<T> { is_sorted(self) };
+
+@verify(smt)
+fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
+    where ensures is_sorted(result)
+{
+    let mut out = xs.clone();
+    let pos = out.partition_point(|y| *y < x);
+    out.insert(pos, x);
+    out
+}
+```
+
+The [Verified data structure tutorial](/docs/tutorials/verified-data-structure)
+walks this full example with loop invariants and merge.
+
+## Cross-references
+
+- **[Cookbook → refinement patterns](/docs/cookbook/refinements)** —
+  the idioms you'll actually use.
+- **[Cookbook → validation](/docs/cookbook/validation)** — refinements
+  at system boundaries.
+- **[Cookbook → `@logic` functions](/docs/cookbook/logic-functions)**
+  — extending the refinement vocabulary.
+- **[Cookbook → SMT debugging](/docs/cookbook/smt-debug)** — when the
+  solver can't prove your obligation.
+- **[Verified data structure tutorial](/docs/tutorials/verified-data-structure)**
+  — end-to-end use with loop invariants.
+- **[Verification → gradual verification](/docs/verification/gradual-verification)**
+  — the five levels.
+- **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
+  — soundness gate for `@logic`.

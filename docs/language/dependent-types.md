@@ -173,7 +173,56 @@ identity operations in the bytecode. The cost model:
 - First-time reading of Verum. Start with refinements, graduate when
   you have a reason.
 
-See also:
+## Worked example — a shape-safe matrix API
+
+```verum
+type Matrix<const R: Int, const C: Int, T: Numeric> is
+    { data: [[T; C]; R] };
+
+fn zeros<const R: Int, const C: Int, T: Numeric>() -> Matrix<R, C, T> {
+    Matrix { data: [[T.zero(); C]; R] }
+}
+
+fn identity<const N: Int, T: Numeric>() -> Matrix<N, N, T> {
+    let mut m = zeros::<N, N, T>();
+    for i in 0..N { m.data[i][i] = T.one(); }
+    m
+}
+
+fn mul<const A: Int, const B: Int, const C: Int, T: Numeric>(
+    x: &Matrix<A, B, T>,
+    y: &Matrix<B, C, T>,
+) -> Matrix<A, C, T> {
+    let mut out = zeros::<A, C, T>();
+    for i in 0..A {
+        for j in 0..C {
+            let mut acc = T.zero();
+            for k in 0..B { acc = acc + x.data[i][k] * y.data[k][j]; }
+            out.data[i][j] = acc;
+        }
+    }
+    out
+}
+
+fn caller() {
+    let a: Matrix<3, 4, Float> = zeros();
+    let b: Matrix<4, 2, Float> = zeros();
+    let c: Matrix<3, 2, Float> = mul(&a, &b);   // OK
+    // let d = mul(&a, &a);                     // compile error: 4 != 3
+}
+```
+
+The shape error is a type mismatch, not a runtime `DimensionError`.
+See **[Cookbook → shape-safe tensors](/docs/cookbook/shape-safe)**
+for the stdlib `Tensor<Dims, T>` that generalises this pattern.
+
+## See also
+
 - **[Cubical & HoTT](/docs/verification/cubical-hott)** — deeper
   treatment of cubical features.
 - **[Proofs](/docs/verification/proofs)** — theorem/lemma/proof DSL.
+- **[Cookbook → shape-safe tensors](/docs/cookbook/shape-safe)**
+- **[Cookbook → calc proofs](/docs/cookbook/calc-proofs)** — writing
+  equational proofs with `Path` and the proof DSL.
+- **[Verified data structure tutorial](/docs/tutorials/verified-data-structure)**
+  — dependent types meet SMT-verified invariants.

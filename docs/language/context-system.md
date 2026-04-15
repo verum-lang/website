@@ -173,11 +173,69 @@ provide_stmt   = "provide" context_path [ "as" identifier ] "=" expr
                  [ "in" block ] ";" ;
 ```
 
+## Worked example — wiring a web service
+
+A typical top-level entry point layers every context once:
+
+```verum
+fn main() using [IO] {
+    let app_layer = Layer::new()
+        .with_singleton::<Logger>(ConsoleLogger::new(LogLevel.Info))
+        .with_singleton::<Clock>(SystemClock::new())
+        .with_request::<Database>(|| PostgresDatabase::connect(&db_url))
+        .with_request::<Metrics>(|| Metrics::tagged("req_id"));
+
+    app_layer.run(async {
+        let mut server = HttpServer::bind(&":8080").await?;
+        server.serve(|req| handle(req)).await?;
+        Result.Ok::<(), Error>(())
+    }).await.expect("server");
+}
+
+async fn handle(req: Request) -> Response
+    using [Database, Logger, Clock, Metrics]
+{
+    let now = Clock.now();
+    Logger.info(&f"req {req.path} at {now}");
+    Metrics.increment("requests.total");
+    ok_response(&Database.find_user(req.auth)?)
+}
+```
+
+The `handle` function declares every capability it needs in its
+signature; the compiler refuses to call `Database.find_user` if
+the caller didn't provide a `Database`. Tests swap in a mock:
+
+```verum
+@test
+async fn test_handler() using [IO] {
+    provide Database = MockDatabase::new() in
+    provide Logger   = NullLogger::new() in
+    provide Clock    = FakeClock::at(epoch()) in
+    provide Metrics  = NullMetrics::new() in {
+        let req = Request::get("/users/42");
+        let resp = handle(req).await;
+        assert_eq(resp.status.code(), 200);
+    }
+}
+```
+
+No mocking framework. No DI container. Contexts are just types;
+`provide` is just assignment; the compiler does the rest.
+
+Full build in [HTTP service tutorial](/docs/tutorials/http-service).
+
 ## See also
 
 - **[Stdlib → context](/docs/stdlib/context)** — the `Provider`, `Scope`,
   and `ContextError` types.
 - **[Async and concurrency](/docs/language/async-concurrency)** —
   how contexts flow across tasks.
+- **[Architecture → execution environment (θ+)](/docs/architecture/execution-environment)**
+  — how context interacts with memory / recovery / concurrency.
 - **[Architecture → runtime tiers](/docs/architecture/runtime-tiers)**
   — how the runtime implements task-local storage.
+- **[HTTP service tutorial](/docs/tutorials/http-service)** —
+  end-to-end use of `Layer::new().with_...(...)`.
+- **[Cookbook → shared state](/docs/cookbook/shared-state)** — when
+  a `Mutex`-wrapped context is the right shape.
