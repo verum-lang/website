@@ -10,9 +10,8 @@ Practical applications include length-indexed arrays, proof-carrying
 APIs, and cubical higher-inductive types.
 
 :::note Status
-Dependent type support is **production** (phase D complete as of v0.32).
-Cubical and HoTT features are in **active development** but tested:
-1506 / 1507 conformance checks pass.
+Dependent type support is **production**. Cubical and HoTT features
+are implemented and tested — 1 506 / 1 507 conformance checks pass.
 :::
 
 ## Sigma types (dependent pairs)

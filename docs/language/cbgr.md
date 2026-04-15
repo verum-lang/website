@@ -125,7 +125,7 @@ operate on a separate memory arena with statically checked accesses).
 
 ## Performance numbers
 
-Reported on an Apple M3 Max, Verum v0.32 release build:
+Reported on an Apple M3 Max, release build with LTO:
 
 | Operation | Cycles | Nanoseconds |
 |-----------|--------|-------------|

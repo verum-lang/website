@@ -40,22 +40,66 @@ theorem reverse_reverse<T>(xs: List<T>) -> xs.reverse().reverse() == xs {
 
 ## Tactics
 
+From `grammar/verum.ebnf` (`tactic_name` production):
+
+### Decision procedures
+
+| Tactic | Role |
+|--------|------|
+| `auto`    | try SMT + common decision procedures |
+| `smt`     | dispatch directly to the capability router |
+| `simp`    | simplification rewriting |
+| `ring`    | ring-axiom rewriting (for arithmetic) |
+| `field`   | field-axiom rewriting |
+| `omega`   | linear integer / rational arithmetic |
+| `blast`   | aggressive congruence closure + rewriting |
+| `trivial` | discharge by reflexivity / immediate |
+
+### Proof structure
+
+| Tactic | Role |
+|--------|------|
+| `assumption`    | close the goal from an in-scope hypothesis |
+| `contradiction` | derive false from the hypothesis set |
+| `induction x`   | structural induction on `x` |
+| `cases x`       | case-split on `x` |
+| `rewrite [= lemma]` | rewrite using a lemma |
+| `unfold name`   | unfold a definition |
+| `apply lemma`   | apply a named lemma |
+| `exact term`    | close with the given term |
+| `intro` / `intros` | introduce hypotheses |
+
+### Cubical / HoTT specific
+
+| Tactic | Role |
+|--------|------|
+| `cubical`         | route to the cubical normaliser |
+| `category_simp`   | category-theoretic rewrites |
+| `category_law`    | apply a category law by name |
+| `descent_check`   | verify a descent-style property |
+
+### Combinators
+
 ```
-qed                 // discharge a trivially true goal
-auto                // try SMT + common decision procedures
-ring                // ring-axiom rewriting (for arithmetic)
-omega               // linear integer arithmetic
-simp [rules]        // simplification rewriting
-induction x         // induct on x
-cases x             // case-split on x
-contradiction       // derive false from hypotheses
-rewrite [= lemma]   // rewrite using a lemma
-apply  lemma        // apply a named lemma
-have   h : T by ... // introduce a local assumption with proof
-show   goal         // assert what we're proving
-suffices T by ...   // reduce to showing T
-obtain (a, b) by ex // destructure an existential
+try { T } [else { T' }]      // try T, fall back to T' on failure
+repeat [(n)] { T }           // apply T up to n times (or until fixpoint)
+first { T1; T2; ... }        // try alternatives in order, stop at first success
+all_goals { T }              // apply T to every remaining goal
+focus(n) { T }               // apply T only to goal number n
 ```
+
+### Structured-proof keywords
+
+```
+have   h : T by ...          // introduce a local assumption with proof
+show   goal                  // assert what we're proving
+suffices T by ...            // reduce to showing T
+obtain (a, b) by ex          // destructure an existential
+qed                          // close the current goal (terminal)
+```
+
+User tactics extend this set via `@tactic meta fn` (see **Tactic
+extensibility** below).
 
 ## `calc` — equational reasoning
 
