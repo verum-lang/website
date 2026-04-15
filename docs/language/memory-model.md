@@ -171,5 +171,109 @@ duplicate explicitly, call `.clone()`.
 | Heap | `Heap<T>` | 1 allocation, CBGR header |
 | Shared | `Shared<T>` | 1 allocation, atomic refcount |
 
+## Allocation internals
+
+`Heap<T>`, `Shared<T>`, and every collection-backing allocation go
+through a **mimalloc-inspired, libc-free allocator** with three
+hierarchical scales. This is stable public API only in the sense that
+`Heap(...)` always works — the structure below explains the *costs*
+you see in the summary table, and is useful when reasoning about
+latency-sensitive code.
+
+### Three-tier hierarchy
+
+```
+Heap (thread-local)  →  Segment (32 MiB)  →  Page (64 KiB / 512 KiB)
+```
+
+- **Heap** — per-thread, stored in a TLS context slot. Owns 73 page
+  queues plus a direct-access array for allocations ≤ 1 KiB. No lock
+  on the fast path.
+- **Segment** — a 32 MiB chunk backed by one `mmap` (Linux) /
+  `mach_vm_allocate` (macOS) / `VirtualAlloc` (Windows). Tracks which
+  of its 512 × 64 KiB slices are committed and which are scheduled
+  for purging.
+- **Page** — a single size class per page. Three free lists:
+  thread-local (`free`), deferred-local (`local_free`), and
+  cross-thread (`xthread_free`, atomic).
+
+### 73 size classes (12.5 % spacing)
+
+| Range            | Classes | Spacing |
+|------------------|---------|---------|
+| 8 – 64 B         | 8       | exact 8-byte bins |
+| 80 – 1 024 B     | 16      | logarithmic, 12.5 % |
+| 1 280 B – 64 KiB | 32      | logarithmic |
+| 80 KiB – 4 MiB   | 16      | logarithmic |
+| > 5 MiB          | 1       | `huge` bin — dedicated segment |
+
+Allocation classes:
+
+| Class  | Size        | Page size |
+|--------|-------------|-----------|
+| small  | ≤ 8 KiB     | 64 KiB    |
+| medium | ≤ 64 KiB    | 512 KiB   |
+| large  | ≤ 16 MiB    | dedicated |
+| huge   | > 16 MiB    | dedicated segment |
+
+### Fast path (~7 instructions)
+
+For a small allocation the sequence is: load `CURRENT_HEAP` from TLS,
+index the direct-access array by word-size, pop the head of the
+thread-local free list, bump `used`. No atomics, no locks, no
+syscalls.
+
+### Cross-thread frees
+
+Freeing a block whose owning thread is not the current one pushes the
+block onto `page.xthread_free` with a single CAS. The owning thread
+drains that list lazily next time it allocates from that page. This
+keeps free paths symmetric without bouncing a cache line per free.
+
+### Segment abandonment
+
+When a thread exits its segments are **abandoned** rather than freed
+— their `thread_id` is set to 0. Another thread that deallocates a
+block into an abandoned segment can CAS-claim ownership and reclaim
+the segment's live pages into its own heap.
+
+### Lazy purging
+
+When a page empties, its slices are added to a `purge_mask` with a
+timestamp. A purge pass issues `madvise(MADV_FREE)` (Linux), `MADV_FREE`
+(macOS), or `VirtualFree(MEM_DECOMMIT)` (Windows) once the 10 ms
+grace window has elapsed. This keeps working-set memory in RAM
+through transient allocation spikes.
+
+### CBGR integration
+
+Allocation returns a triple `(ptr, generation, epoch)`:
+
+- the **ptr** identifies the slot,
+- the **generation** is `segment.base_generation + page.slot_generations[i]`,
+- the **epoch** is the current value of `segment.epoch`.
+
+A `ThinRef<T>` stores `(ptr, generation, epoch_caps)` in 16 bytes; on
+deref, it re-reads the three atomics and fails the check if either
+has advanced. Freeing a block increments its slot generation, so any
+outstanding reference to it sees the mismatch on its next deref.
+
+### Performance targets
+
+| Operation                       | Target |
+|---------------------------------|--------|
+| small alloc, hot path           | < 20 ns |
+| small alloc, cold (new page)    | < 100 ns |
+| large alloc                     | < 5 µs |
+| thread-local free               | < 15 ns |
+| cross-thread free               | < 50 ns |
+| CBGR deref validation           | < 5 ns |
+| memory overhead                 | < 5 % |
+
+Scalability: thread-local fast paths with no contention up to ~32
+cores; beyond that, abandoned-segment reclamation dominates.
+
 For the internals of CBGR, see **[CBGR](/docs/language/cbgr)** and
-**[CBGR internals](/docs/architecture/cbgr-internals)**.
+**[CBGR internals](/docs/architecture/cbgr-internals)**. For
+allocator-level cost accounting across runtime tiers, see
+**[Runtime tiers → memory costs](/docs/architecture/runtime-tiers#memory-costs-across-tiers)**.
