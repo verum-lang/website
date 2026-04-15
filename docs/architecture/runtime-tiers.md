@@ -99,6 +99,62 @@ default_tier = "aot"
 jit = "baseline"         # baseline | optimising | off
 ```
 
+## CBGR performance across tiers
+
+The `&T` managed-reference check has different costs at different
+tiers, and different amounts are eliminated by analysis.
+
+### Tier 0 — interpreter
+
+```
+deref(&T) = 1 load (pointer) + 1 load (header) + 1 compare + 1 branch
+          ≈ 90–120 ns   (tree-walker overhead dominates)
+```
+
+- Full check on every deref.
+- No elision.
+- Fine for REPL / tests / short scripts.
+
+### Tier 1 — baseline JIT
+
+Check compiles to:
+
+```
+mov  rax, [rdi]                ; load pointer
+mov  ecx, [rax - 16]           ; load header.generation
+cmp  ecx, [rdi + 8]            ; compare reference.generation
+jne  .use_after_free
+```
+
+- ~15 ns per check on modern x86_64 (6–9 cycles).
+- Basic inlining + escape analysis elides 60–80% of checks in
+  typical code.
+
+### Tier 2 — optimising JIT (MLIR)
+
+Dataflow-based escape analysis plus loop-invariant code motion:
+
+- ~5–15 ns per check where a check remains.
+- 0 ns for checks hoisted out of loops.
+- 80–95% of checks eliminated on average.
+
+### Tier 3 — AOT (LLVM)
+
+**Debug profile** (`--profile debug`): ~15 ns per remaining check;
+~60–80% elision via intraprocedural escape analysis.
+
+**Release profile** (`--profile release` with LTO):
+- 0 ns for `&checked T` (proven).
+- ~15 ns for remaining `&T` (rare in hot paths).
+- 90–98% of checks eliminated via whole-program escape analysis +
+  refinement-informed bounds elimination.
+
+### Cross-tier reference downgrade
+
+Calling from AOT into the interpreter downgrades `&checked T` to
+`&T` — safety is preserved but the recipient pays the ~100 ns check.
+This is invisible unless you're profiling the interpreter.
+
 ## Cross-tier transitions
 
 Calls between tiers go through a standard ABI — VBC-compatible layout
