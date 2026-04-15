@@ -163,8 +163,8 @@ as feedback.
 ## Limitations
 
 - Solver upgrades are tested against the full VCS conformance suite
-  (1506/1507 passing as of v0.32), but solver behaviour is not
-  bit-reproducible across versions.
+  (1 506/1 507 passing), but solver behaviour is not bit-reproducible
+  across versions.
 - The router is tuned against a benchmark set; unusual workloads may
   see suboptimal routing. Escalate the strategy (`@verify(thorough)`)
   rather than forcing a solver — the router always picks correctly

@@ -10,13 +10,12 @@ description: Answers to questions you asked before you installed.
 
 ### Is Verum production-ready?
 
-Yes, for the feature set it claims. Version **0.32** is "phase D
-complete" — refinement types, dependent types, cubical HoTT, dual SMT
-backends, VBC interpreter, LLVM AOT, and the full toolchain are all
-implemented. 1,506 of 1,507 comprehensive conformance checks pass.
-Early-adopter risk still exists — expect the occasional rough edge,
-especially around newer features (cubical normalisation, the MLIR
-JIT).
+Yes, for the feature set it claims. Refinement types, dependent
+types, cubical HoTT, dual SMT backends, VBC interpreter, LLVM AOT,
+and the full toolchain are all implemented; 1 506 of 1 507
+comprehensive conformance checks pass. Early-adopter risk still
+exists — expect the occasional rough edge, especially around newer
+features (cubical normalisation, MLIR GPU).
 
 ### How fast is it?
 

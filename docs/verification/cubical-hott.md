@@ -10,10 +10,10 @@ higher-inductive types, and computational univalence. This allows
 equational reasoning that plain SMT cannot express.
 
 :::note Status
-Phase D complete as of v0.32. The cubical normaliser implements 8
-reduction rules including computational univalence. See
-[memory notes](/docs/architecture/overview) for the implementation
-roadmap.
+Production. The cubical normaliser implements 8 reduction rules
+including computational univalence. See
+**[architecture → overview](/docs/architecture/overview)** for the
+feature inventory and **[roadmap](/docs/roadmap)** for what's next.
 :::
 
 ## Why cubical

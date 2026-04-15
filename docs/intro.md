@@ -30,8 +30,9 @@ negotiated — not imposed — by an explicit verification ladder.
   typed context parameters that propagate across async boundaries.
 - **Semantic-honest types**: `List`, `Text`, `Map`, `Heap`, `Shared` —
   types describe meaning, not implementation.
-- **Gradual verification**: five levels from `@verify(runtime)` all the
-  way to `@verify(certified)` for machine-checked proofs.
+- **Gradual verification**: nine strategies from `@verify(runtime)` to
+  `@verify(certified)` — semantic intents, not solver names; the
+  capability router picks Z3, CVC5, portfolio, or tactics for you.
 
 ## A first taste
 
@@ -84,11 +85,11 @@ reference is CBGR-checked unless escape analysis promotes it to
 ## Who Verum is for
 
 Verum is for engineers who have accepted that bugs in critical systems
-are not a Rust-vs-TypeScript question but an "is-this-invariant-machine-checkable"
-question. It is a production language (v0.32, phase D complete) — but
-it is also unapologetically influenced by Coq, Agda, Idris, F\*, Dafny,
-and Lean. If you want `println!`-by-default, Verum is probably wrong
-for you. If you want `postcondition`-by-default, read on.
+are not a Rust-vs-TypeScript question but an "is-this-invariant-
+machine-checkable" question. It is a production-track language
+unapologetically influenced by Coq, Agda, Idris, F\*, Dafny, and Lean.
+If you want `println`-by-default, Verum is probably wrong for you. If
+you want `postcondition`-by-default, read on.
 
 :::tip Quickest path
 Skip to **[Installation](/docs/getting-started/installation)** to get

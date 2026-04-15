@@ -12,7 +12,7 @@ interpreter.
 
 ```bash
 $ verum repl
-Verum 0.32 · phase D · REPL
+Verum REPL
 :help for commands, :quit to exit.
 
 >>>
