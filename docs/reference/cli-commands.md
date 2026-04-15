@@ -5,32 +5,41 @@ title: CLI Commands
 
 # CLI Commands
 
-Complete `verum` command reference. For a friendlier overview, see
+Complete `verum` command reference aligned with
+`crates/verum_cli/src/main.rs`. For a usage-first overview, see
 **[Tooling → CLI](/docs/tooling/cli)**.
 
 ## Project
 
 ### `verum new <name>`
 
-Create a new project. Flags:
-- `--lib` — library instead of application.
-- `--profile <application|systems|research>` — starter profile.
-- `--git` / `--no-git` — initialise git.
+Create a new project.
 
 ### `verum init [path]`
 
 Initialise an existing directory.
 
-### `verum add <dep>[@version]`
+### `verum deps add <name>`
 
 Add a dependency. Flags:
+- `--version <version>` — pin the version.
 - `--dev` — dev-only dependency.
-- `--optional` — optional dependency behind a feature.
-- `--features "a,b"` — enable features.
+- `--build` — build-only dependency.
 
-### `verum remove <dep>`
+### `verum deps remove <name>`
 
 Remove a dependency.
+
+Flags: `--dev`, `--build` — remove from the dev/build section.
+
+### `verum deps update [<package>]`
+
+Update dependencies (all, or a specific one).
+
+### `verum deps list`
+
+Flags:
+- `--tree` — render as a tree.
 
 ## Build & run
 
@@ -40,223 +49,293 @@ Compile the project.
 
 Flags:
 - `--release` — release profile.
-- `--profile <name>` — specific profile.
 - `--target <triple>` — cross-compile.
 - `--features <list>` — enable features.
-- `--no-default-features`, `--all-features`.
-- `--out-dir <path>` — override output directory.
-- `--message-format <human|json>` — diagnostics format.
-- `--timings` — emit per-phase timing report.
-- `-j <N>` — parallel jobs.
+- `--all-features`, `--no-default-features`.
+- `-j <N>` / `--jobs <N>` — parallel jobs.
+- `--timings` — per-phase timing report.
+- `--verify <strategy>` — override the verification strategy
+  (`runtime | static | formal | fast | thorough | certified | synthesize`).
+- `--smt-stats` — print SMT routing telemetry after compilation.
+- `--lto <thin|full>`, `--static-link`, `--strip`, `--strip-debug`.
+- `--emit-asm`, `--emit-llvm`, `--emit-bc`, `--emit-types`, `--emit-vbc`.
+- `--keep-temps` — keep intermediate artefacts.
+- `--deny-warnings`, `--strict-intrinsics`.
+- `-D <lint>`, `-W <lint>`, `-A <lint>`, `-F <lint>`.
 
-### `verum run`
+### `verum run [FILE]`
 
-Build and execute. Pass arguments to the program after `--`:
+Run a project or a single `.vr` file.
 
-```bash
-verum run -- --port 8080 config.toml
-```
+Flags:
+- `--interp` — interpreter (default).
+- `--aot` — LLVM AOT, mutually exclusive with `--interp`.
+- `--release`.
+- `--timings`.
+- Arguments after `--` are forwarded to the program.
 
-### `verum check`
+### `verum check [PATH]`
 
-Type-check only. Fast (no codegen).
+Type-check only.
+
+Flags:
+- `--workspace` — check every workspace member.
+- `--parse-only` — stop after parsing (for parse-pass regression tests).
 
 ### `verum test`
 
-Run tests. Flags:
-- `--filter <regex>` — test name filter.
-- `--verify <level>` — override verify level.
-- `--nocapture` — don't suppress test output.
-- `--bench` — run benchmarks instead of tests.
+Flags:
+- `--filter <regex>`.
+- `--release`.
+- `--nocapture` — don't suppress stdout/stderr.
+- `--test-threads <N>`.
+- `--coverage` — enable coverage instrumentation.
 
 ### `verum bench`
 
-Run benchmarks.
-
-### `verum watch`
-
-Watch source files and re-build on change. Flags:
-- `--cmd <command>` — run after each successful build (`test`, `run`, etc.).
-
-## Verification & analysis
-
-### `verum verify`
-
-Run the verification pipeline.
-
 Flags:
-- `--level <runtime|static|smt|portfolio|certified>` — minimum level.
-- `--timeout <ms>` — per-obligation timeout.
-- `--emit-smtlib` — dump SMT-LIB queries to `target/smtlib/`.
-
-### `verum analyze`
-
-Run a static analysis.
-
-Flags:
-- `--report <cbgr|refinements|capabilities|smt|all>` — pick a report.
-- `--format <human|json>` — output format.
-
-### `verum audit`
-
-Scan dependencies against the advisory database.
-
-### `verum lint`
-
-Run the linter.
+- `--filter <regex>`.
+- `--save-baseline <name>` — save results as a baseline.
+- `--baseline <name>` — compare against a saved baseline.
 
 ### `verum fmt`
 
-Format all files.
+Flags:
+- `--check` — error if unformatted (CI mode).
+- `--verbose`.
+
+### `verum lint`
 
 Flags:
-- `--check` — error if unformatted; don't modify.
-- `--write` — modify in place (default).
-
-## Documentation
+- `--fix` — apply autofixes where available.
+- `--deny-warnings`.
 
 ### `verum doc`
 
-Generate docs.
+Flags:
+- `--open` — open docs in the default browser.
+- `--document-private-items`.
+- `--no-deps`.
+- `--format <html|markdown|json>` (default `html`).
+
+### `verum clean`
 
 Flags:
-- `--open` — open generated docs in the browser.
-- `--private` — include private items.
-- `--search <query>` — search docs.
+- `--all` — wipe caches too, not just `target/`.
+
+### `verum watch [COMMAND]`
+
+Rebuild on source change. `COMMAND` defaults to `build`.
+
+Flags:
+- `--clear` — clear the terminal between runs.
+- `--skip-verify`.
+
+## Verification
+
+### `verum verify [FILE]`
+
+Run the formal-verification pipeline.
+
+Flags:
+- `--mode <strategy>` — `runtime | static | formal | fast | thorough | certified | synthesize`
+  (aliases: `none → runtime`, `proof → formal`).
+- `--profile` — include timing breakdown.
+- `--show-cost` — print the SMT obligation cost model.
+- `--compare-modes` — run several modes and compare.
+- `--solver <z3|cvc5|portfolio>` — default `z3`.
+- `--timeout <seconds>` (default 30).
+- `--cache` — populate / read the proof cache.
+- `--interactive` — step through obligations.
+- `--function <name>` — verify a single function.
+
+### `verum analyze`
+
+Run a static analysis suite.
+
+Flags:
+- `--escape` — CBGR escape analysis.
+- `--context` — capability context analysis.
+- `--refinement` — refinement-type analysis.
+- `--all` — run them all.
+
+### `verum audit`
+
+Scan dependencies against the security advisory DB.
+
+Flags:
+- `--details` — per-advisory details.
+- `--direct-only` — skip transitive deps.
+
+### `verum smt-info`
+
+Diagnose the verification toolchain — linked backends, advanced
+capability matrix (interpolation, synthesis, abduction), and suggested
+feature activations. Does not touch user code.
+
+Flags: `--json`.
+
+### `verum smt-stats`
+
+Read routing statistics from the most recent verification session.
+
+Flags:
+- `--json`.
+- `--reset` — clear statistics after printing.
+
+## Profiling
+
+### `verum profile [FILE]`
+
+Performance profiling with CBGR overhead analysis.
+
+Flags:
+- `--memory` — Tier 0 / 1 / 2 reference distribution, per-function
+  heap-allocation report.
+- `--cpu` — hot-function profile.
+- `--cache` — proof-cache performance.
+- `--compilation` — phase-level compilation timings.
+- `--hot-threshold <pct>` (default `5.0`) — percent CPU considered hot.
+- `--output <path>`.
+- `--suggest` — print actionable optimisation hints.
+
+## Documentation & diagnostics
 
 ### `verum explain <code>`
 
-Print the extended explanation for an error code.
+Print the extended explanation for an error code (e.g. `E0312`, or
+`0312` without the prefix).
 
-### `verum api`
+Flags: `--no-color`.
 
-Query the API surface.
+### `verum info`
 
-```bash
-verum api --signature "fn map"
-verum api --type "Iterator"
-```
+Compiler info.
 
-## Interactive
-
-### `verum repl`
-
-Launch the REPL. See **[REPL](/docs/tooling/repl)**.
-
-### `verum playbook`
-
-Launch the Playbook TUI. See **[Playbook](/docs/tooling/playbook)**.
-
-### `verum file <path.vr>`
-
-Run a single `.vr` file as a script.
+Flags:
+- `--features` — enabled build features.
+- `--llvm` — LLVM version / features.
+- `--all`.
 
 ## Services
 
 ### `verum lsp`
 
-Run the language server over stdin/stdout. See **[LSP](/docs/tooling/lsp)**.
+Language server.
+
+Flags:
+- `--transport <stdio|socket>` (default `stdio`).
+- `--port <N>` (required for `socket`).
+- Language-feature overrides.
 
 ### `verum dap`
 
-Run the debug adapter over stdin/stdout.
+Debug adapter.
+
+Flags: same shape as `lsp`.
+
+## Interactive
+
+### `verum repl`
+
+Flags:
+- `--preload <file>`.
+- `--skip-verify`.
+
+### `verum playbook [FILE]`
+
+Notebook-style TUI.
+
+Flags:
+- `--tier <0|1>` — `0` is the interpreter (safe), `1` is AOT (fast).
+- `--vim`.
+- `--preload <file>`.
+- `--tutorial` — start with the interactive language tour.
+- `--profile` — live performance display.
+- `--export <out.vr>` — on exit.
+- `--no-color`.
+
+### `verum playbook-convert to-script <IN>`
+
+Convert a `.vrbook` playbook to a `.vr` script.
+
+Flags:
+- `-o, --output <path>`.
+- `--include-outputs` — keep cell outputs as comments.
+
+### `verum playbook-convert from-script <IN>`
+
+Convert a `.vr` script to a `.vrbook` playbook.
+
+Flags: `-o, --output <path>`.
 
 ## Packaging
 
-### `verum publish`
+### `verum package publish`
 
 Publish to the registry.
 
 Flags:
-- `--dry-run` — build artefacts, don't upload.
-- `--registry <name>` — alternate registry.
-- `--token <token>` — authentication token.
-- `--allow-dirty` — publish even with uncommitted changes (discouraged).
+- `--dry-run`.
+- `--allow-dirty` — publish with uncommitted changes.
 
-### `verum search <query>`
+### `verum package search <query>`
 
-Search the registry.
+Flags: `--limit <N>` (default 10).
+
+### `verum package install <name>`
+
+Flags: `--version <version>`.
 
 ### `verum tree`
 
-Print the dependency tree.
+Dependency tree.
 
-### `verum deps`
+Flags:
+- `--duplicates`.
+- `--depth <N>`.
 
-Dependency analysis. Flags:
-- `--duplicates` — find duplicate dependencies.
-- `--unused` — find unused dependencies.
-- `--outdated` — show dependencies with newer versions.
+## Workspace
 
-## Package lifecycle
+### `verum workspace list`
 
-### `verum cog-manager install <cog>`
+### `verum workspace add <path>`
 
-Install a cog to the user's library.
+### `verum workspace remove <name>`
 
-### `verum cog-manager update`
+### `verum workspace exec -- <command>`
 
-Update installed cogs.
+Run a command in every workspace member.
 
-### `verum cog-manager list`
+## Configuration
 
-List installed cogs.
+### `verum config show`
 
-## Utilities
+Print the resolved feature set.
 
-### `verum clean`
-
-Remove `target/`.
-
-### `verum update`
-
-Update dependencies per `Verum.toml` constraints.
-
-### `verum version`
-
-Print version info.
+Flags: `--json`.
 
 ### `verum config get <key>` / `verum config set <key> <value>`
 
-Read / write configuration.
+Read / write persistent configuration.
 
-### `verum proof-cache stats`
+## Version
 
-Statistics on the SMT proof cache.
+### `verum version`
 
-### `verum proof-cache clear`
+Flags: `--verbose`.
 
-Clear the SMT proof cache.
+## Language-feature overrides
 
-### `verum disasm <artefact>`
-
-Disassemble a VBC artefact.
-
-### `verum vbc-stats <artefact>`
-
-Statistics on a VBC artefact.
-
-### `verum expand-macros [path]`
-
-Show post-macro-expansion source.
-
-### `verum target install <triple>`
-
-Install a cross-compilation target.
-
-## Global flags
-
-Available on every command:
+Most commands that compile code accept:
 
 ```
---verbose, -v          # increase verbosity
---quiet, -q            # reduce verbosity
---offline              # don't hit the network
---frozen               # error on lockfile mismatch
---locked               # use lockfile exactly
---manifest-path <path> # override Verum.toml
---color <always|auto|never>
+--tier 0|1|2|3           # execution tier
+-Z <flag=value>          # unstable feature
+-D, -W, -A, -F <lint>    # lint level overrides
 ```
+
+See **[Stdlib → runtime](/docs/stdlib/runtime)** for tier semantics.
 
 ## Environment variables
 
@@ -264,7 +343,6 @@ Available on every command:
 VERUM_HOME              # toolchain root (default ~/.verum)
 VERUM_LOG               # log level (trace|debug|info|warn|error)
 VERUM_SMT_TELEMETRY     # emit SMT routing telemetry
-VERUM_PROFILE           # default profile
 VERUM_TARGET_DIR        # default output directory
 VERUM_TOKEN             # registry authentication
 ```
@@ -272,3 +350,5 @@ VERUM_TOKEN             # registry authentication
 ## See also
 
 - **[Tooling → CLI](/docs/tooling/cli)** — usage-oriented overview.
+- **[Verification → gradual verification](/docs/verification/gradual-verification)** — verify `--mode` strategies.
+- **[Architecture → SMT integration](/docs/architecture/smt-integration)** — `smt-info` / `smt-stats` internals.
