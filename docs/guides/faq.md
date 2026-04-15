@@ -60,28 +60,29 @@ on the roadmap.
 It is *capable of* theorem-prover-level proofs (see
 [proofs](/docs/verification/proofs)), but you don't have to use that.
 Most code uses [refinement types](/docs/language/refinement-types) +
-`@verify(smt)`, which feels like "very strong type checking," not
+`@verify(formal)`, which feels like "very strong type checking," not
 "theorem proving."
 
 ### Do I have to prove everything?
 
 No. Verification is a [spectrum](/docs/philosophy/gradual-verification).
 Default is `@verify(static)` — dataflow, CBGR, and refinement
-checking without SMT. You opt into `@verify(smt)` or stronger only
+checking without SMT. You opt into `@verify(formal)` or stronger only
 where it matters.
 
 ### Which SMT solver does it use?
 
 Both Z3 and CVC5, selected per-obligation by capability routing. Z3
 handles LIA/bitvectors/arrays; CVC5 handles strings, nonlinear
-arithmetic, SyGuS, and finite-model-finding. `@verify(portfolio)`
+arithmetic, SyGuS, and finite-model-finding. `@verify(thorough)`
 cross-validates. See [SMT routing](/docs/verification/smt-routing).
 
 ### What happens when the solver times out?
 
-Default 5 s per obligation. On timeout, the default
-`fallback_strategy = "other-solver"` retries with the non-preferred
-backend. Configurable in `Verum.toml [verification]`.
+Default 5 s per obligation. On timeout, the fallback retries with a
+different solver. Configurable in `Verum.toml [verify]` via
+`solver_timeout_ms` and per-module `[verify.modules."my.module"]`
+overrides.
 
 ### Can I check proofs of an external library without re-verifying?
 
@@ -186,7 +187,7 @@ See [FFI](/docs/language/ffi).
 3. **Structured concurrency** — `nursery`, `select`.
 4. **Three-tier references** — CBGR is invisible at first; when
    performance matters, promote to `&checked T`.
-5. **`@verify(smt)`** — annotate one critical function; see what the
+5. **`@verify(formal)`** — annotate one critical function; see what the
    solver tells you.
 6. **Dependent types / cubical** — reach for these when you have a
    concrete reason.

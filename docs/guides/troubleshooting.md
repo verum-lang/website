@@ -58,11 +58,11 @@ macOS: `xcode-select --install`.
 
 Default timeout is 5 s per obligation. Causes:
 - Unbounded quantifier: `forall x: Int. P(x)` → bound it — `forall x in 0..n. P(x)`.
-- Heavy nonlinearity: try `@verify(cvc5)` — CVC5's CAD handles
-  nonlinear arithmetic better than Z3 on hard cases.
-- Cached stale result: `verum proof-cache clear` and retry.
+- Heavy nonlinearity: escalate to `@verify(thorough)` — races Z3
+  with CVC5 (whose CAD engine is better at nonlinear arithmetic).
+- Cached stale result: `verum clean` and retry.
 
-Increase per-project: `Verum.toml [verification] smt_timeout_ms = 30_000`.
+Increase per-project: `Verum.toml [verify] solver_timeout_ms = 30_000`.
 
 ### "Solvers disagreed on obligation"
 
@@ -154,7 +154,7 @@ verum build --timings
 
 shows per-phase time. Usual culprits:
 - Phase 3a contracts or Phase 4 refinement verification on a large
-  file with many `@verify(smt)` functions: scope down what needs SMT,
+  file with many `@verify(formal)` functions: scope down what needs SMT,
   or raise `[verify] solver_timeout_ms` only for the functions that
   need it via `[verify.modules.*]`.
 - Phase 7 (AOT: VBC → LLVM) on a big crate: increase `codegen_units`
@@ -170,7 +170,8 @@ strip    = true
 panic    = "abort"
 ```
 
-Check `verum vbc-stats target/release/my.vbc` for oversized functions
+Dump the VBC with `verum build --emit-vbc` and inspect
+`target/release/*.vbc.txt` for oversized functions
 (macro-expansion gone wide is a common cause).
 
 ## Toolchain issues

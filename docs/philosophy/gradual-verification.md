@@ -27,10 +27,10 @@ CBGR, you opt into SMT for the predicates you care about.
 
 Some invariants must hold. A kernel page-table walker, a consensus
 protocol's safety lemma, a cryptographic key-schedule — these earn
-`@verify(portfolio)` or `@verify(certified)`.
+`@verify(thorough)` or `@verify(certified)`.
 
 Most code should hold. Business logic, CRUD handlers, data pipelines —
-these earn `@verify(static)` or `@verify(smt)`. A predicate that
+these earn `@verify(static)` or `@verify(formal)`. A predicate that
 "should" be true becomes one that _is_ true, checked before you ship.
 
 Prototype code does not yet know what it wants to hold. For this,
@@ -41,7 +41,7 @@ obligation once the design settles.
 
 ```verum
 // Hot path, aggressively proven.
-@verify(portfolio)
+@verify(thorough)
 pub fn verify_signature(msg: &[Byte], sig: &Signature, pk: &PublicKey) -> Bool
     where ensures result => pk.verifies(msg, sig)
 { ... }

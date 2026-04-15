@@ -47,8 +47,8 @@ refs can cost seconds. If a refinement grows, extract a named
 ## Start with `@verify(static)`, upgrade where it pays
 
 Every function gets static verification for free. Reach for
-`@verify(smt)` on functions where the contracts actually reason
-about values. Use `@verify(portfolio)` for safety-critical: crypto,
+`@verify(formal)` on functions where the contracts actually reason
+about values. Use `@verify(thorough)` for safety-critical: crypto,
 protocol invariants, kernels.
 
 ## Prefer structured concurrency

@@ -268,7 +268,7 @@ Enabled by default — results are keyed on the obligation's SMT-LIB
 fingerprint. Across builds, ~85% hit rate is typical. Check:
 
 ```bash
-verum proof-cache stats
+verum smt-stats
 ```
 
 ### Avoid unbounded quantifiers
@@ -300,7 +300,7 @@ lto = "thin"
 `verum build --timings` shows where the time goes. Typical hotspots:
 
 - Phase 4 (semantic + CBGR) in generics-heavy code.
-- Phase 3a / Phase 4 verification when many `@verify(smt)` functions
+- Phase 3a / Phase 4 verification when many `@verify(formal)` functions
   have large obligations.
 - Phase 7 (AOT: VBC → LLVM) when LTO is `full`.
 

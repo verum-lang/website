@@ -54,7 +54,7 @@ type Balanced<T>           is Tree<T> { is_balanced(self) };
 ### Use in contracts
 
 ```verum
-@verify(smt)
+@verify(formal)
 fn insert_sorted<T: Ord>(xs: &mut Sorted<T>, x: T)
     where ensures is_sorted(self),
           ensures self.len() == old(self.len()) + 1
@@ -134,8 +134,9 @@ Even with `@logic`, some predicates are too hard:
 - **Unbounded existential in negative position**: `!exists x: Int. P(x)`
   forces the solver to prove absence across all integers. Either bound
   the search or supply a manual proof.
-- **Non-linear arithmetic with quantifiers**: try `@verify(cvc5)` —
-  CVC5's cylindrical algebraic decomposition handles these.
+- **Non-linear arithmetic with quantifiers**: escalate to
+  `@verify(thorough)` — races CVC5 (whose cylindrical algebraic
+  decomposition handles these well) with Z3 and tactics.
 - **Higher-order**: `@logic` functions can't take function arguments.
   Specialise or use a tactic.
 

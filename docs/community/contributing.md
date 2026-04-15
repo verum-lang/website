@@ -114,7 +114,7 @@ See [README](https://github.com/verum-lang/website/blob/main/README.md).
 - **`verum fmt`** before committing.
 - **`verum lint --strict`** must pass.
 - **Refinement types** wherever the invariant is load-bearing.
-- **`@verify(static)`** is the default; graduate to `@verify(smt)` for
+- **`@verify(static)`** is the default; graduate to `@verify(formal)` for
   safety-critical functions.
 
 ### Commit messages

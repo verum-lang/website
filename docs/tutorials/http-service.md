@@ -16,7 +16,7 @@ POST, stores it under a short code, and redirects visitors of
 - Model the domain with refinement types (not strings).
 - Inject the store via the context system so tests can swap in a mock.
 - Serve requests concurrently with a `nursery`-bounded worker pool.
-- Add `@verify(smt)` to the code-generator to prove it never collides.
+- Add `@verify(formal)` to the code-generator to prove it never collides.
 - Write integration tests that use the real HTTP layer.
 
 ## 1. Scaffold
@@ -38,9 +38,9 @@ profile = "application"
 [dependencies]
 http = "0.8"
 
-[verification]
-default_level = "smt"
-smt_timeout_ms = 5000
+[verify]
+default_strategy  = "formal"
+solver_timeout_ms = 5000
 ```
 
 ## 2. Domain types — types that prove things
@@ -112,8 +112,8 @@ const ALPHABET: &Text =
     &"abcdefghjkmnpqrstuvwxyz23456789";          // excludes 0/o/1/l
 
 /// Deterministic-from-seed code generation.
-/// @verify(smt) proves the result is always a valid Code.
-@verify(smt)
+/// @verify(formal) proves the result is always a valid Code.
+@verify(formal)
 pub fn generate(seed: UInt64, length: Int { 6 <= self && self <= 10 })
     -> Code
     where ensures result.len() == length,
@@ -424,7 +424,7 @@ Run:
 
 ```bash
 $ verum test
-   [verification] codegen::generate  ✓ (z3, 28 ms)
+   [verify] codegen::generate  ✓ (formal/z3, 28 ms)
    test tests::codegen_produces_valid_code          ... ok
    test tests::codegen_is_always_valid              ... ok (100 cases)
    test tests::memory_store_round_trip              ... ok
@@ -432,9 +432,10 @@ $ verum test
    all 4 tests passed
 ```
 
-Notice the `[verification]` line: Z3 proved `codegen::generate`
-satisfies its postconditions **at compile time**. The property test
-then sanity-checks with random inputs.
+Notice the `[verify]` line: the capability router dispatched to Z3
+and proved `codegen::generate` satisfies its postconditions **at
+compile time**. The property test then sanity-checks with random
+inputs.
 
 ## 9. Run it
 
@@ -472,7 +473,7 @@ $ curl localhost:8080/health
   re-checks.
 - **Context protocols for DI.** One `Store` trait, an in-memory
   impl for tests, swap for production — no mocking framework.
-- **`@verify(smt)` with loop invariants.** The code generator's
+- **`@verify(formal)` with loop invariants.** The code generator's
   post-condition is proven by Z3, not tested.
 - **Structured concurrency with backpressure.** `nursery` bounds
   task lifetimes; `Semaphore` bounds total concurrency.

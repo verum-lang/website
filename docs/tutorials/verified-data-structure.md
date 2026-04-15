@@ -59,7 +59,7 @@ The hard case. We need to prove that inserting at the correct
 position preserves sortedness.
 
 ```verum
-@verify(smt)
+@verify(formal)
 pub fn insert<T: Ord>(xs: SortedList<T>, x: T) -> SortedList<T>
     where ensures is_sorted(result),
           ensures result.len() == xs.len() + 1
@@ -87,7 +87,7 @@ Z3 gets this from:
 ## 4. Removal
 
 ```verum
-@verify(smt)
+@verify(formal)
 pub fn remove_at<T: Ord>(xs: SortedList<T>, index: Int { 0 <= self && self < xs.len() })
     -> (SortedList<T>, T)
     where ensures is_sorted(result.0),
@@ -106,7 +106,7 @@ the solver proves that deleting one element preserves sortedness
 ## 5. Merge
 
 ```verum
-@verify(smt)
+@verify(formal)
 pub fn merge<T: Ord>(a: SortedList<T>, b: SortedList<T>) -> SortedList<T>
     where ensures is_sorted(result),
           ensures result.len() == a.len() + b.len()
@@ -203,9 +203,9 @@ they validate the solver's proofs against random inputs.
 
 ```bash
 $ verum test
-   [verification] SortedList::insert  ✓ (z3, 14 ms)
-   [verification] SortedList::remove_at  ✓ (z3, 9 ms)
-   [verification] SortedList::merge  ✓ (z3, 210 ms)
+   [verify] SortedList::insert      ✓ (formal/z3,  14 ms)
+   [verify] SortedList::remove_at   ✓ (formal/z3,   9 ms)
+   [verify] SortedList::merge       ✓ (formal/z3, 210 ms)
    test tests::insert_preserves_sort          ... ok
    test tests::merge_produces_sorted          ... ok
    test tests::insert_preserves_sort_forall   ... ok (100 cases)
@@ -216,11 +216,13 @@ $ verum test
 
 If `merge` takes > 5 s to verify, try:
 
-- Switch to `@verify(cvc5)` on merge specifically — CVC5's
-  quantifier reasoning is often faster on nested foralls.
+- Escalate to `@verify(thorough)` on merge specifically — this races
+  Z3, CVC5, and tactic-based proof search; CVC5's quantifier
+  reasoning is often faster on nested foralls.
 - Split invariants 4 and 5 into separate helper `@logic` lemmas
   that name the adjacency property.
-- Precompile with `@verify(portfolio)` and let the cache persist.
+- Let the proof cache persist across runs (on by default) and the
+  first slow build won't recur.
 
 ## What you learned
 

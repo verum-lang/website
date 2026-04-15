@@ -27,7 +27,7 @@ Looking for short task-oriented snippets? See **[Cookbook](/docs/cookbook)**.
   a tiny URL shortener with refinement-typed routes,
   context-injected storage, and structured concurrency. **60 min.**
   *Covers: routing, refinements, `nursery`, `Semaphore`-bounded
-  workers, testing with provided mocks, `@verify(smt)` with loop
+  workers, testing with provided mocks, `@verify(formal)` with loop
   invariants.*
 
 ## For libraries
@@ -42,7 +42,7 @@ Looking for short task-oriented snippets? See **[Cookbook](/docs/cookbook)**.
 
 - **[A verified data structure](/docs/tutorials/verified-data-structure)** —
   implement a sorted-list and prove the sort invariant with
-  `@verify(smt)`. **60 min.**
+  `@verify(formal)`. **60 min.**
   *Covers: refinement reflection, invariants, `@logic`, loop invariants.*
 
 ## For concurrency

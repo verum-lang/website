@@ -45,7 +45,7 @@ type User is {
     age:   Int { 0 <= self && self <= 150 },
 };
 
-@verify(smt)
+@verify(formal)
 fn promote(users: &List<User>, target: UserId) -> Maybe<User>
     using [Database, Logger]
     where ensures result is Some(u) => u.id == target

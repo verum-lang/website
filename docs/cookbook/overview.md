@@ -83,6 +83,6 @@ Recipes planned but not yet written. Track progress in the repo.
 
 ### Verification
 
-- Adding `@verify(smt)` to an existing function
+- Adding `@verify(formal)` to an existing function
 - Writing a `@logic` function for reflection
 - Debugging an SMT failure
