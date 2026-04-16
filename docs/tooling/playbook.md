@@ -74,7 +74,7 @@ Contexts can be bound interactively:
 
 ```
 > bind Database = postgres://localhost/dev
-> bind Logger   = ConsoleLogger::new(LogLevel.Debug)
+> bind Logger   = ConsoleLogger.new(LogLevel.Debug)
 > fetch_user(UserId(42))
 ```
 

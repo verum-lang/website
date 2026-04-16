@@ -101,7 +101,7 @@ call-site handling.
 
 ## Embrace `Maybe` over sentinel values
 
-`Maybe.None` is clearer than `-1`, `""`, or `Vec::new()` as
+`Maybe.None` is clearer than `-1`, `""`, or `List.new()` as
 placeholder values. The compiler forces handling; sentinels rot.
 
 ## Keep functions short; extract ruthlessly

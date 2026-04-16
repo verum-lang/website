@@ -13,7 +13,7 @@ use core.async::*;
 async fn echo_server(addr: &Text) -> IoResult<()>
     using [IO, Logger]
 {
-    let listener = TcpListener::bind(addr).await?;
+    let listener = TcpListener.bind(addr).await?;
     Logger.info(&f"listening on {addr}");
 
     nursery(on_error: wait_all) {
@@ -45,7 +45,7 @@ async fn handle_client(mut stream: TcpStream, peer: SocketAddr) using [Logger] {
 
 fn main() using [IO] {
     block_on(async {
-        provide Logger = ConsoleLogger::new(LogLevel::Info) in {
+        provide Logger = ConsoleLogger.new(LogLevel.Info) in {
             echo_server(&"0.0.0.0:7777").await.expect("server")
         }
     });
@@ -67,7 +67,7 @@ fn main() using [IO] {
 Intercept `Ctrl+C`:
 
 ```verum
-let stop = Shared::new(AtomicBool::new(false));
+let stop = Shared.new(AtomicBool.new(false));
 let s_clone = stop.clone();
 spawn async move {
     wait_for_signal(Signal.Interrupt).await;

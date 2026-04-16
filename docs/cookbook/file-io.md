@@ -7,8 +7,8 @@ description: Open a file, iterate lines lazily, handle errors.
 
 ```verum
 fn count_errors(path: &Path) -> IoResult<Int> using [IO] {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
+    let file = File.open(path)?;
+    let mut reader = BufReader.new(file);
     let mut count = 0;
     for line in reader.lines() {
         let line = line?;                                 // IoResult<Text>
@@ -24,7 +24,7 @@ fn count_errors(path: &Path) -> IoResult<Int> using [IO] {
 
 ```verum
 let bytes = fs::read(path)?;
-let text  = Text::from_utf8(&bytes)?;
+let text  = Text.from_utf8(&bytes)?;
 ```
 
 **Text convenience**:
@@ -38,8 +38,8 @@ for line in text.lines() { ... }                          // &Text slices
 
 ```verum
 async fn count_errors_async(path: &Path) -> IoResult<Int> using [IO] {
-    let file = File::open_async(path).await?;
-    let mut reader = BufReader::new(file);
+    let file = File.open_async(path).await?;
+    let mut reader = BufReader.new(file);
     let mut count = 0;
     while let Maybe.Some(line) = reader.next_line_async().await? {
         if line.starts_with("ERROR") { count += 1; }
@@ -50,12 +50,12 @@ async fn count_errors_async(path: &Path) -> IoResult<Int> using [IO] {
 
 **Large files** — prefer `BufReader` over `read_to_string` to avoid
 loading everything into memory. Default buffer is 8 KiB; tune via
-`BufReader::with_capacity(64 * 1024, file)` for sequential workloads.
+`BufReader.with_capacity(64 * 1024, file)` for sequential workloads.
 
 ### Writing
 
 ```verum
-let mut w = BufWriter::new(File::create(path)?);
+let mut w = BufWriter.new(File.create(path)?);
 for record in &records {
     w.write_all(record.to_text().as_bytes())?;
     w.write_all(b"\n")?;
@@ -71,4 +71,4 @@ writes, call `.flush()?` explicitly so a failure propagates.
 ### See also
 
 - **[io](/docs/stdlib/io)** — `Read`, `Write`, `BufRead`.
-- **[text](/docs/stdlib/text)** — `Text::from_utf8`, line iteration.
+- **[text](/docs/stdlib/text)** — `Text.from_utf8`, line iteration.

@@ -27,7 +27,7 @@ This installs `verum` to `~/.verum/bin` and adds it to your `PATH`.
 ## Install from pre-built binaries
 
 Download the archive for your platform from the
-[releases page](https://github.com/verum-lang/verum/releases), extract,
+releases page, extract,
 and put the `verum` binary on your `PATH`:
 
 ```bash

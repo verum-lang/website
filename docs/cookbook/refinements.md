@@ -8,9 +8,9 @@ description: Domain-modelling with refinement types — the common idioms.
 ### Positive / nonzero / in-range
 
 ```verum
-type Positive<T: Numeric>  is T { self > T::zero() };
-type NonZero<T: Numeric>   is T { self != T::zero() };
-type NonNeg<T: Numeric>    is T { self >= T::zero() };
+type Positive<T: Numeric>  is T { self > T.zero() };
+type NonZero<T: Numeric>   is T { self != T.zero() };
+type NonNeg<T: Numeric>    is T { self >= T.zero() };
 type Percentage            is Float { 0.0 <= self && self <= 100.0 };
 type UnitInterval          is Float { 0.0 <= self && self <= 1.0 };
 type Probability           is UnitInterval;

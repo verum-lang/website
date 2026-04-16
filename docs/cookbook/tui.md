@@ -22,7 +22,7 @@ type Msg is
     | Reset
     | Quit;
 
-impl Counter {
+implement Counter {
     fn new() -> Counter { Counter { count: 0 } }
 }
 
@@ -31,30 +31,30 @@ implement Model for Counter {
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Msg.Increment => { self.count += 1;       Command::none() }
-            Msg.Decrement => { self.count -= 1;       Command::none() }
-            Msg.Reset     => { self.count = 0;        Command::none() }
-            Msg.Quit      => Command::exit(),
+            Msg.Increment => { self.count += 1;       Command.none() }
+            Msg.Decrement => { self.count -= 1;       Command.none() }
+            Msg.Reset     => { self.count = 0;        Command.none() }
+            Msg.Quit      => Command.exit(),
         }
     }
 
     fn view(&self, f: &mut Frame) {
         let area = f.area();
-        let color = if self.count >= 0 { Color::Green } else { Color::Red };
+        let color = if self.count >= 0 { Color.Green } else { Color.Red };
 
-        Paragraph::new(&f"Count: {self.count}")
-            .block(Block::new()
+        Paragraph.new(&f"Count: {self.count}")
+            .block(Block.new()
                 .title(&" counter ")
                 .borders(Borders.All)
-                .border_style(Style::new().fg(Color::Cyan)))
-            .alignment(Alignment::Centre)
-            .style(Style::new().fg(color).add_modifier(Modifier.Bold))
+                .border_style(Style.new().fg(Color.Cyan)))
+            .alignment(Alignment.Centre)
+            .style(Style.new().fg(color).add_modifier(Modifier.Bold))
             .render(f, area);
     }
 
     fn subscriptions(&self) -> List<Subscription<Msg>> {
         list![
-            Subscription::events(|e| match e {
+            Subscription.events(|e| match e {
                 Event.Key(k) => match k.code {
                     KeyCode.Char('+') | KeyCode.Up    => Maybe.Some(Msg.Increment),
                     KeyCode.Char('-') | KeyCode.Down  => Maybe.Some(Msg.Decrement),
@@ -69,7 +69,7 @@ implement Model for Counter {
 }
 
 async fn main() using [IO] {
-    run(Counter::new()).await.expect("tui");
+    run(Counter.new()).await.expect("tui");
 }
 ```
 
@@ -98,26 +98,26 @@ to reset, **Q** / **Esc** to quit.
 enumerate every possible transition.
 
 **2. `update`**. Pure function: old state + message → new state +
-`Command` (side effect). `Command::none()` = no side effect.
-`Command::exit()` = quit the app.
+`Command` (side effect). `Command.none()` = no side effect.
+`Command.exit()` = quit the app.
 
 **3. `view`**. Pure function: state → drawn `Frame`. Widgets are
 stacked/laid-out using the `layout` sub-module.
 
 **4. `subscriptions`**. Event sources mapped to messages. Most TUIs
 just subscribe to key events; you can also subscribe to timers
-(`Subscription::interval(1.seconds(), |_| Msg.Tick)`) or streams.
+(`Subscription.interval(1.seconds(), |_| Msg.Tick)`) or streams.
 
 ### Layering widgets
 
 ```verum
 fn view(&self, f: &mut Frame) {
     let area = f.area();
-    let layout = Flex::new(Direction::Vertical)
+    let layout = Flex.new(Direction.Vertical)
         .constraints(&[
-            Constraint::Length(3),     // header
-            Constraint::Fill,          // body
-            Constraint::Length(1),     // status
+            Constraint.Length(3),     // header
+            Constraint.Fill,          // body
+            Constraint.Length(1),     // status
         ])
         .split(area);
 
@@ -132,13 +132,13 @@ fn view(&self, f: &mut Frame) {
 ```verum
 type AppState is { items: List<Text>, list_state: ListState };
 
-impl Model for AppState {
+implement Model for AppState {
     type Message = Msg;
 
     fn view(&self, f: &mut Frame) {
-        SelectableList::new(&self.items)
-            .block(Block::new().title(&"Files").borders(Borders.All))
-            .highlight_style(Style::new().modifier(Modifier.Reversed))
+        SelectableList.new(&self.items)
+            .block(Block.new().title(&"Files").borders(Borders.All))
+            .highlight_style(Style.new().modifier(Modifier.Reversed))
             .highlight_symbol(&">> ")
             .render_stateful(f, f.area(), &mut self.list_state.clone());
     }
@@ -149,7 +149,7 @@ impl Model for AppState {
             Msg.Down => self.list_state.select_next(),
             _ => (),
         }
-        Command::none()
+        Command.none()
     }
     // ... subscriptions ...
 }
@@ -162,7 +162,7 @@ Trigger work from `update`:
 ```verum
 Msg.Load(path) => {
     let path = path.clone();
-    Command::task(async move {
+    Command.task(async move {
         match fs::read_to_string_async(&path).await {
             Result.Ok(text) => Msg.Loaded(text),
             Result.Err(e)   => Msg.Error(e.to_string()),
@@ -171,7 +171,7 @@ Msg.Load(path) => {
 }
 ```
 
-`Command::task(async { … })` spawns the async work; when it
+`Command.task(async { … })` spawns the async work; when it
 completes, its result is delivered back to `update` as a message.
 
 ### Text input
@@ -180,14 +180,14 @@ completes, its result is delivered back to `update` as a message.
 type AppState is { input: TextInputState };
 
 fn view(&self, f: &mut Frame) {
-    TextInput::new()
+    TextInput.new()
         .placeholder(&"type a name")
         .render_stateful(f, area, &mut self.input.clone());
 }
 
 fn subscriptions(&self) -> List<Subscription<Msg>> {
     list![
-        Subscription::events(|e| Maybe.Some(Msg.InputEvent(e))),
+        Subscription.events(|e| Maybe.Some(Msg.InputEvent(e))),
     ]
 }
 
@@ -199,9 +199,9 @@ fn update(&mut self, msg: Msg) -> Command<Msg> {
                 // ... submit self.input.buffer ...
                 self.input.clear();
             }
-            Command::none()
+            Command.none()
         }
-        _ => Command::none()
+        _ => Command.none()
     }
 }
 ```
@@ -209,15 +209,15 @@ fn update(&mut self, msg: Msg) -> Command<Msg> {
 ### Colour themes
 
 ```verum
-let theme = Theme::builtin("dark");
+let theme = Theme.builtin("dark");
 // or
-let theme = Theme::from_colors(&map![
-    "headline".to_string() => Color::Rgb(Rgb { r: 255, g: 140, b: 0 }),
-    "body".to_string()      => Color::White,
-    "accent".to_string()    => Color::Cyan,
+let theme = Theme.from_colors(&map![
+    "headline".to_string() => Color.Rgb(Rgb { r: 255, g: 140, b: 0 }),
+    "body".to_string()      => Color.White,
+    "accent".to_string()    => Color.Cyan,
 ]);
 
-Paragraph::new(text)
+Paragraph.new(text)
     .style(theme.style(&"body"))
     .render(f, area);
 ```
@@ -227,4 +227,4 @@ Paragraph::new(text)
 - **[term](/docs/stdlib/term)** — 7-layer TUI framework with every
   widget.
 - **[Language → async & concurrency](/docs/language/async-concurrency)**
-  — what `Command::task` and `Subscription` compose over.
+  — what `Command.task` and `Subscription` compose over.

@@ -19,12 +19,12 @@ use core.meta.*;
 pub meta fn derive_display_all<T>() -> TokenStream
     using [TypeInfo, AstAccess, CompileDiag]
 {
-    let name = TypeInfo::name_of::<T>();
-    let fields = TypeInfo::fields_of::<T>();
+    let name = TypeInfo.name_of::<T>();
+    let fields = TypeInfo.fields_of::<T>();
 
     if fields.is_empty() {
-        CompileDiag::emit_warning(
-            Span::call_site(),
+        CompileDiag.emit_warning(
+            Span.call_site(),
             &f"DisplayAll has nothing to display for unit type {name}",
         );
     }
@@ -73,7 +73,7 @@ capability contexts we need:
 - `AstAccess`: build the generated tokens with `quote`.
 - `CompileDiag`: emit warnings if the derive is misapplied.
 
-**`TypeInfo::fields_of::<T>()`** returns `List<FieldInfo>` — each
+**`TypeInfo.fields_of::<T>()`** returns `List<FieldInfo>` — each
 entry has `.name`, `.type_name`, `.type_kind`, `.visibility`, etc.
 
 **`quote { … }`** is hygienic. Interpolation forms:
@@ -101,8 +101,8 @@ Prints the post-expansion source so you can read exactly what
 pub meta fn derive_getters<T>() -> TokenStream
     using [TypeInfo, AstAccess]
 {
-    let name = TypeInfo::name_of::<T>();
-    let fields = TypeInfo::fields_of::<T>();
+    let name = TypeInfo.name_of::<T>();
+    let fields = TypeInfo.fields_of::<T>();
 
     let getters: List<TokenStream> = fields.iter().map(|f| {
         quote {

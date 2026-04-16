@@ -36,7 +36,7 @@ family: `lookup_host_v4_async` / `lookup_host_v6_async`.
 ### Reverse resolution (PTR)
 
 ```verum
-let addr = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
+let addr = IpAddr.V4(Ipv4Addr.new(1, 1, 1, 1));
 match lookup_addr_async(&addr).await {
     Result.Ok(name) => println(&f"{addr} -> {name}"),
     Result.Err(e)   => eprintln(&f"dns: {e:?}"),
@@ -62,9 +62,9 @@ TcpStream::connect_async("example.com:443").await?;    // implicit DNS
 ### Custom resolver (specific nameservers, timeout, retries)
 
 ```verum
-let resolver = Resolver::new()
-    .nameserver_ip(Ipv4Addr::new(1, 1, 1, 1))         // Cloudflare
-    .nameserver_ip(Ipv4Addr::new(8, 8, 8, 8))         // Google
+let resolver = Resolver.new()
+    .nameserver_ip(Ipv4Addr.new(1, 1, 1, 1))         // Cloudflare
+    .nameserver_ip(Ipv4Addr.new(8, 8, 8, 8))         // Google
     .timeout_ms(3000)
     .max_retries(2);
 

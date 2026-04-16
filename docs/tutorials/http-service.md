@@ -114,12 +114,12 @@ const ALPHABET: &Text =
 /// Deterministic-from-seed code generation.
 /// @verify(formal) proves the result is always a valid Code.
 @verify(formal)
-pub fn generate(seed: UInt64, length: Int { 6 <= self && self <= 10 })
+fn generate(seed: UInt64, length: Int { 6 <= self && self <= 10 })
     -> Code
     where ensures result.len() == length,
           ensures result.matches(rx#"^[a-hj-km-np-z2-9]+$")
 {
-    let mut out = Text::with_capacity(length);
+    let mut out = Text.with_capacity(length);
     let mut s = seed;
     let n = ALPHABET.len() as UInt64;
 
@@ -159,10 +159,10 @@ pub type MemoryStore is {
     inner: Shared<RwLock<Map<Code, Link>>>,
 };
 
-impl MemoryStore {
-    pub fn new() -> MemoryStore {
+implement MemoryStore {
+    fn new() -> MemoryStore {
         MemoryStore {
-            inner: Shared::new(RwLock::new(Map::new())),
+            inner: Shared.new(RwLock.new(Map.new())),
         }
     }
 }
@@ -213,12 +213,12 @@ use .self.codegen;
 pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
     using [Store, Clock]
 {
-    let obj = parse_json(&Text::from_utf8(body)?)?;
-    let raw = obj.get(&"target").and_then(Data::as_text)
-        .ok_or(Error::new(&"missing 'target'"))?;
+    let obj = parse_json(&Text.from_utf8(body)?)?;
+    let raw = obj.get(&"target").and_then(Data.as_text)
+        .ok_or(Error.new(&"missing 'target'"))?;
 
-    let target: TargetUrl = TargetUrl::try_from(raw.clone())
-        .map_err(|_| Error::new(&"invalid URL"))?;
+    let target: TargetUrl = TargetUrl.try_from(raw.clone())
+        .map_err(|_| Error.new(&"invalid URL"))?;
 
     let seed = Clock.now_ns();
     let code = codegen::generate(seed, 7);
@@ -226,14 +226,14 @@ pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
     let link = Link {
         code:    code.clone(),
         target,
-        created: Instant::now(),
+        created: Instant.now(),
         hits:    0,
     };
-    Store.insert(link).await.map_err(|e| Error::new(&f"store: {e:?}"))?;
+    Store.insert(link).await.map_err(|e| Error.new(&f"store: {e:?}"))?;
 
     let body = json#"""{"code": "${code}"}""".to_bytes();
-    Result.Ok(Response::new(StatusCode::created())
-        .with_headers(Headers::new_with(&"Content-Type", &"application/json"))
+    Result.Ok(Response.new(StatusCode.created())
+        .with_headers(Headers.new_with(&"Content-Type", &"application/json"))
         .with_body(body))
 }
 
@@ -241,23 +241,23 @@ pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
 pub async fn handle_redirect(code_str: &Text) -> Result<Response, Error>
     using [Store]
 {
-    let code: Code = Code::try_from(code_str.to_string())
-        .map_err(|_| Error::new(&"bad code"))?;
+    let code: Code = Code.try_from(code_str.to_string())
+        .map_err(|_| Error.new(&"bad code"))?;
 
     match Store.lookup(&code).await? {
         Maybe.Some(link) => {
             Store.increment_hits(&code).await.ok();   // best-effort
-            Result.Ok(Response::new(StatusCode::new(302))
-                .with_headers(Headers::new_with(&"Location", &link.target))
-                .with_body(List::new()))
+            Result.Ok(Response.new(StatusCode.new(302))
+                .with_headers(Headers.new_with(&"Location", &link.target))
+                .with_body(List.new()))
         }
-        Maybe.None => Result.Ok(Response::new(StatusCode::not_found())),
+        Maybe.None => Result.Ok(Response.new(StatusCode.not_found())),
     }
 }
 
 pub async fn handle_health() -> Response using [Store] {
     let count = Store.total_count().await.unwrap_or(0);
-    Response::new(StatusCode::ok())
+    Response.new(StatusCode::ok())
         .with_body(f"""{{"count": {count}}}""".to_bytes())
 }
 
@@ -270,17 +270,17 @@ pub async fn route(req: Request) -> Response
             Result.Ok(r) => r,
             Result.Err(e) => {
                 Logger.warn(&f"shorten failed: {e}");
-                Response::new(StatusCode::bad_request())
+                Response.new(StatusCode::bad_request())
                     .with_body(f"""{{"error": "{e}"}}""".to_bytes())
             }
         },
         (Method.Get, path) if path.starts_with("/s/") => {
             let code = &path[3..];
             handle_redirect(&code.to_string()).await
-                .unwrap_or_else(|_| Response::new(StatusCode::not_found()))
+                .unwrap_or_else(|_| Response.new(StatusCode.not_found()))
         }
         (Method.Get, "/health") => handle_health().await,
-        _ => Response::new(StatusCode::not_found()),
+        _ => Response.new(StatusCode.not_found()),
     }
 }
 ```
@@ -299,10 +299,10 @@ use .self.http::route;
 const MAX_INFLIGHT: Int = 1024;     // upper bound on concurrent tasks
 
 async fn serve() using [IO, Store, Clock, Logger] {
-    let listener = TcpListener::bind(&"0.0.0.0:8080").await?;
+    let listener = TcpListener.bind(&"0.0.0.0:8080").await?;
     Logger.info(&"listening on :8080");
 
-    let sem = Shared::new(Semaphore::new(MAX_INFLIGHT));
+    let sem = Shared.new(Semaphore.new(MAX_INFLIGHT));
 
     nursery(on_error: wait_all) {
         loop {
@@ -330,15 +330,15 @@ async fn serve_one(mut stream: TcpStream, peer: SocketAddr) -> Result<(), Error>
 }
 
 fn main() using [IO] {
-    let rt = Runtime::new(RuntimeConfig::default()
+    let rt = Runtime.new(RuntimeConfig.default()
         .worker_threads(8)
         .io_engine(IoEngineKind::IoUring))
         .expect("runtime");
 
     rt.block_on(async {
-        provide Store = MemoryStore::new() in
-        provide Clock = SystemClock::new() in
-        provide Logger = ConsoleLogger::new(LogLevel::Info) in {
+        provide Store = MemoryStore.new() in
+        provide Clock = SystemClock.new() in
+        provide Logger = ConsoleLogger.new(LogLevel.Info) in {
             serve().await.expect("server");
         }
     });
@@ -347,7 +347,7 @@ fn main() using [IO] {
 
 Three things to notice:
 
-- **`Semaphore::new(MAX_INFLIGHT)`** bounds concurrent connections.
+- **`Semaphore.new(MAX_INFLIGHT)`** bounds concurrent connections.
   Beyond 1024 in-flight, `acquire().await` suspends — backpressure.
 - **`nursery`** guarantees that on shutdown every accepted connection
   either completes or is cancelled before `serve()` returns.
@@ -383,10 +383,10 @@ module tests {
 
     @test
     async fn memory_store_round_trip() using [Clock] {
-        let store = MemoryStore::new();
+        let store = MemoryStore.new();
         let link = Link {
-            code: Code::try_from("abc123x".to_string()).unwrap(),
-            target: TargetUrl::try_from("https://example.com".to_string()).unwrap(),
+            code: Code.try_from("abc123x".to_string()).unwrap(),
+            target: TargetUrl.try_from("https://example.com".to_string()).unwrap(),
             created: Clock.now(),
             hits: 0,
         };
@@ -398,8 +398,8 @@ module tests {
 
     @test
     async fn shorten_then_redirect() using [IO, Clock] {
-        let store = MemoryStore::new();
-        let logger = NullLogger::new();
+        let store = MemoryStore.new();
+        let logger = NullLogger.new();
 
         provide Store = store in
         provide Logger = logger in {
@@ -407,9 +407,9 @@ module tests {
             let resp = handle_shorten(&body).await.unwrap();
             assert(resp.status.is_success());
 
-            let text = Text::from_utf8(&resp.body).unwrap();
+            let text = Text.from_utf8(&resp.body).unwrap();
             let obj = parse_json(&text).unwrap();
-            let code_str = obj.get(&"code").and_then(Data::as_text).unwrap();
+            let code_str = obj.get(&"code").and_then(Data.as_text).unwrap();
 
             let r = handle_redirect(&code_str.to_string()).await.unwrap();
             assert_eq(r.status.code(), 302);
@@ -472,7 +472,7 @@ $ curl localhost:8080/health
   reject invalid values at construction; downstream code never
   re-checks.
 - **Context protocols for DI.** One `Store` trait, an in-memory
-  impl for tests, swap for production — no mocking framework.
+  implement for tests, swap for production — no mocking framework.
 - **`@verify(formal)` with loop invariants.** The code generator's
   post-condition is proven by Z3, not tested.
 - **Structured concurrency with backpressure.** `nursery` bounds

@@ -85,7 +85,7 @@ fn count_one(path: &Path) -> IoResult<Counts> using [IO] {
 fn count_all(paths: &List<Text>) -> IoResult<List<Counts>> using [IO] {
     let mut out = list![];
     for p in paths {
-        let path = Path::from(p);
+        let path = Path.from(p);
         out.push(count_one(&path)?);
     }
     Result.Ok(out)
@@ -98,7 +98,7 @@ fn count_all(paths: &List<Text>) -> IoResult<List<Counts>> using [IO] {
 fn format_counts(counts: &List<Counts>, fmt: OutputFormat) -> Text {
     match fmt {
         OutputFormat.Text => {
-            let mut s = Text::with_capacity(256);
+            let mut s = Text.with_capacity(256);
             for c in counts {
                 s.push_str(&f"{c.lines:>6} {c.words:>6} {c.bytes:>8}  {c.path}\n");
             }
@@ -135,15 +135,15 @@ fn main() using [IO] {
     let argv = env::args();
     let args = match parse_args(&argv) {
         Result.Ok(a) => a,
-        Result.Err(e) => { eprintln(&f"error: {e}"); env::exit(2); }
+        Result.Err(e) => { eprint(&f"error: {e}"); exit(2); }
     };
 
     if args.show_help { print_help(); return; }
-    if args.paths.is_empty() { print_help(); env::exit(2); }
+    if args.paths.is_empty() { print_help(); exit(2); }
 
     match count_all(&args.paths) {
         Result.Ok(counts) => print(&format_counts(&counts, args.format)),
-        Result.Err(e) => { eprintln(&f"error: {e}"); env::exit(1); }
+        Result.Err(e) => { eprint(&f"error: {e}"); exit(1); }
     }
 }
 ```
@@ -178,7 +178,7 @@ module tests {
 
     @test
     fn counts_simple_file() using [IO] {
-        let tmp = Path::from(&env::temp_dir()).join(&Path::from("wc_test.txt"));
+        let tmp = Path.from(&env::temp_dir()).join(&Path.from("wc_test.txt"));
         fs::write_text(&tmp, &"hello world\nfoo bar baz").unwrap();
         let c = count_one(&tmp).unwrap();
         assert_eq(c.lines, 2);
@@ -214,7 +214,7 @@ module benches {
 
     @bench
     fn bench_count_1kb(b: &mut Bencher) using [IO] {
-        let tmp = Path::from(&env::temp_dir()).join(&Path::from("bench.txt"));
+        let tmp = Path.from(&env::temp_dir()).join(&Path.from("bench.txt"));
         fs::write_text(&tmp, &"lorem ipsum ".repeat(80)).unwrap();
         b.iter(|| count_one(&tmp).unwrap());
         fs::remove_file(&tmp).ok();

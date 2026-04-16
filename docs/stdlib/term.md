@@ -37,7 +37,7 @@ type ClearMode is Entire | AfterCursor | BeforeCursor | Line | LineAfter | LineB
 
 type TermCapabilities is { ... };
 
-RawTerminal::new() -> IoResult<RawTerminal>       using [IO]
+RawTerminal.new() -> IoResult<RawTerminal>       using [IO]
 t.enable_raw_mode() -> IoResult<()>
 t.disable_raw_mode() -> IoResult<()>
 t.enable_mouse_capture()                          t.disable_mouse_capture()
@@ -49,7 +49,7 @@ t.move_cursor(x: Int, y: Int)                      t.clear(mode: ClearMode)
 t.size() -> IoResult<TerminalSize>
 t.enter_alternate_screen()                         t.leave_alternate_screen()
 
-EscapeWriter::new(&mut t) -> EscapeWriter
+EscapeWriter.new(&mut t) -> EscapeWriter
 ew.style(&Style)            ew.fg(Color)          ew.bg(Color)
 ew.reset()                   ew.write_cell(&Cell)
 ```
@@ -93,11 +93,11 @@ type MouseButton is Left | Right | Middle;
 type ResizeEvent is { cols: Int, rows: Int };
 
 type InputParser is { ... };                      // ANSI FSM
-InputParser::new() -> InputParser
+InputParser.new() -> InputParser
 parser.feed(bytes: &[Byte]) -> List<Event>
 
 type EventStream is { ... };
-EventStream::new(&RawTerminal) -> EventStream
+EventStream.new(&RawTerminal) -> EventStream
 stream.next() -> Poll<Event>                      // via Stream protocol
 stream.poll_with_timeout(duration) -> Maybe<Event>
 ```
@@ -136,15 +136,15 @@ type Style is {
     underline_color: Maybe<Color>,
 };
 
-Style::new()
-    .fg(Color::Red)
-    .bg(Color::Rgb(Rgb { r: 10, g: 10, b: 30 }))
+Style.new()
+    .fg(Color.Red)
+    .bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 }))
     .add_modifier(Modifier.Bold | Modifier.Underline)
     .remove_modifier(Modifier.Italic)
 
 type Theme is { ... };
-Theme::builtin(&"dark") / Theme::builtin(&"light")
-Theme::from_colors(palette: &Map<Text, Color>) -> Theme
+Theme.builtin(&"dark") / Theme.builtin(&"light")
+Theme.from_colors(palette: &Map<Text, Color>) -> Theme
 theme.style(&"headline")             theme.color(&"accent")
 ```
 
@@ -160,7 +160,7 @@ type Cell is {
 };
 
 type Buffer is { ... };
-Buffer::new(width: Int, height: Int) -> Buffer
+Buffer.new(width: Int, height: Int) -> Buffer
 b.set_cell(x, y, ch, style)        b.get_cell(x, y) -> Maybe<&Cell>
 b.clear()                           b.clear_region(&rect)
 b.resize(cols, rows)
@@ -170,7 +170,7 @@ type Viewport is { ... };
 vp.scroll(dx: Int, dy: Int)         vp.set_scroll(x, y)
 
 type Terminal is { ... };
-Terminal::new(backend: Backend) -> IoResult<Terminal>    using [IO]
+Terminal.new(backend: Backend) -> IoResult<Terminal>    using [IO]
 t.draw(|f: &mut Frame| { widget.render(f, &area) })      // diff-based render
 t.clear()                            t.size() -> IoResult<TerminalSize>
 t.flush() -> IoResult<()>
@@ -202,14 +202,14 @@ type Flex is { ... };
 type FlexDirection is Row | RowReverse | Column | ColumnReverse;
 type FlexItem is { grow: Float, shrink: Float, basis: Constraint };
 
-Flex::new(direction)
+Flex.new(direction)
     .constraints(&[Constraint.Fill, Constraint.Length(20), Constraint.Fill])
     .margin(1)
     .split(rect) -> List<Rect>
 
 type GridLayout is { ... };
 type GridTrack is Fixed(Int) | Fraction(Float) | Auto;
-Grid::new()
+Grid.new()
     .columns(&[GridTrack::Fixed(20), GridTrack::Fraction(1.0)])
     .rows(&[GridTrack::Auto])
     .split(rect) -> GridAreas
@@ -238,95 +238,95 @@ type Styled is protocol {
 ### Primitive widgets
 
 ```verum
-Block::new()
+Block.new()
     .title(&"  Title  ")
     .borders(Borders.All)              // All | Top | Left | Right | Bottom | None
     .border_type(BorderType.Round)     // Round | Double | Thick | Thin | Plain
-    .border_style(Style::new().fg(Color::Cyan))
-    .style(Style::new().bg(Color::Rgb(Rgb { r: 10, g: 10, b: 30 })))
+    .border_style(Style.new().fg(Color.Cyan))
+    .style(Style.new().bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 })))
 
-Paragraph::new(&"body text")
-    .block(Block::new().borders(Borders.All))
+Paragraph.new(&"body text")
+    .block(Block.new().borders(Borders.All))
     .alignment(Alignment.Left)
     .wrap(Wrap.Wrap)                   // No | Wrap | Truncate
-    .style(Style::new().fg(Color::White))
+    .style(Style.new().fg(Color.White))
 
-Line::new(&spans)           // a single styled line
-Span::new(&"text").fg(Color::Red)      // an inline styled run
+Line.new(&spans)           // a single styled line
+Span.new(&"text").fg(Color.Red)      // an inline styled run
 ```
 
 ### Interactive widgets
 
 ```verum
 type ListState is { selected: Maybe<Int>, offset: Int };
-SelectableList::new(&items)
-    .block(Block::new())
-    .highlight_style(Style::new().modifier(Modifier.Reversed))
+SelectableList.new(&items)
+    .block(Block.new())
+    .highlight_style(Style.new().modifier(Modifier.Reversed))
     .highlight_symbol(&">> ")
     .render_stateful(f, area, &mut state)
 
 type TableState is { selected: Maybe<Int>, offset: Int };
-Table::new(&rows)
-    .header(Row::new(&[Cell::from("id"), Cell::from("name")]))
+Table.new(&rows)
+    .header(Row.new(&[Cell::from("id"), Cell::from("name")]))
     .widths(&[Constraint.Length(8), Constraint.Fill])
     .column_spacing(1)
-    .highlight_style(Style::new().modifier(Modifier.Bold))
+    .highlight_style(Style.new().modifier(Modifier.Bold))
 
 type TreeState is { selected: Vec<Int>, opened: Set<Vec<Int>> };
-Tree::new(&items)
+Tree.new(&items)
     .render_stateful(f, area, &mut state)
 
-Menu::new(&items)
+Menu.new(&items)
     .orientation(Direction.Horizontal)
     .render_stateful(f, area, &mut state)
 
 type TextInputState is { buffer: Text, cursor: Int, selection: Maybe<(Int, Int)> };
-TextInput::new()
+TextInput.new()
     .placeholder(&"type…")
     .password(false)
     .render_stateful(f, area, &mut state)
 
-Gauge::new()
+Gauge.new()
     .ratio(0.72)                       // 0.0..=1.0
     .label(&"72%")
-    .gauge_style(Style::new().fg(Color::Green))
+    .gauge_style(Style.new().fg(Color.Green))
 
-Tabs::new(&titles)
+Tabs.new(&titles)
     .select(current_index)
     .divider(&"|")
 
 type ScrollbarState is { content_length: Int, position: Int, viewport_content_length: Int };
-Scrollbar::new(direction: ScrollDirection)
-    .thumb_style(Style::new().fg(Color::DarkGray))
+Scrollbar.new(direction: ScrollDirection)
+    .thumb_style(Style.new().fg(Color::DarkGray))
     .render_stateful(f, area, &mut state)
 
-Canvas::new()
+Canvas.new()
     .x_bounds([0.0, 100.0])
     .y_bounds([0.0, 100.0])
     .paint(|ctx| {
-        ctx.draw_line(0.0, 0.0, 50.0, 50.0, Color::Red);
+        ctx.draw_line(0.0, 0.0, 50.0, 50.0, Color.Red);
         ctx.print(25.0, 25.0, "hi");
     })
 
-Sparkline::new(&values)
-    .style(Style::new().fg(Color::Green))
+Sparkline.new(&values)
+    .style(Style.new().fg(Color.Green))
 
-BarChart::new(&bars)
+BarChart.new(&bars)
     .bar_width(3)
     .bar_gap(1)
-    .value_style(Style::new().modifier(Modifier.Bold))
+    .value_style(Style.new().modifier(Modifier.Bold))
 
-Dialog::new()
+Dialog.new()
     .title(&"Confirm")
     .body(&"Delete this file?")
-    .buttons(&[DialogButton::new(&"Cancel"), DialogButton::new(&"Delete").primary()])
+    .buttons(&[DialogButton.new(&"Cancel"), DialogButton.new(&"Delete").primary()])
     .render_stateful(f, area, &mut state)
 
-Spinner::new()
-    .frames(&SpinnerFrames::Dots)      // Dots | Line | Arc | …
-    .style(Style::new().fg(Color::Yellow))
+Spinner.new()
+    .frames(&SpinnerFrames.Dots)      // Dots | Line | Arc | …
+    .style(Style.new().fg(Color.Yellow))
 
-Notification::new(NotificationLevel.Warning, &"disk nearly full")
+Notification.new(NotificationLevel.Warning, &"disk nearly full")
     .render(f, area)
 ```
 
@@ -345,12 +345,12 @@ type Model is protocol {
 }
 
 type Command<M> is { ... };
-Command::none()     Command::batch(&cmds)     Command::message(m)
-Command::task(future)     Command::delay(duration, m)
+Command.none()     Command::batch(&cmds)     Command::message(m)
+Command.task(future)     Command::delay(duration, m)
 
 type Subscription<M> is { ... };
-Subscription::events(|event| maybe_map_to_message(event))
-Subscription::interval(duration, |_| tick_msg)
+Subscription.events(|event| maybe_map_to_message(event))
+Subscription.interval(duration, |_| tick_msg)
 
 type AppMessage is Exit | Resize(ResizeEvent) | ...;
 
@@ -368,22 +368,22 @@ implement Model for Counter {
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Msg.Increment => { self.count += 1; Command::none() }
-            Msg.Decrement => { self.count -= 1; Command::none() }
-            Msg.Quit      => { self.running = false; Command::exit() }
+            Msg.Increment => { self.count += 1; Command.none() }
+            Msg.Decrement => { self.count -= 1; Command.none() }
+            Msg.Quit      => { self.running = false; Command.exit() }
         }
     }
 
     fn view(&self, f: &mut Frame) {
         let area = f.area();
-        Paragraph::new(&f"Count: {self.count}")
-            .block(Block::new().title(&" counter ").borders(Borders.All))
+        Paragraph.new(&f"Count: {self.count}")
+            .block(Block.new().title(&" counter ").borders(Borders.All))
             .render(f, area);
     }
 
     fn subscriptions(&self) -> List<Subscription<Msg>> {
         list![
-            Subscription::events(|e| match e {
+            Subscription.events(|e| match e {
                 Event.Key(k) => match k.code {
                     KeyCode.Char('+') | KeyCode.Up   => Maybe.Some(Msg.Increment),
                     KeyCode.Char('-') | KeyCode.Down => Maybe.Some(Msg.Decrement),
@@ -417,8 +417,8 @@ password(&"Password") -> IoResult<Text>                                 using [I
 
 ```verum
 type Router<State, Msg> is { ... };
-router.route(&"/home", |s| HomeScreen::new(s))
-      .route(&"/settings", |s| SettingsScreen::new(s))
+router.route(&"/home", |s| HomeScreen.new(s))
+      .route(&"/settings", |s| SettingsScreen.new(s))
       .navigate(&"/settings")
 ```
 
@@ -453,16 +453,16 @@ animations without flicker.
 
 ### Style composition
 
-Styles are additive — `Style::new().fg(Red).add_modifier(Bold)` builds
+Styles are additive — `Style.new().fg(Red).add_modifier(Bold)` builds
 incrementally. `Style::reset()` clears everything.
 
 ### Responsive layout
 
 ```verum
 let layout = if area.width > 120 {
-    Flex::new(Direction.Horizontal).constraints(&[...])
+    Flex.new(Direction.Horizontal).constraints(&[...])
 } else {
-    Flex::new(Direction.Vertical).constraints(&[...])
+    Flex.new(Direction.Vertical).constraints(&[...])
 };
 ```
 

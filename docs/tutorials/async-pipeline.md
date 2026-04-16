@@ -62,11 +62,11 @@ pub async fn read_from_stdin(tx: Sender<RawRecord>)
     -> Result<Int, Error>
 {
     let stdin = stdin();
-    let mut reader = BufReader::new(stdin.lock());
+    let mut reader = BufReader.new(stdin.lock());
     let mut line_no = 0;
 
     loop {
-        let mut line = Text::new();
+        let mut line = Text.new();
         match reader.read_line_async(&mut line).await? {
             0 => break,                                   // EOF
             _ => {
@@ -121,7 +121,7 @@ fn parse_one(raw: &RawRecord) -> Result<ParsedRecord, Error> {
     // Format: "TIMESTAMP SEVERITY MESSAGE..."
     let parts: List<&Text> = raw.text.splitn(3, &" ").collect();
     if parts.len() < 3 {
-        return Result.Err(Error::new(&"not enough fields"));
+        return Result.Err(Error.new(&"not enough fields"));
     }
     let timestamp = parse_timestamp(parts[0])?;
     let severity = match parts[1].as_str() {
@@ -129,7 +129,7 @@ fn parse_one(raw: &RawRecord) -> Result<ParsedRecord, Error> {
         "INFO"  => Severity.Info,
         "WARN"  => Severity.Warn,
         "ERROR" => Severity.Error,
-        s       => return Result.Err(Error::new(&f"bad severity: {s}")),
+        s       => return Result.Err(Error.new(&f"bad severity: {s}")),
     };
     Result.Ok(ParsedRecord {
         line_no: raw.line_no,
@@ -141,7 +141,7 @@ fn parse_one(raw: &RawRecord) -> Result<ParsedRecord, Error> {
 
 fn parse_timestamp(s: &Text) -> Result<Instant, Error> {
     // Stub — real parser would handle ISO 8601 etc.
-    Result.Ok(Instant::now())
+    Result.Ok(Instant.now())
 }
 ```
 
@@ -189,10 +189,10 @@ pub async fn write_loop(
     mut rx: Receiver<ValidRecord>,
     path: &Path,
 ) using [IO, Logger] -> Result<Int, Error> {
-    let file = OpenOptions::new()
+    let file = OpenOptions.new()
         .create(true).append(true)
         .open_async(path).await?;
-    let mut writer = BufWriter::new(file);
+    let mut writer = BufWriter.new(file);
     let mut written = 0;
 
     while let Maybe.Some(rec) = rx.recv().await {
@@ -286,7 +286,7 @@ async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error
         // Nursery waits for every child.
     } recover (e: NurseryError) {
         Logger.error(&f"pipeline error: {e:?}");
-        return Result.Err(Error::new(&"pipeline failed"));
+        return Result.Err(Error.new(&"pipeline failed"));
     }
 
     Result.Ok(())
@@ -295,16 +295,16 @@ async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error
 fn main() using [IO] {
     let args = env::args();
     let out_path = args.get(1)
-        .map(|s| Path::from(s.as_str()))
-        .unwrap_or(Path::from(&"ingest.log"));
+        .map(|s| Path.from(s.as_str()))
+        .unwrap_or(Path.from(&"ingest.log"));
 
-    let rt = Runtime::new(RuntimeConfig::default()
+    let rt = Runtime.new(RuntimeConfig.default()
         .worker_threads(PARSER_WORKERS + 4)
         .io_engine(IoEngineKind::IoUring))
         .expect("runtime");
 
     rt.block_on(async {
-        provide Logger = ConsoleLogger::new(LogLevel::Info) in {
+        provide Logger = ConsoleLogger.new(LogLevel.Info) in {
             run_pipeline(&out_path).await.expect("pipeline")
         }
     });
@@ -346,7 +346,7 @@ Let me correct the shutdown:
 
 ```verum
 // Shutdown via shared flag
-let stopping = Shared::new(AtomicBool::new(false));
+let stopping = Shared.new(AtomicBool.new(false));
 let s_clone = stopping.clone();
 spawn async move {
     wait_for_signal(Signal::Interrupt).await;

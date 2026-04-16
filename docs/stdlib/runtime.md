@@ -167,7 +167,7 @@ type ChildSpec is {
 ### Supervisor API
 
 ```verum
-Supervisor::new(SupervisionStrategy) -> Supervisor
+Supervisor.new(SupervisionStrategy) -> Supervisor
 
 sup.spawn(ChildSpec)
 sup.terminate_child(&name)
@@ -182,7 +182,7 @@ sup.shutdown(duration).await      // graceful shutdown
 ### Example
 
 ```verum
-let sup = Supervisor::new(SupervisionStrategy.OneForOne);
+let sup = Supervisor.new(SupervisionStrategy.OneForOne);
 
 sup.spawn(ChildSpec {
     name: "ingestion",
@@ -233,10 +233,10 @@ type BackoffStrategy is
 type SpawnConfig is { ... };
 type Priority is Low | Normal | High | Critical;
 
-SpawnConfig::new()
+SpawnConfig.new()
     .with_priority(Priority.High)
     .with_isolation(IsolationLevel.Full)
-    .with_recovery(RecoveryStrategy.Retry(RetryConfig::exponential(3, 100.ms())))
+    .with_recovery(RecoveryStrategy.Retry(RetryConfig.exponential(3, 100.ms())))
     .with_restart(RestartPolicy.Permanent)
     .with_timeout_ms(5000)
     .with_name("compute-worker")
@@ -256,7 +256,7 @@ type ThreadPoolConfig is {
     name_prefix: Text,
 };
 
-ThreadPool::new(ThreadPoolConfig) -> ThreadPool
+ThreadPool.new(ThreadPoolConfig) -> ThreadPool
 pool.execute(|| blocking_computation())
 pool.execute_with_priority(Priority.High, || ...)
 pool.shutdown_join()
@@ -295,7 +295,7 @@ type BenchmarkResult is {
     throughput: Maybe<Float>,
 };
 
-Bencher::new() -> Bencher
+Bencher.new() -> Bencher
 b.with_iterations(n) -> Bencher
 b.iter(|| measured_work())         // runs n times, records
 b.ns_per_iter() -> Int

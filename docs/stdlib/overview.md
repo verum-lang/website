@@ -148,4 +148,4 @@ $ verum doc --search "Iterator"        # search
 $ verum api --signature "fn map"       # query by signature
 ```
 
-Source lives at [`verum-lang/verum/core`](https://github.com/verum-lang/verum/tree/main/core).
+Source lives at `core/`.

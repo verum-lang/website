@@ -142,10 +142,10 @@ Used with `@cfg` for conditional compilation:
 ```verum
 @cfg(HAS_AVX2)
 fn fast_dot(a: &[Float32], b: &[Float32]) -> Float32 {
-    let mut acc = Vec8f::splat(0.0);
+    let mut acc = Vec8f.splat(0.0);
     for chunk in (0..a.len()).step_by(8) {
-        let va = Vec8f::load_aligned(&a[chunk]);
-        let vb = Vec8f::load_aligned(&b[chunk]);
+        let va = Vec8f.load_aligned(&a[chunk]);
+        let vb = Vec8f.load_aligned(&b[chunk]);
         acc = va.fma(&vb, acc);
     }
     acc.reduce_add()
@@ -197,17 +197,17 @@ type Block is { x: Int, y: Int, z: Int };
 ### Grid & Block helpers
 
 ```verum
-Grid::d1(x)  Grid::d2(x, y)  Grid::d3(x, y, z)
-Block::d1(x) Block::d2(x, y) Block::d3(x, y, z)
+Grid.d1(x)  Grid::d2(x, y)  Grid::d3(x, y, z)
+Block.d1(x) Block::d2(x, y) Block::d3(x, y, z)
 block.total_threads() -> Int
 ```
 
 ### Config factories
 
 ```verum
-GpuConfig::metal() -> GpuConfig          GpuConfig::cuda(sm_version: Int)
-GpuConfig::rocm() -> GpuConfig           GpuConfig::vulkan() -> GpuConfig
-GpuConfig::auto() -> GpuConfig            // probe and pick
+GpuConfig.metal() -> GpuConfig          GpuConfig.cuda(sm_version: Int)
+GpuConfig.rocm() -> GpuConfig           GpuConfig.vulkan() -> GpuConfig
+GpuConfig.auto() -> GpuConfig            // probe and pick
 ```
 
 ### Thread intrinsics (inside `@device(gpu)` scope)
@@ -249,12 +249,12 @@ fn vec_add(a: &[Float], b: &[Float], c: &mut [Float], n: Int) {
 }
 
 fn main() using [IO, GpuDevice] {
-    let cfg = GpuConfig::auto();
-    let a = GpuBuffer::from_slice(&[1.0, 2.0, 3.0, 4.0]);
-    let b = GpuBuffer::from_slice(&[10.0, 20.0, 30.0, 40.0]);
-    let mut c = GpuBuffer::<Float>::allocate(4);
+    let cfg = GpuConfig.auto();
+    let a = GpuBuffer.from_slice(&[1.0, 2.0, 3.0, 4.0]);
+    let b = GpuBuffer.from_slice(&[10.0, 20.0, 30.0, 40.0]);
+    let mut c = GpuBuffer::<Float>.allocate(4);
 
-    vec_add<<<Grid::d1(1), Block::d1(4)>>>(&a, &b, &mut c, 4);
+    vec_add<<<Grid.d1(1), Block.d1(4)>>>(&a, &b, &mut c, 4);
 
     let host = c.to_host();
     print(f"{host:?}");    // [11.0, 22.0, 33.0, 44.0]

@@ -123,11 +123,11 @@ use core.simd.{Vec8f, Mask8};
 
 @cfg(target_has_feature("avx2"))
 fn dot(a: &[Float32], b: &[Float32]) -> Float32 {
-    let mut acc = Vec8f::splat(0.0);
+    let mut acc = Vec8f.splat(0.0);
     for chunk in a.chunks_exact(8).zip(b.chunks_exact(8)) {
         let (ca, cb) = chunk;
-        let va = Vec8f::load_unaligned(ca.as_ptr());
-        let vb = Vec8f::load_unaligned(cb.as_ptr());
+        let va = Vec8f.load_unaligned(ca.as_ptr());
+        let vb = Vec8f.load_unaligned(cb.as_ptr());
         acc = va.fma(&vb, acc);
     }
     acc.reduce_add() + dot_scalar(&a[a.len() - a.len() % 8..], &b[a.len() - a.len() % 8..])
@@ -192,7 +192,7 @@ Two-pass build. Typical gain: 10–20% on branch-heavy code.
 
 ### Use `Shared<T>` / `Heap<T>` deliberately
 
-Every `Heap::new` / `Shared::new` is an allocation. For a hot path
+Every `Heap.new` / `Shared.new` is an allocation. For a hot path
 that creates many short-lived heap values, consider:
 
 1. **A local buffer** reused across iterations.
@@ -208,7 +208,7 @@ or sub-range of a `List`.
 ### Pre-allocate when size is known
 
 ```verum
-let mut out = List::with_capacity(expected);
+let mut out = List.with_capacity(expected);
 for x in iter { out.push(transform(x)); }
 ```
 

@@ -6,9 +6,6 @@ description: How memory, capabilities, error recovery, and concurrency unify in 
 
 # Unified Execution Environment (θ+)
 
-Spec reference:
-[`internal/docs/detailed/26-unified-execution-architecture.md`](https://github.com/verum-lang/verum/blob/main/internal/docs/detailed/26-unified-execution-architecture.md).
-
 Verum's runtime threads four concerns — **memory**, **capabilities**,
 **error recovery**, **concurrency** — through a single typed
 structure called the **Execution Environment**, referred to in the
@@ -20,7 +17,7 @@ uniform.
 ### 1. Memory context (CBGR)
 
 ```verum
-struct MemoryContext {
+type MemoryContext is {
     allocator: &dyn Allocator,
     tier:      ExecutionTier,        // Interpreter | Aot
     generation: UInt32,
@@ -35,7 +32,7 @@ the tier-appropriate check cost. See
 ### 2. Capability context (DI)
 
 ```verum
-struct CapabilityContext {
+type CapabilityContext is {
     static_deps:     Map<TypeId, *mut Byte>,  // @injectable — 0 ns
     dynamic_stack:   Vec<DynamicFrame>,       // provide / using — 5–30 ns
 }
@@ -48,7 +45,7 @@ struct CapabilityContext {
 ### 3. Recovery context
 
 ```verum
-struct RecoveryContext {
+type RecoveryContext is {
     policy:              RecoveryStrategy,
     retries_remaining:   Int,
     circuit:             Maybe<CircuitBreaker>,
@@ -62,7 +59,7 @@ decide between retry, circuit-break, restart, or propagate.
 ### 4. Concurrency context
 
 ```verum
-struct ConcurrencyContext {
+type ConcurrencyContext is {
     executor:   &Executor,
     io_driver:  &IODriver,
     task_id:    TaskId,
@@ -77,7 +74,7 @@ IOCP), and its supervising scope.
 ## The complete environment
 
 ```verum
-struct ExecutionEnv {
+type ExecutionEnv is {
     memory:       MemoryContext,
     capabilities: CapabilityContext,
     recovery:     RecoveryContext,
@@ -117,11 +114,11 @@ check entirely. See
 
 ### Supervision trees
 
-`Supervisor::new(SupervisionStrategy)` installs a recovery context
+`Supervisor.new(SupervisionStrategy)` installs a recovery context
 for its children:
 
 ```verum
-let sup = Supervisor::new(SupervisionStrategy.OneForOne);
+let sup = Supervisor.new(SupervisionStrategy.OneForOne);
 sup.spawn(ChildSpec {
     name: "worker",
     task: || worker_loop(),
@@ -167,7 +164,7 @@ fn poll(fut: &mut impl Future) -> Poll {
 
 // nursery { spawn ... }
 async fn nursery<F>(f: F) where F: FnOnce(Scope) {
-    let scope = Scope::new();
+    let scope = Scope.new();
     let mut env = current_env().clone();
     env.concurrency.nursery = Some(scope.id);
     install(env);

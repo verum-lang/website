@@ -54,7 +54,7 @@ pub type Dataset is {
 };
 
 /// Load IDX-format MNIST data (classic Yann LeCun format).
-pub fn load_images(path: &Path) -> IoResult<Tensor<Float32>> using [IO] {
+fn load_images(path: &Path) -> IoResult<Tensor<Float32>> using [IO] {
     let bytes = fs::read(path)?;
     // Magic + header
     let magic = u32_from_be(&bytes[0..4]);
@@ -72,7 +72,7 @@ pub fn load_images(path: &Path) -> IoResult<Tensor<Float32>> using [IO] {
     Result.Ok(Tensor::from_slice::<Float32, shape![n, 784]>(&data))
 }
 
-pub fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> using [IO] {
+fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> using [IO] {
     let bytes = fs::read(path)?;
     assert_eq(u32_from_be(&bytes[0..4]), 0x00000801);
     let n = u32_from_be(&bytes[4..8]) as Int;
@@ -102,8 +102,8 @@ pub type MNISTNet is {
     fc2: Linear,
 };
 
-impl MNISTNet {
-    pub fn new(rng: &mut Rng) -> MNISTNet {
+implement MNISTNet {
+    fn new(rng: &mut Rng) -> MNISTNet {
         MNISTNet {
             fc1: Linear::new_xavier(784, 128, rng),
             fc2: Linear::new_xavier(128, 10,  rng),
@@ -138,7 +138,7 @@ use core.math.tensor.*;
 use core.math.autodiff.*;
 use .self.model::MNISTNet;
 
-pub fn train_step(
+fn train_step(
     model: &mut MNISTNet,
     optimiser: &mut AdamW,
     images: &Tensor<Float32>,        // [batch, 784]
@@ -157,7 +157,7 @@ pub fn train_step(
     loss.to_scalar()
 }
 
-pub fn accuracy(model: &MNISTNet, images: &Tensor<Float32>, labels: &Tensor<Int32>) -> Float {
+fn accuracy(model: &MNISTNet, images: &Tensor<Float32>, labels: &Tensor<Int32>) -> Float {
     let logits = model.forward(images);         // [N, 10]
     let preds = logits.argmax(axis = 1);         // [N]
     let correct = preds.eq(labels).sum().to_scalar() as Int;
@@ -184,18 +184,18 @@ const LR: Float = 0.001;
 const DATA_DIR: &str = "./data";
 
 fn main() using [IO] {
-    println(&"loading data…");
-    let train_images = load_images(&Path::from(&f"{DATA_DIR}/train-images-idx3-ubyte")).unwrap();
-    let train_labels = load_labels(&Path::from(&f"{DATA_DIR}/train-labels-idx1-ubyte")).unwrap();
-    let test_images = load_images(&Path::from(&f"{DATA_DIR}/t10k-images-idx3-ubyte")).unwrap();
-    let test_labels = load_labels(&Path::from(&f"{DATA_DIR}/t10k-labels-idx1-ubyte")).unwrap();
+    print(&"loading data…");
+    let train_images = load_images(&Path.from(&f"{DATA_DIR}/train-images-idx3-ubyte")).unwrap();
+    let train_labels = load_labels(&Path.from(&f"{DATA_DIR}/train-labels-idx1-ubyte")).unwrap();
+    let test_images = load_images(&Path.from(&f"{DATA_DIR}/t10k-images-idx3-ubyte")).unwrap();
+    let test_labels = load_labels(&Path.from(&f"{DATA_DIR}/t10k-labels-idx1-ubyte")).unwrap();
 
-    println(&f"train: {train_images.shape().dim(0)} examples");
-    println(&f"test:  {test_images.shape().dim(0)} examples");
+    print(&f"train: {train_images.shape().dim(0)} examples");
+    print(&f"test:  {test_images.shape().dim(0)} examples");
 
     let mut rng = PCG::seed(42);
-    let mut model = MNISTNet::new(&mut rng);
-    let mut optimiser = AdamW::new(model.parameters(), LR, (0.9, 0.999), 0.0001);
+    let mut model = MNISTNet.new(&mut rng);
+    let mut optimiser = AdamW.new(model.parameters(), LR, (0.9, 0.999), 0.0001);
 
     let num_batches = train_images.shape().dim(0) / BATCH_SIZE;
 
@@ -205,7 +205,7 @@ fn main() using [IO] {
         rng.shuffle_vec(&mut indices);
 
         let mut total_loss = 0.0;
-        let start = Instant::now();
+        let start = Instant.now();
 
         for batch_id in 0..num_batches {
             let start_idx = batch_id * BATCH_SIZE;
@@ -219,10 +219,10 @@ fn main() using [IO] {
 
         let avg_loss = total_loss / num_batches as Float;
         let test_acc = accuracy(&model, &test_images, &test_labels);
-        println(&f"epoch {epoch}/{EPOCHS}  loss={avg_loss:.4}  test_acc={test_acc:.2%}  ({start.elapsed().as_secs()}s)");
+        print(&f"epoch {epoch}/{EPOCHS}  loss={avg_loss:.4}  test_acc={test_acc:.2%}  ({start.elapsed().as_secs()}s)");
     }
 
-    println(&f"final test accuracy: {accuracy(&model, &test_images, &test_labels):.2%}");
+    print(&f"final test accuracy: {accuracy(&model, &test_images, &test_labels):.2%}");
 }
 ```
 
@@ -238,7 +238,7 @@ module tests {
     @test
     fn forward_shape() {
         let mut rng = PCG::seed(0);
-        let m = MNISTNet::new(&mut rng);
+        let m = MNISTNet.new(&mut rng);
         let x = Tensor::zeros::<Float32, shape![16, 784]>();
         let out = m.forward(&x);
         assert_eq(out.shape().dim(0), 16);
@@ -248,7 +248,7 @@ module tests {
     @test
     fn parameters_have_gradients() {
         let mut rng = PCG::seed(0);
-        let m = MNISTNet::new(&mut rng);
+        let m = MNISTNet.new(&mut rng);
         let x = Tensor::randn::<Float32, shape![4, 784]>(&mut rng);
         let y = Tensor::from_slice::<Int32, shape![4]>(&[0, 1, 2, 3]);
 

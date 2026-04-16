@@ -55,7 +55,7 @@ pub type ParseError is { pos: Int, expected: Text };
 use .super.types.*;
 
 /// Match a single character exactly.
-pub fn char(c: Char) -> Parser<Char> {
+fn char(c: Char) -> Parser<Char> {
     |input, pos| {
         if pos < input.len() && input.chars().nth(pos).unwrap() == c {
             Maybe.Some((c, pos + 1))
@@ -66,7 +66,7 @@ pub fn char(c: Char) -> Parser<Char> {
 }
 
 /// Match any character satisfying the predicate.
-pub fn satisfy(pred: fn(Char) -> Bool) -> Parser<Char> {
+fn satisfy(pred: fn(Char) -> Bool) -> Parser<Char> {
     |input, pos| {
         if pos < input.len() {
             let c = input.chars().nth(pos).unwrap();
@@ -76,7 +76,7 @@ pub fn satisfy(pred: fn(Char) -> Bool) -> Parser<Char> {
 }
 
 /// Match a whitespace run (possibly empty).
-pub fn whitespace() -> Parser<()> {
+fn whitespace() -> Parser<()> {
     |input, pos| {
         let mut p = pos;
         while p < input.len() && input.chars().nth(p).unwrap().is_whitespace() {
@@ -87,7 +87,7 @@ pub fn whitespace() -> Parser<()> {
 }
 
 /// Match a specific keyword (non-empty exact match).
-pub fn keyword(k: &Text) -> Parser<Text> {
+fn keyword(k: &Text) -> Parser<Text> {
     let k = k.to_string();
     move |input, pos| {
         let end = pos + k.len();
@@ -103,7 +103,7 @@ pub fn keyword(k: &Text) -> Parser<Text> {
 ### Number parser
 
 ```verum
-pub fn number() -> Parser<Float> {
+fn number() -> Parser<Float> {
     |input, pos| {
         let start = pos;
         let mut p = pos;
@@ -143,12 +143,12 @@ pub fn number() -> Parser<Float> {
 use .super.types.*;
 
 /// Transform the parsed value.
-pub fn map<A, B>(p: Parser<A>, f: fn(A) -> B) -> Parser<B> {
+fn map<A, B>(p: Parser<A>, f: fn(A) -> B) -> Parser<B> {
     move |input, pos| p(input, pos).map(|(v, p)| (f(v), p))
 }
 
 /// Try `a`; if it fails, try `b` at the same position.
-pub fn alt<T>(a: Parser<T>, b: Parser<T>) -> Parser<T> {
+fn alt<T>(a: Parser<T>, b: Parser<T>) -> Parser<T> {
     move |input, pos| match a(input, pos) {
         Maybe.Some(r) => Maybe.Some(r),
         Maybe.None    => b(input, pos),
@@ -156,7 +156,7 @@ pub fn alt<T>(a: Parser<T>, b: Parser<T>) -> Parser<T> {
 }
 
 /// Sequence: run `a`, then `b` at its end.
-pub fn seq<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<(A, B)> {
+fn seq<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<(A, B)> {
     move |input, pos| {
         let (va, p1) = a(input, pos)?;
         let (vb, p2) = b(input, p1)?;
@@ -165,17 +165,17 @@ pub fn seq<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<(A, B)> {
 }
 
 /// Sequence, keeping only the left value.
-pub fn left<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<A> {
+fn left<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<A> {
     map(seq(a, b), |(av, _)| av)
 }
 
 /// Sequence, keeping only the right value.
-pub fn right<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<B> {
+fn right<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<B> {
     map(seq(a, b), |(_, bv)| bv)
 }
 
 /// Zero-or-more.
-pub fn many<T>(p: Parser<T>) -> Parser<List<T>> {
+fn many<T>(p: Parser<T>) -> Parser<List<T>> {
     move |input, mut pos| {
         let mut out = list![];
         loop {
@@ -192,7 +192,7 @@ pub fn many<T>(p: Parser<T>) -> Parser<List<T>> {
 }
 
 /// One-or-more.
-pub fn many1<T>(p: Parser<T>) -> Parser<List<T>> {
+fn many1<T>(p: Parser<T>) -> Parser<List<T>> {
     move |input, pos| {
         let (first, p1) = p(input, pos)?;
         let (rest, p2) = many(p)(input, p1)?;
@@ -203,7 +203,7 @@ pub fn many1<T>(p: Parser<T>) -> Parser<List<T>> {
 }
 
 /// Optional.
-pub fn opt<T>(p: Parser<T>) -> Parser<Maybe<T>> {
+fn opt<T>(p: Parser<T>) -> Parser<Maybe<T>> {
     move |input, pos| match p(input, pos) {
         Maybe.Some((v, new_pos)) => Maybe.Some((Maybe.Some(v), new_pos)),
         Maybe.None               => Maybe.Some((Maybe.None,    pos)),
@@ -211,12 +211,12 @@ pub fn opt<T>(p: Parser<T>) -> Parser<Maybe<T>> {
 }
 
 /// Surround with token, discard surroundings.
-pub fn between<A, B, T>(open: Parser<A>, p: Parser<T>, close: Parser<B>) -> Parser<T> {
+fn between<A, B, T>(open: Parser<A>, p: Parser<T>, close: Parser<B>) -> Parser<T> {
     right(open, left(p, close))
 }
 
 /// Parse `p` separated by `sep`, at least once.
-pub fn sep_by1<T, S>(p: Parser<T>, sep: Parser<S>) -> Parser<List<T>> {
+fn sep_by1<T, S>(p: Parser<T>, sep: Parser<S>) -> Parser<List<T>> {
     move |input, pos| {
         let (first, p1) = p(input, pos)?;
         let rest_parser = many(right(sep, p));
@@ -238,7 +238,7 @@ use .super.atoms.*;
 use .super.combinators.*;
 
 /// Expression: term ((+|-) term)*
-pub fn expr() -> Parser<Expr> {
+fn expr() -> Parser<Expr> {
     let add_op = map(right(whitespace(), char('+')), |_| "add");
     let sub_op = map(right(whitespace(), char('-')), |_| "sub");
     let op     = alt(add_op, sub_op);
@@ -253,8 +253,8 @@ pub fn expr() -> Parser<Expr> {
                 Maybe.Some((which, np)) => {
                     let (rhs, rp) = term()(input, np)?;
                     acc = match which.as_str() {
-                        "add" => Expr.Add { left: Heap::new(acc), right: Heap::new(rhs) },
-                        "sub" => Expr.Sub { left: Heap::new(acc), right: Heap::new(rhs) },
+                        "add" => Expr.Add { left: Heap.new(acc), right: Heap.new(rhs) },
+                        "sub" => Expr.Sub { left: Heap.new(acc), right: Heap.new(rhs) },
                         _     => unreachable(),
                     };
                     p = rp;
@@ -267,7 +267,7 @@ pub fn expr() -> Parser<Expr> {
 }
 
 /// Term: factor ((*|/) factor)*
-pub fn term() -> Parser<Expr> {
+fn term() -> Parser<Expr> {
     move |input, pos| {
         let (first, mut p) = factor()(input, pos)?;
         let mut acc = first;
@@ -279,8 +279,8 @@ pub fn term() -> Parser<Expr> {
                 Maybe.Some((which, np)) => {
                     let (rhs, rp) = factor()(input, np)?;
                     acc = match which.as_str() {
-                        "mul" => Expr.Mul { left: Heap::new(acc), right: Heap::new(rhs) },
-                        "div" => Expr.Div { left: Heap::new(acc), right: Heap::new(rhs) },
+                        "mul" => Expr.Mul { left: Heap.new(acc), right: Heap.new(rhs) },
+                        "div" => Expr.Div { left: Heap.new(acc), right: Heap.new(rhs) },
                         _     => unreachable(),
                     };
                     p = rp;
@@ -293,7 +293,7 @@ pub fn term() -> Parser<Expr> {
 }
 
 /// Factor: number | '(' expr ')'
-pub fn factor() -> Parser<Expr> {
+fn factor() -> Parser<Expr> {
     move |input, pos| {
         let (_, p1) = whitespace()(input, pos).unwrap();
         if p1 < input.len() && input.chars().nth(p1).unwrap() == '(' {
@@ -306,7 +306,7 @@ pub fn factor() -> Parser<Expr> {
 }
 
 /// Top-level: parse a full input; return error with position on failure.
-pub fn parse(input: &Text) -> Result<Expr, ParseError> {
+fn parse(input: &Text) -> Result<Expr, ParseError> {
     match expr()(input, 0) {
         Maybe.Some((e, p)) => {
             // Consume trailing whitespace
@@ -329,7 +329,7 @@ pub fn parse(input: &Text) -> Result<Expr, ParseError> {
 ```verum
 use .super.types.Expr;
 
-pub fn eval(e: &Expr) -> Float {
+fn eval(e: &Expr) -> Float {
     match e {
         Expr.Num(n) => *n,
         Expr.Add { left, right } => eval(left) + eval(right),
@@ -354,8 +354,8 @@ fn main() using [IO] {
         if trimmed.is_empty() || trimmed == "quit" { break; }
 
         match parse(&trimmed.to_string()) {
-            Result.Ok(e)  => println(&f"{eval(&e)}"),
-            Result.Err(err) => eprintln(&f"error at pos {err.pos}: expected {err.expected}"),
+            Result.Ok(e)  => print(&f"{eval(&e)}"),
+            Result.Err(err) => eprint(&f"error at pos {err.pos}: expected {err.expected}"),
         }
     }
 }
@@ -439,7 +439,7 @@ We defined `Parser<T>` as a function type (`fn(&Text, Int) -> Maybe<(T, Int)>`).
 This gives us:
 - Zero overhead — each combinator is just a closure.
 - Composable — return types are plain functions, nothing to
-  wrap in a `Box<dyn Parser>`.
+  wrap in a `Heap<dyn Parser>`.
 - No type-level gymnastics — combinators compose via regular
   generic functions.
 

@@ -83,7 +83,7 @@ Walks the typed HIR and emits one `VerificationObligation` per
 logical claim that must hold:
 
 ```rust
-struct VerificationObligation {
+type VerificationObligation is {
     id:          ObligationId,
     kind:        ObligationKind,
     context:     List<Binding>,      // in-scope bindings

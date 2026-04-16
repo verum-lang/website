@@ -28,7 +28,7 @@ type Result<T, E> is
 ```verum
 fn load_config() -> Result<Config, Error> {
     let bytes = fs::read("config.toml")?;    // on Err, return early
-    let text  = Text::from_utf8(&bytes)?;
+    let text  = Text.from_utf8(&bytes)?;
     toml::parse(&text)
 }
 ```
@@ -99,7 +99,7 @@ For long-running concurrent systems, `Supervisor` restarts failed
 tasks per a policy:
 
 ```verum
-let sup = Supervisor::new(SupervisionStrategy.OneForOne);
+let sup = Supervisor.new(SupervisionStrategy.OneForOne);
 sup.spawn(ChildSpec {
     name: "worker",
     task: worker_loop(),
@@ -118,7 +118,7 @@ Policies:
 For flaky downstream dependencies:
 
 ```verum
-let breaker = CircuitBreaker::new(CircuitBreakerConfig {
+let breaker = CircuitBreaker.new(CircuitBreakerConfig {
     failure_threshold: 5,
     cooldown:          30.seconds,
 });
@@ -185,7 +185,7 @@ type NonEmpty<T> is List<T> { self.len() > 0 };
 async fn push_all(events: NonEmpty<Event>) -> Result<(), Error>
     using [Http, Logger]
 {
-    let breaker = CircuitBreaker::new(CircuitBreakerConfig {
+    let breaker = CircuitBreaker.new(CircuitBreakerConfig {
         failure_threshold: 3, cooldown: 10.seconds,
     });
     let retry = RetryConfig {

@@ -31,11 +31,11 @@ no allocation).
 
 ```verum
 let s: Text = "hello";                         // static literal
-let s2 = Text::new();                          // empty
-let s3 = Text::with_capacity(64);              // pre-allocated
+let s2 = Text.new();                          // empty
+let s3 = Text.with_capacity(64);              // pre-allocated
 let s4 = Text::from("literal");                // from &str
-let s5 = Text::from_utf8(bytes)?;              // Result<Text, Utf8Error>
-let s6 = Text::from_utf8_lossy(bytes);         // replaces invalid bytes
+let s5 = Text.from_utf8(bytes)?;              // Result<Text, Utf8Error>
+let s6 = Text.from_utf8_lossy(bytes);         // replaces invalid bytes
 let s7 = Text::from_chars(iter)                // from Iterator<Char>
 let s8 = Int::to_text(42);                     // from integer
 let s9 = Float::to_text(3.14);
@@ -169,14 +169,14 @@ s.escape_unicode() -> Text
 ### Building
 
 ```verum
-let mut s = Text::with_capacity(128);
+let mut s = Text.with_capacity(128);
 s.push_str("hello ");
 s.push('w');
 s.push_str("orld");
 s += "!";                        // via AddAssign
 
 // Or with StringBuilder for heavy concatenation:
-let mut b = StringBuilder::new();
+let mut b = StringBuilder.new();
 for x in items {
     b.push_str(&x.to_string());
     b.push_str(", ");
@@ -188,7 +188,7 @@ let result = b.into_text();
 
 ```verum
 fn word_freq(text: &Text) -> Map<Text, Int> {
-    let mut freq = Map::new();
+    let mut freq = Map.new();
     for w in text.split_whitespace() {
         let k = w.to_ascii_lowercase();
         *freq.entry(k).or_insert(0) += 1;
@@ -400,8 +400,8 @@ if email.matches(&input) { ... }
 ```verum
 type Regex;
 
-Regex::new(&pattern: &Text) -> Result<Regex, RegexError>   // runtime compile
-Regex::new_unchecked(&pattern) -> Regex                    // panics on error
+Regex.new(&pattern: &Text) -> Result<Regex, RegexError>   // runtime compile
+Regex.new_unchecked(&pattern) -> Regex                    // panics on error
 
 r.matches(&text) -> Bool
 r.find(&text) -> Maybe<Match>
@@ -481,7 +481,7 @@ Unknown tags become user-defined via `@meta_macro` — see
 Incremental text construction without repeated allocation.
 
 ```verum
-let mut b = StringBuilder::new();
+let mut b = StringBuilder.new();
 b.push_str("hello ");
 b.push('w');
 b.push_text(&other);
@@ -494,7 +494,7 @@ let s = b.into_text();                // consumes builder
 ```
 
 ```verum
-StringBuilder::new()
+StringBuilder.new()
 StringBuilder::with_capacity(n)
 
 b.len()  b.capacity()  b.is_empty()  b.clear()

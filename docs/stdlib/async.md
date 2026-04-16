@@ -125,7 +125,7 @@ h.await -> Result<T, JoinError>                   // via Future
 ### `JoinSet<T>` — dynamic task collection
 
 ```verum
-let mut set: JoinSet<Int> = JoinSet::new();
+let mut set: JoinSet<Int> = JoinSet.new();
 set.spawn(task_a());
 set.spawn(task_b());
 
@@ -336,7 +336,7 @@ async fn fetch_batch(urls: &List<Text>) -> List<Bytes> using [Http] {
         metrics.increment("fetch_batch.cancelled");
     } recover(e: NurseryError) {
         log_error(&e);
-        List::new()
+        List.new()
     }
 }
 ```
@@ -369,7 +369,7 @@ interval(duration) -> Interval              // stream firing on schedule
 ```
 
 ```verum
-let mut ticker = Interval::new(500.ms());
+let mut ticker = Interval.new(500.ms());
 loop {
     ticker.tick().await;
     update_ui();
@@ -387,7 +387,7 @@ type LocalExecutor is { ... };
 type TimeoutError is ();
 type ExecutionEnv is { ... };               // θ+ context
 
-Runtime::new() -> RuntimeBuilder
+Runtime.new() -> RuntimeBuilder
 builder.worker_threads(n).stack_size(bytes)
        .io_engine(IoEngineKind.IoUring)
        .max_tasks(n)
@@ -412,7 +412,7 @@ current_runtime() -> Maybe<&Runtime>
 Single-threaded executor for `!Send` futures:
 
 ```verum
-let exec = LocalExecutor::new();
+let exec = LocalExecutor.new();
 exec.spawn_local(future);
 exec.run_until(main_future);
 ```
@@ -433,10 +433,10 @@ type RestartPolicy is Permanent | Transient | Temporary;
 type IsolationLevel is Shared | SendOnly | Full;
 type Priority is Low | Normal | High | Critical;
 
-let cfg = SpawnConfig::new()
+let cfg = SpawnConfig.new()
     .with_priority(Priority.High)
     .with_isolation(IsolationLevel.Full)
-    .with_recovery(RecoveryStrategy.Retry(RetryConfig::exponential(3, 100.ms())))
+    .with_recovery(RecoveryStrategy.Retry(RetryConfig.exponential(3, 100.ms())))
     .with_timeout_ms(5000)
     .with_name("worker-42");
 
@@ -456,7 +456,7 @@ type RetryConfig is {
     jitter: Bool,
 };
 RetryConfig::fixed(attempts, delay_ms)
-RetryConfig::exponential(attempts, initial_ms)
+RetryConfig.exponential(attempts, initial_ms)
 
 execute_with_retry(|| call_api(), max_attempts = 3, backoff_ms = 100)
 execute_with_retry_config(|| call_api(), config)
@@ -472,7 +472,7 @@ type CircuitBreakerConfig is {
 };
 type CircuitState is Closed | Open | HalfOpen;
 
-let breaker = CircuitBreaker::new(CircuitBreakerConfig {
+let breaker = CircuitBreaker.new(CircuitBreakerConfig {
     failure_threshold: 5,
     reset_timeout_ms: 30_000,
     half_open_max_calls: 1,
@@ -484,7 +484,7 @@ if breaker.is_call_allowed() {
         Result.Err(e) => { breaker.record_failure(); Result.Err(e) }
     }
 } else {
-    Result.Err(Error::new("circuit open"))
+    Result.Err(Error.new("circuit open"))
 }
 ```
 

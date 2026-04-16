@@ -47,7 +47,7 @@ let request_count = 0;
 ```verum
 const MAX_RETRIES: Int = 3;
 const DEFAULT_BUF_CAPACITY: Int = 8192;
-static mut COUNTER: AtomicU64 = AtomicU64::new(0);
+static mut COUNTER: AtomicU64 = AtomicU64.new(0);
 ```
 
 ### Modules
@@ -167,13 +167,13 @@ be explicit about what you're bringing in.
 - Prefer example-heavy doc comments; stdlib uses this heavily.
 
 ```verum
-/// Double the value, saturating at `Int::MAX`.
+/// Double the value, saturating at `Int.MAX`.
 ///
 /// # Examples
 ///
 /// ```verum
 /// assert_eq(double_sat(5), 10);
-/// assert_eq(double_sat(Int::MAX), Int::MAX);
+/// assert_eq(double_sat(Int.MAX), Int.MAX);
 /// ```
 fn double_sat(x: Int) -> Int { x.saturating_add(x) }
 ```

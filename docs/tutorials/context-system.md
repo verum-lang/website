@@ -12,23 +12,32 @@ values with `provide`.
 ## Basic usage
 
 ```verum
-// Declare a context type
+// Declare a context type with methods
 type Logger is {
-    fn info(&self, msg: Text);
-    fn error(&self, msg: Text);
+    prefix: Text,
 };
+
+implement Logger {
+    fn info(&self, msg: Text) {
+        print(f"[{self.prefix}] {msg}");
+    }
+
+    fn error(&self, msg: Text) {
+        print(f"[{self.prefix} ERROR] {msg}");
+    }
+}
 
 // Function that needs a Logger
 fn process_data(data: List<Int>) using [Logger] {
-    Logger.info("Processing {} items", data.len());
+    Logger.info(f"Processing {data.len()} items");
     // ... process ...
     Logger.info("Done");
 }
 
 // Provide the context at the call site
 fn main() {
-    let logger = ConsoleLogger.new();
-    provide Logger = logger {
+    let logger = Logger { prefix: "APP" };
+    provide Logger = logger in {
         process_data([1, 2, 3]);
     }
 }

@@ -114,7 +114,7 @@ monomorphisation.
 /// Same function, dynamic shapes. Fails at runtime if incompatible.
 fn matmul_dyn(a: &DynTensor<Float>, b: &DynTensor<Float>) -> Result<DynTensor<Float>, Error> {
     if a.shape().dim(-1) != b.shape().dim(0) {
-        return Result.Err(Error::new(&"shape mismatch"));
+        return Result.Err(Error.new(&"shape mismatch"));
     }
     Result.Ok(a.matmul(b))
 }

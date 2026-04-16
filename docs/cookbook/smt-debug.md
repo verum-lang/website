@@ -185,7 +185,7 @@ goals are easier.
 "Weird" usually means one of:
 
 - **Integer overflow**: `Int` is 64-bit; the counter-example may
-  involve values near `Int::MAX`. Add explicit bounds.
+  involve values near `Int.MAX`. Add explicit bounds.
 - **NaN / infinity**: Floats allow NaN which is ≠ to everything.
   Use `is_finite()` guard.
 - **Empty collection**: sizes zero break many invariants. Add a

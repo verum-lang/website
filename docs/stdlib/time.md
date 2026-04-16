@@ -26,10 +26,10 @@ Time span with nanosecond resolution.
 ### Construction
 
 ```verum
-Duration::new(secs: Int, nanos: Int) -> Duration
-Duration::from_secs(secs)    Duration::from_millis(ms)    Duration::from_micros(us)
-Duration::from_nanos(ns)     Duration::from_secs_f64(f)
-Duration::ZERO              Duration::MAX
+Duration.new(secs: Int, nanos: Int) -> Duration
+Duration.from_secs(secs)    Duration.from_millis(ms)    Duration::from_micros(us)
+Duration::from_nanos(ns)     Duration.from_secs_f64(f)
+Duration.ZERO              Duration::MAX
 ```
 
 ### Literal sugar (on any integer)
@@ -70,7 +70,7 @@ Always moves forward. Unaffected by wall-clock adjustments (NTP, DST,
 manual time changes). Use for measuring elapsed time.
 
 ```verum
-Instant::now() -> Instant
+Instant.now() -> Instant
 
 i.elapsed() -> Duration                 // since this instant
 i.duration_since(&earlier) -> Duration  // panics if i < earlier
@@ -86,7 +86,7 @@ i < other    i == other                   // comparison
 ### Typical measurement
 
 ```verum
-let start = Instant::now();
+let start = Instant.now();
 do_work();
 let elapsed = start.elapsed();
 print(f"took {elapsed.as_millis()} ms");
@@ -99,8 +99,8 @@ print(f"took {elapsed.as_millis()} ms");
 Tied to real-world time. Subject to adjustments (NTP, DST, leap seconds).
 
 ```verum
-SystemTime::now() -> SystemTime
-SystemTime::UNIX_EPOCH                    // 1970-01-01T00:00:00Z
+SystemTime.now() -> SystemTime
+SystemTime.UNIX_EPOCH                    // 1970-01-01T00:00:00Z
 
 t.duration_since(&earlier) -> Result<Duration, SystemTimeError>
 t.elapsed() -> Result<Duration, SystemTimeError>
@@ -116,9 +116,9 @@ err.duration() -> Duration
 ### Unix epoch helper
 
 ```verum
-let now = SystemTime::now();
-let unix_ms = now.duration_since(&SystemTime::UNIX_EPOCH)
-    .unwrap_or(Duration::ZERO)
+let now = SystemTime.now();
+let unix_ms = now.duration_since(&SystemTime.UNIX_EPOCH)
+    .unwrap_or(Duration.ZERO)
     .as_millis();
 ```
 
@@ -127,7 +127,7 @@ let unix_ms = now.duration_since(&SystemTime::UNIX_EPOCH)
 | Need | Use |
 |---|---|
 | Measure elapsed time | `Instant` |
-| Schedule future work | `Instant::now() + duration` |
+| Schedule future work | `Instant.now() + duration` |
 | Timestamp for logs, user display | `SystemTime` |
 | Compare with filesystem `mtime` | `SystemTime` |
 | Store as persistent record | `SystemTime` (convert to UNIX epoch) |
@@ -149,7 +149,7 @@ sleep_until(instant).await
 ## `Interval` — repeating timer
 
 ```verum
-Interval::new(period: Duration) -> Interval
+Interval.new(period: Duration) -> Interval
 interval(period) -> Interval                     // re-exported from async
 
 iv.tick().await -> Instant                       // fires at `period` intervals
@@ -170,7 +170,7 @@ type MissedTickBehavior is
 
 ```verum
 async fn heartbeat() using [Logger] {
-    let mut iv = Interval::new(1.seconds());
+    let mut iv = Interval.new(1.seconds());
     loop {
         iv.tick().await;
         Logger.info(&"heartbeat");
@@ -221,7 +221,7 @@ type LogLine is {
 
 fn now_line(msg: Text, program_start: Instant) -> LogLine {
     LogLine {
-        wall_time: SystemTime::now(),
+        wall_time: SystemTime.now(),
         elapsed_ms: program_start.elapsed().as_millis(),
         message: msg,
     }

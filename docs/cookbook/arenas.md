@@ -24,7 +24,7 @@ drops.
 use core.mem.GenerationalArena;
 
 fn parse_file(source: &Text) -> Result<Ast, ParseError> {
-    let arena = GenerationalArena::<Node>::new(capacity: 4096);
+    let arena = GenerationalArena::<Node>.new(capacity: 4096);
     let tree = parse_into(source, &arena)?;
     let stats = compute_statistics(&tree);
     Result.Ok(Ast { stats, /* owned, independent of arena */ })
@@ -39,8 +39,8 @@ stray handle is invalidated atomically.
 ```verum
 type ArenaHandle<T> is { idx: Int, generation: UInt32 };
 
-let arena = GenerationalArena::<Node>::new(capacity: 1024);
-let h: ArenaHandle<Node> = arena.insert(Node::Leaf { value: 42 });
+let arena = GenerationalArena::<Node>.new(capacity: 1024);
+let h: ArenaHandle<Node> = arena.insert(Node.Leaf { value: 42 });
 let n: Maybe<&Node> = arena.get(h);                 // Some if still valid
 let n: Maybe<&mut Node> = arena.get_mut(h);
 let removed: Maybe<Node> = arena.remove(h);         // None if already removed
@@ -54,14 +54,14 @@ Set the arena as the active allocator for a scope:
 
 ```verum
 fn parse<'a>() -> Ast using [IO] {
-    let arena = GenerationalArena::<Byte>::new(1 << 20);     // 1 MiB
+    let arena = GenerationalArena::<Byte>.new(1 << 20);     // 1 MiB
     provide Allocator = arena in {
-        parse_body()                                          // uses arena for all Heap::new
+        parse_body()                                          // uses arena for all Heap.new
     }
 }                                                             // drops here; arena freed
 ```
 
-Inside the `provide` block, every `Heap::new(...)` allocation routes
+Inside the `provide` block, every `Heap.new(...)` allocation routes
 through the arena. Outside the block, normal CBGR allocation resumes.
 
 ---
@@ -99,7 +99,7 @@ type ParseCtx is {
     arena: GenerationalArena<Node>,
 };
 
-impl ParseCtx {
+implement ParseCtx {
     fn alloc(&mut self, n: Node) -> NodeId {
         NodeId(self.arena.insert(n).idx)
     }
@@ -110,10 +110,10 @@ impl ParseCtx {
 
 fn parse_expr(ctx: &mut ParseCtx, tokens: &mut List<Token>) -> Result<NodeId, ParseError> {
     let lhs = parse_term(ctx, tokens)?;
-    if peek(tokens) == Token::Plus {
+    if peek(tokens) == Token.Plus {
         consume(tokens);
         let rhs = parse_expr(ctx, tokens)?;
-        Result.Ok(ctx.alloc(Node::Add { lhs, rhs }))
+        Result.Ok(ctx.alloc(Node.Add { lhs, rhs }))
     } else {
         Result.Ok(lhs)
     }

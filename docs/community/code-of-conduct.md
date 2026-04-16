@@ -116,9 +116,9 @@ enforcement (e.g., to identify repeated patterns).
 
 ## Credit
 
-This Code of Conduct draws on the [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/),
-the [Mozilla Community Participation Guidelines](https://www.mozilla.org/en-US/about/governance/policies/participation/),
-and the [Rust Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct).
+This Code of Conduct draws on the Contributor Covenant v2.1,
+the Mozilla Community Participation Guidelines,
+and the Rust Code of Conduct.
 
 ## Questions
 

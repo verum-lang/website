@@ -558,12 +558,12 @@ type TokenStream is {
     span: Span,
 };
 
-TokenStream::empty()
-TokenStream::from_token(t)
-TokenStream::from_tree(tree)
-TokenStream::from_trees(&trees)
-TokenStream::from_str(&source) -> Result<TokenStream, LexError>
-TokenStream::ident(&name) -> TokenStream
+TokenStream.empty()
+TokenStream.from_token(t)
+TokenStream.from_tree(tree)
+TokenStream.from_trees(&trees)
+TokenStream.from_str(&source) -> Result<TokenStream, LexError>
+TokenStream.ident(&name) -> TokenStream
 
 ts.append(&other)           ts.prepend(&other)
 ts.concat(&others)          ts.iter() -> Iterator<&TokenTree>
@@ -705,8 +705,8 @@ The surface syntax `quote { … }` desugars to a sequence of builder
 calls. You can build quotes imperatively too:
 
 ```verum
-QuoteBuilder::new() -> Self
-QuoteBuilder::with_span(span: Span) -> Self
+QuoteBuilder.new() -> Self
+QuoteBuilder.with_span(span: Span) -> Self
 
 b.ident(&name)               b.keyword(&kw)
 b.punct_joint(c)             b.punct(c)
@@ -732,9 +732,9 @@ b.build() -> TokenStream
 ```verum
 type Span is { /* compiler-internal */ };
 
-Span::call_site() -> Span
-Span::def_site() -> Span
-Span::mixed_site() -> Span
+Span.call_site() -> Span
+Span.def_site() -> Span
+Span.mixed_site() -> Span
 
 sp.line() -> UInt32
 sp.column() -> UInt32

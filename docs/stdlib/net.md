@@ -33,9 +33,9 @@ Architecture:
 ### `Ipv4Addr`
 
 ```verum
-Ipv4Addr::new(a, b, c, d) -> Ipv4Addr
-Ipv4Addr::localhost() -> Ipv4Addr             // 127.0.0.1
-Ipv4Addr::unspecified() -> Ipv4Addr           // 0.0.0.0
+Ipv4Addr.new(a, b, c, d) -> Ipv4Addr
+Ipv4Addr.localhost() -> Ipv4Addr             // 127.0.0.1
+Ipv4Addr.unspecified() -> Ipv4Addr           // 0.0.0.0
 Ipv4Addr::broadcast() -> Ipv4Addr             // 255.255.255.255
 Ipv4Addr::parse(&"127.0.0.1") -> Result<Ipv4Addr, AddrParseError>
 Ipv4Addr::from_u32(bits) -> Ipv4Addr
@@ -50,9 +50,9 @@ Implements `Eq`, `Ord`, `Hash`, `Clone`, `Copy`, `Debug`, `Display`.
 ### `Ipv6Addr`
 
 ```verum
-Ipv6Addr::new(a, b, c, d, e, f, g, h) -> Ipv6Addr     // 8× UInt16
+Ipv6Addr.new(a, b, c, d, e, f, g, h) -> Ipv6Addr     // 8× UInt16
 Ipv6Addr::localhost() -> Ipv6Addr                     // ::1
-Ipv6Addr::unspecified() -> Ipv6Addr                   // ::
+Ipv6Addr.unspecified() -> Ipv6Addr                   // ::
 Ipv6Addr::parse(&"::1") -> Result<Ipv6Addr, AddrParseError>
 
 a.segments() -> (Int, Int, Int, Int, Int, Int, Int, Int)
@@ -137,10 +137,10 @@ type Shutdown is Read | Write | Both;
 ### `TcpListener`
 
 ```verum
-TcpListener::bind<A: ToSocketAddrs>(addr) -> IoResult<TcpListener>
-TcpListener::bind_addr(&SocketAddr) -> IoResult<TcpListener>
-TcpListener::bind_addr_with_backlog(&SocketAddr, backlog: Int)
-TcpListener::bind_addr_reuseport(&SocketAddr, backlog: Int)    // SO_REUSEPORT
+TcpListener.bind<A: ToSocketAddrs>(addr) -> IoResult<TcpListener>
+TcpListener.bind_addr(&SocketAddr) -> IoResult<TcpListener>
+TcpListener.bind_addr_with_backlog(&SocketAddr, backlog: Int)
+TcpListener.bind_addr_reuseport(&SocketAddr, backlog: Int)    // SO_REUSEPORT
 
 l.accept() -> IoResult<(TcpStream, SocketAddr)>
 l.accept_async().await -> IoResult<(TcpStream, SocketAddr)>
@@ -154,7 +154,7 @@ l.set_ttl(ttl: Int)          l.set_only_v6(only: Bool)
 
 ```verum
 async fn echo_server() using [IO] {
-    let listener = TcpListener::bind("0.0.0.0:7").await?;
+    let listener = TcpListener.bind("0.0.0.0:7").await?;
     loop {
         let (mut stream, peer) = listener.accept_async().await?;
         spawn async move {
@@ -254,9 +254,9 @@ is_ip_address(&input) -> Bool
 ### `Resolver` — explicit resolver
 
 ```verum
-let resolver = Resolver::new()
-    .nameserver_ip(Ipv4Addr::new(1, 1, 1, 1))       // Cloudflare
-    .nameserver_ip(Ipv4Addr::new(8, 8, 8, 8))       // Google
+let resolver = Resolver.new()
+    .nameserver_ip(Ipv4Addr.new(1, 1, 1, 1))       // Cloudflare
+    .nameserver_ip(Ipv4Addr.new(8, 8, 8, 8))       // Google
     .timeout_ms(3000)
     .max_retries(2);
 
@@ -266,7 +266,7 @@ resolver.lookup_cname(&"www.example.com").await -> Result<List<Text>, DnsError>
 resolver.lookup_mx(&"example.com").await -> Result<List<(Int, Text)>, DnsError>
 resolver.lookup_srv(&"_imap", &"_tcp", &"example.com").await
 resolver.lookup_txt(&"example.com").await
-resolver.lookup_ptr(&IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1))).await
+resolver.lookup_ptr(&IpAddr.V4(Ipv4Addr.new(1, 1, 1, 1))).await
 resolver.query(&"example.com", DnsRecordType.A).await -> Result<List<DnsRecord>, DnsError>
 
 resolver.cache_clear()
@@ -306,10 +306,10 @@ m.is_safe() -> Bool        m.is_idempotent() -> Bool        m.has_body() -> Bool
 ### `StatusCode`
 
 ```verum
-StatusCode::new(code: Int) -> StatusCode
-StatusCode::ok()           StatusCode::created()      StatusCode::no_content()
+StatusCode.new(code: Int) -> StatusCode
+StatusCode::ok()           StatusCode.created()      StatusCode::no_content()
 StatusCode::bad_request()  StatusCode::unauthorized() StatusCode::forbidden()
-StatusCode::not_found()    StatusCode::internal_server_error()
+StatusCode.not_found()    StatusCode::internal_server_error()
 
 s.code() -> Int             s.reason_phrase() -> Text
 s.is_informational() / is_success() / is_redirection() / is_client_error() / is_server_error()
@@ -324,7 +324,7 @@ type Version is Http10 | Http11 | Http2 | Http3;
 ### `Headers`
 
 ```verum
-Headers::new()
+Headers.new()
 h.insert(&name, &value)                   // replaces
 h.append(&name, &value)                    // adds (multi-value per RFC 7230)
 h.get(&name) -> Maybe<&List<Text>>
@@ -345,7 +345,7 @@ type Request is {
     body: Maybe<List<Byte>>,
 };
 
-Request::new(method, &uri) -> Request
+Request.new(method, &uri) -> Request
 req.with_headers(headers) -> Request
 req.with_body(bytes) -> Request
 req.body_text() -> Maybe<Text>
@@ -357,7 +357,7 @@ type Response is {
     body: Maybe<List<Byte>>,
 };
 
-Response::new(status) -> Response
+Response.new(status) -> Response
 resp.with_headers(h) -> Response
 resp.with_body(b) -> Response
 resp.body_text() -> Maybe<Text>
@@ -366,7 +366,7 @@ resp.body_text() -> Maybe<Text>
 ### `Url`
 
 ```verum
-Url::parse(&"https://user:pass@host:443/path?q#frag") -> Result<Url, HttpError>
+Url.parse(&"https://user:pass@host:443/path?q#frag") -> Result<Url, HttpError>
 
 u.scheme() -> &Text
 u.host() -> Maybe<&Text>       u.port() -> Maybe<Int>
@@ -380,7 +380,7 @@ u.to_string() -> Text
 ```verum
 type SameSite is Strict | Lax | None;
 
-Cookie::new(&name, &value)
+Cookie.new(&name, &value)
     .with_path(&"/")
     .with_domain(&"example.com")
     .with_max_age(3600)
@@ -477,12 +477,12 @@ type TlsConfig is {
     is_server: Bool,
 };
 
-TlsConfig::client()
+TlsConfig.client()
     .with_root_certs(SystemCerts::load())
     .with_min_version(TlsVersion.Tls12)
     .with_alpn(&[&"h2", &"http/1.1"])
 
-TlsConfig::server()
+TlsConfig.server()
     .with_identity(cert, key)
     .with_alpn(&[&"h2"])
 ```
@@ -511,10 +511,10 @@ s.get_ref() -> &TcpStream
 ### High-level builders
 
 ```verum
-let connector = TlsConnector::new().with_alpn(&[&"h2", &"http/1.1"]);
+let connector = TlsConnector.new().with_alpn(&[&"h2", &"http/1.1"]);
 let tls = connector.connect(&"example.com", 443).await?;
 
-let acceptor = TlsAcceptor::new(cert, key);
+let acceptor = TlsAcceptor.new(cert, key);
 let tls = acceptor.accept(tcp).await?;
 ```
 
@@ -540,27 +540,27 @@ type TlsError is
 
 ```verum
 async fn fetch_json(url: &Text) -> Result<JsonValue, Error> using [IO] {
-    let parsed = Url::parse(url)?;
-    let host = parsed.host().ok_or(Error::new("no host"))?;
+    let parsed = Url.parse(url)?;
+    let host = parsed.host().ok_or(Error.new("no host"))?;
     let port = parsed.port().unwrap_or(443);
 
     let tcp = TcpStream::connect_async((host, port)).await?;
-    let cfg = TlsConfig::client().with_root_certs(SystemCerts::load());
+    let cfg = TlsConfig.client().with_root_certs(SystemCerts::load());
     let mut tls = TlsStream::connect(tcp, host, &cfg).await?;
 
     let req = f"GET {parsed.path()} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n";
     tls.write_all_async(req.as_bytes()).await?;
 
-    let mut buf = List::<Byte>::new();
+    let mut buf = List::<Byte>.new();
     let mut tmp = [0u8; 4096];
     loop {
         let n = tls.read_async(&mut tmp).await?;
         if n == 0 { break; }
         buf.extend_from_slice(&tmp[..n]);
     }
-    let text = Text::from_utf8_lossy(&buf);
+    let text = Text.from_utf8_lossy(&buf);
     let (_, body) = text.split_once(&"\r\n\r\n")
-        .ok_or(Error::new("malformed response"))?;
+        .ok_or(Error.new("malformed response"))?;
     Result.Ok(parse_json(&body.to_string())?)
 }
 ```

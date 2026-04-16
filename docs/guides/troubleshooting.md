@@ -232,5 +232,5 @@ serde-1.4-compatible version in `[overrides]`.
 - `verum explain V####` — detailed explanation of an error code.
 - [Glossary](/docs/reference/glossary) — every term defined.
 - [FAQ](/docs/guides/faq) — common conceptual questions.
-- GitHub discussions: https://github.com/verum-lang/verum/discussions
+- GitHub discussions on the project repository
 - IRC / Matrix: #verum on libera.chat

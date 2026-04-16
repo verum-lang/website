@@ -14,7 +14,7 @@ implementations of substantial features, research prototypes.
 
 ### Using Verum and found a bug
 
-[Open an issue](https://github.com/verum-lang/verum/issues/new) with:
+Open an issue on the project repository with:
 - `verum --version` output.
 - Minimal reproducer (under 20 lines if possible).
 - What you expected vs what happened.
@@ -28,7 +28,7 @@ Small additions: open an issue describing the use case.
 
 Anything touching the language surface, the type system, or the
 stdlib ABI: **write an RFC** first. Template:
-[`docs/rfcs/TEMPLATE.md`](https://github.com/verum-lang/verum/blob/main/docs/rfcs/TEMPLATE.md).
+`docs/rfcs/TEMPLATE.md`.
 
 RFCs undergo a **two-week comment period** before merge. Big ones
 (type-system changes, verification model) can take longer.
@@ -44,7 +44,7 @@ RFCs undergo a **two-week comment period** before merge. Big ones
 ## Development setup
 
 ```bash
-git clone https://github.com/verum-lang/verum
+git clone <repository-url>
 cd verum
 ./scripts/bootstrap.sh           # installs Rust 1.82+, LLVM 21, Z3, CVC5
 cargo build --release -p verum_cli
@@ -82,7 +82,7 @@ cargo test -p verum_compiler --test stdlib
 
 ### Working on the docs site
 
-Docs live in [`verum-lang/website`](https://github.com/verum-lang/website)
+Docs live in the website repository
 (separate repo). The site is a Docusaurus project:
 
 ```bash
@@ -91,7 +91,7 @@ npm ci
 npm run start
 ```
 
-See [README](https://github.com/verum-lang/website/blob/main/README.md).
+See the website README.
 
 ## Code standards
 
@@ -169,7 +169,7 @@ Before asking for review:
 
 Verum is dual-licensed under **Apache-2.0 OR MIT**. Your
 contributions are accepted under the same terms. By submitting a PR
-you certify compliance with the [Developer Certificate of Origin](https://developercertificate.org/).
+you certify compliance with the Developer Certificate of Origin.
 
 ## Communication
 
@@ -213,7 +213,7 @@ deprecation path of at least one minor release.
 ## Recognition
 
 Contributions are recorded in the release notes and the
-[AUTHORS](https://github.com/verum-lang/verum/blob/main/AUTHORS)
+AUTHORS
 file. Notable contributions — especially sustained effort on stdlib
 modules or new verification backends — are acknowledged in release
 blog posts.

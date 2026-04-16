@@ -223,7 +223,7 @@ for v in r.iter_mut() { ... }
 
 ```verum
 type Error is { message: Text };
-let e = Error::new("something broke");
+let e = Error.new("something broke");
 ```
 
 Implements `Debug + Display + Describable + Eq + Clone`. Useful when
@@ -239,7 +239,7 @@ In a function returning `Result<_, E>`, the `?` operator unwraps an
 ```verum
 fn load_config() -> Result<Config, Error> {
     let bytes = fs::read("config.toml")?;
-    let text  = Text::from_utf8(&bytes)?;
+    let text  = Text.from_utf8(&bytes)?;
     toml::parse(&text)
 }
 ```
@@ -326,7 +326,7 @@ syntax. From `protocols.vr`:
 | `Hash` | hashing | `hash<H: Hasher>(&self, h: &mut H)` |
 | `Clone` | `.clone()` | `clone(&self) -> Self`, `clone_from(&mut self, other: &Self)` |
 | `Copy` | implicit copy | extends `Clone`; marker only |
-| `Default` | `T::default()` | `default() -> Self` |
+| `Default` | `T.default()` | `default() -> Self` |
 | `Debug` | `{:?}` | `fmt_debug(&self, f: &mut Formatter) -> FmtResult` |
 | `Display` | `{}` | `fmt(&self, f: &mut Formatter) -> FmtResult` |
 | `Drop` | scope exit | `drop(&mut self)` |
@@ -338,7 +338,7 @@ syntax. From `protocols.vr`:
 | `IndexMut<Idx>` | `xs[i] = …` | `index_mut(&mut self, i: Idx) -> &mut Self.Output` |
 | `Deref` | auto-deref | `deref(&self) -> &Self.Target` |
 | `DerefMut` | mutable auto-deref | `deref_mut(&mut self) -> &mut Self.Target` |
-| `From<T>` | `T::from(x)` | `from(x: T) -> Self` |
+| `From<T>` | `T.from(x)` | `from(x: T) -> Self` |
 | `Into<T>` | `x.into()` | `into(self) -> T` |
 | `TryFrom<T>` / `TryInto<T>` | fallible variants | with `Error` associated type |
 | `AsRef<T>` | `&Self -> &T` | `as_ref(&self) -> &T` |
@@ -481,8 +481,8 @@ let csv: Text = sorted.iter().dedup().map(|x| x.to_string())
 
 // produce a Map<Int, List<String>> grouped by length
 let by_len: Map<Int, List<Text>> = words.iter()
-    .fold(Map::new(), |mut m, w| {
-        m.entry(w.len()).or_insert_with(List::new).push(w.clone());
+    .fold(Map.new(), |mut m, w| {
+        m.entry(w.len()).or_insert_with(List.new).push(w.clone());
         m
     });
 ```
@@ -500,7 +500,7 @@ later.
 ### `Cell<T>` — copy-based, `!Sync`
 
 ```verum
-let c = Cell::new(0);
+let c = Cell.new(0);
 c.set(42);
 c.get();             // requires T: Clone
 c.replace(100);      // returns old value
@@ -511,7 +511,7 @@ c.update(|v| v + 1); // apply function in-place
 ### `RefCell<T>` — runtime-borrow-checked, `!Sync`
 
 ```verum
-let rc = RefCell::new(Vec::new());
+let rc = RefCell.new(Vec.new());
 {
     let mut w = rc.borrow_mut();   // panics if any borrow active
     w.push(1);
@@ -531,7 +531,7 @@ match rc.try_borrow_mut() {
 ### `OnceCell<T>` — write-once
 
 ```verum
-let cfg: OnceCell<Config> = OnceCell::new();
+let cfg: OnceCell<Config> = OnceCell.new();
 cfg.set(load_config()).unwrap();
 let value = cfg.get_or_init(|| load_config());
 ```
@@ -539,7 +539,7 @@ let value = cfg.get_or_init(|| load_config());
 ### `LazyCell<T>` — lazy computation
 
 ```verum
-let computed: LazyCell<HeavyResult> = LazyCell::new(|| compute_once());
+let computed: LazyCell<HeavyResult> = LazyCell.new(|| compute_once());
 let result = computed.force();   // computes on first call, caches
 ```
 
@@ -563,10 +563,10 @@ For thread-safe equivalents, see [`sync`](/docs/stdlib/sync) (`AtomicCell`,
 ### `Heap<T>`
 
 ```verum
-Heap::new(value) -> Heap<T>            // panics on OOM
-Heap::new_default() -> Heap<T>         // T: Default
-Heap::new_zeroed() -> Heap<T>
-Heap::try_new(value) -> Result<Heap<T>, AllocError>
+Heap.new(value) -> Heap<T>            // panics on OOM
+Heap.new_default() -> Heap<T>         // T: Default
+Heap.new_zeroed() -> Heap<T>
+Heap.try_new(value) -> Result<Heap<T>, AllocError>
 
 h.as_ref() / h.as_mut()       // CBGR-checked deref
 h.into_inner() -> T
@@ -582,9 +582,9 @@ h.capabilities()                                // capability bits
 ### `Shared<T>` and `Weak<T>`
 
 ```verum
-Shared::new(value)       Shared::clone(&s)   s.weak() -> Weak<T>
+Shared.new(value)       Shared.clone(&s)   s.weak() -> Weak<T>
 weak.upgrade() -> Maybe<Shared<T>>
-Shared::strong_count(&s) / weak_count
+Shared.strong_count(&s) / weak_count
 ```
 
 ### `Cow<T>`

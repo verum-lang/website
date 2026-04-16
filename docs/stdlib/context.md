@@ -55,7 +55,7 @@ fn handle(req: Request) using [Logger, Database] {
 }
 
 fn main() using [IO] {
-    provide Logger = ConsoleLogger::new() in
+    provide Logger = ConsoleLogger.new() in
     provide Database = connect_db() in {
         handle(request);
     };
@@ -188,29 +188,29 @@ generates optimal initialisation order.
 
 ```verum
 layer DatabaseLayer {
-    provide ConnectionPool = ConnectionPool::new(Config.get_url());
-    provide QueryExecutor = QueryExecutor::new(ConnectionPool);
-    provide Migrations = Migrations::new(ConnectionPool);
+    provide ConnectionPool = ConnectionPool.new(Config.get_url());
+    provide QueryExecutor = QueryExecutor.new(ConnectionPool);
+    provide Migrations = Migrations.new(ConnectionPool);
 }
 
 layer LoggingLayer {
-    provide Logger = ConsoleLogger::new(Config.get_level());
-    provide Metrics = PrometheusMetrics::new();
+    provide Logger = ConsoleLogger.new(Config.get_level());
+    provide Metrics = PrometheusMetrics.new();
 }
 ```
 
 Compose and run:
 
 ```verum
-let app_layer = Layer::new()
-    .with_singleton::<Logger>(ConsoleLogger::new(LogLevel.Info))
-    .with_singleton::<Clock>(SystemClock::new())
+let app_layer = Layer.new()
+    .with_singleton::<Logger>(ConsoleLogger.new(LogLevel.Info))
+    .with_singleton::<Clock>(SystemClock.new())
     .with_request::<Database>(|| connect_db())
-    .with_request::<Metrics>(|| Metrics::tagged("req_id"))
-    .with_transient::<Random>(|| Rng::from_os());
+    .with_request::<Metrics>(|| Metrics.tagged("req_id"))
+    .with_transient::<Random>(|| Rng.from_os());
 
 app_layer.run(async {
-    let mut server = HttpServer::bind(&":8080").await?;
+    let mut server = HttpServer.bind(&":8080").await?;
     server.serve(|req| handle(req)).await?;
     Result.Ok::<(), Error>(())
 }).await.expect("server");
@@ -219,7 +219,7 @@ app_layer.run(async {
 Layer merging:
 
 ```verum
-let full = Layer::new()
+let full = Layer.new()
     .merge(logging_layer)
     .merge(db_layer)
     .merge(metrics_layer);
@@ -330,7 +330,7 @@ context Clock {
 }
 ```
 
-Mockable: in tests, `provide Clock = FakeClock::at(epoch())`.
+Mockable: in tests, `provide Clock = FakeClock.at(epoch())`.
 
 ### `Random` — testable randomness (5 methods)
 

@@ -18,7 +18,7 @@ mechanics. For the user-facing view, see
 
 ```c
 // stdlib/mem/header.vr, @repr(C, align(32))
-struct AllocationHeader {
+type AllocationHeader is {
     uint32_t size;          //  4 B — payload size
     uint32_t alignment;     //  4 B — payload alignment
     uint32_t generation;    //  4 B — CBGR counter, bumped on free
@@ -40,7 +40,7 @@ same word so reader visibility is guaranteed without a full fence.
 16 bytes. Used for sized `T`.
 
 ```c
-struct ThinRef<T> {
+type ThinRef is<T> {
     T*        ptr;
     uint32_t  generation;
     uint32_t  epoch_caps;  // 16 bits epoch + 16 bits capabilities
@@ -52,7 +52,7 @@ struct ThinRef<T> {
 32 bytes. Used when `T` is unsized (slices, `dyn`).
 
 ```c
-struct FatRef<T> {
+type FatRef is<T> {
     T*        ptr;
     uint32_t  generation;
     uint32_t  epoch_caps;

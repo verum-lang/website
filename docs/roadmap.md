@@ -129,7 +129,7 @@ Near-term items already underway for **v0.33**:
 ## How to influence the roadmap
 
 - **Use cases & pain points**: open issues / discussions on
-  [GitHub](https://github.com/verum-lang/verum).
+  the project repository.
 - **RFCs**: for anything touching the language or stdlib surface.
   Template at `docs/rfcs/TEMPLATE.md`.
 - **Pull requests**: see [Contributing](/docs/community/contributing).

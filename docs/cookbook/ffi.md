@@ -33,7 +33,7 @@ extern "C" {
 @ownership(transfer_to = "caller", borrow = ["xs"])
 @memory_effects(Reads("xs"), Writes("out"), Allocates)
 @thread_safe = true
-@errors_via = ReturnCode(0 => (), n => Error::new(&f"foo error {n}"))
+@errors_via = ReturnCode(0 => (), n => Error.new(&f"foo error {n}"))
 ffi FooC {
     fn init() -> Result<(), Error>;
     fn compute(xs: &[Float]) -> Result<Float, Error>;
@@ -58,7 +58,7 @@ extern "C" {
 pub fn foo_init_safe() -> Result<(), Error> {
     let rc = unsafe { foo_init() };
     if rc == 0 { Result.Ok(()) }
-    else { Result.Err(Error::new(&f"foo_init failed: {rc}")) }
+    else { Result.Err(Error.new(&f"foo_init failed: {rc}")) }
 }
 
 pub fn foo_compute_safe(xs: &[Float]) -> Result<Float, Error> {
@@ -72,7 +72,7 @@ pub fn foo_compute_safe(xs: &[Float]) -> Result<Float, Error> {
     };
     match rc {
         0 => Result.Ok(out),
-        n => Result.Err(Error::new(&f"foo_compute: {n}")),
+        n => Result.Err(Error.new(&f"foo_compute: {n}")),
     }
 }
 ```
@@ -88,7 +88,7 @@ pub fn foo_compute_safe(xs: &[Float]) -> Result<Float, Error> {
 | `float` | `Float32` |
 | `double` | `Float` (or `Float64`) |
 | `bool` / `_Bool` | `Bool` |
-| `char *` (C string) | `*const Byte` + explicit length; convert to `Text` via `Text::from_c_str` |
+| `char *` (C string) | `*const Byte` + explicit length; convert to `Text` via `Text.from_c_str` |
 | `const T *` (array) | `*const T` + separate length |
 | `T *` (out-param) | `*mut T` |
 | `void *` | `*const Byte` or opaque type |
@@ -100,7 +100,7 @@ pub fn foo_compute_safe(xs: &[Float]) -> Result<Float, Error> {
 C strings are null-terminated. To pass:
 
 ```verum
-let c_string = Text::to_c_string(&"hello").unwrap();  // List<Byte> with trailing \0
+let c_string = Text.to_c_string(&"hello").unwrap();  // List<Byte> with trailing \0
 unsafe { c_fn(c_string.as_ptr()); }
 ```
 
@@ -109,7 +109,7 @@ To receive:
 ```verum
 unsafe {
     let ptr = c_fn_returning_string();
-    let text = Text::from_c_str(ptr).unwrap();
+    let text = Text.from_c_str(ptr).unwrap();
     // ptr is borrowed; if C owns it, do not free.
 }
 ```
@@ -189,7 +189,7 @@ extern "C" {
 
 pub type Foo is { h: FooHandle };
 
-impl Foo {
+implement Foo {
     pub fn new() -> Foo { Foo { h: unsafe { foo_new() } } }
     pub fn use_(&self, x: Int) -> Int { unsafe { foo_use(self.h, x) } }
 }

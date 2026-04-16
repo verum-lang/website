@@ -295,7 +295,7 @@ See [gradual verification](/docs/verification/gradual-verification).
    `&checked T` when you want the compiler to promise zero overhead.
 2. **"Why does the constructor use a dot?"** — Variants and associated
    functions are namespaced under the type (`Shape.Circle { ... }`,
-   `List::new()`). Consistent across records, enums, and protocols.
+   `List.new()`). Consistent across records, enums, and protocols.
 3. **"Where's `cargo add`?"** — `verum add <dep>`. Same thing.
 4. **"How do I `Box<dyn Trait>`?"** — `Heap<dyn Protocol>`.
 5. **"Where's `mem::replace`?"** — `core::intrinsics::memory::replace`,
