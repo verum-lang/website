@@ -48,7 +48,9 @@ below gets you writing code quickly; subtleties are flagged with
 | `.await` | `.await` (same) |
 | `use std::collections::*;` | `mount std.collections.*;` |
 | `mod foo;` | `module foo;` |
-| `pub`, `pub(crate)`, `pub(super)` | `pub`, `internal`, `protected` |
+| `pub`, `pub(crate)`, `pub(super)` | `pub`, `internal`, `pub(super)` |
+| (no equivalent) | `pub(in path)` — restrict to a named subtree |
+| (no equivalent) | `protected` — protocol-local, visible to impls |
 | `unsafe { ... }` | `unsafe { ... }` (same) |
 | `&T` | `&T` (but CBGR-checked) |
 | `&'a T` | `&T` — lifetimes usually inferred |
@@ -208,12 +210,20 @@ See [metaprogramming](/docs/language/metaprogramming).
 `Verum.toml`:
 
 ```toml
+[language]
+profile = "systems"          # allows unsafe + raw pointers
+
+[codegen]
+tier = "aot"
+
 [runtime]
-kind = "embedded"      # or "no_runtime"
+heap_policy = "adaptive"     # or use @cfg(runtime = "embedded") in code
 ```
 
-Instead of `#![no_std]`. The compiler swaps out allocator-aware
-types for stack-allocated equivalents.
+Instead of `#![no_std]`, declare the `systems` profile and gate
+allocator-requiring code with `@cfg(runtime = "embedded")`. The
+compiler swaps out heap types for stack-allocated equivalents and
+links only `core` (no `std`) when the embedded profile is active.
 
 ---
 

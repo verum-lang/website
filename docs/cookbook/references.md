@@ -100,7 +100,7 @@ let out: &unsafe T = ...;
 ## Promotion inspection
 
 ```bash
-verum analyze --report cbgr
+verum analyze --escape
 ```
 
 ```

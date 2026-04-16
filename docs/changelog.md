@@ -96,7 +96,7 @@ Version scheme: [semver](https://semver.org/).
   generation, `@verify` annotation.
 - **Playbook TUI**: session replay; context binding; inline
   verification diagnostics.
-- **CLI**: `verum analyze --report cbgr | refinements | smt |
+- **CLI**: `verum analyze --escape | refinements | smt |
   capabilities`; `verum smt-stats`; `verum expand-macros`;
   `verum target install <triple>`.
 - **Package registry**: `verum publish`, `verum search`,

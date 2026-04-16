@@ -140,7 +140,7 @@ fn drop_table(name: &Text) using [Database with [Admin]] {
 Audit what capabilities your build requires:
 
 ```bash
-verum analyze --report capabilities
+verum analyze --context
 ```
 
 ---

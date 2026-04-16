@@ -57,7 +57,7 @@ $ cvc5 --stats target/smtlib/push_postcond.smt2
 Time each obligation:
 
 ```bash
-$ verum analyze --report smt
+$ verum analyze --refinement
  obligation                          routed      ms   result
  stack::push/postcond#1              z3           8   unsat
  stack::push/postcond#2              z3         340   unsat   ← slow
