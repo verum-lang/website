@@ -141,11 +141,11 @@ attributes control the default transparency:
 Without one of these, referring to a caller binding is rejected with
 `M408 capture not declared`.
 
-### `gensym` for fresh, unnameable identifiers
+### `gensym` via the `Hygiene` context
 
 ```verum
-meta fn with_guard() -> quote {
-    let g = gensym("guard");
+meta fn with_guard() -> quote using [Hygiene] {
+    let g = Hygiene.gensym("guard");
     quote {
         let $g = acquire_lock();
         critical_section();
@@ -153,6 +153,12 @@ meta fn with_guard() -> quote {
     }
 }
 ```
+
+`Hygiene.gensym(prefix)` mints an identifier guaranteed not to
+shadow or collide with anything in the caller's scope — even if the
+caller has a binding with the same source name.
+`Hygiene.call_site()` and `Hygiene.def_site()` provide the spans for
+error messages.
 
 `gensym(prefix)` mints an identifier that is guaranteed not to shadow
 or collide with anything in the caller's scope, even if the caller
@@ -229,9 +235,24 @@ meta fn make_greeting(who: meta Text) -> quote {
 `@derive(P)` expands into `implement P for T { ... }`. The expansion is
 deterministic and inspectable with `verum expand-macros`.
 
-Standard derives live in `core::derives`: `Clone`, `Copy`, `Debug`,
-`Display`, `Eq`, `Hash`, `Ord`, `PartialEq`, `PartialOrd`, `Default`,
-`Builder`, `Serialize`, `Deserialize`, `Error`, `From`, `Into`.
+Standard derives live in `core::derives`. The compiler ships 9
+implemented derive macros:
+
+| Derive | What it generates |
+|--------|-------------------|
+| `Clone` | deep-clone via field-by-field `.clone()` |
+| `Debug` | `Debug::fmt_debug` for `{:?}` formatting |
+| `Default` | `Default::default()` from per-field defaults |
+| `PartialEq` | `Eq::eq` via field-by-field comparison |
+| `Display` | `Display::fmt` with configurable format |
+| `Serialize` | `Serialize` protocol for serialisation |
+| `Deserialize` | `Deserialize` protocol for deserialisation |
+| `Error` | `Error` with `Display` delegation |
+| `Builder` | fluent builder with `.with_*()` methods |
+
+Additional derives (`Copy`, `Eq`, `Hash`, `Ord`, `PartialOrd`, `From`,
+`Into`) are either marker protocols or thin wrappers that compose
+with the above.
 
 ## Procedural macros
 
@@ -253,14 +274,30 @@ meta fn sql_query(query: quote) -> quote {
 
 ## Capability-gated execution
 
-A `meta fn` is pure by default — it can:
-- inspect types (via `@type_fields`, `@variants_of`);
-- produce diagnostics (via `CompileDiag`);
-- access build-time assets (via `BuildAssets`);
-- evaluate other `meta` functions.
+A `meta fn` is pure by default. The compiler provides **14
+capability contexts** that gate access to compile-time resources;
+the meta fn declares which it needs via the same `using [...]` syntax
+used for runtime contexts:
 
-It **cannot** perform IO, network, or file access — unless it
-explicitly requests the capability:
+| Context | What it gates |
+|---------|---------------|
+| `TypeInfo` | type reflection (`name_of`, `fields_of`, `variants_of`, `implements`) |
+| `AstAccess` | parse / emit AST fragments |
+| `CompileDiag` | `emit_error`, `emit_warning`, `emit_note`, `abort` |
+| `BuildAssets` | read files at compile time (`load_text`, `include_bytes`) |
+| `MetaRuntime` | build config (`target_os`, `target_arch`, limits) |
+| `MacroState` | cross-invocation caching (`cache_get` / `cache_put`) |
+| `StageInfo` | N-level staging info (`current_stage`, `stage_quote_target`) |
+| `ProjectInfo` | manifest metadata (`cog_name`, `cog_version`, `features_enabled`) |
+| `SourceMap` | generated-code tracking (scope entry/exit, span mapping) |
+| `CodeSearch` | search the codebase for functions/types/impls by pattern |
+| `Schema` | validate generated code against structural constraints |
+| `DepGraph` | inspect the module dependency graph |
+| `MetaBench` | micro-benchmark macro expansions (`bench_start`, `bench_report`) |
+| `Hygiene` | hygienic identifiers (`gensym`), call-site / def-site spans |
+
+Without a context declaration, calling a gated function is a
+compile error. This keeps compilation deterministic and caches valid:
 
 ```verum
 meta fn read_schema() -> quote using [meta.BuildAssets] {
