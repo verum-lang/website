@@ -20,7 +20,8 @@ sum types are real, errors are values but better).
 | `[]T`, slice | `List<T>` — dynamic; `&[T]` borrowed slice |
 | `[N]T`, array | `[T; N]` |
 | `map[K]V` | `Map<K, V>` |
-| `chan T` | `channel::<T>(capacity)` → `(Sender<T>, Receiver<T>)` |
+| `chan T` (buffered) | `let (tx, rx) = channel::<T>(capacity: N)` |
+| `chan T` (unbuffered) | `let (tx, rx) = channel::<T>(capacity: 0)` |
 | `go f()` | `spawn f()` |
 | `select { case ... }` | `select { arm.await => ... }` (keyword expression) |
 | `sync.Mutex`, `sync.RWMutex` | `Mutex<T>`, `RwLock<T>` |
@@ -149,9 +150,12 @@ spawn async move { tx.send(42).await.unwrap(); };
 let val = rx.recv().await.unwrap();
 ```
 
-Verum channels are async-native — `send`/`recv` suspend the task
-instead of blocking the thread. Unbounded channels via `channel::<T>()`
-(no capacity); bounded via `bounded(N)`.
+Verum channels are async-native — `send` / `recv` suspend the task
+instead of blocking the thread. Channel types:
+
+- `Channel<T>` (MPSC) — `channel::<T>(capacity: N)`.
+- `BroadcastChannel<T>` — every receiver sees every message.
+- `OneShot<T>` — single send, single receive.
 
 ### `select`
 
