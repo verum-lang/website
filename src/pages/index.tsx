@@ -278,6 +278,28 @@ meta fn derive_eq<T>() -> TokenStream
     using [TypeInfo, AstAccess, CompileDiag] { ... }`,
   },
   {
+    title: 'Types that carry proof obligations to zero-cost discharge',
+    accent: '#14b8a6',
+    blurb:
+      'A refinement predicate is part of the type — not a comment, not a linter, not a separate tool. ' +
+      'Int { self > 0 } flows through inference, narrows via control flow, discharges to SMT, ' +
+      'reflects user @logic functions as solver axioms, falls back to tactics when SMT can\'t — ' +
+      'and the proof embeds in the binary as a certificate exportable to Coq or Lean. Zero runtime cost.',
+    code: `type Sorted<T: Ord> is List<T> { self.is_sorted() };
+
+@logic fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+    forall i in 0..xs.len()-1. xs[i] <= xs[i+1]
+}
+
+@verify(formal)
+fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
+    where ensures is_sorted(result)
+{
+    let pos = xs.partition_point(|y| *y < x);
+    xs.insert(pos, x)   // SMT proves sortedness is preserved
+}`,
+  },
+  {
     title: 'Three-tier references without language fragmentation',
     accent: '#f59e0b',
     blurb:
@@ -311,7 +333,7 @@ function Pillars() {
         <h2>What Verum actually does differently</h2>
         <p>
           Not features borrowed from research papers. Not syntax sugar over known patterns.
-          Three design decisions that change how you write and ship systems code.
+          Four integrated design decisions that change how you write and ship systems code.
         </p>
       </div>
       <div className={styles.pillarGrid}>
