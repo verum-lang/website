@@ -6,34 +6,59 @@ description: Compile-time programming — tokens, AST, reflection, quote, capabi
 
 # `core::meta` — Compile-time programming
 
-The stdlib side of metaprogramming. Defines the **13 capability
-contexts** a `meta fn` may request, the `TokenStream` / `TokenTree`
-types, reflection data (`TypeKind`, `FieldInfo`, `VariantInfo`,
-`ProtocolInfo`, `GenericParam`, `FunctionInfo`, `Attribute`), the
-`QuoteBuilder`, and the `Span` / `SourceLocation` / `SourceFile` types.
+The stdlib side of metaprogramming. Defines the **14 capability
+contexts** a `meta fn` may request (declared via `using [...]`), the
+`TokenStream` / `TokenTree` types, reflection data, the
+`QuoteBuilder`, and the `Span` / `SourceLocation` / `SourceFile`
+types. ~335 methods across all contexts.
 
 | File | What's in it |
 |---|---|
-| `contexts.vr` | 13 compiler-provided meta contexts + 8+ composite groups |
+| `contexts.vr` (3 317 lines) | 14 compiler-provided meta contexts |
 | `reflection.vr` | `TypeKind`, `FieldInfo`, `VariantInfo`, `GenericParam`, `ProtocolInfo`, `FunctionInfo`, `TraitBound`, `LifetimeParam`, `OwnershipInfo`, `MethodResolution`, `MethodSource` |
 | `token.vr` | `TokenStream`, `Token`, `TokenTree`, `TokenKind`, `Delimiter`, `Spacing`, `LiteralKind`, `Keyword` |
 | `span.vr` | `Span`, `SourceLocation`, `SourceFile`, `SpanRange` |
 | `quote.vr` | `QuoteBuilder` |
 | `attribute.vr` | `Attribute`, `AttributeArg` |
-| `tactic.vr` | (optional) tactic DSL integration |
-| `oracle.vr` | (optional) LLM oracle integration for meta |
-| `mod.vr` | re-exports |
+| `mod.vr` (460 lines) | re-exports, `MetaError` (11 variants), composite context groups |
 
 User-level syntax (`meta fn`, `quote { … }`, `@derive(…)`, `lift(x)`)
-is in [Language → Metaprogramming](/docs/language/metaprogramming).
+is in **[Language → Metaprogramming](/docs/language/metaprogramming)**.
 This page enumerates the types and contexts those constructs map to.
 
 ---
 
-## The 13 capability contexts
+## Isomorphism with runtime contexts
 
-All are `@compiler_provided` — the compiler implements them; you
-declare which ones your `meta fn` needs via `using [ ... ]`.
+Meta contexts follow the **same `using [...]` syntax** as runtime
+contexts (see **[language → context system](/docs/language/context-system)**),
+but execute at compile time with zero runtime cost:
+
+| Aspect | Runtime | Meta |
+|--------|---------|------|
+| Syntax | `fn f() -> T using [Database]` | `meta fn f() -> T using [TypeInfo]` |
+| Provider | explicit `provide C = v` | compiler-provided (implicit) |
+| Overhead | ~2–30 ns (slot lookup) | 0 ns (compile time only) |
+| Groups | `using WebRequest = [Database, Logger, ...]` | `using MetaCore = [TypeInfo, AstAccess, CompileDiag]` |
+| Negative | `using [!IO]` | `using [!BuildAssets]` |
+| Purity | need `pure fn` | implicit — every `meta fn` is pure |
+
+---
+
+## The 14 capability contexts
+
+All defined in `core/meta/contexts.vr` and implemented by the
+compiler in `crates/verum_compiler/src/meta/builtins/`.
+
+### Tier model
+
+| Tier | Access | Examples |
+|------|--------|---------|
+| **0** | Always available — no `using` needed | arithmetic, text ops, collections, `quote`/`unquote`, `stringify`, `concat_idents` |
+| **1** | Requires `using [Context]` | all 14 contexts below |
+
+The compiler enforces Tier 1 gating: calling a `TypeInfo` function
+without `using [TypeInfo]` in the signature is a compile error.
 
 ### `BuildAssets` — read compile-time assets
 
@@ -136,7 +161,27 @@ context StageInfo {
 }
 ```
 
-### Advanced contexts
+### `Hygiene` — hygienic identifier generation
+
+```verum
+context Hygiene {
+    fn gensym(base: Text) -> Ident;        // unique ident per invocation
+    fn call_site() -> Span;                // caller's source location
+    fn def_site() -> Span;                 // macro definition's location
+    fn mixed_site() -> Span;               // Rust-style mixed resolution
+    fn is_inside_quote() -> Bool;
+    fn current_expansion_id() -> UInt64;
+}
+```
+
+The gensym'd identifiers are guaranteed not to collide with user
+code or other macro expansions. See
+**[metaprogramming → hygiene](/docs/language/metaprogramming#hygiene)**.
+
+### Analysis & productivity contexts
+
+All of these are fully implemented in
+`crates/verum_compiler/src/meta/builtins/` (~1 000 lines each).
 
 ```verum
 context CodeSearch {        // search the whole codebase
@@ -175,25 +220,29 @@ context MetaBench {         // micro-benchmark macro expansions
 
 ## Composite context groups
 
-Predefined unions of the above:
+Predefined unions from `core/meta/mod.vr`. Using a group is identical
+to listing its members individually.
 
 | Group | Expands to |
 |---|---|
 | `MetaCore` | `TypeInfo, AstAccess, CompileDiag` |
-| `MetaSafe` | `TypeInfo, AstAccess, CompileDiag, MetaRuntime, MacroState, StageInfo` |
+| `MetaSafe` | `TypeInfo, AstAccess, CompileDiag` |
 | `MetaFull` | every standard context |
-| `MetaTypes` | `TypeInfo, AstAccess, CompileDiag` |
 | `MetaDerive` | `TypeInfo, AstAccess, CompileDiag, MacroState` |
 | `MetaAttr` | `BuildAssets, TypeInfo, AstAccess, CompileDiag, MacroState` |
-| `MetaNoIO` | `TypeInfo, AstAccess, CompileDiag, MacroState, StageInfo` |
-| `MetaStaged` | `AstAccess, CompileDiag, StageInfo, MacroState` |
-| `MetaAnalysis` | `TypeInfo, CodeSearch, DepGraph, CompileDiag` |
-| `MetaProject` | `ProjectInfo, BuildAssets, CompileDiag` |
-| `MetaSourced` | `SourceMap, AstAccess, CompileDiag` |
-| `MetaValidated` | `AstAccess, Schema, CompileDiag` |
+| `MetaNoIO` | `TypeInfo, AstAccess, CompileDiag, MetaRuntime, MacroState, StageInfo` |
+| `MetaStaged` | `StageInfo, TypeInfo, AstAccess, CompileDiag, MacroState` |
+| `MetaAnalysis` | `CodeSearch, TypeInfo, AstAccess, CompileDiag` |
+| `MetaProject` | `ProjectInfo, TypeInfo, AstAccess, CompileDiag` |
+| `MetaSourced` | `SourceMap, TypeInfo, AstAccess, CompileDiag` |
+| `MetaValidated` | `Schema, TypeInfo, AstAccess, CompileDiag` |
 | `MetaDeps` | `DepGraph, ProjectInfo, CompileDiag` |
-| `MetaProfiled` | `MetaBench, CompileDiag` |
-| `MetaTooling` | `ProjectInfo, DepGraph, SourceMap, CompileDiag` |
+| `MetaProfiled` | `MetaBench, TypeInfo, AstAccess, CompileDiag` |
+| `MetaTooling` | all analysis and productivity contexts |
+
+`MetaCore` is the typical minimum for derives: type reflection, AST
+parsing, and diagnostic output. `MetaFull` is for unrestricted meta
+fns that may touch any part of the build environment.
 
 ---
 
