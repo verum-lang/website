@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Refinement Reflection
+description: "@logic functions — extending the refinement vocabulary with user-defined predicates."
 ---
 
 # Refinement Reflection
@@ -8,6 +9,14 @@ title: Refinement Reflection
 Refinement predicates can call user-defined functions — but only if the
 functions are **reflected** into the SMT logic. Reflection is Verum's
 mechanism for extending the refinement vocabulary.
+
+This page explains:
+
+- Why reflection is necessary.
+- What kinds of functions can be `@logic`.
+- How reflected functions are encoded for the solver.
+- Best practices for writing reflection-friendly code.
+- Limitations and workarounds.
 
 ## The problem
 
@@ -132,16 +141,157 @@ warning[V6104]: solvers disagreed on obligation
 
 Disagreements are rare but diagnostic.
 
+## Best practices
+
+### Keep `@logic` functions minimal
+
+Large `@logic` bodies explode the SMT solver's context. Prefer many
+small `@logic` helpers that compose — the solver handles a conjunction
+of small definitions better than one complex one.
+
+```verum
+// Prefer this:
+@logic fn is_balanced(t: &Tree) -> Bool { ... }
+@logic fn is_ordered(t: &Tree) -> Bool { ... }
+@logic fn is_bst(t: &Tree) -> Bool { is_balanced(t) && is_ordered(t) }
+
+// Over this:
+@logic fn is_bst(t: &Tree) -> Bool {
+    /* 40-line predicate inlined */
+}
+```
+
+### Bounded recursion over structures
+
+Recursion over a finite structure (list, tree, natural number) with
+a `decreases` clause is routinely supported. Recursion over an
+unbounded type (e.g. `Int` without lower bound) can confuse the
+termination checker; add `requires n >= 0`.
+
+### Expose invariants as types, not as function preconditions
+
+If `f(x: T)` needs `is_valid(x)` to reason, make `x: T { is_valid(self) }`
+a refinement on the parameter. Callers prove it once at the boundary;
+the body assumes it everywhere.
+
+### Avoid non-linear arithmetic unless you need it
+
+`x * y` with both sides symbolic forces the solver into non-linear
+arithmetic (slower, sometimes incomplete). For `x * constant` or
+`constant * y`, the goal remains linear. Multiply by concrete values
+when possible.
+
+### Cache-friendly signatures
+
+`@logic` functions are memoised per-argument at the SMT level.
+Large structural arguments (full trees, long lists) blow out the
+cache. Prefer local invariants that reason about a subset.
+
+## Writing a reflection-heavy module
+
+A typical pattern for a data structure with invariants:
+
+```verum
+// --- invariants.vr --- reflective predicates only
+@logic
+fn has_no_red_red(t: &Tree) -> Bool { ... }
+
+@logic
+fn is_black_balanced(t: &Tree) -> Bool { ... }
+
+@logic
+fn is_bst_ordered(t: &Tree) -> Bool { ... }
+
+@logic
+fn is_rb(t: &Tree) -> Bool {
+    has_no_red_red(t)
+    && is_black_balanced(t)
+    && is_bst_ordered(t)
+}
+
+// --- tree.vr --- types and operations
+type RBTree is Tree { is_rb(self) };
+
+@verify(formal)
+fn insert(t: RBTree, k: Int) -> RBTree
+    where ensures is_rb(result),
+          ensures contains(result, k)
+{ ... }
+
+// --- proofs.vr --- optional, if `auto` can't close
+lemma insert_preserves_rb(t: RBTree, k: Int)
+    ensures is_rb(insert(t, k))
+{
+    proof by induction t
+}
+```
+
+Three files:
+
+1. `invariants.vr` — pure, `@logic`, reusable.
+2. `tree.vr` — implementation using refined types.
+3. `proofs.vr` — manual lemmas where automation falls short.
+
 ## Limitations
 
-- **First-order only**: `@logic` functions cannot take higher-order
-  arguments (no function-typed parameters).
-- **No references**: refinements talk about values, not memory.
-- **No effects**: `@logic` cannot read the clock or the environment.
+### First-order only
+
+`@logic` functions cannot take higher-order arguments (no
+function-typed parameters). A `@logic fn map<A, B>(f: fn(A) -> B,
+xs: List<A>) -> List<B>` is rejected. Reason: SMT quantification
+over function space is undecidable in general.
+
+**Workaround**: specialise. Instead of `map(double, xs)`, write
+`@logic fn double_all(xs: List<Int>) -> List<Int> { ... }`.
+
+### No references
+
+Refinements talk about values, not memory. A `@logic` function
+cannot dereference `&T`. Workaround: define the predicate on the
+owned value type; callers pass by value (costs a `Clone`).
+
+### No effects
+
+`@logic` cannot read the clock, environment, IO, or random. Makes
+sense — the solver runs at compile time without those resources.
+
+### No exceptions
+
+`@logic` functions cannot `throw`, `panic`, or return `Result.Err`.
+A total function that *might* fail should return `Maybe<T>`.
+
+### No `async`
+
+Obvious: the solver is synchronous. `async fn @logic` is rejected.
 
 For invariants that need state (imperative loop invariants, heap
 shapes), use loop `invariant` clauses or separation logic — see
 **[Contracts](/docs/verification/contracts)**.
+
+## Diagnostic cheatsheet
+
+| Message                                     | Cause                                                     |
+|---------------------------------------------|-----------------------------------------------------------|
+| `V6100: @logic call of non-logic function`  | You called an ordinary function; mark it `@logic`.         |
+| `V6101: @logic function cannot return unit` | `@logic` must produce a value; `()` is meaningless.        |
+| `V6102: @logic body uses effects`           | Pure-only; remove the IO/mutation.                         |
+| `V6103: @logic recursion without decreases` | Add `where decreases <measure>`.                           |
+| `V6104: solvers disagreed on obligation`    | Rare SMT bug; manual review (above).                       |
+| `V6105: refinement not decidable`           | Reflection failed — the function uses unreachable theory.  |
+| `V6106: reflection cache stale`             | Rebuild with `verum clean` to invalidate.                   |
+
+## Performance notes
+
+Reflection adds compile time. On a 50k LOC project with ~500 refined
+types and ~100 `@logic` functions, expect:
+
+- **First build**: 3-10 s of SMT time total.
+- **Incremental builds**: 50-500 ms, mostly cache hits.
+- **`@verify(thorough)` on everything**: 30-90 s (parallel workers
+  help).
+
+If verification dominates your build, scope `formal` / `thorough` to
+the files that need it; leave the rest at `static`.
 
 ## See also
 

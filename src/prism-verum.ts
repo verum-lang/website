@@ -144,6 +144,13 @@ export default function registerVerum(prismInstance: any) {
       alias: 'variable',
     },
 
+    // ---- Logical operators: &&, || (must precede `reference` so that
+    // `self && self` tokenises as `self` `&&` `self`, not as a reference) --
+    'logical-op': {
+      pattern: /&&|\|\|/,
+      alias: 'operator',
+    },
+
     // ---- Three-tier reference syntax: &T, &checked T, &unsafe T ---------
     'reference': {
       pattern: /&\s*(?:checked|unsafe)?\s*(?:mut\s+)?(?=[A-Za-z_])/,

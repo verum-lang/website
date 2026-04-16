@@ -1,23 +1,112 @@
 ---
 sidebar_position: 6
 title: logic
-description: Linear logic connectives — ⊗, ⅋, &, ⊕, !, ? — the dual structure behind session types.
+description: Modal logic (Kripke) and linear logic — the metatheory behind session types, capabilities, and affine modifiers.
 ---
 
-# `core::logic` — Linear logic
+# `core::logic` — Modal and linear logic
 
-Term algebra for the connectives of **linear logic** (Girard 1987).
-Used internally for linearity analyses, session types, and affine
-types. User code rarely imports it directly; this reference is for
-completeness.
+Term algebras for two logical systems used as Verum's metatheory:
 
-| File | What's in it |
-|---|---|
-| `linear.vr` | `LinForm` + constructors |
+- **Kripke modal logic** (`kripke.vr`) — worlds, accessibility,
+  `□ / ◇` modalities. Used for reasoning about state-dependent
+  properties and by the security/capability verifier.
+- **Linear logic** (`linear.vr`) — multiplicative / additive /
+  exponential connectives. Used for linearity analyses, session
+  types, and affine / linear modifiers.
+
+Most user code never imports this module directly. The modules exist
+so the *specifications* Verum's compiler relies on are themselves
+expressed in Verum, provable by the compiler, and available to
+proof-heavy user code that wants to reason about these systems.
+
+| File        | What's in it                                                        |
+|-------------|---------------------------------------------------------------------|
+| `kripke.vr` | `World`, `Edge`, `KripkeFrame`, `ModalFormula`, `Valuation`, `evaluate` |
+| `linear.vr` | `LinForm` + smart constructors + dualities + predicates             |
 
 ---
 
-## Connectives
+## Kripke semantics — `kripke.vr`
+
+### Frames
+
+```verum
+public type World      is { id: Text };
+public type Edge       is { from: World, to: World };
+public type KripkeFrame is { worlds: List<World>, edges: List<Edge> };
+```
+
+A **Kripke frame** is a set of worlds plus a binary accessibility
+relation. Modal formulas are evaluated **at a world**.
+
+### Formulas
+
+```verum
+public type ModalFormula is
+    | Atom    { name: Text }                            // propositional atom p
+    | Not     { inner: Heap<ModalFormula> }             // ¬φ
+    | And     { left: Heap<ModalFormula>, right: Heap<ModalFormula> }
+    | Or      { left: Heap<ModalFormula>, right: Heap<ModalFormula> }
+    | Implies { hyp: Heap<ModalFormula>, conc: Heap<ModalFormula> }
+    | Box     { inner: Heap<ModalFormula> }             // □φ — necessarily
+    | Diamond { inner: Heap<ModalFormula> };            // ◇φ — possibly
+```
+
+### Evaluation
+
+```verum
+public fn evaluate(
+    formula: &ModalFormula,
+    frame:   &KripkeFrame,
+    v:       &Valuation,          // maps (world, atom) → Bool
+    at:      &World,
+) -> Bool;
+```
+
+- `□φ` is true at `w` iff φ is true at **every** world reachable from
+  `w`.
+- `◇φ` is true at `w` iff φ is true at **some** world reachable from
+  `w`.
+
+### Frame classes
+
+| Class | Axiom          | Accessibility constraint                |
+|-------|----------------|------------------------------------------|
+| K     | (none)         | No constraint — base modal logic.       |
+| T     | □p → p         | Reflexive — every world sees itself.    |
+| B     | p → □◇p        | Symmetric.                              |
+| 4     | □p → □□p       | Transitive. S4 = T + 4.                 |
+| 5     | ◇p → □◇p       | Euclidean.                              |
+| S5    | (T + B + 4)    | Equivalence relation — universal.       |
+
+Verum's capability verifier uses **S4** for reasoning about
+monotonically-growing evidence.
+
+### Example
+
+```verum
+// Frame with two worlds and w0 → w1.
+let frame = KripkeFrame {
+    worlds: list![world("w0"), world("w1")],
+    edges:  list![edge(world("w0"), world("w1"))],
+};
+
+// Valuation: "p" holds at w1.
+let v = Valuation.empty().with("w1", "p", true);
+
+// □p holds at w0 (every world reachable from w0 satisfies p):
+assert(evaluate(&modal_box(modal_atom("p")), &frame, &v, &world("w0")));
+
+// But p itself does NOT hold at w0:
+assert(!evaluate(&modal_atom("p"), &frame, &v, &world("w0")));
+```
+
+---
+
+## Linear logic — `linear.vr`
+
+### Connectives
 
 ```verum
 type LinForm is

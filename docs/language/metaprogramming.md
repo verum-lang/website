@@ -160,10 +160,6 @@ caller has a binding with the same source name.
 `Hygiene.call_site()` and `Hygiene.def_site()` provide the spans for
 error messages.
 
-`gensym(prefix)` mints an identifier that is guaranteed not to shadow
-or collide with anything in the caller's scope, even if the caller
-happens to have a binding of the same source name.
-
 ## Multi-stage quoting
 
 A `meta(N) fn` produces code that produces code N−1 times. Each stage
@@ -412,14 +408,13 @@ The four contexts compose naturally:
 - **[Stdlib → meta](/docs/stdlib/meta)** — `TokenStream`, `quote`,
   reflection types, the 14 capability contexts with full API
   surfaces.
+- **[Reference → meta functions](/docs/reference/meta-functions)** —
+  the `@`-prefix compile-time functions (`@const`, `@cfg`,
+  `@stringify`, `@type_name`, …).
+- **[Reference → built-in functions](/docs/reference/builtins)** —
+  the runtime counterparts.
 - **[Attributes](/docs/language/attributes)** — the full registry of
   `@` annotations.
-- **[Reference → attribute registry](/docs/reference/attribute-registry)**
-  — every standard `@` with target and semantics.
-- **[Cookbook → write a derive](/docs/cookbook/write-a-derive)** —
-  task-oriented walkthrough.
-- **[Cookbook → `@logic` functions](/docs/cookbook/logic-functions)** —
-  how `meta` composes with SMT reflection.
 - **[Reference → attribute registry](/docs/reference/attribute-registry)**
   — every standard `@` with target and semantics.
 - **[Cookbook → write a derive](/docs/cookbook/write-a-derive)** —
