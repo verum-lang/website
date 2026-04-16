@@ -241,10 +241,10 @@ implemented derive macros:
 | Derive | What it generates |
 |--------|-------------------|
 | `Clone` | deep-clone via field-by-field `.clone()` |
-| `Debug` | `Debug::fmt_debug` for `{:?}` formatting |
-| `Default` | `Default::default()` from per-field defaults |
-| `PartialEq` | `Eq::eq` via field-by-field comparison |
-| `Display` | `Display::fmt` with configurable format |
+| `Debug` | `Debug.fmt_debug` for `{:?}` formatting |
+| `Default` | `Default.default()` from per-field defaults |
+| `PartialEq` | `Eq.eq` via field-by-field comparison |
+| `Display` | `Display.fmt` with configurable format |
 | `Serialize` | `Serialize` protocol for serialisation |
 | `Deserialize` | `Deserialize` protocol for deserialisation |
 | `Error` | `Error` with `Display` delegation |
@@ -325,8 +325,8 @@ actually produced.
 pub meta fn derive_display_all<T>() -> TokenStream
     using [TypeInfo, AstAccess, CompileDiag]
 {
-    let name = TypeInfo::name_of::<T>();
-    let fields = TypeInfo::fields_of::<T>();
+    let name = TypeInfo.name_of::<T>();
+    let fields = TypeInfo.fields_of::<T>();
 
     quote {
         implement Display for ${name} {
@@ -393,7 +393,7 @@ pub meta fn validated_api<T>() -> TokenStream
             for e in errors {
                 CompileDiag.emit_error(e.message, e.span);
             }
-            TokenStream::empty()
+            TokenStream.empty()
         }
     }
 }

@@ -15,7 +15,7 @@ use core.async::*;
 use core.time::*;
 
 async fn heartbeat() using [Logger] {
-    let mut ticker = Interval::new(1.seconds());
+    let mut ticker = Interval.new(1.seconds());
     loop {
         ticker.tick().await;
         Logger.info(&"still alive");
@@ -30,8 +30,8 @@ the next tick still fires on schedule (not 50 ms later).
 ### "Catch up on missed ticks" behaviour
 
 ```verum
-let mut ticker = Interval::new(100.ms());
-ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+let mut ticker = Interval.new(100.ms());
+ticker.set_missed_tick_behavior(MissedTickBehavior.Skip);
 ```
 
 | `MissedTickBehavior` | What happens if multiple ticks are missed |
@@ -47,9 +47,9 @@ status updates where freshness matters more than count.
 
 ```verum
 async fn scheduler() using [IO, Logger] {
-    let mut fast = Interval::new(500.ms());
-    let mut slow = Interval::new(10.seconds());
-    let mut hourly = Interval::new(1.hours());
+    let mut fast = Interval.new(500.ms());
+    let mut slow = Interval.new(10.seconds());
+    let mut hourly = Interval.new(1.hours());
 
     loop {
         select {
@@ -65,7 +65,7 @@ async fn scheduler() using [IO, Logger] {
 
 ```verum
 async fn run_until_stop(stop: Shared<AtomicBool>) using [Logger] {
-    let mut ticker = Interval::new(1.seconds());
+    let mut ticker = Interval.new(1.seconds());
     while !stop.load(MemoryOrdering.Acquire) {
         select {
             _ = ticker.tick() => do_work().await,
@@ -118,7 +118,7 @@ resolution. Use `Instant`-based spin-loops in short bursts:
 
 ```verum
 fn spin_until(deadline: Instant) {
-    while Instant::now() < deadline { spin_hint(); }
+    while Instant.now() < deadline { spin_hint(); }
 }
 ```
 

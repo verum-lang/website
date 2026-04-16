@@ -50,7 +50,7 @@ risks.
   types or, for arbitrary shapes, `Data` + explicit validation.
 - Regex in tagged form (`rx#"..."`) — compile-time-checked.
 - SQL in tagged form (`sql#"..."`) — injection-safe.
-- Shell commands via `Command::new(...).arg(...)` — never string-
+- Shell commands via `Command.new(...).arg(...)` — never string-
   concatenate.
 - HTML output via `html#"""..."""` — escape-by-default.
 
@@ -88,9 +88,9 @@ risks.
 
 ### Network
 
-- TLS everywhere by default. `TlsConfig::client()` loads system roots
+- TLS everywhere by default. `TlsConfig.client()` loads system roots
   and enforces TLS 1.2+.
-- Certificate pinning when appropriate: `TlsConfig::with_pinned(...)`.
+- Certificate pinning when appropriate: `TlsConfig.with_pinned(...)`.
 - Validate `Host` header for virtual hosting — don't route on Host
   content without whitelisting.
 - Rate-limit inbound: `Semaphore` for concurrent connections, leaky
@@ -110,7 +110,7 @@ risks.
   `errors_via`, `@ownership`).
 - Input pointers: validate non-null, bound-check length.
 - Output pointers: zero before return if returning on error.
-- Strings crossing the boundary: `Text::from_c_str` — validates UTF-8.
+- Strings crossing the boundary: `Text.from_c_str` — validates UTF-8.
 
 ### Verification
 

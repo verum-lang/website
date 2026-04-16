@@ -70,8 +70,8 @@ The REPL detects incomplete expressions and waits for more:
 
 ```
 >>> :use std.io
->>> :bind Logger = ConsoleLogger::new(LogLevel.Info)
->>> :bind Clock  = SystemClock::new()
+>>> :bind Logger = ConsoleLogger.new(LogLevel.Info)
+>>> :bind Clock  = SystemClock.new()
 
 >>> fn log_now() using [Logger, Clock] { Logger.info(f"now: {Clock.now()}") }
 >>> log_now()

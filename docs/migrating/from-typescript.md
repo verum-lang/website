@@ -38,7 +38,7 @@ erased after verification.
 | `keyof T`, `T[K]` | type-level reflection via `@type_fields(T)` |
 | `as const` | `const NAME: T = ...;` at the binding site |
 | `readonly` | `&T` — references are immutable by default; use `&mut T` |
-| `throw new Error("msg")` | `throw Error::new("msg")` (in a `throws`-declared fn) |
+| `throw new Error("msg")` | `throw Error.new("msg")` (in a `throws`-declared fn) |
 | `try / catch / finally` | `try { } recover { } finally { }` |
 | `import { foo } from "bar"` | `mount bar.foo` (or `mount bar.{foo, baz}`) |
 | `export default` | `pub fn / type / const` |
@@ -235,7 +235,7 @@ fn load(input: &Text) -> Result<Output, Error> {
 // Or with try/recover when mixing with `throws`:
 fn load_or_default(input: &Text) -> Output {
     try { load(input)? }
-    recover { _ => Output::default() }
+    recover { _ => Output.default() }
 }
 ```
 

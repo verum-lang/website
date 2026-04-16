@@ -129,10 +129,10 @@ type IoResult<T> = Result<T, StreamError>;
 ### Opening
 
 ```verum
-File::open(&path) -> IoResult<File>            // read-only
-File::create(&path) -> IoResult<File>          // truncate/create write
+File.open(&path) -> IoResult<File>            // read-only
+File.create(&path) -> IoResult<File>          // truncate/create write
 
-OpenOptions::new()
+OpenOptions.new()
     .read(true)
     .write(true)
     .create(true)
@@ -171,18 +171,18 @@ fs::append(&path, bytes: &[Byte]) -> IoResult<()>
 ## Buffered I/O
 
 ```verum
-BufReader::new(R) -> BufReader<R>
-BufReader::with_capacity(capacity, R)
+BufReader.new(R) -> BufReader<R>
+BufReader.with_capacity(capacity, R)
 br.buffer() -> &[Byte]
 br.capacity() -> Int
 br.into_inner() -> R
 
-BufWriter::new(W) -> BufWriter<W>
-BufWriter::with_capacity(capacity, W)
+BufWriter.new(W) -> BufWriter<W>
+BufWriter.with_capacity(capacity, W)
 bw.buffer() -> &[Byte]
 bw.into_inner() -> Result<W, IntoInnerError<W>>
 
-LineWriter::new(W)                              // flushes on '\n'
+LineWriter.new(W)                              // flushes on '\n'
 
 copy(&mut R, &mut W) -> IoResult<UInt64>        // streaming copy
 read_all(&mut R) -> IoResult<List<Byte>>
@@ -194,8 +194,8 @@ const DEFAULT_BUF_CAPACITY: Int = 8192;
 
 ```verum
 fn process_lines(path: &Path) -> IoResult<Int> using [IO] {
-    let f = File::open(path)?;
-    let mut reader = BufReader::new(f);
+    let f = File.open(path)?;
+    let mut reader = BufReader.new(f);
     let mut count = 0;
     for line in reader.lines() {
         let line = line?;
@@ -243,10 +243,10 @@ read_float() -> IoResult<Float>
 ### Construction
 
 ```verum
-Path::from(&text) -> &Path
-PathBuf::from(&text) -> PathBuf
-PathBuf::new() -> PathBuf
-Path::new(&text) -> &Path       // same as Path::from
+Path.from(&text) -> &Path
+PathBuf.from(&text) -> PathBuf
+PathBuf.new() -> PathBuf
+Path.new(&text) -> &Path       // same as Path.from
 ```
 
 ### Inspection
@@ -387,7 +387,7 @@ type Stdio is Inherit | Piped | Null | From(File);
 ### Building a command
 
 ```verum
-Command::new(&"grep")
+Command.new(&"grep")
     .arg("-n").arg("TODO")
     .args(&["src/", "tests/"])
     .env("RUST_LOG", "debug")
@@ -425,12 +425,12 @@ child.wait_with_output() -> IoResult<Output>
 
 ```verum
 async fn count_todos(dir: &Path) -> IoResult<Int> using [IO] {
-    let mut child = Command::new(&"grep")
+    let mut child = Command.new(&"grep")
         .args(&["-r", "-c", "TODO", &dir.as_text()])
         .stdout(Stdio.Piped)
         .spawn()?;
     let out = child.wait_with_output().await?;
-    let text = Text::from_utf8_lossy(&out.stdout);
+    let text = Text.from_utf8_lossy(&out.stdout);
     let total: Int = text.lines()
         .filter_map(|l| l.rsplit_once(":").and_then(|(_, n)| n.parse_int().ok()))
         .sum();
@@ -464,8 +464,8 @@ fs::read_async(&path).await -> IoResult<List<Byte>>
 fs::read_to_string_async(&path).await -> IoResult<Text>
 fs::write_async(&path, &bytes).await -> IoResult<()>
 
-let f = File::open_async(&path).await?;
-let mut reader = BufReader::new(f);
+let f = File.open_async(&path).await?;
+let mut reader = BufReader.new(f);
 while let Maybe.Some(line) = reader.next_line_async().await? {
     process(&line);
 }

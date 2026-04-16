@@ -40,7 +40,7 @@ type Ordering        is Success | Failure;     // CAS result (distinct from Ord)
 same API (shown for `AtomicU64`):
 
 ```verum
-AtomicU64::new(value) -> AtomicU64
+AtomicU64.new(value) -> AtomicU64
 a.load(order) -> UInt64
 a.store(value, order)
 a.swap(value, order) -> UInt64
@@ -65,7 +65,7 @@ a.into_inner() -> UInt64                        // consumes
 ### `AtomicBool`
 
 ```verum
-AtomicBool::new(value)
+AtomicBool.new(value)
 b.load(order) / b.store(value, order) / b.swap(value, order)
 b.compare_exchange(current, new, s, f) -> Result<Bool, Bool>
 b.fetch_and(mask, order) / fetch_or / fetch_xor
@@ -74,7 +74,7 @@ b.fetch_and(mask, order) / fetch_or / fetch_xor
 ### `AtomicPtr<T>`
 
 ```verum
-AtomicPtr::new(ptr: *mut T)
+AtomicPtr.new(ptr: *mut T)
 p.load(order) -> *mut T
 p.store(ptr, order)
 p.swap(ptr, order) -> *mut T
@@ -92,13 +92,13 @@ compiler_fence(order)       // prevents compiler reordering only
 
 ```verum
 // Counter
-let counter = AtomicU64::new(0);
+let counter = AtomicU64.new(0);
 counter.fetch_add(1, MemoryOrdering.Relaxed);
 
 // Lazy init via CAS
-let ptr = AtomicPtr::new(null_ptr::<T>());
+let ptr = AtomicPtr.new(null_ptr::<T>());
 if ptr.load(MemoryOrdering.Acquire).is_null() {
-    let new_ptr = Box::leak(Box::new(T::default()));
+    let new_ptr = Heap(T.default());
     match ptr.compare_exchange(
         null_ptr::<T>(), new_ptr,
         MemoryOrdering.Release, MemoryOrdering.Relaxed
@@ -129,7 +129,7 @@ while flag.load(MemoryOrdering.Acquire) {
 ## `Mutex<T>`
 
 ```verum
-Mutex::new(value: T) -> Mutex<T>
+Mutex.new(value: T) -> Mutex<T>
 
 let guard: MutexGuard<T> = m.lock().await;         // suspends on contention
 let guard = m.lock_blocking();                      // blocks the thread
@@ -151,7 +151,7 @@ is dropped.
 for shared ownership across tasks:
 
 ```verum
-let cfg = Shared::new(Mutex::new(Config::default()));
+let cfg = Shared.new(Mutex.new(Config.default()));
 let clone = cfg.clone();
 spawn async move {
     let mut g = clone.lock().await;
@@ -171,7 +171,7 @@ use an async-friendly pattern (channels + message queue, or
 ## `RwLock<T>`
 
 ```verum
-RwLock::new(value)
+RwLock.new(value)
 
 rw.read().await -> RwLockReadGuard<T>              // shared
 rw.write().await -> RwLockWriteGuard<T>            // exclusive
@@ -188,7 +188,7 @@ rw.read_blocking() / rw.write_blocking()
 ## `Once` — one-time initialisation
 
 ```verum
-static INIT: Once = Once::new();
+static INIT: Once = Once.new();
 INIT.call_once(|| setup_global_state());
 ```
 
@@ -196,7 +196,7 @@ INIT.call_once(|| setup_global_state());
 in-progress). `OnceLock<T>` is the typed variant:
 
 ```verum
-static CONFIG: OnceLock<Config> = OnceLock::new();
+static CONFIG: OnceLock<Config> = OnceLock.new();
 let cfg = CONFIG.get_or_init(|| load_config());
 ```
 
@@ -205,7 +205,7 @@ let cfg = CONFIG.get_or_init(|| load_config());
 ## `Semaphore` — counting permits
 
 ```verum
-Semaphore::new(permits: Int)
+Semaphore.new(permits: Int)
 
 sem.acquire().await -> SemaphoreGuard              // decrement, suspend if 0
 sem.try_acquire() -> Maybe<SemaphoreGuard>
@@ -218,7 +218,7 @@ sem.close()                                         // wake all; future acquires
 Used for bounded-parallelism controls:
 
 ```verum
-let sem = Shared::new(Semaphore::new(16));         // max 16 concurrent
+let sem = Shared.new(Semaphore.new(16));         // max 16 concurrent
 for task in tasks {
     let p = sem.clone().acquire_owned().await;
     spawn async move {
@@ -233,7 +233,7 @@ for task in tasks {
 ## `Condvar` — condition variable
 
 ```verum
-Condvar::new() -> Condvar
+Condvar.new() -> Condvar
 
 cv.wait(mutex_guard).await -> MutexGuard<T>        // release + wait + reacquire
 cv.wait_while(mutex_guard, |state| !ready(state)).await -> MutexGuard<T>
@@ -268,7 +268,7 @@ let (mu, cv) = producer_consumer_pair::<Queue<Msg>>();
 Synchronise N tasks at a rendezvous point.
 
 ```verum
-Barrier::new(n: Int) -> Barrier
+Barrier.new(n: Int) -> Barrier
 barrier.wait().await -> BarrierWaitResult
 
 let r = barrier.wait().await;
@@ -281,7 +281,7 @@ if r.is_leader() {
 ### `Phaser` — reusable, growable barrier
 
 ```verum
-Phaser::new(initial_parties: Int)
+Phaser.new(initial_parties: Int)
 phaser.register()                // add party
 phaser.arrive()                  // mark self as arrived, don't wait
 phaser.arrive_and_await().await
@@ -291,7 +291,7 @@ phaser.phase() -> Int            // monotonic phase counter
 ### `CountDownLatch` — one-time barrier
 
 ```verum
-let latch = CountDownLatch::new(5);
+let latch = CountDownLatch.new(5);
 for _ in 0..5 {
     spawn async move {
         do_work().await;
@@ -306,7 +306,7 @@ latch.await().await;             // returns when count reaches 0
 ## `WaitGroup` — Go-style wait
 
 ```verum
-let wg = WaitGroup::new();
+let wg = WaitGroup.new();
 for item in items {
     wg.add(1);
     let wg2 = wg.clone();

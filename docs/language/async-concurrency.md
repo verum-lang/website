@@ -73,11 +73,11 @@ async fn fetch_all(urls: &List<Text>) -> List<Bytes>
     nursery(on_error: cancel_all) {
         let handles = urls.iter()
             .map(|u| spawn fetch(u.clone()))
-            .collect::<List<_>>();
+            .collect();
         try_join_all(handles).await?
     }
-    on_cancel { metrics::increment("fetch_all.cancelled") }
-    recover(e: HttpError) { List::new() }
+    on_cancel { metrics.increment("fetch_all.cancelled") }
+    recover(e: HttpError) { List.new() }
 }
 ```
 
@@ -107,7 +107,7 @@ let (a, b)    = try_join(fetch(u1), fetch(u2)).await?;
 ## Channels
 
 ```verum
-let (tx, rx) = channel::<Event>(capacity: 64);
+let (tx, rx) = channel<Event>(capacity: 64);
 
 spawn produce(tx);
 consume(rx).await
@@ -131,7 +131,7 @@ Both are auto-derived. Use `!Send` / `!Sync` to opt out explicitly.
 ## Atomics
 
 ```verum
-let counter = AtomicInt::new(0);
+let counter = AtomicInt.new(0);
 counter.fetch_add(1, MemoryOrder.SeqCst);
 ```
 
@@ -141,7 +141,7 @@ ordering (`Relaxed`, `Acquire`, `Release`, `AcqRel`, `SeqCst`).
 ## Mutex / RwLock
 
 ```verum
-let config = Shared::new(Mutex::new(Config::default()));
+let config = Shared.new(Mutex.new(Config.default()));
 
 // Elsewhere:
 let guard = config.lock().await;
@@ -181,7 +181,7 @@ kind = "full"                # full | single_thread | no_async | embedded
 async fn process_bounded<T, U>(items: List<T>, workers: Int,
                                f: fn(T) -> Future<Output=U>) -> List<U>
 {
-    let sem = Shared::new(Semaphore::new(workers));
+    let sem = Shared.new(Semaphore.new(workers));
     nursery(on_error: cancel_all) {
         let handles: List<_> = items.into_iter().map(|item| {
             let sem = sem.clone();
@@ -200,7 +200,7 @@ See **[Cookbook → nursery](/docs/cookbook/nursery)** for more.
 ### Producer / consumer with backpressure
 
 ```verum
-let (tx, mut rx) = channel::<Event>(capacity: 128);
+let (tx, mut rx) = channel<Event>(capacity: 128);
 
 nursery {
     spawn async move {

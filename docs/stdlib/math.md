@@ -386,27 +386,27 @@ type Trainable is protocol { ... };
 type Parameter<T> is { value: T, grad: Maybe<T> };
 
 // Layers
-Linear::new(in_dim, out_dim) -> Linear
-Embedding::new(vocab, dim) -> Embedding
-Conv2d::new(in_ch, out_ch, kernel_size, stride, padding)
-LayerNorm::new(shape)       RMSNorm::new(shape)        BatchNorm::new(features)
+Linear.new(in_dim, out_dim) -> Linear
+Embedding.new(vocab, dim) -> Embedding
+Conv2d.new(in_ch, out_ch, kernel_size, stride, padding)
+LayerNorm.new(shape)       RMSNorm.new(shape)        BatchNorm.new(features)
 
 // Activations
 relu / gelu / silu / sigmoid / softmax / softplus / tanh
 
 // Dropout
-Dropout::new(p)
+Dropout.new(p)
 
 // Attention
-MultiHeadAttention::new(embed_dim, num_heads, dropout)
-FeedForward::new(embed_dim, hidden_dim, dropout)
-TransformerBlock::new(embed_dim, num_heads, hidden_dim, dropout)
-RoPE::new(dim, max_positions)
+MultiHeadAttention.new(embed_dim, num_heads, dropout)
+FeedForward.new(embed_dim, hidden_dim, dropout)
+TransformerBlock.new(embed_dim, num_heads, hidden_dim, dropout)
+RoPE.new(dim, max_positions)
 
 // Optimisers
 type Optimizer is protocol { fn step(&mut self, grads: &Params); }
-SGD::new(params, lr, momentum, weight_decay)
-AdamW::new(params, lr, betas, weight_decay)
+SGD.new(params, lr, momentum, weight_decay)
+AdamW.new(params, lr, betas, weight_decay)
 
 // Schedulers
 LRScheduler::cosine(initial_lr, min_lr, max_steps)
@@ -426,22 +426,22 @@ clip_grad_norm(params, max_norm)
 ### `math.ssm` — state-space models
 
 ```verum
-S4::new(dim, state_dim, kernel) / Mamba::new(dim, state_dim, conv_dim)
-BiMambaBlock::new(dim, state_dim)       Jamba::new(...)       // hybrid SSM + attention
+S4.new(dim, state_dim, kernel) / Mamba.new(dim, state_dim, conv_dim)
+BiMambaBlock.new(dim, state_dim)       Jamba.new(...)       // hybrid SSM + attention
 
-MoELayer::new(num_experts, dim, routing: RoutingStrategy)
+MoELayer.new(num_experts, dim, routing: RoutingStrategy)
 RoutingStrategy is TopK(k) | Hash(buckets) | Learned;
-BalanceLoss::new(num_experts)
+BalanceLoss.new(num_experts)
 ```
 
 ### `math.distributed`
 
 ```verum
-DataParallel::new(module, devices)
-DistributedDataParallel::new(module, process_group)
-FSDP::new(module, sharding_strategy)          // fully-sharded data parallel
+DataParallel.new(module, devices)
+DistributedDataParallel.new(module, process_group)
+FSDP.new(module, sharding_strategy)          // fully-sharded data parallel
 
-ActorMesh::new(layout)                          Supervision(...)
+ActorMesh.new(layout)                          Supervision(...)
 RDMA::connect(peer)                             // remote direct memory access
 ```
 
@@ -453,13 +453,13 @@ RDMA::connect(peer)                             // remote direct memory access
 
 ```verum
 type Tokenizer is protocol { fn encode(text) -> List<Int>; fn decode(ids) -> Text; }
-type KVCache is { ... };                       PagedKVCache::new(num_pages, page_size)
+type KVCache is { ... };                       PagedKVCache.new(num_pages, page_size)
 type SpeculativeDecoder is { ... };
 type ContinuousBatcher is { ... };
 
-LLMAgent::new(model, tokenizer)
-ReActAgent::new(llm, tool_registry, max_iterations)
-MemoryStore::new(vector_store)
+LLMAgent.new(model, tokenizer)
+ReActAgent.new(llm, tool_registry, max_iterations)
+MemoryStore.new(vector_store)
 
 flash_attention(q, k, v, scale) / paged_attention(...)
 sample_top_p(logits, p) / sample_temperature(logits, t) / sample_greedy(logits)
@@ -468,18 +468,18 @@ type ChatMessage is { role: Text, content: Text };
 type FunctionSchema is { name: Text, parameters: Data };
 type ExecutableTool is protocol { fn call(args) -> Data; }
 
-QuantizedLinear::new(in_dim, out_dim, bits: Int)    // INT4/INT8
+QuantizedLinear.new(in_dim, out_dim, bits: Int)    // INT4/INT8
 ```
 
 ### `math.guardrails`
 
 ```verum
-ContentClassifier::new(categories, threshold)
-Guardrail::new(&classifiers)
-PIIFilter::new(patterns)
-TopicGuardrail::new(allowed_topics)
-GuardrailChain::new(&rails)
-GuardedAgent::new(agent, chain)
+ContentClassifier.new(categories, threshold)
+Guardrail.new(&classifiers)
+PIIFilter.new(patterns)
+TopicGuardrail.new(allowed_topics)
+GuardrailChain.new(&rails)
+GuardedAgent.new(agent, chain)
 ```
 
 ### `math.rag`
@@ -487,11 +487,11 @@ GuardedAgent::new(agent, chain)
 ```verum
 Document { id, content, embedding, metadata }
 VectorStore is protocol { ... };
-HNSWIndex::new(dim, m, ef_construction)
-TextChunker::new(chunk_size, overlap)
-BM25Index::new()
-HybridRetriever::new(vector_store, bm25, weight)
-RAGPipeline::new(retriever, llm, prompt_template)
+HNSWIndex.new(dim, m, ef_construction)
+TextChunker.new(chunk_size, overlap)
+BM25Index.new()
+HybridRetriever.new(vector_store, bm25, weight)
+RAGPipeline.new(retriever, llm, prompt_template)
 ```
 
 ---

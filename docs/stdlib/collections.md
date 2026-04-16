@@ -36,10 +36,10 @@ public type List<T> is { ptr: &unsafe T, len: Int, cap: Int };
 ### Construction
 
 ```verum
-List::new() -> List<T>
-List::with_capacity(capacity: Int) -> List<T>
-List::from_slice(slice: &[T]) -> List<T>    // T: Clone
-List::from(iter)                            // from any Iterator<Item=T>
+List.new() -> List<T>
+List.with_capacity(capacity: Int) -> List<T>
+List.from_slice(slice: &[T]) -> List<T>    // T: Clone
+List.from(iter)                            // from any Iterator<Item=T>
 
 let xs = list![1, 2, 3];                    // macro — array of items
 let ys = list![0; 10];                      // macro — 10 copies of 0
@@ -146,7 +146,7 @@ for (i, w) in words.iter().enumerate() {
 
 let counts: Map<Int, Int> = words.iter()
     .map(|w| w.len())
-    .fold(Map::new(), |mut m, len| {
+    .fold(Map.new(), |mut m, len| {
         *m.entry(len).or_insert(0) += 1;
         m
     });
@@ -166,9 +166,9 @@ Swiss-table-style flat hash map. `K: Hash + Eq`.
 ### Construction
 
 ```verum
-Map::new() -> Map<K, V>
-Map::with_capacity(capacity) -> Map<K, V>
-Map::from_iter(iter: Iter<(K,V)>)
+Map.new() -> Map<K, V>
+Map.with_capacity(capacity) -> Map<K, V>
+Map.from_iter(iter: Iter<(K,V)>)
 let m = map!["a" => 1, "b" => 2];
 ```
 
@@ -239,15 +239,15 @@ m.drain()       // consuming drain — Iterator<(K, V)>
 
 ```verum
 // count words
-let mut freq: Map<Text, Int> = Map::new();
+let mut freq: Map<Text, Int> = Map.new();
 for w in text.split_whitespace() {
     *freq.entry(w.to_string()).or_insert(0) += 1;
 }
 
 // group by key
-let mut groups: Map<Int, List<User>> = Map::new();
+let mut groups: Map<Int, List<User>> = Map.new();
 for u in users {
-    groups.entry(u.dept).or_insert_with(List::new).push(u);
+    groups.entry(u.dept).or_insert_with(List.new).push(u);
 }
 
 // atomic upsert
@@ -271,7 +271,7 @@ is undefined. Collect the changes and apply after, or use `retain`.
 ### Construction
 
 ```verum
-Set::new()      Set::with_capacity(cap)      Set::from_iter(iter)
+Set.new()      Set.with_capacity(cap)      Set.from_iter(iter)
 let s = set![1, 2, 3];
 ```
 
@@ -323,7 +323,7 @@ let diff: Set<Int>       = a.difference(&b).copied().collect();   // {1,2}
 Ring buffer. O(1) push/pop at both ends.
 
 ```verum
-Deque::new()     Deque::with_capacity(cap)
+Deque.new()     Deque.with_capacity(cap)
 let q = deque![1, 2, 3];
 ```
 
@@ -359,8 +359,8 @@ let all_sorted: List<Int> = pq.into_sorted_vec();  // max-heap -> descending
 ```
 
 ```verum
-BinaryHeap::new()  BinaryHeap::with_capacity(cap)
-BinaryHeap::from(list)        // heapify in O(n)
+BinaryHeap.new()  BinaryHeap.with_capacity(cap)
+BinaryHeap.from(list)        // heapify in O(n)
 
 h.len()  h.is_empty()  h.capacity()
 h.push(v)       h.pop() -> Maybe<T>
@@ -378,7 +378,7 @@ h.iter()                  // unordered
 For "min by custom key", wrap values in `Reverse<T>`:
 
 ```verum
-let mut h: BinaryHeap<Reverse<(Int, Text)>> = BinaryHeap::new();
+let mut h: BinaryHeap<Reverse<(Int, Text)>> = BinaryHeap.new();
 h.push(Reverse((3, "three".to_string())));
 h.push(Reverse((1, "one".to_string())));
 let Reverse((k, v)) = h.pop().unwrap();  // (1, "one")
@@ -393,7 +393,7 @@ Red-black tree (B-factor 12 internally, cache-friendly). `K: Ord`.
 ### Common operations (BTreeMap/BTreeSet both)
 
 ```verum
-::new() / ::from_iter(iter)
+.new() / .from_iter(iter)
 .len()   .is_empty()
 .insert(k, v) / .insert(v)
 .remove(&k) -> Maybe<V>
@@ -427,10 +427,10 @@ Same shape as `Map`'s entry API (`or_insert`, `or_insert_with`,
 ### Example — windowed metrics
 
 ```verum
-let mut by_ts: BTreeMap<Instant, Metric> = BTreeMap::new();
+let mut by_ts: BTreeMap<Instant, Metric> = BTreeMap.new();
 // … populate …
 
-let now = Instant::now();
+let now = Instant.now();
 let last_minute: List<&Metric> = by_ts
     .range((now - 1.minutes())..=now)
     .map(|(_, m)| m)

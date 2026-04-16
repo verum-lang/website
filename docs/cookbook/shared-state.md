@@ -25,7 +25,7 @@ it. Which primitive fits?
 ## `Shared<T>` — frozen at start
 
 ```verum
-let cfg = Shared::new(load_config()?);
+let cfg = Shared.new(load_config()?);
 for _ in 0..num_workers {
     let c = cfg.clone();
     spawn async move {
@@ -41,7 +41,7 @@ Cheapest option. Use whenever the data never changes after creation.
 ## `Shared<Mutex<T>>` — short critical sections
 
 ```verum
-let state = Shared::new(Mutex::new(Counter { value: 0 }));
+let state = Shared.new(Mutex.new(Counter { value: 0 }));
 
 let c = state.clone();
 spawn async move {
@@ -60,7 +60,7 @@ futures. If they must, consider an actor.
 ## `Shared<RwLock<T>>` — read-mostly
 
 ```verum
-let cache = Shared::new(RwLock::new(Map::<Text, Value>::new()));
+let cache = Shared.new(RwLock.new(Map::<Text, Value>.new()));
 
 async fn get_or_compute(cache: &Shared<RwLock<Map<Text, Value>>>, key: &Text) -> Value {
     // Fast path: reader lock
@@ -84,8 +84,8 @@ starvation on very read-heavy workloads.
 ## Atomics — lock-free counters / flags
 
 ```verum
-let counter = Shared::new(AtomicU64::new(0));
-let stopped = Shared::new(AtomicBool::new(false));
+let counter = Shared.new(AtomicU64.new(0));
+let stopped = Shared.new(AtomicBool.new(false));
 
 spawn async move {
     while !stopped.load(MemoryOrdering.Acquire) {
@@ -113,7 +113,7 @@ type Req is
     | Shutdown;
 
 async fn actor_loop(mut rx: Receiver<Req>) using [IO] {
-    let mut store: Map<Text, Value> = Map::new();
+    let mut store: Map<Text, Value> = Map.new();
     while let Maybe.Some(req) = rx.recv().await {
         match req {
             Req.Get { key, reply } => {
@@ -136,7 +136,7 @@ fn make_actor() -> (ActorHandle, JoinHandle<()>) using [IO] {
 
 type ActorHandle is { tx: Sender<Req> };
 
-impl ActorHandle {
+implement ActorHandle {
     async fn get(&self, key: &Text) -> Maybe<Value> {
         let (reply, wait) = oneshot::<Maybe<Value>>();
         self.tx.send(Req.Get { key: key.to_string(), reply }).await.unwrap();

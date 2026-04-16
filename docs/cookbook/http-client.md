@@ -37,9 +37,9 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
     match resp.status.code() {
         200..=299 => {
             let text = resp.body_text().await?;
-            json::parse::<User>(&text).map_err(HttpError::from)
+            json::parse::<User>(&text).map_err(HttpError.from)
         }
-        401 => Result.Err(HttpError::Unauthorized),
+        401 => Result.Err(HttpError.Unauthorized),
         429 => {
             let retry = resp.headers.get_first(&"Retry-After")
                 .and_then(|s| s.parse_int().ok())
@@ -75,7 +75,7 @@ provide Http = client in {
 ### TLS client
 
 ```verum
-let tls = TlsConfig::client()
+let tls = TlsConfig.client()
     .with_root_certs(SystemCerts::load())
     .with_min_version(TlsVersion.Tls12)
     .with_alpn(&[&"h2", &"http/1.1"]);
@@ -112,9 +112,9 @@ async fn download(url: &Text, dst: &Path) -> Result<(), Error>
 {
     let resp = Http.get(url).await?;
     if !resp.status.is_success() {
-        return Result.Err(Error::new(&f"HTTP {resp.status.code()}"));
+        return Result.Err(Error.new(&f"HTTP {resp.status.code()}"));
     }
-    let mut writer = BufWriter::new(File::create(dst).await?);
+    let mut writer = BufWriter.new(File.create(dst).await?);
     let mut body = resp.into_body_stream();
     while let Maybe.Some(chunk) = body.next_chunk().await? {
         writer.write_all_async(&chunk).await?;
@@ -135,7 +135,7 @@ implement Http for MockHttp { ... }
 async fn uses_cached_response() {
     let mock = MockHttp {
         responses: map![
-            "https://a" => Response::new(StatusCode::ok()).with_body(b"A".to_vec())
+            "https://a" => Response.new(StatusCode::ok()).with_body(b"A".to_vec())
         ],
     };
     provide Http = mock;

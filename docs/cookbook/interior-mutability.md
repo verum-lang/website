@@ -25,8 +25,8 @@ Four cells, one decision matrix.
 ```verum
 type Counter is { n: Cell<Int> };
 
-impl Counter {
-    fn new() -> Counter { Counter { n: Cell::new(0) } }
+implement Counter {
+    fn new() -> Counter { Counter { n: Cell.new(0) } }
 
     fn inc(&self) { self.n.set(self.n.get() + 1); }
     fn get(&self) -> Int { self.n.get() }
@@ -41,8 +41,8 @@ implement `Copy` (or at least `Clone` for `.get()`).
 ```verum
 type Notes is { entries: RefCell<List<Text>> };
 
-impl Notes {
-    fn new() -> Notes { Notes { entries: RefCell::new(List::new()) } }
+implement Notes {
+    fn new() -> Notes { Notes { entries: RefCell.new(List.new()) } }
 
     fn add(&self, note: Text) {
         self.entries.borrow_mut().push(note);      // panics if any borrow active
@@ -65,7 +65,7 @@ match notes.entries.try_borrow_mut() {
 ## `OnceCell<T>` — initialise-once
 
 ```verum
-static LOG_LEVEL: OnceCell<LogLevel> = OnceCell::new();
+static LOG_LEVEL: OnceCell<LogLevel> = OnceCell.new();
 
 fn log_level() -> LogLevel {
     *LOG_LEVEL.get_or_init(|| env::var(&"LOG_LEVEL")
@@ -80,11 +80,11 @@ once, the result is cached.
 ## `LazyCell<T>` — lazy + cached
 
 ```verum
-struct Config { data: LazyCell<Data> };
+type Config is { data: LazyCell<Data> };
 
-impl Config {
+implement Config {
     fn new() -> Config {
-        Config { data: LazyCell::new(|| load_config_from_disk()) }
+        Config { data: LazyCell.new(|| load_config_from_disk()) }
     }
     fn get(&self) -> &Data { self.data.force() }
 }
@@ -97,14 +97,14 @@ cell. Good for expensive computations you might never need.
 
 ```verum
 // Single-threaded Cell<u64>  →  multi-threaded AtomicU64
-static HITS: AtomicU64 = AtomicU64::new(0);
+static HITS: AtomicU64 = AtomicU64.new(0);
 HITS.fetch_add(1, MemoryOrdering.Relaxed);
 
 // Single-threaded RefCell<T>  →  multi-threaded Mutex<T>
-let state = Shared::new(Mutex::new(State::default()));
+let state = Shared.new(Mutex.new(State::default()));
 
 // Single-threaded OnceCell<T>  →  multi-threaded OnceLock<T>
-static CONFIG: OnceLock<Config> = OnceLock::new();
+static CONFIG: OnceLock<Config> = OnceLock.new();
 let cfg = CONFIG.get_or_init(|| load_config());
 ```
 

@@ -70,11 +70,11 @@ type ValidationError is
 
 fn parse_form(raw: &Data) -> Result<Registration, List<ValidationError>> {
     let mut errors = list![];
-    let email = match raw.get(&"email").and_then(Data::as_text) {
+    let email = match raw.get(&"email").and_then(Data.as_text) {
         Maybe.Some(e) => parse_email(e).map_err(|err| { errors.push(err); }),
         Maybe.None    => { errors.push(ValidationError.MissingField("email".to_string())); Result.Err(()) }
     };
-    let age = match raw.get(&"age").and_then(Data::as_text) {
+    let age = match raw.get(&"age").and_then(Data.as_text) {
         Maybe.Some(a) => parse_age(a).map_err(|err| { errors.push(err); }),
         Maybe.None    => { errors.push(ValidationError.MissingField("age".to_string())); Result.Err(()) }
     };
@@ -122,7 +122,7 @@ predicate — that forces re-verification at every conversion. Instead:
 type Checksummed is Text;          // just a marker
 fn checksum(raw: &Text) -> Result<Checksummed, ChecksumError> {
     if is_valid_checksum(raw.as_bytes()) { Result.Ok(raw.to_string()) }
-    else { Result.Err(ChecksumError::Invalid) }
+    else { Result.Err(ChecksumError.Invalid) }
 }
 ```
 

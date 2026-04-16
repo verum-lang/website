@@ -13,7 +13,7 @@ let (tx, mut rx) = channel::<Event>(capacity: 100);     // bounded
 // Producers (any number of clones of tx)
 spawn async move {
     for i in 0..10 {
-        tx.send(Event::Tick(i)).await.unwrap();         // suspends if full
+        tx.send(Event.Tick(i)).await.unwrap();         // suspends if full
     }
 };
 
@@ -44,7 +44,7 @@ async fn with_reply<T>(req: Request) -> Result<T, Error>
 {
     let (tx, rx) = oneshot::<Result<T, Error>>();
     Worker.enqueue(Job { req, reply: tx });
-    rx.await.map_err(|_| Error::new("worker dropped"))?
+    rx.await.map_err(|_| Error.new("worker dropped"))?
 }
 ```
 
@@ -71,11 +71,11 @@ spawn async move {
 };
 
 // Fan-in publisher
-tx.send(ConfigChange::Reload).await.unwrap();
+tx.send(ConfigChange.Reload).await.unwrap();
 ```
 
 Slow subscribers that fall more than `capacity` messages behind receive
-`Result.Err(RecvError::Lagged)` and then resume; drop the receiver if
+`Result.Err(RecvError.Lagged)` and then resume; drop the receiver if
 you can't tolerate lag.
 
 ### `select` over multiple channels

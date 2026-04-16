@@ -7,8 +7,8 @@ slug: /changelog
 
 # Changelog
 
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Version scheme: [semver](https://semver.org/).
+Format: Keep a Changelog.
+Version scheme: semver.
 
 ## [0.32.0] — 2026-04-15 — phase D complete
 
@@ -16,7 +16,7 @@ Version scheme: [semver](https://semver.org/).
 
 - **Cubical normaliser with computational univalence** landed. Eight
   reduction rules in `cubical.rs`; bridge into `unify.rs` for
-  `Type::Eq`. Computational `transport(ua(e), x) ≡ e.to(x)`.
+  `Type.Eq`. Computational `transport(ua(e), x) ≡ e.to(x)`.
 - **VBC cubical codegen**. New `CubicalExtended` opcode (0xDE) with
   17 sub-opcodes covering `PathRefl`, `PathLambda`, `Transport`,
   `Hcomp`, `Ua`, `Glue`, and friends. Proof erasure in release
@@ -111,8 +111,8 @@ Measured on Apple M3 Max, Verum 0.32 release build:
 |---|---|---|
 | `&checked T` deref | 2 | 0.5 |
 | `&T` CBGR check | 55 | 13.8 |
-| `Shared::clone` (incr. strong) | 11 | 2.7 |
-| `Map::insert` (single) | ~200 | ~50 |
+| `Shared.clone` (incr. strong) | 11 | 2.7 |
+| `Map.insert` (single) | ~200 | ~50 |
 | context-stack push | 32 | 8 |
 | `current_env()` read | 8 | 2 |
 

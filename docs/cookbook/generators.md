@@ -61,11 +61,11 @@ For sequences that involve suspension (network, files, streams):
 async fn* lines_from(path: &Path) -> Result<Text, IoError>
     using [IO]
 {
-    let file = File::open_async(path).await?;
-    let mut reader = BufReader::new(file);
+    let file = File.open_async(path).await?;
+    let mut reader = BufReader.new(file);
 
     loop {
-        let mut line = Text::new();
+        let mut line = Text.new();
         match reader.read_line_async(&mut line).await {
             Result.Ok(0) => return,              // EOF
             Result.Ok(_) => yield Result.Ok(line.trim_end().to_string()),

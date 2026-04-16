@@ -21,7 +21,7 @@ async fn fetch_all(urls: &List<Text>) -> Result<List<Bytes>, Error>
         metrics.increment("fetch_all.cancelled");
     } recover(e: NurseryError) {
         // runs if something goes wrong; pattern-match on NurseryError
-        Result.Err(Error::from(e))
+        Result.Err(Error.from(e))
     }
 }
 ```
@@ -32,7 +32,7 @@ async fn fetch_all(urls: &List<Text>) -> Result<List<Bytes>, Error>
 async fn process_bounded<T, F, Fut>(items: List<T>, concurrency: Int, f: F) -> List<Result<F.Output, Error>>
     where F: Fn(T) -> Fut, Fut: Future<Output = Result<F.Output, Error>>
 {
-    let sem = Shared::new(Semaphore::new(concurrency));
+    let sem = Shared.new(Semaphore.new(concurrency));
     nursery {
         let handles: List<_> = items.into_iter().map(|item| {
             let sem = sem.clone();
@@ -53,7 +53,7 @@ let results = process_bounded(urls, 16, |u| Http.get(u)).await;
 
 ```verum
 async fn main() using [IO, Logger] {
-    let sup = Supervisor::new(SupervisionStrategy.OneForOne);
+    let sup = Supervisor.new(SupervisionStrategy.OneForOne);
 
     sup.spawn(ChildSpec {
         name: "metrics-publisher",
@@ -68,7 +68,7 @@ async fn main() using [IO, Logger] {
         name: "cache-sweeper",
         task: || cache_sweep_loop(),
         restart: RestartPolicy.Transient,
-        ..Default::default()
+        ..Default.default()
     });
 
     sup.run().await;

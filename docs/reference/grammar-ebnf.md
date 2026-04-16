@@ -7,7 +7,7 @@ description: Verum's full lexical and syntactic grammar — the authoritative sp
 # Grammar — EBNF
 
 This page is a curated, navigable rendering of Verum's grammar. The
-**authoritative source** is [`grammar/verum.ebnf`](https://github.com/verum-lang/verum/blob/main/grammar/verum.ebnf)
+**authoritative source** is `grammar/verum.ebnf`
 in the repository (version **3.0**, ~2400 lines). Where this page and
 the EBNF file disagree, the file wins.
 
@@ -1194,5 +1194,5 @@ verum disasm --show-tokens    # tokeniser output for debugging
 ## Source
 
 The authoritative grammar file:
-[**`grammar/verum.ebnf`**](https://github.com/verum-lang/verum/blob/main/grammar/verum.ebnf)
+**`grammar/verum.ebnf`**
 (version 3.0, 2423 lines).

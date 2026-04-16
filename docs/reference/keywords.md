@@ -122,7 +122,7 @@ naming latitude should not.
 ## Grammar reference
 
 The authoritative keyword list lives in the `keyword` production of
-[`grammar/verum.ebnf`](https://github.com/verum-lang/verum/blob/main/grammar/verum.ebnf).
+`grammar/verum.ebnf`.
 
 ## See also
 

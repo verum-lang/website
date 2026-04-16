@@ -97,10 +97,10 @@ Measured: ~15 ns on an M3 Max.
 ## `Heap<T>` — unique owned allocation
 
 ```verum
-Heap::new(value) -> Heap<T>                      // panics on OOM
-Heap::new_default() -> Heap<T>                   // T: Default
-Heap::new_zeroed() -> Heap<T>
-Heap::try_new(value) -> Result<Heap<T>, AllocError>
+Heap.new(value) -> Heap<T>                      // panics on OOM
+Heap.new_default() -> Heap<T>                   // T: Default
+Heap.new_zeroed() -> Heap<T>
+Heap.try_new(value) -> Result<Heap<T>, AllocError>
 Heap::from_raw(ptr) -> Heap<T>                   // unsafe
 ```
 
@@ -128,12 +128,12 @@ h.header_generation() / h.header_epoch() / h.header_size()
 ## `Shared<T>` — atomically ref-counted
 
 ```verum
-Shared::new(value) -> Shared<T>
+Shared.new(value) -> Shared<T>
 s.clone() -> Shared<T>              // bumps refcount
 s.weak() -> Weak<T>                 // does not bump strong count
-Shared::strong_count(&s) -> Int
-Shared::weak_count(&s) -> Int
-Shared::try_unwrap(s) -> Result<T, Shared<T>>   // succeeds if strong_count == 1
+Shared.strong_count(&s) -> Int
+Shared.weak_count(&s) -> Int
+Shared.try_unwrap(s) -> Result<T, Shared<T>>   // succeeds if strong_count == 1
 Shared::get_mut(&mut s) -> Maybe<&mut T>         // Some if unique
 ```
 
@@ -176,7 +176,7 @@ ctx_dealloc(ptr, layout)                                          using [Allocat
 Using an arena or slab allocator for a task tree:
 
 ```verum
-let arena = GenerationalArena::new(capacity: 1 << 20);
+let arena = GenerationalArena.new(capacity: 1 << 20);
 provide Allocator = arena in {
     build_parse_tree(source).await
 };
@@ -253,7 +253,7 @@ the method's required capability set.
 ```verum
 type GenerationalArena<T> is { ... };
 
-GenerationalArena::new(capacity) -> GenerationalArena<T>
+GenerationalArena.new(capacity) -> GenerationalArena<T>
 a.insert(value) -> ArenaHandle<T>
 a.get(handle) -> Maybe<&T>
 a.get_mut(handle) -> Maybe<&mut T>

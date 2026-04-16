@@ -15,10 +15,10 @@ atomic reference counting. `Weak<T>` breaks cycles.
 - You can't (or don't want to) impose a single owner.
 
 ```verum
-let config: Shared<Config> = Shared::new(load_config());
+let config: Shared<Config> = Shared.new(load_config());
 let copy1 = config.clone();        // bumps strong count to 2
 let copy2 = config.clone();        // 3
-Shared::strong_count(&config);     // -> 3
+Shared.strong_count(&config);     // -> 3
 ```
 
 All clones point to the same heap allocation. The allocation is
@@ -27,7 +27,7 @@ freed when the last `Shared<Config>` is dropped.
 ### `Shared::get_mut` — safe interior mutation
 
 ```verum
-let mut s: Shared<i32> = Shared::new(42);
+let mut s: Shared<i32> = Shared.new(42);
 *Shared::get_mut(&mut s).unwrap() += 1;    // Some(&mut) when strong_count == 1
 ```
 
@@ -58,26 +58,26 @@ type Node is {
     children: List<Shared<Node>>,
 };
 
-impl Node {
+implement Node {
     fn new(value: Int) -> Shared<Node> {
-        Shared::new(Node { value, parent: Maybe.None, children: List::new() })
+        Shared.new(Node { value, parent: Maybe.None, children: List.new() })
     }
 
     fn add_child(parent: &Shared<Node>, child: Shared<Node>) {
         // Give child a weak pointer back to parent.
         let mut child_inner = Shared::get_mut(&mut child.clone()).unwrap();
-        child_inner.parent = Maybe.Some(Shared::downgrade(parent));
+        child_inner.parent = Maybe.Some(Shared.downgrade(parent));
         // Parent owns child.
         parent.children.push(child);
     }
 
     fn parent(&self) -> Maybe<Shared<Node>> {
-        self.parent.as_ref().and_then(Weak::upgrade)
+        self.parent.as_ref().and_then(Weak.upgrade)
     }
 }
 ```
 
-- `Shared::downgrade(&s) -> Weak<T>` — creates a non-owning handle.
+- `Shared.downgrade(&s) -> Weak<T>` — creates a non-owning handle.
 - `Weak<T>.upgrade() -> Maybe<Shared<T>>` — returns `Some` if the
   target is still live; `None` if the last `Shared` was dropped.
 - `Weak` doesn't keep the allocation alive; cycles involving only
@@ -95,8 +95,8 @@ impl Node {
 ### Count inspection
 
 ```verum
-Shared::strong_count(&s)      // current number of Shared clones
-Shared::weak_count(&s)        // current number of Weak clones
+Shared.strong_count(&s)      // current number of Shared clones
+Shared.weak_count(&s)        // current number of Weak clones
 ```
 
 ### Thread-safety

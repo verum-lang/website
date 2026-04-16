@@ -15,7 +15,7 @@ eventually), **retry** (try again after backoff), **circuit breaker**
 async fn call_with_budget(url: &Text) -> Result<Bytes, Error> using [Http] {
     match timeout(5.seconds(), Http.get(url)).await {
         Result.Ok(resp) => resp.body().await,
-        Result.Err(TimeoutError) => Result.Err(Error::new(&"timed out")),
+        Result.Err(TimeoutError) => Result.Err(Error.new(&"timed out")),
     }
 }
 ```
@@ -41,7 +41,7 @@ same retry instant — critical against downstream overload.
 ### Circuit breaker
 
 ```verum
-let breaker = Shared::new(CircuitBreaker::new(CircuitBreakerConfig {
+let breaker = Shared.new(CircuitBreaker.new(CircuitBreakerConfig {
     failure_threshold: 5,
     reset_timeout_ms: 30_000,
     half_open_max_calls: 1,
@@ -51,7 +51,7 @@ async fn call_breaker(b: &CircuitBreaker, url: &Text)
     -> Result<Bytes, Error> using [Http]
 {
     if !b.is_call_allowed() {
-        return Result.Err(Error::new(&"circuit open"));
+        return Result.Err(Error.new(&"circuit open"));
     }
     match Http.get(url).and_then(|r| r.body()).await {
         Result.Ok(v)  => { b.record_success(); Result.Ok(v) }
@@ -73,7 +73,7 @@ async fn resilient_call(url: &Text, breaker: &CircuitBreaker)
     timeout(10.seconds(),
         execute_with_retry_config(
             || call_breaker(breaker, url),
-            RetryConfig::exponential(3, 200.ms()))
+            RetryConfig.exponential(3, 200.ms()))
     ).await?
 }
 ```
@@ -87,9 +87,9 @@ wraps the entire sequence.
 ```verum
 async fn with_deadline(deadline: Instant, tasks: List<Task>) -> Result<(), Error> {
     for t in tasks {
-        let now = Instant::now();
+        let now = Instant.now();
         if now >= deadline {
-            return Result.Err(Error::new(&"deadline exceeded"));
+            return Result.Err(Error.new(&"deadline exceeded"));
         }
         let remaining = deadline.duration_since(&now);
         timeout(remaining, t.run()).await??;

@@ -45,7 +45,7 @@ fn parse_args(args: &List<Text>) -> Result<Command, Error> {
                     "--release"              => release = true,
                     s if s.starts_with("--target=")
                         => target = Maybe.Some(s[9..].to_string()),
-                    _ => return Result.Err(Error::new(&f"unknown flag {a}")),
+                    _ => return Result.Err(Error.new(&f"unknown flag {a}")),
                 }
             }
             Result.Ok(Command.Build { release, target })
@@ -55,8 +55,8 @@ fn parse_args(args: &List<Text>) -> Result<Command, Error> {
             Result.Ok(Command.Test { filter })
         }
         Maybe.Some("version") => Result.Ok(Command.Version),
-        Maybe.Some(c) => Result.Err(Error::new(&f"unknown command: {c}")),
-        Maybe.None    => Result.Err(Error::new(&"no command given")),
+        Maybe.Some(c) => Result.Err(Error.new(&f"unknown command: {c}")),
+        Maybe.None    => Result.Err(Error.new(&"no command given")),
     }
 }
 
@@ -75,10 +75,10 @@ fn load_config() -> Result<Config, Error> using [IO] {
     let path = env::var_opt("MYTOOL_CONFIG")
         .unwrap_or_else(|| format!("{}/.mytool/config.toml", env::home_dir().unwrap_or(".".to_string())));
 
-    match fs::read_to_string(&Path::from(&path)) {
-        Result.Ok(text) => toml_parse(&text).map_err(Error::from),
-        Result.Err(e) if e.kind == IoErrorKind.NotFound => Result.Ok(Config::default()),
-        Result.Err(e) => Result.Err(Error::from(e)),
+    match fs::read_to_string(&Path.from(&path)) {
+        Result.Ok(text) => toml_parse(&text).map_err(Error.from),
+        Result.Err(e) if e.kind == IoErrorKind.NotFound => Result.Ok(Config.default()),
+        Result.Err(e) => Result.Err(Error.from(e)),
     }
 }
 ```
@@ -89,7 +89,7 @@ fn load_config() -> Result<Config, Error> using [IO] {
 use term::style::{Color, Style};
 
 fn report_error(e: &Error) using [IO] {
-    let red = Style::new().fg(Color::Red).add_modifier(Modifier.Bold);
+    let red = Style.new().fg(Color.Red).add_modifier(Modifier.Bold);
     eprint(&red.paint(&"error: "));
     eprintln(&e.to_string());
     for src in e.chain().skip(1) {
@@ -117,7 +117,7 @@ fn main() using [IO] {
 use term::widget::{Spinner, SpinnerFrames};
 
 async fn slow_task() using [IO] {
-    let mut spin = Spinner::new().frames(&SpinnerFrames::Dots);
+    let mut spin = Spinner.new().frames(&SpinnerFrames.Dots);
     spin.start(&"loading");
     let result = heavy_compute().await;
     spin.stop(&f"done in {result.elapsed:?}");

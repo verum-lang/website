@@ -127,7 +127,7 @@ C strings are `*const Byte` (null-terminated). Convert:
 
 ```verum
 let c: *const Byte = ...;
-let text: Text     = unsafe { Text::from_c_str(c) };
+let text: Text     = unsafe { Text.from_c_str(c) };
 ```
 
 UTF-8 validation happens during conversion. Raw non-null-terminated
@@ -147,7 +147,7 @@ fn my_callback(ctx: *mut Void, data: *const Byte) -> Int {
 
 // Elsewhere:
 unsafe {
-    c_lib::register(my_callback as *const Void);
+    c_lib.register(my_callback as *const Void);
 }
 ```
 
@@ -210,24 +210,24 @@ const NONCE_BYTES:  Int = 24;
 const MAC_BYTES:    Int = 16;
 
 pub fn seal(message: &[Byte], key: &[Byte; 32]) -> List<Byte> {
-    assert(Sodium::sodium_init() >= 0);
+    assert(Sodium.sodium_init() >= 0);
 
     let mut nonce = [0u8; NONCE_BYTES];
     unsafe {
-        Sodium::randombytes_buf(nonce.as_mut_ptr(), NONCE_BYTES);
+        Sodium.randombytes_buf(nonce.as_mut_ptr(), NONCE_BYTES);
     }
 
-    let mut out = List::with_capacity(message.len() + MAC_BYTES);
+    let mut out = List.with_capacity(message.len() + MAC_BYTES);
     out.resize(message.len() + MAC_BYTES, 0);
     let rc = unsafe {
-        Sodium::crypto_secretbox_easy(
+        Sodium.crypto_secretbox_easy(
             out.as_mut_ptr(), message.as_ptr(), message.len(),
             nonce.as_ptr(), key.as_ptr(),
         )
     };
     assert(rc == 0);
 
-    let mut framed = List::from(nonce);
+    let mut framed = List.from(nonce);
     framed.extend(out);
     framed
 }

@@ -141,7 +141,7 @@ discharged before the type checker sees the annotated function.
 - **CBGR analysis** — every `&T` receives a tier annotation
   (managed / checked / unsafe) through the 11-module analysis suite
   documented in **[cbgr internals](/docs/architecture/cbgr-internals#compile-time-analysis-suite)**.
-- **Cubical bridge** — `Type::Eq` values translated via
+- **Cubical bridge** — `Type.Eq` values translated via
   `verum_types::cubical_bridge` to cubical terms before unification.
 
 Verification results that feed later phases are produced here, not

@@ -25,7 +25,7 @@ pub type SortedList<T: Ord> is List<T> { is_sorted(self) };
 
 /// The named predicate — reflectable into SMT.
 @logic
-pub fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
     forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
 }
 ```
@@ -36,14 +36,14 @@ compiler requires every value of this type to satisfy `is_sorted`.
 ## 2. Construction
 
 ```verum
-pub fn empty<T: Ord>() -> SortedList<T>
+fn empty<T: Ord>() -> SortedList<T>
     where ensures is_sorted(result)
 {
     // Vacuously true: empty list has no adjacent pairs.
-    List::new()
+    List.new()
 }
 
-pub fn singleton<T: Ord>(x: T) -> SortedList<T>
+fn singleton<T: Ord>(x: T) -> SortedList<T>
     where ensures is_sorted(result)
 {
     list![x]
@@ -60,7 +60,7 @@ position preserves sortedness.
 
 ```verum
 @verify(formal)
-pub fn insert<T: Ord>(xs: SortedList<T>, x: T) -> SortedList<T>
+fn insert<T: Ord>(xs: SortedList<T>, x: T) -> SortedList<T>
     where ensures is_sorted(result),
           ensures result.len() == xs.len() + 1
 {
@@ -88,7 +88,7 @@ Z3 gets this from:
 
 ```verum
 @verify(formal)
-pub fn remove_at<T: Ord>(xs: SortedList<T>, index: Int { 0 <= self && self < xs.len() })
+fn remove_at<T: Ord>(xs: SortedList<T>, index: Int { 0 <= self && self < xs.len() })
     -> (SortedList<T>, T)
     where ensures is_sorted(result.0),
           ensures result.0.len() == xs.len() - 1
@@ -107,11 +107,11 @@ the solver proves that deleting one element preserves sortedness
 
 ```verum
 @verify(formal)
-pub fn merge<T: Ord>(a: SortedList<T>, b: SortedList<T>) -> SortedList<T>
+fn merge<T: Ord>(a: SortedList<T>, b: SortedList<T>) -> SortedList<T>
     where ensures is_sorted(result),
           ensures result.len() == a.len() + b.len()
 {
-    let mut out = List::with_capacity(a.len() + b.len());
+    let mut out = List.with_capacity(a.len() + b.len());
     let mut i = 0;
     let mut j = 0;
 

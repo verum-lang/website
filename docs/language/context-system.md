@@ -48,8 +48,8 @@ fn fetch_user(id: UserId) -> User using [Logger, Database] {
 }
 
 fn main() using [IO] {
-    let log = ConsoleLogger::new(LogLevel.Info);
-    let db  = PostgresDatabase::connect(...)?;
+    let log = ConsoleLogger.new(LogLevel.Info);
+    let db  = PostgresDatabase.connect(...)?;
     provide Logger = log;
     provide Database = db in {
         fetch_user(UserId(42));
@@ -204,14 +204,14 @@ A typical top-level entry point layers every context once:
 
 ```verum
 fn main() using [IO] {
-    let app_layer = Layer::new()
-        .with_singleton::<Logger>(ConsoleLogger::new(LogLevel.Info))
-        .with_singleton::<Clock>(SystemClock::new())
-        .with_request::<Database>(|| PostgresDatabase::connect(&db_url))
-        .with_request::<Metrics>(|| Metrics::tagged("req_id"));
+    let app_layer = Layer.new()
+        .with_singleton::<Logger>(ConsoleLogger.new(LogLevel.Info))
+        .with_singleton::<Clock>(SystemClock.new())
+        .with_request::<Database>(|| PostgresDatabase.connect(&db_url))
+        .with_request::<Metrics>(|| Metrics.tagged("req_id"));
 
     app_layer.run(async {
-        let mut server = HttpServer::bind(&":8080").await?;
+        let mut server = HttpServer.bind(&":8080").await?;
         server.serve(|req| handle(req)).await?;
         Result.Ok::<(), Error>(())
     }).await.expect("server");
@@ -234,11 +234,11 @@ the caller didn't provide a `Database`. Tests swap in a mock:
 ```verum
 @test
 async fn test_handler() using [IO] {
-    provide Database = MockDatabase::new() in
-    provide Logger   = NullLogger::new() in
-    provide Clock    = FakeClock::at(epoch()) in
-    provide Metrics  = NullMetrics::new() in {
-        let req = Request::get("/users/42");
+    provide Database = MockDatabase.new() in
+    provide Logger   = NullLogger.new() in
+    provide Clock    = FakeClock.at(epoch()) in
+    provide Metrics  = NullMetrics.new() in {
+        let req = Request.get("/users/42");
         let resp = handle(req).await;
         assert_eq(resp.status.code(), 200);
     }
@@ -261,6 +261,6 @@ Full build in [HTTP service tutorial](/docs/tutorials/http-service).
 - **[Architecture → runtime tiers](/docs/architecture/runtime-tiers)**
   — how the runtime implements task-local storage.
 - **[HTTP service tutorial](/docs/tutorials/http-service)** —
-  end-to-end use of `Layer::new().with_...(...)`.
+  end-to-end use of `Layer.new().with_...(...)`.
 - **[Cookbook → shared state](/docs/cookbook/shared-state)** — when
   a `Mutex`-wrapped context is the right shape.

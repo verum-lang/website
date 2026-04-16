@@ -236,8 +236,8 @@ server.serve(&"tcp://0.0.0.0:4711").await -> IoResult<()>    using [IO]
 ```verum
 fn main() using [IO] {
     let mut reg = new_registry();
-    let zfc = reg.load(&Path::from("theories/zfc.math"))?;
-    let hott = reg.load(&Path::from("theories/hott.math"))?;
+    let zfc = reg.load(&Path.from("theories/zfc.math"))?;
+    let hott = reg.load(&Path.from("theories/hott.math"))?;
 
     let zfc_theory = reg.find(zfc).unwrap();
     let hott_theory = reg.find(hott).unwrap();
