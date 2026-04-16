@@ -194,24 +194,35 @@ function WitnessVisualization() {
   );
 }
 
-const HERO_CODE = `type Positive is Int { self > 0 };
+const HERO_CODE = `// 1. Types carry invariants — the compiler enforces them
+type Port     is Int  { 1 <= self && self <= 65535 };
+type NonEmpty<T> is List<T> { self.len() > 0 };
 
-fn transfer(from: &mut Account, to: &mut Account, amount: Positive)
-    using [Database, Logger]
-    where requires from.balance >= amount,
-          ensures  from.balance == old(from.balance) - amount,
-          ensures  to.balance   == old(to.balance)   + amount
+// 2. Dependencies are visible — no hidden globals
+async fn serve(routes: NonEmpty<Route>) -> Result<(), Error>
+    using [Logger, Config]
 {
-    from.balance -= amount;
-    to.balance   += amount;
-    Logger.info(f"transferred {amount}");
+    let port: Port = Config.get_int("port").unwrap_or(8080);
+    Logger.info(f"listening on :{port}");
+
+    // 3. Structured concurrency — no task outlives its scope
+    nursery(on_error: cancel_all) {
+        for route in routes.iter() {
+            spawn accept_loop(route.clone());
+        }
+    }
 }
 
-@verify(certified)
-fn consensus_round(state: &mut State) -> Proof<StateValid>
-    using [Network, Clock]
-    where ensures is_valid(result, state)
-{ ... }`;
+// 4. Verification is gradual — same function, stronger proof
+@verify(formal)
+fn find<T: Eq>(xs: &NonEmpty<T>, key: &T) -> Maybe<Int>
+    where ensures result is Some(i) => xs[i] == *key
+{
+    for i in 0..xs.len() {
+        if xs[i] == *key { return Maybe.Some(i); }
+    }
+    Maybe.None
+}`;
 
 function Hero() {
   return (
@@ -257,10 +268,22 @@ const PILLARS = [
       'Nine verification strategies from @verify(runtime) to @verify(certified). ' +
       'You declare the intent; the compiler picks the solver. Z3, CVC5, tactic search, or portfolio ' +
       '— routed automatically by the capability router based on the obligation\'s theory mix.',
-    code: `@verify(runtime)    fn prototype() { ... }  // assertions only
-@verify(formal)     fn production() { ... }  // SMT, auto-routed
-@verify(thorough)   fn critical()   { ... }  // Z3 + CVC5 raced
-@verify(certified)  fn kernel()     { ... }  // cross-validated proof`,
+    code: `// Same function, four guarantee levels:
+fn abs(x: Int) -> Int { self >= 0 } {
+    if x >= 0 { x } else { -x }
+}
+
+@verify(runtime)   fn abs_r(x: Int) -> Int { self >= 0 } {
+    if x >= 0 { x } else { -x }  // assert at runtime
+}
+
+@verify(formal)    fn abs_f(x: Int) -> Int { self >= 0 } {
+    if x >= 0 { x } else { -x }  // Z3 proves it
+}
+
+@verify(certified) fn abs_c(x: Int) -> Int { self >= 0 } {
+    if x >= 0 { x } else { -x }  // proof certificate in binary
+}`,
   },
   {
     title: 'One context system for everything',
@@ -269,13 +292,19 @@ const PILLARS = [
       'Runtime DI and compile-time meta use the same using [...] syntax. ' +
       'Database, Logger, Clock at runtime; TypeInfo, BuildAssets, Schema at compile time. ' +
       '14 meta-contexts, 10 standard runtime contexts, same scoping rules, same negative constraints.',
-    code: `// Runtime — provider explicit at call site
+    code: `// Runtime — caller provides Database, Logger, Clock
 fn handle(req: Request) -> Response
-    using [Database, Logger, Clock] { ... }
+    using [Database, Logger, Clock]
+{
+    Logger.info(f"{req.method} {req.path}");
+    let user = Database.query(req.auth)?;
+    ok(user)
+}
 
-// Compile-time — provider is the compiler
-meta fn derive_eq<T>() -> TokenStream
-    using [TypeInfo, AstAccess, CompileDiag] { ... }`,
+// Compile-time — compiler provides TypeInfo, CompileDiag
+meta fn field_count<T>() -> Int using [TypeInfo] {
+    TypeInfo.fields_of::<T>().len()
+}`,
   },
   {
     title: 'Types that carry proof obligations to zero-cost discharge',
@@ -306,12 +335,15 @@ fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
       '&T (CBGR-checked, ~15ns), &checked T (compiler-proven, 0ns), &unsafe T (you prove it, 0ns). ' +
       'All three are the same type family — choose per-use-site, not per-language-dialect. ' +
       'Escape analysis promotes 60-95% of &T to &checked T automatically.',
-    code: `fn process(data: &List<Record>) {     // Tier 0: ~15ns check
-    for r in data.iter() {
-        let id: &checked Int = &checked r.id;  // Tier 1: 0ns
-        insert(id);
+    code: `fn sum_ages(users: &List<User>) -> Int {
+    let mut total = 0;
+    for u in users.iter() {          // &u: &User — ~15ns CBGR check
+        let age: &checked Int = &checked u.age;
+        total += *age;               // 0ns — compiler proved it safe
     }
-}`,
+    total
+}
+// verum analyze --escape: sum_ages  promoted 4/5 refs (80%)`,
   },
 ];
 
@@ -347,11 +379,11 @@ function CodeShowcase() {
   return (
     <section className={clsx(styles.section, styles.codeShowcase)}>
       <div className={styles.sectionHeader}>
-        <h2>Contracts that the compiler discharges</h2>
+        <h2>One example. Four unique features.</h2>
         <p>
-          Refinement types, preconditions, postconditions, and loop invariants
-          become SMT obligations. The capability router picks Z3 or CVC5 by theory.
-          Results are cached — change one function, only its obligations re-verify.
+          Refinement types in the signature. Explicit context dependencies.
+          Structured concurrency with cancellation. A postcondition the compiler
+          proves via SMT. No runtime cost for any of it.
         </p>
       </div>
       <div className={styles.codeWrap}>
