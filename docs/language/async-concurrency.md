@@ -42,6 +42,24 @@ let result = handle.await;
 `spawn` starts a new task on the executor. The returned `JoinHandle`
 is itself a future — awaiting it produces the task's result.
 
+### Context forwarding
+
+By default, a spawned task **inherits the parent's context stack** —
+the task sees the same `Database`, `Logger`, `Http`, and other
+contexts the parent had when it called `spawn`.
+
+Explicit forwarding names which contexts cross into the child; the
+rest are dropped:
+
+```verum
+spawn using [Database, Logger] async { ... }
+// ─ the child only sees Database and Logger, no Http / no Clock / ...
+```
+
+This is both a safety feature (prevents capability leaks across
+task boundaries) and an audit tool (each `spawn` lists exactly what
+the child may use).
+
 ## `select`
 
 Race multiple futures; the first to complete wins.
@@ -59,7 +77,40 @@ select biased {            // try arms in order; useful for prioritisation
 }
 ```
 
-An `else => ...` branch runs if no future is ready.
+### Arms, guards, and else
+
+The full grammar:
+
+```ebnf
+select_expr = 'select' , [ 'biased' ] , '{' , select_arms , '}' ;
+select_arms = select_arm , { ',' , select_arm } , [ ',' ] , [ select_else ] ;
+select_arm  = { attribute } , pattern , '=' , await_expr , [ select_guard ] , '=>' , expression ;
+select_guard = 'if' , expression ;
+select_else  = 'else' , '=>' , expression , [ ',' ] ;
+```
+
+Arms can carry attributes and guards:
+
+```verum
+select biased {
+    @cold ev = high_priority_queue.recv().await if !paused => handle(ev),
+    ev      = normal_queue.recv().await                    => handle(ev),
+    _       = shutdown.await                               => return,
+    else    => sleep(10.millis()).await,       // no future ready, no await blocked
+}
+```
+
+Semantics:
+
+- Without `biased`: arms are polled in fair order.
+- With `biased`: arms are polled top-to-bottom each iteration.
+- A failing `if` guard marks that arm dormant for the iteration.
+- `else` runs when **all** guards are false or no future is ready.
+- An arm's `pattern = expr` binds the future's result (the pattern
+  is matched — mismatches cause the arm to be skipped).
+
+Each arm's awaited expression **must** use `.await` form (not a bare
+call that returns a future) — the grammar enforces this.
 
 ## `nursery` — structured concurrency
 
@@ -81,12 +132,115 @@ async fn fetch_all(urls: &List<Text>) -> List<Bytes>
 }
 ```
 
-Guarantees:
+### Options
+
+```verum
+nursery(timeout: 5.seconds(),
+        on_error: cancel_all,
+        max_tasks: 100)
+{
+    ...
+}
+```
+
+| Option     | Type                                          | Default        |
+|------------|-----------------------------------------------|----------------|
+| `timeout`  | `Duration`                                    | no timeout     |
+| `on_error` | `cancel_all \| wait_all \| fail_fast`         | `cancel_all`   |
+| `max_tasks`| `Int`                                         | unbounded      |
+
+`on_error` policies:
+
+- `cancel_all` — on first error, cancel every sibling task and
+  propagate the error. The default.
+- `wait_all` — let every sibling run to completion regardless of
+  errors; collect all errors in a `NurseryErrors` aggregate.
+- `fail_fast` — drop sibling tasks immediately (best-effort cancel),
+  return the first error without waiting.
+
+### Handlers
+
+```verum
+nursery { ... }
+on_cancel { cleanup_on_cancel() }     // only runs on external cancellation
+recover {
+    TimeoutError        => default_value,
+    NetworkError(e)     => fallback(e),
+}
+```
+
+- `on_cancel` runs if the nursery is cancelled from outside (e.g. a
+  parent nursery is cancelling). Runs before handlers / closure
+  drops.
+- `recover` catches errors from child tasks. Supports both match-arm
+  form (above) and closure form `recover |e| { ... }`. See
+  [error-handling](/docs/language/error-handling).
+
+### Guarantees
+
 - No task started in the nursery outlives the nursery's scope.
 - If any child fails (per the `on_error` policy), the rest are
   cancelled and awaited.
 - `on_cancel` runs if the nursery is cancelled from outside.
 - `recover` handles exceptions without propagating them upward.
+- Exceptions from `on_cancel` and `recover` follow ordinary error
+  handling (they propagate unless caught).
+
+## Generators: `fn*` and `async fn*`
+
+Verum has generators as first-class language features, orthogonal to
+async. A **sync generator** `fn*` produces an iterator; an **async
+generator** `async fn*` produces an async iterator.
+
+```verum
+fn* range(n: Int) -> Int {
+    for i in 0..n { yield i; }
+}
+
+async fn* fetch_pages(base: &Url) -> Page
+    using [Http]
+{
+    let mut cursor: Maybe<Text> = Maybe.None;
+    loop {
+        let page = Http.get_page(base, &cursor).await?;
+        yield page.clone();
+        cursor = page.next_cursor;
+        if cursor.is_none() { break; }
+    }
+}
+```
+
+### Consumption
+
+```verum
+// Sync generator → ordinary for loop:
+for i in range(10) { print(i); }
+
+// Async generator → `for await`:
+for await page in fetch_pages(&base) {
+    process(&page);
+}
+```
+
+### Grammar
+
+```ebnf
+fn_keyword  = 'fn' , [ '*' ] ;
+yield_expr  = 'yield' , expression ;
+for_await_loop = 'for' , 'await' , pattern , 'in' , expression
+              , { loop_annotation } , block_expr ;
+```
+
+- `yield` is only valid inside a `fn*` or `async fn*` body.
+- Generators cannot use `return expr` (only bare `return` to stop).
+- All `yield` expressions must produce compatible types.
+
+### Generators vs. `cofix`
+
+Generators are the *imperative* producer form; `cofix` is the
+*observational* producer form. See
+[copatterns](/docs/language/copatterns) for when each is the better
+choice.
 
 ## Cancellation
 

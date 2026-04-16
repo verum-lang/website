@@ -1,93 +1,339 @@
 ---
 sidebar_position: 8
 title: Refinement Types
+description: Build a verified bounded ring-buffer and see the SMT solver discharge every invariant.
 ---
 
 # Tutorial: Refinement Types
 
-Refinement types add **compile-time constraints** to values. The compiler
-proves your invariants before the program runs — zero runtime overhead.
+Refinement types attach a **predicate** to a type. Every value of
+that type must satisfy the predicate — proved at compile time by the
+SMT solver, zero runtime cost.
 
-## Your first refinement
+In this tutorial we'll build a **verified ring buffer** of `Int`s —
+a classic data structure whose invariants (bounded, non-negative
+indices, capacity preserved) are exactly where refinement types
+shine. You'll:
+
+- Write refinements.
+- See the SMT solver accept easy goals and reject impossible ones.
+- Write `requires` and `ensures` clauses.
+- Use `invariant` / `decreases` on a loop.
+- Promote a function up the verification ladder.
+
+**Time: 45 minutes.**
+
+**Prerequisites:** [Hello, World](/docs/getting-started/hello-world),
+a little familiarity with `@verify`.
+
+## Step 1 — Your first refinement
 
 ```verum
-type PositiveInt is Int{x: x > 0};
+type PositiveInt is Int { self > 0 };
 
 fn divide(a: Int, b: PositiveInt) -> Int {
-    a / b   // Division by zero is impossible — b > 0 is proven at compile time.
+    a / b                                    // no division-by-zero possible
 }
 ```
 
-`Int{x: x > 0}` means "an `Int` where the predicate `x > 0` holds."
-The SMT solver (Z3) proves the constraint statically.
-
-## Using refinements in practice
+`Int { self > 0 }` means "an `Int` where the predicate `self > 0`
+holds." When you pass a value, the SMT solver must prove the
+predicate; passing `0` or `-5` is a compile error.
 
 ```verum
-fn main() {
-    let n: PositiveInt = 42;           // OK — the literal 42 > 0
-    let result = divide(100, n);       // OK — n is PositiveInt
-    assert_eq(result, 2);
+fn main() using [IO] {
+    let n: PositiveInt = 42;                 // OK — 42 > 0 is provable
+    let result = divide(100, n);             // OK
+    print(f"{result}");
 
-    // let bad: PositiveInt = -5;      // Compile error: -5 > 0 is false
-    // let zero: PositiveInt = 0;      // Compile error: 0 > 0 is false
+    // let bad: PositiveInt = -5;            // COMPILE ERROR
+    // let zero: PositiveInt = 0;            // COMPILE ERROR
 }
 ```
 
-## Verification strategies
+## Step 2 — Design the ring buffer
 
-Control how the compiler checks refinements:
+A ring buffer:
 
-```toml
-# verum.toml
-[verify]
-default_strategy = "formal"          # uses SMT solver
-solver_timeout_ms = 10000            # 10s per obligation
+- Has a fixed **capacity** (set at creation).
+- Stores up to `capacity` items in a `List<Int>`.
+- Has `head` and `tail` indices that wrap around.
+- Has `len` — the current number of occupied slots.
 
-# Per-function override:
-```
+Here's the core type:
 
 ```verum
-@verify(fast)                         // quick check, may skip complex proofs
-fn simple_add(a: PositiveInt, b: PositiveInt) -> PositiveInt {
-    a + b   // Trivially positive
-}
+pub type RingBuffer is {
+    data:     List<Int>,           // preallocated, always data.len() == capacity
+    capacity: Int { self > 0 },    // non-zero
+    head:     Int { 0 <= self && self < self },   // TODO — fix below
+    tail:     Int { 0 <= self && self < self },
+    len:      Int { 0 <= self && self <= self },
+};
+```
 
-@verify(thorough)                     // parallel solvers, maximum completeness
-fn complex_algorithm(data: List<PositiveInt>) -> PositiveInt {
-    // ...
+The `TODO`s point out that we need the refinements to refer to
+**other fields** — `head` must be `< capacity`, `len` must be
+`<= capacity`. Verum handles this with a **whole-record
+refinement**.
+
+## Step 3 — Whole-record refinements
+
+```verum
+pub type RingBuffer is {
+    data:     List<Int>,
+    capacity: Int { self > 0 },
+    head:     Int,
+    tail:     Int,
+    len:      Int,
+}
+where self.data.len() == self.capacity,
+      0 <= self.head && self.head < self.capacity,
+      0 <= self.tail && self.tail < self.capacity,
+      0 <= self.len  && self.len  <= self.capacity,
+      // the bookkeeping identity:
+      (self.head + self.len) % self.capacity == self.tail;
+```
+
+Every `RingBuffer` value satisfies every predicate. The SMT solver
+will verify this at construction and every mutation.
+
+## Step 4 — Constructor
+
+```verum
+impl RingBuffer {
+    pub fn new(capacity: Int { self > 0 }) -> Self {
+        Self {
+            data:     List.with_capacity(capacity).fill(0, capacity),
+            capacity,
+            head:     0,
+            tail:     0,
+            len:      0,
+        }
+    }
 }
 ```
 
-Available strategies: `runtime`, `static`, `formal`, `fast`, `thorough`,
-`certified`, `synthesize`.
+The SMT solver must prove **all five** invariants for the value we're
+returning:
 
-## Viewing verification telemetry
+1. `self.data.len() == self.capacity` → we just made it so.
+2. `0 <= 0 && 0 < self.capacity` → since `self.capacity > 0`.
+3. Same for `tail`.
+4. `0 <= 0 && 0 <= self.capacity` → trivial.
+5. `(0 + 0) % self.capacity == 0` → trivial.
+
+All provable by `omega`. The compiler accepts it.
+
+## Step 5 — `push` with `requires` / `ensures`
+
+```verum
+impl RingBuffer {
+    pub fn push(&mut self, value: Int)
+        where requires self.len < self.capacity
+        where ensures  self.len == old(self.len) + 1
+        where ensures  self.capacity == old(self.capacity)
+    {
+        self.data[self.tail] = value;
+        self.tail = (self.tail + 1) % self.capacity;
+        self.len += 1;
+    }
+}
+```
+
+- **`requires`** — the caller must prove the precondition. Calling
+  `push` on a full buffer is a **compile error** (unless the caller
+  first proves it's not full).
+- **`ensures`** — the callee must prove the postcondition.
+  `old(self.len)` refers to the value **before** the call.
+- The SMT solver verifies each field's invariant still holds after
+  the mutation:
+  - `data.len() == capacity` — not changed.
+  - `head`, `tail` — `(self.tail + 1) % self.capacity` is still
+    `< self.capacity`.
+  - `len` — was `< capacity`, now `+1`, so still `<= capacity`.
+  - Bookkeeping identity — unchanged modulo arithmetic.
+
+## Step 6 — Call `push` safely
+
+```verum
+fn stuff(buf: &mut RingBuffer) {
+    buf.push(1);
+    // buf.push(2);       // ERROR: cannot prove `self.len < self.capacity`
+}
+```
+
+To call `push`, we need to prove the precondition. We can do it with
+a check:
+
+```verum
+fn stuff(buf: &mut RingBuffer) {
+    if buf.len < buf.capacity {
+        buf.push(1);                         // OK — proof in scope
+    }
+}
+```
+
+Or by maintaining an invariant ourselves:
+
+```verum
+fn push_if_space(buf: &mut RingBuffer, value: Int) -> Bool {
+    if buf.len < buf.capacity {
+        buf.push(value);
+        true
+    } else {
+        false
+    }
+}
+```
+
+## Step 7 — `pop` and `let else` refinement flow
+
+```verum
+impl RingBuffer {
+    pub fn pop(&mut self) -> Maybe<Int>
+        where ensures result.is_some() => self.len == old(self.len) - 1
+        where ensures result.is_none() => self.len == old(self.len)
+    {
+        if self.len == 0 {
+            return Maybe.None;
+        }
+        let value = self.data[self.head];
+        self.head = (self.head + 1) % self.capacity;
+        self.len -= 1;
+        Maybe.Some(value)
+    }
+}
+```
+
+The `ensures` clauses are *conditional*: "if the result is `Some`,
+then `len` shrank by 1; if `None`, `len` is unchanged." The SMT
+solver checks each branch.
+
+## Step 8 — Add a loop invariant
+
+```verum
+impl RingBuffer {
+    pub fn sum(&self) -> Int {
+        let mut total = 0;
+        let mut i = 0;
+        while i < self.len
+            where invariant 0 <= i && i <= self.len,
+                  invariant total == self.data
+                      .iter().skip(self.head).take(i).sum()
+            where decreases self.len - i
+        {
+            total += self.data[(self.head + i) % self.capacity];
+            i += 1;
+        }
+        total
+    }
+}
+```
+
+- **`invariant`** — a predicate the solver must prove **before the
+  loop**, **preserved by each iteration**, and **upon exit**.
+- **`decreases`** — a termination witness. `self.len - i` is always
+  non-negative and strictly decreases; the solver uses this to
+  prove the loop terminates.
+
+Invariants and `decreases` together close the gap on total
+correctness — the function is proved to **terminate** and produce
+the specified result.
+
+## Step 9 — Promote to `@verify(formal)`
+
+By default, unannotated functions run under `@verify(static)` — the
+compiler checks what's easy and demotes hard goals to runtime
+panics. Force all obligations through the SMT solver:
+
+```verum
+@verify(formal)
+impl RingBuffer {
+    // ... all the methods above
+}
+```
 
 ```bash
-verum build --smt-stats               # persist stats
-verum smt-stats                       # view report
+$ verum check
+   compiling ring-buffer v0.1.0
+   verifying  30 obligations (formal)
+      ✓ 30 / 30 discharged  (median 42 ms per obligation)
+    finished in 1.8s
 ```
 
-## Configuration
+30 proofs — all discharged by Z3 with median 42 ms per goal.
 
-```toml
-[types]
-refinement = true                     # enabled by default
+## Step 10 — See a rejection
 
-[verify]
-default_strategy = "formal"
-solver_timeout_ms = 10000
+Remove the `requires` from `push`:
+
+```verum
+pub fn push(&mut self, value: Int)
+    // removed: where requires self.len < self.capacity
+    where ensures self.len == old(self.len) + 1
+{
+    ...
+}
 ```
-
-Disable refinement checking entirely with:
 
 ```bash
-verum build -Z types.refinement=false
+$ verum check
+error[V3402]: postcondition violated
+  --> src/ring.rs:35:7
+   |
+35 |         self.len += 1;
+   |         ^^^^^^^^^^^^^ counter-example found by Z3
+   |                       | at entry: self.len = capacity (buffer full)
+   |                       | at exit:  self.len = capacity + 1  // > capacity — invariant violated!
+   = help: add `where requires self.len < self.capacity`
 ```
 
-## See also
+The solver found a counter-example — the type's whole-record
+invariant says `len <= capacity`, and without the precondition, you
+can call `push` on a full buffer and break it.
 
-- **[Verification pipeline](/docs/architecture/verification-pipeline)**
-- **[SMT integration](/docs/architecture/smt-integration)**
-- **[`@verify` attribute](/docs/reference/verum-toml#verify--formal-verification)**
+## Step 11 — Tagged literals for refined input
+
+Refinements play nicely with tagged literals:
+
+```verum
+fn parse_positive(input: &Text) -> Maybe<PositiveInt> {
+    let n = input.parse_int()?;
+    if n > 0 { Maybe.Some(n) } else { Maybe.None }
+}
+
+// Or via a compile-time-validated format:
+type Port is Int { 1 <= self && self <= 65535 };
+const HTTP_PORT: Port = 80;       // trivially in range
+```
+
+## What you built
+
+A bounded ring buffer whose:
+
+- **Capacity** is non-zero (refinement).
+- **Indices** stay in range (whole-record refinement).
+- **Length** is bounded (whole-record refinement).
+- **`push`** has a precondition (`requires`) and two postconditions.
+- **`pop`** has conditional postconditions.
+- **`sum`** has a loop invariant and a termination witness.
+- Every obligation is discharged by the SMT solver at compile time.
+- All at zero runtime cost — the predicates are erased in the build.
+
+## Where to go next
+
+- **[language/refinement-types](/docs/language/refinement-types)** —
+  normative reference.
+- **[language/quantifiers](/docs/language/quantifiers)** — `forall` /
+  `exists` in refinements.
+- **[language/dependent-types](/docs/language/dependent-types)** —
+  when you need a value *inside* a type.
+- **[verification/refinement-reflection](/docs/verification/refinement-reflection)** —
+  `@logic` helpers for non-SMT-native predicates.
+- **[cookbook/refinements](/docs/cookbook/refinements)** — catalogue
+  of useful refined types.
+- **[tutorials/verified-data-structure](/docs/tutorials/verified-data-structure)** —
+  a bigger verified data structure (sorted list).
+- **[verification/smt-routing](/docs/verification/smt-routing)** —
+  how the compiler picks Z3, CVC5, or portfolio.

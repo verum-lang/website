@@ -127,9 +127,122 @@ time.
 
 ---
 
+## Why formal models live here
+
+The π-calculus and session types are **semantic foundations**, not
+runtime primitives. They are exposed as Verum data types so you
+can:
+
+- **Model** concurrent systems symbolically before implementing them.
+- **Verify** that a concrete implementation refines its specification.
+- **Translate** between systems that use different concurrency
+  calculi (CSP ↔ π-calculus ↔ actors).
+- **Prove properties** (deadlock-freedom, no channel-use-after-close,
+  progress) using the term algebra and standard bisimulation tactics.
+
+The compiler's own `verum_types::session_types` module uses this
+data to **typecheck channel usage** in `async` code — deadlocks,
+forgotten handshakes, and protocol violations are detected at
+compile time where the programmer declares a channel's protocol.
+
+## Common patterns
+
+### A client-server protocol with recursion
+
+```verum
+// Echo server: receive Int, send Int back, loop.
+fn echo_protocol() -> Protocol {
+    let rec = Protocol.Recv { payload: "Int", rest: Heap.new(/* tail */) };
+    // Without a real recursion primitive, represent the repeat count
+    // as replication or as an unfolded finite prefix.
+    recv("Int", send("Int", recv("Int", send("Int", end()))))
+}
+```
+
+### Branching: "either succeed or fail"
+
+```verum
+// The client sends credentials, then the server offers:
+//   - success: send userdata, end
+//   - failure: send error code, end
+let client = send("Credentials",
+    offer(
+        recv("UserData", end()),
+        recv("ErrorCode", end()),
+    ));
+let server = dual(&client);
+assert(compatible(&client, &server));
+```
+
+`offer` vs `select`:
+
+- **`offer(a, b)`** — "the other party chooses; I handle whichever"
+  (external choice).
+- **`select(a, b)`** — "I choose; the other party handles whichever"
+  (internal choice).
+
+`dual` swaps `offer` ↔ `select` to match the directional flip.
+
+### Linearity checking
+
+Session types encode **linearity** — each channel handle may be used
+exactly once before it's consumed. The checker ensures:
+
+- No channel is used after `end`.
+- No channel is left unused (except `End` protocols).
+- No double-send or double-receive on a single handle.
+
+## Interaction with the runtime
+
+At runtime, session-typed code compiles to ordinary channel
+operations — `send`, `recv`, pattern match on `Select`/`Offer`
+tags. The session type is **erased**; what's left is a straightforward
+typed channel protocol with zero overhead beyond an ordinary
+(`Sender<T>`, `Receiver<T>`) pair.
+
+See [`stdlib/async`](/docs/stdlib/async) for the runtime layer, and
+[cookbook/channels](/docs/cookbook/channels) for everyday usage.
+
+## Extended forms
+
+### π-calculus reductions
+
+The COMM rule is the only structural reduction; congruences extend
+it:
+
+```
+P | 0 ≡ P                                (identity)
+P | Q ≡ Q | P                            (commutativity)
+(P | Q) | R ≡ P | (Q | R)                (associativity)
+(νx)(P | Q) ≡ (νx)P | Q       if x ∉ fv(Q)   (scope extrusion)
+(νx)(νy)P ≡ (νy)(νx)P                    (restriction commutes)
+!P ≡ P | !P                              (replication unfolds)
+```
+
+Verum's `process.vr` includes `proc_congruence(p, q) -> Bool`
+(approximates congruence) and `proc_reduce(p) -> Maybe<Process>`
+(small-step reduction).
+
+### Multi-party session types
+
+Single-party duality suffices for 2-party protocols; for N-party
+protocols, use **global types** — these project into each role's
+local type. Verum's current model supports only binary session
+types; multi-party extensions are experimental (see
+`vcs/specs/L3-extended/multi_party/`).
+
 ## Cross-references
 
 - **[async](/docs/stdlib/async)** — the runtime implementation of
   channels (`Sender`/`Receiver`).
+- **[sync](/docs/stdlib/sync)** — lower-level synchronisation
+  primitives.
 - **[logic](/docs/stdlib/logic)** — linear logic, the metatheory that
-  backs session types (session types are linear-logic propositions).
+  backs session types (session types are linear-logic propositions
+  under the Curry–Howard-style correspondence).
+- **[control](/docs/stdlib/control)** — delimited continuations; can
+  be used to encode session protocols.
+- **[cookbook/channels](/docs/cookbook/channels)** — day-to-day
+  channel usage.
+- **[language/async-concurrency](/docs/language/async-concurrency)** —
+  runtime surface.

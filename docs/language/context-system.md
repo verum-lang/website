@@ -80,6 +80,17 @@ fn f() using [A, !IO] { ... }            // required A, forbidden IO
 fn f() using [A if cfg.debug] { ... }    // conditional
 fn f() using [A.readonly()] { ... }      // transformed capability
 fn f() using [A as primary] { ... }      // aliased
+fn f() using [db: Database] { ... }      // named (identifier binding)
+```
+
+The full grammar allows five kinds of item in a context list:
+
+```ebnf
+extended_context_item = negative_context       (* !Context          *)
+                      | conditional_context    (* Context if cond   *)
+                      | transformed_context    (* Context.transform()*)
+                      | named_context          (* name: Context  OR  Context as alias *)
+                      | simple_context ;       (* Context           *)
 ```
 
 ### Negative contexts
@@ -115,6 +126,70 @@ fn analyse(db: Database) using [Database.readonly()] { ... }
 The callee receives a `Database` with only read capabilities. If the
 function tries to call a mutating method, the compiler rejects it
 immediately — no runtime error.
+
+Transforms chain:
+
+```verum
+fn do_tx() using [Database.transactional().isolated(Serializable)] { ... }
+```
+
+Each segment is an ordinary method on the context type (`Database`
+has `.transactional()` and `.isolated(Level)` methods declared in its
+protocol). The transform produces a **refined context** — the
+function body sees `Database` with the tighter contract.
+
+### Named and aliased contexts
+
+Two instances of the same context type require disambiguation — use
+`as` or a prefixed name:
+
+```verum
+// Using `as` — the alias is the symbol inside the function body:
+fn replicate(data: &Record)
+    using [Database as primary, Database as replica]
+{
+    primary.write(data);
+    replica.write(data);
+}
+
+// Using `name: Context` — the name is the symbol:
+fn handle(req: Request)
+    using [db: Database, log: Logger]
+{
+    log.info(f"req {req}");
+    db.query(...)
+}
+```
+
+Both forms are equivalent. Inside the function, the alias (or name)
+is what you call methods on; the bare context type (`Database`) is
+**not** in scope when there are aliases.
+
+### Conditional contexts (feature flags)
+
+```verum
+fn maybe_log(msg: &Text)
+    using [Logger,
+           Analytics if cfg.analytics_enabled,
+           Metrics if cfg.metrics_enabled]
+{
+    Logger.info(msg);
+    if cfg.analytics_enabled { Analytics.track(msg); }
+    if cfg.metrics_enabled   { Metrics.increment("msgs"); }
+}
+```
+
+`cfg.flag` is a compile-time boolean from `Verum.toml` features.
+Compiling with `--features analytics` enables the conditional
+capability; without it the context is neither required nor emitted.
+
+The condition can also be:
+
+- `identifier` — a compile-time constant.
+- `cfg.identifier` — a build feature.
+- `platform.linux`, `platform.windows`, etc. — target platform.
+- `T: Bound` — a type-constraint condition.
+- Any Boolean combination of these with `&&`, `||`, `!`, `(…)`.
 
 ## Propagation across async boundaries
 
@@ -189,13 +264,25 @@ storage per access (~5–30 ns).
 
 ## Grammar
 
-From `grammar/verum.ebnf`:
+From [`grammar/verum.ebnf`](/docs/reference/grammar-ebnf):
 
-```
-context_clause = "using" "[" context_spec { "," context_spec } "]" ;
-context_spec   = [ "!" ] context_path [ context_transform ] [ context_cond ] [ "as" identifier ] ;
-provide_stmt   = "provide" context_path [ "as" identifier ] "=" expr
-                 [ "in" block ] ";" ;
+```ebnf
+context_clause   = 'using' , context_spec ;
+context_spec     = single_context_spec | extended_context_list ;
+single_context_spec
+                 = [ '!' ] , context_path , [ context_alias ] , [ context_condition ] ;
+extended_context_list
+                 = '[' , extended_context_item , { ',' , extended_context_item } , ']' ;
+
+extended_context_item = negative_context
+                      | conditional_context
+                      | transformed_context
+                      | named_context
+                      | simple_context ;
+
+context_group_def = 'using' , identifier , '=' , context_list_def , ';' ;
+provide_stmt      = 'provide' , context_path , [ 'as' , identifier ]
+                  , '=' , expression , ( ';' | 'in' , block_expr ) ;
 ```
 
 ## Worked example — wiring a web service

@@ -145,10 +145,144 @@ verum analyze --context
 
 ---
 
+## Declassification
+
+Information-flow enforcement is strict by default: data labelled
+`Secret` cannot reach a `Public` sink. But real systems need
+controlled exceptions — logs, audits, human-readable summaries. The
+compiler supports **declassification** through explicit
+capabilities:
+
+```verum
+@cap(name = "declassify", domain = "Secret")
+pub fn summary_for_audit(data: Labeled<UserData>) -> Text {
+    declassify(data, |d| format!("anonymised: {}", d.id.hash()))
+}
+```
+
+Only functions marked with `@cap(name = "declassify", ...)` can call
+`declassify`. The compiler prevents downgrading without the
+capability and records the declassification event in the build
+manifest.
+
+```bash
+verum analyze --declassifications
+# Shows every declassification in the binary, with line numbers
+# and the capability that permitted it.
+```
+
+Guidance:
+
+- Declassify **once**, at the boundary where the decision is made.
+- Log the declassification event.
+- Pass the declassified value through `Labeled<Public>` so downstream
+  code tracks its new label.
+
+## Label polymorphism
+
+Functions can be polymorphic over labels:
+
+```verum
+fn map_labeled<T, U, L>(
+    x: Labeled<T, L>,
+    f: fn(&T) -> U,
+) -> Labeled<U, L>
+{
+    Labeled { label: x.label.clone(), value: f(&x.value) }
+}
+```
+
+The resulting value carries the same label as the input — the
+function is a **neutral** transformation from a security standpoint.
+
+## Region-based isolation in detail
+
+Regions are useful when:
+
+- **Parser state**: an AST lives only for the duration of a parse; no
+  need to manage its lifetime beyond that.
+- **Request handlers**: every per-request allocation freed at once when
+  the response is sent.
+- **Bump allocators for hot loops**: no deallocation during the loop;
+  bulk-free after.
+- **Embedded systems**: fixed-size region; out-of-memory detected at
+  allocation, not at runtime panic.
+
+Region semantics:
+
+```verum
+new_region::<Scope, _>(|r| {
+    let alloc: &'r Node = r.alloc(Node::new(...));
+    let child: &'r Node = r.alloc(Node::child_of(alloc));
+    process(alloc, child);
+    42
+})
+// All `alloc` / `child` freed here at once.
+```
+
+The lifetime `'r` is brand-new to each `new_region` call; values
+from one region cannot escape to another. The compiler enforces this
+statically.
+
+### Region + CBGR
+
+A region reference `&'r T` is a **tier-1 checked reference** — zero
+overhead, compiler-proven non-escape. You get CBGR's safety without
+CBGR's 15 ns per-deref cost, because the region's termination is a
+proof of liveness.
+
+## Side-channel awareness
+
+Verum does not promise constant-time execution by default. For
+cryptographic code, use the `constant_time` marker:
+
+```verum
+@constant_time
+fn secure_compare(a: &[Byte], b: &[Byte]) -> Bool {
+    if a.len() != b.len() { return false; }
+    let mut diff: Byte = 0;
+    for i in 0..a.len() {
+        diff |= a[i] ^ b[i];
+    }
+    diff == 0
+}
+```
+
+`@constant_time` enforces:
+
+- No data-dependent branches.
+- No data-dependent memory accesses.
+- No calls to non-constant-time functions.
+- No dispatch through `dyn T`.
+
+The compiler rejects functions whose body violates these rules.
+
+## Secure-by-default primitives
+
+```verum
+// Random — uses the OS RNG, not the userland PRNG.
+let nonce = security::random_bytes(32);
+
+// Zeroise — compiler refuses to dead-store-optimise away:
+let mut secret = load_secret();
+use_secret(&secret);
+security::zeroise(&mut secret);
+
+// Secure allocator — pages never swapped, locked in memory:
+let buffer = security::SecureBuf.with_capacity(1024);
+
+// Timing-safe comparison (see @constant_time above).
+```
+
 ## Cross-references
 
-- **[Language → attributes](/docs/language/attributes)** — `@cap`, `@label`.
-- **[context](/docs/stdlib/context)** — capability-carrying contexts
-  (`Database with [Read]`).
-- **[Verification → gradual verification](/docs/verification/gradual-verification)**
+- **[language/attributes](/docs/language/attributes)** — `@cap`,
+  `@label`, `@constant_time`.
+- **[language/capability-types](/docs/language/capability-types)** —
+  the `T with [Read, Write]` machinery.
+- **[`stdlib/context`](/docs/stdlib/context)** — capability-carrying
+  contexts.
+- **[verification/gradual-verification](/docs/verification/gradual-verification)**
   — information-flow checks run at `@verify(static)`.
+- **[guides/security](/docs/guides/security)** — practical security
+  guide.

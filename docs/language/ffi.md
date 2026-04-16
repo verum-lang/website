@@ -74,16 +74,35 @@ The contract components:
 
 - **`requires`** — preconditions the caller must guarantee.
 - **`ensures`** — postconditions the library promises.
-- **`memory_effects`** — what the call reads, writes, allocates.
-  Options: `Pure`, `Reads(path)`, `Writes(path)`, `Allocates`.
-- **`thread_safe`** — whether the call is safe to invoke concurrently.
+- **`memory_effects`** — what the call reads, writes, allocates,
+  deallocates. Options:
+  - `Pure` — no effects.
+  - `Reads(path)` — reads from the given memory region.
+  - `Writes(path)` — writes to the given memory region.
+  - `Allocates` — allocates new heap memory (caller takes ownership).
+  - `Deallocates(path)` — releases the memory at `path`.
+  - Combined with `+`: `Reads(input) + Writes(out) + Allocates`.
+- **`thread_safe`** — Boolean. Whether the call is safe to invoke
+  concurrently without external synchronisation.
 - **`errors_via`** — how errors are reported:
   - `None` — infallible.
   - `Errno` — thread-local `errno`.
-  - `ReturnCode(pattern)` — sentinel return value.
+  - `ReturnCode(pattern)` — sentinel return value. The pattern names
+    what counts as error: `ReturnCode(result < 0)` means "negative
+    return values are errors".
+  - `ReturnValue(expr)` — the call returns a distinguished value; if
+    it equals `expr`, the error was signalled. Optional `with Errno`
+    suffix says errno carries the error code:
+    `ReturnValue(null) with Errno`.
   - `Exception` — C++ exception (for `extern "C++"`).
 - **`@ownership(...)`** — who owns allocations, what is borrowed, what
-  is transferred.
+  is transferred. Modes:
+  - `transfer_to = "caller"` — the call returns an owned resource;
+    the caller must release it.
+  - `transfer_from = "caller"` — the call takes ownership of an
+    argument; the caller must no longer use it.
+  - `borrow` — no ownership change; caller retains ownership.
+  - `shared` — both sides keep a reference-counted view.
 
 These contracts become SMT obligations at every call site.
 

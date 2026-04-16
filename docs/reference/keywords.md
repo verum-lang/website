@@ -1,130 +1,265 @@
 ---
 sidebar_position: 2
 title: Keywords
+description: Every reserved and contextual keyword in Verum, grouped by purpose.
 ---
 
 # Keywords
 
-Verum distinguishes **reserved** keywords (which cannot ever be used
-as identifiers) from **contextual** keywords (which are keywords only
-where the grammar expects them).
+Verum distinguishes **reserved** keywords — which cannot ever be used
+as identifiers — from **contextual** keywords, which are keywords
+only where the grammar expects them and ordinary identifiers
+elsewhere.
 
-## Reserved — 3
+## Reserved — only 3
 
-These may never be used as identifiers:
+These may **never** appear as identifiers:
 
-| Keyword | Use |
-|---------|-----|
-| `let` | variable binding |
-| `fn` | function definition |
-| `is` | type definition separator / type test |
+| Keyword | Use                                                           |
+|---------|---------------------------------------------------------------|
+| `let`   | Variable binding (`let x = ...`).                             |
+| `fn`    | Function definition (`fn foo() { ... }`).                     |
+| `is`    | Type-definition separator (`type T is …`); pattern test.      |
 
-## Contextual — ~60
+The parser recognises these three tokens unconditionally.
 
-Keywords where the grammar expects them; ordinary identifiers
-elsewhere. Grouped by purpose.
+```verum
+let let = 42;               // SYNTAX ERROR — `let` is reserved
+let fn_pointer = foo;       // SYNTAX ERROR — `fn` is reserved
+let is_valid = true;        // SYNTAX ERROR — `is` is reserved
+```
+
+## Contextual — approximately 60
+
+Contextual keywords take the keyword role only when the grammar
+expects them. In any other position they are ordinary identifiers.
+
+For example, `async` is a keyword only immediately before `fn` or at
+the start of a block expression:
+
+```verum
+async fn fetch() { ... }        // keyword
+let async = 42;                 // identifier — legal
+print(async);                   // identifier — legal
+```
+
+Below is the full contextual keyword list, grouped by purpose. The
+canonical enumeration lives in
+[`grammar/verum.ebnf`](/docs/reference/grammar-ebnf).
 
 ### Visibility
 
 ```
-pub   public   internal   protected
+pub    public    internal    protected    private
 ```
 
-### Declaration
+Used at the start of items. `private` is explicit (matching the
+absence of any visibility).
+
+### Declarations
 
 ```
-type   module   mount   implement   context   protocol   extends
-const  static   meta    ffi         extern
+type    module    mount    implement    context    protocol    extends
+const   static    meta     ffi          extern     pattern
 ```
+
+Each introduces a top-level or contained item; see the corresponding
+item production in the grammar.
 
 ### Control flow
 
 ```
-if   else   match   return   for   while   loop   break   continue
+if    else    match    return    for    while    loop    break    continue    in
 ```
 
-### Async / concurrency
+`in` appears in `for p in iter`, `provide X = v in { ... }`, and
+quantifier bindings (`forall x in S. P`).
+
+### Async and structured concurrency
 
 ```
-async   await   spawn   defer   errdefer   try
-yield   throws  select  nursery recover    finally
+async    await    spawn       defer    errdefer    try
+yield    throws   select      nursery  recover     finally
+biased   on_cancel
 ```
 
-### Modifiers
+- `biased` — marker on `select` for prioritised branch order.
+- `on_cancel` — handler attached to a `nursery` block.
+
+### Function modifiers
 
 ```
-mut   const   unsafe   pure   affine   linear
+pure    mut    const    unsafe    move    ref    default    cofix
 ```
 
-### Paths / self
+- `cofix` — coinductive fixpoint; see
+  [language/copatterns](/docs/language/copatterns).
+- `default` is contextual: a method marked `default` inside `implement`
+  is overridable by specialisations. Elsewhere — including as a
+  variable name — it's an ordinary identifier.
+
+### Metaprogramming
 
 ```
-self   super   crate
+meta    quote    lift    stage
 ```
 
-### Contracts / verification
+- `quote { ... }` — quasi-quotation.
+- `lift(expr)` — cross-stage lift.
+- `stage` — appears only in `$(stage N){ expr }` and `quote(N){ ... }`.
+
+### Paths and self
 
 ```
-where   requires   ensures   invariant   decreases   result
+self    super    crate    Self
 ```
+
+- `self` — the current instance (lowercase), or the current module
+  inside paths.
+- `Self` — the implementing type (uppercase), inside protocols and impl
+  blocks.
+- `super` — the parent module.
+- `crate` — the cog's root module.
+
+### Contracts and verification
+
+```
+where    requires    ensures    invariant    decreases    result
+```
+
+- `requires` — precondition.
+- `ensures` — postcondition; `result` refers to the return value.
+- `invariant` / `decreases` — loop contracts.
 
 ### Proof DSL
 
 ```
-theorem   lemma   axiom   corollary   proof
-calc      have    show    suffices    obtain
-by        qed     induction            cases     contradiction
-forall    exists
+theorem    lemma       axiom        corollary    proof
+calc       have        show         suffices     obtain
+by         qed         induction    cases        contradiction
+forall     exists      tactic       from
 ```
+
+See [language/proof-dsl](/docs/language/proof-dsl) and
+[reference/tactics](/docs/reference/tactics).
 
 ### Type system
 
 ```
-some         (* existential types *)
-dyn          (* dynamic dispatch *)
-unknown      (* top type *)
+some                  (* existential: some T: Protocol                    *)
+dyn                   (* dynamic dispatch: dyn Protocol                   *)
+unknown               (* top type — the dual of `!`                       *)
+universe              (* universe polymorphism: universe u                 *)
+Type                  (* kind / type-of-types                              *)
+Level                 (* universe level kind                               *)
+view                  (* pattern-level view operator                       *)
+affine                (* affine type modifier: type affine Foo is …       *)
+linear                (* linear type modifier: type linear Foo is …       *)
+stream                (* stream literal / pattern prefix                   *)
+tensor                (* tensor literal prefix                             *)
+checked               (* &checked reference, capability-ref modifier       *)
+with                  (* capability type: T with [Read, Write]             *)
+gen                   (* generator expression prefix                       *)
+set                   (* set comprehension prefix                          *)
+typeof                (* runtime type of an expression                     *)
 ```
 
-### Runtime types
+### Values
 
 ```
-stream   tensor
+true    false    null
 ```
 
-### Bottom type
+- `null` — the `Maybe.None` of raw pointer types; use `Maybe.None`
+  in safe code.
+
+### The bottom type
 
 ```
-!            (* the never type, written as an operator but reserves its form *)
+!       (* never type — used in type position: `fn diverge() -> !` *)
 ```
 
-## `default` — pseudo-keyword
+`!` is a token in both expression (negation / bitwise-not) and type
+position (never). The parser distinguishes by context.
 
-`default` is a contextual keyword only inside `implement` blocks
-(default method bodies). Elsewhere it is an ordinary identifier — so
-`let default = 42;` is legal.
+## Pseudo-keywords
 
-## `in`
+### `default`
 
-Used in:
-- `for pattern in iter { ... }`
-- `provide X = v in { ... }`
+Contextual keyword inside `implement` blocks:
 
-Not reserved.
+```verum
+implement Display for T {
+    default fn fmt(&self) -> Text { ... }       // `default` is a keyword here
+}
+
+let default = 42;                               // `default` is an identifier here
+```
+
+### `self` / `Self`
+
+Lowercase `self` is a value parameter; `Self` is the implementing
+type.
+
+```verum
+implement Foo for Bar {
+    fn method(&self) -> Self { ... }           // Self = Bar
+}
+```
+
+### `in`, `as`
+
+Both contextual. `in` appears in patterns/quantifiers/`provide`;
+`as` appears in casts, aliases, and mount renames.
+
+```verum
+let as = 5;                    // `as` as identifier — legal
+for x in 0..10 { ... }         // `in` as keyword
+let y = 3.0 as Int;            // `as` as cast operator
+```
 
 ## Why so few reserved?
 
 Only the three most essential tokens (`let`, `fn`, `is`) are fully
 reserved. Everything else can be an identifier in a context where
-the grammar does not expect it. This is a deliberate stylistic choice
-— keywords scale with the language's vocabulary, but the author's
-naming latitude should not.
+the grammar does not expect it. This is a deliberate choice:
+**keywords scale with the language's vocabulary, but the author's
+naming latitude should not.**
+
+You can name a variable `async`, `impl`, `move`, or `pattern` with no
+quoting and no escape syntax — the compiler disambiguates by
+position.
+
+## Operators that look like keywords
+
+These tokens are **not** keywords — they are operators with spellings
+that resemble keywords:
+
+| Token            | Kind                                       |
+|------------------|--------------------------------------------|
+| `is`             | Reserved keyword; pattern test operator.   |
+| `as`             | Contextual keyword; type cast operator.    |
+| `.await`         | Postfix operator (dot + keyword).          |
+| `in`             | Contextual keyword; not an operator.       |
 
 ## Grammar reference
 
-The authoritative keyword list lives in the `keyword` production of
-`grammar/verum.ebnf`.
+The authoritative keyword list is the `keyword` production in
+[`grammar/verum.ebnf`](/docs/reference/grammar-ebnf):
+
+```ebnf
+keyword = reserved_keyword | primary_keyword | control_flow
+        | async_keywords | modifiers | ffi_keywords
+        | module_keywords | additional_keywords | proof_keywords ;
+```
+
+Plus the `token` production for keyword-like literals (`true`,
+`false`, `null`) and the `type` production for type-system keywords
+(`Self`, `Type`, `Level`, `unknown`).
 
 ## See also
 
-- **[Syntax](/docs/language/syntax)** — how keywords appear in context.
+- **[Syntax](/docs/language/syntax)** — how keywords appear in
+  context.
+- **[Operators](/docs/reference/operators)** — operator-like tokens.
 - **[Grammar](/docs/reference/grammar-ebnf)** — the full grammar.
