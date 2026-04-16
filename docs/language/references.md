@@ -166,10 +166,111 @@ Use raw pointers for:
 - memory-mapped I/O (the `*volatile` variant forbids compiler reorderings);
 - implementation of the memory subsystem itself.
 
+## Capability bits on references
+
+The `epoch_caps` word of every `ThinRef` / `FatRef` carries 8
+capability bits drawn from the CBGR capability set:
+
+| Bit | Name | Meaning |
+|-----|------|---------|
+| 0 | `READ` | reads permitted |
+| 1 | `WRITE` | writes permitted |
+| 2 | `EXECUTE` | target is callable |
+| 3 | `DELEGATE` | can be handed to another context |
+| 4 | `REVOKE` | holder can revoke copies |
+| 5 | `BORROWED` | this is a borrow, not an owner |
+| 6 | `MUTABLE` | `&mut` semantics |
+| 7 | `NO_ESCAPE` | optimisation hint — reference cannot escape |
+
+Capabilities attenuate **monotonically**: a `Database with [READ]`
+reference has `WRITE` cleared and can never regain it. The compiler
+enforces this at every conversion. Capability checks at runtime cost
+one AND + one branch (~1 ns).
+
+## Hazard-pointer protocol
+
+Between the moment a reader loads the generation from a `ThinRef` and
+the moment it dereferences the pointer, the allocator could free the
+target and increment the generation. CBGR prevents this race via
+**hazard pointers** (`core/mem/hazard.vr`):
+
+1. Before validating, the reader publishes the target address in a
+   per-thread hazard slot.
+2. The CBGR generation check runs.
+3. After dereferencing, the reader clears the hazard slot.
+4. The allocator's free path checks all hazard slots before recycling
+   a page — if any slot holds the target, the free is deferred.
+
+This makes the check **lock-free** on the fast path with no fences
+needed on x86_64 (TSO). On aarch64, acquire/release fences provide
+the necessary ordering.
+
+## VBC opcodes per tier
+
+Each tier lowers to a distinct VBC instruction so the tier decision
+survives all the way from the compiler to the executor:
+
+| Opcode | Hex | Tier | Runtime behaviour |
+|--------|-----|------|-------------------|
+| `Ref` | 0x70 | 0 | CBGR-validated ~15 ns deref |
+| `RefMut` | 0x71 | 0 | mutable CBGR-validated |
+| `Deref` | 0x72 | — | deref with validation |
+| `DerefMut` | 0x73 | — | mutable deref with validation |
+| `ChkRef` | 0x74 | — | explicit validation guard |
+| `RefChecked` | 0x75 | 1 | 0 ns — compiler-proven safe |
+| `RefUnsafe` | 0x76 | 2 | 0 ns — unsafe, user-attested |
+| `DropRef` | 0x77 | — | drop a reference (bookkeeping) |
+
+In the interpreter, all derefs perform the full check (safety first).
+In AOT, Tier 1 and Tier 2 emit direct loads. See
+**[CBGR internals → VBC tier opcodes](/docs/architecture/cbgr-internals#vbc-tier-opcodes)**.
+
+## Escape-analysis promotion model
+
+The compiler's 11-module analysis suite (`verum_cbgr`) classifies
+every reference into one of four escape states:
+
+| State | Meaning | Tier decision |
+|-------|---------|---------------|
+| `NoEscape` | reference provably stays local | → Tier 1 (`RefChecked`) |
+| `MayEscape` | inconclusive | → Tier 0 (`Ref`) |
+| `Escapes` | stored into a heap location, returned, etc. | → Tier 0 (`Ref`) |
+| `Unknown` | analysis failed | → Tier 0 (`Ref`, conservative) |
+
+Only `NoEscape` qualifies for promotion. The SMT-alias analysis
+(`smt_alias_verification.rs`) is invoked when the simpler analyses
+are inconclusive. Typical promotion rate on idiomatic code: 60–95 %.
+
+## Worked example — all three tiers
+
+```verum
+fn process_batch(data: &List<Record>) using [Database, Logger] {
+    // Tier 0 (&T): the reference `data` may escape into Logger
+    Logger.info(f"processing {data.len()} records");
+
+    for record in data.iter() {
+        // Tier 1 (&checked): the compiler proves `record` cannot
+        // escape the loop body. No CBGR overhead here.
+        let id: &checked Int = &checked record.id;
+        insert_record(*id);
+    }
+}
+
+fn insert_record(id: Int) using [Database] {
+    // Tier 2 (&unsafe): raw pointer into a memory-mapped buffer.
+    // We know the buffer outlives this call because the caller
+    // holds the mmap guard.
+    let buf: &unsafe Byte = unsafe { mmap_region.as_ptr() };
+    Database.execute(f"INSERT INTO log(id) VALUES({id})")?;
+}
+```
+
 ## See also
 
 - **[Memory model](/docs/language/memory-model)** — ownership,
-  mutability, drops.
+  mutability, drops, allocator internals.
 - **[CBGR](/docs/language/cbgr)** — how the generational check works.
-- **[CBGR internals](/docs/architecture/cbgr-internals)** — the
-  runtime data structures.
+- **[CBGR internals](/docs/architecture/cbgr-internals)** — header
+  layout, 8-capability-bit system, compile-time analysis suite.
+- **[Cookbook → references](/docs/cookbook/references)** — when to use
+  each tier in practice.
