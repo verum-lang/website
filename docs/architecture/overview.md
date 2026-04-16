@@ -5,7 +5,7 @@ title: Architecture Overview
 
 # Architecture Overview
 
-Verum is a **VBC-first** toolchain: every program lowers to Verum
+Verum is a **VBC-first** compiler: every program lowers to Verum
 Bytecode, and VBC is either interpreted (Tier 0) or compiled to
 native code via LLVM (Tier 1). A separate MLIR path emits GPU binaries
 for `@device(gpu)` code. The compiler is a 24-crate Rust workspace

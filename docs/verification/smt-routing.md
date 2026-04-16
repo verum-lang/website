@@ -20,7 +20,7 @@ No single SMT solver is best at everything. Empirically:
 | Arrays                                    | Z3          | Fast, feature-complete |
 | Quantifiers (general)                     | Z3 (MBQI)   | Typically faster |
 | Strings                                   | **CVC5**    | Z3 strings are experimental; CVC5's are mature |
-| Nonlinear arithmetic (real)               | **CVC5**    | CVC5's CAD engine is state-of-the-art |
+| Nonlinear arithmetic (real)               | **CVC5**    | CVC5's cylindrical algebraic decomposition |
 | Finite model finding                      | **CVC5**    | CVC5's FMF is designed for it |
 | SyGuS synthesis                           | **CVC5**    | Only CVC5 supports SyGuS |
 | Abductive reasoning                       | **CVC5**    | CVC5 is the reference impl |

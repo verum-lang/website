@@ -171,7 +171,7 @@ pass fuses into the forward kernel whenever the dataflow allows
 - **Linux**: `lld` with musl for static builds; `ld.bfd` as fallback.
 - **macOS**: `ld64`, dynamic system libraries (libSystem).
 - **Windows**: `lld-link` with MSVC CRT.
-- **Cross-compilation**: pre-staged sysroots shipped with the toolchain.
+- **Cross-compilation**: pre-staged sysroots bundled in the `verum` binary.
 
 LTO options:
 - `thin` (default): fast, good inlining.
