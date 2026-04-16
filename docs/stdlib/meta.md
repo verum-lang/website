@@ -82,82 +82,203 @@ type AssetMetadata is {
 };
 ```
 
-### `TypeInfo` — type introspection
+### `TypeInfo` — type introspection (36 methods)
+
+The largest context — full compile-time reflection over the type
+registry.
 
 ```verum
 context TypeInfo {
-    fn name_of<T>() -> Text;                   // fully-qualified
-    fn simple_name_of<T>() -> Text;            // just the terminal segment
+    // Identity
+    fn name_of<T>() -> Text;                          // fully-qualified name
+    fn simple_name_of<T>() -> Text;                   // terminal segment only
     fn module_of<T>() -> Text;
     fn kind_of<T>() -> TypeKind;
+    fn type_id<T>() -> UInt64;
+
+    // Structure
     fn fields_of<T>() -> List<FieldInfo>;
     fn variants_of<T>() -> List<VariantInfo>;
     fn generics_of<T>() -> List<GenericParam>;
+    fn bounds_of<T>() -> List<TraitBound>;
+    fn lifetime_params_of<T>() -> List<LifetimeParam>;
+    fn where_clause_of<T>() -> List<TraitBound>;
+
+    // Protocols
     fn protocols_of<T>() -> List<ProtocolInfo>;
     fn implements<T, P>() -> Bool;
+    fn associated_types_of<T, P>() -> List<(Text, TypeKind)>;
 
-    @deprecated fn size_of<T>() -> Int;        // use T.size
-    @deprecated fn align_of<T>() -> Int;       // use T.alignment
+    // Methods
+    fn functions_of<T>() -> List<FunctionInfo>;
+    fn method_of<T>(name: Text) -> Maybe<MethodResolution>;
+    fn static_functions_of<T>() -> List<FunctionInfo>;
+    fn instance_methods_of<T>() -> List<FunctionInfo>;
+
+    // Attributes & docs
+    fn attributes_of<T>() -> List<Attribute>;
+    fn has_attribute<T>(name: Text) -> Bool;
+    fn get_attribute<T>(name: Text) -> Maybe<Attribute>;
+    fn doc_of<T>() -> Maybe<Text>;
+
+    // Marker protocol checks
+    fn is_copy<T>() -> Bool;
+    fn is_send<T>() -> Bool;
+    fn is_sync<T>() -> Bool;
+    fn is_sized<T>() -> Bool;
+    fn needs_drop<T>() -> Bool;
+    fn ownership_of<T>() -> OwnershipInfo;
+
+    // Memory layout
+    fn field_offset<T>(field_name: Text) -> Maybe<FieldOffset>;
+    fn memory_layout_of<T>() -> List<FieldOffset>;
+    fn stride_of<T>() -> Int;
+    @deprecated fn size_of<T>() -> Int;                // use T.size
+    @deprecated fn align_of<T>() -> Int;               // use T.alignment
+
+    // Composition / inner types
+    fn super_types_of<T>() -> List<Text>;
+    fn inner_type_of<T>() -> Maybe<Text>;              // newtype inner
+    fn element_type_of<T>() -> Maybe<Text>;            // List<T> → T
+    fn key_value_types_of<T>() -> Maybe<(Text, Text)>; // Map<K,V> → (K,V)
 }
 ```
 
-### `AstAccess` — parse and emit AST fragments
+### `AstAccess` — parse, visit, and emit AST fragments (18 methods)
 
 ```verum
 context AstAccess {
-    fn parse_expr(source: Text) -> MetaResult<TokenStream>;
-    fn parse_type(source: Text) -> MetaResult<TokenStream>;
-    fn parse_item(source: Text) -> MetaResult<TokenStream>;
-    fn parse_pattern(source: Text) -> MetaResult<TokenStream>;
-    fn emit(tokens: TokenStream);              // insert into surrounding module
-    fn splice_here(tokens: TokenStream);       // splice at the invocation site
+    // Parse source text / token streams into typed AST nodes
+    fn parse_expr(tokens: TokenStream) -> MetaResult<Expr>;
+    fn parse_type(tokens: TokenStream) -> MetaResult<Type>;
+    fn parse_item(tokens: TokenStream) -> MetaResult<Item>;
+    fn parse_pattern(tokens: TokenStream) -> MetaResult<Pattern>;
+    fn parse_statement(tokens: TokenStream) -> MetaResult<Statement>;
+    fn parse_block(tokens: TokenStream) -> MetaResult<Block>;
+
+    // Emit / splice code at the invocation site
+    fn emit<T: ToTokens>(node: T) -> TokenStream;
+    fn validate(tokens: TokenStream) -> MetaResult<()>;
+
+    // Span constructors
+    fn call_site() -> Span;
+    fn def_site() -> Span;
+    fn mixed_site() -> Span;
+
+    // Macro input access
+    fn input() -> TokenStream;
+    fn attr_args() -> Maybe<TokenStream>;
+
+    // Visitor combinators — walk and transform AST nodes
+    fn visit_expr(expr: Expr, visitor: fn(Expr) -> Expr) -> Expr;
+    fn visit_type(ty: Type, visitor: fn(Type) -> Type) -> Type;
+    fn visit_pattern(pat: Pattern, visitor: fn(Pattern) -> Pattern) -> Pattern;
+    fn visit_statement(stmt: Statement, visitor: fn(Statement) -> Statement) -> Statement;
+    fn visit_item(item: Item, visitor: fn(Item) -> Item) -> Item;
+    fn visit_all_exprs(item: Item, visitor: fn(Expr) -> Expr) -> Item;
 }
 ```
 
-### `CompileDiag` — emit diagnostics
+### `CompileDiag` — emit diagnostics (10 methods)
 
 ```verum
 context CompileDiag {
-    fn emit_error(span: Span, message: Text);
-    fn emit_warning(span: Span, message: Text);
-    fn emit_note(span: Span, message: Text);
-    fn abort() -> !;                           // stop compilation
+    fn emit_error(message: Text, span: Span);
+    fn emit_warning(message: Text, span: Span);
+    fn emit_note(message: Text, span: Span);
+    fn emit_help(message: Text, span: Span);
+    fn emit_error_with_code(code: Text, message: Text, span: Span);
+    fn emit_warning_with_code(code: Text, message: Text, span: Span);
+    fn diagnostic() -> DiagnosticBuilder;      // fluent builder
+    fn has_errors() -> Bool;
+    fn error_count() -> Int;
+    fn warning_count() -> Int;
 }
 ```
 
-### `MetaRuntime` — meta-execution limits
+### `MetaRuntime` — build config and execution limits (18 methods)
 
 ```verum
 context MetaRuntime {
+    // Crate identity
+    fn crate_name() -> Text;
+    fn module_path() -> Text;
+    fn crate_version() -> (Int, Int, Int);
+    fn runtime_config() -> Text;               // "full" | "embedded" | ...
+    fn compiler_version() -> (Int, Int, Int);
+
+    // Execution limits (from Verum.toml [meta])
     fn recursion_limit() -> Int;
     fn iteration_limit() -> Int;
-    fn memory_limit_bytes() -> Int;
+    fn memory_limit() -> Int;
     fn timeout_ms() -> Int;
-    fn current_stage() -> Int;
-    fn target_family() -> Text;                // "unix" | "windows" | "wasm"
-    fn target_os() -> Text;                    // "linux" | "macos" | "windows" | ...
-    fn target_arch() -> Text;                  // "x86_64" | "aarch64" | ...
-    fn target_pointer_width() -> Int;
+
+    // Build configuration
+    fn config_get(key: Text) -> Maybe<Text>;
+    fn config_get_int(key: Text) -> Maybe<Int>;
+    fn config_get_bool(key: Text) -> Maybe<Bool>;
+    fn config_get_array(key: Text) -> Maybe<List<Text>>;
+    fn env(key: Text) -> Maybe<Text>;          // reads env vars at compile time
+    fn is_ci() -> Bool;
 }
 ```
 
-### `MacroState` — caching across invocations
+### `MacroState` — cross-invocation caching (16 methods)
+
+Persists state between invocations of the same macro within a build.
+Essential for derive macros that need deduplication.
 
 ```verum
 context MacroState {
-    fn cache_get(key: Text) -> Maybe<TokenStream>;
-    fn cache_put(key: Text, value: TokenStream);
-    fn record_dependency(path: Text);          // trigger re-expansion on change
+    // Key-value cache
+    fn cache_get<T>(key: Text) -> Maybe<T>;
+    fn cache_set<T>(key: Text, value: T);
+    fn cache_has(key: Text) -> Bool;
+    fn cache_remove(key: Text);
+    fn cache_clear();
+    fn cache_keys() -> List<Text>;
+    fn cache_stats() -> CacheStats;
+
+    // Memoization helpers
+    fn memo<T>(key: Text, compute: fn() -> T) -> T;
+    fn memo_typed<K, V>(suffix: Text, compute: fn() -> V) -> V;
+
+    // Invocation tracking
+    fn invocation_count() -> Int;
+    fn invocation_id() -> UInt64;
+    fn current_macro_name() -> Text;
+    fn call_depth() -> Int;
+
+    // Dependency tracking (trigger re-expansion on change)
+    fn depend_on_file(path: Text);
+    fn depend_on_type<T>();
+    fn depend_on_env(var: Text);
 }
 ```
 
-### `StageInfo` — staged metaprogramming
+### `StageInfo` — N-level staged metaprogramming (15 methods)
+
+Information about the current stage level in multi-stage `meta(N)`
+code. See **[language → metaprogramming → multi-stage](/docs/language/metaprogramming#multi-stage-quoting)**.
 
 ```verum
 context StageInfo {
-    fn current_stage() -> Int;
-    fn target_stage() -> Int;
-    fn can_lower_to(stage: Int) -> Bool;
+    fn current_stage() -> UInt32;
+    fn max_stage() -> UInt32;
+    fn is_runtime() -> Bool;                   // stage 0
+    fn is_compile_time() -> Bool;              // stage >= 1
+    fn is_max_stage() -> Bool;
+    fn is_valid_stage(level: UInt32) -> Bool;
+    fn is_valid_transition(from: UInt32, to: UInt32) -> Bool;
+    fn quote_target_stage() -> UInt32;
+    fn quote_depth() -> UInt32;
+    fn stage_unique_ident(base: Text) -> Text;
+
+    // Inspect which functions live at which stage
+    fn function_stage(function_path: Text) -> Maybe<UInt32>;
+    fn functions_at_stage(level: UInt32) -> List<Text>;
+    fn is_staged_enabled() -> Bool;
+    fn stage_config(key: Text) -> Maybe<Text>;
 }
 ```
 
@@ -178,41 +299,163 @@ The gensym'd identifiers are guaranteed not to collide with user
 code or other macro expansions. See
 **[metaprogramming → hygiene](/docs/language/metaprogramming#hygiene)**.
 
-### Analysis & productivity contexts
+### `CodeSearch` — search the whole codebase (17 methods)
 
-All of these are fully implemented in
-`crates/verum_compiler/src/meta/builtins/` (~1 000 lines each).
+Implemented in `builtins/code_search.rs` (~1 000 lines). Queries the
+type registry, usage indices, and module registry at compile time.
 
 ```verum
-context CodeSearch {        // search the whole codebase
-    fn find_items(name: Text) -> List<Path>;
-    fn find_implementations(protocol: Path) -> List<Path>;
-    fn find_callers(function: Path) -> List<Path>;
-}
+context CodeSearch {
+    // Function search
+    fn find_functions_with_attr(attr_name: Text) -> List<FunctionSearchResult>;
+    fn find_functions_by_pattern(pattern: Text) -> List<FunctionSearchResult>;
+    fn find_functions_in_module(module_path: Text) -> List<FunctionSearchResult>;
+    fn find_functions_by_return_type(type_name: Text) -> List<FunctionSearchResult>;
 
-context ProjectInfo {       // manifest metadata
-    fn cog_name() -> Text;
-    fn cog_version() -> Text;
-    fn features_enabled() -> List<Text>;
+    // Type search
+    fn find_types_implementing(protocol_name: Text) -> List<TypeSearchResult>;
+    fn find_types_with_attr(attr_name: Text) -> List<TypeSearchResult>;
+    fn find_types_by_pattern(pattern: Text) -> List<TypeSearchResult>;
+    fn find_types_in_module(module_path: Text) -> List<TypeSearchResult>;
+
+    // Usage search
+    fn find_function_usages(function_path: Text) -> List<UsageInfo>;
+    fn find_type_usages(type_path: Text) -> List<UsageInfo>;
+    fn find_const_usages(const_path: Text) -> List<UsageInfo>;
+    fn find_pattern(pattern: Text) -> List<PatternMatch>;
+    fn find_string_literal(text: Text) -> List<UsageInfo>;
+
+    // Module queries
+    fn all_modules() -> List<Text>;
+    fn module_public_items(module_path: Text) -> List<ItemInfo>;
+    fn module_dependencies(module_path: Text) -> List<Text>;
+    fn module_dependents(module_path: Text) -> List<Text>;
+}
+```
+
+### `ProjectInfo` — manifest metadata (26 methods)
+
+```verum
+context ProjectInfo {
+    // Package identity
+    fn package_name() -> Text;
+    fn package_version() -> Text;
+    fn package_authors() -> List<Text>;
+    fn package_description() -> Maybe<Text>;
+    fn package_license() -> Maybe<Text>;
+    fn package_repository() -> Maybe<Text>;
+
+    // Dependencies
     fn dependencies() -> List<DependencyInfo>;
-}
+    fn dev_dependencies() -> List<DependencyInfo>;
+    fn has_dependency(name: Text) -> Bool;
+    fn dependency_version(name: Text) -> Maybe<Text>;
 
-context SourceMap {         // map span ↔ source
-    fn source_of(span: Span) -> &SourceFile;
-    fn source_between(from: Span, to: Span) -> Text;
-}
+    // Features
+    fn enabled_features() -> List<Text>;
+    fn is_feature_enabled(feature: Text) -> Bool;
+    fn default_features() -> List<Text>;
 
-context Schema {            // validate generated code
-    fn validate(tokens: &TokenStream, schema: Text) -> MetaResult<()>;
-}
+    // Target
+    fn target_triple() -> Text;
+    fn target_os() -> Text;
+    fn target_arch() -> Text;
+    fn target_pointer_width() -> Int;
+    fn target_endian() -> Text;
+    fn target_has_feature(feature: Text) -> Bool;
 
-context DepGraph {          // inspect cog dependency graph
-    fn direct_deps() -> List<Text>;
-    fn transitive_deps() -> List<Text>;
-}
+    // Build mode
+    fn is_debug() -> Bool;
+    fn is_release() -> Bool;
+    fn opt_level() -> UInt32;
 
-context MetaBench {         // micro-benchmark macro expansions
-    fn measure(name: Text, thunk: fn() -> TokenStream) -> BenchReport;
+    // Paths
+    fn project_root() -> Text;
+    fn source_dir() -> Text;
+    fn output_dir() -> Text;
+    fn manifest_path() -> Text;
+}
+```
+
+### `SourceMap` — track generated-code provenance (10 methods)
+
+```verum
+context SourceMap {
+    fn enter_generated(name: Text);
+    fn exit_generated();
+    fn current_scope() -> Maybe<Text>;
+    fn scope_path() -> Text;
+    fn map_span_to_generator(generated_span: Span);
+    fn map_span_to_source(generated_span: Span, source_span: Span);
+    fn get_source_span(generated_span: Span) -> Maybe<Span>;
+    fn synthetic_span(message: Text) -> Span;
+    fn add_line_directive(source_file: Text, source_line: UInt32);
+    fn get_mappings() -> List<SpanMapping>;
+}
+```
+
+Error messages from generated code trace back through the source map
+to point at the macro invocation rather than the emitted tokens.
+
+### `Schema` — validate generated code (11 methods)
+
+Implemented in `builtins/schema.rs` (~1 000 lines). Structural
+constraint checking for generated token streams.
+
+```verum
+context Schema {
+    fn function_schema() -> FunctionSchemaBuilder;
+    fn type_schema() -> TypeSchemaBuilder;
+    fn expr_schema() -> ExprSchemaBuilder;
+    fn module_schema() -> ModuleSchemaBuilder;
+    fn validate(code: TokenStream, schema: CodeSchema)
+        -> Result<(), List<SchemaError>>;
+    fn validate_and_fix(code: TokenStream, schema: CodeSchema)
+        -> Result<TokenStream, List<SchemaError>>;
+    fn is_function(code: TokenStream) -> Bool;
+    fn is_type(code: TokenStream) -> Bool;
+    fn is_expression(code: TokenStream) -> Bool;
+    fn is_statement(code: TokenStream) -> Bool;
+    fn is_item(code: TokenStream) -> Bool;
+}
+```
+
+### `DepGraph` — module dependency graph (12 methods)
+
+Implemented in `builtins/dep_graph.rs` (~1 000 lines).
+
+```verum
+context DepGraph {
+    fn dependencies_of(mod_name: Text) -> List<Text>;
+    fn transitive_dependencies(mod_name: Text) -> List<Text>;
+    fn dependents_of(mod_name: Text) -> List<Text>;
+    fn transitive_dependents(mod_name: Text) -> List<Text>;
+    fn find_cycles() -> List<List<Text>>;
+    fn in_cycle_with(module_a: Text, module_b: Text) -> Bool;
+    fn topological_order() -> List<Text>;
+    fn compilation_order() -> List<Text>;
+    fn depth(mod_name: Text) -> UInt32;
+    fn strongly_connected_components() -> List<List<Text>>;
+    fn leaf_modules() -> List<Text>;
+    fn root_modules() -> List<Text>;
+}
+```
+
+### `MetaBench` — micro-benchmark macro expansions (11 methods)
+
+```verum
+context MetaBench {
+    fn start(name: Text) -> BenchTimer;
+    fn now_ns() -> UInt64;
+    fn report(name: Text, duration_ns: UInt64);
+    fn report_with_context(name: Text, duration_ns: UInt64, context: Text);
+    fn memory_usage() -> UInt64;
+    fn peak_memory() -> UInt64;
+    fn report_memory(name: Text, bytes: UInt64);
+    fn count(name: Text);
+    fn count_by(name: Text, amount: UInt64);
+    fn get_count(name: Text) -> UInt64;
+    fn all_results() -> List<BenchResult>;
 }
 ```
 
@@ -243,6 +486,66 @@ to listing its members individually.
 `MetaCore` is the typical minimum for derives: type reflection, AST
 parsing, and diagnostic output. `MetaFull` is for unrestricted meta
 fns that may touch any part of the build environment.
+
+---
+
+## Tier 0 — always-available builtins
+
+These functions need no `using` declaration. Implemented in
+`builtins/arithmetic.rs`, `builtins/collections.rs`, and
+`builtins/code_gen.rs`.
+
+### Arithmetic (13 functions)
+
+```verum
+abs(x: Numeric) -> Numeric
+min(a: T, b: T) -> T
+max(a: T, b: T) -> T
+clamp(x: T, lo: T, hi: T) -> T
+pow(base: T, exp: Int) -> T
+int_to_text(x: Int) -> Text
+text_to_int(s: Text) -> Int
+bitwise_and(a: Int, b: Int) -> Int
+bitwise_or(a: Int, b: Int) -> Int
+bitwise_xor(a: Int, b: Int) -> Int
+bitwise_not(x: Int) -> Int
+shift_left(x: Int, n: Int) -> Int
+shift_right(x: Int, n: Int) -> Int
+```
+
+### Collections (36+ functions)
+
+**Lists**: `list_len`, `list_push`, `list_get`, `list_map`,
+`list_filter`, `list_fold`, `list_concat`, `list_reverse`,
+`list_first`, `list_last`.
+
+**Maps**: `map_new`, `map_len`, `map_get`, `map_insert`, `map_remove`,
+`map_contains`, `map_keys`, `map_values`, `map_entries`.
+
+**Sets**: `set_new`, `set_len`, `set_insert`, `set_remove`,
+`set_contains`, `set_to_list`, `set_union`, `set_intersection`,
+`set_difference`.
+
+**Maybe**: `maybe_unwrap`, `maybe_unwrap_or`, `maybe_is_some`,
+`maybe_is_none`.
+
+**Text**: `text_concat`, `text_len`, `text_split`, `text_join`,
+`text_to_upper`, `text_to_lower`, `text_trim`, `text_replace`,
+`text_starts_with`, `text_ends_with`, `text_contains`, `text_eq`,
+`text_substring`, `text_index_of`, `text_char_at`, `text_repeat`,
+`text_is_empty`, `text_lines`.
+
+### Code generation (7 Tier-0 functions)
+
+```verum
+quote(expr) -> Ast                             // construct an AST fragment
+unquote(ast) -> Expr                           // unwrap an AST fragment
+stringify(value) -> Text                       // any value → source representation
+concat_idents(parts: ...Text) -> Text          // join identifiers
+format_ident(fmt: Text, args: ...) -> Text     // format an identifier
+gensym(prefix: Text) -> Text                   // (Tier 0 variant — for Tier 1 see Hygiene)
+ident(text: Text) -> Ident                     // text → Ident token
+```
 
 ---
 

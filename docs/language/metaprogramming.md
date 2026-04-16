@@ -357,15 +357,69 @@ print(&f"{User { id: 42, name: \"Alice\".to_string(), email: \"a@b.c\".to_string
 ```
 
 See **[Writing a derive](/docs/cookbook/write-a-derive)** for a
-full walk-through (debugging with `verum expand-macros`, handling
-variants, using `CompileDiag`).
+full walk-through (handling variants, using `CompileDiag`).
+
+## Worked example — a build-time schema validator
+
+This example exercises four meta contexts at once:
+
+```verum
+@meta_macro
+pub meta fn validated_api<T>() -> TokenStream
+    using [BuildAssets, TypeInfo, Schema, CompileDiag]
+{
+    let schema_text = BuildAssets.load_text("api/spec.json")?;
+    let fields = TypeInfo.fields_of::<T>();
+    let type_name = TypeInfo.simple_name_of::<T>();
+
+    // Validate that the type structure matches the JSON schema
+    let generated = quote {
+        implement ApiEndpoint for ${type_name} {
+            fn path() -> Text { ${lift(f"/api/{type_name.to_lower()}")} }
+            fn fields() -> List<Text> {
+                list![
+                    $[for f in fields {
+                        ${lift(f.name.clone())},
+                    }]
+                ]
+            }
+        }
+    };
+
+    // Schema.validate ensures the generated code is a well-formed impl
+    match Schema.validate(generated.clone(), Schema.type_schema().build()) {
+        Result.Ok(_) => generated,
+        Result.Err(errors) => {
+            for e in errors {
+                CompileDiag.emit_error(e.message, e.span);
+            }
+            TokenStream::empty()
+        }
+    }
+}
+```
+
+The four contexts compose naturally:
+- `BuildAssets.load_text(...)` reads the spec at compile time.
+- `TypeInfo.fields_of::<T>()` reflects the type being annotated.
+- `Schema.validate(...)` checks the generated code is structurally
+  sound before it's emitted.
+- `CompileDiag.emit_error(...)` produces real compiler diagnostics
+  if validation fails.
 
 ## See also
 
 - **[Stdlib → meta](/docs/stdlib/meta)** — `TokenStream`, `quote`,
-  reflection types, the 13 capability contexts.
+  reflection types, the 14 capability contexts with full API
+  surfaces.
 - **[Attributes](/docs/language/attributes)** — the full registry of
   `@` annotations.
+- **[Reference → attribute registry](/docs/reference/attribute-registry)**
+  — every standard `@` with target and semantics.
+- **[Cookbook → write a derive](/docs/cookbook/write-a-derive)** —
+  task-oriented walkthrough.
+- **[Cookbook → `@logic` functions](/docs/cookbook/logic-functions)** —
+  how `meta` composes with SMT reflection.
 - **[Reference → attribute registry](/docs/reference/attribute-registry)**
   — every standard `@` with target and semantics.
 - **[Cookbook → write a derive](/docs/cookbook/write-a-derive)** —

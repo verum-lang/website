@@ -153,6 +153,31 @@ context protocol Clock {
 }
 ```
 
+## Meta contexts — the compile-time mirror
+
+The context system extends to compile-time programming: `meta fn`
+functions declare their capabilities with the **same `using [...]`
+syntax** as runtime functions, but the contexts are compiler-provided
+and execute at compile time with zero runtime cost.
+
+```verum
+// Runtime context — provider explicit at the call site
+fn handle(req: Request) -> Response
+    using [Database, Logger, Clock] { ... }
+
+// Meta context — provider is the compiler, implicit
+meta fn derive_eq<T>() -> TokenStream
+    using [TypeInfo, AstAccess, CompileDiag] { ... }
+```
+
+14 meta-specific contexts are defined in `core/meta/contexts.vr`:
+`BuildAssets`, `TypeInfo`, `AstAccess`, `CompileDiag`, `MetaRuntime`,
+`MacroState`, `CodeSearch`, `ProjectInfo`, `SourceMap`, `Schema`,
+`DepGraph`, `MetaBench`, `StageInfo`, `Hygiene`. Composite groups
+like `MetaCore = [TypeInfo, AstAccess, CompileDiag]` mirror the
+`using WebRequest = [...]` pattern for runtime contexts. See
+**[stdlib → meta](/docs/stdlib/meta)** for the full API surface.
+
 ## Where contexts are erased
 
 Contexts provided statically (via `@injectable` with compile-time
