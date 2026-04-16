@@ -34,19 +34,27 @@ From outside in:
 
 ## Function modifiers
 
-Order matters. The full list, in order:
+Order matters. The full list, from the grammar
+(`function_modifiers` in `verum.ebnf`):
 
-| Modifier | Meaning |
-|----------|---------|
-| `pub` / `internal` / `protected` | visibility |
-| `pure` | compiler-verified to have no side effects |
-| `meta` / `meta(N)` | compile-time executable (staged) |
-| `async` | returns a future |
-| `cofix` | coinductive fixpoint (corecursive) |
-| `unsafe` | bypasses safety guarantees |
+| Modifier | Meaning | Implies |
+|----------|---------|---------|
+| `pub` / `internal` / `pub(super)` / `pub(in path)` | visibility | — |
+| `pure` | compiler-verified no side effects | `using [!IO, !State<_>, !Random]` |
+| `meta` / `meta(N)` | compile-time executable at stage N | `pure`; may `using` meta contexts only |
+| `async` | returns `Future<Output = T>` | caller must `.await` or `spawn` |
+| `cofix` | coinductive fixpoint (corecursive) | must satisfy a productivity check |
+| `unsafe` | may perform unchecked operations | callers require `unsafe { ... }` block |
 
-Not every combination makes sense; the compiler enforces the legal
-subset (e.g. `pure async` is allowed; `pure unsafe` is not).
+The compiler checks legal combinations:
+
+| Combination | Valid? | Note |
+|-------------|--------|------|
+| `pure async` | ✓ | pure w.r.t. effects; `.await` is a suspension, not a side effect |
+| `pure unsafe` | ✗ | `unsafe` admits arbitrary effects |
+| `meta async` | ✗ | `meta fn` runs at compile time — no executor |
+| `async unsafe` | ✓ | rare: raw async IO kernels |
+| `meta(2) pure` | ✓ | multi-stage compile-time, still pure |
 
 ## Parameters
 
@@ -139,6 +147,60 @@ fn abs(x: Int) -> Int
 
 Multiple clauses are conjoined.
 
+### `old(expr)` in postconditions
+
+`old(expr)` captures the value of `expr` at function entry — useful
+for "delta" contracts:
+
+```verum
+fn push<T>(xs: &mut List<T>, x: T)
+    where ensures xs.len() == old(xs.len()) + 1
+{
+    xs.data.push(x);
+}
+```
+
+### `invariant` + `decreases` — loop contracts
+
+```verum
+fn binary_search(xs: &List<Int>, key: Int) -> Maybe<Int>
+    where ensures result is Some(i) => xs[i] == key
+{
+    let (mut lo, mut hi) = (0, xs.len());
+    while lo < hi
+        invariant 0 <= lo && hi <= xs.len()          // true every iteration
+        decreases hi - lo                             // strictly decreasing → termination
+    {
+        let mid = lo + (hi - lo) / 2;
+        match xs[mid].cmp(&key) {
+            Ordering.Less    => lo = mid + 1,
+            Ordering.Greater => hi = mid,
+            Ordering.Equal   => return Some(mid),
+        }
+    }
+    None
+}
+```
+
+The `invariant` must imply the postcondition when conjoined with the
+negation of the loop condition. The `decreases` expression must be a
+non-negative, well-founded value that strictly decreases each
+iteration — it proves the loop terminates.
+
+### How contracts are discharged
+
+1. `where requires / ensures` clauses generate SMT obligations in
+   **Phase 3a** (contracts) and **Phase 4** (semantic analysis).
+2. `invariant + decreases` generate loop-local obligations in
+   Phase 4.
+3. Each obligation is dispatched to Z3, CVC5, or the portfolio per
+   the function's `@verify(...)` strategy.
+4. Results are cached keyed on SMT-LIB fingerprint and reused
+   across incremental builds.
+
+See **[verification → contracts](/docs/verification/contracts)** for
+the full semantics and **[cookbook → adding verification](/docs/cookbook/adding-verification)** for a guided walk-through.
+
 ## Error handling
 
 ```verum
@@ -165,7 +227,26 @@ let async_task = async |url| Http.get(url).await;
 ```
 
 Closures capture their environment by the minimum capability needed
-(immutable reference, mutable reference, or by-move).
+(immutable reference, mutable reference, or by-move). Force a move
+with `move`:
+
+```verum
+let name = "Alice".to_string();
+let greet = move |greeting| f"{greeting}, {name}!";
+// `name` moved into the closure; no longer accessible here.
+```
+
+Closure types implement `Fn` / `FnMut` / `FnOnce` protocols:
+
+| Protocol | Captures | Can call | Meaning |
+|----------|----------|----------|---------|
+| `Fn` | `&self` | multiple times | read-only closure |
+| `FnMut` | `&mut self` | multiple times | may mutate captures |
+| `FnOnce` | `self` | once | consumes captures |
+
+In function signatures use `fn(T) -> U` for thin function pointers
+(no captures) and `impl Fn(T) -> U` or `dyn Fn(T) -> U` for
+closures with captures.
 
 ## Forward declarations
 
