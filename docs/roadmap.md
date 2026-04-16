@@ -7,16 +7,17 @@ slug: /roadmap
 
 # Roadmap
 
-Verum is **version 0.32** (phase-D complete) — production-ready for
-the core language. This page describes what's shipped, what's in
-progress, and what's on the horizon.
+Verum is distributed as a **single self-contained binary** per
+platform — compiler, interpreter, linker, LSP, formatter, package
+manager included. This page describes what has shipped, what is in
+progress, and what is planned.
 
 ## Design principle
 
 The roadmap is **dependency-driven**, not calendar-driven. Each
 milestone unblocks a specific class of users; dates are estimates.
 
-## Current state — v0.32 (phase D)
+## Current state — v0.32
 
 Production-ready:
 
@@ -34,16 +35,17 @@ Production-ready:
 - **Concurrency**: `async fn`, `.await`, structured concurrency via
   `nursery`, supervision trees, channels (MPSC / broadcast / oneshot),
   work-stealing executor.
-- **VBC bytecode**: 200+ opcodes, full interpreter, LLVM AOT path
-  (0.85–1.00× of C), MLIR JIT path (experimental).
-- **Stdlib**: ~800 K LOC across `core/` — `base`, `collections`,
+- **VBC bytecode**: ~350 opcodes (primary + extended tables), full
+  interpreter (37-file dispatch table), LLVM AOT path
+  (0.85–0.95× of C), MLIR GPU path.
+- **Stdlib**: ~180 K lines of `.vr` across `core/` — `base`, `collections`,
   `text`, `mem`, `async`, `sync`, `runtime`, `io`, `time`, `sys`,
   `term`, `net`, `math`, `simd`, `meta`, `proof`, `mathesis`,
   `context`, `security`, foundations (`eval` / `control` /
   `concurrency` / `logic`).
-- **Tooling**: CLI (33+ commands), LSP 3.17 with refinement hints,
-  DAP debugger, Playbook TUI, REPL, `verum fmt`, `verum lint`,
-  package registry.
+- **Single binary**: all tools ship in one `verum` executable — LSP
+  3.17 with refinement hints, DAP debugger, Playbook TUI, REPL,
+  formatter, linter, package manager.
 
 Conformance: **1506 / 1507** VCS checks pass (99.93%).
 
@@ -134,7 +136,7 @@ Near-term items already underway for **v0.33**:
 
 ## Version history
 
-- **v0.32** — phase D complete. Documented here.
+- **v0.32** — current stable release. Documented here.
 - **v0.31** — cubical HoTT normaliser; VBC `CubicalExtended` opcode.
 - **v0.30** — portfolio verification (Z3 + CVC5).
 - **v0.25** — dependent types; Σ / Π surface syntax.

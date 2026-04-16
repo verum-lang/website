@@ -5,8 +5,9 @@ title: CLI
 
 # `verum` — Command-line interface
 
-The toolchain exposes 31 top-level commands. Everything below lists
-real subcommands — if it isn't here, it doesn't exist.
+The `verum` binary is self-contained: compiler, interpreter, linker,
+package manager, LSP server, and formatter in one executable. It
+exposes the following subcommands.
 
 ## Project lifecycle
 

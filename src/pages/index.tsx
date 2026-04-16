@@ -442,8 +442,8 @@ function Features() {
       <div className={styles.sectionHeader}>
         <h2>Under the surface</h2>
         <p>
-          Research brought to production — not as a paper, but as a toolchain
-          that compiles, links, and ships.
+          Research brought to production — compiled, linked, and shipped
+          as a single binary.
         </p>
       </div>
       <div className={styles.featureGrid}>
@@ -465,12 +465,13 @@ function CTA() {
       <div className={styles.ctaInner}>
         <h2>Start with runtime checks. End with proofs.</h2>
         <p>
-          Install the toolchain. Write a refinement type. Add <code>@verify(formal)</code>.
-          Watch the compiler prove what your comments used to merely claim.
+          Download the <code>verum</code> binary. Write a refinement type.
+          Add <code>@verify(formal)</code>. The compiler proves what your
+          comments used to merely claim.
         </p>
         <div className={styles.heroButtons}>
           <Link className="button button--primary button--lg" to="/docs/getting-started/installation">
-            Install Verum
+            Download Verum
           </Link>
           <Link className="button button--secondary button--lg" to="/docs/getting-started/tour">
             Language Tour

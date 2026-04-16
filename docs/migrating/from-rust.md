@@ -285,7 +285,7 @@ See [gradual verification](/docs/verification/gradual-verification).
 | `cargo publish` | `verum publish` |
 | `Cargo.toml` | `Verum.toml` |
 | `Cargo.lock` | `Verum.lock` |
-| `rustup` | (toolchain installer: `verum target install X`) |
+| `rustup` | not needed — `verum` is a single self-contained binary |
 
 ---
 

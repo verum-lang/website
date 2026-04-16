@@ -69,7 +69,7 @@ Supported targets:
 - `riscv64gc-linux-gnu`
 - embedded: `thumbv7em-none-eabihf`, `riscv32imac-none-elf`
 
-Sysroots ship with the toolchain; `verum target install X` adds new ones.
+Sysroots ship with the `verum` binary; cross-compile by passing `--target <triple>`.
 
 ## Build scripts
 

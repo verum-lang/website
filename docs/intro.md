@@ -65,8 +65,8 @@ reference is CBGR-checked unless escape analysis promotes it to
 
 <div className="row" style={{marginTop: '1.5rem', gap: '1rem'}}>
 
-- **[Getting Started](/docs/getting-started/installation)** — install
-  the toolchain, write your first program, tour the language.
+- **[Getting Started](/docs/getting-started/installation)** — download
+  the `verum` binary, write your first program, tour the language.
 - **[Philosophy](/docs/philosophy/principles)** — the design principles
   that shaped Verum and the tradeoffs they imply.
 - **[Language Reference](/docs/language/overview)** — detailed

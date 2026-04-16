@@ -8,14 +8,14 @@ description: Answers to questions you asked before you installed.
 
 ## Language
 
-### Is Verum production-ready?
+### What is the current stability?
 
-Yes, for the feature set it claims. Refinement types, dependent
-types, cubical HoTT, dual SMT backends, VBC interpreter, LLVM AOT,
-and the full toolchain are all implemented; 1 506 of 1 507
-comprehensive conformance checks pass. Early-adopter risk still
-exists — expect the occasional rough edge, especially around newer
-features (cubical normalisation, MLIR GPU).
+The documented feature set is implemented and tested: refinement
+types, dependent types, cubical HoTT, Z3 + CVC5 verification, VBC
+interpreter, LLVM AOT — all ship in a single `verum` binary.
+1 506 of 1 507 conformance checks pass (99.93 %). Rough edges
+remain around newer features (cubical normalisation, MLIR GPU).
+Expect early-adopter friction.
 
 ### How fast is it?
 
