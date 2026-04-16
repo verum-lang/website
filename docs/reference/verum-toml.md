@@ -273,7 +273,18 @@ deny_warnings    = false
 
 ### `[debug]`
 
-Debug-adapter configuration for DAP integration.
+Debug Adapter Protocol (DAP) configuration for IDE integration.
+
+```toml
+[debug]
+dap_enabled        = true
+step_granularity   = "statement"     # statement | line | instruction
+inspect_depth      = 8
+port               = 0              # 0 = auto-pick; used when --transport socket
+show_erased_proofs = false
+```
+
+`verum dap` refuses to start when `dap_enabled = false`.
 
 ## `[linker]` — native linking
 
@@ -336,6 +347,39 @@ format_on_save    = false
 
 Generated automatically. Pins exact versions of all transitive
 dependencies. Commit for binary projects; optional for libraries.
+
+## CLI overrides (`-Z`)
+
+Any manifest value can be overridden at the command line without
+editing the file:
+
+```bash
+verum build -Z codegen.tier=interpret -Z safety.unsafe_allowed=false
+verum run --no-cubical -Z runtime.cbgr_mode=unsafe
+verum test -Z test.parallel=false -Z test.timeout_secs=120
+```
+
+Precedence (low → high):
+
+1. Built-in defaults
+2. `Verum.toml` values
+3. High-level CLI flags (`--tier`, `--no-cubical`, `--cbgr`, `--gpu`)
+4. `-Z KEY=VALUE` overrides
+
+Invalid keys produce a descriptive error listing all valid prefixes.
+Typos trigger "did you mean" suggestions via edit distance.
+
+## Inspecting & validating
+
+```bash
+verum config show              # human-readable resolved feature set
+verum config show --json       # machine-readable JSON
+verum config validate          # exit 0 on valid, non-zero with diagnostics
+```
+
+`verum config show` displays every flag's effective value after all
+overrides are applied, so you can verify that your `-Z` flags and
+`Verum.toml` produce the expected configuration.
 
 ## See also
 

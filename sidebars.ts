@@ -62,6 +62,11 @@ const sidebars: SidebarsConfig = {
         'tutorials/verified-data-structure',
         'tutorials/async-pipeline',
         'tutorials/small-nn',
+        'tutorials/refinement-types',
+        'tutorials/pattern-matching',
+        'tutorials/protocols',
+        'tutorials/context-system',
+        'tutorials/memory-safety',
       ],
     },
     {
@@ -262,6 +267,9 @@ const sidebars: SidebarsConfig = {
     'architecture/cbgr-internals',
     'architecture/codegen',
     'architecture/smt-integration',
+    'architecture/verification-pipeline',
+    'architecture/execution-environment',
+    'architecture/incremental-compilation',
     'architecture/crate-map',
   ],
   reference: [

@@ -17,14 +17,19 @@ Source (.vr)
      │
      ▼
 ┌──────────────────────────── FRONTEND (Phases 0–4) ──────────────────────────┐
-│  0  stdlib preparation           (embedded VBC, cached across builds)        │
-│  1  lexing → parsing              (verum_fast_parser)                        │
-│  2  meta registry + AST registration                                         │
-│  3  macro expansion + literal processing                                     │
-│  3a contract verification         (SMT / Z3)                                 │
-│  4  semantic analysis             (type inference, CBGR analysis)            │
-│  4a autodiff compilation                                                     │
-│  4b context-system validation                                                │
+│  0   stdlib preparation          (embedded VBC, cached across builds)        │
+│  1   lexing → parsing             (verum_fast_parser)                        │
+│  2   meta registry + AST registration                                        │
+│  2.9 safety gate                  ([safety] unsafe/ffi/capability checks)    │
+│  3   macro expansion + literal processing                                    │
+│  3a  contract verification        (SMT / Z3)                                 │
+│  3b  safety gate (re-check)       (feature-gate enforcement)                 │
+│  4   semantic analysis            (type inference, CBGR analysis)            │
+│  4a  autodiff compilation                                                    │
+│  4b  context-system validation    (gated by [context].enabled)               │
+│  4c  Send/Sync validation                                                    │
+│  4d  dependency analysis          (target-profile enforcement)               │
+│  4e  FFI boundary validation      (gated by [safety].ffi)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
      │ TypedAST
      ▼
@@ -49,10 +54,16 @@ Executable (Tier 1) / interpreted result (Tier 0)
 | 1 | Lexical & parsing | per-file | `verum_lexer`, `verum_fast_parser` |
 | 2 | Meta registry & AST registration | sequential | `phases/meta_registry.rs` |
 | 3 | Macro expansion & literal processing | sequential | `phases/macro_expansion.rs` |
+| 2.9 | Safety gate | per-module | `phases/safety_gate.rs` — rejects `unsafe`, `@ffi`, based on `[safety]` config |
+| 3 | Macro expansion & literal processing | sequential | `phases/macro_expansion.rs` |
 | 3a | Contract verification (SMT) | per-obligation | `phases/contract_verification.rs` |
+| 3b | Safety gate (re-check) | per-module | Same gate, inside `phase_type_check` for defense in depth |
 | 4 | Semantic analysis (types + CBGR) | per-module | `verum_types::infer`, `phases/semantic_analysis.rs` |
 | 4a | Autodiff compilation | per `@differentiable` | `phases/autodiff_compilation.rs` |
-| 4b | Context-system validation | per-function | `phases/context_validation.rs` |
+| 4b | Context-system validation | per-function | `phases/context_validation.rs` — gated by `[context].enabled` |
+| 4c | Send/Sync validation | per-module | `phases/send_sync_validation.rs` |
+| 4d | Dependency analysis | per-module | target-profile enforcement (no_std/no_alloc) |
+| 4e | FFI boundary validation | per-module | `phases/ffi_boundary.rs` — gated by `[safety].ffi` |
 | 5 | VBC code generation | per-function | `phases/vbc_codegen.rs`, `verum_vbc::codegen` |
 | 6 | VBC monomorphization | per-specialisation | `phases/vbc_mono.rs` |
 | 7 | Execution (Tier 0 or Tier 1) | per-target | `pipeline::phase_interpret` / `run_native_compilation` |
