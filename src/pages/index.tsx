@@ -392,6 +392,16 @@ const FEATURES = [
     title: 'Pure-Verum standard library',
     body: 'Zero C/Rust dependencies. Direct syscalls on Linux, libSystem on macOS, kernel32 on Windows. core/ is allocator-free; std/ adds the CBGR heap.',
   },
+  {
+    icon: '⊙',
+    title: '20+ proof tactics in a systems language',
+    body: 'auto, simp, ring, field, omega, blast, induction, cases, cubical, category_simp — plus combinators (try/else, repeat, first, all_goals). When SMT can\'t, you help. No separate prover needed.',
+  },
+  {
+    icon: '⇌',
+    title: 'Interpreter and AOT from the same bytecode',
+    body: 'VBC-first: instant startup via interpreter for dev, LLVM AOT for production. Same semantics, same CBGR, same context stack. verum run (instant) and verum build --release (0.85-0.95x C) are one flag apart.',
+  },
 ];
 
 function Features() {

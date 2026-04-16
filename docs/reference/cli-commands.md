@@ -315,9 +315,23 @@ Print the resolved feature set.
 
 Flags: `--json`.
 
-### `verum config get <key>` / `verum config set <key> <value>`
+### `verum config validate`
 
-Read / write persistent configuration.
+Validate `Verum.toml` without building. Exits 0 on success, non-zero
+with diagnostics on invalid values (including "did you mean"
+suggestions for enum typos).
+
+### `verum completions <SHELL>`
+
+Generate shell completion scripts.
+
+```bash
+verum completions bash  > ~/.bash_completion.d/verum
+verum completions zsh   > ~/.zfunc/_verum
+verum completions fish  > ~/.config/fish/completions/verum.fish
+```
+
+Shells: `bash`, `zsh`, `fish`, `powershell`, `elvish`.
 
 ## Version
 
@@ -327,15 +341,46 @@ Flags: `--verbose`.
 
 ## Language-feature overrides
 
-Most commands that compile code accept:
+All commands that compile or check code (`build`, `run`, `check`,
+`test`, `bench`, `verify`, `fmt`, `lint`, `doc`, `repl`, `dap`,
+`lsp`, `config show`, `config validate`) accept the same set of
+language-feature overrides:
+
+**High-level flags:**
+
+| Flag | Verum.toml equivalent |
+|------|----------------------|
+| `--tier <interpret\|aot\|check>` | `[codegen] tier` |
+| `--gpu` / `--no-gpu` | `[codegen] mlir_gpu` |
+| `--gpu-backend <metal\|cuda\|…>` | `[codegen] gpu_backend` |
+| `--cbgr <managed\|checked\|mixed\|unsafe>` | `[runtime] cbgr_mode` |
+| `--scheduler <…>` | `[runtime] async_scheduler` |
+| `--no-refinement` | `[types] refinement = false` |
+| `--no-cubical` | `[types] cubical = false` |
+| `--no-dependent` | `[types] dependent = false` |
+| `--universe-poly` | `[types] universe_polymorphism = true` |
+| `--no-unsafe` | `[safety] unsafe_allowed = false` |
+| `--capabilities` | `[safety] capability_required = true` |
+| `--mls <public\|secret\|top_secret>` | `[safety] mls_level` |
+| `--no-compile-time` | `[meta] compile_time_functions = false` |
+| `--no-derive` | `[meta] derive = false` |
+| `--dap` / `--no-dap` | `[debug] dap_enabled` |
+| `--dap-port <N>` | `[debug] port` |
+
+**Generic escape hatch:**
 
 ```
---tier 0|1|2|3           # execution tier
--Z <flag=value>          # unstable feature
--D, -W, -A, -F <lint>    # lint level overrides
+-Z <section>.<field>=<value>
 ```
 
-See **[Stdlib → runtime](/docs/stdlib/runtime)** for tier semantics.
+Any dotted path into the manifest (e.g., `-Z types.cubical=false`,
+`-Z test.timeout_secs=120`, `-Z safety.mls_level=secret`).
+
+**Precedence** (low → high): defaults < `Verum.toml` < high-level
+flags < `-Z` overrides.
+
+Invalid `-Z` keys produce a descriptive error listing all valid
+prefixes. Typos trigger "did you mean" suggestions.
 
 ## Environment variables
 

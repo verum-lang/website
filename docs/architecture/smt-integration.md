@@ -116,10 +116,24 @@ are cached per project (`target/smt-cache/`). Invalidation:
 - Solver upgrade: fingerprints include solver version; upgrades
   invalidate partial.
 
-## Telemetry
+## Telemetry & routing statistics
 
-Opt-in via `VERUM_SMT_TELEMETRY=1`. Every obligation's theories, routed
-solver, time, and outcome are logged. Used to tune the router.
+Every Z3 `check()` call records routing choice, outcome (SAT/UNSAT/
+unknown), elapsed time, and theory class into a shared
+`Arc<RoutingStats>` on the `Session`. The CLI exposes this data:
+
+```bash
+verum build --smt-stats      # persist stats to .verum/state/smt-stats.json
+verum smt-stats              # print human-readable report
+verum smt-stats --json       # machine-readable JSON
+verum smt-stats --reset      # clear after printing
+```
+
+The `Context` object (verum_smt/context.rs) auto-records on every
+`check()` call when a routing-stats collector is installed via
+`context.with_routing_stats(arc)`. Both the contract-verification
+phase (api.rs) and the refinement verifier (pipeline.rs phase_verify)
+wire the session's collector automatically.
 
 ## Proof search
 
