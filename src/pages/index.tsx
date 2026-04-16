@@ -422,7 +422,7 @@ const FEATURES = [
   {
     icon: '0',
     title: 'Pure-Verum standard library',
-    body: 'Zero C/Rust dependencies. Direct syscalls on Linux, libSystem on macOS, kernel32 on Windows. core/ is allocator-free; std/ adds the CBGR heap.',
+    body: 'No Rust runtime. Direct syscalls on Linux, libSystem on macOS (Apple\'s stable ABI), kernel32 + ntdll on Windows. The CBGR allocator lives in core/mem — no libc malloc.',
   },
   {
     icon: '⊙',
