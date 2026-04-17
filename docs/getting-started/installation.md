@@ -1,458 +1,346 @@
 ---
 sidebar_position: 1
 title: Installation
-description: Install the Verum toolchain on Linux, macOS, or Windows — and set up your editor.
+description: Install Verum on Linux or macOS — download, verify, and set up your editor.
 ---
 
 # Installation
 
-Verum ships as a **single self-contained binary** — `verum` — that
-bundles the compiler, interpreter, LSP server, Playbook TUI, package
-manager (`cog`), formatter, and test runner. Everything the compiler
-needs at runtime (native-codegen backend, SMT solvers, pre-compiled
-standard library) is statically linked or packaged alongside the
-binary; there are no external dynamic-library prerequisites for end
-users.
+Verum ships as a **single binary** — `verum` — that contains the
+compiler, interpreter, LSP server, Playbook TUI, formatter, and test
+runner. There is no separate runtime or toolchain directory: one
+binary on your `$PATH` is the whole install.
 
-## System requirements
+> This page describes the install flow as it actually ships today.
+> Several pieces still have rough edges (no Windows binary yet, no
+> release-signature chain, no self-update command) — the doc is
+> honest about what exists and what doesn't.
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| **Operating system** | Linux (glibc ≥ 2.31 or musl), macOS 12+, Windows 10 1809+ | Any recent version of each |
-| **Architecture** | x86_64 or aarch64 | — |
-| **Memory** | 2 GB free | 4 GB for large codebases; 8 GB for proof-heavy projects |
-| **Disk** | 600 MB for the toolchain | 1 GB+ per project (per-project build cache) |
+## Supported platforms
 
-No `libc` pin, no `glibc`/`musl` distinction flag, no separate
-runtime to install. On macOS the toolchain uses the system
-`libSystem.B.dylib` (Apple's stable ABI) and nothing else; on Linux
-glibc and musl builds are published separately; on Windows the MSVC
-runtime is statically linked.
+| Platform | Target triple | Status |
+|----------|---------------|--------|
+| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | Prebuilt binary |
+| macOS Apple Silicon | `aarch64-apple-darwin` | Prebuilt binary |
+| macOS Intel | `x86_64-apple-darwin` | Prebuilt binary |
+| Linux aarch64 / musl | — | Build from source |
+| Windows | — | Build from source (officially unsupported) |
 
-## Release artefacts
+The release workflow (`.github/workflows/release.yml`) currently
+builds the three triples above. Everything else requires a source
+build; see [Build from source](#build-from-source) below.
 
-Release artefacts follow the **Rust target-triple** convention.
-Every version publishes a uniform matrix:
+### What the `verum` binary itself links against
 
-| Platform | Target triple | Archive |
-|----------|---------------|---------|
-| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu`  | `verum-<version>-x86_64-unknown-linux-gnu.tar.xz` |
-| Linux x86_64 (musl)  | `x86_64-unknown-linux-musl` | `verum-<version>-x86_64-unknown-linux-musl.tar.xz` |
-| Linux aarch64        | `aarch64-unknown-linux-gnu` | `verum-<version>-aarch64-unknown-linux-gnu.tar.xz` |
-| macOS Apple Silicon  | `aarch64-apple-darwin`      | `verum-<version>-aarch64-apple-darwin.tar.xz` |
-| macOS Intel          | `x86_64-apple-darwin`       | `verum-<version>-x86_64-apple-darwin.tar.xz` |
-| Windows x64          | `x86_64-pc-windows-msvc`    | `verum-<version>-x86_64-pc-windows-msvc.zip` |
-| Windows ARM64        | `aarch64-pc-windows-msvc`   | `verum-<version>-aarch64-pc-windows-msvc.zip` |
+| Platform | Linked against |
+|----------|----------------|
+| Linux | `libc.so.6` (glibc ≥ 2.31 — Debian 11+ / Ubuntu 22.04+ / RHEL 9+) |
+| macOS | `libSystem.B.dylib` (Apple's stable ABI) — macOS 12+ |
 
-Each release ships:
+This is the toolchain binary you run to compile Verum programs. It
+is today built as a Rust binary with the default `x86_64-unknown-linux-gnu`
+target, so it uses the system glibc. A static-linked / musl variant
+is a roadmap item (the `crt-static` build flag is documented in
+`.cargo/config.toml` but not yet enabled in release CI). **Z3** is
+statically linked into the binary. **LLVM/MLIR** are linked against
+the system copy CI uses; release archives carry the needed object
+files, so you do not install LLVM separately. **CVC5** is present as
+a stub; features that name it degrade to Z3 via the capability
+router — see [SMT routing](/docs/verification/smt-routing).
 
-- The platform archive above.
-- `SHA256SUMS` — SHA-256 of every archive in the release.
-- `SHA256SUMS.sig` — minisign signature over `SHA256SUMS`, signed by
-  the Verum release key (public key: [`verum-release.pub`](https://verum-lang.org/verum-release.pub)).
-- `verum.prov.json` — SLSA v1 provenance metadata from the CI build.
+### What programs compiled by `verum build` link against
 
-### Archive layout
+Programs you produce with `verum build` are **not** Rust binaries and
+do **not** pull in libc / libm / pthread. The AOT linker
+(`crates/verum_codegen/src/link.rs`) uses a per-platform
+`-nostdlib`-based configuration and goes direct-to-kernel wherever
+the platform allows:
 
-Every archive extracts to a single top-level directory,
-`verum-<version>/`, with this layout:
+| Target | Links against | Entry point |
+|--------|--------------|-------------|
+| Linux | *nothing* — direct syscalls via `syscall` x86_64 instruction | `_start` |
+| macOS | `libSystem.B.dylib` only (Apple forbids direct syscalls from userland); Metal + Foundation frameworks for GPU programs | `main` |
+| Windows | `ntdll.dll` + `kernel32.dll` only (`/NODEFAULTLIB`, no MSVCRT / UCRT) | `mainCRTStartup` |
+| FreeBSD | *nothing* — direct syscalls | `_start` |
+| Embedded / bare-metal | *nothing* (`-ffreestanding`) | `Reset_Handler` |
+| WASM-WASI | WASI host imports | `_start` |
 
-```
-verum-<version>/
-├── bin/
-│   └── verum[.exe]                 self-contained binary — the whole toolchain
-├── lib/
-│   └── stdlib.vbc-cache/           pre-compiled core/ stdlib (VBC)
-├── share/
-│   ├── doc/LICENSE
-│   ├── doc/RELEASE-NOTES.md
-│   ├── completions/                bash, zsh, fish, pwsh completions
-│   └── man/man1/                   manual pages (Linux/macOS)
-└── VERSION                         plain-text version marker
-```
+Concretely, the LLVM backend emits `syscall` as inline assembly —
+`rax` for the syscall number, `rdi/rsi/rdx/r10/r8/r9` for args —
+rather than calling any C wrapper
+(`crates/verum_codegen/src/llvm/instruction.rs:3473-3519`). A minimal
+Verum `fn main() { print("hi\n"); }` compiled with `verum build --release`
+on Linux produces a fully-static ELF binary that runs without
+glibc, without an interpreter, and without any runtime the user has
+to ship alongside it.
 
-`bin/verum` is a single self-contained executable. There are no
-per-target toolchain directories, no rustup-style `~/.toolchains/`
-tree, no active-channel symlink. One archive, one binary — and that
-binary already contains the codegen backends for every supported
-target, so cross-compilation is `verum build --target <triple>` and
-needs nothing else installed (see **Cross-compilation** below). The
-`lib/stdlib.vbc-cache/` is copied to `~/.verum/cache/stdlib/` on
-first launch to skip stdlib recompilation on initial use; it is a
-cache, not a runtime dependency.
+## Download
 
-## One-line installer (recommended)
+Every tagged release publishes three archives to the
+[GitHub Releases page](https://github.com/verum-lang/verum/releases):
 
-**Linux and macOS:**
+| Archive | Contents |
+|---------|----------|
+| `verum-linux-x86_64.tar.gz` | glibc Linux binary |
+| `verum-macos-aarch64.tar.gz` | Apple Silicon binary |
+| `verum-macos-x86_64.tar.gz` | Intel macOS binary |
 
-```bash
-curl -fsSL https://get.verum-lang.org | sh
-```
+Alongside each archive a `*.tar.gz.sha256` file carries a SHA-256
+checksum for integrity verification. There is no aggregate
+`SHA256SUMS` file and no minisign signature chain today — verify the
+per-archive checksum and use HTTPS to the GitHub release URL as your
+trust anchor.
 
-**Windows (PowerShell):**
+## Install
 
-```powershell
-irm https://get.verum-lang.org/win.ps1 | iex
-```
-
-The installer:
-
-1. **Detects** the host OS and architecture from `uname -sm` (or
-   `$PSVersionTable` on Windows) and picks the matching target
-   triple.
-2. **Resolves** the installation version — latest stable by
-   default, or the value of the `VERUM_VERSION` environment
-   variable if set.
-3. **Downloads** three files from the release bucket:
-   `verum-<version>-<triple>.<ext>`, `SHA256SUMS`,
-   `SHA256SUMS.sig`.
-4. **Verifies** the signature on `SHA256SUMS` against the bundled
-   public key (the installer includes the public key as a
-   base64-embedded literal), then verifies the archive's SHA-256.
-5. **Extracts** the archive to a temporary directory.
-6. **Installs atomically** — writes `bin/verum` to
-   `~/.verum/bin/verum.new` and renames it over `~/.verum/bin/verum`.
-   A concurrently-running process keeps the old file open via its
-   inode until it exits; the next invocation picks up the new
-   binary. (Windows: writes to `%USERPROFILE%\.verum\bin\verum.exe.new`
-   and uses `MoveFileExW(MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)`.)
-7. **Copies `lib/stdlib.vbc-cache/`** into `~/.verum/cache/stdlib/`
-   so the first `verum run` skips recompiling core.
-8. **Updates the shell profile** — `~/.bashrc`, `~/.zshrc`,
-   `~/.config/fish/config.fish`, or the user `Path` on Windows — to
-   prepend `~/.verum/bin` once. Subsequent re-runs are idempotent.
-9. **Handles macOS quarantine**: removes the
-   `com.apple.quarantine` xattr from the extracted binary so
-   Gatekeeper does not block first execution.
-
-No toolchain directories, no channel symlinks, no shim layer — the
-installed tree is just `~/.verum/bin/verum` plus a cache.
-
-### Installer flags
-
-All forms accept the same environment overrides:
+### Linux (x86_64)
 
 ```bash
-VERUM_VERSION=0.32.0       \     # pin a specific release
-VERUM_CHANNEL=nightly      \     # stable | beta | nightly
-VERUM_INSTALL_DIR=/opt/verum \   # root dir (default: ~/.verum)
-VERUM_NO_MODIFY_PATH=1     \     # do not edit shell profiles
-VERUM_TRIPLE_OVERRIDE=…    \     # force a target triple (testing only)
-curl -fsSL https://get.verum-lang.org | sh -s -- --yes
+curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz
+curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz.sha256
+shasum -a 256 -c verum-linux-x86_64.tar.gz.sha256
+tar xzf verum-linux-x86_64.tar.gz
+sudo install -Dm755 verum /usr/local/bin/verum
+verum --version
 ```
 
-On PowerShell the same variables are read from the process
-environment before `iex`. Batch-install scripts can set
-`VERUM_NO_MODIFY_PATH=1` and manage PATH themselves.
-
-### Non-interactive mode
-
-Both installers run non-interactively when stdin is not a TTY (the
-common case under `curl | sh`) and exit non-zero on any failed
-step — no surprises in CI. A `--yes` / `-y` flag forces
-non-interactive mode when stdin *is* a TTY.
-
-## Install from pre-built binaries
-
-Skip the installer if you prefer to manage the binary yourself:
+### macOS (Apple Silicon)
 
 ```bash
-# Linux x86_64 (glibc)
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-x86_64-unknown-linux-gnu.tar.xz
-tar xJf verum-x86_64-unknown-linux-gnu.tar.xz
-sudo install -Dm755 verum-*/bin/verum /usr/local/bin/verum
-
-# Linux aarch64
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-aarch64-unknown-linux-gnu.tar.xz
-tar xJf verum-aarch64-unknown-linux-gnu.tar.xz
-sudo install -Dm755 verum-*/bin/verum /usr/local/bin/verum
-
-# macOS Apple Silicon
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-aarch64-apple-darwin.tar.xz
-tar xJf verum-aarch64-apple-darwin.tar.xz
-xattr -d com.apple.quarantine verum-*/bin/verum || true
-sudo install -m755 verum-*/bin/verum /usr/local/bin/verum
-
-# Windows (PowerShell)
-iwr -Uri https://github.com/verum-lang/verum/releases/latest/download/verum-x86_64-pc-windows-msvc.zip -OutFile verum.zip
-Expand-Archive verum.zip -DestinationPath $env:USERPROFILE\.verum
+curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-macos-aarch64.tar.gz
+curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-macos-aarch64.tar.gz.sha256
+shasum -a 256 -c verum-macos-aarch64.tar.gz.sha256
+tar xzf verum-macos-aarch64.tar.gz
+# Gatekeeper may quarantine the downloaded binary; clear the xattr:
+xattr -d com.apple.quarantine verum 2>/dev/null || true
+sudo install -m755 verum /usr/local/bin/verum
+verum --version
 ```
 
-Always verify the archive against the release's `SHA256SUMS`:
+### macOS (Intel)
 
-```bash
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/SHA256SUMS
-sha256sum --check --ignore-missing SHA256SUMS
-```
+Replace `aarch64` with `x86_64` in the URLs above; everything else
+is identical.
 
-## Package managers
+### Updating
 
-```bash
-# Homebrew (macOS, Linux)
-brew install verum-lang/tap/verum
+There is no `verum upgrade` command. To update:
 
-# Scoop (Windows)
-scoop bucket add verum https://github.com/verum-lang/scoop-bucket
-scoop install verum
+1. Download the newer archive from GitHub Releases.
+2. Verify the SHA-256.
+3. Replace the binary in place (`sudo install -m755 verum
+   /usr/local/bin/verum`).
 
-# winget (Windows)
-winget install verum-lang.verum
+Already-running processes keep the old binary's inode open and are
+unaffected until they restart.
 
-# Arch Linux (AUR)
-yay -S verum-bin                  # pre-built binary
-yay -S verum-git                  # bleeding edge from source
-
-# Nix
-nix profile install github:verum-lang/verum
-```
-
-Each package manager distributes the same target-triple-keyed
-archives under its native packaging format, with the same signature
-chain.
-
-## Docker
-
-```bash
-docker pull ghcr.io/verum-lang/verum:latest
-docker run --rm -v "$PWD":/work -w /work ghcr.io/verum-lang/verum:latest verum build
-```
-
-Tags: `latest`, `<version>`, `<version>-slim` (no LSP/DAP, smaller
-attack surface for CI). Multi-arch manifest covers `linux/amd64`
-and `linux/arm64`.
-
-## Verify the installation
+## Verify the install
 
 ```bash
 $ verum --version
-verum 0.32.0 (phase-D, opus-stable)
-  target:   x86_64-unknown-linux-gnu
-  runtime:  full
-  backends: llvm-21, mlir-21, smt (z3-4.15, cvc5-1.3)
+verum 0.32.0
 ```
 
-`verum --version` reports the versions of the statically-linked
-components for diagnostics, not as separate install prerequisites —
-they are baked into the binary.
-
-Run the diagnostic:
+For build/backend details, add `--verbose`:
 
 ```bash
-$ verum doctor
- ✓ binary                  /home/you/.verum/bin/verum
- ✓ version                 0.32.0
- ✓ host target             x86_64-unknown-linux-gnu
- ✓ stdlib cache            /home/you/.cache/verum/stdlib (338 modules)
- ✓ PATH entry              ~/.verum/bin is on PATH
- ✓ no shadowing binary     (only one `verum` on PATH)
- ✓ project layout          [no project in current dir]
+$ verum --version --verbose
+verum 0.32.0
+
+Build information:
+  Commit:       1fb9f71
+  Build date:   2026-04-17
+  Rust version: 1.82.0
+  LLVM version: 21.1.0
+  Host target:  x86_64-linux
+
+Capabilities:
+  AOT backend:    LLVM
+  Interpreter:    VBC Tier 0
+  GPU backend:    MLIR (optional)
+  SMT solver:     Z3
+  Verification:   refinement + dependent types
 ```
 
-`verum doctor` catches install anomalies — stale stdlib cache, PATH
-shadowing by another `verum` binary, or a missing / truncated
-installed binary.
+### Diagnose the verification stack
 
-## Updating
+The nearest thing to a "doctor" command is **`verum smt-info`**:
 
 ```bash
-verum upgrade                  # latest stable
-verum upgrade --nightly        # nightly channel
-verum upgrade --version 0.32.1 # specific version
-verum upgrade --force          # re-download even if already latest
+verum smt-info
 ```
 
-`verum upgrade` does exactly what the installer does, minus the
-profile / PATH steps: resolve the version, download the archive,
-verify signature and SHA-256, atomically replace
-`~/.verum/bin/verum` via rename, and refresh the stdlib cache.
-Running processes are unaffected until they restart; there's no
-toolchain tree to garbage-collect.
+It reports SMT-solver availability, fallback routing, and the current
+per-module timeout configuration. If refinement validation or
+`@verify(formal)` obligations are misbehaving, start here.
 
-To pin a project to a specific version, require it in the manifest:
+## Shell completions
+
+```bash
+# bash
+verum completions bash | sudo tee /etc/bash_completion.d/verum > /dev/null
+
+# zsh — install once into any directory on $fpath
+verum completions zsh > "${fpath[1]}/_verum"
+
+# fish
+verum completions fish > ~/.config/fish/completions/verum.fish
+
+# PowerShell
+verum completions powershell >> $PROFILE
+```
+
+`verum completions` accepts any of `bash`, `zsh`, `fish`,
+`powershell`, `elvish`, `nushell` — the full set supported by
+[`clap_complete::Shell`](https://docs.rs/clap_complete/).
+
+## Cross-compiling Verum programs
+
+The compiler accepts a `--target <triple>` flag on `verum build`
+that passes the triple straight through to the LLVM code generator:
+
+```bash
+verum build --target aarch64-unknown-linux-gnu
+verum build --target x86_64-apple-darwin --release
+```
+
+There is **no `verum target list`** / **no `verum target add`** /
+**no `verum sdk install`** command today. What this means in
+practice:
+
+- The triple string is not validated by the CLI — you get errors
+  from LLVM if you pass a triple the backend does not know about.
+- Final linking requires platform tooling (`ld`, `lld`, or the
+  platform's linker) and any SDK/sysroot that target needs. Those
+  are not provided by `verum`; install them through your system
+  package manager or the usual cross-compile setup.
+- For embedded / WASM, set `[cross_compile]` and `[llvm]` in your
+  `verum.toml` (see below) to pin the target CPU and features.
+
+## Project manifest (`verum.toml`)
+
+Projects use a `verum.toml` manifest (capitalised `Verum.toml` is
+also accepted on case-sensitive filesystems). The top-level section
+is `[cog]`, not `[verum]`:
 
 ```toml
-# Verum.toml
-[verum]
-version = "0.32.0"                 # required
-channel = "stable"                 # or "nightly" / "beta"
+[cog]
+name = "my-project"
+version = "0.1.0"
+description = "Example project"
+
+[language]
+profile = "application"          # application | systems | research
+
+[dependencies]
+# example: http = "1.0"
+
+[verify]
+default_strategy = "static"      # runtime | static | formal | proof | fast | thorough | reliable | certified | synthesize
+solver_timeout_ms = 5000
+
+[llvm]
+target_triple  = "x86_64-unknown-linux-gnu"  # optional — overrides host
+target_cpu     = "native"
+target_features = []
+
+[build]
+# build-time knobs
 ```
 
-If the user's installed `verum` does not match, the build fails
-with a clear message (`this project requires verum 0.32.0; you have
-0.32.1 — run "verum upgrade --version 0.32.0" to match`). Projects
-that want to float can use a caret range (`version = "^0.32"`) or
-omit the block entirely.
+Other real sections: `[dev_dependencies]`, `[build_dependencies]`,
+`[features]`, `[profile]`, `[workspace]`, `[lsp]`, `[registry]`,
+`[optimization]`, `[lto]`, `[pgo]`, `[cross_compile]`, `[types]`,
+`[runtime]`, `[codegen]`, `[meta]`, `[protocols]`, `[context]`,
+`[safety]`, `[test]`, `[debug]`. Only the fields you override need
+to be present; defaults are built in.
+
+Pinning a specific `verum` version inside the manifest is not yet
+implemented — pin the binary at the install layer instead.
 
 ## Build from source
 
-Building Verum from source is only needed for compiler contributors
-or for producing binaries for unsupported targets. End users should
-use the pre-built binaries above.
+For unsupported targets (aarch64 Linux, musl, Windows) or compiler
+development, build from source.
 
-**Build-from-source requirements** (differ from end-user
-requirements):
+**Requirements:**
 
-| Dependency | Version | Purpose |
-|------------|---------|---------|
-| Rust | pinned in `rust-toolchain.toml` | compiling `verum_*` crates |
-| CMake | 3.21+ | building LLVM from source |
-| Python | 3.10+ | LLVM's build scripts |
-| Ninja or GNU make | any recent | LLVM build driver |
-| C / C++ compiler | clang 15+ recommended | LLVM / Z3 / CVC5 native code |
-| Git | 2.30+ | submodule fetch |
+| Tool | Version | Notes |
+|------|---------|-------|
+| Rust | 1.82+ (see `rust-toolchain.toml`) | Compiles the `verum_*` crates |
+| LLVM | 21.x | System install — the bindings crate links against it |
+| CMake | 3.21+ | Needed by the Z3 bundled build |
+| C/C++ compiler | clang 15+ recommended | LLVM and Z3 native code |
+| Git | 2.30+ | Submodule fetch |
 
 ```bash
 git clone --recursive https://github.com/verum-lang/verum
 cd verum
-cargo build --release -p verum_cli
+cargo build --release -p verum_cli --features verification
 ./target/release/verum --version
 ```
 
-The build fetches and compiles LLVM 21.x, Z3, and CVC5 on first
-run. Expect 20–40 minutes on a modern workstation. Subsequent
-builds are incremental.
+The Z3 build is bundled and will take several minutes the first
+time. LLVM must already be installed on the build host (`brew
+install llvm@21` on macOS; `apt install llvm-21-dev` on Debian /
+Ubuntu, or equivalent). MLIR support comes from the same LLVM
+install.
 
 ### Interpreter-only build
 
-If you only need the VBC interpreter (no AOT native builds), drop
-the LLVM and MLIR backends:
+If you only need `verum run` / `verum check` / `verum test` and the
+REPL — skipping native AOT builds — drop the LLVM-heavy backend:
 
 ```bash
-cargo build --release -p verum_cli --no-default-features --features interpreter-only
+cargo build --release -p verum_cli
 ```
 
-The resulting binary runs `verum run`, `verum check`, `verum test`,
-the REPL, and the LSP. `verum build --release` produces VBC but no
-native object files. Build time drops to under five minutes.
-
-### Rebuilding the compiler for a different host
-
-Cross-compilation of *Verum programs* to other targets does **not**
-require this step — see the next section. This is only for
-rebuilding the compiler binary itself to run on a different host OS
-or architecture:
-
-```bash
-rustup target add aarch64-unknown-linux-gnu
-cargo build --release -p verum_cli --target aarch64-unknown-linux-gnu
-```
-
-See `scripts/build-release.sh` in the repo for the canonical host
-matrix CI uses to produce the release artefacts.
-
-## Cross-compiling Verum programs
-
-Cross-compilation in Verum is a compiler flag, not a toolchain. The
-`verum` binary already contains the codegen backends for every
-supported target, so there is nothing to install:
-
-```bash
-verum build --target aarch64-unknown-linux-gnu
-verum build --target x86_64-apple-darwin
-verum build --target x86_64-pc-windows-msvc --release
-verum build --target wasm32-unknown-unknown
-```
-
-List the targets the current binary supports with:
-
-```bash
-verum target list
-```
-
-Typical output (abridged):
-
-```
-host:  x86_64-unknown-linux-gnu          ← the host this `verum` was built for
-
-Linux
-  x86_64-unknown-linux-gnu       ✓ full (CPU, GPU)
-  x86_64-unknown-linux-musl      ✓ full
-  aarch64-unknown-linux-gnu      ✓ full
-  aarch64-unknown-linux-musl     ✓ full
-  riscv64gc-unknown-linux-gnu    ✓ CPU only
-Apple
-  aarch64-apple-darwin           ✓ full
-  x86_64-apple-darwin            ✓ full
-Windows
-  x86_64-pc-windows-msvc         ✓ full
-  aarch64-pc-windows-msvc        ✓ full
-Web / embedded
-  wasm32-unknown-unknown         ✓ no_async profile
-  wasm32-wasi                    ✓ full
-  thumbv7em-none-eabihf          ✓ embedded profile
-  riscv32imac-unknown-none-elf   ✓ embedded profile
-```
-
-**Platform-specific notes.** Targeting macOS produces a Mach-O
-binary that runs on the target architecture; final linking requires
-a macOS SDK (downloaded automatically by the linker on first use
-via `verum sdk install darwin`). Targeting Windows produces a PE
-executable and needs no extra setup. Targeting embedded profiles
-(`thumbv7em`, `riscv32`) restricts the program to the matching
-runtime profile automatically (see
-[runtime profiles](/docs/architecture/runtime-tiers#axis-3--runtime-profiles)).
-
-There is no `verum target add` — the supported target list is
-baked into the binary. A future target becomes available when you
-`verum upgrade`.
+without the `verification` feature for the fastest possible build.
 
 ## IDE integration
 
 ### VS Code
 
-Install the **Verum** extension from the marketplace:
+Install the **Verum Language Support** extension:
 
 ```
 ext install verum-lang.verum
 ```
 
-The extension auto-detects your `verum` binary and starts the LSP
-server on any `.vr` file. Features:
+The extension auto-detects `verum` on `$PATH` and starts `verum lsp`
+on any `.vr` file. See **[VS Code Extension](/docs/tooling/vscode-extension)**
+for the full feature list, commands, configuration, and
+troubleshooting.
 
-- Inline refinement-type errors with counter-examples.
-- Jump-to-definition, hover types, signature help.
-- Inline playbook preview (click a function for its live call).
-- Run tests directly from the gutter.
-- Expand `@derive(...)` and other macros inline.
-
-### Neovim (with nvim-lspconfig)
+### Neovim (nvim-lspconfig)
 
 ```lua
-require('lspconfig').verum.setup{
-  cmd = {'verum', 'lsp'},
-  filetypes = {'verum'},
-  root_dir = require('lspconfig.util').root_pattern('Verum.toml'),
-  settings = {
-    verum = {
-      verify = { strategy = "static" },     -- or "formal" for background
-      inlayHints = { refinements = true, contexts = true },
+require('lspconfig').verum = {
+  default_config = {
+    cmd = { 'verum', 'lsp' },
+    filetypes = { 'verum' },
+    root_dir = require('lspconfig.util').root_pattern('verum.toml', 'Verum.toml'),
+    settings = {
+      verum = {
+        verify = { strategy = 'static' },
+        inlayHints = { refinements = true, contexts = true },
+      },
     },
   },
 }
-```
 
-Add a filetype detection:
-
-```lua
 vim.filetype.add({ extension = { vr = 'verum' } })
 ```
 
-### Emacs
+### Emacs (lsp-mode)
 
 ```elisp
-(use-package lsp-mode
-  :config
-  (add-to-list 'lsp-language-id-configuration '(verum-mode . "verum"))
-  (lsp-register-client
-   (make-lsp-client :new-connection (lsp-stdio-connection '("verum" "lsp"))
-                    :major-modes '(verum-mode)
-                    :server-id 'verum)))
+(add-to-list 'lsp-language-id-configuration '(verum-mode . "verum"))
+(lsp-register-client
+ (make-lsp-client :new-connection (lsp-stdio-connection '("verum" "lsp"))
+                  :major-modes '(verum-mode)
+                  :server-id 'verum))
 ```
-
-### JetBrains IDEs
-
-Install the **Verum** plugin from the marketplace (IDEA, CLion,
-GoLand, RustRover — any platform that supports LSP).
 
 ### Helix
 
@@ -468,118 +356,77 @@ command = "verum"
 args = ["lsp"]
 ```
 
-## Shell completions
-
-The archive ships completions in `share/completions/`; the installer
-places them automatically on Linux and macOS. If you installed by
-hand, wire them up:
-
-```bash
-verum completions bash > /etc/bash_completion.d/verum                 # bash
-verum completions zsh  > "${fpath[1]}/_verum"                         # zsh
-verum completions fish > ~/.config/fish/completions/verum.fish        # fish
-verum completions pwsh > $PROFILE.CurrentUserAllHosts                 # PowerShell (append)
-```
-
-Restart your shell to pick up the completions.
-
 ## Uninstall
 
 ```bash
-# Linux / macOS
-rm -rf ~/.verum
-# remove the PATH line from your shell profile (~/.zshrc, ~/.bashrc, ...)
+sudo rm /usr/local/bin/verum        # or wherever you installed it
+rm -rf ~/.verum                      # SMT stats + signing key (if any)
 ```
 
-```powershell
-# Windows
-Remove-Item -Recurse -Force "$env:USERPROFILE\.verum"
-# and remove %USERPROFILE%\.verum\bin from your User Path
-```
-
-If you installed via package manager, use that manager's uninstall
-command (`brew uninstall verum`, `scoop uninstall verum`, etc.).
+`~/.verum/` is only used for per-user state (`state/smt-stats.json`,
+`signing_key`, `enterprise.toml`); it is **not** a toolchain tree and
+no binary lives there.
 
 ## Troubleshooting
 
 ### `verum: command not found`
 
-`~/.verum/bin` is not on your `PATH`. Either re-run the installer (it
-is idempotent and re-adds the PATH entry) or add it by hand:
+The binary isn't on `$PATH`. Either reinstall to `/usr/local/bin`
+(which is on the default `$PATH` on both Linux and macOS) or add the
+directory you used:
 
 ```bash
-echo 'export PATH="$HOME/.verum/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-On Windows, re-run the PowerShell installer or add
-`%USERPROFILE%\.verum\bin` to your user `Path` through System →
-Environment Variables.
+### Linux: `GLIBC_2.xx not found`
 
-### `verum doctor` reports a corrupted binary
+The prebuilt Linux archive targets glibc 2.31+. On older
+distributions, [build from source](#build-from-source) against your
+system glibc. A musl variant is not currently shipped.
 
-If `verum doctor` fails the toolchain-integrity check, the archive
-was truncated or tampered with during download. Re-run the installer
-with `VERUM_FORCE=1 curl -fsSL https://get.verum-lang.org | sh` to
-redownload and re-verify signatures.
+### macOS: "cannot be opened because the developer cannot be verified"
 
-### SMT verification fails with "timeout"
+Gatekeeper blocks the downloaded binary. Clear the quarantine
+attribute:
 
-Increase the per-obligation timeout:
+```bash
+xattr -d com.apple.quarantine /usr/local/bin/verum
+```
+
+### SMT verification times out
+
+Raise the per-obligation timeout in your manifest:
 
 ```toml
 [verify]
-default_timeout_ms = 5000
+solver_timeout_ms = 10000
 ```
 
-Or on a single function:
+or on a single function:
 
 ```verum
 @verify(formal, timeout_ms = 10000)
 fn hard_to_prove() { ... }
 ```
 
-### macOS: `verum` is blocked by Gatekeeper
+### Corporate proxy blocks the download
 
-The installer removes the quarantine xattr automatically. If you
-extracted a release archive by hand, clear the xattr yourself:
-
-```bash
-xattr -d com.apple.quarantine /usr/local/bin/verum
-```
-
-### Binary won't run on older Linux: `GLIBC_2.xx not found`
-
-Your distribution's glibc is older than the build target. Use the
-musl archive instead — it's statically linked against musl libc and
-runs on any Linux with a 4.x+ kernel:
+`curl` respects `https_proxy` / `HTTPS_PROXY`:
 
 ```bash
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-x86_64-unknown-linux-musl.tar.xz
-```
-
-### Corporate proxy blocks the installer
-
-The installer respects `https_proxy` / `HTTPS_PROXY`; set it before
-running:
-
-```bash
-https_proxy=http://proxy.corp:3128 curl -fsSL https://get.verum-lang.org | sh
-```
-
-Or skip the installer entirely and point the offline installer at a
-pre-downloaded archive:
-
-```bash
-VERUM_ARCHIVE=/tmp/verum-0.32.0-x86_64-unknown-linux-gnu.tar.xz \
-  sh ./get.sh
+https_proxy=http://proxy.corp:3128 \
+  curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz
 ```
 
 ## Next steps
 
 - **[Hello, World](/docs/getting-started/hello-world)** — write and
   run your first program.
-- **[Language Tour](/docs/getting-started/tour)** — see the major
+- **[Language Tour](/docs/getting-started/tour)** — the major
   features in context.
 - **[Project Structure](/docs/getting-started/project-structure)** —
-  `Verum.toml`, modules, cog packages, workspace layout.
+  `verum.toml`, modules, cog packages, workspace layout.
+- **[CLI Reference](/docs/reference/cli-commands)** — every real
+  subcommand and flag.
