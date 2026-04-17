@@ -68,11 +68,16 @@ h1, h2, h3, h4, h5, h6,
   font-feature-settings: 'ss01', 'ss02';
 }
 
-/* The hero "V" — turn up the personality at extreme display sizes */
+/* The hero "V" — turn up the personality at extreme display sizes.
+   display:inline-block + padding-right keeps the WONK-italic "m" tail
+   from being clipped by the background-clip:text mask. */
 .verum-gradient-text {
   font-family: var(--verum-font-display);
   font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;
   letter-spacing: -0.04em;
+  display: inline-block;
+  padding-right: 0.08em;
+  margin-right: -0.02em;
 }
 
 code {
