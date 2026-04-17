@@ -8,13 +8,16 @@ import styles from './index.module.css';
 /**
  * Witness — Curry-Howard, operationalised.
  *
- * Four pillars bear the four judgement forms:
- *   Σ TYPES    — refinement = dependent sum
- *   θ CONTEXT  — environment / context-modal
- *   & MEMORY   — locality witness (CBGR generation)
- *   ⊢ PROOF    — propositional entailment
+ * Four pillars bear the four judgement forms of a verified program:
+ *   Σ TYPES    — propositions as dependent sums (refinement types)
+ *   θ CONTEXT  — capabilities as ambient modality (using [...])
+ *   & MEMORY   — locality as a witness (CBGR generation tag)
+ *   ⊢ PROOF    — derivations as terms (theorems, tactics, certificates)
  *
- * Particles stream inward — evidence converging on the witness.
+ * Seven verification rings (runtime → certified → synthesize) show the
+ * gradual-proof axis. Particles stream inward — evidence converging on
+ * the witness at the centre: one well-typed, well-provisioned, verified
+ * program, lowered to a single VBC module.
  */
 function WitnessVisualization() {
   const [t, setT] = useState(0);
@@ -60,12 +63,17 @@ function WitnessVisualization() {
     { label: 'refinement types', deg: 270, color: '#0d9488' },
   ];
 
+  // Seven @verify strategies, innermost = weakest claim, outermost = strongest.
+  // `synthesize` lives outside the hierarchy (generative, not comparative); it
+  // rides on the strongest ring.
   const verificationRings = [
-    { f: 0.42, label: 'runtime'   },
-    { f: 0.58, label: 'static'    },
-    { f: 0.73, label: 'formal'    },
-    { f: 0.86, label: 'thorough'  },
-    { f: 1.00, label: 'certified' },
+    { f: 0.36, label: 'runtime'    },
+    { f: 0.48, label: 'static'     },
+    { f: 0.60, label: 'fast'       },
+    { f: 0.72, label: 'formal'     },
+    { f: 0.84, label: 'thorough'   },
+    { f: 0.94, label: 'certified'  },
+    { f: 1.00, label: 'synthesize' },
   ];
 
   const PARTICLES_PER_PILLAR = 3;
@@ -190,6 +198,18 @@ function WitnessVisualization() {
         <circle cx="0" cy="0" r={9 + pulse * 1.8 + witnessBoost * 4} fill="#fcd34d" opacity="0.95" />
         <circle cx="0" cy="0" r="3" fill="#ffffff" />
       </g>
+      {/* Centre inscription — the witness. Curry-Howard reads
+          "a program is a proof"; this is what the four pillars produce. */}
+      <text x="0" y="-56" textAnchor="middle"
+        fill="currentColor" opacity="0.55" fontSize="7.5"
+        fontFamily="JetBrains Mono, monospace" letterSpacing="2.2" fontWeight="700">
+        VBC
+      </text>
+      <text x="0" y="62" textAnchor="middle"
+        fill="currentColor" opacity="0.7" fontSize="9" fontStyle="italic"
+        fontFamily="Fraunces, Iowan Old Style, serif">
+        ⟨ program ≡ proof ⟩
+      </text>
     </svg>
   );
 }
@@ -216,7 +236,7 @@ async fn serve(routes: NonEmpty<Route>) -> Result<(), Error>
 // 4. Verification is gradual — same function, stronger proof
 @verify(formal)
 fn find<T: Eq>(xs: &NonEmpty<T>, key: &T) -> Maybe<Int>
-    where ensures result is Some(i) => xs[i] == *key
+    where ensures result.is_some() => xs[result.unwrap()] == *key
 {
     for i in 0..xs.len() {
         if xs[i] == *key { return Maybe.Some(i); }
@@ -265,7 +285,7 @@ const PILLARS = [
     title: 'Gradual verification as a language primitive',
     accent: '#a78bfa',
     blurb:
-      'Nine verification strategies from @verify(runtime) to @verify(certified). ' +
+      'Seven verification strategies — runtime, static, formal, fast, thorough, certified, synthesize. ' +
       'You declare the intent; the compiler picks the solver. Z3, CVC5, tactic search, or portfolio ' +
       '— routed automatically by the capability router based on the obligation\'s theory mix.',
     code: `// Same function, four guarantee levels:
@@ -289,9 +309,9 @@ fn abs(x: Int) -> Int { self >= 0 } {
     title: 'One context system for everything',
     accent: '#db2777',
     blurb:
-      'Runtime DI and compile-time meta use the same using [...] syntax. ' +
+      'Runtime DI and compile-time meta share one using [...] grammar. ' +
       'Database, Logger, Clock at runtime; TypeInfo, BuildAssets, Schema at compile time. ' +
-      '14 meta-contexts, 10 standard runtime contexts, same scoping rules, same negative constraints.',
+      '14 meta-contexts, 10 standard runtime contexts, identical scoping rules, identical negative constraints.',
     code: `// Runtime — caller provides Database, Logger, Clock
 fn handle(req: Request) -> Response
     using [Database, Logger, Clock]
@@ -303,7 +323,7 @@ fn handle(req: Request) -> Response
 
 // Compile-time — compiler provides TypeInfo, CompileDiag
 meta fn field_count<T>() -> Int using [TypeInfo] {
-    TypeInfo.fields_of::<T>().len()
+    TypeInfo.fields_of<T>().len()
 }`,
   },
   {
@@ -412,7 +432,7 @@ const FEATURES = [
   {
     icon: 'θ',
     title: '14 compile-time meta-contexts',
-    body: 'TypeInfo, AstAccess, CodeSearch, Schema, DepGraph, Hygiene — the same using [...] as runtime DI. 335 methods, Tier 0/1 gating, deterministic compilation.',
+    body: 'TypeInfo, AstAccess, CodeSearch, Schema, DepGraph, Hygiene + 8 more — the same using [...] as runtime DI. 230+ methods across them, stage-aware, deterministic by construction.',
   },
   {
     icon: '&',
@@ -426,8 +446,8 @@ const FEATURES = [
   },
   {
     icon: '⊙',
-    title: '20+ proof tactics in a systems language',
-    body: 'auto, simp, ring, field, omega, blast, induction, cases, cubical, category_simp — plus combinators (try/else, repeat, first, all_goals). When SMT can\'t, you help. No separate prover needed.',
+    title: '22 proof tactics in a systems language',
+    body: 'auto, simp, ring, field, omega, blast, smt, trivial, assumption, contradiction, induction, cases, rewrite, unfold, apply, exact, intro(s), cubical, category_simp, category_law, descent_check — plus combinators. When SMT can\'t, you help. No separate prover needed.',
   },
   {
     icon: '⇌',
