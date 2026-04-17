@@ -131,12 +131,36 @@ Concrete known-working cases:
 - `JSON.parse("42")`, `JSON.parse("true")`, `JSON.parse("\"hi\"")`,
   `JSON.parse("[1, 2, 3]")`, `JSON.parse("{}")` all return `Ok`.
 
-Known-remaining: `Text.new()` + `push_byte` cannot currently round-
-trip because `ptr_write` writes 8-byte NaN-boxed `Value`s regardless
-of element type, so building a `Text` one byte at a time corrupts
-adjacent memory. This blocks JSON object parsing with non-empty
-content (`{"a": 1}` still crashes inside `parse_string_raw`) until
-typed pointer writes land. Tracked separately.
+### Fixed — byte-sized writes via `memset`
+
+The generic `ptr_write<T>` intrinsic lowered to `DerefMut`, which
+writes 8 bytes of a NaN-boxed `Value` regardless of `T`. Writing a
+`Byte` this way corrupted seven bytes past the target. All byte-
+granularity writes in the stdlib are now expressed as
+`memset(ptr, byte, 1)` with an explicit 1-byte length:
+
+- `Text.push_byte` — core of every Text builder path.
+- `Text.from_utf8_unchecked` — null terminator after memcpy.
+- `Text.grow()` — null-terminator maintenance when capacity expands.
+- `Text.make_ascii_lowercase` / `make_ascii_uppercase` — in-place flips.
+
+Also reconciled `core/encoding/json.vr` with the new
+`Text.parse_int` / `parse_float` signatures (`Result<T, ParseError>`
+after the parse-int fix). The JSON number parser was still pattern-
+matching `Some(i) / None`; because `Result::Ok` and `Maybe::None`
+share tag 0, every successful integer parse silently routed to the
+"integer out of range" fallback. Now uses `Ok / Err` arms directly.
+
+Known-working after this layer of fixes: `Text.new(); t.push_byte(b);`
+round-trips; `t.as_bytes()` yields the written bytes.
+
+Known-remaining: `Text == Text` returns `false` for two builder
+Texts built from the same bytes — equality walks the struct
+layout rather than byte content — so Map<Text, T> with built keys
+(e.g. JSON object field names) crashes during hashing. Tracked as
+the next task in the byte-level stdlib surface audit. Simple JSON
+scalars / arrays / empty objects work end-to-end; `{"a": 1}` still
+crashes at the `Map.insert` stage.
 
 ## [0.32.0] — 2026-04-15 — phase D complete
 
