@@ -93,14 +93,65 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 20px 60px rgba(124, 58, 237, 0.25));
 }
 
-.prism {
+/* The hero mark — logo on a deep, layered radial glow */
+.mark {
+  position: relative;
   width: 100%;
   max-width: 460px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A soft, layered aurora behind the logo. Five stacked radial stops in
+   the Verum palette + a faint teal outer ring — no animation, pure light. */
+.markGlow {
+  position: absolute;
+  inset: -8%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(252, 211, 77, 0.35)  0%,  transparent 22%),
+    radial-gradient(circle at 50% 50%, rgba(219, 39, 119, 0.42)  0%,  transparent 38%),
+    radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.48)  0%,  transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.22)  40%, transparent 72%),
+    radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.14) 60%, transparent 90%);
+  filter: blur(6px) saturate(1.05);
+}
+
+/* The logo. A subtle drop shadow grounds it over the glow; a very slow
+   breathing opacity keeps it alive without being distracting. */
+.markImage {
+  position: relative;
+  z-index: 1;
+  width: 82%;
   height: auto;
-  color: var(--ifm-color-emphasis-900);
+  filter:
+    drop-shadow(0 10px 28px rgba(124, 58, 237, 0.35))
+    drop-shadow(0 2px 6px rgba(219, 39, 119, 0.25));
+  animation: verum-mark-breath 7s ease-in-out infinite;
+}
+
+@keyframes verum-mark-breath {
+  0%, 100% { transform: scale(1);     filter: drop-shadow(0 10px 28px rgba(124, 58, 237, 0.35)) drop-shadow(0 2px 6px rgba(219, 39, 119, 0.25)); }
+  50%      { transform: scale(1.015); filter: drop-shadow(0 14px 36px rgba(124, 58, 237, 0.45)) drop-shadow(0 3px 10px rgba(219, 39, 119, 0.32)); }
+}
+
+[data-theme='dark'] .markGlow {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(252, 211, 77, 0.40)  0%,  transparent 22%),
+    radial-gradient(circle at 50% 50%, rgba(219, 39, 119, 0.52)  0%,  transparent 42%),
+    radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.60)  0%,  transparent 62%),
+    radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.30)  44%, transparent 78%),
+    radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.22) 66%, transparent 95%);
+  filter: blur(8px) saturate(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markImage { animation: none; }
 }
 
 /* Sections */
