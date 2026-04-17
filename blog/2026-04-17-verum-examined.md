@@ -187,7 +187,56 @@ Verum's contribution is not a new primitive but the integration:
 
 Under this surface sits a work-stealing per-core executor, a platform-native I/O reactor, and a context stack that is saved at every `.await` and restored before resumption — so that a function suspended for an hour and resumed in a different worker thread still sees the same `using [Database, Logger]` stack it had when it yielded.
 
-## 9. Proof-carrying code and the distribution model
+## 9. The runtime, in one structure
+
+Most languages treat memory, capabilities, errors, and concurrency as four separate systems that happen to coexist at runtime. The allocator is one library, the dependency-injection framework is another, error handling is structured exceptions, and the scheduler is a third thing entirely. Integration between them is the programmer's problem.
+
+Verum merges all four into a single typed value — the **Execution Environment**, written **θ+** in the sources. Every task, from `fn main()` downwards, carries one. The layout is fixed, the size is 2,560 bytes, and the four pillars are always at known offsets:
+
+- **Memory** (128 B) — CBGR safety tier, allocator reference, shared-ownership registry, generation and epoch trackers.
+- **Capabilities** (2,048 B) — a 256-slot inline array of typed contexts (compile-time-assigned slots reach constant-time lookup at ~2 ns), plus a map for dynamic ones at ~20 ns.
+- **Recovery** (192 B) — supervisor reference, eight inline circuit breakers (64 B each), four inline retry policies (32 B each), `defer` stack.
+- **Concurrency** (128 B) — executor handle, I/O driver reference, isolation model, parallelism configuration, task ID.
+
+Nothing in that list requires a heap allocation on the hot path. An inline circuit breaker is a struct, not a pointer-to-struct. A retry policy is a struct. A context in the fast path is an index into an array. The combined result: task spawn costs ~150 ns; task fork costs ~50–70 ns; a context lookup through a compile-time slot is two nanoseconds.
+
+A programmer never writes `env.` anywhere. The mapping from language features to pillars is automatic: `&T` reads the memory pillar; `using [Logger]` reads the capabilities pillar; `defer { ... }` writes the recovery pillar; `spawn` reads all four and forks them for the child. Four systems, one lookup.
+
+This matters concretely when programs get large. The failure modes that plague long-running services — "the async runtime was spun up after my logger was configured, so logs from request 47 went to the void"; "a panic in a worker thread took down the supervisor that would have restarted it"; "a context set in a spawned task leaked after the task panicked" — disappear when the four concerns share one structure whose lifecycle is the task's lifecycle. A panic in Verum runs the task's defers, restores the `parent_snapshot` of the capability pillar, and forwards to the supervisor — all using a single unwinder pass over the same environment, not four separate cleanup protocols.
+
+The runtime ships in **five profiles**: `full` for servers, `single_thread` for WASM and single-core targets, `no_async` for blocking CLIs, `no_heap` for real-time and safety-critical code, and `embedded` for microcontrollers. A program that requests more than its profile supports is a compile error, not a runtime failure. The same language, the same `ExecutionEnv` type, and the same source files — with different executor, allocator, and I/O-driver implementations chosen at link time.
+
+## 10. Errors as values, supervision as a language feature
+
+Verum has no exceptions in the unwinding sense. It has three mechanisms that compose:
+
+**`Result<T, E>` and `throws E`**. Errors travel as values. The `throws E` clause on a function signature is a type-level declaration that the function may fail with errors of type `E`; the `?` operator propagates. Nothing here is new — the surprise is how far the type system carries it. An `E` that is a union of several specific error shapes can be narrowed at the catch site; a refinement type on an error payload is a type; `@verify(formal)` can prove a function whose signature is `-> Result<T, E>` always returns `Ok` on a given subset of inputs.
+
+**`defer` and `errdefer`**. RAII cleanup without destructors. `defer { cleanup(); }` pushes a handler onto the task's `RecoveryContext.defer_stack`; when control leaves the scope — by return, by `?`-propagation, or by panic — the handler runs. `errdefer { rollback(); }` runs only on the error path. The stack is LIFO; combined with refinement types, this replaces a large class of "we forgot to release the lock in error path 17" bugs.
+
+**Supervision trees**. When a task fails in a way its caller cannot handle locally, Verum's runtime consults the task's supervisor (if any) and applies one of four strategies: `OneForOne` (restart only the failing child), `OneForAll` (restart every sibling), `RestForOne` (restart the failing child and everyone started after it), `SimpleOneForOne` (restart spec-homogeneous children). Each child carries a restart policy — `Permanent`, `Transient`, `Temporary` — and a `RestartIntensity` (max N restarts per M-millisecond window) that, when exceeded, escalates to the parent supervisor.
+
+This is Erlang/OTP's idea, translated to a statically typed systems language. Four supervision strategies, three restart policies, configurable intensity, escalation to a parent supervisor, named children, orderly shutdown with per-child timeouts — the full OTP menu. A web server whose handlers crash does not take down the process; the supervisor restarts the handler, the circuit breaker in the task's `RecoveryContext` trips after five failures, and the log line has a stack trace.
+
+Most systems languages leave this story to frameworks. Verum gives it a type system, a runtime structure, and a set of primitives — because fault tolerance is a language concern if safety is.
+
+## 11. The standard library is Verum
+
+Almost every production programming language has a layer it doesn't own. C's `stdio` is glibc (or musl, or Apple's libSystem). Rust's `std` builds on libc for anything OS-adjacent — threads, file I/O, the memory allocator. Go writes its own runtime but links against glibc on many targets. Swift's `Foundation` is Objective-C.
+
+Verum's standard library is written in Verum. Specifically:
+
+- The allocator — the capability-based generational-reference arena — is in `core/mem/allocator.vr`. No `malloc` dependency.
+- Threads, TLS, futexes, atomics — all in `core/sync/` and `core/runtime/thread.vr`, implemented over VBC intrinsics that map to platform syscalls directly. No `pthread`.
+- File I/O, networking, time — `core/io/`, `core/net/`, `core/time/`. Platform syscalls through VBC intrinsics, no libc.
+- Regex, JSON, TOML, YAML, SQL, HTML — all parsers written in `.vr`, living under `core/tagged/`, `core/text/`, `core/encoding/`.
+- The concurrency runtime — executor, I/O driver, supervision tree, circuit breakers — all in `core/runtime/` and `core/async/`. No Rust `tokio` dependency, no C `libuv`.
+
+The zero-FFI path works because VBC opcodes `0xF1` (mmap/munmap), `0xF2` (futex, atomics), `0xF4` (io_uring, kqueue, IOCP), and `0xF5` (clock_gettime) are first-class language primitives that the VBC interpreter and the LLVM backend both lower directly. There is no hidden C ABI anywhere in a Verum binary. The consequence for security audits and proof-carrying distribution is large: a `.cog` archive's VBC is a closed artefact that can be validated offline against declared capabilities without the validator needing to trust a distro's libc version.
+
+On macOS the one exception is `libSystem.B.dylib`, Apple's stable ABI entry point — Apple doesn't guarantee syscall ABI stability, so programs linking directly to syscalls would break across macOS versions. `libSystem` is linked, nothing else. No Rust `std`, no glibc, no `libuv`.
+
+## 12. Proof-carrying code and the distribution model
 
 A `cog` is Verum's package — not an archive of source, but an archive of VBC bytecode plus optional proof certificates, type metadata, and signatures. When a downstream consumer takes a dependency at `@verify(certified)`, they can validate the included proofs **offline**, without running the compiler over the source.
 
@@ -195,7 +244,7 @@ The precedent here is the Proof-Carrying Code tradition (Necula, Lee, 1996) and 
 
 This is not theatre. Supply-chain attacks on code registries are the main way modern software is compromised; the question "does this package do what it says?" is no longer hypothetical. A cog's certificate cannot rule out every attack, but it raises the lower bound of what a consumer knows about the code they just linked against.
 
-## 10. One IR, two executions
+## 13. One IR, two executions
 
 Verum is **VBC-first**. Every program compiles to VBC (Verum Bytecode); VBC is either interpreted (Tier 0) or lowered through LLVM to native code (Tier 1). There is no second path from source to execution.
 
@@ -208,7 +257,7 @@ The consequence is architectural rather than performance-headline-worthy:
 
 Languages with this property: BEAM (Erlang/Elixir), the JVM, the CLR, LuaJIT. Languages without it: C, C++, Rust (separate rustdoc/test/compile paths with differences), Swift, Go. Verum is firmly in the VBC-first camp, which is unusual for a systems language targeting native.
 
-## 11. The LLM-era angle — why this language matters now
+## 14. The LLM-era angle — why this language matters now
 
 Here is where we return to the question at the top.
 
@@ -226,7 +275,7 @@ This shift changes what a programming language is actually for in three ways, an
 
 None of this is to say Verum "solves the LLM problem." It is to say that the language-design decisions Verum has been making for the last three years — explicit context, refinement types, gradual verification, semantic honesty, a single stable IR, proof-carrying distribution — happen to line up with what the current and next few years of software will need. They would have been defensible features in 2021. They are close to necessary features in 2026.
 
-## 12. Trade-offs Verum actually makes
+## 15. Trade-offs Verum actually makes
 
 A blog post about a language that does not list its costs is a marketing document. These are the real costs.
 
@@ -239,9 +288,9 @@ A blog post about a language that does not list its costs is a marketing documen
 
 None of these are show-stoppers. All of them deserve to be named.
 
-## 13. Closing
+## 16. Closing
 
-The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, gradual verification from SPARK, a three-tier memory model descended from CBGR and Pony's capability ideas, a context system that unifies compile-time and runtime DI, a dependent-type layer with cubical HoTT support, and a single bytecode IR that runs both the interpreter and the AOT backend. It wires them together under one rule — semantic honesty — and refuses to include features that break that rule.
+The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, gradual verification from SPARK, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, and a standard library that is itself written in Verum with no libc / `pthread` / Rust-std dependency. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
 
 The pitch is not that any one of these ideas is new. They are not. The pitch is that they have never been combined in a production systems language whose surface a Rust or Swift programmer could read comfortably, and that the current moment — where software increasingly travels through a language model before it reaches production — is the moment where having them combined actually pays.
 
