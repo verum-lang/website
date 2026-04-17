@@ -47,6 +47,7 @@ const sidebars: SidebarsConfig = {
         'tooling/build-system',
         'tooling/cog-packages',
         'tooling/lsp',
+        'tooling/vscode-extension',
         'tooling/playbook',
         'tooling/repl',
       ],
