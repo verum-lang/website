@@ -129,6 +129,21 @@ let cloned = shared.clone();   // bumps the refcount
 - `Shared<T>` — atomically reference-counted.
 - `Rc<T>` — single-threaded reference-counted (lower overhead, `!Send`).
 
+:::warning Current status (0.1.0)
+
+Runtime construction of `Shared<T>` in the Tier 0 interpreter
+currently crashes partway into the CBGR allocator bootstrap
+("Expected int, got None" at `value.rs:892`). The containing API
+(`Shared.new`, `.clone`, `.load`) type-checks cleanly and all
+examples below compile, but end-to-end execution of multi-clone
+sharing patterns through the interpreter is blocked on the fix.
+
+Single-observer patterns (direct `&T`, non-shared atomics, borrows)
+work today. Use `verum run --aot` for patterns that need real
+`Shared<T>` — the AOT path does not share this bootstrap issue.
+
+:::
+
 ## Drops and destructors
 
 The `Drop` protocol runs when a value goes out of scope:
