@@ -51,12 +51,15 @@ allocation's `AllocationHeader` on every deref.
 type FatRef<T> is {
     ptr: *unsafe T,
     generation: UInt32,
-    epoch_caps: UInt32,
-    len_or_vtable: Int,       // slice length or dyn-protocol vtable pointer
+    epoch_caps: UInt32,       // epoch in high 16 bits, capabilities in low 16
+    metadata: UInt64,         // slice length, dyn-protocol vtable pointer, etc.
+    offset:   UInt32,         // non-zero for interior references
+    reserved: UInt32,         // padding + room for future fields
 };
 ```
 
-Used when `T` is unsized — slices (`[T]`) and trait objects (`dyn P`).
+Used when `T` is unsized — slices (`[T]`) and trait objects (`dyn P`) —
+and for interior references that need an offset into a larger allocation.
 
 ### `AllocationHeader` — 32 bytes, cache-aligned
 

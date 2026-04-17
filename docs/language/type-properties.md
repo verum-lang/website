@@ -79,7 +79,7 @@ Point.stride                   // 16
 &Int.size                      // 16  (ThinRef: ptr + generation + caps)
 &checked Int.size              // 8   (tier 1: raw pointer)
 &unsafe Int.size               // 8   (tier 2: raw pointer)
-&[Int].size                    // 24  (FatRef: ptr + generation + caps + len)
+&[Int].size                    // 32  (FatRef: ThinRef + metadata + offset + reserved)
 
 // Generic types in a polymorphic function
 fn describe<T>() {
@@ -149,11 +149,11 @@ Reference types have well-defined sizes per tier:
 | Reference form     | Size     | Notes                                   |
 |--------------------|----------|-----------------------------------------|
 | `&T` (tier 0, sized) | 16 bytes | ThinRef — ptr + generation + capabilities |
-| `&T` (tier 0, unsized) | 24 bytes | FatRef — adds length/vtable |
+| `&T` (tier 0, unsized) | 32 bytes | FatRef — ThinRef + metadata + offset + reserved |
 | `&checked T` (tier 1) | 8 bytes | bare pointer |
 | `&unsafe T` (tier 2)  | 8 bytes | bare pointer |
 
-A slice `&[T]` always takes the FatRef form (24 bytes).
+A slice `&[T]` always takes the FatRef form (32 bytes).
 
 Tuples are laid out as anonymous records:
 
