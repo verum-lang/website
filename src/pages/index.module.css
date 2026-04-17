@@ -330,18 +330,22 @@
   margin: 0 0 1rem;
 }
 
+/* The pillar card's code block wraps a Docusaurus CodeBlock so it
+   gets the same Prism highlighting as the main showcase. Just trim
+   the sizing/margins so it sits compactly inside the card. */
 .pillarCode {
-  font-size: 0.78rem;
-  line-height: 1.55;
-  background: rgba(0,0,0,0.04);
-  padding: 1rem;
-  border-radius: 8px;
-  overflow-x: auto;
   margin: 0;
 }
 
-[data-theme='dark'] .pillarCode {
-  background: rgba(255,255,255,0.03);
+.pillarCode :global(.theme-code-block),
+.pillarCode :global(.prism-code) {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.pillarCode :global(pre) {
+  margin: 0;
 }
 
 /* Code showcase */

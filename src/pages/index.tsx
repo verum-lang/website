@@ -100,43 +100,45 @@ const PILLARS = [
     title: 'Gradual verification as a language primitive',
     accent: '#a78bfa',
     blurb:
-      'Seven verification strategies — runtime, static, formal, fast, thorough, certified, synthesize. ' +
-      'You declare the intent; the compiler picks the solver. Z3, CVC5, tactic search, or portfolio ' +
-      '— routed automatically by the capability router based on the obligation\'s theory mix.',
-    code: `// Same function, four guarantee levels:
-fn abs(x: Int) -> Int { self >= 0 } {
-    if x >= 0 { x } else { -x }
+      'Seven verification strategies — runtime, static, fast, formal, thorough, certified, synthesize. ' +
+      'You declare the intent; the compiler picks the technique. ' +
+      'Refinement predicates compile to SMT obligations dispatched through a capability router, ' +
+      'with tactic fallback and portfolio cross-validation for the strongest tiers.',
+    code: `// Same body, three guarantee levels — pick per function.
+type NonNeg is Int { self >= 0 };
+
+@verify(runtime)
+fn abs_r(x: Int) -> NonNeg {
+    if x >= 0 { x } else { -x }        // assert at runtime
 }
 
-@verify(runtime)   fn abs_r(x: Int) -> Int { self >= 0 } {
-    if x >= 0 { x } else { -x }  // assert at runtime
+@verify(formal)
+fn abs_f(x: Int) -> NonNeg {
+    if x >= 0 { x } else { -x }        // proved by the SMT backend
 }
 
-@verify(formal)    fn abs_f(x: Int) -> Int { self >= 0 } {
-    if x >= 0 { x } else { -x }  // Z3 proves it
-}
-
-@verify(certified) fn abs_c(x: Int) -> Int { self >= 0 } {
-    if x >= 0 { x } else { -x }  // proof certificate in binary
+@verify(certified)
+fn abs_c(x: Int) -> NonNeg {
+    if x >= 0 { x } else { -x }        // + proof embedded in the .cog
 }`,
   },
   {
     title: 'One context system for everything',
     accent: '#db2777',
     blurb:
-      'Runtime DI and compile-time meta share one using [...] grammar. ' +
+      'Runtime DI and compile-time meta share one \`using [...]\` grammar. ' +
       'Database, Logger, Clock at runtime; TypeInfo, BuildAssets, Schema at compile time. ' +
-      '14 meta-contexts, 10 standard runtime contexts, identical scoping rules, identical negative constraints.',
-    code: `// Runtime — caller provides Database, Logger, Clock
-fn handle(req: Request) -> Response
-    using [Database, Logger, Clock]
+      '14 meta-contexts, 10 standard runtime contexts, one lookup rule, ~2 ns for an inline slot.',
+    code: `// Runtime: caller provides Database and Logger.
+fn handle(req: &Request) -> Response
+    using [Database, Logger]
 {
     Logger.info(f"{req.method} {req.path}");
-    let user = Database.query(req.auth)?;
-    ok(user)
+    let user = Database.find_user(req.auth)?;
+    Response.ok(&user)
 }
 
-// Compile-time — compiler provides TypeInfo, CompileDiag
+// Compile time: the compiler provides TypeInfo and CompileDiag.
 meta fn field_count<T>() -> Int using [TypeInfo] {
     TypeInfo.fields_of<T>().len()
 }`,
@@ -146,39 +148,42 @@ meta fn field_count<T>() -> Int using [TypeInfo] {
     accent: '#14b8a6',
     blurb:
       'A refinement predicate is part of the type — not a comment, not a linter, not a separate tool. ' +
-      'Int { self > 0 } flows through inference, narrows via control flow, discharges to SMT, ' +
-      'reflects user @logic functions as solver axioms, falls back to tactics when SMT can\'t — ' +
+      '\`Int { self > 0 }\` flows through inference, narrows via control flow, discharges to SMT, ' +
+      'reflects user \`@logic\` functions as axioms, falls back to tactics when SMT can\u2019t — ' +
       'and the proof embeds in the binary as a certificate exportable to Coq or Lean. Zero runtime cost.',
     code: `type Sorted<T: Ord> is List<T> { self.is_sorted() };
 
-@logic fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
-    forall i in 0..xs.len()-1. xs[i] <= xs[i+1]
+@logic
+fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+    forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
 }
 
 @verify(formal)
 fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
-    where ensures is_sorted(result)
+    where ensures is_sorted(&result)
 {
     let pos = xs.partition_point(|y| *y < x);
-    xs.insert(pos, x)   // SMT proves sortedness is preserved
+    xs.insert(pos, x)    // sortedness preserved — proved at compile time
 }`,
   },
   {
     title: 'Three-tier references without language fragmentation',
     accent: '#f59e0b',
     blurb:
-      '&T (CBGR-checked, ~15ns), &checked T (compiler-proven, 0ns), &unsafe T (you prove it, 0ns). ' +
-      'All three are the same type family — choose per-use-site, not per-language-dialect. ' +
-      'Escape analysis promotes 60-95% of &T to &checked T automatically.',
+      '\`&T\` (CBGR-checked, ~15 ns), \`&checked T\` (compiler-proven, 0 ns), \`&unsafe T\` (you prove it, 0 ns). ' +
+      'All three are the same type family — chosen per-use-site, not per-language-dialect. ' +
+      'Escape analysis auto-promotes the hot-path fraction of \`&T\` to \`&checked T\`.',
     code: `fn sum_ages(users: &List<User>) -> Int {
     let mut total = 0;
-    for u in users.iter() {          // &u: &User — ~15ns CBGR check
+    for u in users.iter() {              // &u: &User — ~15 ns CBGR check
         let age: &checked Int = &checked u.age;
-        total += *age;               // 0ns — compiler proved it safe
+        total += *age;                   //  0 ns — compiler proved safe
     }
     total
 }
-// verum analyze --escape: sum_ages  promoted 4/5 refs (80%)`,
+
+// $ verum analyze --escape
+// sum_ages:  4 / 5 references promoted to &checked  (80 %)`,
   },
 ];
 
@@ -188,7 +193,9 @@ function PillarCard({pillar}: {pillar: typeof PILLARS[number]}) {
       <div className={styles.pillarAccent} />
       <h3 className={styles.pillarTitle}>{pillar.title}</h3>
       <p className={styles.pillarBlurb}>{pillar.blurb}</p>
-      <pre className={styles.pillarCode}><code>{pillar.code}</code></pre>
+      <div className={styles.pillarCode}>
+        <CodeBlock language="verum">{pillar.code}</CodeBlock>
+      </div>
     </div>
   );
 }
@@ -252,12 +259,12 @@ const FEATURES = [
   {
     icon: '&',
     title: '8-capability monotonic references',
-    body: 'READ, WRITE, EXECUTE, DELEGATE, REVOKE, BORROWED, MUTABLE, NO_ESCAPE. Capabilities only attenuate — never expand. One AND + one branch per check.',
+    body: 'CAP_READ, CAP_WRITE, CAP_EXECUTE, CAP_DELEGATE, CAP_REVOKE, CAP_BORROWED, CAP_MUTABLE, CAP_NO_ESCAPE. Capabilities only attenuate — never expand. One AND + one branch per check.',
   },
   {
     icon: '0',
     title: 'Pure-Verum standard library',
-    body: 'No Rust runtime. Direct syscalls on Linux, libSystem on macOS (Apple\'s stable ABI), kernel32 + ntdll on Windows. The CBGR allocator lives in core/mem — no libc malloc.',
+    body: 'No Rust runtime, no libc, no pthread. Syscalls, atomics, I/O, and clocks go through VBC opcodes directly (0xF1 / 0xF2 / 0xF4 / 0xF5). The CBGR allocator lives in core/mem — no malloc underneath.',
   },
   {
     icon: '⊙',
