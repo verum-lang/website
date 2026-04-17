@@ -67,23 +67,29 @@ path. The LLVM backend handles CPU AOT; MLIR owns everything else.
 
 VBC lowers progressively through a fixed ladder of dialects:
 
-```
-VBC tensor / SIMD opcodes
-        │
-        ▼
-verum.tensor            (custom, preserves Verum semantics)
-        │
-        ▼
-linalg                  (named ops: matmul, conv, reduce, ...)
-        │
-        ▼
-┌───────┼──────────┬───────────┐
-▼       ▼          ▼           ▼
-gpu   vector     scf         arith / memref
-│       │          │           │
-▼       ▼          ▼           ▼
-nvvm   rocdl     spirv       air         (target-specific)
-(PTX)  (HSACO)  (SPIR-V)   (Metal)
+```mermaid
+flowchart TD
+    VBC[["VBC tensor / SIMD opcodes"]]
+    VT["verum.tensor<br/><i>custom · preserves Verum semantics</i>"]
+    LINALG["linalg<br/><i>matmul · conv · reduce · ...</i>"]
+    GPU[gpu]
+    VEC[vector]
+    SCF[scf]
+    ARITH["arith / memref"]
+    NVVM["nvvm<br/><i>PTX</i>"]
+    ROCDL["rocdl<br/><i>HSACO</i>"]
+    SPIRV["spirv<br/><i>SPIR-V</i>"]
+    AIR["air<br/><i>Metal</i>"]
+
+    VBC --> VT --> LINALG
+    LINALG --> GPU
+    LINALG --> VEC
+    LINALG --> SCF
+    LINALG --> ARITH
+    GPU --> NVVM
+    VEC --> ROCDL
+    SCF --> SPIRV
+    ARITH --> AIR
 ```
 
 Passes in `passes/` drive each lowering step. Standard dialects

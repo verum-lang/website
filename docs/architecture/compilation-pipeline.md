@@ -12,38 +12,47 @@ to native code via LLVM (Tier 1). Orchestration lives in
 
 ## High-level shape
 
-```
-Source (.vr)
-     │
-     ▼
-┌──────────────────────────── FRONTEND (Phases 0–4) ──────────────────────────┐
-│  0   stdlib preparation          (embedded VBC, cached across builds)        │
-│  1   lexing → parsing             (verum_fast_parser)                        │
-│  2   meta registry + AST registration                                        │
-│  2.9 safety gate                  ([safety] unsafe/ffi/capability checks)    │
-│  3   macro expansion + literal processing                                    │
-│  3a  contract verification        (SMT / Z3)                                 │
-│  3b  safety gate (re-check)       (feature-gate enforcement)                 │
-│  4   semantic analysis            (type inference, CBGR analysis)            │
-│  4a  autodiff compilation                                                    │
-│  4b  context-system validation    (gated by [context].enabled)               │
-│  4c  Send/Sync validation                                                    │
-│  4d  dependency analysis          (target-profile enforcement)               │
-│  4e  FFI boundary validation      (gated by [safety].ffi)                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-     │ TypedAST
-     ▼
-┌──────────────────────────── VBC BACKEND (Phases 5–7) ───────────────────────┐
-│  5  VBC code generation           (verum_vbc::codegen)                       │
-│  6  VBC monomorphization          (generic specialisation)                   │
-│  7  execution (two-tier model v2.1)                                          │
-│     ├─ Tier 0: interpreter        (verum_vbc::interpreter)                   │
-│     └─ Tier 1: AOT                (VBC → LLVM → native via verum_codegen)    │
-│  7.5 final linking                (for AOT only)                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-     │
-     ▼
-Executable (Tier 1) / interpreted result (Tier 0)
+```mermaid
+flowchart TD
+    SRC[["Source (.vr)"]]
+
+    subgraph FE["FRONTEND · phases 0–4"]
+        direction TB
+        F0["0 · stdlib preparation<br/><i>embedded VBC, cached across builds</i>"]
+        F1["1 · lexing → parsing<br/><i>verum_fast_parser</i>"]
+        F2["2 · meta registry + AST registration"]
+        F29["2.9 · safety gate<br/><i>[safety] unsafe/ffi/capability</i>"]
+        F3["3 · macro expansion + literal processing"]
+        F3A["3a · contract verification (SMT / Z3)"]
+        F3B["3b · safety gate re-check"]
+        F4["4 · semantic analysis<br/><i>type inference · CBGR</i>"]
+        F4A["4a · autodiff compilation"]
+        F4B["4b · context-system validation"]
+        F4C["4c · Send/Sync validation"]
+        F4D["4d · dependency analysis"]
+        F4E["4e · FFI boundary validation"]
+        F0 --> F1 --> F2 --> F29 --> F3 --> F3A --> F3B --> F4 --> F4A --> F4B --> F4C --> F4D --> F4E
+    end
+
+    subgraph BE["VBC BACKEND · phases 5–7"]
+        direction TB
+        B5["5 · VBC code generation<br/><i>verum_vbc::codegen</i>"]
+        B6["6 · VBC monomorphization"]
+        B7{{"7 · execution (two-tier v2.1)"}}
+        B7A["Tier 0: interpreter<br/><i>verum_vbc::interpreter</i>"]
+        B7B["Tier 1: AOT<br/><i>VBC → LLVM → native</i>"]
+        B75["7.5 · final linking (AOT only)"]
+        B5 --> B6 --> B7
+        B7 --> B7A
+        B7 --> B7B
+        B7B --> B75
+    end
+
+    OUT[["Executable (Tier 1) / interpreted result (Tier 0)"]]
+
+    SRC --> FE
+    FE -- "TypedAST" --> BE
+    BE --> OUT
 ```
 
 ## Phase map
@@ -234,29 +243,42 @@ Static linking via **embedded LLD** — Verum ships its own linker.
 
 ## Parallelisation strategy
 
-```
-Phase 0  (stdlib)             once
-   │
-Phase 1  (parse)              per-file
-   │
-Phase 2  (meta registry)      sequential
-   │
-Phase 3  (expand)             sequential
-   │
-Phase 3a (contract verify)    per-obligation (SMT pool)
-   │
-Phase 4  (semantic + CBGR)    per-module
-   ├─ Phase 4a (autodiff)     per @differentiable
-   └─ Phase 4b (context / ffi / Send-Sync)  per-function
-   │
-Phase 5  (VBC codegen)        per-function
-   │
-Phase 6  (monomorphization)   per-specialisation
-   │
-Phase 7  (execute: interp     per-target
-          or AOT lowering)
-   │
-Phase 7.5 (link)              sequential (LTO needs whole-program)
+| Phase  | Work                         | Granularity                          |
+|--------|------------------------------|--------------------------------------|
+| 0      | stdlib                       | once per build                       |
+| 1      | parse                        | per-file                             |
+| 2      | meta registry                | sequential                           |
+| 3      | expand                       | sequential                           |
+| 3a     | contract verify              | per-obligation (SMT pool)            |
+| 4      | semantic + CBGR              | per-module                           |
+| 4a     | autodiff                     | per `@differentiable` function       |
+| 4b     | context / ffi / Send-Sync    | per-function                         |
+| 5      | VBC codegen                  | per-function                         |
+| 6      | monomorphization             | per-specialisation                   |
+| 7      | execute (interp or AOT)      | per-target                           |
+| 7.5    | link                         | sequential (LTO needs whole program) |
+
+```mermaid
+flowchart TD
+    P0["Phase 0 · stdlib<br/><i>once</i>"]
+    P1["Phase 1 · parse<br/><i>per-file</i>"]
+    P2["Phase 2 · meta registry<br/><i>sequential</i>"]
+    P3["Phase 3 · expand<br/><i>sequential</i>"]
+    P3A["Phase 3a · contract verify<br/><i>per-obligation, SMT pool</i>"]
+    P4["Phase 4 · semantic + CBGR<br/><i>per-module</i>"]
+    P4A["4a · autodiff"]
+    P4B["4b · context / ffi / Send-Sync"]
+    P5["Phase 5 · VBC codegen<br/><i>per-function</i>"]
+    P6["Phase 6 · monomorphization<br/><i>per-specialisation</i>"]
+    P7["Phase 7 · execute<br/><i>per-target</i>"]
+    P75["Phase 7.5 · link<br/><i>sequential, whole-program</i>"]
+
+    P0 --> P1 --> P2 --> P3 --> P3A --> P4
+    P4 --> P4A
+    P4 --> P4B
+    P4A --> P5
+    P4B --> P5
+    P5 --> P6 --> P7 --> P75
 ```
 
 ## Incremental compilation

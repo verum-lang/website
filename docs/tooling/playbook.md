@@ -42,28 +42,26 @@ runtime, and starts an empty session in the project root's module.
 
 ## Layout
 
-```
-┌─ Explorer ──┬────────────── Editor / Result ─────────────┐
-│ src/        │ fn search(xs: &Sorted, key: Int)            │
-│ ├ lib.vr    │                                             │
-│ ├ search.vr │ Result:                                     │
-│ └ tests/    │   Maybe.Some(42)                            │
-│             │   ─── CBGR: 3 checks, 2 promoted ──────     │
-│             │   ─── SMT:  2 obligations, 0.04 s ──────    │
-├─────────────┼─────────────────────────────────────────────┤
-│ Prompt:                                                  │
-│ > xs := [1, 2, 3, 42, 100]                               │
-│ > key := 42                                              │
-│ > search(&xs, key)                                       │
-└───────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph TOP["top row"]
+        direction LR
+        EXPL["<b>Explorer</b><br/><i>src/ · lib.vr · search.vr · tests/</i>"]
+        EDIT["<b>Editor / Result</b><br/><i>fn search(xs: &Sorted, key: Int)</i><br/>Result: Maybe.Some(42)<br/>CBGR: 3 checks · 2 promoted<br/>SMT: 2 obligations · 0.04 s"]
+    end
+    subgraph BOT["bottom row"]
+        PROMPT["<b>Prompt</b> — line-editing REPL<br/><code>&gt; xs := [1, 2, 3, 42, 100]</code><br/><code>&gt; key := 42</code><br/><code>&gt; search(&xs, key)</code>"]
+    end
+    TOP --> BOT
 ```
 
 Three panels, always visible:
 
-- **Explorer** — file tree on the left; select any file to view it.
-- **Editor / Result** — the top-right panel shows the current
-  function's source and the latest result.
-- **Prompt** — the bottom panel is a line-editing REPL.
+| Panel              | Role                                                                 |
+|--------------------|----------------------------------------------------------------------|
+| **Explorer**       | File tree on the left; select any file to view it.                   |
+| **Editor / Result** | Top-right panel shows the current function's source and last result. |
+| **Prompt**         | Bottom panel is a line-editing REPL.                                 |
 
 ## Navigation
 
@@ -191,23 +189,25 @@ Result: Result.Ok(())
 
 ## Verification in the TUI
 
-Put the cursor on a function and press `F10`:
+Put the cursor on a function and press `F10`. The verification panel shows:
 
-```
-┌─ Verification (search) ──────────────────────────────────┐
-│ Strategy: formal                                         │
-│                                                          │
-│   ✓ requires xs.is_sorted()          [ 18 ms | Z3 ]       │
-│   ✓ ensures  result.is_some() =>                         │
-│              xs[result.unwrap()] == key   [ 42 ms | Z3 ]  │
-│   ✗ ensures  result.is_none() =>                         │
-│              forall i in xs. xs[i] != key [timeout 500ms] │
-│                                                          │
-│  Total: 1 / 2 discharged, 1 timed out                    │
-│                                                          │
-│  [a] explain failure   [r] retry thorough   [e] edit     │
-└──────────────────────────────────────────────────────────┘
-```
+**Strategy:** `formal`
+
+| Obligation                                                       | Time       | Solver  | Result |
+|------------------------------------------------------------------|------------|---------|--------|
+| `requires xs.is_sorted()`                                        | 18 ms      | Z3      | pass   |
+| `ensures result.is_some() => xs[result.unwrap()] == key`         | 42 ms      | Z3      | pass   |
+| `ensures result.is_none() => forall i in xs. xs[i] != key`       | 500 ms     | —       | **timeout** |
+
+**Total:** 2 / 3 discharged, 1 timed out.
+
+**Actions:**
+
+| Key | Action                          |
+|-----|---------------------------------|
+| `a` | Explain failure (counter-example) |
+| `r` | Retry with `thorough` strategy  |
+| `e` | Edit the function in place      |
 
 Press `a` for the counter-example, `r` to race more solvers, `e` to
 edit the function without leaving Playbook.
@@ -222,21 +222,21 @@ stay in sync.
 
 ## Profiling
 
-Press `F9` to toggle the profiling panel:
+Press `F9` to toggle the profiling panel. Sample output for `search(&xs, key)`:
 
-```
-┌─ Profile ────────────────────────────────────────────────┐
-│ search(&xs, key)                                          │
-│   wall time   :   18 ns  (2 000 000 iters, σ 1.1 ns)      │
-│   allocations :   0                                      │
-│   SMT time    :   0 (cached)                              │
-│   CBGR checks :   0  (all promoted)                       │
-│                                                           │
-│ Most costly callees:                                      │
-│   List::binary_search_by    13 ns  (72%)                  │
-│   List::len                  1 ns  (6%)                   │
-└───────────────────────────────────────────────────────────┘
-```
+| Metric          | Value                                             |
+|-----------------|---------------------------------------------------|
+| wall time       | 18 ns  (2 000 000 iters, σ 1.1 ns)                |
+| allocations     | 0                                                 |
+| SMT time        | 0 (cached)                                        |
+| CBGR checks     | 0  (all promoted)                                 |
+
+**Most costly callees:**
+
+| Function                    | Time    | Share |
+|-----------------------------|---------|-------|
+| `List::binary_search_by`    | 13 ns   | 72%   |
+| `List::len`                 | 1 ns    | 6%    |
 
 ## Breakpoints and step-through
 

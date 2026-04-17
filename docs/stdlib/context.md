@@ -75,10 +75,12 @@ type Scope is
 
 ### Scope hierarchy rules
 
-```
-Singleton (longest-lived)
-    └── Request (per task)
-        └── Transient (per injection)
+```mermaid
+flowchart TD
+    S["<b>Singleton</b><br/><i>longest-lived · one per program</i>"]
+    R["<b>Request</b><br/><i>one per task tree</i>"]
+    T["<b>Transient</b><br/><i>new per injection site</i>"]
+    S --> R --> T
 ```
 
 A scope may only depend on scopes of equal or longer lifetime:
