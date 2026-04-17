@@ -204,6 +204,32 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Fixed — `.method()` doesn't fall through to a free fn
+
+`nums.map(|n| n * 2)` panicked at runtime with "method 'Map.resize'
+not found on value". Two compounding bugs:
+
+1. `compile_method_call`'s static-receiver branch treated bare-Path
+   receivers as type names *even when the segment was a local
+   variable*. A regression from the `Foo<T>.method(...)` static
+   dispatch unification — the local `nums` got lifted into a
+   would-be `nums.map` static lookup.
+2. The interpreter's `handle_call_method` resolved the resulting
+   bare `"map"` string by suffix-scanning the entire registered
+   function table, and `core/collections/map.vr`'s top-level
+   `pub fn map<K,V>(pairs)` happened to register before `List.map`.
+   The dispatcher picked it, ran into `Map.with_capacity` →
+   `self.resize(cap)`, and the private `Map.resize` is not in the
+   function table.
+
+Codegen now suppresses the static-receiver intercept for local
+variables; the dispatcher restricts unqualified-suffix matches to
+candidates that contain a `.` (i.e., methods, not free fns). After
+the fix L0 lexer + parser + types + builtin-syntax runs at
+**323/323 = 100%** (was 322/323). `closure_runtime.vr` —
+`xs.map(...)`, `.filter(...)`, `.fold(...)`, captured environments,
+nested closures, higher-order functions — passes end-to-end.
+
 ### Fixed — AOT `.await` on a direct async-fn call no longer SIGSEGVs
 
 `verum run --aot` (and the resulting `verum build` binary) crashed on
