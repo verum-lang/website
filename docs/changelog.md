@@ -174,11 +174,35 @@ Concrete effect:
 - `Map<Text, Int>.insert(built_key, 1)` → no crash
 - `JSON.parse("{\"a\":1}")` → `Ok` (was SIGBUS)
 
-Known-remaining: full JSON round-trip (parse → `stringify`) hits
-`Map.iter` which isn't wired up as a builtin method yet. Simple
-parses work; serialization of objects does not. Tracked as a
-discrete follow-up — it's shallower than the runtime-foundation
-fixes that precede it.
+### Fixed — `Map.iter()` + for-loop tuple destructuring + `to_text`
+
+- `map.iter()` / `set.iter()` at the interpreter level now return
+  the receiver unchanged. `IterNew` already recognises
+  `TypeId::MAP` / `TypeId::SET` and builds the right
+  `ITER_TYPE_MAP` iterator, so wrapping the map in a second iterator
+  object (the first attempt) only confused `IterNew` into treating
+  it as a list.
+- `IterNext` for `ITER_TYPE_MAP` now yields `(key, value)` 2-tuples
+  (heap-allocated `TypeId::TUPLE` objects) matching the shape the
+  codegen destructures for `for (k, v) in …`. The same change
+  applied to the method-level iterator dispatch `next` arm as a
+  defensive layer.
+- `is_custom_iterator_type` now recognises the stdlib iterator
+  wrappers (`MapIter`, `MapKeys`, `MapValues`, `SetIter`, `ListIter`,
+  …) as "builtin-like", so `for (k, v) in m.iter()` goes through the
+  `IterNew` / `IterNext` path rather than dispatching to the
+  uncompiled `MapIter.has_next` / `.next` stdlib methods.
+- `dispatch_primitive_method` now accepts `to_text` as an alias for
+  `to_string` — `Text` (not `String`) is Verum's native string type
+  and the stdlib uses `.to_text()` throughout (e.g. JSON's
+  `i.to_text()` for integer serialization).
+
+Known-working: `for (k, v) in m.iter() { … }` iterates every entry
+and destructures the tuple correctly; JSON stringify advances
+through the object-write path without runtime errors. Serialization
+still has a shallower bug (the integer value's bytes aren't being
+appended to the output buffer), but the infrastructure — iteration,
+method dispatch, primitive-to-text conversion — is in place.
 
 ## [0.32.0] — 2026-04-15 — phase D complete
 
