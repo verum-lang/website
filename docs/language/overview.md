@@ -20,16 +20,26 @@ If you want the machinery behind a feature, this is the place.
 Verum's concrete syntax stacks in six conceptual layers. Every layer
 is independent, and every layer adds a precise kind of meaning.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  6.  Proof DSL      theorem · lemma · tactic · calc · forall    │
-│  5.  Meta            meta fn · quote · @-macros · @cfg          │
-│  4.  Effects & Capabilities   using · with · throws · @verify    │
-│  3.  Memory           &T · &checked T · &unsafe T · CBGR        │
-│  2.  Types            refinement · dependent · protocol · HKT   │
-│  1.  Expressions      control flow · pattern match · closures   │
-│  0.  Lexical         literals · identifiers · 3 reserved kw     │
-└──────────────────────────────────────────────────────────────────┘
+| Layer | Name                        | Representative forms                                       |
+|-------|-----------------------------|------------------------------------------------------------|
+| **6** | Proof DSL                   | `theorem`, `lemma`, `tactic`, `calc`, `forall`, `exists`   |
+| **5** | Meta                        | `meta fn`, `quote { … }`, `@`-macros, `@cfg`, splices      |
+| **4** | Effects & Capabilities      | `using [...]`, `with [...]`, `throws`, `@verify`           |
+| **3** | Memory                      | `&T`, `&checked T`, `&unsafe T`, CBGR                      |
+| **2** | Types                       | refinement, dependent, protocol, HKT, generics             |
+| **1** | Expressions                 | control flow, pattern matching, closures, comprehensions   |
+| **0** | Lexical                     | literals, identifiers, operators, 3 reserved keywords      |
+
+```mermaid
+flowchart BT
+    L0["Layer 0 — Lexical<br/><i>literals · identifiers · 3 reserved kw</i>"]
+    L1["Layer 1 — Expressions<br/><i>control flow · pattern match · closures</i>"]
+    L2["Layer 2 — Types<br/><i>refinement · dependent · protocol · HKT</i>"]
+    L3["Layer 3 — Memory<br/><i>&T · &checked T · &unsafe T · CBGR</i>"]
+    L4["Layer 4 — Effects & Capabilities<br/><i>using · with · throws · @verify</i>"]
+    L5["Layer 5 — Meta<br/><i>meta fn · quote · @-macros · @cfg</i>"]
+    L6["Layer 6 — Proof DSL<br/><i>theorem · lemma · tactic · calc</i>"]
+    L0 --> L1 --> L2 --> L3 --> L4 --> L5 --> L6
 ```
 
 You can write Verum at any layer. Layer 0–1 alone gives you a clean

@@ -55,18 +55,16 @@ Ahead-of-time compilation through LLVM — the default for
 MLIR is not a tier. It is used **only for the GPU path**. CPU code
 lowers directly through LLVM:
 
-```
-VBC bytecode
-    │
-    ├── CPU path: VBC → LLVM IR → native x86_64 / aarch64
-    │   (pipeline.rs::run_native_compilation)
-    │   (verum_codegen::llvm::VbcToLlvmLowering)
-    │
-    └── GPU path: VBC → MLIR (verum.tensor → linalg → gpu → …)
-        → PTX / HSACO / SPIR-V / Metal
-        (pipeline.rs::run_mlir_aot)
-        (verum_codegen::mlir::VbcToMlirGpuLowering)
-        — triggered by @device(GPU) or a tensor-op threshold.
+```mermaid
+flowchart TD
+    VBC[["VBC bytecode"]]
+    CPU["CPU path<br/>VBC → LLVM IR → native x86_64 / aarch64"]
+    GPU["GPU path<br/>VBC → MLIR (verum.tensor → linalg → gpu → …)<br/>→ PTX / HSACO / SPIR-V / Metal"]
+    CPUIMPL[/"pipeline.rs::run_native_compilation<br/>verum_codegen::llvm::VbcToLlvmLowering"/]
+    GPUIMPL[/"pipeline.rs::run_mlir_aot<br/>verum_codegen::mlir::VbcToMlirGpuLowering<br/><b>trigger:</b> @device(GPU) or tensor-op threshold"/]
+
+    VBC --> CPU --> CPUIMPL
+    VBC --> GPU --> GPUIMPL
 ```
 
 See **[codegen](/docs/architecture/codegen)** for the MLIR dialect

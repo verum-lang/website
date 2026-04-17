@@ -33,27 +33,31 @@ revoked) and the access is rejected.
 
 ## What a reference looks like
 
-```
-┌──────────────┬────────────┬──────────────┐
-│   pointer    │ generation │ epoch / caps │
-│  (8 bytes)   │ (4 bytes)  │  (4 bytes)   │
-└──────────────┴────────────┴──────────────┘
-                       ThinRef<T> — 16 bytes
-```
+**`ThinRef<T>` — 16 bytes:**
+
+| Offset | Size  | Field           | Purpose                              |
+|-------:|------:|-----------------|--------------------------------------|
+|      0 | 8 B   | `pointer`       | object address                       |
+|      8 | 4 B   | `generation`    | issued-against counter               |
+|     12 | 4 B   | `epoch / caps`  | scope epoch + capability bit vector  |
 
 For unsized types, the layout is 32 bytes (`FatRef<T>`), adding either
 a length (for slices) or a vtable pointer (for `dyn`).
 
 ## What a header looks like
 
-```
-┌────────┬─────────┬─────────┬───────┬──────────────┬─────────┬───────┬──────────┐
-│  size  │  align  │   gen   │ epoch │ capabilities │ type_id │ flags │ reserved │
-│  (u32) │  (u32)  │  (u32)  │ (u16) │    (u16)     │  (u32)  │ (u32) │  (u64)   │
-└────────┴─────────┴─────────┴───────┴──────────────┴─────────┴───────┴──────────┘
-              AllocationHeader — 32 bytes, 32-byte (cache-line) aligned,
-              immediately before the object payload.
-```
+**`AllocationHeader` — 32 bytes, cache-line (32-byte) aligned, placed immediately before the object payload:**
+
+| Offset | Size  | Field           | Purpose                              |
+|-------:|------:|-----------------|--------------------------------------|
+|      0 | `u32` | `size`          | payload size in bytes                |
+|      4 | `u32` | `align`         | payload alignment                    |
+|      8 | `u32` | `generation`    | bumped on free/revoke                |
+|     12 | `u16` | `epoch`         | scope epoch                          |
+|     14 | `u16` | `capabilities`  | capability bits                      |
+|     16 | `u32` | `type_id`       | runtime type identifier              |
+|     20 | `u32` | `flags`         | mark/pin/frozen bits                 |
+|     24 | `u64` | `reserved`      | reserved for future use              |
 
 `generation` (u32) and `epoch` (u16) are laid out so they fit into a
 single 64-bit atomic load on the fast path; freeing an object

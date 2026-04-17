@@ -14,33 +14,24 @@ own numbering, not public compilation phases).
 
 ## Architecture
 
-```
-Obligation (AST)
-      │
-      ▼
-┌─────────────────────────────────────┐
-│ expr_to_smtlib  (AST → SMT-LIB)     │
-└─────────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────────┐
-│ refinement_reflection               │
-│   (inject @logic axioms)            │
-└─────────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────────┐
-│ capability_router                   │
-│   (classify theories → pick solver) │
-└─────────────────────────────────────┘
-      │
-      ├───────────────┬─────────────────┐
-      ▼               ▼                 ▼
-  z3_backend    cvc5_backend    portfolio_executor
-      │               │                 │
-      └───────────────┴─────────────────┘
-                      ▼
-              cache + telemetry
+```mermaid
+flowchart TD
+    IN[["Obligation (AST)"]]
+    ES["expr_to_smtlib<br/><i>AST → SMT-LIB</i>"]
+    RR["refinement_reflection<br/><i>inject @logic axioms</i>"]
+    CR["capability_router<br/><i>classify theories → pick solver</i>"]
+    Z3["z3_backend"]
+    CVC5["cvc5_backend"]
+    PF["portfolio_executor"]
+    CACHE[["cache + telemetry"]]
+
+    IN --> ES --> RR --> CR
+    CR --> Z3
+    CR --> CVC5
+    CR --> PF
+    Z3 --> CACHE
+    CVC5 --> CACHE
+    PF --> CACHE
 ```
 
 ## Translation

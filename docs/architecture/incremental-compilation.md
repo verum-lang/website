@@ -99,27 +99,24 @@ target/.verum-cache/
 
 ## Build flow
 
-```
-Phase 5 (VBC codegen)
-   │
-   For each function:
-   │   new_fp = compute_fingerprint(fn, deps, config)
-   │   if exists(target/.verum-cache/functions/<new_fp>.vbc):
-   │      reuse cached VBC, LLVM IR, and object file.
-   │   else:
-   │      compile and write artefacts to cache.
-   │
-   ▼
-Phase 6 (monomorphization)
-   │   dedupe specialisations against cached instantiations
-   │
-   ▼
-Phase 7 (execute: Tier 0 interp or Tier 1 AOT)
-   │   Tier 1 collects (cached + newly-compiled) .o files
-   │
-   ▼
-Phase 7.5 (link, AOT only)
-   │   link final binary with LTO.
+```mermaid
+flowchart TD
+    P5["Phase 5 · VBC codegen"]
+    LOOP{{"for each function"}}
+    FP["new_fp = compute_fingerprint<br/>(fn, deps, config)"]
+    HIT{{"cache hit?"}}
+    REUSE["reuse cached VBC + LLVM IR + .o"]
+    BUILD["compile & write artefacts to cache"]
+    P6["Phase 6 · monomorphization<br/><i>dedupe against cached instantiations</i>"]
+    P7["Phase 7 · execute<br/><i>Tier 0 interp · Tier 1 collects .o files</i>"]
+    P75["Phase 7.5 · link (AOT only)<br/><i>final binary with LTO</i>"]
+
+    P5 --> LOOP --> FP --> HIT
+    HIT -- "yes" --> REUSE
+    HIT -- "no" --> BUILD
+    REUSE --> P6
+    BUILD --> P6
+    P6 --> P7 --> P75
 ```
 
 ### Cache invalidation triggers

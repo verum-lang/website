@@ -11,12 +11,16 @@ description: Fan-out, fan-in, bounded channels, retry, graceful shutdown.
 
 We'll build `ingest` — a typical streaming ETL pipeline:
 
-```
-       ┌────────┐     ┌────────┐     ┌────────┐
-stdin  │ Parser ├────▶│Validator├────▶│ Writer ├─▶ output
-       └────────┘     └────────┘     └────────┘
-              ▲                           │
-              └── backpressure ◄──────────┘
+```mermaid
+flowchart LR
+    stdin([stdin])
+    Parser[Parser]
+    Validator[Validator]
+    Writer[Writer]
+    output([output])
+
+    stdin --> Parser --> Validator --> Writer --> output
+    Writer -. "backpressure" .-> Parser
 ```
 
 Each stage is a task. Channels connect them. The consumer's rate

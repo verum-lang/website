@@ -33,49 +33,43 @@ Depending on why you're here:
 
 ## The big picture
 
-```
-Source (.vr)
-  │
-  ▼
-┌──────────────────────────────────────────────────────────┐
-│ Layer 0 — Foundation                                     │
-│   verum_common, verum_error                              │
-└──────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌──────────────────────────────────────────────────────────┐
-│ Layer 1 — Parsing                                        │
-│   verum_lexer (logos) → verum_fast_parser                │
-│   verum_ast · verum_syntax (lossless tree)               │
-└──────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌──────────────────────────────────────────────────────────┐
-│ Layer 2 — Type system + verification                     │
-│   verum_types  (infer, unify, refinement, cubical)       │
-│   verum_cbgr   (11-module reference-analysis suite)      │
-│   verum_smt    (Z3 + CVC5, capability router)            │
-│   verum_verification (VCGen, Hoare, tactics)             │
-│   verum_modules (resolver, coherence, parallel loader)   │
-└──────────────────────────────────────────────────────────┘
-  │ TypedAST
-  ▼
-┌──────────────────────────────────────────────────────────┐
-│ Layer 3 — Execution (VBC-first)                          │
-│   verum_vbc      (bytecode, interpreter, codegen)        │
-│   verum_codegen  (LLVM for CPU, MLIR for GPU)            │
-└──────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌──────────────────────────────────────────────────────────┐
-│ Layer 4 — Orchestration & tools                          │
-│   verum_compiler (pipeline, derives, hygiene)            │
-│   verum_toolchain · verum_cli · verum_lsp · verum_dap   │
-│   verum_interactive (REPL + Playbook TUI)                │
-└──────────────────────────────────────────────────────────┘
-  │
-  ▼
-Executable / interpreted result
+```mermaid
+flowchart TD
+    SRC[["Source (.vr)"]]
+
+    subgraph L0["Layer 0 — Foundation"]
+        L0A[verum_common · verum_error]
+    end
+
+    subgraph L1["Layer 1 — Parsing"]
+        L1A["verum_lexer (logos) → verum_fast_parser"]
+        L1B["verum_ast · verum_syntax<br/>lossless red-green tree"]
+    end
+
+    subgraph L2["Layer 2 — Type system + verification"]
+        L2A["verum_types<br/>infer · unify · refinement · cubical"]
+        L2B["verum_cbgr<br/>11-module reference-analysis suite"]
+        L2C["verum_smt<br/>Z3 + CVC5 capability router"]
+        L2D["verum_verification<br/>VCGen · Hoare · tactics"]
+        L2E["verum_modules<br/>resolver · coherence · parallel loader"]
+    end
+
+    subgraph L3["Layer 3 — Execution (VBC-first)"]
+        L3A["verum_vbc<br/>bytecode · interpreter · codegen"]
+        L3B["verum_codegen<br/>LLVM (CPU) · MLIR (GPU)"]
+    end
+
+    subgraph L4["Layer 4 — Orchestration & tools"]
+        L4A["verum_compiler<br/>pipeline · derives · hygiene"]
+        L4B["verum_toolchain · verum_cli · verum_lsp · verum_dap"]
+        L4C["verum_interactive<br/>REPL + Playbook TUI"]
+    end
+
+    OUT[["Executable / interpreted result"]]
+
+    SRC --> L0 --> L1 --> L2
+    L2 -- "TypedAST" --> L3
+    L3 --> L4 --> OUT
 ```
 
 ## Key crates at a glance
@@ -102,18 +96,23 @@ LOC and key files.
 
 ## Pipeline summary
 
-```
-0  stdlib  →  1 parse  →  2 meta registry  →  3 expand
-                                              ↓
-          3a contracts (SMT)  ←───────────────┘
-                  ↓
-          4 semantic + CBGR  →  4a autodiff  →  4b context
-                  ↓
-          5 VBC codegen  →  6 monomorphization
-                  ↓
-          7 execute (Tier 0 interp  ·  Tier 1 AOT)
-                  ↓
-          7.5 link (AOT only)
+```mermaid
+flowchart TD
+    P0["0 · stdlib"]
+    P1["1 · parse"]
+    P2["2 · meta registry"]
+    P3["3 · expand"]
+    P3A["3a · contracts (SMT)"]
+    P4["4 · semantic + CBGR"]
+    P4A["4a · autodiff"]
+    P4B["4b · context"]
+    P5["5 · VBC codegen"]
+    P6["6 · monomorphization"]
+    P7["7 · execute<br/>Tier 0 interp · Tier 1 AOT"]
+    P75["7.5 · link (AOT only)"]
+
+    P0 --> P1 --> P2 --> P3 --> P3A --> P4
+    P4 --> P4A --> P4B --> P5 --> P6 --> P7 --> P75
 ```
 
 MIR is **not** in the main pipeline — it exists only to serve the SMT
@@ -220,48 +219,42 @@ without opening the body. The type system refuses to hide them.
 
 ## Data flow across layers
 
-```
-.vr source
-   │
-   │  lex + parse (Layer 1)
-   ▼
-Red-green tree (lossless syntax) ─────┐
-   │                                  │
-   │  AST extraction                  │ preserved for LSP,
-   ▼                                  │ rename, format, and
-Abstract syntax tree ─┐               │ structured edits
-   │                  │               │
-   │  resolve +       │               │
-   │  modules         │               │
-   ▼                  │               │
-Name-resolved AST ────┼───────────────┘
-   │                  │
-   │  type inference  │
-   ▼                  │
-TypedAST ─────────────┼── CBGR analysis
-   │                  │   (parallel with typecheck)
-   │  refinement +    │
-   │  SMT discharge   │
-   ▼                  │
-VerifiedAST           │
-   │                  │
-   │  macro expansion │
-   │  + hygiene       │
-   ▼                  │
-Expanded AST ─────────┼── monomorphisation
-   │                  │   (parallel)
-   │  VBC lowering    │
-   ▼                  │
-VBC modules ──────────┼── Tier 0: interpret directly
-   │                  │   Tier 1: LLVM IR → native
-   │                  │
-   ▼                  │
-Executable / .cog archive
+```mermaid
+flowchart TD
+    SRC[".vr source"]
+    RG["Red-green tree<br/>lossless syntax"]
+    AST["Abstract syntax tree"]
+    NR["Name-resolved AST"]
+    TA[TypedAST]
+    VA[VerifiedAST]
+    EA["Expanded AST"]
+    VBC["VBC modules"]
+    OUT["Executable / .cog archive"]
+    LSP[["LSP · rename · format ·<br/>structured edits"]]
+    CBGR[["CBGR analysis<br/>(parallel)"]]
+    MONO[["monomorphisation<br/>(parallel)"]]
+    T0[["Tier 0: interpret"]]
+    T1[["Tier 1: LLVM IR → native"]]
+
+    SRC -- "lex + parse (L1)" --> RG
+    RG -- "AST extraction" --> AST
+    RG -.-> LSP
+    AST -- "resolve + modules" --> NR
+    NR -- "type inference" --> TA
+    TA -.-> CBGR
+    TA -- "refinement + SMT" --> VA
+    VA -- "macro expansion<br/>+ hygiene" --> EA
+    EA -.-> MONO
+    EA -- "VBC lowering" --> VBC
+    VBC --> T0
+    VBC --> T1
+    T0 --> OUT
+    T1 --> OUT
 ```
 
 Each arrow is a compiler phase implemented in the corresponding
-crate. The arrows on the right are **parallel passes** that feed
-into the main lowering.
+crate. The dashed arrows are **parallel passes** that feed into the
+main lowering.
 
 ## Key design decisions (and why)
 

@@ -141,10 +141,13 @@ async fn call_breaker(b: &CircuitBreaker, url: &Url)
 
 State machine:
 
-```
-Closed  ─ N failures ─→ Open ─ cooldown ─→ HalfOpen ─ success ─→ Closed
-                                            │
-                                            └─ failure ─→ Open
+```mermaid
+stateDiagram-v2
+    [*] --> Closed
+    Closed --> Open: N failures
+    Open --> HalfOpen: cooldown elapsed
+    HalfOpen --> Closed: success
+    HalfOpen --> Open: failure
 ```
 
 - **Closed**: calls flow; failures increment a counter.

@@ -28,53 +28,29 @@ for the solver-selection policy, see **[SMT routing](/docs/verification/smt-rout
 The internal numbering (5.1–5.7) below is the subsystem's own
 internal stages — the solver work, not the public pipeline phases.
 
-```
-Verified HIR (from Phase 4)
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.1  Obligation         │  refinement types, ensures/requires,
-│      collection         │  loop invariants, CBGR elimination hints
-└─────────────────────────┘
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.2  SMT encoding       │  verum_smt::expr_to_smtlib
-│                         │  + @logic axiom injection
-└─────────────────────────┘
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.3  Capability router  │  theory classification →
-│                         │  Z3 / CVC5 / portfolio
-└─────────────────────────┘
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.4  Executor           │  synchronous / portfolio / cross-validate
-│                         │  with per-obligation timeout
-└─────────────────────────┘
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.5  Proof extraction   │  solver log → Verum proof term
-│      & certification    │  (machine-checked if @verify(certified))
-└─────────────────────────┘
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.6  Caching            │  SMT-LIB fingerprint → result
-│                         │  target/smt-cache/
-└─────────────────────────┘
-    │
-    ▼
-┌─────────────────────────┐
-│ 5.7  Bounds elimination │  inform Phase 6 of provably-safe
-│      & CBGR hints       │  array accesses, reference tiers
-└─────────────────────────┘
-    │
-    ▼
-Annotated HIR + proof certificates
+| Sub-phase | Stage                         | Summary                                                                     |
+|-----------|-------------------------------|-----------------------------------------------------------------------------|
+| **5.1**   | Obligation collection         | refinement types, `requires` / `ensures`, loop invariants, CBGR hints       |
+| **5.2**   | SMT encoding                  | `verum_smt::expr_to_smtlib` + `@logic` axiom injection                      |
+| **5.3**   | Capability router             | theory classification → Z3 / CVC5 / portfolio                               |
+| **5.4**   | Executor                      | synchronous / portfolio / cross-validate, per-obligation timeout            |
+| **5.5**   | Proof extraction & certify    | solver log → Verum proof term (machine-checked if `@verify(certified)`)     |
+| **5.6**   | Caching                       | SMT-LIB fingerprint → result, `target/smt-cache/`                           |
+| **5.7**   | Bounds elim. & CBGR hints     | inform Phase 6 about provably-safe array accesses and reference tiers       |
+
+```mermaid
+flowchart TD
+    IN[["Verified HIR<br/>(from Phase 4)"]]
+    S1["5.1 · Obligation collection<br/><i>refinements, ensures/requires,<br/>loop invariants, CBGR hints</i>"]
+    S2["5.2 · SMT encoding<br/><i>expr_to_smtlib + @logic axioms</i>"]
+    S3["5.3 · Capability router<br/><i>theory classification →<br/>Z3 / CVC5 / portfolio</i>"]
+    S4["5.4 · Executor<br/><i>synchronous · portfolio ·<br/>cross-validate · timeout</i>"]
+    S5["5.5 · Proof extraction & certify<br/><i>solver log → Verum proof term</i>"]
+    S6["5.6 · Caching<br/><i>SMT-LIB fingerprint → result</i>"]
+    S7["5.7 · Bounds elimination & CBGR hints<br/><i>safe array accesses · tiers</i>"]
+    OUT[["Annotated HIR + proof certificates"]]
+
+    IN --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> OUT
 ```
 
 ## 5.1 — Obligation collection
