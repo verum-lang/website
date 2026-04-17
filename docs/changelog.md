@@ -89,21 +89,54 @@ as historical record. The first public version is **0.1.0**.
   `.slice()` / `.get()` / `.is_empty()` dispatch can route
   correctly.
 
+### Fixed — stdlib parsing and Text layout
+
+- `Text.parse_int` / `Text.parse_float` route through the pure-Verum
+  `parse_int_radix(10)` path instead of the legacy `text_parse_int` /
+  `text_parse_float` intrinsics, whose runtime declarations returned
+  `Maybe<T>` while the stdlib wrappers were typed as
+  `Result<T, ParseError>`. Because `Maybe::Some(n)` has tag 1 and
+  `Result::Err(e)` also has tag 1, every successful parse was read
+  back as `Err(n)` — `"42".parse_int()` returned `Err`. The new
+  implementation parses bytes directly with explicit error messages
+  (`empty string`, `no digits`, `invalid character`, `digit out of
+  range`, `trailing characters`, `missing exponent digits`).
+- `Text` values have two coexisting runtime layouts under the same
+  `TypeId::TEXT`:
+  * static / intrinsic-built heap strings: `[header][len:u64][bytes…]`
+  * stdlib builder `Text {ptr, len, cap}`: three NaN-boxed `Value`
+    fields produced by `Text.new()` + `push_byte`.
+  Both the `Len` opcode handler and the `TextExtended::AsBytes`
+  lowering were decoding only the first case. For a fresh
+  `Text.new()`, `.len()` read the null-pointer bit pattern as a u64
+  and reported `9221120237041090560`; `.as_bytes()` produced a
+  FatRef into random memory. Both now disambiguate by object size +
+  field tags and report correct values for builder Text.
+
 ### Impact
 
 Pure-Verum byte-level stdlib code (JSON, base64, URL, UUID, hex
-decoders; regex engines; TLS framing; binary protocols) is now able
-to traverse bytes end-to-end in the VBC interpreter and AOT builds.
-Prior to these fixes every such module typechecked cleanly but
-crashed or silently corrupted data at run time; the VCS
-`typecheck-pass` suites did not surface it because they never
-executed the code. Slice subslicing now produces correct byte-range
-views (e.g. `"hello".as_bytes().slice(1, 4)` yields a 3-byte slice
-pointing at `"ell"`). Further stdlib runtime issues continue to be
-found incrementally now that execution reaches them; in particular,
-individual stdlib methods (`Text.parse_int`, JSON object parsing)
-still have their own bugs that were previously masked by the
-foundation being broken.
+decoders; regex engines; TLS framing; binary protocols) can now
+parse numeric tokens and traverse bytes end-to-end in the VBC
+interpreter and AOT builds. Prior to these fixes every such module
+typechecked cleanly but crashed or silently corrupted data at run
+time; the VCS `typecheck-pass` suites did not surface it because
+they never executed the code.
+
+Concrete known-working cases:
+
+- `"42".parse_int()` → `Ok(42)`, `"-7".parse_int()` → `Ok(-7)`,
+  `"abc".parse_int()` → `Err("digit out of range")`.
+- `"hello".as_bytes().slice(1, 4)` → 3-byte slice at `"ell"`.
+- `JSON.parse("42")`, `JSON.parse("true")`, `JSON.parse("\"hi\"")`,
+  `JSON.parse("[1, 2, 3]")`, `JSON.parse("{}")` all return `Ok`.
+
+Known-remaining: `Text.new()` + `push_byte` cannot currently round-
+trip because `ptr_write` writes 8-byte NaN-boxed `Value`s regardless
+of element type, so building a `Text` one byte at a time corrupts
+adjacent memory. This blocks JSON object parsing with non-empty
+content (`{"a": 1}` still crashes inside `parse_string_raw`) until
+typed pointer writes land. Tracked separately.
 
 ## [0.32.0] — 2026-04-15 — phase D complete
 
