@@ -1,355 +1,448 @@
 ---
 sidebar_position: 3
 title: runtime
-description: Runtime flavours, supervision, ExecutionEnv (θ+), benchmarks.
+description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 ---
 
-# `core::runtime` — Runtime configuration & supervision
+# `core.runtime`
 
-The runtime is configurable per-project — full multi-threaded async on
-servers, single-thread on WASM, no-heap on embedded. This module
-exposes the configuration types, supervision primitives, the unified
-`ExecutionEnv` (θ+), and benchmark harness.
+The runtime module is the single place where the language meets the
+operating system. Everything with a `sys.*` call underneath —
+scheduling, futures, threads, timers, memory arenas, TLS, retry
+loops — lives here. The same module ships in five profiles
+(`full`, `single_thread`, `no_async`, `no_heap`, `embedded`); each
+profile swaps in a compatible implementation of the interfaces
+below. See [runtime tiers → profiles](/docs/architecture/runtime-tiers#axis-3--runtime-profiles)
+for when to pick which profile.
 
-| File | What's in it |
-|---|---|
-| `mod.vr` | orchestration + re-exports + `init`, `shutdown`, `current_env`, `Runtime` static accessors, `Bencher`, `benchmark` |
-| `config.vr` | `RuntimeConfig` protocol, `InitError`, per-flavour configs |
-| `env.vr` | `ExecutionEnv`, `MemoryContext`, `CapabilityContext`, `RecoveryContext`, `ConcurrencyContext` |
-| `recovery.vr` | `RecoveryStrategy`, retry, circuit breaker |
-| `supervisor.vr` | `Supervisor`, `ChildSpec`, `SupervisionStrategy`, `RestartPolicy` |
-| `spawn.vr` | `SpawnConfig`, `SpawnConfigBuilder`, `Priority` |
-| `pool.vr` | `ThreadPool`, `ThreadPoolConfig` |
-| `ctx_bridge.vr` | runtime ↔ context-system interop |
-| `task_queue.vr` | work-stealing deque (internal) |
-| `stack_alloc.vr` | stack allocator for `runtime = "embedded"` |
+Everything documented here matches the `.vr` sources in
+`core/runtime/`. Items marked *(protocol)* are typed interfaces that
+multiple profiles implement; items marked *(record)* are concrete
+types.
 
----
+## Module map
 
-## Runtime flavours
+| Submodule         | Contents                                                          |
+|-------------------|-------------------------------------------------------------------|
+| `runtime.env`     | **`ExecutionEnv` (θ+)** — memory / capabilities / recovery / concurrency. |
+| `runtime.config`  | `RuntimeConfig` protocol and profile-specific implementations.    |
+| `runtime.supervisor` | Supervision tree — `Supervisor`, `SupervisorHandle`, `ChildSpec`, restart strategies. |
+| `runtime.recovery` | Retry policies, circuit breakers, backoff and jitter.             |
+| `runtime.pool`    | Thread-pool primitive (`ThreadPool`, `TaskHandle`).                |
+| `runtime.thread`  | OS threads (`Thread`, `ThreadBuilder`, `JoinHandle<T>`, stack traces). |
+| `runtime.time`    | Monotonic / wall clocks, `sleep`, `Instant`, `Duration`.            |
+| `runtime.tls`     | Thread-local storage primitive.                                    |
+| `runtime.stack_alloc` | Stack-only allocator for `no_heap`.                            |
+| `runtime.syscall` | Platform `sys.*` intrinsic imports.                                |
+| `runtime.sync`    | Synchronisation wiring (re-exports from `core.sync`).              |
+| `runtime.cbgr`    | CBGR-runtime glue: generation / epoch trackers.                    |
+| `runtime.ctx_bridge` | Bridges between slot-based context access and the language's `using [...]` clause. |
+| `runtime.async_ops` | Implementation of `await` / `select` at the op-code level.       |
+| `runtime.spawn`   | Low-level `spawn` primitive (the language's `spawn` compiles to this). |
 
-Selected via `Verum.toml`:
+## Execution environment — `runtime.env`
 
-```toml
-[runtime]
-kind = "full"                # full | single_thread | no_async | embedded | no_runtime
-worker_threads = 8           # default: num_cpus()
-stack_size = 2_097_152       # 2 MiB
-io_engine = "io_uring"       # io_uring | kqueue | iocp | none
-```
+The centrepiece. `ExecutionEnv` (θ+) is a 2,560-byte structure
+holding the four pillars of execution state. Full layout, fork
+rules, and hot-path costs are documented in
+**[architecture → execution environment](/docs/architecture/execution-environment)**.
 
-| Flavour | Threads | Async | Heap | Typical target |
-|---|---|---|---|---|
-| `full` | work-stealing pool | yes | yes | servers, desktop apps |
-| `single_thread` | 1 | yes | yes | WASM, GUI main thread |
-| `no_async` | 1 or pool | async compiled to sync | yes | CLI tools, scripts |
-| `embedded` | 1 | limited | stack-only | microcontrollers |
-| `no_runtime` | 1 | stubs | no | kernel, bootloaders |
-
-Each flavour implements the `RuntimeConfig` protocol; the compiler
-picks the right one at build time.
-
----
-
-## Initialisation
+The user-facing API is deliberately small — most Verum code never
+touches `runtime.env` directly, because the language's `&T`,
+`using [...]`, `provide`, `defer`, and `spawn` constructs read and
+write it implicitly.
 
 ```verum
-init() -> Result<(), InitError>                 // install default runtime
-init_with<R: RuntimeConfig>() -> Result<(), InitError>
-shutdown()
-is_initialized() -> Bool
+/// Get the current task's environment (usually you don't need this).
+public fn current_env() -> Maybe<&ExecutionEnv>;
+
+/// Run a closure inside a freshly forked environment.
+public fn with_forked_env<T, F: fn() -> T>(f: F) -> T;
+
+/// CBGR safety tier (four variants, see architecture docs).
+public type ExecutionTier is
+    | Tier0_Full       // full CBGR: ~15 ns per deref
+    | Tier1_Epoch      // gen + epoch: ~8 ns
+    | Tier2_Gen        // gen only: ~3 ns
+    | Tier3_Unchecked; // no checks: 0 ns (unsafe)
 ```
 
-Called once per process (typically in `main`). `spawn` / `block_on`
-implicitly call `init()` if no runtime is registered.
+## Runtime configuration — `runtime.config`
 
 ```verum
-fn main() using [IO] {
-    init().expect("runtime");
-    block_on(async_main());
-    shutdown();
+public type RuntimeConfig is protocol {
+    fn worker_threads(&self) -> Int;
+    fn max_blocking_threads(&self) -> Int;
+    fn thread_stack_size(&self) -> Int;
+    fn enable_io(&self) -> Bool;
+    fn enable_time(&self) -> Bool;
+    fn cbgr_tier(&self) -> ExecutionTier;
+};
+```
+
+The canonical implementation for the `full` profile is
+`DefaultRuntimeConfig`, which reads from the `[runtime]` section of
+`Verum.toml` and falls back to sensible defaults (`worker_threads =
+num_cpus`, `max_blocking_threads = 512`, `stack_size = 2 MiB`,
+`cbgr_tier = Tier0_Full`).
+
+## Starting a runtime — `Runtime`
+
+`core.async.executor.Runtime` is the top-level handle returned by
+`RuntimeBuilder`. One is created in `fn main()` (implicitly by the
+language runtime) or explicitly by `Runtime.new()` in tests.
+
+```verum
+public type Runtime is { /* private */ };
+
+implement Runtime {
+    public fn builder() -> RuntimeBuilder;
+    public fn new() -> Runtime;                        // default config
+    public fn spawn<F: Future>(&self, f: F) -> JoinHandle<F.Output>;
+    public fn block_on<F: Future>(&self, f: F) -> F.Output;
+    public fn shutdown(self, timeout: Duration) -> Result<(), ShutdownError>;
+}
+
+/// Enter the async world from a synchronous function.
+public fn block_on<F: Future>(future: F) -> F.Output;
+```
+
+`RuntimeBuilder` is the fluent configuration surface:
+
+```verum
+public type RuntimeBuilder is { /* private */ };
+
+implement RuntimeBuilder {
+    public fn new() -> Self;
+    public fn worker_threads(self, n: Int) -> Self;
+    public fn thread_stack_size(self, bytes: Int) -> Self;
+    public fn enable_io(self, on: Bool) -> Self;
+    public fn enable_time(self, on: Bool) -> Self;
+    public fn thread_name(self, prefix: Text) -> Self;
+    public fn max_blocking_threads(self, n: Int) -> Self;
+    public fn build(self) -> Result<Runtime, BuildError>;
 }
 ```
 
-### `InitError`
+## Supervision — `runtime.supervisor`
+
+Erlang/OTP-style supervision over async tasks. A supervisor owns a
+set of children; each child has a `ChildSpec` that declares how the
+supervisor reacts when the child fails.
+
+### Key types
 
 ```verum
-type InitError is
-    | AlreadyInitialized
-    | InvalidConfig(Text)
-    | ResourceExhausted
-    | PlatformUnsupported(Text);
-```
+public type SupervisorId is (UInt64);
+public type ChildId      is (UInt64);
 
----
+public type SupervisionStrategy is
+    | OneForOne          // restart only the failing child
+    | OneForAll          // restart every child on any failure
+    | RestForOne         // restart the failing child and its successors
+    | SimpleOneForOne;   // all children share a spec; restart the failed one
 
-## `ExecutionEnv` (θ+)
+public type RestartStrategy is
+    | Permanent          // always restart
+    | Transient          // restart on abnormal exit only
+    | Temporary;         // never restart
 
-The unified per-task context: **memory** + **capabilities** +
-**recovery** + **concurrency**.
+public type FailureReason is
+    | Panic(Text)
+    | Exception(Text)
+    | Exit(Int)
+    | Killed
+    | Other(Text);
 
-```verum
-type ExecutionEnv is {
-    memory:       MemoryContext,
-    capabilities: CapabilityContext,
-    recovery:     RecoveryContext,
-    concurrency:  ConcurrencyContext,
+public type ChildStatus is
+    | Starting | Running | Restarting | Stopping | Stopped | Failed(FailureReason);
+
+public type RestartIntensity is {
+    max_restarts: Int,        // max restarts allowed…
+    period_ms:    Int,        // …within this window
 };
 
-type MemoryContext is {
-    allocator: &dyn Allocator,
-    tier:      ExecutionTier,
-    gen:       UInt32,
-    epoch:     UInt32,
+public type ChildSpec is {
+    id:                  Text,
+    start:               Heap<fn() -> TaskHandle>,    // async factory
+    restart:             RestartStrategy,
+    shutdown:            ShutdownStrategy,
+    ty:                  ChildType,                   // Worker | Supervisor
+    significant:         Bool,                        // escalate if it dies?
+    modules:             List<Text>,                  // for hot-code reload
 };
 
-type CapabilityContext is {
-    static_deps: Map<TypeId, *mut Byte>,       // zero-overhead @injectable
-    dynamic_stack: Vec<DynamicFrame>,          // provide/using stack
+public type ShutdownStrategy is
+    | BrutalKill                          // SIGKILL equivalent
+    | Timeout(Duration)                   // graceful, then force
+    | Infinity;                           // wait forever
+```
+
+### Creating a supervisor
+
+```verum
+public type SupervisorConfig is {
+    strategy:            SupervisionStrategy,
+    intensity:           RestartIntensity,
+    auto_shutdown:       AutoShutdownStrategy,
+    name:                Maybe<Text>,
+    escalation:          EscalationPolicy,
 };
 
-type RecoveryContext is {
-    policy: RecoveryStrategy,
-    retries_remaining: Int,
-    circuit: Maybe<CircuitBreaker>,
-};
+public type SupervisorHandle is { /* private */ };
 
-type ConcurrencyContext is {
-    executor: &Executor,
-    io_driver: &IODriver,
-    task_id: TaskId,
-};
-
-type ExecutionTier is Interpreter | Aot;
+implement SupervisorHandle {
+    public async fn start(cfg: SupervisorConfig, children: List<ChildSpec>)
+        -> Result<SupervisorHandle, SupervisorError>;
+    public async fn start_child(&self, spec: ChildSpec)
+        -> Result<ChildId, SupervisorError>;
+    public async fn terminate_child(&self, id: ChildId)
+        -> Result<(), SupervisorError>;
+    public async fn restart_child(&self, id: ChildId)
+        -> Result<ChildId, SupervisorError>;
+    public async fn which_children(&self)
+        -> List<(ChildId, ChildStatus)>;
+    public async fn count_children(&self)
+        -> SupervisorStatus;
+    public async fn shutdown(&self, strategy: ShutdownStrategy)
+        -> Result<(), SupervisorError>;
+}
 ```
 
-### Accessors
+### Built-in shortcuts
 
 ```verum
-current_env() -> &ExecutionEnv
-current_env_mut() -> &mut ExecutionEnv
+public fn root_supervisor() -> &SupervisorHandle;
+
+public async fn spawn_supervised<F, T>(future: F) -> Result<ChildId, SupervisorError>
+    where F: Future<Output = T> + Send + 'static, T: Send + 'static;
+
+public async fn spawn_permanent<F, T>(future: F, name: Text) -> Result<ChildId, SupervisorError>;
+public async fn spawn_temporary<F, T>(future: F, name: Text) -> Result<ChildId, SupervisorError>;
 ```
 
-`spawn` snapshots `current_env()` at spawn time and re-installs it in
-the child task.
+### Escalation
 
----
-
-## Supervision trees
+When a supervisor exceeds `RestartIntensity`, it escalates to its
+parent supervisor according to `EscalationPolicy`:
 
 ```verum
-type Supervisor is { ... };
-type SupervisorId is { id: UInt64 };
+public type EscalationPolicy is
+    | ShutdownSelf           // supervisor dies; parent decides what to do
+    | NotifyParent           // send a message; parent decides
+    | CustomHandler(fn(EscalationReason) -> EscalationAction);
 
-type SupervisionStrategy is
-    | OneForOne                // restart failed child only
-    | OneForAll                // restart all children on any failure
-    | RestForOne               // restart failed + all started after it
-    | SimpleOneForOne;         // dynamic children, restart individually
-
-type RestartPolicy is
-    | Permanent                // always restart
-    | Transient                // restart only on abnormal exit
-    | Temporary;               // never restart
-
-type IsolationLevel is Shared | SendOnly | Full;
-
-type ChildSpec is {
-    name: Text,
-    task: fn() -> Future<()>,
-    restart: RestartPolicy,
-    isolation: IsolationLevel,
-    max_restarts: Int,
-    within: Duration,            // restart window
-};
+public type EscalationReason is
+    | IntensityExceeded { restarts: Int, window_ms: Int }
+    | SignificantChildDied(ChildId)
+    | ChildStartupFailed(ChildId, FailureReason)
+    | ManualEscalation(Text);
 ```
 
-### Supervisor API
+## Recovery — `runtime.recovery`
+
+Retry loops, circuit breakers, backoff and jitter. Available on
+every profile (including `no_async` — the synchronous form uses the
+same types).
+
+### Retry
 
 ```verum
-Supervisor.new(SupervisionStrategy) -> Supervisor
-
-sup.spawn(ChildSpec)
-sup.terminate_child(&name)
-sup.restart_child(&name)
-sup.which_children() -> List<ChildSpec>
-sup.count_children() -> SupervisorCount
-
-sup.run().await                   // run until all children terminate
-sup.shutdown(duration).await      // graceful shutdown
-```
-
-### Example
-
-```verum
-let sup = Supervisor.new(SupervisionStrategy.OneForOne);
-
-sup.spawn(ChildSpec {
-    name: "ingestion",
-    task: || ingestion_loop(),
-    restart: RestartPolicy.Permanent,
-    isolation: IsolationLevel.SendOnly,
-    max_restarts: 5,
-    within: 60.seconds(),
-});
-
-sup.spawn(ChildSpec {
-    name: "health-check",
-    task: || health_loop(),
-    restart: RestartPolicy.Transient,
-    isolation: IsolationLevel.SendOnly,
-    max_restarts: 10,
-    within: 60.seconds(),
-});
-
-sup.run().await
-```
-
----
-
-## Recovery strategies
-
-(Detailed API in [`async`](/docs/stdlib/async#retry-and-circuit-breaker).)
-
-```verum
-type RecoveryStrategy is
-    | None
-    | Retry(RetryConfig)
-    | CircuitBreaker(CircuitBreakerConfig)
-    | Fallback(fn() -> T)
-    | Supervised;
-
-type BackoffStrategy is
+public type BackoffStrategy is
     | Fixed(Duration)
-    | Linear(Duration, Duration)
-    | Exponential { initial: Duration, max: Duration, factor: Float, jitter: Bool };
-```
+    | Linear { base: Duration, step: Duration, max: Duration }
+    | Exponential { base: Duration, max: Duration, factor: Int }
+    | Fibonacci   { base: Duration, max: Duration };
 
----
+public type JitterConfig is
+    | None
+    | Full(Float)            // 0..1 — fraction of full jitter
+    | Equal(Float);          // equal jitter (AWS model)
 
-## Spawn configuration
+public type RetryPredicate is fn(&Error) -> Bool;
 
-```verum
-type SpawnConfig is { ... };
-type Priority is Low | Normal | High | Critical;
-
-SpawnConfig.new()
-    .with_priority(Priority.High)
-    .with_isolation(IsolationLevel.Full)
-    .with_recovery(RecoveryStrategy.Retry(RetryConfig.exponential(3, 100.ms())))
-    .with_restart(RestartPolicy.Permanent)
-    .with_timeout_ms(5000)
-    .with_name("compute-worker")
-```
-
-See [`async`](/docs/stdlib/async#spawn-configuration) for `spawn_with`.
-
----
-
-## Thread pool
-
-```verum
-type ThreadPool is { ... };
-type ThreadPoolConfig is {
-    size: Int,
-    stack_size: Int,
-    name_prefix: Text,
+public type RetryPolicy is {
+    max_attempts: Int,
+    backoff:      BackoffStrategy,
+    jitter:       JitterConfig,
+    retry_if:     RetryPredicate,         // default: retry any error
 };
 
-ThreadPool.new(ThreadPoolConfig) -> ThreadPool
-pool.execute(|| blocking_computation())
-pool.execute_with_priority(Priority.High, || ...)
-pool.shutdown_join()
-pool.available_threads() -> Int
-pool.queued_jobs() -> Int
+public async fn execute_with_retry<F, T, E>(
+    policy: RetryPolicy,
+    f: F,
+) -> Result<T, E>
+    where F: fn() -> (impl Future<Output = Result<T, E>>);
 ```
 
-Used by `spawn_blocking` and by user code wanting to run CPU-heavy
-synchronous work without blocking the async executor.
-
----
-
-## Runtime metrics
+### Circuit breaker
 
 ```verum
-Runtime.current_epoch() -> UInt32
-Runtime.memory_usage() -> Int                   // bytes allocated
-Runtime.advance_epoch()                         // force CBGR epoch bump
-Runtime.allocation_count() -> Int               // active allocations
-Runtime.validate_all()                          // sweep + report issues
-Runtime.active_tasks() -> Int
-Runtime.queued_tasks() -> Int
-```
+public type CircuitState is
+    | Closed                 // normal
+    | Open    { until: Instant }
+    | HalfOpen { trials:   Int };
 
----
-
-## Benchmarks — `Bencher`
-
-```verum
-type Bencher is { ... };
-type BenchmarkResult is {
-    name: Text,
-    iterations: Int,
-    elapsed_ns: Int,
-    ns_per_iter: Int,
-    throughput: Maybe<Float>,
+public type CircuitBreakerConfig is {
+    failure_threshold:   Int,
+    required_successes:  Int,
+    timeout:             Duration,
+    error_is_failure:    ErrorPredicate,
 };
 
-Bencher.new() -> Bencher
-b.with_iterations(n) -> Bencher
-b.iter(|| measured_work())         // runs n times, records
-b.ns_per_iter() -> Int
-b.elapsed() -> Int
+public type CircuitBreaker is { /* private, atomic state */ };
 
-// Convenience top-level:
-benchmark("name", |b| b.iter(|| work())) -> BenchmarkResult
+implement CircuitBreaker {
+    public fn new(config: CircuitBreakerConfig) -> Self;
+    public fn state(&self) -> CircuitState;
+    public fn stats(&self) -> CircuitBreakerStats;
+}
+
+public async fn execute_with_circuit_breaker<F, T, E>(
+    breaker: &CircuitBreaker,
+    f: F,
+) -> Result<T, CircuitBreakerError<E>>
+    where F: fn() -> (impl Future<Output = Result<T, E>>);
 ```
 
-### Example
+### The inline variants
+
+The θ+'s `RecoveryContext` stores `InlineCircuitBreaker` (64 bytes)
+and `InlineRetryPolicy` (32 bytes) inline, to avoid heap allocation
+on the hot path. The boxed types (`CircuitBreaker`, `RetryPolicy`)
+above are for long-lived, shared state across tasks.
+
+## Threads — `runtime.thread`
+
+OS-level threads. Available only on profiles that have threading
+(`full`, `no_async`). Suspended on `single_thread`, `no_heap`,
+`embedded`.
 
 ```verum
-@bench
-fn bench_fibonacci_iter(b: &mut Bencher) {
-    b.iter(|| fibonacci(20));
+public type ThreadId     is { /* opaque */ };
+public type JoinHandle<T> is { /* opaque */ };
+public type Thread       is ();
+
+public type ThreadBuilder is { /* fluent */ };
+
+implement ThreadBuilder {
+    public fn new() -> Self;
+    public fn name(self, s: Text) -> Self;
+    public fn stack_size(self, bytes: Int) -> Self;
+    public fn spawn<F, T>(self, f: F) -> Result<JoinHandle<T>, ThreadError>
+        where F: fn() -> T + Send + 'static, T: Send + 'static;
+}
+
+public type ThreadError is
+    | StackTooSmall | OutOfMemory | NameTooLong
+    | ProfileUnsupported | SpawnFailed(Text);
+
+public type StackFrame is {
+    function: Text,
+    file:     Text,
+    line:     Int,
+    address:  UInt64,
+};
+
+public type StackTrace is {
+    frames: List<StackFrame>,
+    thread: ThreadId,
+};
+```
+
+## Thread pool — `runtime.pool`
+
+A simple work-stealing `ThreadPool` for CPU-bound tasks that do
+not need the full async scheduler:
+
+```verum
+public type ThreadPool is { /* private */ };
+public type TaskHandle is { /* private */ };
+
+implement ThreadPool {
+    public fn new(size: Int) -> Self;
+    public fn submit<F, T>(&self, f: F) -> TaskHandle
+        where F: fn() -> T + Send, T: Send;
+    public fn shutdown(self);
+    public fn size(&self) -> Int;
+    public fn active_count(&self) -> Int;
 }
 ```
 
-`verum bench` runs all `@bench` functions and prints statistics.
+## Time — `runtime.time`
 
----
+```verum
+public type Instant  is { /* monotonic */ };
+public type Duration is { /* nanoseconds */ };
 
-## `ctx_bridge` — runtime ↔ context bridge
+public fn now() -> Instant;
+public fn monotonic_nanos() -> UInt64;
+public fn wall_time() -> Result<WallTime, TimeError>;
+public async fn sleep(d: Duration);
+public fn elapsed_since(i: Instant) -> Duration;
+```
 
-Internal plumbing that lets `provide` / `using` interoperate with
-`ExecutionEnv`. You don't call it directly, but you see its effects:
+All durations are nanoseconds underneath; the `Duration` type's
+constructors (`seconds`, `millis`, `micros`, `nanos`) and operators
+enforce unit correctness at compile time.
 
-- A `provide X = v in { ... }` scope registers `v` in the current
-  task's `CapabilityContext.dynamic_stack`.
-- `spawn` clones the current stack into the child's env.
-- Channel receivers start with a **cleared** dynamic stack (channels
-  do not propagate contexts).
+## Thread-local storage — `runtime.tls`
 
----
+`runtime.tls` provides a typed, `@thread_local` static primitive.
+Profile-dependent: profiles without threads degrade to a single
+cell per program.
 
-## Per-flavour runtime configs
+```verum
+public type TlsSlot<T> is { /* private */ };
 
-Each flavour lives in its own file (selected by `@cfg(runtime = …)`):
+implement<T> TlsSlot<T> {
+    public fn new(init: fn() -> T) -> Self;
+    public fn with<R>(&self, f: fn(&T) -> R) -> R;
+    public fn with_mut<R>(&self, f: fn(&mut T) -> R) -> R;
+}
+```
 
-- `FullRuntime` — work-stealing pool, global allocator, full async,
-  `num_cpus()` workers, `io_uring`/`kqueue`/`IOCP` reactor.
-- `SingleThreadRuntime` — single-threaded event loop, WASM-friendly.
-- `SyncRuntime` — async→sync lowering, blocking I/O, optional thread
-  pool for parallelism.
-- `EmbeddedRuntime` — stack allocator only, no heap, no async.
-- `CustomRuntime` — implement `RuntimeConfig` yourself.
+## Stack-only allocator — `runtime.stack_alloc`
 
----
+The `no_heap` profile replaces the global allocator with a
+stack-bounded one. `stack_alloc.Arena` carves a fixed-size buffer:
 
-## Cross-references
+```verum
+public type Arena is { /* stack-backed */ };
 
-- **[async](/docs/stdlib/async)** — futures, channels, tasks, streams.
-- **[sync](/docs/stdlib/sync)** — atomics & locks the runtime uses.
-- **[context](/docs/stdlib/context)** — `provide`/`using` semantics.
-- **[mem](/docs/stdlib/mem)** — `ExecutionTier` controls CBGR behaviour.
-- **[sys](/docs/stdlib/sys)** — `IOEngine`, `ctx_push_frame`, platform layer.
-- **[Architecture → runtime tiers](/docs/architecture/runtime-tiers)** — implementation details.
+implement Arena {
+    public fn new(buffer: &mut [Byte]) -> Self;
+    public fn allocate(&mut self, layout: Layout) -> Result<&mut [Byte], AllocError>;
+    public fn reset(&mut self);
+    public fn bytes_used(&self) -> Int;
+}
+```
+
+A `no_heap`-profile program that tries to call `Heap.new(v)` is a
+**compile error**, not a runtime failure.
+
+## Process / session — `core.concurrency`
+
+Two small modules outside `runtime` proper but closely related:
+
+- `core.concurrency.process` — child-process spawn (`Command`,
+  `Child`, `ExitStatus`, stdin/stdout/stderr pipes).
+- `core.concurrency.session` — terminal session utilities (PTY
+  allocation, signal propagation, job control).
+
+These are documented under **[stdlib → concurrency](/docs/stdlib/concurrency)**.
+
+## See also
+
+- **[architecture → execution environment](/docs/architecture/execution-environment)**
+  — the full θ+ layout and lifecycle.
+- **[architecture → runtime tiers](/docs/architecture/runtime-tiers)**
+  — execution mode, CBGR safety tiers, and the five profiles.
+- **[stdlib → async](/docs/stdlib/async)** — `Future`, `Task`,
+  `nursery`, `spawn_with`, channels, streams.
+- **[stdlib → sync](/docs/stdlib/sync)** — mutexes, rwlocks,
+  atomics, barriers.
+- **[language → async & concurrency](/docs/language/async-concurrency)**
+  — the user-facing language constructs.
+- **[language → error handling](/docs/language/error-handling)** —
+  `throws`, `try`, `recover`, `defer`, `errdefer`.
