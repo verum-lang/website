@@ -47,6 +47,11 @@ help: add `where ensures result > 0` or change the body to abs(x)
 
 - **Completion** — context-aware, protocol methods after `.`,
   pattern completions in `match`, module items after `mount`.
+  Attribute arguments with a finite allowed-values set emit LSP
+  choice snippets: typing `@inline(` offers `always | never | hint
+  | release` inline; `@repr(` offers `C | packed | transparent |
+  cache_optimal`; `@optimize(` offers `none | size | speed |
+  balanced`; `@device(` offers `cpu | gpu`.
 - **Signature help** — live argument hints as you type a call.
 - **Hover** — full type, refinements, contracts, attributes, doc
   comments, and computed **effective** properties (e.g. "promoted to

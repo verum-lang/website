@@ -60,7 +60,7 @@ Every archive extracts to a single top-level directory,
 ```
 verum-<version>/
 ├── bin/
-│   └── verum[.exe]                 main toolchain binary (statically linked)
+│   └── verum[.exe]                 self-contained binary — the whole toolchain
 ├── lib/
 │   └── stdlib.vbc-cache/           pre-compiled core/ stdlib (VBC)
 ├── share/
@@ -71,10 +71,15 @@ verum-<version>/
 └── VERSION                         plain-text version marker
 ```
 
-`bin/verum` is self-contained: running it does not read any file in
-`share/` or `lib/`. The `lib/stdlib.vbc-cache/` is copied to
-`~/.verum/cache/stdlib/` on first launch to skip stdlib recompilation
-on initial use; it is a cache, not a runtime dependency.
+`bin/verum` is a single self-contained executable. There are no
+per-target toolchain directories, no rustup-style `~/.toolchains/`
+tree, no active-channel symlink. One archive, one binary — and that
+binary already contains the codegen backends for every supported
+target, so cross-compilation is `verum build --target <triple>` and
+needs nothing else installed (see **Cross-compilation** below). The
+`lib/stdlib.vbc-cache/` is copied to `~/.verum/cache/stdlib/` on
+first launch to skip stdlib recompilation on initial use; it is a
+cache, not a runtime dependency.
 
 ## One-line installer (recommended)
 
@@ -104,21 +109,24 @@ The installer:
 4. **Verifies** the signature on `SHA256SUMS` against the bundled
    public key (the installer includes the public key as a
    base64-embedded literal), then verifies the archive's SHA-256.
-5. **Extracts** into `~/.verum/toolchains/<version>/` (Windows:
-   `%USERPROFILE%\.verum\toolchains\<version>\`).
-6. **Atomically relinks** `~/.verum/active` → the new toolchain
-   directory via a symlink (Linux/macOS) or a junction (Windows), so
-   concurrent processes keep running against the old toolchain
-   until they restart.
-7. **Publishes shims** in `~/.verum/bin/` that exec the binary in
-   the active toolchain, so `~/.verum/bin` is the only PATH entry
-   the user ever needs.
+5. **Extracts** the archive to a temporary directory.
+6. **Installs atomically** — writes `bin/verum` to
+   `~/.verum/bin/verum.new` and renames it over `~/.verum/bin/verum`.
+   A concurrently-running process keeps the old file open via its
+   inode until it exits; the next invocation picks up the new
+   binary. (Windows: writes to `%USERPROFILE%\.verum\bin\verum.exe.new`
+   and uses `MoveFileExW(MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)`.)
+7. **Copies `lib/stdlib.vbc-cache/`** into `~/.verum/cache/stdlib/`
+   so the first `verum run` skips recompiling core.
 8. **Updates the shell profile** — `~/.bashrc`, `~/.zshrc`,
    `~/.config/fish/config.fish`, or the user `Path` on Windows — to
    prepend `~/.verum/bin` once. Subsequent re-runs are idempotent.
 9. **Handles macOS quarantine**: removes the
    `com.apple.quarantine` xattr from the extracted binary so
    Gatekeeper does not block first execution.
+
+No toolchain directories, no channel symlinks, no shim layer — the
+installed tree is just `~/.verum/bin/verum` plus a cache.
 
 ### Installer flags
 
@@ -231,18 +239,18 @@ Run the diagnostic:
 
 ```bash
 $ verum doctor
- ✓ toolchain binary        /home/you/.verum/bin/verum
- ✓ toolchain version       0.32.0
- ✓ active target           x86_64-unknown-linux-gnu
+ ✓ binary                  /home/you/.verum/bin/verum
+ ✓ version                 0.32.0
+ ✓ host target             x86_64-unknown-linux-gnu
  ✓ stdlib cache            /home/you/.cache/verum/stdlib (338 modules)
- ✓ user cache dir          /home/you/.cache/verum
  ✓ PATH entry              ~/.verum/bin is on PATH
+ ✓ no shadowing binary     (only one `verum` on PATH)
  ✓ project layout          [no project in current dir]
 ```
 
 `verum doctor` catches install anomalies — stale stdlib cache, PATH
-shadowing by another `verum` binary on PATH, or a toolchain
-directory with missing files.
+shadowing by another `verum` binary, or a missing / truncated
+installed binary.
 
 ## Updating
 
@@ -253,23 +261,27 @@ verum upgrade --version 0.32.1 # specific version
 verum upgrade --force          # re-download even if already latest
 ```
 
-`verum upgrade` pulls the matching archive into
-`~/.verum/toolchains/<new-version>/` and re-links the `active`
-symlink atomically. The old toolchain stays on disk until
-`verum upgrade --gc` (or explicit removal).
+`verum upgrade` does exactly what the installer does, minus the
+profile / PATH steps: resolve the version, download the archive,
+verify signature and SHA-256, atomically replace
+`~/.verum/bin/verum` via rename, and refresh the stdlib cache.
+Running processes are unaffected until they restart; there's no
+toolchain tree to garbage-collect.
 
-To pin a project to a specific toolchain:
+To pin a project to a specific version, require it in the manifest:
 
 ```toml
 # Verum.toml
-[toolchain]
-version = "0.32.0"
-channel = "stable"
+[verum]
+version = "0.32.0"                 # required
+channel = "stable"                 # or "nightly" / "beta"
 ```
 
-`verum` refuses to run if the currently active toolchain differs
-from the pinned one — run `verum upgrade --version 0.32.0` or set
-`[toolchain] override = true` to opt out.
+If the user's installed `verum` does not match, the build fails
+with a clear message (`this project requires verum 0.32.0; you have
+0.32.1 — run "verum upgrade --version 0.32.0" to match`). Projects
+that want to float can use a caret range (`version = "^0.32"`) or
+omit the block entirely.
 
 ## Build from source
 
@@ -313,15 +325,76 @@ The resulting binary runs `verum run`, `verum check`, `verum test`,
 the REPL, and the LSP. `verum build --release` produces VBC but no
 native object files. Build time drops to under five minutes.
 
-### Cross-compiling
+### Rebuilding the compiler for a different host
+
+Cross-compilation of *Verum programs* to other targets does **not**
+require this step — see the next section. This is only for
+rebuilding the compiler binary itself to run on a different host OS
+or architecture:
 
 ```bash
 rustup target add aarch64-unknown-linux-gnu
 cargo build --release -p verum_cli --target aarch64-unknown-linux-gnu
 ```
 
-See `scripts/build-release.sh` in the repo for the canonical cross
-matrix CI uses.
+See `scripts/build-release.sh` in the repo for the canonical host
+matrix CI uses to produce the release artefacts.
+
+## Cross-compiling Verum programs
+
+Cross-compilation in Verum is a compiler flag, not a toolchain. The
+`verum` binary already contains the codegen backends for every
+supported target, so there is nothing to install:
+
+```bash
+verum build --target aarch64-unknown-linux-gnu
+verum build --target x86_64-apple-darwin
+verum build --target x86_64-pc-windows-msvc --release
+verum build --target wasm32-unknown-unknown
+```
+
+List the targets the current binary supports with:
+
+```bash
+verum target list
+```
+
+Typical output (abridged):
+
+```
+host:  x86_64-unknown-linux-gnu          ← the host this `verum` was built for
+
+Linux
+  x86_64-unknown-linux-gnu       ✓ full (CPU, GPU)
+  x86_64-unknown-linux-musl      ✓ full
+  aarch64-unknown-linux-gnu      ✓ full
+  aarch64-unknown-linux-musl     ✓ full
+  riscv64gc-unknown-linux-gnu    ✓ CPU only
+Apple
+  aarch64-apple-darwin           ✓ full
+  x86_64-apple-darwin            ✓ full
+Windows
+  x86_64-pc-windows-msvc         ✓ full
+  aarch64-pc-windows-msvc        ✓ full
+Web / embedded
+  wasm32-unknown-unknown         ✓ no_async profile
+  wasm32-wasi                    ✓ full
+  thumbv7em-none-eabihf          ✓ embedded profile
+  riscv32imac-unknown-none-elf   ✓ embedded profile
+```
+
+**Platform-specific notes.** Targeting macOS produces a Mach-O
+binary that runs on the target architecture; final linking requires
+a macOS SDK (downloaded automatically by the linker on first use
+via `verum sdk install darwin`). Targeting Windows produces a PE
+executable and needs no extra setup. Targeting embedded profiles
+(`thumbv7em`, `riscv32`) restricts the program to the matching
+runtime profile automatically (see
+[runtime profiles](/docs/architecture/runtime-tiers#axis-3--runtime-profiles)).
+
+There is no `verum target add` — the supported target list is
+baked into the binary. A future target becomes available when you
+`verum upgrade`.
 
 ## IDE integration
 

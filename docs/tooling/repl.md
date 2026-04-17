@@ -6,8 +6,25 @@ description: Interactive REPL backed by the VBC interpreter — bind values, def
 
 # REPL
 
-`verum repl` is a line-oriented read-eval-print loop backed by the
-VBC interpreter. It's the fastest way to test a snippet of Verum.
+`verum repl` is a line-oriented read-eval-print loop. It's the fastest
+way to validate Verum syntax interactively.
+
+:::warning Current status (0.1.0)
+
+The REPL currently operates in **parse-only mode** — input is parsed
+and type-checked, but not evaluated. Typing `xs.iter().sum()` reports
+a parse result, not the sum. Definitions (`fn`, `type`, `const`) are
+recorded as bindings but not compiled to executable code.
+
+Full VBC-backed evaluation (persistent `InterpreterState`
+accumulating bindings across prompts) is a tracked follow-up. For
+execution today, use `verum run <file.vr>`.
+
+The command-set and UI described below reflects the target design;
+commands that depend on evaluation (`:bench`, `:time`, `:profile`,
+`:mem`) return a clear "not yet wired" message.
+
+:::
 
 For richer project-level exploration with source panes and
 verification panels, see [Playbook](/docs/tooling/playbook).
