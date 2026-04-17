@@ -75,7 +75,19 @@ No other language in production use has this shape. Liquid Haskell is all-or-not
 
 The closest spiritual neighbour is probably **SPARK/Ada**, which has a gold/silver/bronze hierarchy for verification. But SPARK inherits Ada's surface and toolchain; Verum is the first attempt to put this hierarchy into a modern systems language whose syntax would feel familiar to a Rust, Swift, or Kotlin reader.
 
-## 4. Memory without a one-size answer: the three-tier reference model
+## 4. Dependent types and cubical HoTT — in a systems language
+
+Dependent types let a type depend on a value. The canonical example is `Vec<T, n>` — a vector whose length is part of its type, so that `vec_concat : Vec<T, n> → Vec<T, m> → Vec<T, n + m>` makes the shape law a type-level fact. Idris, Agda, Coq, Lean, F\* all live in this space.
+
+Verum includes dependent types, sigma-type refinements of the form `x: Int where x > 0`, cubical path-equality types written `Path<A>(a, b)`, and a cubical normaliser with higher-inductive types and computational univalence. The language's dependent-types, cubical-normaliser, HoTT-primitives, and verification-pipeline phases are all in the shipped release; conformance tests cover every production.
+
+The combination — dependent types **and** `&mut T` **and** systems-language syntax **and** production tooling — is rare. Idris 2 ships a linear-types extension but has no CBGR-style runtime safety; Lean 4 is a proof assistant first and a systems language a distant second; ATS has dependent types and linear types but a notoriously difficult surface.
+
+The useful question is: *when does dependent typing actually earn its cost?* Verum's position is that it does when a library's API has shape invariants that today become runtime assertions or doc-comment folklore — tensor shape checks for ML (`Tensor<T, [B, H, L, D]>`), index bounds for buffer code, protocol state machines, cryptographic nonce uniqueness. For the rest, the refinement-type layer is sufficient.
+
+The cubical layer is where Verum becomes experimental. Computational univalence (Cohen/Coquand/Huber/Mörtberg, 2015) makes equivalence between types a definitional equality. It is powerful — you can transport programs along proofs of type isomorphism — and rarely needed. Verum ships it because the machinery was a prerequisite for the proof system, not because every program will use it.
+
+## 5. Memory without a one-size answer: the three-tier reference model
 
 The memory-safety debate has historically offered two choices. Either you get garbage collection (Go, Java, Haskell, OCaml; cheap to write, unpredictable latency) or you get ownership and lifetimes (Rust, Cyclone; predictable, but one model for everything). Verum picks a third shape: **three tiers of reference, chosen per use site**.
 
@@ -87,7 +99,7 @@ The memory-safety debate has historically offered two choices. Either you get ga
 
 \* target overhead per dereference on current hardware; the precise cost is a small number of cycles for a single comparison and a predicted branch.
 
-CBGR (Capability-Based Generational References) is the name of the Tier 0 mechanism. The compact reference form — the one you use when the pointee is a sized value — is sixteen bytes: an eight-byte pointer, a four-byte generation counter, and a four-byte word that packs a sixteen-bit epoch next to sixteen bits of capability flags. The extended form, used for slices, trait objects, and interior references, layers an eight-byte metadata word (length for slices, vtable for trait objects), a four-byte offset, and a four-byte reserved field on top of the compact one — thirty-two bytes total. The allocation header carries the current generation; on every dereference the reference's generation is compared against the header's. A free or explicit revoke atomically bumps the header's generation; every subsequent deref through a now-stale reference is rejected before it can touch memory. Capabilities are eight monotonic bits — `READ`, `WRITE`, `EXECUTE`, `DELEGATE`, `REVOKE`, `BORROWED`, `MUTABLE`, `NO_ESCAPE` — that can be attenuated, never expanded: an API that hands you a read-only reference cannot itself be used to widen it.
+CBGR (Capability-Based Generational References) is the name of the Tier 0 mechanism. The compact reference form — the one you use when the pointee is a sized value — is sixteen bytes: an eight-byte pointer, a four-byte generation counter, and a four-byte word that packs a sixteen-bit epoch next to sixteen bits of capability flags. The extended form, used for slices, trait objects, and interior references, layers an eight-byte metadata word (length for slices, vtable for trait objects), a four-byte offset, and a four-byte reserved field on top of the compact one — thirty-two bytes total. The allocation header carries the current generation; on every dereference the reference's generation is compared against the header's. A free or explicit revoke atomically bumps the header's generation; every subsequent deref through a now-stale reference is rejected before it can touch memory. Capabilities are eight monotonic bits — `CAP_READ`, `CAP_WRITE`, `CAP_EXECUTE`, `CAP_DELEGATE`, `CAP_REVOKE`, `CAP_BORROWED`, `CAP_MUTABLE`, `CAP_NO_ESCAPE` — that can be attenuated, never expanded: an API that hands you a read-only reference cannot itself be used to widen it.
 
 Tier 1 is the escape hatch. The compiler's reference-analysis suite — escape analysis, non-lexical lifetimes, Polonius-style borrow checking, points-to, dominance, type-sensitive and concurrency-sensitive flow, ownership and lifetime inference, plus tier-aware and array-bounds analysis — proves where Tier 0 can be lowered to a raw load. The compiler silently **promotes** `&T` to `&checked T` where this is safe; it never demotes silently — `&unsafe T` is always a source-level opt-in written by the programmer.
 
@@ -101,7 +113,7 @@ Compare this to the prior art:
 
 Verum's claim is not that three tiers are objectively better than one. It's that committing to one tier at the language level forces the programmer into a trade-off that should be made per function. The language should permit both answers; the compiler should make the cheaper answer automatic where it's provably safe.
 
-## 5. One context system for runtime and compile time — and why it isn't an effect system
+## 6. One context system for runtime and compile time — and why it isn't an effect system
 
 Dependency injection, dynamic scoping, reader monads, algebraic effects, effect rows, context parameters — every modern language has a different name for the same underlying need: **a function sometimes wants a value from an enclosing scope without passing it as a positional argument**. The range of answers is wide, and the interesting one is worth a closer look before we say where Verum lands.
 
@@ -147,35 +159,7 @@ The standard runtime set is ten contexts: `Logger`, `Database`, `Auth`, `Config`
 
 Why unify these two worlds? Because from the programmer's perspective, a `meta fn` that inspects a type via `TypeInfo` is doing the same thing as a runtime function that reads a config via `Config`: reaching into an outer scope for an authorised value. The surface syntax for both should be the same. Having *separate* systems for compile-time and runtime dependency is how languages grow two subtly different sets of rules for the same concept. That is exactly the kind of hidden complexity semantic honesty is meant to prevent.
 
-## 6. Dependent types and cubical HoTT — in a systems language
-
-Dependent types let a type depend on a value. The canonical example is `Vec<T, n>` — a vector whose length is part of its type, so that `vec_concat : Vec<T, n> → Vec<T, m> → Vec<T, n + m>` makes the shape law a type-level fact. Idris, Agda, Coq, Lean, F\* all live in this space.
-
-Verum includes dependent types, sigma-type refinements of the form `x: Int where x > 0`, cubical path-equality types written `Path<A>(a, b)`, and a cubical normaliser with higher-inductive types and computational univalence. The language's dependent-types, cubical-normaliser, HoTT-primitives, and verification-pipeline phases are all in the shipped release; conformance tests cover every production.
-
-The combination — dependent types **and** `&mut T` **and** systems-language syntax **and** production tooling — is rare. Idris 2 ships a linear-types extension but has no CBGR-style runtime safety; Lean 4 is a proof assistant first and a systems language a distant second; ATS has dependent types and linear types but a notoriously difficult surface.
-
-The useful question is: *when does dependent typing actually earn its cost?* Verum's position is that it does when a library's API has shape invariants that today become runtime assertions or doc-comment folklore — tensor shape checks for ML (`Tensor<T, [B, H, L, D]>`), index bounds for buffer code, protocol state machines, cryptographic nonce uniqueness. For the rest, the refinement-type layer is sufficient.
-
-The cubical layer is where Verum becomes experimental. Computational univalence (Cohen/Coquand/Huber/Mörtberg, 2015) makes equivalence between types a definitional equality. It is powerful — you can transport programs along proofs of type isomorphism — and rarely needed. Verum ships it because the machinery was a prerequisite for the proof system, not because every program will use it.
-
-## 7. Metaprogramming without a second language
-
-Rust's macros have an exclamation mark. Scheme's have `quasiquote`. Scala 3 has `inline` plus `Quotes`. Each tells the reader "you've stepped out of the main language now." Verum keeps you in one language. The compile-time sub-language **is the same language**, run at an earlier stage.
-
-A `meta fn` is a function. A `quote { ... }` block is an expression of type `TokenStream`. An `@-attribute` invokes a meta function at a specific syntactic site. Splicing (`$expr`, `$[for ...]`) pastes a quoted value back. Staging is explicit (stage 0 = runtime, 1 = first meta, etc.).
-
-The reason this matters for the rest of the language is that every attribute in Verum — `@derive`, `@verify`, `@repr`, `@specialize`, `@logic`, `@cfg`, `@intrinsic`, and more than forty others — is uniformly an invocation of something you could write yourself in a `meta fn`. There is no distinction between a language-level compile-time construct and a user-level one. You do not have to petition for a new attribute; you can write one.
-
-Compare:
-- Rust: proc-macros are a separate crate type with separate compilation rules and restrictions.
-- C++: templates + constexpr are two different languages glued together.
-- Lisp: `defmacro` is uniform but untyped.
-- Template Haskell: typed but infamously hostile to tooling.
-- Scala 3 macros: uniform-ish but dependent on the metaprogramming API.
-- Verum: one language, one type system, one set of rules, staged.
-
-## 8. Concurrency: structured, contextual, and cancellable
+## 7. Concurrency: structured, contextual, and cancellable
 
 `async fn`, `await`, `spawn`, `nursery { ... }`, `select { ... }`, `for await`. None of these are novel individually; `async`/`await` is from C#, structured concurrency is the Nathaniel Smith/Trio tradition, `nursery` + scoped cancellation came out of that.
 
@@ -187,7 +171,7 @@ Verum's contribution is not a new primitive but the integration:
 
 Under this surface sits a work-stealing per-core executor, a platform-native I/O reactor, and a context stack that is saved at every `.await` and restored before resumption — so that a function suspended for an hour and resumed in a different worker thread still sees the same `using [Database, Logger]` stack it had when it yielded.
 
-## 9. The runtime, in one structure
+## 8. The runtime, in one structure
 
 Most languages treat memory, capabilities, errors, and concurrency as four separate systems that happen to coexist at runtime. The allocator is one library, the dependency-injection framework is another, error handling is structured exceptions, and the scheduler is a third thing entirely. Integration between them is the programmer's problem.
 
@@ -206,7 +190,7 @@ This matters concretely when programs get large. The failure modes that plague l
 
 The runtime ships in **five profiles**: `full` for servers, `single_thread` for WASM and single-core targets, `no_async` for blocking CLIs, `no_heap` for real-time and safety-critical code, and `embedded` for microcontrollers. A program that requests more than its profile supports is a compile error, not a runtime failure. The same language, the same `ExecutionEnv` type, and the same source files — with different executor, allocator, and I/O-driver implementations chosen at link time.
 
-## 10. Errors as values, supervision as a language feature
+## 9. Errors as values, supervision as a language feature
 
 Verum has no exceptions in the unwinding sense. It has three mechanisms that compose:
 
@@ -220,7 +204,7 @@ This is Erlang/OTP's idea, translated to a statically typed systems language. Fo
 
 Most systems languages leave this story to frameworks. Verum gives it a type system, a runtime structure, and a set of primitives — because fault tolerance is a language concern if safety is.
 
-## 11. The standard library is Verum
+## 10. The standard library is Verum
 
 Almost every production programming language has a layer it doesn't own. C's `stdio` is glibc (or musl, or Apple's libSystem). Rust's `std` builds on libc for anything OS-adjacent — threads, file I/O, the memory allocator. Go writes its own runtime but links against glibc on many targets. Swift's `Foundation` is Objective-C.
 
@@ -229,12 +213,28 @@ Verum's standard library is written in Verum. Specifically:
 - The allocator — the capability-based generational-reference arena — is in `core/mem/allocator.vr`. No `malloc` dependency.
 - Threads, TLS, futexes, atomics — all in `core/sync/` and `core/runtime/thread.vr`, implemented over VBC intrinsics that map to platform syscalls directly. No `pthread`.
 - File I/O, networking, time — `core/io/`, `core/net/`, `core/time/`. Platform syscalls through VBC intrinsics, no libc.
-- Regex, JSON, TOML, YAML, SQL, HTML — all parsers written in `.vr`, living under `core/tagged/`, `core/text/`, `core/encoding/`.
+- Regex in `core/text/regex.vr`; JSON, base64, hex in `core/encoding/`; the tagged-literal compile-time validators for SQL, URL, UUID, email, CIDR, datetime, and the rest of the `tag#"..."` family in `core/text/tagged_literals.vr`. All `.vr`.
 - The concurrency runtime — executor, I/O driver, supervision tree, circuit breakers — all in `core/runtime/` and `core/async/`. No Rust `tokio` dependency, no C `libuv`.
 
 The zero-FFI path works because VBC opcodes `0xF1` (mmap/munmap), `0xF2` (futex, atomics), `0xF4` (io_uring, kqueue, IOCP), and `0xF5` (clock_gettime) are first-class language primitives that the VBC interpreter and the LLVM backend both lower directly. There is no hidden C ABI anywhere in a Verum binary. The consequence for security audits and proof-carrying distribution is large: a `.cog` archive's VBC is a closed artefact that can be validated offline against declared capabilities without the validator needing to trust a distro's libc version.
 
 On macOS the one exception is `libSystem.B.dylib`, Apple's stable ABI entry point — Apple doesn't guarantee syscall ABI stability, so programs linking directly to syscalls would break across macOS versions. `libSystem` is linked, nothing else. No Rust `std`, no glibc, no `libuv`.
+
+## 11. Metaprogramming without a second language
+
+Rust's macros have an exclamation mark. Scheme's have `quasiquote`. Scala 3 has `inline` plus `Quotes`. Each tells the reader "you've stepped out of the main language now." Verum keeps you in one language. The compile-time sub-language **is the same language**, run at an earlier stage.
+
+A `meta fn` is a function. A `quote { ... }` block is an expression of type `TokenStream`. An `@-attribute` invokes a meta function at a specific syntactic site. Splicing (`$expr`, `$[for ...]`) pastes a quoted value back. Staging is explicit (stage 0 = runtime, 1 = first meta, etc.).
+
+The reason this matters for the rest of the language is that every attribute in Verum — `@derive`, `@verify`, `@repr`, `@specialize`, `@logic`, `@cfg`, `@intrinsic`, and more than forty others — is uniformly an invocation of something you could write yourself in a `meta fn`. There is no distinction between a language-level compile-time construct and a user-level one. You do not have to petition for a new attribute; you can write one.
+
+Compare:
+- Rust: proc-macros are a separate crate type with separate compilation rules and restrictions.
+- C++: templates + constexpr are two different languages glued together.
+- Lisp: `defmacro` is uniform but untyped.
+- Template Haskell: typed but infamously hostile to tooling.
+- Scala 3 macros: uniform-ish but dependent on the metaprogramming API.
+- Verum: one language, one type system, one set of rules, staged.
 
 ## 12. Proof-carrying code and the distribution model
 
@@ -246,7 +246,7 @@ This is not theatre. Supply-chain attacks on code registries are the main way mo
 
 ## 13. One IR, two executions
 
-Verum is **VBC-first**. Every program compiles to VBC (Verum Bytecode); VBC is either interpreted (Tier 0) or lowered through LLVM to native code (Tier 1). There is no second path from source to execution.
+Verum is **VBC-first**. Every program compiles to VBC (Verum Bytecode); VBC is either interpreted directly or lowered through LLVM to native code ahead of time (with MLIR handling `@device(gpu)` kernels). There is no JIT tier and no second path from source to execution.
 
 The consequence is architectural rather than performance-headline-worthy:
 
@@ -284,7 +284,7 @@ A blog post about a language that does not list its costs is a marketing documen
 - **Learning curve.** The refinement-type + dependent-type + cubical stack is academically heavy. You do not need any of it to ship a CLI — `@verify(runtime)` on plain `Int` and `Text` is a complete program — but the full surface is larger than Go's.
 - **Ecosystem age.** Verum's registry is new; the package count is measured in dozens, not tens of thousands. Using Verum for a problem that is two `cargo add` calls away in Rust today is a worse trade than Rust. That changes only with time and adoption.
 - **Async colouring.** `async fn` is a different type from `fn`. This is a language-design cost Koka and Scala have partially avoided with effect systems; Verum does not. The choice was deliberate — an explicit `async` colour is more honest than an implicit one — but it is a real cost.
-- **LLVM dependency.** Tier 1 requires LLVM 21. That is a several-hundred-megabyte build dependency. Distributions that cannot tolerate it can run Tier 0 only, but then they lose native speed.
+- **LLVM dependency.** AOT native builds require LLVM 21 (and MLIR for GPU targets). That is a several-hundred-megabyte build dependency. Distributions that cannot tolerate it can ship the interpreter only, but lose native speed.
 
 None of these are show-stoppers. All of them deserve to be named.
 
