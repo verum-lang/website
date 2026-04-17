@@ -6,15 +6,18 @@ import CodeBlock from '@theme/CodeBlock';
 import styles from './index.module.css';
 
 /**
- * Verum hero mark — the prismatic "V" logo on a multilayer radial glow.
- * No animation; the glow does the talking. Layered, tinted halos behind
- * the logo bloom in the language's palette (violet → magenta → amber)
- * and a soft teal rim picks up the brand's other accent.
+ * Verum hero mark — the prismatic "V" softly floating inside a layered
+ * cyberpunk bloom. Three stacked halos (outer violet/cyan cloud, middle
+ * magenta/cyan chromatic separation, inner warm gold core) are each
+ * heavily blurred and animated on staggered periods. The logo itself
+ * drifts on a 3-axis float so it reads as suspended in light.
  */
 function VerumMark() {
   return (
     <div className={styles.mark} aria-hidden={false}>
-      <div className={styles.markGlow} />
+      <div className={styles.markHaloOuter} />
+      <div className={styles.markHaloMid}   />
+      <div className={styles.markHaloCore}  />
       <img
         src="/img/verum-logo-512.png"
         alt="Verum"
