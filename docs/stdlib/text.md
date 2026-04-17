@@ -472,7 +472,7 @@ etc.). Interpolated expressions are automatically escaped for the
 format.
 
 Unknown tags become user-defined via `@meta_macro` — see
-[metaprogramming](/docs/language/metaprogramming).
+[metaprogramming](/docs/language/meta/overview).
 
 ---
 

@@ -1175,7 +1175,7 @@ emitting one diagnostic per recovery (no cascades).
 | References, CBGR | [Language → References](/docs/language/references), [CBGR](/docs/language/cbgr) |
 | Context system semantics | [Language → Context system](/docs/language/context-system) |
 | Async / nursery / select | [Language → Async](/docs/language/async-concurrency) |
-| Macro / quote system | [Language → Metaprogramming](/docs/language/metaprogramming) |
+| Macro / quote system | [Language → Metaprogramming](/docs/language/meta/overview) |
 | FFI boundary contracts | [Language → FFI](/docs/language/ffi) |
 | Proof DSL semantics | [Verification → Proofs](/docs/verification/proofs) |
 | Operator precedence table | [Reference → Operators](/docs/reference/operators) |

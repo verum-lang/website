@@ -201,7 +201,7 @@ const config: Config = {
             {label: 'SMT Routing', to: '/docs/verification/smt-routing'},
             {label: 'Dependent Types', to: '/docs/language/dependent-types'},
             {label: 'Cubical & HoTT', to: '/docs/verification/cubical-hott'},
-            {label: 'Metaprogramming', to: '/docs/language/metaprogramming'},
+            {label: 'Metaprogramming', to: '/docs/language/meta/overview'},
           ],
         },
         {

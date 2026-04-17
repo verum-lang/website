@@ -192,7 +192,7 @@ lemma no_negative_length(xs: List<T>) -> xs.len() >= 0 {
 ## Tactic extensibility
 
 Users can define custom tactics via `meta fn` (see
-**[Metaprogramming](/docs/language/metaprogramming)**):
+**[Metaprogramming](/docs/language/meta/overview)**):
 
 ```verum
 @tactic

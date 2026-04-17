@@ -153,5 +153,5 @@ module tests {
 
 ### See also
 
-- **[Language → metaprogramming](/docs/language/metaprogramming)**
+- **[Language → metaprogramming](/docs/language/meta/overview)**
 - **[meta](/docs/stdlib/meta)** — contexts, reflection, TokenStream.

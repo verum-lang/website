@@ -157,11 +157,11 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 ## Custom attributes
 
 User-defined via `@meta_macro` (see
-**[Language → metaprogramming](/docs/language/metaprogramming)**).
+**[Language → metaprogramming](/docs/language/meta/overview)**).
 
 ## See also
 
 - **[Language → attributes](/docs/language/attributes)** — usage-level
   guide.
-- **[Language → metaprogramming](/docs/language/metaprogramming)** —
+- **[Language → metaprogramming](/docs/language/meta/overview)** —
   writing your own.

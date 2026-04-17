@@ -23,7 +23,7 @@ types. ~335 methods across all contexts.
 | `mod.vr` (460 lines) | re-exports, `MetaError` (11 variants), composite context groups |
 
 User-level syntax (`meta fn`, `quote { … }`, `@derive(…)`, `lift(x)`)
-is in **[Language → Metaprogramming](/docs/language/metaprogramming)**.
+is in **[Language → Metaprogramming](/docs/language/meta/overview)**.
 This page enumerates the types and contexts those constructs map to.
 
 ---
@@ -259,7 +259,7 @@ context MacroState {
 ### `StageInfo` — N-level staged metaprogramming (15 methods)
 
 Information about the current stage level in multi-stage `meta(N)`
-code. See **[language → metaprogramming → multi-stage](/docs/language/metaprogramming#multi-stage-quoting)**.
+code. See **[language → metaprogramming → multi-stage](/docs/language/meta/staging)**.
 
 ```verum
 context StageInfo {
@@ -297,7 +297,7 @@ context Hygiene {
 
 The gensym'd identifiers are guaranteed not to collide with user
 code or other macro expansions. See
-**[metaprogramming → hygiene](/docs/language/metaprogramming#hygiene)**.
+**[metaprogramming → hygiene](/docs/language/meta/quote-and-hygiene)**.
 
 ### `CodeSearch` — search the whole codebase (17 methods)
 
@@ -827,6 +827,6 @@ meta fn derive_debug<T>() -> TokenStream using [TypeInfo, AstAccess, CompileDiag
 
 ## See also
 
-- **[Language → metaprogramming](/docs/language/metaprogramming)** — user surface.
+- **[Language → metaprogramming](/docs/language/meta/overview)** — user surface.
 - **[Language → attributes](/docs/language/attributes)** — the `@` forms this module supports.
 - **[proof](/docs/stdlib/proof)** — proof reflection consumes `TypeInfo` / `FunctionInfo`.

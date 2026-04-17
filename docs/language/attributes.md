@@ -169,7 +169,7 @@ the complete target / semantics list.
 ## Custom attributes
 
 User-defined attributes are procedural macros (see
-**[Metaprogramming](/docs/language/metaprogramming)**):
+**[Metaprogramming](/docs/language/meta/overview)**):
 
 ```verum
 @meta_macro

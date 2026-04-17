@@ -312,7 +312,7 @@ meta fn derive_display<T>() -> TokenStream {
 
 - **[Attributes](/docs/language/attributes)** — `@derive`, `@verify`,
   `@repr`, etc.
-- **[Metaprogramming](/docs/language/metaprogramming)** — `meta fn`,
+- **[Metaprogramming](/docs/language/meta/overview)** — `meta fn`,
   `quote`, staged macros.
 - **[Built-in Functions](/docs/reference/builtins)** — runtime
   counterparts (`print`, `assert`, `panic`).

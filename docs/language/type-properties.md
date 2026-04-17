@@ -255,4 +255,4 @@ synthesises it for every type.
 - **[Types](/docs/language/types)** — the type grammar.
 - **[Refinement Types](/docs/language/refinement-types)** — using `T.size` in predicates.
 - **[`stdlib/mem`](/docs/stdlib/mem)** — legacy `size_of/align_of/stride_of`.
-- **[Metaprogramming](/docs/language/metaprogramming)** — `@type_name`, `@type_fields`.
+- **[Metaprogramming](/docs/language/meta/overview)** — `@type_name`, `@type_fields`.

@@ -184,4 +184,4 @@ Every feature above has a dedicated chapter:
 - **Context system**: [/docs/language/context-system](/docs/language/context-system)
 - **Async**: [/docs/language/async-concurrency](/docs/language/async-concurrency)
 - **Verification**: [/docs/verification/gradual-verification](/docs/verification/gradual-verification)
-- **Metaprogramming**: [/docs/language/metaprogramming](/docs/language/metaprogramming)
+- **Metaprogramming**: [/docs/language/meta/overview](/docs/language/meta/overview)

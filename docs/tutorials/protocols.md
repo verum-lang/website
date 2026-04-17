@@ -323,7 +323,7 @@ And along the way, you've seen:
   bounds, HKTs.
 - **[cookbook/write-a-derive](/docs/cookbook/write-a-derive)** — how
   to write your own `@derive(...)` macro.
-- **[language/metaprogramming](/docs/language/metaprogramming)** —
+- **[language/metaprogramming](/docs/language/meta/overview)** —
   the `meta fn` / `quote` foundation of derive.
 - **[`stdlib/base`](/docs/stdlib/base)** — the protocols the standard
   library ships (Eq, Ord, Hash, Clone, Display, Debug, Default, etc.).

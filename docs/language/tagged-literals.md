@@ -322,7 +322,7 @@ tagged_interpolation  = '${' , expression , '}' ;
 ## See also
 
 - **[Syntax](/docs/language/syntax#tagged-literals)** — the lexical registry.
-- **[Metaprogramming](/docs/language/metaprogramming)** — defining custom tags.
+- **[Metaprogramming](/docs/language/meta/overview)** — defining custom tags.
 - **[`text/regex`](/docs/stdlib/text)** — the `Regex` API.
 - **[Security](/docs/guides/security)** — tagged literals as a defence
   against injection.

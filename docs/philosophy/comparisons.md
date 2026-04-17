@@ -78,7 +78,7 @@ not `Vec`, `String`, `HashMap`. See
 **`@`-prefix macros, no `!` suffix.** `@derive(Clone)` replaces
 `#[derive(Clone)]`. `print("x")` is an ordinary function. `f"{x}"`
 is a literal, not a macro. See
-[Metaprogramming](/docs/language/metaprogramming).
+[Metaprogramming](/docs/language/meta/overview).
 
 **Explicit contexts.** `using [Database, Logger]` replaces ambient
 state, thread locals, and `once_cell` globals. See
