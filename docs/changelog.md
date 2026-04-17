@@ -204,6 +204,121 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Fixed — AOT slice-op fat-ref loads route through `as_ptr`
+
+`SliceGet` (0x06), `SliceGetUnchecked` (0x07), `SliceSubslice` (0x08),
+and `SliceSplitAt` (0x09) in `verum_codegen/src/llvm/instruction.rs`
+unconditionally called `.into_pointer_value()` on the register value
+— panicking with "Found IntValue … expected PointerValue variant"
+whenever the register held a NaN-boxed i64 encoding of the pointer
+(exactly how the stdlib slice path stores the fat ref after a
+`Pack`). Route all four sites through the existing `as_ptr(ctx,
+val, name)` helper, which already handles PointerValue, IntValue
+(via int_to_ptr), and StructValue cases.
+
+This was the primary L0 AOT blocker — `make test-l0` previously
+SIGABRT'ed at spec ~400 inside `vtest-diff-aot`. After this fix,
+`examples/showcase.vr` builds and runs cleanly, and L0 proceeds
+through ~2000+ specs before the residual LLVM stability work.
+
+### Fixed — interpreter runs `__tls_init_*` ctors before `main`
+
+The VBC codegen emits a `__tls_init_<NAME>` synthetic function for
+every `@thread_local static` and registers it in
+`module.global_ctors`. The AOT path consumes these via
+`@llvm.global_ctors`, but the interpreter was skipping
+`module.global_ctors` wholesale (to avoid declared-only FFI library
+initializers crashing on macOS). Skipping the TLS subset of those
+ctors left `@thread_local static` slots uninitialised; `TlsGet`
+fell back to `Value::default()`, which is not the declared initial
+value. A `Maybe<LocalHeap>` stored as `None` then read back as
+untagged zero, misfired the Some/None pattern-match, and the CBGR
+allocator bootstrap crashed on the first `Shared::new(...)` with
+"Expected int, got None" at `value.rs:892`.
+
+Fix: selectively run only ctors whose function name starts with
+`__tls_init_`. FFI library initializers keep their existing skip.
+`CompilationPipeline::phase_interpret` calls the new
+`interpreter.run_global_ctors()` before `execute_function(main)`.
+Verified: `@thread_local static mut COUNTER: Int = 42;` now reads
+back as `42` inside the interpreter (was raw zero / panic before).
+
+### Added — CLI `verify --solver={z3|cvc5|portfolio|auto|capability}`
+
+The `--solver` flag on `verum verify` was defined with default
+`"z3"` but the value was only used for display — the verification
+path hard-coded Z3. Plumb the selection through to `CompilerOptions`
+and log it from `VerifyCommand` so the runtime path can route
+accordingly, and reject typos loudly instead of silently defaulting.
+
+- `CompilerOptions` gains `smt_solver: BackendChoice` (default
+  `BackendChoice::Z3` to preserve historical behaviour).
+- `verum_cli::commands::verify::SolverChoice` enum + `parse` so
+  validation remains available even when the `verification` feature
+  is disabled (that feature gates the `verum_smt` dependency and the
+  real `BackendChoice`).
+- Unknown values like `--solver=foo` now error with
+  `"Accepted values: z3, cvc5, auto, portfolio, capability"`.
+- `VerifyCommand::run` emits an info-level log naming the selected
+  backend and timeout.
+
+Actual backend routing (CVC5 / portfolio / capability-router) is a
+follow-up; the `cvc5` feature ships in stub mode and transparently
+delegates to Z3 inside `SmtBackendSwitcher`, so `--solver=cvc5`
+produces Z3-equivalent answers in the default build.
+
+### Added — LSP choice-snippet completion for attribute enum values
+
+`@inline(<TAB>` previously inserted the generic placeholder
+"identifier" at position `$1`, because `ArgSpec::Required(ArgType
+::Ident)` has no notion of the specific allowed identifiers. The
+LSP completion layer now hard-codes the set of known choice-valued
+attributes and emits an LSP choice snippet so editors offer the
+allowed values inline:
+
+- `@inline` → `always | never | hint | release`
+- `@repr` → `C | packed | transparent | cache_optimal`
+- `@optimize` → `none | size | speed | balanced`
+- `@device` → `cpu | gpu`
+
+### Chore — zero rustc warnings in `cargo build --workspace`
+
+Eliminated 25 `dead_code` warnings that accumulated across
+`verum_smt::cvc5_backend` (stub-mode `Cvc5Backend` / `Cvc5Sort` /
+`Cvc5Model` / `Cvc5Result` + `CVC5_KIND_*` constants kept for API
+parity with the `cvc5-ffi` build), `verum_vbc::codegen::
+get_current_ffi_platform` (reserved for FFI signature generation),
+and `verum_vbc::interpreter::kernel::MIN_GPU_SIZE` (CPU-vs-GPU
+kernel-selection threshold). Each site is annotated with a narrow
+`#[allow(dead_code)]` and a comment explaining when the code
+becomes live.
+
+The `unit` CI job now runs `RUSTFLAGS="-D warnings" cargo build
+--workspace --locked` as a blocking gate, so any regression
+reintroduces a failing build.
+
+### Infrastructure — CI restored + production-readiness docs
+
+- `.github/workflows/ci.yml` blocks on: unit tests
+  (Ubuntu + macOS-14 aarch64), VCS L0 (2963 specs, 100%) + L1 (499
+  specs, 100%), Tier 0 vs Tier 3 differential (204+ specs).
+  `rustfmt --check` and `clippy -D warnings` run advisory pending
+  the one-shot reformat / manual clippy polish pass.
+- `.github/workflows/nightly.yml` runs the full VCS sweep with
+  cross-tier differential, 60-minute fuzzer across all targets,
+  and benchmark comparison vs baseline.
+- `KNOWN_ISSUES.md` rewritten to reflect the current state — stale
+  entries about `@thread_local`, byte-writes, and Text equality
+  removed; real remaining items (AOT stability residual, `Shared<T>`
+  deeper allocator crash, AOT async executor, REPL evaluation)
+  surfaced with workarounds.
+- New `CONTRIBUTING.md` with pre-PR verification commands that
+  mirror the CI gate (`RUSTFLAGS="-D warnings" cargo build`,
+  `cargo test --workspace --lib --bins`, `make test-l0 test-l1`).
+- `vcs/baselines/l0-baseline.md` documents the current 98.4% L0
+  compile-time pass rate and the reproduction path for the residual
+  full-L0 AOT SIGSEGV.
+
 ## [0.32.0] — 2026-04-15 — phase D complete
 
 ### Major

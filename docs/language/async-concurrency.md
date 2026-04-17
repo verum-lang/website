@@ -313,6 +313,18 @@ operation completes via the platform's async IO API (`io_uring` on
 Linux, `kqueue` on macOS/BSD, `IOCP` on Windows — see
 [architecture](/docs/architecture/runtime-tiers)).
 
+:::warning AOT status (0.1.0)
+
+`verum build` currently emits correct async state-machine code but
+does not link a future-polling executor into the output binary —
+running such a binary reaches an `await` and has no driver. Use
+`verum run --interp` (Tier 0 interpreter) for async code today;
+its internal driver schedules futures correctly. A minimal
+single-threaded polling executor for AOT is tracked as
+follow-up work.
+
+:::
+
 ## Runtime configurations
 
 `Verum.toml` can select the runtime flavour:

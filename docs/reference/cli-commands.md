@@ -142,7 +142,10 @@ Flags:
 - `--profile` — include timing breakdown.
 - `--show-cost` — print the SMT obligation cost model.
 - `--compare-modes` — run several modes and compare.
-- `--solver <z3|cvc5|portfolio>` — default `z3`.
+- `--solver <z3|cvc5|auto|portfolio|capability>` — default `z3`.
+  Unknown values error with the accepted-values list. CVC5 / portfolio /
+  capability routing ships in stub mode in the default build (transparent
+  Z3 fallback); build with `--features cvc5-ffi` to link real libcvc5.
 - `--timeout <seconds>` (default 30).
 - `--cache` — populate / read the proof cache.
 - `--interactive` — step through obligations.
