@@ -111,7 +111,7 @@ assert(!evaluate(&modal_atom("p"), &frame, &v, &world("w0")));
 ```verum
 type LinForm is
     | Atom     { name: Text }                                          // propositional atom
-    | Tensor   { left: Heap<LinForm>, right: Heap<LinForm> }           // A ⊗ B   — multiplicative conjunction
+    | MTensor  { left: Heap<LinForm>, right: Heap<LinForm> }           // A ⊗ B   — multiplicative conjunction ("MTensor" to avoid collision with `math.tensor.Tensor`)
     | Par      { left: Heap<LinForm>, right: Heap<LinForm> }           // A ⅋ B   — multiplicative disjunction
     | With     { left: Heap<LinForm>, right: Heap<LinForm> }           // A & B   — additive conjunction ("choose one")
     | Plus     { left: Heap<LinForm>, right: Heap<LinForm> }           // A ⊕ B   — additive disjunction ("one of")
