@@ -97,8 +97,13 @@ to traverse bytes end-to-end in the VBC interpreter and AOT builds.
 Prior to these fixes every such module typechecked cleanly but
 crashed or silently corrupted data at run time; the VCS
 `typecheck-pass` suites did not surface it because they never
-executed the code. Further stdlib runtime issues continue to be
-found incrementally now that execution reaches them.
+executed the code. Slice subslicing now produces correct byte-range
+views (e.g. `"hello".as_bytes().slice(1, 4)` yields a 3-byte slice
+pointing at `"ell"`). Further stdlib runtime issues continue to be
+found incrementally now that execution reaches them; in particular,
+individual stdlib methods (`Text.parse_int`, JSON object parsing)
+still have their own bugs that were previously masked by the
+foundation being broken.
 
 ## [0.32.0] — 2026-04-15 — phase D complete
 
