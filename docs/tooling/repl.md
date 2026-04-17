@@ -9,20 +9,19 @@ description: Interactive REPL backed by the VBC interpreter — bind values, def
 `verum repl` is a line-oriented read-eval-print loop. It's the fastest
 way to validate Verum syntax interactively.
 
-:::warning Current status (0.1.0)
+:::note Current status (0.1.0)
 
-The REPL currently operates in **parse-only mode** — input is parsed
-and type-checked, but not evaluated. Typing `xs.iter().sum()` reports
-a parse result, not the sum. Definitions (`fn`, `type`, `const`) are
-recorded as bindings but not compiled to executable code.
+The REPL is **VBC-backed**: each prompt is compiled and executed via
+the Tier 0 interpreter. `let x = 42` desugars into a session-level
+`const x = 42;` (or `static x: T = 42;` with a type annotation),
+`fn`, `type`, `protocol`, `implement`, `static`, and `const` items
+are appended to the session source after a compile-only validation,
+and bare expressions are wrapped in a synthetic `__repl_main_<n>()`
+that prints the value via the f-string formatter.
 
-Full VBC-backed evaluation (persistent `InterpreterState`
-accumulating bindings across prompts) is a tracked follow-up. For
-execution today, use `verum run <file.vr>`.
-
-The command-set and UI described below reflects the target design;
-commands that depend on evaluation (`:bench`, `:time`, `:profile`,
-`:mem`) return a clear "not yet wired" message.
+`:source` shows the accumulated session source, `:reset` clears it.
+Commands that depend on bytecode-level instrumentation (`:bench`,
+`:time`, `:profile`, `:mem`) remain follow-ups.
 
 :::
 

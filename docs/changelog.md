@@ -204,6 +204,26 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Added — REPL VBC-backed evaluation
+
+`verum repl` now actually evaluates each prompt instead of stopping at
+parse + typecheck. Each input is classified and routed:
+
+- `let NAME [: TYPE] = EXPR` → desugars to `static NAME: TYPE = EXPR;`
+  (with type annotation) or `const NAME = EXPR;` (without). The
+  declaration is appended to a session source buffer that persists
+  across prompts.
+- Top-level items (`fn`, `type`, `protocol`, `implement`, `static`,
+  `const`) → appended to the session source after a compile-only
+  validation.
+- Bare expressions → wrapped in `fn __repl_main_<N>() { print(f"{...}"); }`,
+  the session source plus the wrapper is compiled to VBC, and the
+  wrapper is executed via `verum_vbc::interpreter::Interpreter`. The
+  captured stdout is printed as the result.
+
+`:source` shows the accumulated buffer, `:reset` clears it. Removes
+the "REPL — Parse-Only" entry from `KNOWN_ISSUES.md`.
+
 ### Fixed — `Shared<T>::new` lowering (closes the last KNOWN_ISSUES item)
 
 `Shared<Int>.new(42)` (and any `Foo<TypeArgs>.method(...)` call on a
