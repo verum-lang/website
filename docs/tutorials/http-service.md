@@ -432,7 +432,7 @@ $ verum test
    all 4 tests passed
 ```
 
-Notice the `[verify]` line: the capability router dispatched to Z3
+Notice the `[verify]` line: the capability router dispatched to the SMT backend
 and proved `codegen::generate` satisfies its postconditions **at
 compile time**. The property test then sanity-checks with random
 inputs.

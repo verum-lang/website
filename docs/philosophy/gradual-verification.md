@@ -17,7 +17,7 @@ climb a rung.
 ## Principle: intent, not backend
 
 `@verify(...)` takes a **strategy**, not a solver name. The compiler
-dispatches to Z3, CVC5, portfolio, synthesis, or pure tactic search
+dispatches to the SMT backend, portfolio, synthesis, or pure tactic search
 via its capability router based on goal shape. When a future version
 adds a better backend, your annotations don't change.
 
@@ -32,7 +32,7 @@ fn transfer(from: &mut Account, to: &mut Account, amount: Money)
 
 The `@verify(formal)` attribute says "use whatever works". The router
 examines the obligation's theory — linear integer arithmetic,
-quantifier-free arrays, bitvectors — and picks Z3 or CVC5 accordingly.
+quantifier-free arrays, bitvectors — and picks the SMT backend accordingly.
 
 See [verification/smt-routing](/docs/verification/smt-routing) for
 the dispatch rules.
@@ -140,7 +140,7 @@ rejected. Run `@verify(formal)` on main before release.
 
 **Intent**: "throw everything at it in parallel".
 
-- Races Z3, CVC5, and a tactic-search strategy in parallel.
+- Races the SMT backend, and a tactic-search strategy in parallel.
 - The first successful close wins.
 - Failed strategies are retried with different tactics, lemma sets,
   and heuristics.

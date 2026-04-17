@@ -88,7 +88,7 @@ rapid iteration.
 When a refinement or contract cannot be discharged syntactically, the
 compiler translates it to SMT-LIB and dispatches through the
 **capability router** (see **[SMT routing](/docs/verification/smt-routing)**).
-The router picks Z3 or CVC5 based on the obligation's theory mix.
+The router picks the SMT backend based on the obligation's theory mix.
 
 Results are cached keyed on the SMT-LIB fingerprint — a proof stays
 valid until the function or its dependencies change. Compile time
@@ -138,7 +138,7 @@ obligation binary_search/postcond at src/search.vr:25:5
 ```
 
 The obligation is dispatched through the capability router and fed
-to Z3, CVC5, the portfolio executor, or the tactic evaluator based
+to the SMT backend, the portfolio executor, or the tactic evaluator based
 on the selected strategy.
 
 ## Telemetry and stats
@@ -180,7 +180,7 @@ There is no flag-day — functions upgrade independently:
 - **[Refinement reflection](/docs/verification/refinement-reflection)**
   — making `@logic` functions available to the solver.
 - **[SMT routing](/docs/verification/smt-routing)** — how the
-  capability router picks Z3 vs CVC5 vs portfolio.
+  capability router picks between the available SMT backends.
 - **[Contracts](/docs/verification/contracts)** — `requires`,
   `ensures`, `invariant`.
 - **[Proofs](/docs/verification/proofs)** — the tactic DSL.

@@ -85,7 +85,7 @@ The semantics of each strategy, per the grammar:
 | `synthesize`   | Generate a term satisfying the specification instead of checking it.                                  | bounded by search depth |
 
 **Consequence in the compiler**: The `@verify(…)` attribute routes the
-goal through a *capability router* that picks between Z3, CVC5, and
+goal through a *capability router* that picks between the SMT backend, and
 the in-house solver based on goal shape. You choose intent
 (`formal`), not backend (`Z3`). See
 [verification/smt-routing](/docs/verification/smt-routing).

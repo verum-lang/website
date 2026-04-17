@@ -29,7 +29,7 @@ Production-ready:
   11.8–14.5 ns per check, escape analysis, promotion to
   `&checked T`.
 - **Verification**: gradual from `@verify(runtime)` through
-  `@verify(thorough)` to `@verify(certified)`; Z3 + CVC5 with
+  `@verify(thorough)` to `@verify(certified)`; the SMT backend with
   capability-based routing; proof extraction; cache with 60–70%
   hit rate.
 - **Concurrency**: `async fn`, `.await`, structured concurrency via
@@ -138,7 +138,7 @@ Near-term items already underway for **v0.33**:
 
 - **v0.32** — current stable release. Documented here.
 - **v0.31** — cubical HoTT normaliser; VBC `CubicalExtended` opcode.
-- **v0.30** — portfolio verification (Z3 + CVC5).
+- **v0.30** — portfolio verification (the SMT backend).
 - **v0.25** — dependent types; Σ / Π surface syntax.
 - **v0.20** — refinement-type SMT integration.
 - **v0.15** — VBC-first architecture; LLVM AOT path.

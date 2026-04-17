@@ -63,7 +63,7 @@ Each derive is a procedural macro under `core::derives`.
 @verify(synthesize)   // synthesise a term from the spec
 ```
 
-The solver (Z3, CVC5, or portfolio) is picked by the capability
+The solver (the SMT backend, or portfolio) is picked by the capability
 router, not by you — see
 **[verification → SMT routing](/docs/verification/smt-routing)**.
 

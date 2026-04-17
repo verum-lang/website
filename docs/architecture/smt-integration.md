@@ -6,11 +6,21 @@ title: SMT Integration
 # SMT Integration
 
 `verum_smt` is the bridge between the type checker and the SMT
-solvers. It runs during **Phase 3a** (contract verification) and
+subsystem. It runs during **Phase 3a** (contract verification) and
 the refinement / dependent-verifier sub-step of **Phase 4**
 (semantic analysis) — see the **[verification pipeline](/docs/architecture/verification-pipeline)**
 for the subsystem-internal stages (5.1–5.7 below are the solver's
 own numbering, not public compilation phases).
+
+:::note On the choice of solver
+Verum's verification layer is **backend-agnostic** at the language
+level. The current release bundles Z3 and CVC5 behind the capability
+router; a Verum-native SMT solver is on the roadmap and will slot into
+the same interface. Anywhere specific backends are named below, read
+them as *the current implementation* — the subsystem's contract with
+the rest of the compiler is what is load-bearing, not the specific
+solver.
+:::
 
 ## Architecture
 
@@ -88,7 +98,7 @@ up in capability table.
 
 `portfolio_executor.rs`:
 
-1. Spawn Z3 and CVC5 on the same obligation.
+1. Spawn every available SMT backend on the same obligation.
 2. Wait for both or timeout.
 3. Cross-validate:
    - both unsat → accepted.
@@ -109,7 +119,7 @@ are cached per project (`target/smt-cache/`). Invalidation:
 
 ## Telemetry & routing statistics
 
-Every Z3 `check()` call records routing choice, outcome (SAT/UNSAT/
+Every solver `check()` call records routing choice, outcome (SAT/UNSAT/
 unknown), elapsed time, and theory class into a shared
 `Arc<RoutingStats>` on the `Session`. The CLI exposes this data:
 
@@ -142,7 +152,7 @@ Tactics can compose via the `tactics.rs` combinator language.
 ## Proof extraction
 
 `proof_extraction.rs` (135 K LOC) extracts a proof term from an SMT
-unsat response. Both Z3 and CVC5 emit proof logs; the translator
+unsat response. Each bundled backend emits a proof log; the translator
 normalises them to Verum's proof-term representation for machine
 checking.
 

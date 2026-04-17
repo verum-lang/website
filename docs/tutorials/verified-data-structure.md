@@ -217,7 +217,7 @@ $ verum test
 If `merge` takes > 5 s to verify, try:
 
 - Escalate to `@verify(thorough)` on merge specifically — this races
-  Z3, CVC5, and tactic-based proof search; CVC5's quantifier
+  the SMT backend, and tactic-based proof search; CVC5's quantifier
   reasoning is often faster on nested foralls.
 - Split invariants 4 and 5 into separate helper `@logic` lemmas
   that name the adjacency property.
@@ -237,7 +237,7 @@ If `merge` takes > 5 s to verify, try:
 
 - **[Proofs](/docs/verification/proofs)** — when SMT isn't enough,
   write a proof term.
-- **[SMT routing](/docs/verification/smt-routing)** — how Z3/CVC5
+- **[SMT routing](/docs/verification/smt-routing)** — how the SMT backend
   decide what to dispatch.
 - **[Refinement patterns](/docs/cookbook/refinements)** — the common
   idioms.

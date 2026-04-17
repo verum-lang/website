@@ -262,7 +262,7 @@ $ verum check
     finished in 1.8s
 ```
 
-30 proofs — all discharged by Z3 with median 42 ms per goal.
+30 proofs — all discharged by the SMT backend with median 42 ms per goal.
 
 ## Step 10 — See a rejection
 
@@ -283,7 +283,7 @@ error[V3402]: postcondition violated
   --> src/ring.rs:35:7
    |
 35 |         self.len += 1;
-   |         ^^^^^^^^^^^^^ counter-example found by Z3
+   |         ^^^^^^^^^^^^^ counter-example found by the SMT solver
    |                       | at entry: self.len = capacity (buffer full)
    |                       | at exit:  self.len = capacity + 1  // > capacity — invariant violated!
    = help: add `where requires self.len < self.capacity`
@@ -336,4 +336,4 @@ A bounded ring buffer whose:
 - **[tutorials/verified-data-structure](/docs/tutorials/verified-data-structure)** —
   a bigger verified data structure (sorted list).
 - **[verification/smt-routing](/docs/verification/smt-routing)** —
-  how the compiler picks Z3, CVC5, or portfolio.
+  how the compiler picks the SMT backend, or portfolio.

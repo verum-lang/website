@@ -3,15 +3,25 @@ sidebar_position: 3
 title: SMT Routing
 ---
 
-# SMT Routing — Z3 + CVC5
+# SMT Routing
 
-Verum ships with **two** SMT solvers. Z3 is the default; CVC5 handles
-the theories Z3 cannot; portfolio mode runs both and cross-validates.
-This page documents how the compiler decides which solver to use.
+Verum's verification layer dispatches each obligation through a
+**capability router** that classifies the obligation by theory and
+picks an appropriate solver. This page documents the routing policy.
 
-## Why two solvers
+:::note Implementation detail vs language contract
+The language itself makes **no commitment to a specific SMT solver**.
+The current release bundles Z3 and CVC5 as backends behind the router
+because that combination covers the theories Verum's verification
+layer needs today, and a Verum-native SMT solver is on the roadmap.
+Anywhere a specific backend is named below, treat it as a note about
+*the current implementation* — the router's contract is what is
+load-bearing.
+:::
 
-No single SMT solver is best at everything. Empirically:
+## Why more than one solver
+
+No single SMT solver is best at every theory. Empirically:
 
 | Theory                                    | Best solver | Why |
 |-------------------------------------------|-------------|-----|
