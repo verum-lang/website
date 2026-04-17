@@ -44,8 +44,7 @@ print(async);                   // identifier — legal
 ```
 
 Below is the full contextual keyword list, grouped by purpose. The
-canonical enumeration lives in
-[`grammar/verum.ebnf`](/docs/reference/grammar-ebnf).
+canonical enumeration lives in the [grammar reference](/docs/reference/grammar-ebnf).
 
 ### Visibility
 
@@ -244,8 +243,8 @@ that resemble keywords:
 
 ## Grammar reference
 
-The authoritative keyword list is the `keyword` production in
-[`grammar/verum.ebnf`](/docs/reference/grammar-ebnf):
+The authoritative keyword list is the `keyword` production in the
+[grammar reference](/docs/reference/grammar-ebnf):
 
 ```ebnf
 keyword = reserved_keyword | primary_keyword | control_flow

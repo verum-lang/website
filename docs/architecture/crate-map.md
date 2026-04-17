@@ -5,9 +5,9 @@ title: Crate Map
 
 # Crate Map
 
-Every crate in the Verum compiler workspace, with purpose, size, and
-representative entry points. Numbers come from
-`verum-lang/verum/crates/`.
+Every crate in the Verum compiler workspace, with purpose, size,
+and representative entry points. Line counts reflect the current
+release.
 
 ## Layer 0 — Foundation
 

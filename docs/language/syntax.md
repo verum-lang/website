@@ -6,8 +6,8 @@ description: The complete lexical and syntactic surface of Verum.
 
 # Syntax
 
-Verum's concrete syntax is defined by
-[`grammar/verum.ebnf`](/docs/reference/grammar-ebnf). This page is the
+Verum's concrete syntax is defined by the
+[grammar reference](/docs/reference/grammar-ebnf). This page is the
 reader-friendly tour, one layer below the grammar and one layer above
 the per-feature documentation.
 

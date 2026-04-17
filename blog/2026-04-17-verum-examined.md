@@ -13,7 +13,7 @@ This post explains what Verum actually is, feature by feature, grounded in the g
 
 ## 1. The premise: semantic honesty
 
-Verum's single foundational rule is stated in [`docs/detailed/01-philosophy.md`](/docs/intro) as *semantic honesty*: every name, every syntax form, every annotation must reflect what the compiler will actually do with it. No implicit coercions. No hidden globals. No magic that activates under some configuration but not another.
+Verum's single foundational rule is *semantic honesty*: every name, every syntax form, every annotation must reflect what the compiler actually does with it. The name of a reference must describe its cost and its guarantee, not the duration of its target; the name of an effect must describe the effect, not the machinery that implements it; the name of an attribute must describe what the compiler will do on encountering it, not what it looked like in the language this one borrowed the idea from. No implicit coercions. No hidden globals. No magic that activates under some configuration but not another.
 
 This sounds obvious. It is also the reason a great many language features you may know are **not** in Verum:
 
@@ -25,7 +25,7 @@ This sounds obvious. It is also the reason a great many language features you ma
 
 Every one of these choices costs something (occasional verbosity, a few familiar idioms ruled out). The payoff is that the language stops lying to its reader. In 2024 the reader was human. In 2026 it is often not. A language that lies — even a little — to a model that doesn't know it's being lied to is a liability, not a convenience.
 
-The three reserved keywords are `let`, `fn`, `is`. The grammar file (`grammar/verum.ebnf`, ~2400 lines) is the only source of truth for what Verum syntax is. Everything that follows has a production in that file.
+The three reserved keywords are `let`, `fn`, `is`. Everything else — `type`, `using`, `where`, `async`, `spawn`, `meta`, `theorem` — is a contextual keyword that rebinds to an identifier when used as one. The authoritative grammar is a single EBNF file of a little under twenty-five hundred lines; everything in the language below has a production in it.
 
 ## 2. Types that carry their invariants
 
@@ -49,7 +49,7 @@ If you pass `bind(70000)`, the error is reported at the call site, not at a runt
 
 **Predicates are first-class.** User-defined `@logic` functions (`@logic fn is_sorted<T: Ord>(xs: &List<T>) -> Bool { forall i in 0..xs.len()-1. xs[i] <= xs[i+1] }`) are reflected as SMT axioms; calling them from a refinement is not a syntactic trick. This is closer to Dafny's ghost functions than to Rust's `const fn`.
 
-**When SMT fails, there are tactics, not panic.** Verum's grammar lists 22 named tactics (`grammar/verum.ebnf`, lines 2162–2167): `auto, simp, ring, field, omega, blast, smt, trivial, assumption, contradiction, induction, cases, rewrite, unfold, apply, exact, intro, intros, cubical, category_simp, category_law, descent_check`, plus `identifier` for user-registered tactics and the `try / else / repeat / first / all_goals` combinators. This is a plain-old Coq/Lean tactic language embedded in a systems language — not a separate prover.
+**When SMT fails, there are tactics, not panic.** The language admits twenty-two named tactics: `auto`, `simp`, `ring`, `field`, `omega`, `blast`, `smt`, `trivial`, `assumption`, `contradiction`, `induction`, `cases`, `rewrite`, `unfold`, `apply`, `exact`, `intro`, `intros`, `cubical`, `category_simp`, `category_law`, `descent_check`. Arbitrary user-registered tactics are named by identifier. Combinators — `try`, `else`, `repeat`, `first`, `all_goals` — compose them. This is a plain-old Coq/Lean tactic language embedded in a systems language — not a separate prover invoked from the outside.
 
 The trade-off is real: refinement types do not come for free in compile time, and complex predicates can exceed the SMT solver's decidable fragment. That is why the next feature exists.
 
@@ -67,7 +67,7 @@ Most verified-language proposals ask the programmer to commit to formal proof up
 | `certified`    | Independent cross-verification                   | Slowest, strongest          |
 | `synthesize`   | Generate a term satisfying the specification     | Variable                    |
 
-Source: `crates/verum_smt/src/verify_strategy.rs`, enum `VerifyStrategy`.
+The grammar also accepts two alias spellings — `@verify(proof)` for `formal` and `@verify(reliable)` for `thorough` — so the surface keyword count is nine, but the behaviours collapse to these seven.
 
 The same body of code moves up the ladder as trust becomes a requirement. Ship a library at `@verify(runtime)`. When a caller depends on a stronger guarantee, promote to `@verify(formal)` or `@verify(certified)` — no rewrite. If the solver times out, drop a tactic script or fall back to `@verify(runtime)` with a visible apology in the type.
 
@@ -85,11 +85,11 @@ The memory-safety debate has historically offered two choices. Either you get ga
 | 1    | `&checked T`    | 0 ns      | Compiler-proven safe (escape analysis)     |
 | 2    | `&unsafe T`     | 0 ns      | Caller proves safety; requires `unsafe`    |
 
-\* target overhead per dereference; documented in `CLAUDE.md` and `docs/detailed/24-cbgr-implementation.md`.
+\* target overhead per dereference on current hardware; the precise cost is a small number of cycles for a single comparison and a predicted branch.
 
-CBGR (Capability-Based Generational References) is the name of the Tier 0 mechanism. A reference is three fields: pointer (8 B), generation (4 B), capability+epoch bits (4 B) — 16 bytes for `ThinRef<T>`; `FatRef<T>` for unsized data adds a length or vtable pointer. The allocation header carries the generation; on every dereference the reference's generation is compared against the header's. A free/revoke bumps the header's generation; every subsequent deref through a stale reference is rejected. Capabilities are eight monotonic bits (`CAP_READ, CAP_WRITE, CAP_EXECUTE, CAP_DELEGATE, CAP_REVOKE, CAP_BORROWED, CAP_MUTABLE, CAP_NO_ESCAPE`, defined in `core/mem/capability.vr`): they can be attenuated, never expanded.
+CBGR (Capability-Based Generational References) is the name of the Tier 0 mechanism. A reference is three fields: pointer (8 B), generation (4 B), capability-and-epoch bits (4 B) — sixteen bytes for the common case, twenty-four for references into unsized data (slices, trait objects) where a length or vtable pointer must travel along. The allocation header carries the current generation; on every dereference the reference's generation is compared against the header's. A free or explicit revoke atomically bumps the header's generation; every subsequent deref through a now-stale reference is rejected before it can touch memory. Capabilities are eight monotonic bits — `READ`, `WRITE`, `EXECUTE`, `DELEGATE`, `REVOKE`, `BORROWED`, `MUTABLE`, `NO_ESCAPE` — that can be attenuated, never expanded: an API that hands you a read-only reference cannot itself be used to widen it.
 
-Tier 1 is the escape hatch. The CBGR analysis suite in `crates/verum_cbgr/src/` comprises eleven dedicated analyses — `escape`, `nll`, `polonius`, `points_to`, `dominance`, `type`, `concurrency`, `lifetime`, `ownership`, `tier`, `array` — plus the central `analysis` coordinator. Together they prove where Tier 0 can be lowered to a raw load. The compiler silently **promotes** `&T` to `&checked T` where this is safe; it never demotes silently — `&unsafe T` is a source-level opt-in.
+Tier 1 is the escape hatch. The compiler's reference-analysis suite — escape analysis, non-lexical lifetimes, Polonius-style borrow checking, points-to, dominance, type-sensitive and concurrency-sensitive flow, ownership and lifetime inference, plus tier-aware and array-bounds analysis — proves where Tier 0 can be lowered to a raw load. The compiler silently **promotes** `&T` to `&checked T` where this is safe; it never demotes silently — `&unsafe T` is always a source-level opt-in written by the programmer.
 
 Compare this to the prior art:
 
@@ -114,17 +114,26 @@ Dependency injection, dynamic scoping, reader monads, effect rows, context param
 
 The grammar production for `using [C1, C2, ...]` applies **identically** to a runtime function taking a `Database`/`Logger`/`Clock` and to a `meta fn` taking a `TypeInfo`/`BuildAssets`/`Schema`. The call-site must provide a matching set; child tasks spawned with `spawn` inherit the parent's stack; `spawn using [A, B]` drops everything else. There is no ambient global; there is no conditional import; there is one lookup rule.
 
-The numbers are concrete. `core/meta/contexts.vr` defines exactly 14 compile-time meta-contexts:
+The numbers are concrete. Fourteen compile-time meta-contexts are shipped with the language:
 
-1. BuildAssets     8. ProjectInfo
-2. TypeInfo        9. SourceMap
-3. AstAccess       10. Schema
-4. CompileDiag     11. DepGraph
-5. MetaRuntime     12. MetaBench
-6. MacroState      13. StageInfo
-7. CodeSearch      14. Hygiene
+| Meta-context   | Purpose                                                    |
+|----------------|------------------------------------------------------------|
+| `TypeInfo`     | Reflect on types: fields, variants, size, alignment, names |
+| `AstAccess`    | Inspect and transform AST nodes                            |
+| `CodeSearch`   | Query the whole program (definitions, callers, uses)       |
+| `DepGraph`     | Navigate the dependency graph between items                |
+| `Schema`       | Read project-level schemas (SQL, JSON, Proto)              |
+| `Hygiene`      | Name generation and identifier freshness                   |
+| `MacroState`   | Per-expansion storage, guard recursion                     |
+| `SourceMap`    | Span manipulation and source-line lookup                   |
+| `StageInfo`    | Query the current meta-stage and phase                     |
+| `CompileDiag`  | Emit errors, warnings, help text                           |
+| `BuildAssets`  | Load files and emit constants at build time                |
+| `ProjectInfo`  | Manifest fields, workspace members, feature flags          |
+| `MetaRuntime`  | Controlled evaluation at compile time                      |
+| `MetaBench`    | Benchmark compile-time work                                |
 
-`core/context/standard.vr` documents the standard runtime set: Logger, Database, Auth, Config, Cache, Metrics, Tracer, Clock, Random, FileSystem. Ten names. Across the 14 meta-contexts there are about 233 public methods. Each method is a typed, documented API — not a reflection surface.
+The standard runtime set is ten contexts: `Logger`, `Database`, `Auth`, `Config`, `Cache`, `Metrics`, `Tracer`, `Clock`, `Random`, `FileSystem`. Across the fourteen meta-contexts there are on the order of two hundred and thirty public methods, each a typed, documented API — not a reflection surface groped through strings.
 
 Why unify these two worlds? Because from the programmer's perspective, a `meta fn` that inspects a type via `TypeInfo` is doing the same thing as a runtime function that reads a config via `Config`: reaching into an outer scope for an authorised value. The surface syntax for both should be the same. Having *separate* systems for compile-time and runtime dependency is how languages grow two subtly different sets of rules for the same concept. That is exactly the kind of hidden complexity semantic honesty is meant to prevent.
 
@@ -132,7 +141,7 @@ Why unify these two worlds? Because from the programmer's perspective, a `meta f
 
 Dependent types let a type depend on a value. The canonical example is `Vec<T, n>` — a vector whose length is part of its type, so that `vec_concat : Vec<T, n> → Vec<T, m> → Vec<T, n + m>` makes the shape law a type-level fact. Idris, Agda, Coq, Lean, F\* all live in this space.
 
-Verum includes dependent types, sigma-type refinements (`x: Int where x > 0`), cubical path equality types `Path<A>(a, b)`, and a cubical normaliser with higher-inductive types and computational univalence. The grammar productions are `sigma_bindings` / `sigma_type` (dependent pairs) and `path_type_expr` (cubical paths); the implementation lives in `crates/verum_types/src/cubical.rs` with a bridge in `cubical_bridge.rs`, and the verification driver in `crates/verum_verification/`. Phase A–D (dependent types, cubical normaliser, HoTT primitives, verification pipeline) is complete per the project's conformance suite.
+Verum includes dependent types, sigma-type refinements of the form `x: Int where x > 0`, cubical path-equality types written `Path<A>(a, b)`, and a cubical normaliser with higher-inductive types and computational univalence. The language's dependent-types, cubical-normaliser, HoTT-primitives, and verification-pipeline phases are all in the shipped release; conformance tests cover every production.
 
 The combination — dependent types **and** `&mut T` **and** systems-language syntax **and** production tooling — is rare. Idris 2 ships a linear-types extension but has no CBGR-style runtime safety; Lean 4 is a proof assistant first and a systems language a distant second; ATS has dependent types and linear types but a notoriously difficult surface.
 
@@ -146,7 +155,7 @@ Rust's macros have an exclamation mark. Scheme's have `quasiquote`. Scala 3 has 
 
 A `meta fn` is a function. A `quote { ... }` block is an expression of type `TokenStream`. An `@-attribute` invokes a meta function at a specific syntactic site. Splicing (`$expr`, `$[for ...]`) pastes a quoted value back. Staging is explicit (stage 0 = runtime, 1 = first meta, etc.).
 
-The reason this matters for the rest of the language is that every attribute in Verum — `@derive`, `@verify`, `@repr`, `@specialize`, `@logic`, `@cfg`, `@intrinsic`, more than forty enumerated in `docs/detailed/31-attribute-registry.md` — is uniformly an invocation of something you could write yourself in a `meta fn`. There is no distinction between a language-level compile-time construct and a user-level one. You do not have to petition for a new attribute; you can write one.
+The reason this matters for the rest of the language is that every attribute in Verum — `@derive`, `@verify`, `@repr`, `@specialize`, `@logic`, `@cfg`, `@intrinsic`, and more than forty others — is uniformly an invocation of something you could write yourself in a `meta fn`. There is no distinction between a language-level compile-time construct and a user-level one. You do not have to petition for a new attribute; you can write one.
 
 Compare:
 - Rust: proc-macros are a separate crate type with separate compilation rules and restrictions.
@@ -166,7 +175,7 @@ Verum's contribution is not a new primitive but the integration:
 - The `nursery(on_error: cancel_all) { ... }` block owns every task spawned inside it. Leaving the scope waits for every child. No task outlives its scope. This is the Trio invariant, stated in the language.
 - `async fn` does not infect callees. A `fn` is `fn`, and `async fn` is different. There is no automatic async-in-async coloring beyond what is visible in the type. (Async colouring remains a real language-design cost, discussed openly — Verum does not claim to solve it, only to make it explicit.)
 
-The runtime architecture — work-stealing per-core executor, a platform-native I/O reactor, and a context stack saved/restored at each `.await` — is specified in `docs/architecture/runtime-tiers.md` and `docs/language/async-concurrency.md`.
+Under this surface sits a work-stealing per-core executor, a platform-native I/O reactor, and a context stack that is saved at every `.await` and restored before resumption — so that a function suspended for an hour and resumed in a different worker thread still sees the same `using [Database, Logger]` stack it had when it yielded.
 
 ## 9. Proof-carrying code and the distribution model
 
@@ -182,7 +191,7 @@ Verum is **VBC-first**. Every program compiles to VBC (Verum Bytecode); VBC is e
 
 The consequence is architectural rather than performance-headline-worthy:
 
-- `verum run` starts in milliseconds because it skips native codegen. Every VBC opcode has an interpreter handler in `crates/verum_vbc/src/interpreter/dispatch_table/`.
+- `verum run` starts in milliseconds because it skips native codegen. Every VBC opcode has a direct interpreter handler; the primary plus extended opcode tables together approach the scale of a real machine's instruction set.
 - `verum build --release` runs the same front end, the same type checker, the same CBGR analysis, and only differs in the final lowering step.
 - Behaviour under the two paths is the same. A test that passes under the interpreter passes under AOT; a panic reproduces on both; a verification obligation discharges once.
 - Tooling — LSP, DAP, REPL, Playbook — sits on the same pipeline. There is no "dev mode semantics vs release mode semantics." Python grew that and now spends a significant chunk of its design energy managing the gap.
@@ -211,7 +220,7 @@ None of this is to say Verum "solves the LLM problem." It is to say that the lan
 
 A blog post about a language that does not list its costs is a marketing document. These are the real costs.
 
-- **Compile times.** Refinement-type SMT discharge costs real seconds per function in hard cases. The incremental compilation cache, per-obligation fingerprinting in `target/.verum-cache/smt/`, and the `@verify(fast)` strategy exist because this is a real tax. It is not gone; it is amortised.
+- **Compile times.** Refinement-type SMT discharge costs real seconds per function in hard cases. The incremental compilation cache, per-obligation fingerprinting, and the `@verify(fast)` strategy exist because this is a real tax. It is not gone; it is amortised.
 - **Syntax weight.** `using [...]`, `where ensures ...`, `{ self > 0 }` are all more characters than their absent Rust equivalents. The tradeoff for explicitness is, always, verbosity. Verum bets the verbosity is worth it.
 - **Learning curve.** The refinement-type + dependent-type + cubical stack is academically heavy. You do not need any of it to ship a CLI — `@verify(runtime)` on plain `Int` and `Text` is a complete program — but the full surface is larger than Go's.
 - **Ecosystem age.** Verum's registry is new; the package count is measured in dozens, not tens of thousands. Using Verum for a problem that is two `cargo add` calls away in Rust today is a worse trade than Rust. That changes only with time and adoption.
@@ -226,6 +235,6 @@ The shortest honest description of Verum is this: it takes refinement types from
 
 The pitch is not that any one of these ideas is new. They are not. The pitch is that they have never been combined in a production systems language whose surface a Rust or Swift programmer could read comfortably, and that the current moment — where software increasingly travels through a language model before it reaches production — is the moment where having them combined actually pays.
 
-Whether the bet is right will be settled by practice, not by essays. The grammar is in `grammar/verum.ebnf`. The compiler is in `crates/`. The standard library is in `core/`. If the questions raised above sound like yours, the easiest next thing is to read the [language tour](/docs/getting-started/tour), pick one example, and try to break it. We built the language expecting to be argued with.
+Whether the bet is right will be settled by practice, not by essays. The language is open, documented end-to-end, and instrumented. If the questions raised above sound like yours, the easiest next thing is to read the [language tour](/docs/getting-started/tour), pick one example, and try to break it. We built the language expecting to be argued with.
 
 — The Verum team

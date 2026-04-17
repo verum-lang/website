@@ -305,7 +305,7 @@ reasons about the pattern set, not over arbitrary strings.
 
 ## Grammar
 
-From [`grammar/verum.ebnf`](/docs/reference/grammar-ebnf):
+From the [grammar reference](/docs/reference/grammar-ebnf):
 
 ```ebnf
 tagged_literal        = format_tag , '#' , tagged_content ;

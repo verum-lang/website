@@ -74,7 +74,7 @@ flowchart TD
 
 ## Key crates at a glance
 
-Numbers are measured from `verum-lang/verum/crates/`.
+Line counts reflect the current release.
 
 | Crate | Role | LOC |
 |-------|------|----:|

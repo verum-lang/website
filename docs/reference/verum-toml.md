@@ -6,8 +6,8 @@ title: Verum.toml
 # `Verum.toml` — Manifest Reference
 
 Every cog has a `Verum.toml` manifest at its root. The schema below
-matches `crates/verum_cli/src/config.rs` and
-`crates/verum_compiler/src/linker_config.rs`.
+is the authoritative description of every field the compiler and CLI
+will consume.
 
 ## Minimal example
 
