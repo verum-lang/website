@@ -47,7 +47,7 @@ $ verum verify --emit-smtlib src/stack.vr
 # writes target/smtlib/*.smt2 — one per obligation
 ```
 
-Run Z3 or CVC5 interactively on it:
+Run the SMT backend interactively on it:
 
 ```bash
 $ z3 -st target/smtlib/push_postcond.smt2
@@ -119,7 +119,7 @@ not enough, escalate:
 @verify(thorough) fn nonlinear_fn(...) -> ... { ... }
 ```
 
-`thorough` races Z3, CVC5, and tactic-based proof search in
+`thorough` races the SMT backend, and tactic-based proof search in
 parallel and takes the first success. Otherwise, supply lemmas that
 linearise the reasoning.
 
@@ -153,7 +153,7 @@ goals are easier.
 3. **Escalate the strategy**:
 
    ```verum
-   @verify(thorough)    // races Z3 + CVC5 + proof search in parallel
+   @verify(thorough)    // races the SMT backend + proof search in parallel
    @verify(certified)   // thorough + orthogonal cross-validation
    ```
 
@@ -195,7 +195,7 @@ goals are easier.
 
 ### Playbook — "portfolio disagreement"
 
-With `@verify(thorough)`, a disagreement means Z3 and CVC5 returned
+With `@verify(thorough)`, a disagreement means the SMT backend returned
 conflicting verdicts:
 
 ```

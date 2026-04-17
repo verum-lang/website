@@ -262,7 +262,7 @@ Settings:
 
 ### `smt`
 
-Hands the goal to the SMT backend — Z3, CVC5, or a portfolio,
+Hands the goal to the SMT backend — the SMT backend, or a portfolio,
 selected by the router. See
 [verification/smt-routing](/docs/verification/smt-routing).
 
@@ -442,7 +442,7 @@ theorem use_it(a: Int, b: Int)
 - **[Proof DSL](/docs/language/proof-dsl)** — theorem/lemma/axiom
   declarations, `calc`, structured proofs.
 - **[verification/smt-routing](/docs/verification/smt-routing)** — how
-  `smt` picks between Z3, CVC5, portfolio.
+  `smt` picks between the SMT backend, portfolio.
 - **[verification/cubical-hott](/docs/verification/cubical-hott)** —
   the `cubical` tactic in depth.
 - **[cookbook/calc-proofs](/docs/cookbook/calc-proofs)** — calc-chain

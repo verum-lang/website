@@ -11,7 +11,7 @@ description: Answers to questions you asked before you installed.
 ### What is the current stability?
 
 The documented feature set is implemented and tested: refinement
-types, dependent types, cubical HoTT, Z3 + CVC5 verification, VBC
+types, dependent types, cubical HoTT, the SMT backend verification, VBC
 interpreter, LLVM AOT — all ship in a single `verum` binary.
 1 506 of 1 507 conformance checks pass (99.93 %). Rough edges
 remain around newer features (cubical normalisation, MLIR GPU).
@@ -71,10 +71,12 @@ where it matters.
 
 ### Which SMT solver does it use?
 
-Both Z3 and CVC5, selected per-obligation by capability routing. Z3
-handles LIA/bitvectors/arrays; CVC5 handles strings, nonlinear
-arithmetic, SyGuS, and finite-model-finding. `@verify(thorough)`
-cross-validates. See [SMT routing](/docs/verification/smt-routing).
+The language layer is backend-agnostic. The current release bundles
+Z3 and CVC5 as backends behind the capability router (Z3 for LIA /
+bitvectors / arrays; CVC5 for strings, nonlinear arithmetic, SyGuS,
+finite-model-finding); `@verify(thorough)` cross-validates across
+them. A Verum-native solver is on the roadmap. See
+[SMT routing](/docs/verification/smt-routing).
 
 ### What happens when the solver times out?
 

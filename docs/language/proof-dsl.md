@@ -238,7 +238,7 @@ for signatures and counterexamples.
 bounded search over hypotheses and lemmas in scope.
 
 `smt` dispatches to the SMT engine with whichever backend wins
-the **capability router** — Z3 or CVC5, see
+the **capability router** — the SMT backend, see
 [verification/smt-routing](/docs/verification/smt-routing).
 
 ## Interaction with `@verify`
@@ -317,7 +317,7 @@ acceptable to the external kernels (Coq, Lean, Dedukti, Metamath).
 
 - **[reference/tactics](/docs/reference/tactics)** — tactic catalogue.
 - **[verification/gradual-verification](/docs/verification/gradual-verification)** — the full ladder.
-- **[verification/smt-routing](/docs/verification/smt-routing)** — how Z3/CVC5 are picked.
+- **[verification/smt-routing](/docs/verification/smt-routing)** — how the SMT backend are picked.
 - **[verification/proofs](/docs/verification/proofs)** — a worked tutorial.
 - **[verification/cubical-hott](/docs/verification/cubical-hott)** — cubical
   tactics and path types.

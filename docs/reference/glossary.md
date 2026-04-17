@@ -146,7 +146,7 @@ cog.
 **Path type** — `Path<A>(a, b)` — a proof that `a` and `b` are equal
 in type `A`, treated as data that can be transported.
 
-**Portfolio (verification)** — Running Z3 and CVC5 in parallel on the
+**Portfolio (verification)** — Running the SMT backend in parallel on the
 same obligation and cross-validating.
 
 **Protocol** — A trait / interface. Declared as `type P is protocol { ... }`.
@@ -164,8 +164,11 @@ making `@logic` functions available as SMT axioms.
 **Semantic honesty** — Verum's rule that type names describe meaning,
 not implementation: `List` (not `Vec`), `Text` (not `String`).
 
-**SMT** — Satisfiability Modulo Theories. The class of solvers Z3 and
-CVC5 belong to.
+**SMT** — Satisfiability Modulo Theories. The class of solvers Verum's
+verification backend dispatches to. Language-level Verum does not commit
+to a specific SMT solver; the current implementation bundles Z3 and
+CVC5 as backends behind the capability router, and a Verum-native
+solver is on the roadmap.
 
 **SSA** — Static single assignment form. Used by CBGR analysis.
 
@@ -203,5 +206,6 @@ suite at `vcs/`.
 
 ## Z
 
-**Z3** — Microsoft Research's SMT solver. Verum's default; strong at
-LIA, bitvectors, arrays.
+**Z3** — One of the SMT solvers the current verification backend can
+dispatch to (alongside CVC5). Implementation detail, not a language
+commitment — see **SMT**.

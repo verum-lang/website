@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Architecture Overview
-description: The five-layer architecture of the Verum compiler — VBC-first, dual-backend SMT, three-tier runtime.
+description: The five-layer architecture of the Verum compiler — VBC-first, capability-routed SMT, three-tier runtime.
 ---
 
 # Architecture Overview
@@ -49,7 +49,7 @@ flowchart TD
     subgraph L2["Layer 2 — Type system + verification"]
         L2A["verum_types<br/>infer · unify · refinement · cubical"]
         L2B["verum_cbgr<br/>11-module reference-analysis suite"]
-        L2C["verum_smt<br/>Z3 + CVC5 capability router"]
+        L2C["verum_smt<br/>capability-routed SMT backend"]
         L2D["verum_verification<br/>VCGen · Hoare · tactics"]
         L2E["verum_modules<br/>resolver · coherence · parallel loader"]
     end
@@ -81,7 +81,7 @@ Line counts reflect the current release.
 | `verum_types` | Type system (inference, refinement, cubical) | 221 K |
 | `verum_vbc` | Bytecode, interpreter, VBC codegen, monomorphization | 192 K |
 | `verum_compiler` | Phase orchestration, derives, linker config | 161 K |
-| `verum_smt` | Z3 + CVC5, capability router, portfolio executor | 139 K |
+| `verum_smt` | SMT backend, capability router, portfolio executor | 139 K |
 | `verum_cbgr` | 11-module reference-tier analysis suite | 103 K |
 | `verum_fast_parser` | Main recursive-descent parser | 89 K |
 | `verum_codegen` | LLVM (CPU) + MLIR (GPU) backends | 81 K |
@@ -127,8 +127,8 @@ verifier and advanced optimisation passes. Full phase detail:
 - Refinement types with SMT discharge; `@verify(formal|thorough|certified)`.
 - Dependent types — Π, Σ, path types, computational univalence.
 - Cubical normaliser with HoTT primitives and HITs.
-- Z3 + CVC5 dual-backend SMT with a capability router that classifies
-  by theory and picks the right solver.
+- Dual-backend SMT with a capability router that classifies obligations
+  by theory and picks the appropriate solver.
 - VBC bytecode with ~350 opcodes (primary + extended tables) and a
   37-file dispatch-table interpreter.
 - LLVM AOT codegen with tier-aware CBGR lowering

@@ -146,7 +146,7 @@ error[V3402]: postcondition violated
  4 |     let msg = f"Hello, {name}!";
    |               ^^^^^^^^^^^^^^^^^ may exceed Greeting's length bound
    |
-note: counter-example found by Z3
+note: counter-example found by the SMT solver
    |   name = "WorldXXXXXXX"
    |   result = "Hello, WorldXXXXXXX!"   // len() == 18, bound is < 10
    = help: widen the bound or shorten the input

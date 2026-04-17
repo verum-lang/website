@@ -263,7 +263,7 @@ Graduate in stages:
 1. Start with `@verify(runtime)` — refinements as assertions.
 2. Add refinement types where the invariant matters.
 3. Upgrade to `@verify(formal)` — SMT proves the obligations.
-4. For critical code, `@verify(thorough)` cross-validates Z3 + CVC5.
+4. For critical code, `@verify(thorough)` cross-validates the SMT backend.
 
 See [gradual verification](/docs/verification/gradual-verification).
 

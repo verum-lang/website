@@ -16,8 +16,10 @@ and test runner.
   (x86_64).
 - **LLVM**: 21.x (bundled in official binaries; required when
   building AOT-compiled native binaries).
-- **Z3**: 4.15+ (bundled).
-- **CVC5**: 1.3.3+ (bundled).
+- **SMT backend**: Z3 4.15+ and CVC5 1.3.3+ (bundled). The current
+  release uses these two as the SMT backends behind the capability
+  router; this is an implementation detail of the current build, not
+  a language commitment.
 - **Memory**: 2 GB for compilation of typical projects; 4 GB+ for
   stdlib builds. Large proof-heavy projects may require 8+ GB.
 - **Disk**: 600 MB for the bundled toolchain; build artefacts add

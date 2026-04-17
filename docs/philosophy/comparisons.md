@@ -17,7 +17,7 @@ says so.
 |--------------------------------------|-------------------|---------------|-------------------|-----------------|--------------|--------------|--------------|-------------|
 | Refinement types                     | first-class       | no            | no                | no              | via TH/LH    | no           | yes          | yes         |
 | Dependent types                      | yes (Σ/Π/path)    | const generics| no                | GADTs           | via LH       | yes          | limited      | yes         |
-| SMT-driven                           | yes (Z3 + CVC5)   | via kani      | no                | no              | LH uses Z3   | no           | yes (Z3)     | yes (Z3)    |
+| SMT-driven                           | yes (routed)      | via kani      | no                | no              | LH (external)| no           | yes          | yes         |
 | Ownership / borrow                   | three-tier + CBGR | borrow-ck     | ARC               | no              | no           | linear opt.  | GC           | F\*→C       |
 | Lifetimes in signatures              | no                | yes           | no                | no              | no           | no           | no           | no          |
 | Effects visible in signature         | contexts + throws | no*           | throws            | effects (OCaml 5)| type class | effects      | specs        | effects     |
@@ -29,7 +29,7 @@ says so.
 | Tagged literals (`sql#`, `rx#`)      | 40+ built-in      | no            | no                | no              | TH           | no           | no           | no          |
 | Zero-cost default for safety         | tier-1 automatic  | debug_assert  | ARC elision       | —               | —            | linear opt.  | —            | —           |
 | Native binary via LLVM               | yes               | yes           | yes               | yes (flambda)   | GHC→LLVM     | LLVM backend | —            | extract→C   |
-| Proof certificates                   | yes (cert strat)  | no            | no                | no              | LH via Z3    | yes          | no           | yes         |
+| Proof certificates                   | yes (cert strat)  | no            | no                | no              | LH (external)| yes          | no           | yes         |
 | Cubical HoTT / paths                 | yes               | no            | no                | no              | no           | no           | no           | no          |
 
 \* Rust signals async via `async fn` and purity via `const fn`, but
@@ -55,9 +55,12 @@ not a runtime-checked newtype. Rust's nearest equivalents are
 index accesses safe. Rust has const generics with significant
 restrictions (no dependent return types, no refinement interaction).
 
-**SMT-backed verification as a compiler phase.** Verum integrates Z3
-and CVC5 directly; `@verify(formal)` is first-class grammar. In Rust,
-SMT-based verification lives in external tools that re-parse source.
+**SMT-backed verification as a compiler phase.** Verum integrates an
+SMT backend as a first-class compilation phase; `@verify(formal)` is
+grammar, not an external-tool hook. (The current implementation
+bundles Z3 and CVC5 behind a capability router; a Verum-native solver
+is on the roadmap.) In Rust, SMT-based verification lives in external
+tools that re-parse source.
 
 **Three-tier references.** Verum has `&T` (managed, CBGR-checked,
 ≈ 15 ns), `&checked T` (compiler-proven, 0 ns), `&unsafe T`
@@ -201,7 +204,7 @@ verification, sometimes HoTT.
   100% proved. Strategies range from `@verify(runtime)` to
   `@verify(certified)`, chosen per function.
 - **SMT-first.** Most goals in Verum are discharged automatically by
-  Z3 / CVC5; only the hard goals need tactics. In Coq / Agda, the
+  the SMT backend; only the hard goals need tactics. In Coq / Agda, the
   default is interactive proof.
 - **No built-in totality requirement.** Functions need not be total
   by default. Coinduction is opt-in via `cofix`.
@@ -225,8 +228,8 @@ practical verification.
 
 ### Where Verum differs
 
-- **Dual-solver portfolio.** Verum routes between Z3 and CVC5 based
-  on goal shape. F\* is Z3-only.
+- **Dual-solver portfolio.** Verum routes between the SMT backend based
+  on goal shape. F\* is single-solver.
 - **Memory model.** Verum has CBGR with three tiers built into the
   language. F\* compiles to C via Low\* (or to OCaml, for
   higher-level fragments) — the memory model lives in the C output.
@@ -247,7 +250,7 @@ practical verification.
 
 ## Verum vs Dafny
 
-**Shared DNA**: refinement types, SMT-driven verification (Z3),
+**Shared DNA**: refinement types, SMT-driven verification,
 developer-oriented verification.
 
 ### Where Verum differs
@@ -260,8 +263,8 @@ developer-oriented verification.
 - **Cubical HoTT and coinduction.** Dafny has neither.
 - **Concurrency.** Dafny has no async story beyond the host
   runtime's.
-- **Proof strategies.** Dafny has one: "let Z3 handle it." Verum has
-  nine (`runtime`, `static`, `formal`, `fast`, `thorough`,
+- **Proof strategies.** Dafny has one: "let the SMT solver handle it."
+  Verum has nine (`runtime`, `static`, `formal`, `fast`, `thorough`,
   `certified`, `synthesize`, plus aliases).
 
 ### When Dafny is the right call

@@ -66,7 +66,7 @@ Increase per-project: `Verum.toml [verify] solver_timeout_ms = 30_000`.
 
 ### "Solvers disagreed on obligation"
 
-A portfolio run found Z3 and CVC5 disagreeing. Very rare — usually a
+A portfolio run found the SMT backend disagreeing. Very rare — usually a
 solver bug. Report with the SMT-LIB query (`verum verify --emit-smtlib`)
 so the Verum team can file it upstream.
 

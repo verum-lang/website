@@ -21,7 +21,7 @@ negotiated — not imposed — by an explicit verification ladder.
   type, checked by an SMT solver, erased at runtime.
 - **Dependent types**: Σ-types, Π-types, and path types (cubical HoTT),
   integrated with unification — not bolted on.
-- **Dual SMT backends**: Z3 and CVC5 with capability-based routing, so
+- **Dual SMT backends**: the SMT backend with capability-based routing, so
   the solver that best handles your proof obligation actually gets it.
 - **Three-tier references**: `&T` (~15 ns CBGR check), `&checked T`
   (zero overhead, compiler-proven), `&unsafe T` (zero overhead, you
@@ -32,7 +32,7 @@ negotiated — not imposed — by an explicit verification ladder.
   types describe meaning, not implementation.
 - **Gradual verification**: nine strategies from `@verify(runtime)` to
   `@verify(certified)` — semantic intents, not solver names; the
-  capability router picks Z3, CVC5, portfolio, or tactics for you.
+  capability router picks the SMT backend, portfolio, or tactics for you.
 
 ## A first taste
 

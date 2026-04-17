@@ -36,7 +36,7 @@ The refinement language is intentionally small and decidable:
 
 - **Comparisons**: `==`, `!=`, `<`, `<=`, `>`, `>=`.
 - **Boolean connectives**: `&&`, `||`, `!`.
-- **Arithmetic**: `+`, `-`, `*`, `/`, `%` (with nonlinearity routed to CVC5 when needed).
+- **Arithmetic**: `+`, `-`, `*`, `/`, `%` (with nonlinearity routed to the backend with the stronger nonlinear core).
 - **Bitwise**: `&`, `|`, `^`, `<<`, `>>`.
 - **Field access**: `self.field`, `self.field.subfield`.
 - **Indexing**: `xs[i]`, `xs[i..j]`.
@@ -150,7 +150,7 @@ The `self` in the return type refinement refers to the return value;
 Refinements are:
 - **Written** in Verum's expression syntax;
 - **Translated** to SMT-LIB at compile time;
-- **Discharged** by Z3 or CVC5 (capability router picks);
+- **Discharged** by the SMT backend (capability router picks);
 - **Erased** from the final binary.
 
 When the solver cannot prove an obligation, the compiler prints the
@@ -174,7 +174,7 @@ error[V3402]: refinement violated at call site
 - **Undecidable predicates are rejected**: the refinement language is
   deliberately a decidable fragment.
 - **Recursion in `@logic` functions** requires a termination metric
-  (`decreases`) — Z3/CVC5 cannot prove termination automatically.
+  (`decreases`) — the SMT backend cannot prove termination automatically.
 - **Mutation is not expressible**: refinement predicates are pure;
   `self.is_sorted()` talks about a snapshot, not an ongoing invariant.
 

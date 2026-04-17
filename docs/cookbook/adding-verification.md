@@ -63,7 +63,7 @@ Build:
 [verify] clamp   ✓ (formal/z3, 6 ms)
 ```
 
-Done — the capability router dispatched to Z3 and the postcondition
+Done — the capability router dispatched to the SMT backend and the postcondition
 is proven across every branch.
 
 ### Graduating a loop — add invariants
@@ -102,7 +102,7 @@ For the critical 1% of your code:
 fn critical_security_function(...) -> ... { ... }
 ```
 
-Runs Z3 + CVC5 in parallel and confirms they agree. ~2× compile
+Runs the SMT backend in parallel and confirms they agree. ~2× compile
 cost on that one function. Disagreement → CI failure with detailed
 diagnostics.
 
@@ -117,7 +117,7 @@ nonlinearity, or a predicate the solver can't decompose.
   the proof.
 - Move a complex predicate into a named `@logic fn` that the solver
   can reuse.
-- Escalate to `@verify(thorough)` — races Z3, CVC5, and tactic-based
+- Escalate to `@verify(thorough)` — races the SMT backend, and tactic-based
   proof search in parallel; CVC5 handles nonlinear arithmetic and
   strings better than Z3 so this often unblocks hard goals.
 - Bound quantifiers: `forall x: Int. P(x)` → `forall x in 0..n. P(x)`.
@@ -142,7 +142,7 @@ Start strict, loosen if needed:
 ```
 @verify(runtime)      →   prototype; asserts only
 @verify(static)       →   default; free
-@verify(formal)          →   annotate invariants; Z3/CVC5 proves
+@verify(formal)          →   annotate invariants; the SMT backend proves
 @verify(thorough)    →   safety-critical; both solvers
 @verify(certified)    →   kernel-class; proof term required
 ```
@@ -152,6 +152,6 @@ And keep moving items down the list as the code matures.
 ### See also
 
 - **[Gradual verification](/docs/verification/gradual-verification)**
-- **[SMT routing](/docs/verification/smt-routing)** — how Z3/CVC5 are chosen.
+- **[SMT routing](/docs/verification/smt-routing)** — how the SMT backend are chosen.
 - **[Verified data structure tutorial](/docs/tutorials/verified-data-structure)**
   — full walkthrough with loop invariants.

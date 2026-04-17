@@ -46,7 +46,7 @@ RFCs undergo a **two-week comment period** before merge. Big ones
 ```bash
 git clone <repository-url>
 cd verum
-./scripts/bootstrap.sh           # installs Rust 1.82+, LLVM 21, Z3, CVC5
+./scripts/bootstrap.sh           # installs Rust 1.82+, LLVM 21, the SMT backend
 cargo build --release -p verum_cli
 ./target/release/verum --version
 ```

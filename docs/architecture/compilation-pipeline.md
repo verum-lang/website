@@ -23,7 +23,7 @@ flowchart TD
         F2["2 · meta registry + AST registration"]
         F29["2.9 · safety gate<br/><i>[safety] unsafe/ffi/capability</i>"]
         F3["3 · macro expansion + literal processing"]
-        F3A["3a · contract verification (SMT / Z3)"]
+        F3A["3a · contract verification (SMT)"]
         F3B["3b · safety gate re-check"]
         F4["4 · semantic analysis<br/><i>type inference · CBGR</i>"]
         F4A["4a · autodiff compilation"]
@@ -125,13 +125,13 @@ Phase 3a.
 ## Phase 3a — Contract verification
 
 ```
-contract#"""ensures result >= 0"""  →  SMT-LIB obligation  →  Z3/CVC5  →  verified
+contract#"""ensures result >= 0"""  →  SMT-LIB obligation  →  solver  →  verified
 ```
 
 - Collects contract obligations from `contract#` literals.
 - Translates to SMT-LIB via `verum_smt::expr_to_smtlib`.
-- Dispatches to Z3, CVC5, or the portfolio per the function's
-  `@verify(...)` mode.
+- Dispatches to a single solver or the portfolio executor per the
+  function's `@verify(...)` mode.
 - Fails the build with a counter-example on violation.
 
 This runs between Phase 3 and Phase 4 because a contract's proof may

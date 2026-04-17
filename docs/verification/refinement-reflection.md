@@ -127,7 +127,7 @@ Useful for debugging obligations that mysteriously fail.
 
 ## Reflection + portfolio
 
-When `@verify(thorough)` is set, both Z3 and CVC5 receive the same
+When `@verify(thorough)` is set, both the SMT backend receive the same
 reflected axioms. A disagreement indicates a bug in one of the solvers
 and is reported:
 
@@ -296,6 +296,6 @@ the files that need it; leave the rest at `static`.
 ## See also
 
 - **[SMT routing](/docs/verification/smt-routing)** — how the router
-  picks Z3 or CVC5 for your `@logic` function.
+  picks the SMT backend for your `@logic` function.
 - **[Contracts](/docs/verification/contracts)** — `requires`,
   `ensures`, `invariant`.

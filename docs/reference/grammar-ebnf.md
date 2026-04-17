@@ -292,7 +292,7 @@ verify_attribute = 'verify' , '(' ,
 ```
 
 `@verify` selects a **semantic strategy** rather than a particular
-solver — the compiler chooses Z3 / CVC5 / portfolio per the router.
+solver — the compiler chooses the SMT backend / portfolio per the router.
 See [SMT routing](/docs/verification/smt-routing).
 
 ### 2.3 Modules and imports

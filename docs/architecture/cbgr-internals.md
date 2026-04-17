@@ -171,7 +171,7 @@ analyses in `verum_cbgr`:
 | `polonius_analysis.rs`      | Polonius-style origin tracking for hard cases |
 | `dominance_analysis.rs`     | dominator-based promotion |
 | `points_to_analysis.rs`     | Andersen-style points-to graph |
-| `smt_alias_verification.rs` | Z3-backed alias proofs when the others are inconclusive |
+| `smt_alias_verification.rs` | SMT-backed alias proofs when the others are inconclusive |
 
 The pipeline walks references through each analysis, producing a
 `TierAnalysisResult` that records decisions per `RefId` along with
@@ -182,7 +182,7 @@ statistics used for the optimiser's tier distribution report.
 Only references classified as `NoEscape` are eligible for SBGL
 (stack-backed generation-less) promotion. `MayEscape` and `Escapes`
 stay at Tier 0. When the purely syntactic analyses are inconclusive,
-`smt_alias_verification.rs` asks Z3 whether two references can alias
+`smt_alias_verification.rs` asks the SMT solver whether two references can alias
 — proofs beyond "no" fall back to Tier 0 as well.
 
 Typical promotion rate on idiomatic code: 60–95 % of `&T` occurrences
