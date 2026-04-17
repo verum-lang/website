@@ -231,7 +231,7 @@ intermediate `List` allocated.
 
 ## Grammar
 
-From [`grammar/verum.ebnf`](/docs/reference/grammar-ebnf):
+From the [grammar reference](/docs/reference/grammar-ebnf):
 
 ```ebnf
 comprehension_expr = '[' , expression , 'for' , pattern , 'in' , expression

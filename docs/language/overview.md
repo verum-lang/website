@@ -7,10 +7,9 @@ description: The map of Verum's language surface — lexical, types, effects, me
 # Language Reference — Overview
 
 This section is the **normative description** of Verum's language
-surface. Where this section and the grammar
-([`grammar/verum.ebnf`](/docs/reference/grammar-ebnf)) disagree, the
-grammar wins — but they should not disagree. Everything documented
-here has a production in the grammar.
+surface. Where this section and the [grammar reference](/docs/reference/grammar-ebnf)
+disagree, the grammar wins — but they should not disagree. Everything
+documented here has a production in the grammar.
 
 If you want the whirlwind tour, read [Getting Started → Tour](/docs/getting-started/tour).
 If you want the machinery behind a feature, this is the place.
@@ -182,7 +181,7 @@ productions. For quick jumps:
 - `verum` fenced blocks are illustrative — some may elide context
   clauses or refinements for clarity. Complete examples are marked
   `// complete` in the code comment.
-- Grammar snippets (in EBNF) come from `grammar/verum.ebnf` verbatim.
+- Grammar snippets (in EBNF) are verbatim fragments of the [grammar reference](/docs/reference/grammar-ebnf).
 - `→` indicates compilation or evaluation direction.
 - `⊢` indicates a type-checking judgement.
 - Layer annotations `(layer 2)` on a feature indicate where in the

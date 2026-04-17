@@ -28,8 +28,9 @@ SPIR-V / Metal.
 
 ## Opcode map
 
-The authoritative source is `crates/verum_vbc/src/instruction.rs`
-(~350 primary opcodes plus several extended opcode tables).
+The VBC instruction set comprises roughly 350 primary opcodes
+plus several extended opcode tables for arithmetic, tensor
+operations, cubical primitives, and CBGR tier lowering.
 
 | Range          | Family                      | Representative opcodes |
 |----------------|-----------------------------|------------------------|

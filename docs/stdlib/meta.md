@@ -47,8 +47,8 @@ but execute at compile time with zero runtime cost:
 
 ## The 14 capability contexts
 
-All defined in `core/meta/contexts.vr` and implemented by the
-compiler in `crates/verum_compiler/src/meta/builtins/`.
+All fourteen meta-contexts below are shipped with the standard
+library and provided to user code by the compiler.
 
 ### Tier model
 

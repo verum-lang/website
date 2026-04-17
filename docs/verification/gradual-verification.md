@@ -18,7 +18,8 @@ strategies file by file.
 
 ## The nine strategies
 
-From `grammar/verum.ebnf`:
+The grammar admits these nine surface keywords (the seven distinct
+behaviours plus two historical aliases):
 
 | Strategy      | What it does | When to use |
 |---------------|--------------|-------------|

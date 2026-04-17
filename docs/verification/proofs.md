@@ -40,7 +40,7 @@ theorem reverse_reverse<T>(xs: List<T>) -> xs.reverse().reverse() == xs {
 
 ## Tactics
 
-From `grammar/verum.ebnf` (`tactic_name` production):
+The grammar's `tactic_name` production lists these names:
 
 ### Decision procedures
 

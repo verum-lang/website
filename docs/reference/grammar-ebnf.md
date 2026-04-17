@@ -6,10 +6,10 @@ description: Verum's full lexical and syntactic grammar — the authoritative sp
 
 # Grammar — EBNF
 
-This page is a curated, navigable rendering of Verum's grammar. The
-**authoritative source** is `grammar/verum.ebnf`
-in the repository (version **3.0**, ~2400 lines). Where this page and
-the EBNF file disagree, the file wins.
+This page is the authoritative specification of Verum's concrete
+syntax. The full EBNF runs to a little under twenty-five hundred
+lines (version **3.0**); every parser, IDE integration, and proof
+tool in the project must conform to it.
 
 :::info Status
 Version 3.0 — Production-Ready · Formal Specification.
@@ -1191,8 +1191,7 @@ verum grammar validate FILE   # validate a .vr file against the grammar only
 verum disasm --show-tokens    # tokeniser output for debugging
 ```
 
-## Source
+## Version
 
-The authoritative grammar file:
-**`grammar/verum.ebnf`**
-(version 3.0, 2423 lines).
+This page reflects grammar version **3.0** — 2,423 lines of EBNF.
+Future revisions will be announced on the blog and cross-linked here.

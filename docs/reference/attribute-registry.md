@@ -41,7 +41,7 @@ attribute, its valid targets, and a one-line semantics.
 
 The `@verify` attribute takes a **semantic strategy** — the underlying
 solver (Z3, CVC5, portfolio, …) is an implementation detail picked by
-the capability router. The full set, from `grammar/verum.ebnf`:
+the capability router. The full set admitted by the grammar:
 
 | Attribute | Targets | Semantics |
 |-----------|---------|-----------|

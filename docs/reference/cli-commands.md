@@ -5,8 +5,7 @@ title: CLI Commands
 
 # CLI Commands
 
-Complete `verum` command reference aligned with
-`crates/verum_cli/src/main.rs`. For a usage-first overview, see
+Complete `verum` command reference. For a usage-first overview, see
 **[Tooling → CLI](/docs/tooling/cli)**.
 
 ## Project

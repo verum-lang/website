@@ -264,7 +264,7 @@ storage per access (~5–30 ns).
 
 ## Grammar
 
-From [`grammar/verum.ebnf`](/docs/reference/grammar-ebnf):
+From the [grammar reference](/docs/reference/grammar-ebnf):
 
 ```ebnf
 context_clause   = 'using' , context_spec ;
