@@ -49,14 +49,17 @@ type ThinRef is<T> {
 
 ### FatRef\<T\>
 
-32 bytes. Used when `T` is unsized (slices, `dyn`).
+32 bytes. Used when `T` is unsized (slices, `dyn`) or for interior
+references that need an offset into a larger allocation.
 
 ```c
 type FatRef is<T> {
-    T*        ptr;
-    uint32_t  generation;
-    uint32_t  epoch_caps;
-    size_t    len_or_vtable;
+    T*        ptr;                  // 8 B
+    uint32_t  generation;           // 4 B
+    uint32_t  epoch_caps;           // 4 B — epoch:16 | caps:16
+    uint64_t  metadata;             // 8 B — slice length, dyn vtable, …
+    uint32_t  offset;               // 4 B — non-zero for interior refs
+    uint32_t  reserved;             // 4 B — alignment + room to grow
 };
 ```
 

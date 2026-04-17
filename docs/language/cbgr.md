@@ -41,8 +41,11 @@ revoked) and the access is rejected.
 |      8 | 4 B   | `generation`    | issued-against counter               |
 |     12 | 4 B   | `epoch / caps`  | scope epoch + capability bit vector  |
 
-For unsized types, the layout is 32 bytes (`FatRef<T>`), adding either
-a length (for slices) or a vtable pointer (for `dyn`).
+For unsized types, slices, trait objects, and interior references the
+runtime uses `FatRef<T>` — 32 bytes total. It layers three fields on
+top of a `ThinRef`: an 8-byte metadata word (length for slices, vtable
+pointer for `dyn`), a 4-byte offset (for interior references), and a
+4-byte reserved field for alignment and future use.
 
 ## What a header looks like
 
