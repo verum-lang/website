@@ -245,11 +245,11 @@ meta fn derive_eq<T>() -> TokenStream
     using [TypeInfo, AstAccess, CompileDiag] { ... }
 ```
 
-14 meta-specific contexts are defined in `core/meta/contexts.vr`:
-`BuildAssets`, `TypeInfo`, `AstAccess`, `CompileDiag`, `MetaRuntime`,
-`MacroState`, `CodeSearch`, `ProjectInfo`, `SourceMap`, `Schema`,
-`DepGraph`, `MetaBench`, `StageInfo`, `Hygiene`. Composite groups
-like `MetaCore = [TypeInfo, AstAccess, CompileDiag]` mirror the
+Fourteen meta-specific contexts ship with the language: `BuildAssets`,
+`TypeInfo`, `AstAccess`, `CompileDiag`, `MetaRuntime`, `MacroState`,
+`CodeSearch`, `ProjectInfo`, `SourceMap`, `Schema`, `DepGraph`,
+`MetaBench`, `StageInfo`, `Hygiene`. Composite groups like
+`MetaCore = [TypeInfo, AstAccess, CompileDiag]` mirror the
 `using WebRequest = [...]` pattern for runtime contexts. See
 **[stdlib → meta](/docs/stdlib/meta)** for the full API surface.
 
@@ -261,6 +261,99 @@ erased** — the generated code calls the concrete function directly.
 
 Dynamically provided contexts cost one pointer load from task-local
 storage per access (~5–30 ns).
+
+## What contexts are *not*: a deliberate alternative to algebraic effects
+
+The Verum context system is **capability-based dependency injection**,
+not an algebraic-effect system. The distinction is a conscious design
+choice, and worth unpacking because the two mechanisms are often
+conflated.
+
+### The effect-system tradition
+
+In languages like **Koka**, **Effekt**, **Eff**, **Frank**, and
+**OCaml 5**, every interaction with the outside world (logging, I/O,
+non-determinism, mutable state, exceptions) is modelled as an *effect
+operation* that a surrounding *handler* interprets. Handlers can
+resume the suspended computation with a value, abort it, run it many
+times (supporting non-deterministic search), or compose with other
+handlers to stack interpretations. This subsumes dependency injection,
+exception handling, coroutines, generators, transactional state, and
+logic programming in a single elegant mechanism.
+
+```koka
+// Koka — Logger as an algebraic effect
+effect log { fun info(msg: string): () }
+
+fun greet(name: string): log () {
+  info("greeting " ++ name)   // this might suspend!
+}
+
+fun main() {
+  with handler {
+    fun info(msg) { println(msg); resume(()) }   // handler chooses what to do
+  }
+  greet("world")
+}
+```
+
+### Why Verum does not do this
+
+Effect operations are not ordinary function calls. An operation can
+in principle capture its own continuation, so every call site must be
+compiled as if a stack-switch might happen. Koka's evidence-passing
+transform, Effekt's capability-passing style, and OCaml 5's fibre-based
+runtime all reduce this cost, but the price of the full-power effect
+machinery is paid even by operations that never actually resume.
+
+The empirical observation that drove Verum's design: in real code,
+**the overwhelming majority of "effectful" operations are plain
+dependency injection.** "Give me a `Logger`." "Give me a `Database`."
+"Give me a `Clock`." Those calls do not want to capture their
+continuation. They want a vtable dispatch and a way to be mocked in
+tests.
+
+### The tradeoff Verum makes
+
+Verum's context system meets that common case with a mechanism every
+systems programmer already understands:
+
+| Dimension             | Algebraic effects (Koka, Effekt, OCaml 5)    | Verum contexts (`using [...]`)                     |
+|-----------------------|-----------------------------------------------|----------------------------------------------------|
+| **Power**             | Handlers may `resume`, `abort`, multi-shot    | Plain virtual dispatch; no resumption              |
+| **Compilation**       | Evidence-passing / CPS / fibre stack-switch   | Vtable dispatch against task-local storage         |
+| **Cost per call**     | Tens of nanoseconds even for trivial ops      | ~5–30 ns dynamic, zero when monomorphised          |
+| **Cost model**        | Every effectful op may suspend                | Function-call cost, independent of op count        |
+| **Testing**           | Swap the handler                              | Swap the provider (`provide X = mock`)             |
+| **Async interaction** | Effects subsume async                         | Async orthogonal to contexts, compose cleanly      |
+| **Mental model**      | Learn handler algebra / free monads           | "It's DI with a language-level syntax"             |
+
+For the **5 % of cases** where reinterpretation *is* the point —
+non-deterministic search, probabilistic programming, backtracking
+parsers, proof search — Verum offers metaprogramming, tactic
+combinators, and explicit continuations (`async`/`await`,
+coroutine-style generators). None of those impose a runtime cost on
+every function in the program.
+
+### What this means in practice
+
+- **A `Logger.info` call is a vtable dispatch**, not a suspension point.
+- **Context providers compose by lexical scoping**, not by stacked
+  handlers.
+- **Adding a context to a function's signature does not change its
+  ABI** beyond adding a capability requirement; the generated code
+  path is the same shape.
+- **Compile-time and runtime DI share one surface** — `using [...]`
+  for both. Effect systems do not unify compile-time meta with
+  runtime DI in this way.
+
+If you are coming from Koka or OCaml 5, the mental adjustment is:
+**Verum's contexts do less by design.** You lose `resume`. You gain a
+cost model that stays flat as your program grows, the ability to hand
+a context stack to a `spawn` and have it just work, and the full
+algebra of dependency injection without any of the framework ceremony
+that languages without a language-level DI mechanism have to layer on
+top.
 
 ## Grammar
 

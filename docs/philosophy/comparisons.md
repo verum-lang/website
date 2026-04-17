@@ -139,10 +139,14 @@ expressiveness.
   three reference tiers with no GC.
 - **Refinement types.** OCaml has none.
 - **Dependent types.** OCaml has GADTs but no Σ/Π/path types.
-- **Effects.** OCaml 5 has algebraic effects; Verum has contexts +
-  explicit `throws`, which cover similar ground with a different
-  trade-off (static purity proofs are first-class in Verum; deep
-  handler composition is first-class in OCaml 5).
+- **Effects.** OCaml 5 has algebraic effects with resumable handlers
+  and fibre-based stack switching. Verum has **capability-based
+  contexts** (`using [...]`) plus explicit `throws` — a deliberately
+  lighter alternative. Contexts are vtable dispatch on task-local
+  storage (~5–30 ns); they do not support `resume`, but they do not
+  pay the effect-operation cost on every call either. The trade-off
+  is explained in detail under
+  [Language → Context system → What contexts are *not*](/docs/language/context-system#what-contexts-are-not-a-deliberate-alternative-to-algebraic-effects).
 - **Concurrency.** Verum ships structured concurrency (`nursery`)
   and `select` natively; OCaml relies on `eio` / `lwt` libraries.
 - **Proof DSL.** OCaml has none; Verum integrates theorems and tactics.

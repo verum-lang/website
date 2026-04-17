@@ -101,16 +101,26 @@ Compare this to the prior art:
 
 Verum's claim is not that three tiers are objectively better than one. It's that committing to one tier at the language level forces the programmer into a trade-off that should be made per function. The language should permit both answers; the compiler should make the cheaper answer automatic where it's provably safe.
 
-## 5. One context system for runtime and compile time
+## 5. One context system for runtime and compile time — and why it isn't an effect system
 
-Dependency injection, dynamic scoping, reader monads, effect rows, context parameters — every modern language has a different name for the same underlying need: **a function sometimes wants a value from an enclosing scope without passing it as a positional argument**. The range of answers is wide and mostly incoherent:
+Dependency injection, dynamic scoping, reader monads, algebraic effects, effect rows, context parameters — every modern language has a different name for the same underlying need: **a function sometimes wants a value from an enclosing scope without passing it as a positional argument**. The range of answers is wide, and the interesting one is worth a closer look before we say where Verum lands.
 
-- Rust: services threaded manually, or trait objects, or frameworks (`tokio::spawn_local`, etc.).
-- Haskell: the `Reader` monad transformer. Elegant, but infectious.
-- Scala 3: `given`/`using` — the closest ancestor, but restricted to compile-time resolution.
-- Kotlin: receivers and `CoroutineContext` — two unrelated systems.
-- Koka, Effekt: algebraic effects. Principled, but small community and separate from type-based DI.
-- Verum: one clause, `using [...]`.
+**The algebraic-effects option.** Eff, Koka, Effekt, Frank, and OCaml 5 take the most expressive approach: treat every external interaction (logging, I/O, non-determinism, exceptions, parsing, mutable state) as an *effect operation* that a surrounding *handler* interprets. Handlers can resume the suspended computation with a value, abort it, run it many times (enabling non-deterministic search), or compose with other handlers to stack interpretations. Theoretically this subsumes dependency injection, exception handling, coroutines, generators, transactional state, and logic programming in a single mechanism — a very real achievement.
+
+The cost of that generality is non-trivial. An effect operation can in principle capture its own continuation, which means every call site has to be compiled as if it might perform a stack-switch. Koka's evidence-passing transform reduces this cost by specialising handlers that never resume, but code in the general case still pays for a handler frame on every effectful call. Effekt compiles to capability-passing form. OCaml 5's fibres use a runtime stack-switching primitive. Published micro-benchmarks put the cost of a handled effect op in the tens of nanoseconds in the best case, higher with less specialised handlers. More importantly, **the cost is paid whether or not the program actually uses the resumption/reinterpretation power** — the surface-level function call is forced to go through the effect machinery because, in principle, the handler *might* do something non-trivial.
+
+The empirical observation that drove Verum's design is that in real codebases, the vast majority of what looks like "effectful" code is simple dependency injection: *"give this function a `Logger`, a `Database`, a `Clock` — but let the test suite swap in mocks."* That use case is served by a vtable and task-local storage. It does not require delimited continuations. And for the rare cases where you do want reinterpretation — non-deterministic search, probabilistic programming, parser combinators — Verum offers metaprogramming and tactic languages that keep that power available without forcing every function in the program to pay for it.
+
+So Verum makes a deliberate trade. The context system is **capability-based dependency injection**, not an algebraic-effect system. The syntactic surface is a single `using [...]` clause; the runtime cost is a single task-local lookup on the order of five to thirty nanoseconds once the JIT or AOT pipeline has done its work, and often zero when the compiler can monomorphise the provider. You lose the ability to `resume` a suspended operation from a handler. You gain a runtime cost that is independent of how many effectful operations the function performs, a testing story that is just "swap the provider," and a compilation model that every systems programmer already understands.
+
+For reference, here is the landscape the `using [...]` clause has to compete with:
+
+- **Rust**: services are threaded by hand through arguments, or through trait objects, or through ecosystem frameworks (`tokio::spawn_local`, `anyhow`-wrapped services). No language-level story. Async tasks lose their caller's logger unless you pass it explicitly.
+- **Haskell**: the `Reader` monad (or `ReaderT` transformer). Elegant, unifies with other effects via `mtl`, but "infectious" in that every function's type now mentions the transformer stack.
+- **Scala 3**: `given` / `using` — the closest syntactic ancestor. Resolution is compile-time, so there is no runtime lookup, but also no runtime provider swap without explicit helper machinery.
+- **Kotlin**: receivers for some cases and `CoroutineContext` for others — two disjoint mechanisms for the same problem, with different semantics for cancellation and inheritance.
+- **Koka, Effekt, Eff, OCaml 5**: algebraic effects, as discussed above. More expressive than Verum's contexts, more expensive per operation, and a steeper learning curve.
+- **Verum**: one clause, `using [...]`, with one cost model, one inheritance rule on `spawn`, and one lookup machinery.
 
 The grammar production for `using [C1, C2, ...]` applies **identically** to a runtime function taking a `Database`/`Logger`/`Clock` and to a `meta fn` taking a `TypeInfo`/`BuildAssets`/`Schema`. The call-site must provide a matching set; child tasks spawned with `spawn` inherit the parent's stack; `spawn using [A, B]` drops everything else. There is no ambient global; there is no conditional import; there is one lookup rule.
 
