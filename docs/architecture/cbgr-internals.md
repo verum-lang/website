@@ -204,8 +204,8 @@ land at Tier 1.
 ## VBC tier opcodes
 
 Each tier is a distinct VBC instruction, so the tier decision is
-visible all the way down to the bytecode — the interpreter, baseline
-JIT, MLIR JIT, and AOT compiler all read the same opcode.
+visible all the way down to the bytecode — the interpreter and the
+AOT lowering pipeline read the same opcode.
 
 | Opcode | Mnemonic | Meaning |
 |--------|----------|---------|
@@ -218,18 +218,23 @@ JIT, MLIR JIT, and AOT compiler all read the same opcode.
 | 0x76 | `RefUnsafe`   | Tier 2 — unsafe, 0 ns deref |
 | 0x77 | `DropRef`     | drop a reference (bookkeeping only) |
 
-### Tier behaviour across executors
+### Tier behaviour across execution modes
 
-| Executor | Tier 0 deref | Tier 1 deref | Tier 2 deref |
-|----------|--------------|--------------|--------------|
-| Interpreter       | full check  | full check (safety first)  | full check (safety first) |
-| Baseline JIT      | full check  | direct load | direct load |
-| Optimising / AOT  | full check (sometimes elided) | direct load | direct load |
+| Mode                | Tier 0 deref | Tier 1 deref | Tier 2 deref |
+|---------------------|--------------|--------------|--------------|
+| Interpreter         | full check  | full check (safety first) | full check (safety first) |
+| AOT (LLVM, debug)   | full check  | direct load | direct load |
+| AOT (LLVM, release) | full check, elided where escape analysis proves safe | direct load | direct load |
 
 The interpreter intentionally validates *every* deref regardless of
 tier — it is the safe-by-default executor. Tier 1 and Tier 2 give
-their 0 ns benefit in the JITs and AOT, where the check is proven
-away statically.
+their 0 ns benefit under AOT, where the check is proven away
+statically. Verum does not ship a JIT tier: the AOT pipeline lowers
+VBC through LLVM (for CPU) and MLIR (for GPU), and the interpreter
+handles every non-AOT execution path. A speculative baseline/JIT
+tier was evaluated and removed as not pulling its weight given how
+fast the interpreter already is and how effectively the AOT
+pipeline elides tiered checks.
 
 ### MLIR lowering
 

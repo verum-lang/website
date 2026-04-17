@@ -233,8 +233,8 @@ flowchart TD
     LSP[["LSP · rename · format ·<br/>structured edits"]]
     CBGR[["CBGR analysis<br/>(parallel)"]]
     MONO[["monomorphisation<br/>(parallel)"]]
-    T0[["Tier 0: interpret"]]
-    T1[["Tier 1: LLVM IR → native"]]
+    T0[["Interpreter: VBC interpretation"]]
+    T1[["AOT: LLVM IR → native · MLIR → GPU"]]
 
     SRC -- "lex + parse (L1)" --> RG
     RG -- "AST extraction" --> AST

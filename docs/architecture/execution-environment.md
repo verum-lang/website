@@ -59,7 +59,7 @@ public type MemoryContext is {
 
 ### Runtime safety tiers (CBGR)
 
-The `cbgr_tier` field is **not** the JIT tier; it is a compile-time
+The `cbgr_tier` field is **not** an execution-mode tier; it is a compile-time
 annotation per function indicating how much runtime safety the
 compiler has to insert. The four tiers are defined in
 `core/runtime/env.vr`:

@@ -6,7 +6,11 @@ title: Codegen
 # Code Generation
 
 `verum_codegen` translates VBC bytecode into native machine code via
-two backends: **LLVM** (AOT, default) and **MLIR** (JIT + GPU).
+two backends: **LLVM** for ahead-of-time CPU compilation, and
+**MLIR** for the GPU path (`@device(gpu)` functions, tensor
+kernels). Neither is a JIT; Verum has two and only two execution
+modes, the VBC interpreter and the AOT-lowered native binary.
+Everything `verum_codegen` produces is compiled ahead of time.
 
 ## LLVM backend
 
@@ -60,8 +64,15 @@ memory-mapped I/O.
 
 ## MLIR backend
 
-Located in `verum_codegen::mlir`. Used for JIT, autodiff, and the GPU
-path. The LLVM backend handles CPU AOT; MLIR owns everything else.
+Located in `verum_codegen::mlir`. Used for autodiff lowering and the
+GPU path (`@device(gpu)` functions and tensor kernels). The LLVM
+backend handles CPU AOT; MLIR owns the GPU target family.
+
+MLIR is invoked **only at AOT compile time**. There is no
+just-in-time compilation in Verum — GPU kernels are compiled to
+their target IR (PTX, HSACO, SPIR-V, Metal AIR) during `verum
+build` and embedded into the final executable. The runtime looks a
+kernel up by ID and launches it; it never invokes MLIR.
 
 ### Dialect stack
 
@@ -130,20 +141,35 @@ Five backends share the MLIR pipeline:
 Tile sizes come from `GpuTarget::matmul_tile_sizes()`; the compiler
 picks the widest variant supported by the detected device.
 
-### JIT
-
-`jit/` wraps MLIR's ORC JIT. A function compiles on demand, its code
-object is cached keyed by `(vbc_fingerprint, target, opt_level)`, and
-subsequent calls skip compilation entirely. Target: JIT compile time
-under 50 ms for a transformer forward kernel (vs 100–500 ms for
-PyTorch, 1–30 s for JAX's first-run path).
-
-### AOT
+### AOT compilation
 
 `aot/` runs the full pass pipeline and emits an object file linked
-alongside the LLVM-produced host code. Used for GPU kernels in
-release builds and for research experiments that want the MLIR
-CPU path.
+alongside the LLVM-produced host code. Every GPU kernel in a Verum
+binary is produced this way — during `verum build`, never at
+runtime. The output is a target-specific binary (PTX, HSACO,
+SPIR-V, or Metal AIR) embedded into the executable and loaded by
+the runtime on first kernel launch.
+
+### Caching
+
+Compiled kernel binaries are cached keyed by
+`(vbc_fingerprint, target, opt_level)` so an incremental rebuild
+touches only the kernels whose VBC actually changed. First-build
+times vary by target (~50 ms per kernel for NVPTX on modern
+hardware) but are paid once per edit, not per program run.
+
+### On the absence of a JIT
+
+Verum evaluated an ORC-based JIT tier during early design and
+removed it. The reasoning: the interpreter already starts in
+milliseconds and handles the full VBC instruction set (including
+cubical and HoTT opcodes that a JIT would have to recompile every
+time the type checker changes); the AOT path produces native code
+that beats any JIT's warm-up and peak performance; and a third
+tier doubles the combinatorial surface area of the backend without
+providing a use case that the other two do not already cover. A
+two-mode design (`verum run` for iteration, `verum build` for
+production) turns out to be enough.
 
 ### GPU binaries
 
@@ -151,7 +177,8 @@ CPU path.
 HSACO blobs from MLIR-lowered kernels and embeds them into the final
 executable via the linker's `__TEXT,__const` section (macOS) or a
 dedicated `.rodata.verum_gpu` section (Linux / Windows). The runtime
-looks them up by kernel ID at launch time.
+looks them up by kernel ID at launch time; the launch path has no
+dependency on a live MLIR context.
 
 ## Autodiff lowering
 
