@@ -49,6 +49,25 @@ no LLVM dependency.
 - **Use when**: iterating, testing, running `meta fn`, the REPL, the
   Playbook TUI.
 
+:::note Interpreter fallback set
+
+By design, the interpreter returns `NotImplemented` for three feature
+families that require native toolchains:
+
+- **GPU dispatch** — actual `@device(GPU)` kernel launch. Use
+  `verum run --aot --gpu` or `verum build` with the appropriate
+  GPU backend (`metal`, `cuda`, `rocm`, `vulkan`).
+- **Dynamic FFI resolution** — `dlopen`/`LoadLibrary`-style symbol
+  lookup. Static `extern "C"` declarations resolved at link time
+  work in AOT.
+- **ML `vmap` / `pmap`** — vectorised/parallel-mapped kernel JITs.
+  Use AOT with the tensor-op compilation path.
+
+Everything else — async/await, channels, contexts, refinement
+checks, CBGR — runs identically in both tiers.
+
+:::
+
 ### AOT — LLVM
 
 Ahead-of-time compilation through LLVM — the default for
