@@ -204,6 +204,28 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Fixed — AOT `.await` on a direct async-fn call no longer SIGSEGVs
+
+`verum run --aot` (and the resulting `verum build` binary) crashed on
+the first `.await` of a plain async-fn call:
+
+  async fn add(a: Int, b: Int) -> Int { a + b }
+  fn main() { let r = add(1, 2).await; print(f"{r}"); }
+
+Async fns in the current implementation are not compiled to suspend
+/resume state machines — `add(1, 2)` runs the body inline and returns
+the value (3). The interpreter's `Await` handler tolerated that (it
+pattern-matches on a sentinel-encoded task ID and falls through to
+pass-through). The AOT lowering, however, called
+`verum_pool_await(handle_i64)`, which `int_to_ptr`'d the small int
+and dereferenced it as a 16-byte pool handle struct.
+
+Fix: `compile_await` no longer emits `Instruction::Await` when the
+inner expression is anything other than `ExprKind::Spawn`. The result
+of the async-fn call is the awaited value; no runtime poll is needed.
+`spawn { … }.await` keeps the threaded path. Removes the "AOT Async
+— No Polling Executor" entry from `KNOWN_ISSUES.md`.
+
 ### Added — REPL VBC-backed evaluation
 
 `verum repl` now actually evaluates each prompt instead of stopping at

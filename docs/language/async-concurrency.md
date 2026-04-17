@@ -313,15 +313,16 @@ operation completes via the platform's async IO API (`io_uring` on
 Linux, `kqueue` on macOS/BSD, `IOCP` on Windows — see
 [architecture](/docs/architecture/runtime-tiers)).
 
-:::warning AOT status (0.1.0)
+:::note AOT status (0.1.0)
 
-`verum build` currently emits correct async state-machine code but
-does not link a future-polling executor into the output binary —
-running such a binary reaches an `await` and has no driver. Use
-`verum run --interp` (Tier 0 interpreter) for async code today;
-its internal driver schedules futures correctly. A minimal
-single-threaded polling executor for AOT is tracked as
-follow-up work.
+`async fn`s are not yet compiled to suspend/resume state machines —
+calling `add(1, 2)` inside an `async` body runs the body inline and
+returns the value, so `.await` on a direct async-fn call resolves
+immediately in both Tier 0 (interpreter) and Tier 1 (AOT). `spawn { … }`
+keeps the threaded-task path: the spawn produces a real handle and
+`await` calls `verum_pool_await` (adaptive spin + `sched_yield`) on the
+result. Yielding state machines that suspend across IO are the next
+step on the roadmap.
 
 :::
 
