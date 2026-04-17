@@ -204,6 +204,38 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Fixed — `Shared<T>::new` lowering (closes the last KNOWN_ISSUES item)
+
+`Shared<Int>.new(42)` (and any `Foo<TypeArgs>.method(...)` call on a
+generic type) blew up at codegen with two latent bugs in
+`crates/verum_vbc/src/codegen/expressions.rs`:
+
+1. Field access on an `ExprKind::TypeExpr` had no layout-property
+   handler. `SharedInner<T>.size` and `SharedInner<T>.alignment` fell
+   through to a generic field load that returned `i64::MAX` (the
+   debug-formatted Type string interpreted as an integer). The stdlib
+   then asked the allocator for ~9 EB and panicked with "Out of
+   memory". Add `try_resolve_type_layout_property` (TypeExpr) and
+   `layout_property_for_named` (bare-Path generic params and user
+   structs). In VBC's NaN-boxed model, every record slot is exactly
+   one 8-byte `Value`, so the answer is `field_count * 8` for size,
+   8 for alignment, and the type arguments are layout-irrelevant.
+2. Method dispatch on a `TypeExpr` receiver fell through
+   `try_flatten_module_path` (which only knows `Path` nodes) and
+   compiled the receiver as a runtime value — emitting `LOAD_K
+   String("Type { kind: Generic { …")` followed by `SetF` against
+   garbage intern indices like `r1.306`. Extract a
+   `static_receiver_type` helper that returns the type name for both
+   bare-Path and TypeExpr forms, then unify the Heap/Shared/List/Map
+   /Set intercepts and the qualified-function lookup so they consume
+   it from a single source.
+
+End-to-end: `Shared<Int>.new(42)`, `Shared<Bool>.new(true)`,
+`Shared<Text>.new("hello")`, `Heap<Int>.new(7)` all run cleanly in
+the interpreter. The `Shared<T>` entry is now removed from
+`KNOWN_ISSUES.md` — only AOT async, REPL evaluation, and the
+by-design GPU/FFI/vmap interpreter fallbacks remain.
+
 ### Fixed — AOT slice-op fat-ref loads route through `as_ptr`
 
 `SliceGet` (0x06), `SliceGetUnchecked` (0x07), `SliceSubslice` (0x08),
@@ -309,9 +341,10 @@ reintroduces a failing build.
   and benchmark comparison vs baseline.
 - `KNOWN_ISSUES.md` rewritten to reflect the current state — stale
   entries about `@thread_local`, byte-writes, and Text equality
-  removed; real remaining items (AOT stability residual, `Shared<T>`
-  deeper allocator crash, AOT async executor, REPL evaluation)
-  surfaced with workarounds.
+  removed. Subsequently the `Shared<T>` allocator crash was traced
+  and fixed (see "Fixed — `Shared<T>::new` lowering" below); the
+  remaining items are AOT async executor, REPL evaluation, and
+  by-design GPU/FFI/vmap interpreter fallbacks.
 - New `CONTRIBUTING.md` with pre-PR verification commands that
   mirror the CI gate (`RUSTFLAGS="-D warnings" cargo build`,
   `cargo test --workspace --lib --bins`, `make test-l0 test-l1`).
