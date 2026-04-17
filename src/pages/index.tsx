@@ -6,20 +6,28 @@ import CodeBlock from '@theme/CodeBlock';
 import styles from './index.module.css';
 
 /**
- * Witness — Curry-Howard, operationalised.
+ * The Verum Seal.
  *
- * Four pillars bear the four judgement forms of a verified program:
- *   Σ TYPES    — propositions as dependent sums (refinement types)
- *   θ CONTEXT  — capabilities as ambient modality (using [...])
- *   & MEMORY   — locality as a witness (CBGR generation tag)
- *   ⊢ PROOF    — derivations as terms (theorems, tactics, certificates)
+ * One typing judgement holds the whole language:
  *
- * Seven verification rings (runtime → certified → synthesize) show the
- * gradual-proof axis. Particles stream inward — evidence converging on
- * the witness at the centre: one well-typed, well-provisioned, verified
- * program, lowered to a single VBC module.
+ *         Γ  ⊢  e  :  τ
+ *         │   │   │    │
+ *      context proof term type
+ *
+ * Four glyphs, at the four cardinal directions, bear those four symbols:
+ *
+ *         τ  (top)       Σ  types
+ *         Γ  (right)     θ  context
+ *         e  (bottom)    &  memory / locality of the term
+ *         ⊢  (left)      ⊢  derivation
+ *
+ * Silent concentric rings imply the gradual-verification axis (weaker →
+ * stronger) without labelling every rung — the ladder belongs in the docs.
+ * Light strokes stream inward from each glyph: evidence converging on the
+ * centre, where the four judgements collapse into a single well-typed
+ * program. Everything else is deliberately absent.
  */
-function WitnessVisualization() {
+function VerumSeal() {
   const [t, setT] = useState(0);
   const raf = useRef<number | null>(null);
 
@@ -34,182 +42,148 @@ function WitnessVisualization() {
   }, []);
 
   const R = 150;
-  const RIM = R * 1.18;
-  const pulse     = Math.sin(t * 0.9) * 0.5 + 0.5;
-  const slowPulse = Math.sin(t * 0.3) * 0.5 + 0.5;
-  const breath    = Math.sin(t * 0.45) * 0.035 + 1;
+  const pulse  = Math.sin(t * 0.9) * 0.5 + 0.5;
+  const breath = Math.sin(t * 0.45) * 0.025 + 1;
 
   const toXY = (r: number, deg: number) => {
     const a = (deg * Math.PI) / 180;
     return { x: r * Math.cos(a), y: r * Math.sin(a) };
   };
-  const arcPath = (r: number, fromDeg: number, toDeg: number) => {
-    const s = toXY(r, fromDeg);
-    const e = toXY(r, toDeg);
-    return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 0 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
-  };
 
+  // Cardinal placement — each pillar carries one role of the judgement
+  // Γ ⊢ e : τ. The glyph on the rim matches the symbol in the centre.
   const pillars = [
-    { name: 'TYPES',   from: 270, to: 360, midDeg: 315, color: '#14b8a6', glyph: 'Σ', offset: 0.00 },
-    { name: 'CONTEXT', from:   0, to:  90, midDeg:  45, color: '#db2777', glyph: 'θ', offset: 0.25 },
-    { name: 'MEMORY',  from:  90, to: 180, midDeg: 135, color: '#a78bfa', glyph: '&', offset: 0.50 },
-    { name: 'PROOF',   from: 180, to: 270, midDeg: 225, color: '#f59e0b', glyph: '⊢', offset: 0.75 },
+    { role: 'τ', name: 'TYPES',   glyph: 'Σ', deg: 270, color: '#14b8a6', offset: 0.00 }, // top
+    { role: 'Γ', name: 'CONTEXT', glyph: 'θ', deg:   0, color: '#db2777', offset: 0.25 }, // right
+    { role: 'e', name: 'TERM',    glyph: '&', deg:  90, color: '#a78bfa', offset: 0.50 }, // bottom
+    { role: '⊢', name: 'PROOF',   glyph: '⊢', deg: 180, color: '#f59e0b', offset: 0.75 }, // left
   ];
 
-  const junctions = [
-    { label: 'effect types',     deg:   0, color: '#e11d48' },
-    { label: 'capability refs',  deg:  90, color: '#9333ea' },
-    { label: 'proof-carrying',   deg: 180, color: '#c2410c' },
-    { label: 'refinement types', deg: 270, color: '#0d9488' },
-  ];
+  // Three silent rings. Inner = weak claim (runtime check), outer = strongest
+  // (machine-checked certificate). No labels — the ladder is shown, not named.
+  const rings = [0.45, 0.70, 0.95];
 
-  // Seven @verify strategies, innermost = weakest claim, outermost = strongest.
-  // `synthesize` lives outside the hierarchy (generative, not comparative); it
-  // rides on the strongest ring.
-  const verificationRings = [
-    { f: 0.36, label: 'runtime'    },
-    { f: 0.48, label: 'static'     },
-    { f: 0.60, label: 'fast'       },
-    { f: 0.72, label: 'formal'     },
-    { f: 0.84, label: 'thorough'   },
-    { f: 0.94, label: 'certified'  },
-    { f: 1.00, label: 'synthesize' },
-  ];
-
-  const PARTICLES_PER_PILLAR = 3;
-  const LIFETIME = 4.0;
+  // Evidence streams — from each glyph inward to the centre.
+  const PARTICLES_PER_PILLAR = 2;
+  const LIFETIME = 4.2;
   const particles = pillars.flatMap((p, pi) =>
     Array.from({ length: PARTICLES_PER_PILLAR }, (_, i) => {
       const raw = t / LIFETIME + p.offset + i / PARTICLES_PER_PILLAR;
       const phase = raw - Math.floor(raw);
-      const r = RIM * (1 - phase);
-      const aRad = (p.midDeg * Math.PI) / 180;
-      const aWobble = Math.sin(phase * Math.PI) * 0.09;
-      const x = r * Math.cos(aRad + aWobble);
-      const y = r * Math.sin(aRad + aWobble);
+      const r = R * 1.05 * (1 - phase);
+      const aRad = (p.deg * Math.PI) / 180;
+      const x = r * Math.cos(aRad);
+      const y = r * Math.sin(aRad);
       const opacity = Math.sin(phase * Math.PI);
-      const size = 1.8 + phase * 1.6;
+      const size = 1.6 + phase * 1.4;
       return { x, y, opacity, size, color: p.color, phase, key: `${pi}-${i}` };
     })
   );
 
   const absorbing = particles.filter(p => p.phase > 0.85).length;
-  const witnessBoost = Math.min(absorbing * 0.12, 0.5);
+  const witnessBoost = Math.min(absorbing * 0.15, 0.4);
 
   return (
     <svg viewBox="-240 -240 480 480" className={styles.prism}
-         aria-label="Verum — evidence converging on a witness">
+         aria-label="The Verum seal — one typing judgement Γ ⊢ e : τ with four glyphs.">
       <defs>
         <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"  stopColor="#fcd34d" stopOpacity="1" />
-          <stop offset="35%" stopColor="#db2777" stopOpacity="0.5" />
+          <stop offset="0%"   stopColor="#fcd34d" stopOpacity="1" />
+          <stop offset="40%"  stopColor="#db2777" stopOpacity="0.45" />
           <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="ambient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"  stopColor="#a78bfa" stopOpacity="0.12" />
-          <stop offset="70%" stopColor="#7c3aed" stopOpacity="0.04" />
+          <stop offset="0%"   stopColor="#a78bfa" stopOpacity="0.10" />
           <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
         </radialGradient>
       </defs>
+
+      {/* Ambient glow */}
       <circle cx="0" cy="0" r="230" fill="url(#ambient)" />
-      {verificationRings.map((r, i) => (
-        <circle key={`ring-${r.label}`} cx="0" cy="0" r={R * r.f}
-          fill="none" stroke="currentColor"
-          strokeOpacity={0.06 + (i === verificationRings.length - 1 ? 0.04 : 0)}
-          strokeWidth={i === verificationRings.length - 1 ? 1 : 0.8}
-          strokeDasharray={i === verificationRings.length - 1 ? 'none' : '2 5'} />
+
+      {/* Silent verification rings — the gradual ladder, shown but not named */}
+      {rings.map((f, i) => (
+        <circle key={`r${i}`} cx="0" cy="0" r={R * f} fill="none"
+          stroke="currentColor"
+          strokeOpacity={0.055 + (i === rings.length - 1 ? 0.035 : 0)}
+          strokeWidth={i === rings.length - 1 ? 1 : 0.7}
+          strokeDasharray={i === rings.length - 1 ? 'none' : '2 6'} />
       ))}
-      {verificationRings.map((r) => {
-        const pos = toXY(R * r.f, 202);
+
+      {/* Four fine spokes — rays of evidence toward the centre */}
+      {pillars.map((p) => {
+        const inner = toXY(R * 0.20, p.deg);
+        const outer = toXY(R * 0.95, p.deg);
         return (
-          <text key={`lbl-${r.label}`} x={pos.x} y={pos.y + 3} textAnchor="middle"
-            fill="currentColor" opacity="0.28" fontSize="6.5"
-            fontFamily="JetBrains Mono, monospace" letterSpacing="1.2">
-            {r.label}
-          </text>
+          <line key={`spoke-${p.name}`}
+            x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y}
+            stroke={p.color} strokeOpacity="0.22" strokeWidth="0.8" strokeLinecap="round" />
         );
       })}
+
+      {/* Particle streams */}
+      {particles.map((p) => (
+        <g key={`pt-${p.key}`}>
+          <circle cx={p.x} cy={p.y} r={p.size * 1.6} fill={p.color} opacity={p.opacity * 0.22} />
+          <circle cx={p.x} cy={p.y} r={p.size} fill={p.color} opacity={p.opacity}
+            style={{ filter: `drop-shadow(0 0 ${3 + p.size}px ${p.color})` }} />
+        </g>
+      ))}
+
+      {/* Four glyphs on the rim, gently breathing */}
       <g style={{ transform: `scale(${breath})`, transformOrigin: 'center', transformBox: 'fill-box' }}>
         {pillars.map((p) => {
+          const glyph = toXY(R * 1.12, p.deg);
           const phase = Math.sin(t * 0.8 + p.offset * 4) * 0.5 + 0.5;
           return (
-            <path key={`arc-${p.name}`} d={arcPath(R, p.from, p.to)}
-              stroke={p.color} strokeWidth={2.5 + phase * 1.5} strokeOpacity="0.85"
-              fill="none" strokeLinecap="round"
-              style={{ filter: `drop-shadow(0 0 ${5 + phase * 8}px ${p.color})` }} />
+            <g key={`gly-${p.name}`}>
+              <circle cx={glyph.x} cy={glyph.y} r={22}
+                fill={p.color} fillOpacity={0.08 + phase * 0.05}
+                stroke={p.color} strokeOpacity="0.35" strokeWidth="0.9" />
+              <text x={glyph.x} y={glyph.y + 7.5} textAnchor="middle"
+                fill={p.color} opacity="0.95" fontSize="20"
+                fontFamily="Fraunces, Iowan Old Style, serif" fontStyle="italic" fontWeight="500"
+                style={{ filter: `drop-shadow(0 0 6px ${p.color}88)` }}>
+                {p.glyph}
+              </text>
+            </g>
           );
         })}
       </g>
+
+      {/* Pillar names — single line each, well outside the rim, no neighbours to collide with */}
       {pillars.map((p) => {
-        const out = toXY(R * 1.05, p.midDeg);
-        return <line key={`spoke-${p.name}`} x1="0" y1="0" x2={out.x} y2={out.y}
-          stroke={p.color} strokeOpacity="0.07" strokeWidth="1" />;
-      })}
-      {junctions.map((j, i) => {
-        const p = toXY(R, j.deg);
-        const phase = Math.sin(t * 1.3 + i * 1.57) * 0.5 + 0.5;
+        const lbl = toXY(R * 1.38, p.deg);
         return (
-          <g key={`junc-${j.label}`}>
-            <circle cx={p.x} cy={p.y} r={11 + phase * 3} fill={j.color} fillOpacity="0.18" />
-            <circle cx={p.x} cy={p.y} r={4 + phase * 1.4} fill={j.color} fillOpacity="1"
-              style={{ filter: `drop-shadow(0 0 10px ${j.color})` }} />
-          </g>
-        );
-      })}
-      {junctions.map((j) => {
-        const pos = toXY(R * 0.66, j.deg);
-        return (
-          <text key={`syn-${j.label}`} x={pos.x} y={pos.y + 3} textAnchor="middle"
-            fill="currentColor" opacity="0.5" fontSize="8" fontStyle="italic"
-            fontFamily="Fraunces, Iowan Old Style, serif">
-            {j.label}
+          <text key={`lbl-${p.name}`} x={lbl.x} y={lbl.y + 3} textAnchor="middle"
+            fill="currentColor" opacity="0.48" fontSize="8.5"
+            fontFamily="JetBrains Mono, monospace" fontWeight="700" letterSpacing="2.4">
+            {p.name}
           </text>
         );
       })}
-      {particles.map((p) => (
-        <g key={`pt-${p.key}`}>
-          <circle cx={p.x} cy={p.y} r={p.size * 1.8} fill={p.color} opacity={p.opacity * 0.25} />
-          <circle cx={p.x} cy={p.y} r={p.size} fill={p.color} opacity={p.opacity}
-            style={{ filter: `drop-shadow(0 0 ${4 + p.size}px ${p.color})` }} />
-        </g>
-      ))}
-      {pillars.map((p) => {
-        const glyphPos = toXY(RIM * 1.06, p.midDeg);
-        const labelPos = toXY(RIM * 1.26, p.midDeg);
-        return (
-          <g key={`gly-${p.name}`}>
-            <text x={glyphPos.x} y={glyphPos.y + 7} textAnchor="middle"
-              fill={p.color} opacity="0.9" fontSize="22"
-              fontFamily="Fraunces, Iowan Old Style, serif" fontStyle="italic" fontWeight="500"
-              style={{ filter: `drop-shadow(0 0 8px ${p.color}66)` }}>
-              {p.glyph}
-            </text>
-            <text x={labelPos.x} y={labelPos.y + 4} textAnchor="middle"
-              fill="currentColor" opacity="0.62" fontSize="9"
-              fontFamily="JetBrains Mono, monospace" fontWeight="700" letterSpacing="2.5">
-              {p.name}
-            </text>
-          </g>
-        );
-      })}
+
+      {/* Witness core */}
       <g>
-        <circle cx="0" cy="0" r={(38 + witnessBoost * 32) * breath}
-          fill="url(#coreGlow)" opacity={0.55 + slowPulse * 0.2 + witnessBoost * 0.4} />
-        <circle cx="0" cy="0" r={9 + pulse * 1.8 + witnessBoost * 4} fill="#fcd34d" opacity="0.95" />
-        <circle cx="0" cy="0" r="3" fill="#ffffff" />
+        <circle cx="0" cy="0" r={(42 + witnessBoost * 26) * breath}
+          fill="url(#coreGlow)" opacity={0.6 + witnessBoost * 0.3} />
+        <circle cx="0" cy="0" r={8 + pulse * 1.8 + witnessBoost * 3} fill="#fcd34d" opacity="0.95" />
+        <circle cx="0" cy="0" r="2.2" fill="#ffffff" />
       </g>
-      {/* Centre inscription — the witness. Curry-Howard reads
-          "a program is a proof"; this is what the four pillars produce. */}
-      <text x="0" y="-56" textAnchor="middle"
-        fill="currentColor" opacity="0.55" fontSize="7.5"
-        fontFamily="JetBrains Mono, monospace" letterSpacing="2.2" fontWeight="700">
-        VBC
-      </text>
-      <text x="0" y="62" textAnchor="middle"
-        fill="currentColor" opacity="0.7" fontSize="9" fontStyle="italic"
-        fontFamily="Fraunces, Iowan Old Style, serif">
-        ⟨ program ≡ proof ⟩
-      </text>
+
+      {/* The judgement itself, set in mathematical italic. This is the
+          whole language in one line; the four glyphs around it name its parts. */}
+      <g>
+        <text x="0" y="4" textAnchor="middle" fill="currentColor" opacity="0.92"
+          fontSize="17" fontFamily="Fraunces, Iowan Old Style, serif" fontStyle="italic"
+          letterSpacing="0.12em" fontWeight="500">
+          <tspan fill="#db2777">Γ</tspan>
+          <tspan dx="6" fill="currentColor" opacity="0.88">⊢</tspan>
+          <tspan dx="6" fill="#a78bfa">e</tspan>
+          <tspan dx="5" fill="currentColor" opacity="0.6">:</tspan>
+          <tspan dx="4" fill="#14b8a6">τ</tspan>
+        </text>
+      </g>
     </svg>
   );
 }
@@ -273,7 +247,7 @@ function Hero() {
           </div>
         </div>
         <div className={styles.heroVis}>
-          <WitnessVisualization />
+          <VerumSeal />
         </div>
       </div>
     </header>
