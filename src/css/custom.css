@@ -140,16 +140,70 @@ pre code {
   margin-top: 3rem;
 }
 
-/* Tables */
-table {
-  border-radius: 10px;
-  overflow: hidden;
+/* Tables —
+   Rounded corners on a <table> require border-collapse:separate (so the
+   outer border is a single element that can be rounded) plus a
+   single-edge-per-cell border scheme (so adjacent cells don't double up
+   and corner cells don't poke past the rounded outline). */
+.markdown table,
+article table {
+  display: table;
+  width: 100%;
+  margin: 1.1rem 0 1.6rem;
   border-collapse: separate;
   border-spacing: 0;
+  border: 1px solid var(--ifm-table-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--ifm-background-surface-color);
 }
 
-table thead tr {
+/* Every cell carries right + bottom borders only; the table's own
+   border supplies the missing top and left edges. This keeps a single
+   1px line between cells everywhere. */
+.markdown table th,
+.markdown table td,
+article table th,
+article table td {
+  border: 0;
+  border-right: 1px solid var(--ifm-table-border-color);
+  border-bottom: 1px solid var(--ifm-table-border-color);
+  padding: 0.6rem 0.9rem;
+  vertical-align: top;
+}
+
+.markdown table tr th:last-child,
+.markdown table tr td:last-child,
+article table tr th:last-child,
+article table tr td:last-child {
+  border-right: 0;
+}
+
+.markdown table tr:last-child td,
+article table tr:last-child td {
+  border-bottom: 0;
+}
+
+.markdown table thead tr,
+article table thead tr {
   background: var(--verum-gradient-subtle);
+}
+
+.markdown table thead th,
+article table thead th {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* Subtle row striping for readability on long tables. */
+.markdown table tbody tr:nth-child(even),
+article table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--ifm-color-emphasis-200) 35%, transparent);
+}
+
+[data-theme='dark'] .markdown table,
+[data-theme='dark'] article table {
+  background: var(--ifm-background-surface-color);
 }
 
 /* Admonitions */
