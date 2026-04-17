@@ -87,13 +87,30 @@ flowchart TD
 See **[codegen](/docs/architecture/codegen)** for the MLIR dialect
 stack and per-target tile sizes.
 
-## Internal JIT infrastructure (not an execution mode)
+## Why only two execution modes
 
-`verum_codegen` includes ORC-based JIT infrastructure that is used
-internally for REPL evaluation, incremental compilation, and hot
-reload in dev mode. **It is not exposed as an execution mode** —
-user code always runs under Interpreter or AOT. Future versions may
-promote JIT to a first-class execution mode; for now, assume two.
+An early design pass evaluated a third, JIT-based tier and removed
+it. The reasoning is worth stating because other systems languages
+have made a different call:
+
+- The interpreter already starts in milliseconds and handles the
+  entire VBC opcode surface (including cubical, HoTT, and autodiff
+  ops a JIT would have to recompile on every type-checker edit).
+  The interpreter's "start-up latency" is measured in milliseconds,
+  not seconds; there is no warm-up to avoid.
+- The AOT path produces native code that matches or beats any
+  JIT's peak performance, once warmed up. A JIT's usual advantage
+  — "no ahead-of-time compile step" — doesn't exist because the
+  interpreter fills that role.
+- A third tier would double the combinatorial surface of the
+  backend (interpreter × JIT × AOT, each with its own CBGR-tier
+  lowerings) while targeting a use case that neither of the
+  existing two already covers.
+
+Verum ships an interpreter and an AOT compiler. There is no
+intermediate JIT tier, and no internal JIT used by the REPL, the
+Playbook, or the incremental compilation cache — those all run
+through the same interpreter that handles `verum run`.
 
 ## Axis 2 — CBGR safety tiers
 

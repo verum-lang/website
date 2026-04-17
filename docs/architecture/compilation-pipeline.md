@@ -38,9 +38,9 @@ flowchart TD
         direction TB
         B5["5 · VBC code generation<br/><i>verum_vbc::codegen</i>"]
         B6["6 · VBC monomorphization"]
-        B7{{"7 · execution (two-tier v2.1)"}}
-        B7A["Tier 0: interpreter<br/><i>verum_vbc::interpreter</i>"]
-        B7B["Tier 1: AOT<br/><i>VBC → LLVM → native</i>"]
+        B7{{"7 · execution (two modes)"}}
+        B7A["Interpreter<br/><i>verum_vbc::interpreter</i>"]
+        B7B["AOT<br/><i>VBC → LLVM IR → native<br/>VBC → MLIR → GPU</i>"]
         B75["7.5 · final linking (AOT only)"]
         B5 --> B6 --> B7
         B7 --> B7A
@@ -48,7 +48,7 @@ flowchart TD
         B7B --> B75
     end
 
-    OUT[["Executable (Tier 1) / interpreted result (Tier 0)"]]
+    OUT[["Executable (AOT) / interpreted result"]]
 
     SRC --> FE
     FE -- "TypedAST" --> BE

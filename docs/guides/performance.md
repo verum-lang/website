@@ -314,4 +314,5 @@ lto = "thin"
 - **[Troubleshooting](/docs/guides/troubleshooting)** — when perf is
   catastrophically bad.
 - **[Architecture → runtime tiers](/docs/architecture/runtime-tiers)**
-  — interpreter / JIT / AOT execution model.
+  — the interpreter / AOT execution model, CBGR safety tiers, and
+  the five runtime profiles.

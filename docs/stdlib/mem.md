@@ -367,18 +367,27 @@ On a CBGR violation, the runtime:
 ## CBGR execution tiers
 
 ```verum
-type CbgrTier is Interpreter | BaselineJit | OptimizingJit | Aot;
+type ExecutionMode is Interpreter | Aot;
 
-fn current_tier() -> CbgrTier
-fn tier_promote()                   // hint: function is worth promoting
+fn current_mode() -> ExecutionMode
 fn is_interpreted() -> Bool
 ```
 
-Tier affects where the CBGR check runs:
-- **Interpreter**: software check every deref.
-- **Baseline JIT**: same, inlined at call sites.
-- **Optimizing JIT / AOT**: escape-analysed; most checks elided to
-  `&checked T`.
+Execution mode affects how the CBGR check is produced, not whether
+it runs:
+
+- **Interpreter**: software check every deref, via the VBC
+  `Deref` / `DerefMut` opcodes — the safe-by-default path, because
+  the interpreter validates every reference regardless of the
+  reference's static CBGR tier.
+- **AOT**: each CBGR tier lowers to a distinct code sequence in
+  LLVM IR. Tier-0 references emit the load-compare-branch pattern;
+  tier-1 references proven safe by escape analysis are elided to a
+  direct load (0 ns); tier-2 `&unsafe T` references compile to a
+  direct load with no check.
+
+There is no JIT tier in between; a Verum program runs either in
+the interpreter or as AOT-compiled native code.
 
 ---
 

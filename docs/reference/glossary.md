@@ -63,8 +63,15 @@ thread advances its epoch periodically.
 **Escape analysis** — Compile-time inference of whether a reference can
 outlive the scope that produced it. Used to promote `&T` to `&checked T`.
 
-**Execution tier** — 0: Interpreter, 1: Baseline JIT, 2: Optimising
-JIT, 3: AOT, 4: GPU. See **[Runtime tiers](/docs/architecture/runtime-tiers)**.
+**Execution mode** — Interpreter (direct VBC interpretation,
+instant startup) or AOT (VBC lowered through LLVM for CPU, or
+MLIR for `@device(gpu)` code). Verum does not have a JIT tier.
+See **[Runtime tiers](/docs/architecture/runtime-tiers)**.
+
+**Execution tier** — The CBGR safety tier attached to each
+reference: `Tier0_Full` (~15 ns), `Tier1_Epoch` (~8 ns),
+`Tier2_Gen` (~3 ns), `Tier3_Unchecked` (0 ns). Independent of
+execution mode.
 
 ## F
 

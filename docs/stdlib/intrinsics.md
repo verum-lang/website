@@ -636,13 +636,18 @@ char_general_category(c) -> GeneralCategory
 char_escape_debug(c) -> Text
 ```
 
-### Tier (`runtime/tier.vr`)
+### Execution mode (`runtime/mode.vr`)
 
 ```verum
-tier_promote()               // hint: worth promoting from interpreter to JIT
-is_interpreted() -> Bool
-get_tier() -> ExecutionTier
+is_interpreted() -> Bool       // true when running under the VBC interpreter
+current_mode() -> ExecutionMode  // Interpreter | Aot
+get_tier() -> ExecutionTier      // Tier0_Full | Tier1_Epoch |
+                                 //   Tier2_Gen | Tier3_Unchecked
 ```
+
+`ExecutionTier` is the CBGR safety tier of the *current reference*,
+not the execution mode of the process. Execution mode is always one
+of two values — Verum does not have a JIT.
 
 ---
 
