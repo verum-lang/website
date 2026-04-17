@@ -464,5 +464,5 @@ $ cat logs.txt | ./target/release/ingest output.log
 - **[async → channels](/docs/stdlib/async#channels)**
 - **[Channels cookbook](/docs/cookbook/channels)** — MPSC / broadcast / oneshot.
 - **[Resilience cookbook](/docs/cookbook/resilience)** — retry, circuit breakers.
-- **[runtime → supervision](/docs/stdlib/runtime#supervision-trees)** —
+- **[runtime → supervision](/docs/stdlib/runtime#supervision--runtimesupervisor)** —
   for long-running pipelines.
