@@ -10,6 +10,96 @@ slug: /changelog
 Format: Keep a Changelog.
 Version scheme: semver.
 
+Prior release numbers (0.01.0 → 0.32.0) tracked internal phase
+milestones during the pre-1.0 implementation; they are retained below
+as historical record. The first public version is **0.1.0**.
+
+## [0.1.0] — 2026-04-17 — runtime foundations, first public version
+
+### Fixed — VBC + AOT byte-slice semantics
+
+- `Text.as_bytes()` and `slice_from_raw_parts(ptr, len)` now produce
+  proper slice values in both tiers. The VBC lowering previously
+  emitted `Pack` (a heap tuple) for slices, so `.len()` returned 2
+  (the tuple arity), `bytes[i]` returned an 8-byte NaN-boxed `Value`
+  instead of a byte, and every CBGR slice op silently fell through
+  its `is_fat_ref()` guard. New `CbgrSubOpcode::RefSliceRaw` (0x0A)
+  builds a `FatRef` directly from (ptr, len) with `elem_size=1`.
+  New `TextSubOpcode::AsBytes` (0x34) materialises a byte-slice
+  `FatRef` from either the NaN-boxed small-string representation or
+  the heap-allocated `[header][len:u64][bytes…]` layout; the codegen
+  intercepts `.as_bytes()` on `Text` receivers and routes through
+  this op so `self.ptr` via `GetF` (which reads the wrong offset
+  for both representations) is never called at runtime.
+- Matching AOT/LLVM handlers lower `TextExtended::AsBytes` (reads
+  the pointer via `verum_text_get_ptr`, reads `len` from field 1 of
+  the flat `{ptr, len, cap}` struct) and `CbgrSubOpcode::RefSliceRaw`
+  into the standard 40-byte Pack-object slice layout, so the AOT
+  `Len` / `GetE` / `IterNew` handlers already in place pick up the
+  fix without further change.
+- `CbgrSubOpcode::SliceGet`, `SliceGetUnchecked`, and
+  `SliceSubslice` now honour `fat_ref.reserved` as the element
+  stride (1/2/4/8 for raw integer arrays, 0 for NaN-boxed Values).
+  Previously they hard-coded `sizeof(Value)` and walked 8 bytes per
+  index, so indexing or subslicing a byte slice produced garbage.
+
+### Fixed — variant-tag consistency
+
+- `Maybe<T>` is declared `None | Some(T)`, so `register_type_constructors`
+  assigns `None=0, Some=1` positionally. The hard-coded fallback
+  table in `codegen/mod.rs` had `Some=0, None=1` — the stdlib-
+  constants pass ran first and `register_function` overwrote by
+  arity, so `None` ended up tagged as `1` while pattern matching
+  (which derives tags from declaration order) expected `0`. Every
+  `None` value silently matched `Some(x) =>` arms and bound `x` to
+  uninitialised payload memory. Tags are now consistent across all
+  three sites (`register_stdlib_constants`, builtin registration
+  around `compile_program`, `register_type_constructors`) and the
+  runtime helpers (`make_maybe_int`, `make_some_value`,
+  `make_none_value`).
+- Bare `None` identifiers were lowered through the `__const_` path
+  to `LoadI 0` instead of `MakeVariant tag=0`. Zero-arity variant
+  constructors now route through `MakeVariant` before the constant
+  path.
+- `TextExtended::AsBytes` handler auto-derefs both CBGR register
+  references and `ThinRef` before inspecting the Text layout, so
+  `s.as_bytes()` inside a function taking `s: &Text` no longer
+  returns an empty slice.
+
+### Fixed — slice method dispatch
+
+- `implement<T> [T]` blocks register under the `Slice.*` prefix
+  (because `extract_impl_type_name_from_type` maps
+  `TypeKind::Slice(_)` to `"Slice"`), but the method-dispatch
+  codegen was formatting `[Byte].method` as the lookup key (using
+  `extract_type_name_from_ast`). The two halves of the pipeline
+  disagreed; method names now get normalised so `[…].method` →
+  `Slice.method` before interning.
+- `core.collections.slice` was present in the AOT-retention list
+  but not in the primary `ALWAYS_INCLUDE` that controls which
+  stdlib modules get compiled into the VBC module at all. Added,
+  so the normalised `Slice.*` lookups actually have bodies to find.
+- Intercept `[T].slice(start, end)` at codegen and emit
+  `CbgrSubOpcode::SliceSubslice` directly, bypassing the compiled
+  stdlib body (which panics inside `Value::as_i64` when it receives
+  a `FatRef` receiver via `CallM`).
+- `extract_type_name` now handles `TypeKind::Slice(T) → "[T]"`
+  instead of returning `None`, so method-chain inference carries
+  slice-ness through calls like `s.as_bytes()` and downstream
+  `.slice()` / `.get()` / `.is_empty()` dispatch can route
+  correctly.
+
+### Impact
+
+Pure-Verum byte-level stdlib code (JSON, base64, URL, UUID, hex
+decoders; regex engines; TLS framing; binary protocols) is now able
+to traverse bytes end-to-end in the VBC interpreter and AOT builds.
+Prior to these fixes every such module typechecked cleanly but
+crashed or silently corrupted data at run time; the VCS
+`typecheck-pass` suites did not surface it because they never
+executed the code. Further stdlib runtime issues continue to be
+found incrementally now that execution reaches them.
+
 ## [0.32.0] — 2026-04-15 — phase D complete
 
 ### Major

@@ -45,7 +45,7 @@ Ahead-of-time compilation through LLVM — the default for
 - **Features**: full LLVM optimisation stack, LTO, PGO, cross-target
   support through MLIR-aware target triples.
 - **Use when**: shipping production binaries.
-- **Stability**: 96–100 % build success rate (fixed in v0.4.0+).
+- **Stability**: 96–100 % build success rate (fixed in v0.1.0).
   Stdlib functions with name-arity collisions receive `optnone` +
   `noinline` attributes and trivial return stubs to prevent LLVM
   pass crashes on null Type references.

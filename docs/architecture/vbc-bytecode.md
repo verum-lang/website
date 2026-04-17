@@ -72,6 +72,33 @@ Several primary opcodes are prefixes into second-byte tables:
   **`CmpExtended` (0x4F)**, **`MlExtended` (0xFD)** — per-family
   extensions.
 
+### Slice opcodes (`CbgrExtended` 0x00–0x0A)
+
+Slices in VBC are `FatRef` values that carry `(ptr, len, elem_size)`
+metadata in the reserved field (`0 = NaN-boxed Value`, `1/2/4/8 =
+raw integer stride`). The corresponding sub-ops:
+
+| Sub-op             | Code  | Format                                   | Notes |
+|--------------------|-------|------------------------------------------|-------|
+| `RefSlice`         | 0x00  | `dst, src, start, len`                   | Sub-ref from an array/list; infers stride from the source ObjectHeader. |
+| `RefInterior`      | 0x01  | `dst, base, field_offset:u32`            | Struct interior ref. |
+| `RefArrayElement`  | 0x02  | `dst, base, index`                       | Array element ref. |
+| `RefTrait`         | 0x03  | `dst, src, vtable_id:u32`                | Trait-object fat pointer. |
+| `Unslice`          | 0x04  | `dst, slice_ref`                         | Extract the raw pointer. |
+| `SliceLen`         | 0x05  | `dst, slice_ref`                         | Reads `metadata` from the FatRef. |
+| `SliceGet`         | 0x06  | `dst, slice_ref, index`                  | Stride-aware (respects `reserved`). |
+| `SliceGetUnchecked`| 0x07  | `dst, slice_ref, index`                  | Same, no bounds check. |
+| `SliceSubslice`    | 0x08  | `dst, src, start, end`                   | Stride-aware subslicing. |
+| `SliceSplitAt`     | 0x09  | `dst1, dst2, src, mid`                   | Two FatRefs `[0..mid)` / `[mid..len)`. |
+| `RefSliceRaw`      | 0x0A  | `dst, ptr, len`                          | Build a FatRef from a raw pointer (no ObjectHeader inference); used for `slice_from_raw_parts`, byte buffers, and the middle of heap strings. |
+
+`TextSubOpcode::AsBytes` (`0x34`, under `TextExtended` 0x79) is the
+dispatch target for `text.as_bytes()` regardless of whether the
+value is a NaN-boxed small string or a heap-allocated Text. It
+materialises a byte-slice FatRef with `elem_size=1`, copying the six
+inline bytes of a small string into a fresh heap buffer so the
+returned reference has a stable address.
+
 Adding up primary + extended tables: just over **350 opcodes**.
 
 ## Module format
