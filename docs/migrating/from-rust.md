@@ -186,7 +186,7 @@ type Foo is { ... };            // attribute
 ```
 
 **Writing your own procedural macro**: `meta fn` + `quote { ... }`.
-See [metaprogramming](/docs/language/metaprogramming).
+See [metaprogramming](/docs/language/meta/overview).
 
 ---
 

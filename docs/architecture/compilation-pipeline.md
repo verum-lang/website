@@ -117,7 +117,7 @@ defined later in the same file.
   tag validates its content at compile time; invalid content is a
   **compile error**, not a runtime failure.
 - `quote` / splice / `lift` hygiene enforcement (see
-  **[metaprogramming](/docs/language/metaprogramming#hygiene)**).
+  **[metaprogramming](/docs/language/meta/quote-and-hygiene)**).
 
 Contract literals (`contract#"..."`) are parsed here and verified in
 Phase 3a.

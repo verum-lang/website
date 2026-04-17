@@ -118,7 +118,7 @@ opt-in — you pay only for what you use.
 - **[Error Handling](/docs/language/error-handling)** — `Result`,
   typed `throws`, `try`/`recover`/`finally`, `defer` / `errdefer`,
   `let else`.
-- **[Metaprogramming](/docs/language/metaprogramming)** — `meta fn`,
+- **[Metaprogramming](/docs/language/meta/overview)** — `meta fn`,
   `quote { ... }`, N-stage splicing, token trees, user-defined
   macros via `@`-prefix.
 - **[Proof DSL](/docs/language/proof-dsl)** — theorems, lemmas,
