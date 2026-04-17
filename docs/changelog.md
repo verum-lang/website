@@ -154,13 +154,31 @@ share tag 0, every successful integer parse silently routed to the
 Known-working after this layer of fixes: `Text.new(); t.push_byte(b);`
 round-trips; `t.as_bytes()` yields the written bytes.
 
-Known-remaining: `Text == Text` returns `false` for two builder
-Texts built from the same bytes — equality walks the struct
-layout rather than byte content — so Map<Text, T> with built keys
-(e.g. JSON object field names) crashes during hashing. Tracked as
-the next task in the byte-level stdlib surface audit. Simple JSON
-scalars / arrays / empty objects work end-to-end; `{"a": 1}` still
-crashes at the `Map.insert` stage.
+### Fixed — Text equality + hashing for builder layout
+
+The interpreter's `resolve_string_value`, `extract_string`,
+`value_hash`, and `heap_string_content_eq` all previously decoded
+only the heap-string Text layout (`[len:u64][bytes…]`). For a
+builder `Text {Value(ptr), Value(len), Value(cap)}` they read the
+NaN-boxed `ptr` field as a u64 length, returned garbage strings
+(breaking `==`) and looped over an out-of-bounds byte count
+(crashing `Map.insert`). All four helpers now disambiguate by
+object size + field tags, matching the pattern used by
+`handle_array_len` / `TextExtended::AsBytes`. A shared
+`text_value_bytes_and_len` helper now owns the extraction.
+
+Concrete effect:
+
+- `built("a") == built("a")` → `true` (was `false`)
+- `built("a") == "a"` and reverse → `true` (was `false`)
+- `Map<Text, Int>.insert(built_key, 1)` → no crash
+- `JSON.parse("{\"a\":1}")` → `Ok` (was SIGBUS)
+
+Known-remaining: full JSON round-trip (parse → `stringify`) hits
+`Map.iter` which isn't wired up as a builtin method yet. Simple
+parses work; serialization of objects does not. Tracked as a
+discrete follow-up — it's shallower than the runtime-foundation
+fixes that precede it.
 
 ## [0.32.0] — 2026-04-15 — phase D complete
 
