@@ -204,6 +204,53 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Fixed — `&temp` references survive past the next `alloc_temp`
+
+Taking a reference to a temporary value (`&arr[i]`, `&(a + b)`,
+`&f()`, …) emitted a Tier 0 CBGR ref encoding the inner register's
+absolute index. The interpreter's `Deref` then read back through
+that index — but the temp pool would happily recycle the slot the
+moment the next `alloc_temp` ran. The deref then read whatever
+happened to land in the slot (an f-string text fragment, a
+print-format intermediate, …):
+
+  let arr = [1, 2, 3, 4, 5];
+  let r: &Int = &arr[2];
+  print(f"*r = {*r}");      // → "*r = " (nothing — wrong)
+  assert_eq(*r, 3);          // → fails
+
+`compile_unary` now stabilizes the source via
+`stabilize_ref_source`: when the inner expression isn't a named
+local, allocate a fresh, never-recycled register, copy the value
+into it, and reference *that*. One extra `Mov` per `&temp` (the
+common Tier 0 case is already paying the 15 ns generation check),
+and the silent slot-collision class of bugs is closed at codegen
+time. Applies to all six tier/mutability variants
+(`Ref`/`RefMut`/`RefChecked`/`RefCheckedMut`/`RefUnsafe`/
+`RefUnsafeMut`). Mutable element refs (`&mut arr[i]`) still don't
+write back to the array storage — that needs a separate
+"element write-through" opcode (tracked).
+
+### Cleared — remaining clippy warnings
+
+Eight stylistic lints across `verum_vbc`, `verum_smt`,
+`verum_types`, `verum_mlir`. None affect behavior:
+
+- `verum_vbc`: drop the `1 *` and `+ 0` no-ops in the CbgrAlloc
+  Ok-wrap, redundant `as *mut u8` casts on already-`*mut u8`
+  pointers, collapse a nested `if {…}` inside a `matches!`-guarded
+  layout-property branch, replace `is_some + unwrap` with
+  `let Maybe::Some(ref body) = …`.
+- `verum_smt`: drop the redundant outer `..Default::default()` in
+  `SmtConfig::debugging`.
+- `verum_types`: invert the `Layer` PartialOrd/Ord pair so `cmp`
+  is the canonical implementation; replace `min(64).max(1)` with
+  `clamp(1, 64)` in `BitVec::new`.
+- `verum_mlir`: add a `Default` impl for `LlvmContextRef`.
+
+`cargo clippy --workspace --bins --lib` is now clean (no warnings
+outside upstream crates that build C/C++ via the system `ar`).
+
 ### Fixed — `.method()` doesn't fall through to a free fn
 
 `nums.map(|n| n * 2)` panicked at runtime with "method 'Map.resize'
