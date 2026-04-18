@@ -204,6 +204,46 @@ still has a shallower bug (the integer value's bytes aren't being
 appended to the output buffer), but the infrastructure — iteration,
 method dispatch, primitive-to-text conversion — is in place.
 
+### Fixed — `(0..N).collect()` infers from let-binding context
+
+`let v: List<Int> = (0..10).collect();` errored with
+"Type mismatch: expected 'List<Int>', found 'Int'". An earlier
+path inside `infer_method_call_inner_impl` returned the *element*
+type for `.collect()` on adapter-like receivers — `Range<Int>`
+ended up as `Int`, which then couldn't unify with the let-binding's
+`List<Int>` annotation.
+
+Short-circuit the entire dispatch chain when the method is a
+0-argument `collect()`: return a fresh type variable. Bidirectional
+`check_expr` then unifies the var with whatever the let-binding
+annotation supplies. With no annotation the call site is genuinely
+ambiguous (which it should be); add an explicit `: T` if needed.
+
+Removes 3 L0 `reference_system/performance` failures
+(`cache_effects.vr`, `memory_overhead.vr`, `reference_locality.vr`).
+
+### Fixed — `stabilize_ref_source` was over-eager and broke CBGR safety
+
+Follow-up to the `&temp` ref-source stabilization: the original
+deny-list ("not a named local") was too permissive and promoted
+`&*heap_val` into `&fresh_copy_of_heap_val`. The freshly allocated
+stable slot has no link back to the CBGR-tracked allocation, so a
+subsequent `drop(heap_val); *r` returned the snapshot instead of
+panicking with "CBGR use-after-free detected". Six L0 specs that
+exercise the panic path silently regressed (exited 0 instead of
+panicking).
+
+Switched to an allow-list: only stabilize for the shapes that
+actually produce recyclable temps — `Index`, `Field`, `TupleIndex`,
+`Binary`, `Call`, `MethodCall`. `Deref` is *not* in the list, so
+`&*heap_val` keeps its Tier 0 ref-to-source-slot semantics and the
+generation/epoch checks fire as designed.
+
+L0 lexer/parser/types/builtin-syntax/memory-safety/mmio/modules/
+reference_system: **577/587 = 98.3%** (10 remaining failures are
+all stdlib-API gaps — `Register.modify` missing and
+`Epoch.current()` recursion).
+
 ### Fixed — `&temp` references survive past the next `alloc_temp`
 
 Taking a reference to a temporary value (`&arr[i]`, `&(a + b)`,
