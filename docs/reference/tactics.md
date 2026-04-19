@@ -17,7 +17,7 @@ syntax, see [Proof DSL](/docs/language/proof-dsl).
 Grammar:
 
 ```ebnf
-tactic_expr  = tactic_name , [ '<' , type_args , '>' ] , [ '(' , [ argument_list ] , ')' ]
+tactic_expr  = tactic_name , [ type_args ] , [ '(' , [ argument_list ] , ')' ]
              | tactic_expr , ';' , tactic_expr
              | '(' , tactic_expr , ')'
              | 'try' , '{' , tactic_expr , '}' , [ 'else' , '{' , tactic_expr , '}' ]
