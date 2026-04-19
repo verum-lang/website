@@ -54,16 +54,46 @@ lemma mod_periodic(n: Int, k: Int)
 
 ### `axiom` — unproven assumptions
 
-An `axiom` states a fact without proof. The compiler accepts it; the
-**certified** verification strategy refuses to terminate on a proof
+An `axiom` states a proposition without proof. The compiler accepts it;
+the **certified** verification strategy refuses to terminate on a proof
 that transitively depends on axioms (so axiom use is visible and
 audited).
 
+The body of an axiom is its asserted proposition — universally
+quantified over the parameters. `ensures` is the canonical way to
+write it:
+
 ```verum
-axiom choice<T>(predicate: fn(T) -> Bool) -> T;
+// forall a, b. a + b == b + a
+axiom add_comm(a: Int, b: Int)
+    ensures a + b == b + a;
+
+// forall a, b, c. a + (b + c) == (a + b) + c  AND  0 + a == a  AND  a + 0 == a
+axiom group_laws(a: Int, b: Int, c: Int)
+    ensures (a + b) + c == a + (b + c),
+            0 + a == a,
+            a + 0 == a;
+
+// forall x. x > 0 → x * x > 0
+axiom positive_square(x: Int)
+    requires x > 0
+    ensures x * x > 0;
 ```
 
-Use sparingly — each axiom is a leak in the trust model.
+Semantics:
+
+| Clauses present                 | Asserted proposition                 |
+|---------------------------------|--------------------------------------|
+| `ensures E₁, …, Eₙ`             | `E₁ ∧ … ∧ Eₙ`                        |
+| `requires R` + `ensures E`      | `R → E`                              |
+| `requires R₁, …, Rₖ` (legacy)   | `R₁ ∧ … ∧ Rₖ` (treated as ensures)   |
+| Neither                         | `true`                               |
+
+Use sparingly — each axiom is a leak in the trust model. Protocol
+axioms (declared inside `type … is protocol { axiom … }`) become
+proof obligations at every `implement` site — see
+[verification/proofs](/docs/verification/proofs) for model-theoretic
+semantics.
 
 ### `corollary` — consequences
 
