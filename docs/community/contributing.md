@@ -22,6 +22,23 @@ Open an issue on the project repository with:
 
 Label templates at the repo root automate the rest.
 
+**If the compiler itself crashed (panic or `segmentation fault`),**
+the toolchain has already written a structured report under
+`~/.verum/crashes/`. Attach it with:
+
+```bash
+verum diagnose bundle --scrub-paths     # safe-to-share tar.gz
+# or, if `gh` CLI is configured:
+verum diagnose submit --dry-run         # preview, then drop --dry-run
+```
+
+The report contains the phase the compiler was in, a backtrace, the
+exact command, and a filtered environment (secret-looking env vars
+are redacted automatically; `--scrub-paths` also replaces `$HOME`
+with `~` and the username with `<user>`). See
+**[Tooling → Crash diagnostics](/docs/tooling/diagnostics)** for the
+full workflow.
+
 ### Want to suggest a feature
 
 Small additions: open an issue describing the use case.

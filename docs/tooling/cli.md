@@ -69,6 +69,22 @@ verum smt-info [--json]                # verification backends
 verum smt-stats [--json] [--reset]     # last-session routing telemetry
 ```
 
+## Crash reports
+
+The toolchain captures panics and fatal signals to structured reports
+under `~/.verum/crashes/`. See
+**[Tooling → Crash diagnostics](/docs/tooling/diagnostics)** for the
+full workflow; the commands themselves are:
+
+```bash
+verum diagnose list [--limit N]
+verum diagnose show [REPORT] [--json] [--scrub-paths]
+verum diagnose bundle [-o OUT] [--recent N] [--scrub-paths]
+verum diagnose submit [--repo owner/name] [--recent N] [--dry-run]
+verum diagnose env [--json]
+verum diagnose clean [--yes]
+```
+
 ## Interactive
 
 ```bash

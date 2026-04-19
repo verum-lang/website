@@ -220,6 +220,26 @@ pipeline, emits object files, and hands off to **Phase 7.5 linking**
 below. Triggered by `verum build`, `verum run --aot`, or
 `[profile.release] tier = "1"`.
 
+:::note Rayon fence before LLVM
+LLVM registers back-end passes lazily via function-local statics
+guarded by Itanium-ABI `__cxa_guard_acquire`. Rayon workers parked
+after earlier phases (stdlib parse, semantic analysis) race those
+guards on their wake path — on arm64 macOS this used to SIGSEGV
+~70 % of release builds inside `phase_generate_native`. The
+pipeline now:
+
+1. Calls `Target::initialize_native` on the main thread in
+   `verum_cli::main`, before any worker is spawned, so the IR-pass
+   half of the registry is populated under zero contention.
+2. Replaces the old `rayon::yield_now()` barrier with
+   `rayon::broadcast(|_| ())` just before codegen — a real fence
+   that waits for every worker to wake, run a no-op, and re-park.
+
+100 / 100 AOT builds of the reproducer are stable after the change.
+Regression guard: `tier1_repeated_aot_build_is_stable` in
+`crates/verum_cli/tests/tier_parity_e2e.rs`.
+:::
+
 ### Dual-path: GPU via MLIR
 
 Functions annotated `@device(GPU)` (or auto-selected when tensor
@@ -310,6 +330,15 @@ phase 7   (aot: vbc → llvm)     2.11s
 phase 7.5 (link)                0.32s
 total                           4.51s
 ```
+
+### Breadcrumbs on failure
+
+Every phase pushes an RAII breadcrumb (`verum_error::breadcrumb`) so
+that if the pipeline panics or crashes with a fatal signal, the
+emitted report at `~/.verum/crashes/` names the last phase that was
+running and its per-phase context (file being compiled, module name,
+etc.). See **[Tooling → Crash diagnostics](/docs/tooling/diagnostics)**
+for the report layout and the `verum diagnose` workflow.
 
 ## See also
 
