@@ -1079,7 +1079,24 @@ axiom_decl     = 'axiom'     , identifier , [ generic_params ] , '(' , [ param_l
                , [ '->' , type_expr ] , ';' ;
 corollary_decl = 'corollary' , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ] , [ requires_clause ] , 'from' , identifier , proof_body ;
-tactic_decl    = 'tactic'    , identifier , '(' , [ param_list ] , ')' , block_expr ;
+tactic_decl    = 'tactic'    , identifier , [ generic_params ]
+               , '(' , [ tactic_param_list ] , ')'
+               , [ where_clause ] , tactic_body ;
+
+tactic_param_list = tactic_param , { ',' , tactic_param } ;
+tactic_param      = identifier , ':' , tactic_param_type
+                    , [ '=' , expression ] ;
+tactic_param_type = 'Expr' | 'Type' | 'Tactic' | 'Hypothesis' | 'Int'
+                  | 'Prop' | type_expr ;
+
+tactic_body       = tactic_expr | '{' , { tactic_stmt } , '}' ;
+tactic_stmt       = 'let'   , identifier , [ ':' , type_expr ] , '=' , expression , ';'
+                  | 'if'    , expression , '{' , tactic_expr , '}'
+                    , [ 'else' , ( 'if' , expression , '{' , tactic_expr , '}' , …
+                                 | '{'  , tactic_expr , '}' ) ]
+                  | 'match' , expression , '{' , match_arm , { ( ',' | ';' ) , match_arm } , [ ',' | ';' ] , '}'
+                  | 'fail'  , '(' , expression , ')'
+                  | tactic_expr , [ ';' ] ;
 
 requires_clause = 'requires' , expression , { ',' , expression } ;
 
@@ -1095,13 +1112,15 @@ obtain_step         = 'obtain' , pattern , 'from' , expression ;
 tactic_application  = tactic_expr , ';' ;
 proof_justification = 'by' , ( tactic_expr | identifier ) ;
 
-(* Tactic combinators (Phase D.1) *)
-tactic_expr = tactic_name , [ '(' , [ argument_list ] , ')' ]
+(* Tactic combinators (Phase D.1 + T1-O reference-grade DSL) *)
+tactic_expr = tactic_name , [ '<' , type_args , '>' ] , [ '(' , [ argument_list ] , ')' ]
             | tactic_expr , ';' , tactic_expr
             | '(' , tactic_expr , ')'
             | 'try' , '{' , tactic_expr , '}' , [ 'else' , '{' , tactic_expr , '}' ]
             | 'repeat' , [ '(' , integer_lit , ')' ] , '{' , tactic_expr , '}'
+            (* `first` supports BOTH the block form and the Lean-style list form *)
             | 'first' , '{' , tactic_expr , { ';' , tactic_expr } , '}'
+            | 'first' , '[' , tactic_expr , { ',' , tactic_expr } , ']'
             | 'all_goals' , '{' , tactic_expr , '}'
             | 'focus' , '(' , integer_lit , ')' , '{' , tactic_expr , '}' ;
 
