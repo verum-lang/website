@@ -545,7 +545,7 @@ simple_type = primitive_type
             | dynamic_type           (* dyn P + Q *)
             | capability_type ;      (* T with [...] *)
 
-primitive_type = 'Int' | 'Float' | 'Bool' | 'Char' | 'Text' | '()' | 'Interval' ;
+primitive_type = 'Int' | 'Float' | 'Bool' | 'Char' | 'Text' | '()' | 'Interval' | 'Prop' ;
 never_type     = '!' ;
 unknown_type   = 'unknown' ;
 ```
