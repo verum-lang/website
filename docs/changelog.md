@@ -14,6 +14,96 @@ Prior release numbers (0.01.0 → 0.32.0) tracked internal phase
 milestones during the pre-1.0 implementation; they are retained below
 as historical record. The first public version is **0.1.0**.
 
+## [Unreleased]
+
+### Added — crash reporter and `verum diagnose`
+
+- New `verum_error::crash` module installs a process-wide crash
+  reporter at `verum` startup. It captures every panic and every
+  fatal signal (`SIGSEGV`, `SIGBUS`, `SIGILL`, `SIGFPE`, `SIGABRT` on
+  Unix via `sigaction` + `sigaltstack`; `SetUnhandledExceptionFilter`
+  on Windows) into a paired `.log` (human) + `.json` (schema v1)
+  report under `~/.verum/crashes/`. Reports include the exact
+  command and cwd, a filtered environment with secret-looking keys
+  redacted, the build identity (`verum` version, git SHA, profile,
+  target, `rustc --version`), the thread name, a Rust backtrace, and
+  a breadcrumb trail.
+- New `verum_error::breadcrumb` module — a thread-local RAII trail
+  mirrored to a cross-thread snapshot so the signal handler can
+  include the last-known phase even when the offending thread's
+  TLS is unreachable. The compilation pipeline emits breadcrumbs at
+  `stdlib_loading`, `project_modules`, `load_source`, `parse`,
+  `type_check`, `verify`, `cbgr_analysis`, `ffi_validation`,
+  `rayon_fence`, `generate_native`, `codegen.vbc_to_llvm`, and
+  `interpret`.
+- New `verum diagnose` subcommand family:
+  - `list [--limit N]` — index of recent reports with one-line
+    summaries (kind, message, build, last known phase);
+  - `show [REPORT] [--json] [--scrub-paths]` — full report to
+    stdout, optionally path-scrubbed for external sharing;
+  - `bundle [-o OUT] [--recent N] [--scrub-paths]` — `.tar.gz`
+    suitable for attaching to an issue; a README inside the archive
+    explains where to upload it;
+  - `submit [--repo owner/name] [--recent N] [--dry-run]` — opens a
+    new GitHub issue via `gh` CLI with the latest report summary
+    pre-filled (paths scrubbed);
+  - `env [--json]` — print the captured build/host snapshot;
+  - `clean [--yes]` — wipe the report directory.
+- New `[profile.release-debug-tables]` in the workspace
+  `Cargo.toml` — inherits from `release` but keeps
+  `debug = "line-tables-only"` + `split-debuginfo = "packed"` so
+  crash-report backtraces resolve to `file:line`. The main binary
+  size is unchanged; line tables live in an external `.dSYM` /
+  `.dwp` bundle.
+
+### Fixed — non-deterministic SIGSEGV in AOT codegen
+
+Release builds on arm64 macOS SIGSEGV'd in ~60–70 % of
+`verum build ./examples/cbgr_demo.vr` invocations, always on the
+main thread, always inside LLVM pass-constructor initialisation
+(`TargetLibraryInfoWrapperPass`, `CFIFixup`, `CallBase`,
+`MachineDominatorTreeWrapperPass`, `GCModuleInfo` — all under
+`__cxa_guard_acquire → __os_semaphore_wait`). Diagnosed via the
+new crash reporter: 14/14 reports pointed at
+`compiler.phase.generate_native` at 307–350 ms into the phase.
+
+Two surgical fixes:
+
+1. **Eager native-target init** — `verum_cli::main` now calls
+   `Target::initialize_native` as its first line, before the
+   stdlib parse can spawn rayon workers or the verifier can touch
+   Z3. The IR-level pass registry is fully populated on the main
+   thread while no other thread is alive, releasing the cxa guards
+   before the fault window.
+2. **Real rayon fence before LLVM** —
+   `rayon::yield_now()` in `phase_generate_native` is replaced with
+   `rayon::broadcast(|_| ())`, which dispatches a no-op task to
+   every worker and **waits for completion**. Parked workers wake,
+   run, and re-park before LLVM touches its remaining cxa guards,
+   eliminating the wake-path vs lazy-init race.
+
+100-run stress test: 0 / 100 crashes after the fix. Guarded by
+`tier1_repeated_aot_build_is_stable` in
+`crates/verum_cli/tests/tier_parity_e2e.rs`.
+
+### Fixed — duplicate "Running" line in single-file run
+
+`verum run file.vr` printed `Running <file> (interpreter)` twice —
+once from `main.rs` and once from the single-file tier dispatcher.
+The dispatcher's duplicate line is gone.
+
+### Docs
+
+- New **[Tooling → Crash diagnostics](/docs/tooling/diagnostics)** page
+  covering the crash reporter, breadcrumbs, report layout, the
+  `verum diagnose` commands, signal-safety caveats, and the
+  `release-debug-tables` profile.
+- **[Reference → CLI commands](/docs/reference/cli-commands)** now
+  documents the `verum diagnose` family.
+- **[Guides → Troubleshooting](/docs/guides/troubleshooting)** has a
+  new "Compiler crashes" section that walks the
+  *list → show → bundle → submit* flow.
+
 ## [0.1.0] — 2026-04-17 — runtime foundations, first public version
 
 ### Fixed — VBC + AOT byte-slice semantics

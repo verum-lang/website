@@ -227,9 +227,67 @@ error: conflicting versions
 Upgrade cog-a to use serde 2.0 (if available), or pin cog-b to a
 serde-1.4-compatible version in `[overrides]`.
 
+## Compiler crashes (panics, SIGSEGV, …)
+
+If `verum` crashes — panics or dies with `[1] … segmentation fault` —
+the toolchain has already captured the details. Do not re-run with
+custom logging; just read the report the reporter just wrote.
+
+### Locate the report
+
+```bash
+verum diagnose list
+```
+
+Each line shows the report path, kind (`panic` vs fatal signal),
+message, build identity, and the *last known phase* of the compilation
+pipeline. That phase is usually enough to categorise the crash.
+
+### Read the most recent report
+
+```bash
+verum diagnose show                       # full human-readable form
+verum diagnose show --json                # structured form
+verum diagnose show --scrub-paths         # safe to paste publicly
+```
+
+The report contains:
+
+- the exact `verum …` command, cwd, and filtered env;
+- the build identity (`verum` version, git SHA, profile, target,
+  `rustc` version) — enough for anyone to reproduce the build;
+- a breadcrumb trail down to the failing phase
+  (e.g. `compiler.phase.generate_native`, `compiler.phase.verify`);
+- a Rust backtrace.
+
+If the backtrace shows only mangled LLVM symbols, rebuild with the
+`release-debug-tables` profile and retry — line tables land in an
+external `.dSYM` / `.dwp` bundle and the reporter picks them up
+automatically:
+
+```bash
+cargo build --profile release-debug-tables --bin verum
+./target/release-debug-tables/verum build …     # reproduce the crash
+verum diagnose show                              # file:line now resolves
+```
+
+### File an issue
+
+```bash
+verum diagnose bundle --scrub-paths              # tar.gz to attach
+verum diagnose submit --dry-run                  # or let gh do it
+```
+
+`submit` composes a GitHub issue through the `gh` CLI, pre-filled
+with the latest report's summary (paths scrubbed). See
+**[Tooling → Crash diagnostics](/docs/tooling/diagnostics)** for the
+full workflow.
+
 ## Getting more help
 
 - `verum explain V####` — detailed explanation of an error code.
+- [Crash diagnostics](/docs/tooling/diagnostics) — reports,
+  breadcrumbs, signal handling.
 - [Glossary](/docs/reference/glossary) — every term defined.
 - [FAQ](/docs/guides/faq) — common conceptual questions.
 - GitHub discussions on the project repository

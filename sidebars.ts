@@ -50,6 +50,7 @@ const sidebars: SidebarsConfig = {
         'tooling/vscode-extension',
         'tooling/playbook',
         'tooling/repl',
+        'tooling/diagnostics',
       ],
     },
     {

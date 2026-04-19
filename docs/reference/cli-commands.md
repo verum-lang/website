@@ -219,6 +219,76 @@ Flags:
 - `--llvm` — LLVM version / features.
 - `--all`.
 
+### `verum diagnose`
+
+Inspect and export the crash reports captured by the `verum` crash
+reporter (panics + fatal signals, persisted under
+`~/.verum/crashes/`). See
+**[Tooling → Crash diagnostics](/docs/tooling/diagnostics)** for the
+full format, redaction policy, and retention rules.
+
+All subcommands read from `~/.verum/crashes/` unless
+`VERUM_HOME` overrides it.
+
+#### `verum diagnose list`
+
+List recent reports, newest first.
+
+Flags:
+- `--limit <N>` (default 20) — cap the number of entries shown.
+
+#### `verum diagnose show [REPORT]`
+
+Print a single report to stdout. Defaults to the most recent.
+
+Flags:
+- `REPORT` — path to a `.log` or `.json` file.
+- `--json` — print the structured form instead of the human log.
+- `--scrub-paths` — replace `$HOME` with `~` and the current
+  username with `<user>` in the printed output. The on-disk report
+  is not modified.
+
+#### `verum diagnose bundle`
+
+Package recent reports (paired `.log` + `.json`) into a single
+`.tar.gz` suitable for attaching to an issue.
+
+Flags:
+- `-o, --output <path>` (default `./verum-crash-bundle-<ts>.tar.gz`).
+- `--recent <N>` (default 5).
+- `--scrub-paths` — sanitise every file placed into the archive.
+  Originals in `~/.verum/crashes/` are untouched.
+
+#### `verum diagnose submit`
+
+Open a new GitHub issue with the most recent reports via the `gh`
+CLI. Paths are always scrubbed before upload; the bundle path is
+printed so the user can attach it manually (the `gh` CLI does not
+accept attachments at issue creation time).
+
+Flags:
+- `--repo <owner/name>` (default `verum-lang/verum`).
+- `--recent <N>` (default 3).
+- `--dry-run` — print the `gh` command without running it.
+
+Requires `gh auth login`. Exits with a clear error if `gh` is not
+installed.
+
+#### `verum diagnose env`
+
+Print the build/host environment snapshot the reporter captured at
+install time — `verum` version, git SHA, build profile, target
+triple, `rustc --version`, OS, arch, CPU-core count.
+
+Flags: `--json`.
+
+#### `verum diagnose clean`
+
+Delete every report in the crash directory.
+
+Flags:
+- `--yes` — skip confirmation.
+
 ## Services
 
 ### `verum lsp`
