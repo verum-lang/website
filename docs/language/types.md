@@ -46,6 +46,44 @@ Struct update:
 let p2 = Point { x: 3.0, ..p };    // same y as p
 ```
 
+### Row polymorphism
+
+Record types can be *extensible* — specify some fields, leave the rest
+open via a trailing row variable. Row-polymorphic functions work with
+any record that has at least the listed fields:
+
+```verum
+// Accepts any record with an `x: Int` field, regardless of what else
+// it contains. The row variable `r` captures the remaining fields.
+fn get_x<r>(p: { x: Int | r }) -> Int { p.x }
+
+let p2d = Point   { x: 1, y: 2 };
+let p3d = Point3D { x: 1, y: 2, z: 3 };
+
+get_x(p2d);  // OK — r unifies with {y: Int}
+get_x(p3d);  // OK — r unifies with {y: Int, z: Int}
+```
+
+Multiple known fields + a row variable:
+
+```verum
+fn greet<r>(u: { name: Text, age: Int | r }) -> Text {
+    f"Hello, {u.name}!"
+}
+```
+
+Nested row polymorphism — each inner record can carry its own row
+variable:
+
+```verum
+fn get_inner_name<r, s>(n: { inner: { name: Text | s } | r }) -> Text {
+    n.inner.name
+}
+```
+
+A closed record — no row variable — requires an exact match on the
+field set; row-polymorphic code is strictly more permissive.
+
 ## Sum types (variants)
 
 ```verum

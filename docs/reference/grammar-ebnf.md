@@ -334,6 +334,12 @@ type_definition_body =
 field_list = [ field , { ',' , field } , [ ',' ] ] ;
 field      = { attribute } , [ visibility ] , identifier , ':' , type_expr , [ field_default ] ;
 field_default = '=' , expression ;
+
+(* Record types (as type expressions) accept an optional trailing row
+   variable `| r` for row polymorphism (T1-E). A closed record omits
+   the row variable; an extensible record captures additional fields
+   in `r`. See language/types.md#row-polymorphism. *)
+record_type = '{' , [ field_list ] , [ '|' , identifier ] , '}' ;
 ```
 
 #### Variants (sum types)
