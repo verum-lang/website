@@ -16,6 +16,50 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — reference-grade tactic DSL
+
+Industrial-grade extensions to the proof-engine surface. The tactic
+language now matches the expressive power expected of a modern proof
+assistant (Coq/Lean tier), while remaining a natural extension of
+ordinary Verum syntax.
+
+- **Block-form combinators.** `first { t₁; t₂; t₃ }` — the block form
+  specified in grammar §2.19.7 — now parses alongside the list form
+  `first [t₁, t₂, t₃]`. `repeat`, `try`/`try … else`, `all_goals`, and
+  `focus` already accepted block bodies; `first` now does too. Enables
+  `ring_law`, `field_law`, `category_law` and the full `core/math/tactics.vr`
+  strategy library (previously 284 parse errors, now 0).
+- **Generic tactics.** `tactic category_law<C>() { … }` declares a
+  polymorphic tactic; call sites pass explicit type arguments:
+  `category_law<F.Source>()`. An optional `where` clause supports
+  protocol bounds.
+- **Typed parameters with defaults.** Tactic parameters accept both the
+  classical kinds (`Expr`, `Type`, `Tactic`, `Hypothesis`, `Int`) and
+  two new forms: `Prop` (first-class propositions) and arbitrary type
+  expressions (`Float`, `List<T>`, `Maybe<Proof>`, …). Default values
+  are declared with `= expr`, e.g. `oracle(goal: Prop, confidence: Float = 0.9)`.
+- **Structured tactic bodies.** Tactics can bind local state, branch on
+  values, and fail with diagnostics:
+  - `let x: T = expr;` — monadic let-binding inside the tactic body;
+  - `match scrutinee { P => tactic, … }` — pattern-directed branching;
+  - `if cond { t₁ } else { t₂ }` — conditional tactic execution;
+  - `fail("reason")` — explicit failure feeding into enclosing
+    `try`/`first` combinators.
+- **Reserved-keyword tactic names.** Users can declare tactics named
+  after built-ins (`tactic assumption() { … }`, `tactic contradiction() { … }`,
+  `tactic ring() { … }`, etc.) — the declaration shadows the built-in
+  within its module.
+
+The parser, AST, visitor, proof-checker, tactic evaluator, and quote
+backend were updated end-to-end. New anchors in
+`vcs/specs/L1-core/proof/tactics/` lock the grammar. The stdlib
+parse-success count moved from 2/10 → 6/10 math modules
+(`cubical`, `day_convolution`, `infinity_topos`, `kan_extension`,
+`tactics`, `mathesis.core` all parse cleanly now).
+
+See **[Proof DSL — `tactic` declarations](/docs/language/proof-dsl#tactic--custom-proof-strategies)**
+and **[reference/tactics — User-defined tactics](/docs/reference/tactics#user-defined-tactics)**.
+
 ### Added — crash reporter and `verum diagnose`
 
 - New `verum_error::crash` module installs a process-wide crash

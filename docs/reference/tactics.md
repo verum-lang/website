@@ -17,12 +17,13 @@ syntax, see [Proof DSL](/docs/language/proof-dsl).
 Grammar:
 
 ```ebnf
-tactic_expr  = tactic_name , [ '(' , [ argument_list ] , ')' ]
+tactic_expr  = tactic_name , [ '<' , type_args , '>' ] , [ '(' , [ argument_list ] , ')' ]
              | tactic_expr , ';' , tactic_expr
              | '(' , tactic_expr , ')'
              | 'try' , '{' , tactic_expr , '}' , [ 'else' , '{' , tactic_expr , '}' ]
              | 'repeat' , [ '(' , integer_lit , ')' ] , '{' , tactic_expr , '}'
              | 'first' , '{' , tactic_expr , { ';' , tactic_expr } , '}'
+             | 'first' , '[' , tactic_expr , { ',' , tactic_expr } , ']'
              | 'all_goals' , '{' , tactic_expr , '}'
              | 'focus' , '(' , integer_lit , ')' , '{' , tactic_expr , '}' ;
 
@@ -401,8 +402,13 @@ proof {
 
 ## User-defined tactics
 
-`tactic name(params) { body }` declares a tactic that composes the
-above. Parameters and body use the tactic grammar:
+`tactic name<generics>(params) { body }` declares a tactic that
+composes built-in and user-defined tactics. Tactics are polymorphic,
+typed, and structured — they can take typed parameters with defaults,
+open type variables, and build their proof search with `let`, `match`,
+`if`, and `fail` in addition to the usual combinators.
+
+### Minimal form
 
 ```verum
 tactic arith_full(x: Int) {
@@ -416,6 +422,106 @@ theorem use_it(a: Int, b: Int)
 {
     proof by arith_full(a + b)
 }
+```
+
+### Generic tactics
+
+Tactics can be parameterised by types — essential for writing once,
+applying across every model of a theory:
+
+```verum
+tactic category_law<C>() {
+    repeat {
+        first {
+            rewrite(C.assoc);
+            rewrite(C.id_left);
+            rewrite(C.id_right);
+        }
+    };
+    simp
+}
+
+tactic functor_law<F>() {
+    repeat {
+        first {
+            rewrite(F.map_id);
+            rewrite(F.map_compose);
+        }
+    };
+    category_law<F>()
+}
+```
+
+Type arguments are passed with angle brackets at call sites:
+`category_law<C>()`, `functor_law<F.Source>()`.
+
+### Typed parameters
+
+Parameters accept both the classical *kind* forms (`Expr`, `Type`,
+`Tactic`, `Hypothesis`, `Int`, `Prop`) and any concrete type. An
+optional default value is supplied with `= expr`:
+
+```verum
+tactic oracle(goal: Prop, confidence: Float = 0.9) {
+    let candidates: Giry<Prop> = @llm_oracle(goal);
+    let best: Maybe<Prop> = sample_above(candidates, confidence);
+    match best {
+        Maybe.Some(proof_term) => {
+            apply(proof_term);
+            try { smt } else {
+                fail("oracle candidate rejected by SMT backend")
+            }
+        },
+        Maybe.None => fail("oracle confidence below threshold"),
+    }
+}
+```
+
+| Parameter kind | Meaning                                                     |
+|----------------|-------------------------------------------------------------|
+| `Expr`         | Any expression — bound as-is, substituted into the body     |
+| `Type`         | A type expression                                            |
+| `Tactic`       | A higher-order tactic (a tactic that takes tactics)         |
+| `Hypothesis`   | A simple identifier referring to an in-scope hypothesis     |
+| `Int`          | An integer literal                                          |
+| `Prop`         | A first-class proposition                                   |
+| *any type*     | Arbitrary typed parameter — `Float`, `List<T>`, `Maybe<U>`, …|
+
+### Structured tactic bodies
+
+Tactic bodies are not only sequences of combinators — they can thread
+local state and branch on values:
+
+- `let name: T = expr;` — local binding, analogous to Lean's monadic
+  `let x ← …`. The bound value is available to the rest of the tactic
+  sequence.
+- `match scrutinee { P => tactic, … }` — pattern-directed branching;
+  each arm is a full tactic expression.
+- `if cond { t1 } else { t2 }` — conditional tactic execution.
+- `fail("reason")` — abort this proof branch with a diagnostic; feeds
+  into enclosing `try`/`first` combinators for recovery.
+
+### Grammar
+
+```ebnf
+tactic_decl   = [ visibility ] , 'tactic' , identifier ,
+                [ generic_params ] , '(' , [ tactic_param_list ] , ')' ,
+                [ where_clause ] , tactic_body ;
+
+tactic_param  = identifier , ':' , tactic_param_type ,
+                [ '=' , expression ] ;
+
+tactic_param_type = 'Expr' | 'Type' | 'Tactic' | 'Hypothesis' | 'Int'
+                  | 'Prop' | type_expr ;
+
+tactic_body   = tactic_expr | '{' , { tactic_stmt } , '}' ;
+
+tactic_stmt   = 'let' , identifier , [ ':' , type_expr ] , '=' , expression , ';'
+              | 'if' , expression , '{' , tactic_expr , '}' ,
+                [ 'else' , ( 'if' , … | '{' , tactic_expr , '}' ) ]
+              | 'match' , expression , '{' , { match_arm } , '}'
+              | 'fail' , '(' , expression , ')'
+              | tactic_expr , ';' ;
 ```
 
 ## Cheat-sheet: when to reach for which

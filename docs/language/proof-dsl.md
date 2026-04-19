@@ -102,6 +102,32 @@ theorem closure_test(n: Int, k: Int)
 }
 ```
 
+Tactics are **generic**, **typed**, and **structured**. A single
+tactic declaration can:
+
+- open type variables — `tactic category_law<C>() { … }`,
+  invoked with `category_law<F.Source>()`;
+- take typed parameters with defaults — `oracle(goal: Prop, confidence: Float = 0.9)`;
+- use `let`, `match`, `if`/`else`, and `fail` inside the body for
+  monadic composition and pattern-directed proof search.
+
+```verum
+tactic oracle(goal: Prop, confidence: Float = 0.9) {
+    let candidates: Giry<Prop> = @llm_oracle(goal);
+    let best: Maybe<Prop>      = sample_above(candidates, confidence);
+    match best {
+        Maybe.Some(proof_term) => {
+            apply(proof_term);
+            try { smt } else { fail("oracle candidate rejected by SMT") }
+        },
+        Maybe.None => fail("oracle confidence below threshold"),
+    }
+}
+```
+
+See **[reference/tactics — User-defined tactics](/docs/reference/tactics#user-defined-tactics)**
+for the full grammar, parameter-kind table, and combinator reference.
+
 ## Three proof-body shapes
 
 ```ebnf
