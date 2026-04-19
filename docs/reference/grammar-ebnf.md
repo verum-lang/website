@@ -1076,7 +1076,12 @@ theorem_decl   = 'theorem'   , identifier , [ generic_params ] , '(' , [ param_l
 lemma_decl     = 'lemma'     , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ] , [ requires_clause ] , [ ensures_clause ] , proof_body ;
 axiom_decl     = 'axiom'     , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
-               , [ '->' , type_expr ] , ';' ;
+               , [ '->' , type_expr ]
+               , [ requires_clause ]
+               , [ ensures_clause ]
+               , [ where_clause ]
+               , ';' ;
+ensures_clause = 'ensures' , expression , { ',' , expression } ;
 corollary_decl = 'corollary' , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ] , [ requires_clause ] , 'from' , identifier , proof_body ;
 tactic_decl    = 'tactic'    , identifier , [ generic_params ]
