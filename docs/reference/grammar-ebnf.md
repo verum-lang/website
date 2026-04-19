@@ -1113,7 +1113,7 @@ tactic_application  = tactic_expr , ';' ;
 proof_justification = 'by' , ( tactic_expr | identifier ) ;
 
 (* Tactic combinators (Phase D.1 + T1-O reference-grade DSL) *)
-tactic_expr = tactic_name , [ '<' , type_args , '>' ] , [ '(' , [ argument_list ] , ')' ]
+tactic_expr = tactic_name , [ type_args ] , [ '(' , [ argument_list ] , ')' ]
             | tactic_expr , ';' , tactic_expr
             | '(' , tactic_expr , ')'
             | 'try' , '{' , tactic_expr , '}' , [ 'else' , '{' , tactic_expr , '}' ]
