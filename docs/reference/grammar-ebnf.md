@@ -345,19 +345,46 @@ record_type = '{' , [ field_list ] , [ '|' , identifier ] , '}' ;
 #### Variants (sum types)
 
 ```ebnf
-variant_list   = [ '|' ] , variant , { '|' , variant } ;
-variant        = { attribute } , identifier , [ variant_data ] , [ path_endpoints ] ;
-variant_data   = '{' , field_list , '}' | '(' , type_list , ')' ;
-path_endpoints = '=' , expression , '..' , expression ;   (* HIT path constructor *)
+variant_list    = [ '|' ] , variant , { '|' , variant } ;
+variant         = { attribute } ,
+                  variant_name ,               (* any keyword is allowed *)
+                  [ variant_data ] ,
+                  ( path_endpoints | path_annotation )? ;
+variant_data    = '{' , field_list , '}' | '(' , type_list , ')' ;
+path_endpoints  = '=' , expression , '..' , expression ;          (* range form *)
+path_annotation = ':' , type_expr ;                               (* type-annotation form *)
 ```
 
-A variant ending in `= a..b` is a **higher-inductive type** path
-constructor (cubical HoTT):
+A variant that ends in `= a..b` or `: Path<C>(a, b)` is a
+**higher-inductive type** path constructor (cubical HoTT). Both forms
+lower to the same `path_endpoints` metadata; choose whichever is
+idiomatic for your domain:
 
 ```verum
-type S1 is Base | Loop() = Base..Base;
-type Interval is Zero | One | Seg() = Zero..One;
+// Range form — concise.
+type S1_range is Base | Loop() = Base..Base;
+type Interval is Zero | One   | Seg()  = Zero..One;
+
+// Type-annotation form — mirrors `Path<C>(a, b)` surface syntax used
+// throughout `core/math/hott.vr`.
+type S1 is
+    | base
+    | loop: Path<S1>(base, base);
+
+type Susp<A> is
+    | north
+    | south
+    | merid(a: A): Path<Susp<A>>(north, south);
+
+type Pushout<A, B, C>(f: fn(C) -> A, g: fn(C) -> B) is
+    | inl(a: A)
+    | inr(b: B)
+    | push(c: C): Path<Pushout<A, B, C>(f, g)>(inl(f(c)), inr(g(c)));
 ```
+
+Variant names live in their own namespace (`Type.Variant`), so reserved
+keywords such as `loop`, `merid`, `trunc_path`, or `push` are valid
+constructor identifiers.
 
 #### Sigma (dependent pair) types
 
@@ -547,7 +574,13 @@ rank2_function_type = [ 'async' ] , 'fn' , generics , '(' , type_list , ')' ,
 #### Cubical / dependent
 
 ```ebnf
-path_type_expr     = 'Path' , type_args , '(' , expression , ',' , expression , ')' ;
+path_type_expr     = 'Path' , type_args , '(' , expression , ',' , expression [, ','] , ')' ;
+dependent_app_type = type_head , [ type_args ] ,
+                     '(' , expression , { ',' , expression } , [ ',' ] , ')' ;
+                     (* generalises Path<A>(a,b) to arbitrary dependent
+                        type constructors indexed by runtime values:
+                        Glue<A>(phi, T, e), IsContrMap<A, B>(f),
+                        Fiber<A, B>(f, b), C.cells(0) *)
 interval_endpoint  = 'i0' | 'i1' ;
 genref_type        = 'GenRef' , '<' , type_expr , '>' ;
 higher_kinded_type = path , '<' , '_' , '>' ;
@@ -1088,6 +1121,12 @@ axiom_decl     = 'axiom'     , identifier , [ generic_params ] , '(' , [ param_l
                , [ where_clause ]
                , ';' ;
 ensures_clause = 'ensures' , expression , { ',' , expression } ;
+
+(* Axioms may also appear inside protocol bodies (T1-R) — they become
+   proof obligations at every `implement` site, realising the
+   model-theoretic semantics of protocols: an implementation IS a
+   model of the theory iff every axiom holds on its concrete ops. *)
+protocol_item_axiom = axiom_decl ;
 corollary_decl = 'corollary' , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ] , [ requires_clause ] , 'from' , identifier , proof_body ;
 tactic_decl    = 'tactic'    , identifier , [ generic_params ]

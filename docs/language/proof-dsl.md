@@ -89,11 +89,39 @@ Semantics:
 | `requires R₁, …, Rₖ` (legacy)   | `R₁ ∧ … ∧ Rₖ` (treated as ensures)   |
 | Neither                         | `true`                               |
 
-Use sparingly — each axiom is a leak in the trust model. Protocol
-axioms (declared inside `type … is protocol { axiom … }`) become
-proof obligations at every `implement` site — see
-[verification/proofs](/docs/verification/proofs) for model-theoretic
-semantics.
+Use sparingly — each axiom is a leak in the trust model.
+
+#### Protocol-level axioms (T1-R)
+
+Axioms can live inside a protocol body. They become part of the
+protocol's **theory** — every `implement` block for that protocol
+carries a proof obligation for each axiom, enforcing the
+model-theoretic reading of protocol:
+
+> An `implement P for T` block **is** a model of theory `P` iff
+> every axiom of `P` holds on `T`'s concrete operations.
+
+```verum
+type Group is protocol {
+    type Elem;
+    fn unit() -> Self.Elem;
+    fn mul(a: Self.Elem, b: Self.Elem) -> Self.Elem;
+    fn inv(a: Self.Elem) -> Self.Elem;
+
+    axiom assoc(a: Self.Elem, b: Self.Elem, c: Self.Elem)
+        ensures Self.mul(Self.mul(a, b), c) == Self.mul(a, Self.mul(b, c));
+    axiom left_unit(x: Self.Elem)
+        ensures Self.mul(Self.unit(), x) == x;
+    axiom left_inv(x: Self.Elem)
+        ensures Self.mul(Self.inv(x), x) == Self.unit();
+};
+```
+
+The parser and AST capture protocol axioms today. The
+`implement`-site auto-discharge pass is under active development —
+see the [roadmap](/docs/roadmap) entry **T1-R**. Until it lands,
+models must discharge axioms manually via top-level theorems that
+reference the implementation's concrete operations.
 
 ### `corollary` — consequences
 
@@ -325,6 +353,27 @@ theorem _add_post(a: Int, b: Int)
 When `@verify(formal)` fails, you can drop into the explicit `theorem`
 form, write a structured proof, and diagnose why `auto` could not
 close the goal.
+
+### `@verify` placement on theorems
+
+In addition to the decl-attribute placement before `theorem`, an
+attribute may also sit **between the parameter list and the contract
+clauses** — this is the spelling the HoTT / ∞-topos stdlib uses:
+
+```verum
+theorem day_conv_symmetric<V: SmcFull<Int>>(
+    base: Int, f: Presheaf<V>, g: Presheaf<V>, c: Int,
+)
+    @verify(formal)
+    ensures day_conv(base, f, g).base_cat
+         == day_conv(base, g, f).base_cat
+    proof by auto;
+```
+
+The parser treats the mid-decl `@attr(args)` position as a tactic /
+hint marker — it is discarded at AST level but preserved for proof
+tooling. Decl-level attribute semantics are unchanged; both
+placements accept the same `formal | certified | runtime` arguments.
 
 ## Quantifiers
 
