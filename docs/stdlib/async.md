@@ -530,6 +530,62 @@ scope.cancel()                                 // explicit
    invoked without the lock held (no re-entrancy).
 5. **Dropped registrations / futures** deregister automatically.
 
+## Async signal subscription — `core.signal`
+
+Async-aware wrapper around `core.sys.signal` — exposes OS signals as
+awaitable futures and `AsyncIterator` streams for ergonomic composition
+with `select`, `nursery`, and cancellation tokens.
+
+```verum
+// Wait for a single Ctrl-C
+ctrl_c().await;                                  // -> ()
+
+// Wait for a single SIGTERM (K8s pod-eviction trigger)
+terminate().await;                               // -> ()
+
+// Wait for SIGHUP (reload-config convention)
+hup().await;                                     // -> ()
+
+// Wait for any shutdown signal; returns which one fired
+let sig: Signal = shutdown_signals().await;      // Int | Term | Hup
+
+// Arbitrary signal set as a Stream of arrivals
+let mut stream = signal_stream(&[Signal.Usr1, Signal.Usr2]);
+for await sig in stream {
+    handle(sig);
+}
+```
+
+Idiomatic shutdown — race server work vs signal:
+
+```verum
+select {
+    _ = ctrl_c().await           => drain_and_exit(),
+    _ = shutdown_signals().await => drain_and_exit(),
+    r = run_server().await       => handle_result(r),
+}
+```
+
+### Architecture
+
+Invoking any allocating or lock-taking operation from inside a POSIX
+signal handler is undefined — the handler may preempt the mainline
+thread mid-malloc, mid-mutex-unlock, etc. `core.signal` uses the
+standard **self-pipe / atomic-flag** pattern:
+
+1. The OS-level signal handler (registered once per subscribed signal
+   via `core.sys.signal.on_signal`) does only an async-signal-safe
+   atomic store into a `SignalFlag` (set bit).
+2. A single background poller task polls these flags every ~20 ms,
+   clears any set flags, and fans out to subscribers via a
+   `BroadcastSender<Signal>`. The poller runs in normal runtime
+   context, so broadcasting and waker operations are safe.
+
+Trade-off: up to ~20 ms signal-to-subscriber latency — acceptable for
+shutdown, reload, and heartbeat use cases. A future upgrade to Linux
+`signalfd(2)`, kqueue `EVFILT_SIGNAL`, or Windows APC delivery will
+collapse latency to zero behind the same public API.
+
 ## Timers
 
 ```verum
