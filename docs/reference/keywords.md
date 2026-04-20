@@ -145,23 +145,35 @@ See [language/proof-dsl](/docs/language/proof-dsl) and
 ### Type system
 
 ```
-some                  (* existential: some T: Protocol                    *)
-dyn                   (* dynamic dispatch: dyn Protocol                   *)
-unknown               (* top type — the dual of `!`                       *)
-universe              (* universe polymorphism: universe u                 *)
-Type                  (* kind / type-of-types                              *)
-Level                 (* universe level kind                               *)
-view                  (* pattern-level view operator                       *)
-affine                (* affine type modifier: type affine Foo is …       *)
-linear                (* linear type modifier: type linear Foo is …       *)
-stream                (* stream literal / pattern prefix                   *)
-tensor                (* tensor literal prefix                             *)
-checked               (* &checked reference, capability-ref modifier       *)
-with                  (* capability type: T with [Read, Write]             *)
-gen                   (* generator expression prefix                       *)
-set                   (* set comprehension prefix                          *)
-typeof                (* runtime type of an expression                     *)
+some                  (* existential: some T: Protocol                          *)
+dyn                   (* dynamic dispatch: dyn Protocol                         *)
+unknown               (* top type — the dual of `!`                             *)
+universe              (* universe polymorphism: universe u                       *)
+Type                  (* kind / type-of-types: Type, Type(0), Type(u)           *)
+Prop                  (* universe of proof-irrelevant propositions              *)
+Level                 (* universe level kind: u: Level                           *)
+max                   (* level arithmetic: max(u, v)                             *)
+imax                  (* impredicative max for Π into Prop                       *)
+Pi                    (* explicit dependent function type: Pi (x: A) . B        *)
+view                  (* pattern-level view operator                             *)
+affine                (* affine type modifier: type affine Foo is …             *)
+linear                (* linear type modifier: type linear Foo is …             *)
+stream                (* stream literal / pattern prefix                         *)
+tensor                (* tensor literal + type prefix: tensor<3, 4> Float32      *)
+checked               (* &checked reference, capability-ref modifier             *)
+with                  (* capability type: T with [Read, Write]                   *)
+gen                   (* generator expression prefix                             *)
+set                   (* set comprehension prefix                                *)
+typeof                (* runtime type of an expression                           *)
 ```
+
+See the following language pages for semantics:
+
+- [`affine` / `linear`](/docs/language/linearity) — resource-kind types.
+- [`Prop` / `Type(n)` / `universe` / `Level` / `max` / `imax`](/docs/language/universes) — universe hierarchy.
+- [`Pi`](/docs/language/dependent-types#the-three-surface-forms-of-π) — explicit dependent-function syntax.
+- [`tensor`](/docs/language/tensor-types) — shape-typed tensor types and literals.
+- [row polymorphism](/docs/language/row-polymorphism) — extensible records with `| r`.
 
 ### Values
 

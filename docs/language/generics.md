@@ -99,6 +99,37 @@ implement<T: Display> Display for List<T> {
 
 `List<T>` implements `Display` **only when** `T` does.
 
+### Per-instantiation dispatch
+
+When an inherent `implement` block pins one or more type parameters to
+a concrete type, the methods defined there are **only** reachable on
+matching instantiations. This is how the stdlib models access-tagged
+types like `Register<T, MODE>`:
+
+```verum
+// `read` only exists when MODE = ReadOnly / ReadWrite / WriteOneToClear.
+implement<T: Copy> Register<T, ReadOnly>  { fn read(&self) -> T { … } }
+implement<T: Copy> Register<T, ReadWrite> { fn read(&self) -> T { … } }
+
+// `write` only exists when MODE = WriteOnly / ReadWrite / …
+implement<T: Copy> Register<T, WriteOnly>  { fn write(&self, value: T) { … } }
+implement<T: Copy> Register<T, ReadWrite>  { fn write(&self, value: T) { … } }
+
+fn drive(status: Register<UInt32, ReadOnly>) {
+    let v = status.read();       // ✓ ReadOnly has `read`
+    status.write(0x0001);        // ✗ E400 at type check — ReadOnly has no `write`
+}
+```
+
+Slot-matching rules:
+
+- An impl-level generic slot (`T` in `implement<T: Copy> Register<T,
+  ReadOnly>`) matches **any** concrete argument at the same position.
+- A concrete slot (like `ReadOnly`) must match the receiver's
+  corresponding argument structurally.
+- A receiver whose slot is still a type variable stays permissive so
+  inference isn't pinned prematurely.
+
 ## Where clauses
 
 When bounds get complex, move them to `where`:
