@@ -590,6 +590,71 @@ are skipped (placeholder for a future typed-trailers API).
 
 ---
 
+## WebSocket — `core.net.websocket`
+
+RFC 6455 WebSocket protocol: opening-handshake helpers, frame codec
+with masking, close codes, control frames (Ping / Pong / Close),
+fragmentation support. Permessage-deflate (RFC 7692) tracked as
+follow-up.
+
+### API summary
+
+| Type / fn | Purpose |
+|-----------|---------|
+| `Opcode` | Continuation / Textual / Binary / Close / Ping / Pong / Reserved |
+| `CloseCode` | 1000 NORMAL / 1001 GOING_AWAY / 1002 PROTOCOL_ERROR / ... |
+| `Frame` | `{ fin, rsv1/2/3, opcode, payload }` |
+| `Frame.text/binary/ping/pong/close(...)` | Convenience builders |
+| `encode(&frame, mask_key, &mut out)` | Encode to bytes — `Some(key)` on client side |
+| `decode(buf, expect_masked, max_payload) -> DecodeResult` | Parse one frame; NeedMore / Decoded / Err |
+| `accept_key(client_key)` | Derive `Sec-WebSocket-Accept` per §4.2.2 |
+| `validate_server_handshake(headers)` | Check Upgrade/Connection/Version/Key |
+
+### Handshake
+
+```verum
+// Server side — after HTTP/1.1 request parsed:
+match validate_server_handshake(&request.headers) {
+    None => return Err("invalid upgrade"),
+    Some(key) => {
+        let accept = accept_key(&key);
+        // Reply with 101 Switching Protocols + Sec-WebSocket-Accept: <accept>
+    }
+}
+```
+
+### Frame codec
+
+```verum
+// Server → client — unmasked
+let mut out = List.new();
+encode(&Frame.text("hello".into_bytes()), None, &mut out);
+stream.write_all(&out).await?;
+
+// Client → server — masked with random key
+let mut out = List.new();
+let key: [UInt8; 4] = random_mask_key();
+encode(&Frame.text(b"hello"), Some(key), &mut out);
+
+// Incoming — resumable decode
+match decode(&buf, expect_masked: true, max_payload: 1 << 20) {
+    DecodeResult.Decoded { frame, consumed } => dispatch(frame),
+    DecodeResult.NeedMore => continue,
+    DecodeResult.Err(e) => return close_with_protocol_error(e),
+}
+```
+
+### DoS guards
+
+- `max_payload` parameter enforces a hard cap on a single-frame payload
+  (caller-specified; RFC does not mandate a value).
+- Control frames (Close / Ping / Pong) are rejected if payload > 125 bytes
+  or if fragmented (`!fin`).
+- RSV bits are currently all reserved — any RSV=1 fails with
+  `ReservedBitsSet`. Enabling permessage-deflate will consume RSV1.
+
+---
+
 ## Graceful shutdown — `core.net.shutdown`
 
 Graceful-shutdown primitives for any accept-loop based service.
