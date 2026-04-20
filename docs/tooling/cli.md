@@ -37,8 +37,9 @@ execution when latency matters (LLVM warmup adds ~200 ms).
 ## Verification & analysis
 
 ```bash
-verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthesize> \
-                    --solver z3 --timeout 30 [--cache] [--function NAME] \
+verum verify [FILE] --mode <runtime|proof|compare|cubical|dependent> \
+                    --solver <z3|cvc5|auto|portfolio|capability> \
+                    --timeout 120 [--cache] [--function NAME] \
                     [--profile] [--budget DURATION] [--export PATH] \
                     [--distributed-cache URL]
 verum analyze [--escape] [--context] [--refinement] [--all]
