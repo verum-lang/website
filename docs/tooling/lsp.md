@@ -110,33 +110,79 @@ Fine-grained syntax highlighting based on static analysis:
 
 ## Configuration
 
-Editor-agnostic settings live in `Verum.toml` or `.verum/lsp.toml`:
+The server honours every configuration knob the client sends through
+`initializationOptions` (on startup) **and** through
+`workspace/didChangeConfiguration` (live, no restart). The VS Code
+extension wires these keys directly to `verum.lsp.*` / `verum.cbgr.*` /
+`verum.verification.*` settings — edit `settings.json` and the server
+picks up changes on the fly.
 
-```toml
-[lsp]
-diagnostics_on_save = false     # run on-type by default
-inlay_hints         = true
-check_on_save       = true
-smt_inline          = false     # show SMT results inline (slow for some files)
-refinement_hints    = true
-cbgr_hints          = true
-capability_hints    = true
-max_diagnostics     = 100
-```
+### `initializationOptions` keys
 
-Editor-side overrides (VS Code example):
+| Key | Type | Default | Purpose |
+|-----|------|---------|---------|
+| `enableRefinementValidation` | bool | `true` | Master switch for refinement diagnostics. |
+| `validationMode` | `"quick"` \| `"thorough"` \| `"complete"` | `"quick"` | Per-call SMT latency cap — 100ms / 1s / 600s. |
+| `showCounterexamples` | bool | `true` | Include concrete counter-examples in diagnostics. |
+| `maxCounterexampleTraces` | int | `5` | Cap on execution-trace steps in a counter-example. |
+| `smtSolver` | `"z3"` \| `"cvc5"` \| `"auto"` | `"z3"` | SMT backend selection. |
+| `smtTimeout` | int (ms) | `50` | Per-query SMT timeout. |
+| `cacheValidationResults` | bool | `true` | Cache SMT queries so unchanged refinements don't re-run. |
+| `cacheTtlSeconds` | int | `300` | Cache entry TTL. |
+| `cacheMaxEntries` | int | `1000` | Cache capacity. On downsize, oldest entries are evicted. |
+| `cbgrEnableProfiling` | bool | `false` | Turn on CBGR runtime profiling instrumentation. |
+| `cbgrShowOptimizationHints` | bool | `false` | Opt-in CBGR inlay hints (`0ns` / `~15ns` badges). |
+| `verificationShowCostWarnings` | bool | `true` | Publish diagnostics when a function is slow to verify. |
+| `verificationSlowThresholdMs` | int | `5000` | Threshold above which a function counts as "slow". |
+
+The server applies these keys once at `initialize` time and re-applies
+them every time it sees `workspace/didChangeConfiguration`. The cache
+gets `resize`d in place — warm entries survive when the new capacity
+allows.
+
+### Editor-side overrides (VS Code)
 
 ```json
 {
-  "verum.server.path": "~/.verum/bin/verum",
-  "verum.server.trace": "verbose",
-  "verum.lint.strategy": "formal",
-  "verum.inlayHints.refinements": true,
-  "verum.inlayHints.cbgr": true,
-  "verum.inlayHints.contexts": true,
-  "verum.verify.onSave": true
+  "verum.lsp.serverPath": "verum",
+  "verum.lsp.enableRefinementValidation": true,
+  "verum.lsp.validationMode": "quick",
+  "verum.lsp.showCounterexamples": true,
+  "verum.lsp.maxCounterexampleTraces": 5,
+  "verum.lsp.smtSolver": "z3",
+  "verum.lsp.smtTimeout": 50,
+  "verum.lsp.cacheValidationResults": true,
+  "verum.lsp.cacheTtlSeconds": 300,
+  "verum.lsp.cacheMaxEntries": 1000,
+  "verum.cbgr.enableProfiling": false,
+  "verum.cbgr.showOptimizationHints": false,
+  "verum.verification.showCostWarnings": true,
+  "verum.verification.slowThresholdMs": 5000
 }
 ```
+
+### Custom `verum/*` JSON-RPC methods
+
+A handful of request types are defined on `Backend` for future use —
+`verum/validateRefinement`, `verum/promoteToChecked`,
+`verum/inferRefinement`, `verum/getProfile`, `verum/getEscapeAnalysis`.
+They are **not yet routed through the server** because the
+`RefinementValidator`'s Z3 context (`Rc<ContextInternal>`,
+`NonNull<_Z3_pattern>`) is `!Send`, and tower-lsp's router requires
+`Future: Send`. The blocker is the SMT-solver-pool refactor described
+in [Developer Tooling spec §3.5](#).
+
+Until that lands, every client-facing flow that would use one of these
+requests is served by built-in LSP surfaces instead:
+
+- **Escape analysis panel** — `verum.showEscapeAnalysis` is a
+  client-only command that repositions the cursor on the sigil and
+  invokes `editor.action.showHover`. The hover bubble already contains
+  the full tier / escape / promotion markdown produced by the server.
+- **Quick fixes / promote-to-checked** — delivered via code actions
+  (`textDocument/codeAction`), which is a standard LSP method.
+- **Profile report** — served by the CLI (`verum profile`, `verum verify
+  --profile`), fed to the extension via stdout / `--export=json`.
 
 ## Editor integration
 

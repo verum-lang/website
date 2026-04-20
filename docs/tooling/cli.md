@@ -38,7 +38,9 @@ execution when latency matters (LLVM warmup adds ~200 ms).
 
 ```bash
 verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthesize> \
-                    --solver z3 --timeout 30 [--cache] [--function NAME]
+                    --solver z3 --timeout 30 [--cache] [--function NAME] \
+                    [--profile] [--budget DURATION] [--export PATH] \
+                    [--distributed-cache URL]
 verum analyze [--escape] [--context] [--refinement] [--all]
 verum audit [--details] [--direct-only]
 verum lint [--fix] [--deny-warnings]
@@ -48,16 +50,42 @@ verum fmt [--check]
 Verification modes map to strategies documented in **[Verification →
 gradual verification](/docs/verification/gradual-verification)**.
 
+### Verification profiling & budgets
+
+| Flag | Purpose |
+|------|---------|
+| `--profile` | Collect per-function timings, bottleneck categories, and cache stats; prints the report at the end of the run. |
+| `--budget DURATION` | Project-wide wall-clock budget — `120s`, `2m`, `1h`, or a bare number (seconds). Fails the build if the total time exceeds the budget; already-finished files are reported, the remainder are skipped. |
+| `--export PATH` | Write the profile report as JSON to `PATH`. Implies `--profile`. Intended for CI/CD integration — trend tracking, dashboards, regression alerts. |
+| `--distributed-cache URL` | Advertise a distributed verification cache (e.g. `s3://bucket/verify-cache`, `redis://host`). Plumbed through to the compiler via `CompilerOptions::distributed_cache_url`; actual wire-up is a server-side feature. |
+
+Defaults for all four knobs can live in the `[verify]` block of
+`verum.toml` (`total_budget`, `distributed_cache`, `profile_slow_functions`,
+`profile_threshold`). CLI flags always override the manifest.
+
 ## Profiling
 
 ```bash
-verum profile [FILE] [--compilation] [--memory] [--cpu] [--cache] \
-                     [--hot-threshold 5.0] [--output OUT] [--suggest]
+verum profile [FILE] [--compilation] [--memory] [--cpu] [--cache] [--all] \
+                     [--hot-threshold 5.0] [--sample-rate PERCENT] \
+                     [--functions NAME1,NAME2] [--precision us|ns] \
+                     [--output OUT] [--suggest]
 ```
 
-`--compilation` shows phase timings; `--memory` reports CBGR tier
-distribution (Tier 0 / 1 / 2 breakdown); `--suggest` emits actionable
-optimisation hints.
+`--memory` reports CBGR tier distribution (Tier 0 / 1 / 2 breakdown);
+`--cpu` shows runtime cost; `--cache` analyses cache behaviour;
+`--compilation` shows compiler-phase timings. `--all` expands to every
+slice and renders them in a single **unified dashboard** (spec §6) —
+one header, correlated sections, ranked hot-spots, actionable
+recommendations. `--suggest` emits optimisation hints.
+
+### CBGR sampling knobs
+
+| Flag | Purpose |
+|------|---------|
+| `--sample-rate PERCENT` | Sampling rate for the CBGR profiler, `0.0`–`100.0`. Smaller values reduce overhead; `1.0` is the safe default. |
+| `--functions a,b,c` | Restrict the report to these exact function names. The filter is applied upstream, so every downstream section (hot-spots, breakdown, recommendations) sees the same population. |
+| `--precision us\|ns` | Timer granularity. `us` renders timings in milliseconds (default); `ns` uses the native `Instant::now` resolution and dynamically picks `ns` / `µs` / `ms` per magnitude so sub-microsecond costs stay legible. |
 
 ## Docs & diagnostics
 
