@@ -590,6 +590,74 @@ are skipped (placeholder for a future typed-trailers API).
 
 ---
 
+## Graceful shutdown — `core.net.shutdown`
+
+Graceful-shutdown primitives for any accept-loop based service.
+Combines a cancellation token (for prompt accept-loop / in-flight stop)
+with an atomic in-flight-request counter and a wait-for-zero drain
+mechanism.
+
+### API summary
+
+| Type / fn | Purpose |
+|-----------|---------|
+| `GracefulShutdown.new()` | Controller — owns counter + token source |
+| `shutdown.token()` | `CancellationToken` for accept loops / handlers |
+| `shutdown.track()` | RAII `ConnectionGuard` — inc on acquire, dec on drop |
+| `shutdown.initiate()` | Cancel the token (idempotent) |
+| `shutdown.wait_drained(timeout)` | Poll-wait until counter == 0 or timeout |
+| `shutdown.shutdown(timeout)` | `initiate` + `wait_drained` in one call |
+| `tcp_listener_from_raw_fd(fd)` | Adopt a TCP listener fd (zero-downtime restart) |
+| `unix_listener_from_raw_fd(fd)` | Adopt a Unix listener fd |
+| `listen_fds()` / `listen_fd(i)` | systemd socket-activation protocol |
+
+### Typical HTTP-server skeleton
+
+```verum
+let shutdown = GracefulShutdown.new();
+let token = shutdown.token();
+
+// Signal → shutdown
+spawn_detached(async move {
+    shutdown_signals().await.next().await;
+    shutdown.initiate();
+});
+
+// Accept loop — each request holds a ConnectionGuard
+loop {
+    match listener.accept_cancellable(&token).await {
+        Err(_) => break,
+        Ok(Err(_)) => continue,
+        Ok(Ok((stream, _))) => {
+            let guard = shutdown.track();
+            spawn_detached(async move {
+                serve_one(stream, &token).await;
+                drop(guard);
+            });
+        }
+    }
+}
+
+// Drain — 30s hard limit
+let _ = shutdown.wait_drained(Duration.from_secs(30)).await;
+```
+
+### FD handoff for zero-downtime restart
+
+```verum
+// On startup, prefer the systemd-activated fd if present
+let listener = match listen_fd(0) {
+    Ok(fd) => tcp_listener_from_raw_fd(fd),
+    Err(_) => TcpListener.bind(&addr)?,
+};
+```
+
+During a live upgrade the old process can SCM_RIGHTS-pass its listener
+fd to the new process over an AF_UNIX control socket; see
+`core.net.unix.UnixStream.send_fds` (follow-up).
+
+---
+
 ## Unix-domain sockets — `core.net.unix`
 
 AF_UNIX stream sockets for local IPC. Per-process-credentials, zero
