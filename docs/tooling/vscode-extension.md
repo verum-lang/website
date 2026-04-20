@@ -85,18 +85,13 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 | `Verum: Show Language Server Status` | — | Current state + crash count. |
 | `Verum: Format Document` | `Cmd+Shift+F` | Delegates to LSP formatter. |
 
-:::caution Known limitations
-Four commands — **Promote to &checked Reference**, **Add Runtime Check**,
-**Infer Refinement Type**, **Validate Refinement at Cursor** — send
-`verum/promoteToChecked` / `verum/inferRefinement` /
-`verum/validateRefinement` JSON-RPC requests. These are defined on the
-server but not yet registered in the router because the SMT solver
-bindings are `!Send` and tower-lsp requires `Future: Send` (see
-[LSP → Custom `verum/*` JSON-RPC methods](/docs/tooling/lsp#custom-verum-json-rpc-methods)).
-Until the SMT-solver-pool refactor lands the commands will return
-`MethodNotFound`; run `verum verify --function <name>` from the
-terminal for the same effect.
-:::
+All five `verum/*` JSON-RPC methods backing these commands are live;
+the server routes them through
+`LspService::build(...).custom_method(...)`. Z3 is isolated behind a
+dedicated `verum-smt-worker` OS thread so the handler futures are
+`Send` — see
+[LSP → Custom `verum/*` JSON-RPC methods — architecture](/docs/tooling/lsp#custom-verum-json-rpc-methods--architecture)
+for the full call path.
 
 ## Configuration
 

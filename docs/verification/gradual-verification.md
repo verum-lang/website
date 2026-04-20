@@ -19,32 +19,49 @@ strategies file by file.
 ## The nine strategies
 
 The grammar admits these nine surface keywords (the seven distinct
-behaviours plus two historical aliases):
+behaviours plus two historical aliases). Compiler support is landing
+in stages — see the **Status** column for what runs today in
+`verum verify`:
 
-| Strategy      | What it does | When to use |
-|---------------|--------------|-------------|
-| `runtime`     | runtime assertion check only; no formal proof | prototyping, dev builds |
-| `static`      | static type-level verification only; no solver | the default fast path |
-| `formal`      | formal verification with the default strategy | production code |
-| `proof`       | alias of `formal` — emphasises proof extraction | when you want to look at the term |
-| `fast`        | optimise for fast verification; may give up on hard goals | iterative development |
-| `thorough`    | maximum completeness — races several strategies, takes the first success | hard obligations |
-| `reliable`    | alias of `thorough` — emphasises result reliability | critical code |
-| `certified`   | independently cross-verified; required for exporting proof certificates (Coq / Lean / Dedukti / Metamath) | security-critical, external audit |
-| `synthesize`  | synthesis — generate a term satisfying the spec instead of checking one | program synthesis, hole filling |
+| Strategy      | Status        | What it does | When to use |
+|---------------|---------------|--------------|-------------|
+| `runtime`     | live          | runtime assertion check only; no formal proof | prototyping, dev builds |
+| `proof`       | live          | full SMT verification with the default strategy | production code |
+| `compare`     | live          | run both runtime and proof modes, print a cost/benefit report | benchmarking your verification budget |
+| `cubical`     | live          | proof pipeline focused on cubical type theory tactics | path induction, `hcomp`, glue |
+| `dependent`   | live          | proof pipeline focused on dependent-type tactics (refinement + sigma + pi) | dependently typed proofs |
+| `static`      | planned       | static type-level verification only; no solver | the default fast path |
+| `formal`      | planned alias | planned alias of `proof` — emphasises proof extraction | when you want to look at the term |
+| `fast`        | planned       | optimise for fast verification; may give up on hard goals | iterative development |
+| `thorough`    | planned       | maximum completeness — races several strategies, takes the first success | hard obligations |
+| `reliable`    | planned alias | planned alias of `thorough` — emphasises result reliability | critical code |
+| `certified`   | planned       | independently cross-verified; required for exporting proof certificates | security-critical, external audit |
+| `synthesize`  | planned       | synthesis — generate a term satisfying the spec instead of checking one | program synthesis, hole filling |
 
-`formal` is the recommended default. It's what `@verify` without an
-argument selects.
+`proof` is the recommended default today and is what `verum verify`
+selects when no `--mode` is passed. `@verify` without an argument
+behaves the same. Strategies marked **planned** parse but currently
+route to the closest live equivalent (`proof` for everything except
+`runtime`); they will gain dedicated pipelines in subsequent
+releases.
 
 ## Requesting a strategy
 
 ```verum
 @verify(runtime)    fn prototype()  { ... }
-@verify(static)     fn ordinary()   { ... }
-@verify(formal)     fn critical()   { ... }
-@verify(thorough)   fn safety()     { ... }
-@verify(certified)  fn kernel()     { ... }
-@verify(synthesize) fn synth()      { ... }
+@verify(proof)      fn critical()   { ... }
+@verify(cubical)    fn path_proof() { ... }
+@verify(dependent)  fn sigma_proof(){ ... }
+```
+
+The corresponding CLI invocations:
+
+```bash
+verum verify --mode runtime      # runtime assertions only
+verum verify --mode proof        # full SMT (default)
+verum verify --mode compare      # runtime + proof side-by-side
+verum verify --mode cubical      # cubical-tactic focused proof
+verum verify --mode dependent    # dependent-type focused proof
 ```
 
 At the project level, set a default and per-module overrides in the

@@ -161,28 +161,36 @@ allows.
 }
 ```
 
-### Custom `verum/*` JSON-RPC methods
+### Custom `verum/*` JSON-RPC methods — architecture
 
-A handful of request types are defined on `Backend` for future use —
-`verum/validateRefinement`, `verum/promoteToChecked`,
-`verum/inferRefinement`, `verum/getProfile`, `verum/getEscapeAnalysis`.
-They are **not yet routed through the server** because the
-`RefinementValidator`'s Z3 context (`Rc<ContextInternal>`,
-`NonNull<_Z3_pattern>`) is `!Send`, and tower-lsp's router requires
-`Future: Send`. The blocker is the SMT-solver-pool refactor described
-in [Developer Tooling spec §3.5](#).
+All five `verum/*` methods are live — see the table above under "Custom
+LSP extensions". Their call path is:
 
-Until that lands, every client-facing flow that would use one of these
-requests is served by built-in LSP surfaces instead:
+1. The client sends `verum/validateRefinement` (or similar) over the
+   stdio / TCP / pipe transport.
+2. tower-lsp's router dispatches to the matching `Backend::handle_*`
+   async method, registered through the
+   `LspService::build(...).custom_method(...)` chain in
+   [`crates/verum_cli/src/commands/lsp.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/commands/lsp.rs).
+3. The handler awaits `RefinementValidator::{validate_refinement,
+   promote_to_checked, infer_refinement}`, which in turn push SMT work
+   onto the `verum-smt-worker` thread via
+   [`SmtWorkerHandle`](https://github.com/verum-lang/verum/blob/main/crates/verum_lsp/src/smt_worker.rs).
+4. The worker thread exclusively owns the Z3 context; it returns
+   `SmtCheckResult` through a `tokio::sync::oneshot`. Only `Send`
+   types cross the await boundary.
+5. `getEscapeAnalysis` and `getProfile` don't touch Z3 — they run in
+   the handler's async context directly.
 
-- **Escape analysis panel** — `verum.showEscapeAnalysis` is a
-  client-only command that repositions the cursor on the sigil and
-  invokes `editor.action.showHover`. The hover bubble already contains
-  the full tier / escape / promotion markdown produced by the server.
-- **Quick fixes / promote-to-checked** — delivered via code actions
-  (`textDocument/codeAction`), which is a standard LSP method.
-- **Profile report** — served by the CLI (`verum profile`, `verum verify
-  --profile`), fed to the extension via stdout / `--export=json`.
+Complementary client-side surfaces:
+
+- `verum.showEscapeAnalysis` (VS Code command) repositions the cursor
+  and invokes `editor.action.showHover` — the hover bubble already
+  contains the full CBGR markdown the server returned.
+- Quick-fixes / promote-to-checked are also available through
+  standard `textDocument/codeAction`, which the LSP already routes.
+- The `verum profile` / `verum verify --profile` CLI commands remain
+  the non-interactive entry points.
 
 ## Editor integration
 
@@ -261,21 +269,23 @@ filetype `.vr`.
 
 ## Custom LSP extensions
 
-Beyond standard LSP 3.17, the Verum server exposes:
+Beyond standard LSP 3.17, the Verum server routes these JSON-RPC methods:
 
-| Method                       | Purpose                                       |
-|------------------------------|-----------------------------------------------|
-| `verum/refinementProof`      | Show SMT proof term for a hovered refinement. |
-| `verum/cbgrReport`           | Full CBGR tier analysis for a file.           |
-| `verum/expandMacros`         | Show macro expansion at a range.              |
-| `verum/verifyAtPoint`        | Run SMT on the enclosing function.            |
-| `verum/runTestAtPoint`       | Execute the test at the cursor.               |
-| `verum/runPlaybookCall`      | Invoke a function with Playbook's evaluator.  |
-| `verum/typeHierarchy`        | Full protocol implementation tree.            |
-| `verum/smtStats`             | Aggregate SMT timings across the session.     |
+| Method                       | Status | Purpose                                                                                                     |
+|------------------------------|--------|-------------------------------------------------------------------------------------------------------------|
+| `verum/validateRefinement`   | live   | Validate the refinement at a cursor position; returns `{ valid, diagnostics, performanceMs }` with counter-examples and quick-fix edits. |
+| `verum/promoteToChecked`     | live   | Upgrade `&T` → `&checked T` with proof comment; returns the `TextEdit`s to apply.                           |
+| `verum/inferRefinement`      | live   | Infer the tightest refinement type for a symbol from its usages; returns `{ inferredType, confidence, usages, edits }`. |
+| `verum/getEscapeAnalysis`    | live   | CBGR escape-analysis report for the reference sigil under the cursor; returns `{ markdown, range, sigil, tier, derefCostNs, promotable }`. |
+| `verum/getProfile`           | live   | Return the cached per-document compilation / CBGR profiling summary used by the dashboard webview.           |
 
-Editor extensions light up features that use these (the VS Code
-extension uses all of them; others use a subset).
+All five methods are registered through tower-lsp's
+`LspService::build(...).custom_method(...)` chain in
+`crates/verum_cli/src/commands/lsp.rs`. The Z3 session driving the
+refinement methods runs on a dedicated OS thread
+(`verum-smt-worker`) isolated by `crates/verum_lsp/src/smt_worker.rs`, so
+the futures that cross tower-lsp's `Future: Send` bound never capture
+`Rc` / `NonNull` from the Z3 bindings.
 
 ## Performance
 
