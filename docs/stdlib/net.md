@@ -479,6 +479,68 @@ type PoolConfig is {
 
 ---
 
+## Unix-domain sockets — `core.net.unix`
+
+AF_UNIX stream sockets for local IPC. Per-process-credentials, zero
+network overhead, fd-passing via SCM_RIGHTS (pending implementation).
+
+```verum
+// Server
+let listener = UnixListener.bind(&"/tmp/app.sock")?;
+let (stream, peer_path) = listener.accept_async().await?;
+
+// Client
+let stream = UnixStream.connect_async(&"/tmp/app.sock").await?;
+
+// Shutdown
+stream.shutdown(ShutdownKind.Write)?;
+```
+
+### API summary
+
+```verum
+// UnixStream
+UnixStream.connect(&path) -> Result<UnixStream, UnixError>
+UnixStream.connect_async(&path).await -> Result<UnixStream, UnixError>
+s.peer_addr() -> Maybe<&Text>
+s.as_raw_fd() -> FileDesc
+s.shutdown(ShutdownKind.Read|Write|Both) -> Result<(), UnixError>
+
+// Implements: Read, Write, AsyncRead, AsyncWrite, Drop
+s.read_async(&mut buf).await -> Result<Int, IoError>
+s.write_async(&buf).await -> Result<Int, IoError>
+s.read_cancellable(&mut buf, &token).await
+s.write_cancellable(&buf, &token).await
+
+// UnixListener
+UnixListener.bind(&path) -> Result<UnixListener, UnixError>
+UnixListener.bind_with_backlog(&path, backlog) -> Result<UnixListener, UnixError>
+l.accept() -> Result<(UnixStream, Maybe<Text>), UnixError>
+l.accept_async().await
+l.accept_cancellable(&token).await
+l.incoming_async() -> UnixIncoming  // Stream + AsyncIterator
+
+// Peer credentials (Linux: SO_PEERCRED)
+s.peer_cred() -> Result<PeerCred, UnixError>
+type PeerCred is { pid: Int32, uid: UInt32, gid: UInt32 }
+```
+
+### Platform notes
+
+- **Linux**: Full support. Abstract namespace (`"\0my-service"`) — path
+  in kernel, no filesystem inode; auto-cleaned on socket close.
+- **macOS**: Filesystem paths only (no abstract namespace).
+  LOCAL_PEERCRED variant of peer_cred pending.
+- **Windows**: AF_UNIX since Windows 10 1803; implementation gated
+  behind `@cfg(feature = "windows_unix_sockets")`.
+
+### FD-passing status
+
+`send_fds` / `recv_fds` are declared and return
+`FdPassingError.NotImplemented` until sendmsg/recvmsg + cmsghdr
+bindings land. The graceful-shutdown FD-handoff pattern referenced by
+`net-framework.md §7.8` depends on this; tracked as a follow-up task.
+
 ## TLS
 
 ### Versions
