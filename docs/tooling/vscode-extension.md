@@ -74,6 +74,7 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 | `Verum: Run Current File` | `Cmd+Shift+R` | `verum run <file>` in an editor terminal. |
 | `Verum: Run Test` | — | `verum test <file> --filter <fn>` at the cursor. |
 | `Verum: Verify Function Contracts` | — | Re-verify `@verify(...)` obligations under the cursor. |
+| `Verum: Show Escape Analysis` | — | Show the CBGR escape-analysis report for the `&` sigil at the cursor. Re-dispatches to `editor.action.showHover`; the hover bubble already contains the structured markdown (tier, mutability, escape verdict, promotion availability). Emitted by the LSP code-action "View escape analysis details". |
 | `Verum: Promote to &checked Reference` | `Cmd+Alt+C` | Ask the server to upgrade `&T` → `&checked T` with proof comment. |
 | `Verum: Add Runtime Check (Result<T, E>)` | — | Wrap in a runtime fallback when escape-analysis fails. |
 | `Verum: Infer Refinement Type` | `Cmd+Alt+R` | Ask the server for a refinement suggestion for the symbol at cursor. |
@@ -83,6 +84,19 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 | `Verum: Restart Language Server` | — | Kill and respawn `verum lsp`. |
 | `Verum: Show Language Server Status` | — | Current state + crash count. |
 | `Verum: Format Document` | `Cmd+Shift+F` | Delegates to LSP formatter. |
+
+:::caution Known limitations
+Four commands — **Promote to &checked Reference**, **Add Runtime Check**,
+**Infer Refinement Type**, **Validate Refinement at Cursor** — send
+`verum/promoteToChecked` / `verum/inferRefinement` /
+`verum/validateRefinement` JSON-RPC requests. These are defined on the
+server but not yet registered in the router because the SMT solver
+bindings are `!Send` and tower-lsp requires `Future: Send` (see
+[LSP → Custom `verum/*` JSON-RPC methods](/docs/tooling/lsp#custom-verum-json-rpc-methods)).
+Until the SMT-solver-pool refactor lands the commands will return
+`MethodNotFound`; run `verum verify --function <name>` from the
+terminal for the same effect.
+:::
 
 ## Configuration
 
@@ -104,6 +118,9 @@ recommendations in [CLI](/docs/tooling/cli) and
 | `verum.lsp.smtSolver` | `"auto"` | `auto` / `z3` / `cvc5`. `auto` lets the compiler's capability router pick. Override only to reproduce a specific result. |
 | `verum.lsp.smtTimeout` | `50` ms | Per-obligation SMT timeout for live validation (build-time timeout is separate; see `Verum.toml [verify] solver_timeout_ms`). |
 | `verum.lsp.cacheValidationResults` | `true` | Cache SMT results keyed by goal hash. |
+| `verum.lsp.cacheTtlSeconds` | `300` | Cache entry TTL. The server hot-swaps capacity/TTL on `workspace/didChangeConfiguration` — no restart. |
+| `verum.lsp.cacheMaxEntries` | `1000` | Cache capacity. On downsize, oldest entries are evicted. |
+| `verum.lsp.maxCounterexampleTraces` | `5` | Max execution-trace steps attached to a counter-example. |
 | `verum.lsp.trace.server` | `"off"` | `messages` / `verbose` dumps LSP traffic to the output channel. |
 
 ### CBGR
@@ -111,7 +128,7 @@ recommendations in [CLI](/docs/tooling/cli) and
 | Setting | Default | Meaning |
 |---------|---------|---------|
 | `verum.cbgr.enableProfiling` | `false` | Enable CBGR per-deref profiling (≈ 15 ns overhead). |
-| `verum.cbgr.showOptimizationHints` | `true` | Inline hints when a reference could be promoted to `&checked`. |
+| `verum.cbgr.showOptimizationHints` | `false` | Opt-in inlay hints on every `&` reference — compact badges (`0ns` for promotable, `~15ns` for CBGR-tier-0, nothing on `&checked` / `&unsafe`). Skipped in type positions (`fn f(p: &T)`). Off by default; the hover bubble already shows this information on demand. |
 
 ### Verification
 
