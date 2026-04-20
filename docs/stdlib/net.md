@@ -479,6 +479,117 @@ type PoolConfig is {
 
 ---
 
+## HTTP/1.1 wire-parser — `core.net.http_parser`
+
+Zero-copy, resumable, SIMD-accelerated HTTP/1.1 parser intended for the
+hot-path of HTTP servers and clients (the Weft framework target budget is
+< 150 ns/request on modern x86_64). Header key/value pairs are returned as
+`(offset, length)` views into the input buffer — no allocations during
+parsing.
+
+### API overview
+
+```verum
+mount core.net.http_parser.{
+    HttpParser, HeaderView, ParseProgress, ParseError,
+    ChunkedDecoder, ChunkProgress,
+};
+
+let mut parser = HttpParser.request();        // or .response() for client
+loop {
+    let n = tcp.read_async(&mut buf).await?;
+    if n == 0 { return Err(Unexpected.Eof); }
+    match parser.feed(&buf[..n]) {
+        ParseProgress.NeedMore               => continue,
+        ParseProgress.Done { consumed, body_len, body_start } => {
+            // consumed == header-region size; body_len is Some(n) for
+            // Content-Length, None for Transfer-Encoding: chunked.
+            break;
+        }
+        ParseProgress.Error(e) => return Err(e),
+    }
+}
+```
+
+### State machine
+
+```mermaid
+flowchart LR
+    S[StartLine] -- CRLF --> H[Headers]
+    H -- empty CRLF --> D[Done]
+    H -- header line --> H
+```
+
+Once `Done` is signalled, the caller reads the body according to the
+returned `body_len` — either a fixed Content-Length slice or a chunked
+decode via `ChunkedDecoder`.
+
+### Zero-copy header views
+
+Parsed headers are exposed as `HeaderView { key_start, key_len,
+value_start, value_len }`. Use the accessors to resolve slices against
+the input buffer:
+
+```verum
+for hv in parser.headers().iter() {
+    let key   = hv.key(buf);
+    let value = hv.value(buf);
+    // key / value are &[Byte] views — no copy.
+}
+```
+
+The buffer must outlive the parsed Request; Weft uses a per-request arena
+to bound this lifetime structurally (see `internal/specs/net-framework.md`
+§4.3).
+
+### DoS guards
+
+| Limit                  | Default  | Error variant                  |
+|------------------------|----------|--------------------------------|
+| `MAX_REQUEST_LINE`     | 8192 B   | `RequestLineTooLong { limit }` |
+| `MAX_HEADER_LINE`      | 16384 B  | `HeaderTooLong { limit }`      |
+| `MAX_HEADERS_TOTAL`    | 64 KiB   | `HeaderTooLong { limit }`      |
+| `MAX_HEADER_COUNT`     | 128      | `TooManyHeaders { limit }`     |
+
+### Body-framing resolution (RFC 7230 §3.3.3)
+
+The parser extracts `Content-Length` and `Transfer-Encoding` during the
+header pass and encodes precedence:
+
+- `Transfer-Encoding: chunked` wins; `Content-Length` is cleared.
+- Two conflicting `Content-Length` values raise `ConflictingContentLength`.
+- A non-numeric `Content-Length` raises `InvalidContentLength(raw)`.
+
+### SIMD acceleration
+
+CRLF / colon scans call `core.simd.bytes.find_byte(b'\r')` which
+@multiversion-dispatches to SSE2 / AVX2 / NEON per CPU. A scalar fallback
+produces identical results at reduced throughput.
+
+### Chunked decoder
+
+`ChunkedDecoder` is independent from the header parser — feed body bytes
+after detecting `Transfer-Encoding: chunked`:
+
+```verum
+let mut dec = ChunkedDecoder.new();
+loop {
+    match dec.feed(body_buf) {
+        ChunkProgress.ChunkNeedMore => { read_more().await?; continue; }
+        ChunkProgress.ChunkOutput { data_start, data_len, .. } => {
+            sink.write(&body_buf[data_start..data_start + data_len]);
+        }
+        ChunkProgress.ChunkEnd { consumed } => break,
+        ChunkProgress.ChunkErr(e) => return Err(e),
+    }
+}
+```
+
+Chunk sizes are hex-parsed with u32 overflow detection; trailer headers
+are skipped (placeholder for a future typed-trailers API).
+
+---
+
 ## Unix-domain sockets — `core.net.unix`
 
 AF_UNIX stream sockets for local IPC. Per-process-credentials, zero
