@@ -286,3 +286,76 @@ let buffer = security::SecureBuf.with_capacity(1024);
   — information-flow checks run at `@verify(static)`.
 - **[guides/security](/docs/guides/security)** — practical security
   guide.
+
+---
+
+## Cryptographic primitives
+
+Pure-Verum reference implementations of the primitives needed for TLS,
+SCRAM authentication, JWT validation, and content integrity. Backends
+selectable at link-time via `@cfg`:
+
+- `crypto-hacl-star` — Project Everest HACL\* (formally verified, preferred)
+- `crypto-openssl` — OpenSSL 3.x FFI
+- `crypto-ring` — ring 0.17+ FFI
+- default — pure-Verum reference (correct, not hardware-accelerated)
+
+### `core.security.hash.sha256` — FIPS 180-4
+
+```verum
+let digest: [Byte; 32] = Sha256.digest(b"hello");
+
+let mut h = Sha256.new();
+h.update(chunk1);
+h.update(chunk2);
+let digest = h.finalize();
+```
+
+### `core.security.mac.hmac` — HMAC-SHA-256 (RFC 2104)
+
+```verum
+let mac: [Byte; 32] = hmac_sha256(&key, &message);
+
+let mut h = HmacSha256.new(&key);
+h.update(chunk);
+let mac = h.finalize();
+```
+
+### `core.security.kdf.hkdf` — HKDF-SHA-256 (RFC 5869)
+
+```verum
+let mut out = List.with_capacity(42);
+hkdf_sha256(&salt, &ikm, &info, 42, &mut out)?;
+
+let prk = hkdf_extract_sha256(&salt, &ikm);
+hkdf_expand_sha256(&prk, &info_1, 32, &mut out_1)?;
+hkdf_expand_sha256(&prk, &info_2, 48, &mut out_2)?;
+```
+
+Max expand output: 255 × HashLen (8160 bytes for SHA-256).
+
+### `core.security.util.constant_time`
+
+```verum
+if !constant_time_eq(&expected_mac, &received_mac) {
+    return Err(AuthError.InvalidMac);
+}
+let ord: Int = constant_time_compare(&a, &b);  // -1 | 0 | +1
+```
+
+Every byte of both inputs is touched regardless of content. Marked
+`@verify(constant_time)` to signal codegen that optimizations
+introducing data-dependent branches are forbidden.
+
+### SCRAM-SHA-256 client-proof example (Spindle pattern)
+
+```verum
+// ClientKey = HMAC(SaltedPassword, "Client Key")
+let client_key = hmac_sha256(&salted_password, b"Client Key");
+// StoredKey = SHA-256(ClientKey)
+let stored_key = Sha256.digest(&client_key);
+// Verify against server-side stored value in constant time
+if !constant_time_eq(&stored_key, &server_stored_key) {
+    return Err(AuthError.InvalidCredentials);
+}
+```
