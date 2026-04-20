@@ -147,17 +147,66 @@ while let Maybe.Some(res) = set.join_next().await {
 ```verum
 channel::<T>() -> (Sender<T>, Receiver<T>)                // unbounded
 bounded::<T>(capacity) -> (Sender<T>, Receiver<T>)
+unbounded_channel::<T>()                                  // alias for channel()
+bounded_channel::<T>(cap)                                 // alias for bounded()
 
-tx.send(value)  -> Result<(), SendError<T>>               // blocks if bounded
+// Sync API
+tx.send(value)  -> Result<(), SendError<T>>               // blocks (futex) if bounded full
 tx.try_send(value) -> Result<(), TrySendError<T>>         // Full | Disconnected
-tx.is_closed() -> Bool
-tx.close()
+tx.send_timeout(value, d) -> Result<(), SendError<T>>     // with deadline
 
-rx.recv() -> Maybe<T>                                     // awaits
+// Async API — awaitable with waker-based backpressure
+tx.send_async(value) -> SendFut<T>                        // Future<Result<(), SendError<T>>>
+tx.send_cancellable(value, &token)                        // Future; Err(Cancelled) on token fire
+tx.closed() -> ChannelClosed<T>                           // Future<()>; completes on close
+
+// Inspection
+tx.is_closed() -> Bool                                    // == is_disconnected
+tx.is_disconnected() -> Bool
+tx.capacity() -> Maybe<Int>
+tx.len() -> Int
+
+// Receiver
+rx.recv() -> Maybe<T>                                     // sync blocking
+rx.recv_fut() -> RecvFut<T>                               // explicit async Future
+rx.recv_cancellable(&token)                               // Future; Err(Cancelled) on token fire
+rx.recv_many(&mut buf, max) -> Int                        // batch-drain in one lock
 rx.try_recv() -> Result<T, TryRecvError>                  // Empty | Disconnected
-rx.close()
-rx.into_iter()                                            // blocking iterator
-rx.stream()                                               // Stream<T>
+
+// Receiver implements Stream<Item = T> — works with `for await msg in rx { ... }`
+// and all StreamExt combinators (map, filter, take, etc.).
+```
+
+### Async backpressure
+
+For bounded channels, `send_async(value).await` is the idiomatic way to
+apply backpressure:
+
+- If the channel has slack — push and resolve `Ok(())` immediately.
+- If full — register the caller's waker in `sender_wakers`, return
+  `Poll.Pending`. When the receiver pops, the sender's waker fires and
+  the future re-polls, now with space.
+
+The blocking `send()` method uses the same notification path but via
+futex, for non-async callers. Both paths share state; a bounded
+channel is safe to use from a mix of async and blocking senders.
+
+### Cancellation integration
+
+Both async variants accept a `&CancellationToken` parameter via
+`*_cancellable` — on token fire the future resolves immediately
+with `Err(CancellationError)` or `Err(CancellableSendError.Cancelled(..))`,
+deregisters its waker, and returns control. Pattern:
+
+```verum
+select {
+    msg = rx.recv_cancellable(&shutdown).await => match msg {
+        Ok(Some(v)) => handle(v),
+        Ok(None)    => return,   // channel closed
+        Err(_)      => return,   // shutdown fired
+    },
+    _ = idle_timeout.await => return,
+}
 ```
 
 ### One-shot — `oneshot::<T>()`
@@ -172,16 +221,42 @@ let result = rx.await;
 
 ```verum
 broadcast_channel::<T>(capacity) -> (BroadcastSender<T>, BroadcastReceiver<T>)
+broadcast_channel_with::<T>(capacity, policy) -> (Sender, Receiver)
 
+// Sender
 tx.send(value) -> Result<Int, SendError<T>>               // returns listener count
-rx = tx.subscribe()                                        // new receiver
-rx.recv() -> Result<T, RecvError>                          // Closed | Lagged
+tx.clone() -> BroadcastSender<T>                           // multi-producer
+tx.subscribe() -> BroadcastReceiver<T>                     // new receiver starting now
+tx.receiver_count() -> Int
+tx.sender_count() -> Int
+tx.is_closed() -> Bool
+tx.close()
+
+// Receiver — implements Future AND Stream
+rx.recv() -> BroadcastRecv<T>                              // awaitable future
+rx.recv_cancellable(&token) -> Result<Result<T, RecvError>, CancellationError>
 rx.try_recv() -> TryRecvResult<T>                          // Value/Empty/Closed/Lagged
+rx.len() -> Int
+rx.is_empty() -> Bool
 ```
 
-Broadcast receivers can fall behind (`Lagged`) — each receives every
-message **starting from its subscription point**, or a `Lagged`
-notification if the ring buffer overwrote pending messages.
+### Lag policies — `LagPolicy`
+
+Controls behavior when a receiver falls behind the ring capacity:
+
+| Variant | Semantics |
+|---|---|
+| `LagTolerant` (default) | Return `RecvError.Lagged(n)`; advance to oldest available message. |
+| `DropOldest` | Advance silently; never return `Lagged`. Senders never block. |
+| `DropSlowReceiver` | Unsubscribe the slow receiver entirely. For strict keep-up SLAs. |
+
+Broadcast receivers observe every value **sent after subscription**;
+they do not see historic values.
+
+`BroadcastReceiver<T>` implements both `Future<Output = Result<T, RecvError>>`
+(direct `.await`) and `Stream<Item = Result<T, RecvError>>` (for-await loops
+and combinators). Sender and receiver counts are maintained atomically;
+last-sender-drop closes the channel and wakes all receivers.
 
 ---
 
@@ -352,6 +427,108 @@ async fn fetch_batch(urls: &List<Text>) -> List<Bytes> using [Http] {
 - Context stacks are inherited by spawned tasks.
 
 ---
+
+## Cancellation
+
+Cooperative cancellation is implemented by `core.async.cancellation`.
+A cancelled task continues running until it hits a *cancel point* — an
+`.await` on a cancellation-aware future, an explicit `throw_if_cancelled`
+check, or a `CancelScope` exit.
+
+### Core types
+
+```verum
+// Owner — only holder can cancel.
+CancellationTokenSource.new()
+  .token()     -> CancellationToken                  // observer handle (clone-cheap)
+  .cancel()                                          // with default CancelReason.Cancelled
+  .cancel_with(reason)
+  .is_cancelled() -> Bool
+  .reason() -> Maybe<CancelReason>
+  .linked_to(&parent)                                 // child source, propagates from parent
+
+// Observer — read-only view.
+token: CancellationToken
+  .is_cancelled() -> Bool
+  .reason() -> Maybe<CancelReason>
+  .throw_if_cancelled() -> Result<(), CancellationError>
+  .cancelled() -> CancelledFuture                    // Future<Output = CancelReason>
+  .register(fn()) -> Registration                    // sync callback; RAII-deregister
+  .child_source() -> CancellationTokenSource          // propagation tree
+  .combine(&[t1, t2, ...]) -> CancellationToken       // any-of aggregation (static fn)
+  .with_timeout(Duration) -> CancellationToken        // auto-cancel (static fn)
+  .with_deadline(Instant) -> CancellationToken
+  .never() -> CancellationToken                       // sentinel; never fires
+```
+
+### Structured reasons
+
+```verum
+type CancelReason is
+    | Cancelled
+    | Timeout { deadline: Instant }
+    | ParentCancelled
+    | Aborted(Text)
+```
+
+Children of a cancelled parent see `ParentCancelled` — not the parent's
+own reason. This makes structured traceability explicit.
+
+### Awaitable integration
+
+`token.cancelled()` returns a `CancelledFuture` that completes with the
+token's `CancelReason`. Compose with `select`:
+
+```verum
+select {
+    r   = work().await           => Ok(r),
+    res = token.cancelled().await => Err(res),
+}
+```
+
+The future deregisters its waker on drop; no stale wake-ups.
+
+### Sync callback bridge — `Registration`
+
+```verum
+let reg = token.register(|| close_file_handle(fd));
+// ... do work ...
+// Drop of `reg` deregisters BEFORE cancel fires. If cancel already
+// happened, the callback fired synchronously inside `register()`.
+```
+
+### Scoped cancellation — `CancelScope`
+
+```verum
+let scope = CancelScope.new();
+let token = scope.token();
+spawn worker(token.clone());
+// ... work ...
+// Dropping `scope` cancels `token` (unless `scope.dismiss()` was called).
+```
+
+Scope variants:
+
+```verum
+CancelScope.new()                              // auto-cancel on drop
+CancelScope.linked_to(&parent_token)           // child-source pattern
+CancelScope.with_timeout(Duration)             // auto-cancel + timeout
+scope.dismiss()                                // opt-out of drop-cancel
+scope.cancel()                                 // explicit
+```
+
+### Propagation rules (normative)
+
+1. **Parent → child**: `source.cancel()` propagates to every token linked
+   via `child_source()` / `linked_to()`. Children fire with
+   `CancelReason.ParentCancelled`.
+2. **Combine**: tokens from `CancellationToken.combine(&inputs)` fire when
+   any input fires.
+3. **Idempotent**: subsequent calls to `cancel_with()` after a cancel are
+   no-ops; the first call's reason wins.
+4. **Registered callbacks and wakers** are drained under lock, then
+   invoked without the lock held (no re-entrancy).
+5. **Dropped registrations / futures** deregister automatically.
 
 ## Timers
 

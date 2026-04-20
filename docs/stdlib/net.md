@@ -130,6 +130,38 @@ s.shutdown(how: Shutdown) -> IoResult<()>
 // Implements Read, Write, AsyncRead, AsyncWrite, Drop
 ```
 
+### Async I/O protocol
+
+`TcpStream` implements `AsyncRead` and `AsyncWrite` from
+`core.io.async_protocols`. Readiness-awaiting uses the `IOEngine` —
+on `EAGAIN`/`WouldBlock`, a waker is registered with the kernel-level
+reactor (io_uring / epoll / kqueue / IOCP) so the task wakes when data
+is ready.
+
+```verum
+// Protocol methods
+stream.poll_read(cx: &mut Context, buf: &mut List<Int>)
+    -> Poll<Result<Int, IoError>>
+stream.poll_write(cx: &mut Context, buf: &List<Int>)
+    -> Poll<Result<Int, IoError>>
+stream.poll_flush(cx: &mut Context) -> Poll<Result<(), IoError>>
+stream.poll_shutdown(cx: &mut Context) -> Poll<Result<(), IoError>>
+
+// Ergonomic async wrappers
+stream.read_async(&mut buf).await -> Result<Int, IoError>
+stream.write_async(&buf).await -> Result<Int, IoError>
+
+// Cancellation-aware variants
+stream.read_cancellable(&mut buf, &token).await
+    -> Result<Result<Int, IoError>, CancellationError>
+stream.write_cancellable(&buf, &token).await
+    -> Result<Result<Int, IoError>, CancellationError>
+```
+
+On Linux, read/write use `MSG_DONTWAIT` to avoid blocking the reactor
+thread. On macOS, socket is non-blocking at creation with
+`SO_NOSIGPIPE` to prevent SIGPIPE on closed connections.
+
 ```verum
 type Shutdown is Read | Write | Both;
 ```
@@ -144,10 +176,28 @@ TcpListener.bind_addr_reuseport(&SocketAddr, backlog: Int)    // SO_REUSEPORT
 
 l.accept() -> IoResult<(TcpStream, SocketAddr)>
 l.accept_async().await -> IoResult<(TcpStream, SocketAddr)>
-l.incoming() -> Incoming                                  // iterator
+l.accept_cancellable(&token).await
+    -> Result<Result<(TcpStream, SocketAddr), IoError>, CancellationError>
+l.incoming() -> Incoming                                  // blocking iterator
+l.incoming_async() -> AsyncIncoming                       // Stream<Item = Result<TcpStream, IoError>>
 
 l.local_addr() -> SocketAddr
 l.set_ttl(ttl: Int)          l.set_only_v6(only: Bool)
+```
+
+### `AsyncIncoming` — async accept stream
+
+Implements `Stream<Item = Result<TcpStream, IoError>>`. Use in a `while
+let` or `for await` loop (once the `AsyncStream` protocol lands; manual
+`poll_next` works today):
+
+```verum
+let listener = TcpListener.bind_reuseport("0.0.0.0:8080")?;
+let mut incoming = listener.incoming_async();
+// ... with AsyncStream protocol ...
+// for await conn in listener.incoming_async() {
+//     spawn handle_client(conn?);
+// }
 ```
 
 ### Example — echo server
@@ -497,16 +547,63 @@ TlsStream::connect(tcp, &server_name, &config).await -> Result<TlsStream, TlsErr
 // Server
 TlsStream::accept(tcp, &config).await -> Result<TlsStream, TlsError>
 
-s.read_async(&mut buf).await -> Result<Int, TlsError>
-s.write_async(&buf).await -> Result<Int, TlsError>
-s.write_all_async(&buf).await -> Result<(), TlsError>
-s.shutdown_async().await -> Result<(), TlsError>
+// AsyncRead/AsyncWrite protocol methods
+s.poll_read(cx, &mut buf) -> Poll<Result<Int, IoError>>
+s.poll_write(cx, &buf) -> Poll<Result<Int, IoError>>
+s.poll_flush(cx) -> Poll<Result<(), IoError>>
+s.poll_shutdown(cx) -> Poll<Result<(), IoError>>
 
-s.alpn_protocol() -> Maybe<&Text>
+// Ergonomic wrappers
+s.read_async(&mut buf).await -> Result<Int, IoError>
+s.write_async(&buf).await -> Result<Int, IoError>
+s.write_all(&buf).await -> Result<(), TlsError>
+s.shutdown().await -> Result<(), TlsError>
+
+// Cancellation-aware variants
+s.read_cancellable(&mut buf, &token).await
+    -> Result<Result<Int, IoError>, CancellationError>
+s.write_cancellable(&buf, &token).await
+    -> Result<Result<Int, IoError>, CancellationError>
+
+// Getters
+s.alpn_protocol() -> Maybe<&Text>      // full name
+s.alpn() -> Maybe<&Text>                // short alias
 s.negotiated_version() -> Maybe<TlsVersion>
 s.peer_certificate() -> Maybe<Certificate>
 s.get_ref() -> &TcpStream
+
+// Channel binding for SCRAM-SHA-256-PLUS (RFC 5929 tls-server-end-point)
+s.peer_cert_hash_sha256() -> Maybe<[Byte; 32]>
+
+// RFC 5705 exporter — derive application-level keys
+s.export_keying_material(label, context, length) -> Result<List<Byte>, TlsError>
+
+// Kernel TLS offload (Linux ≥6.0 + KTLS-enabled backend)
+s.enable_ktls() -> Result<(), TlsError>
 ```
+
+### Backend plugin model
+
+`TlsStream` operations currently dispatch through `@intrinsic("verum.tls.*")`
+symbols that are resolved at link-time to a pluggable backend:
+
+| Backend | When to use | Status |
+|---|---|---|
+| `rustls-ktls` (default target) | Pure Rust TLS 1.3, memory-safe, KTLS-capable | planned |
+| `openssl-fips` | FIPS 140-3 compliance requirement | planned |
+| `hacl-star` | Formally verified primitives (Project Everest) | planned |
+| `schannel` / `securetransport` | Platform-native on Windows / macOS | planned |
+
+Switch via `@cfg(feature = "tls-backend-X")` at cog-level.
+
+### Features on the roadmap (not yet implemented)
+
+- Post-quantum hybrid key exchange: `X25519MLKEM768` default (table stakes by 2026).
+- Encrypted ClientHello (ECH) — HPKE over HTTPS DNS records.
+- TLS 1.3 0-RTT server-side with anti-replay cache.
+- Certificate compression (RFC 8879, brotli/zstd).
+- Session resumption via session tickets (RFC 8446 §4.6.1).
+- SNI-based certificate resolver callback (multi-tenant edge).
 
 ### High-level builders
 

@@ -263,6 +263,72 @@ fn main() using [IO, GpuDevice] {
 
 ---
 
+## Byte-scan primitives — `core.simd.bytes`
+
+High-level SIMD helpers for parsers (HTTP, JSON, CSV), checksums, and
+encoding. Built on `Vec<UInt8, N>`; SIMD width auto-selected per
+target at build time; runtime dispatch via `@multiversion`.
+
+```verum
+// Single-byte search
+find_byte(haystack: &[Byte], needle: Byte) -> Maybe<Int>
+
+// Any-of-many bytes
+find_any_of(haystack: &[Byte], needles: &[Byte]) -> Maybe<(Int, Int)>
+  // (index, which-needle)
+
+// HTTP header terminator (\r\n\r\n or \n\n)
+find_header_terminator(haystack: &[Byte]) -> Maybe<Int>
+
+// Substring — two-way + SIMD block-scan
+find_subslice(haystack: &[Byte], needle: &[Byte]) -> Maybe<Int>
+
+// UTF-8 validation — Lemire-style branchless
+is_valid_utf8(bytes: &[Byte]) -> Bool
+
+// JSON structural-char / whitespace skip
+skip_whitespace(bytes: &[Byte]) -> Int
+
+// CRC-32C (Castagnoli — SSE4.2 accelerated)
+crc32c(bytes: &[Byte]) -> u32
+crc32c_update(prev: u32, bytes: &[Byte]) -> u32
+
+// Base64 encode/decode (SIMD ~4-5× scalar)
+base64_encode(input: &[Byte], out: &mut List<Byte>) -> Int
+base64_decode(input: &[Byte], out: &mut List<Byte>) -> Result<Int, Int>
+
+// Hex encode/decode
+hex_encode(input: &[Byte], out: &mut List<Byte>) -> Int
+hex_decode(input: &[Byte], out: &mut List<Byte>) -> Result<Int, Int>
+```
+
+Use cases:
+
+| Primitive | Framework use |
+|---|---|
+| `find_byte` | HTTP/1.1 header parser — find `\r\n`, `:`, `;` |
+| `find_any_of` | JSON — find any structural char (`{`, `}`, `[`, `]`, `,`, `:`, `"`) |
+| `find_header_terminator` | End-of-HTTP-headers detection (single call) |
+| `find_subslice` | Router-prefix match, path-in-buffer find |
+| `is_valid_utf8` | Text decode at network boundary |
+| `skip_whitespace` | JSON parser pre-pass |
+| `crc32c` | QUIC header integrity, DB block checksums |
+| `base64_encode/decode` | HTTP Basic auth, JWT, binary transport |
+| `hex_encode/decode` | Hash-digest display, bytea wire format |
+
+## Implementation status
+
+| Layer | Status |
+|---|---|
+| `Vec<T, N>` / `Mask<N>` types | Complete (69 public ops) |
+| `SimdElement` protocol impls for all int/float primitives | Complete |
+| `@intrinsic("simd_*")` declarations | Complete |
+| **LLVM backend lowering to `<N x T>` vector ops** | **In progress (compiler-level)** |
+| `@multiversion` runtime CPU-feature dispatch | In progress (compiler-level) |
+| SWAR fallback for non-SIMD targets | Planned |
+| High-level byte-scan helpers (`simd::bytes`) | Complete (declarations) |
+| Benchmarks vs hand-written C | Planned (after backend) |
+
 ## Cross-references
 
 - **[math → tensor](/docs/stdlib/math)** — tensor operations built on SIMD/GPU.
