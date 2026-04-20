@@ -315,7 +315,9 @@ path_segment = identifier | 'self' | 'super' | 'crate' ;
 ### 2.4 Type definitions — unified `is` syntax
 
 ```ebnf
-type_def = visibility , 'type' , [ 'affine' ] , identifier , [ generics ]
+linearity_qualifier = 'linear' | 'affine' ;
+
+type_def = visibility , 'type' , [ linearity_qualifier ] , identifier , [ generics ]
          , [ meta_where_clause ]
          , 'is' , type_definition_body ;
 
@@ -335,12 +337,20 @@ field_list = [ field , { ',' , field } , [ ',' ] ] ;
 field      = { attribute } , [ visibility ] , identifier , ':' , type_expr , [ field_default ] ;
 field_default = '=' , expression ;
 
-(* Record types (as type expressions) accept an optional trailing row
-   variable `| r` for row polymorphism (T1-E). A closed record omits
-   the row variable; an extensible record captures additional fields
-   in `r`. See language/types.md#row-polymorphism. *)
-record_type = '{' , [ field_list ] , [ '|' , identifier ] , '}' ;
+(* Record types (as type expressions) accept an optional trailing
+   row extension for row polymorphism (T1-E). A closed record omits
+   the extension; an extensible record captures additional fields in
+   the row variable. See language/row-polymorphism.md for semantics,
+   the `lacks` predicate, and splat syntax. *)
+record_type   = '{' , [ field_list ] , [ row_extension ] , '}' ;
+row_extension = '|' , row_expr ;
+row_expr      = identifier                                 (* single row var *)
+              | identifier , { ',' , identifier } ;        (* row split *)
 ```
+
+`{ x: Int }` is closed; `{ x: Int | r }` is open with `r` capturing
+the remaining fields. A lacks-constraint `r # x` (inferred or
+written `where r # x`) ensures `r` does not already contain `x`.
 
 #### Variants (sum types)
 
@@ -537,6 +547,9 @@ simple_type = primitive_type
             | pointer_type           (* *const, *mut, *volatile *)
             | function_type
             | rank2_function_type
+            | pi_type                (* Pi (x: A) . B — explicit dependent fn *)
+            | tensor_type_expr       (* tensor<...> T — shape-typed array *)
+            | universe_type          (* Type, Type(n), Prop *)
             | generic_type
             | genref_type            (* GenRef<T> *)
             | higher_kinded_type     (* F<_> *)
@@ -570,6 +583,80 @@ function_type       = [ 'async' ] , 'fn' , '(' , type_list , ')' ,
 rank2_function_type = [ 'async' ] , 'fn' , generics , '(' , type_list , ')' ,
                       [ '->' , type_expr ] , [ context_clause ] , [ generic_where_clause ] ;
 ```
+
+#### Dependent function types (Π)
+
+```ebnf
+pi_type   = 'Pi' , pi_binder , { pi_binder } , '.' , type_expr ;
+pi_binder = '(' , identifier , ':' , type_expr , [ 'where' , expression ] , ')'
+          | '{' , identifier , ':' , type_expr , [ 'where' , expression ] , '}' ;
+```
+
+Round brackets denote **explicit** parameters; curly braces denote
+**implicit** parameters (synthesised by inference, like Agda/Lean).
+
+```verum
+type ReplicateOf<T>  is Pi (n: Int) . [T; n];
+type At<T>           is Pi {n: Int} (i: Int where i < n) . T;
+```
+
+All three surface forms — value-dependent `fn`, `where`/`ensures`,
+and explicit `Pi` — elaborate to the same `Ty::Pi` node. See
+[dependent types](../language/dependent-types.md#the-three-surface-forms-of-π).
+
+#### Universe hierarchy
+
+```ebnf
+universe_type       = 'Type' , [ '(' , universe_level_expr , ')' ]
+                    | 'Prop' ;
+
+universe_level_expr = universe_level_atom , { '+' , integer_lit } ;
+
+universe_level_atom = integer_lit
+                    | identifier                                (* level variable *)
+                    | 'max'  , '(' , universe_level_expr
+                                   , { ',' , universe_level_expr } , ')'
+                    | 'imax' , '(' , universe_level_expr , ',' , universe_level_expr , ')'
+                    | '(' , universe_level_expr , ')' ;
+```
+
+- `Type(0) : Type(1) : Type(2) : ...` is the predicative hierarchy.
+- `Prop : Type(1)` is the universe of proof-irrelevant propositions.
+- `imax(u, v)` is impredicative max — `0` if `v = 0`, else `max(u, v)`.
+- Level polymorphism uses `universe u` or `u: Level` in generics.
+
+See [language/universes.md](../language/universes.md).
+
+#### Tensor types (shape-typed arrays)
+
+```ebnf
+tensor_type_expr = 'tensor' , '<' , shape_params , '>' , type_expr ;
+(* shape_params: comma-separated compile-time dimensions; each is an
+   integer literal, a bound identifier of kind Nat, or a meta-arith
+   expression. Equivalent generic form: Tensor<T, [d1, d2, ...]>. *)
+```
+
+Two equivalent forms:
+
+```verum
+let a: Tensor<Float32, [3, 224, 224]> = ...;
+let b: tensor<3, 224, 224> Float32     = ...;
+```
+
+Backing representation is a single `Type::Tensor { element, shape,
+strides }`. Shape validation for reshape / matmul / broadcast is
+performed by `tensor_shape_checker`. See [language/tensor-types.md](../language/tensor-types.md).
+
+#### Linearity on type definitions
+
+```ebnf
+linearity_qualifier = 'linear' | 'affine' ;
+```
+
+Attaches to `type_def` (see §2.4). `linear T` must be consumed
+exactly once; `affine T` at most once. Unqualified types are
+unrestricted. The contagion rule propagates linearity up through
+fields/variants; see [language/linearity.md](../language/linearity.md).
 
 #### Cubical / dependent
 

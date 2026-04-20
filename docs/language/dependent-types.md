@@ -46,6 +46,78 @@ fn main() {
 Π-types arise naturally from refined types: the return type `[T; n]`
 depends on the _value_ `n`, not on a type-level numeral.
 
+### The three surface forms of Π
+
+Verum lets you write a dependent function in three equivalent ways.
+All three elaborate to the same core `Ty::Pi` node in
+`crates/verum_types/src/ty.rs`.
+
+**1. Value-dependent `fn` signature** — the everyday form:
+
+```verum
+fn replicate<T>(n: Int { self >= 0 }, x: T) -> [T; n] {
+    [x; n]
+}
+```
+
+**2. `where` / `ensures` clause** — preferred when the relation is
+complex or when you want a separate name for the proof:
+
+```verum
+fn push<T>(v: Vec<T, n>, x: T) -> Vec<T, n + 1>
+    where n: Nat
+    ensures |result| == |v| + 1
+{ ... }
+```
+
+**3. Explicit `Pi` form** — for type aliases, protocol methods, and
+proof terms where no function definition is yet at hand:
+
+```verum
+// As a type alias.
+type ReplicateOf<T> is Pi (n: Int) . [T; n];
+
+// As a protocol method signature.
+type Indexed<T> is protocol {
+    fn at : Pi (i: Int) (s: Self) . T
+        where i < s.length;
+};
+
+// As an argument type.
+fn fold<T, U>(xs: Vec<T, n>, z: U, step: Pi (i: Int) . fn(U, T) -> U) -> U { ... }
+```
+
+All three forms carry identical semantics; the compiler normalises
+them to the same internal representation.
+
+### Implicit parameters
+
+A Π-binder written with curly braces is **implicit** — filled in by
+inference at the call site, the way Agda and Lean handle them:
+
+```verum
+type Lookup<K, V> is Pi { k: K } (m: Map<K, V>) . Maybe<V>;
+```
+
+The caller writes `lookup(my_map)` and the compiler synthesises `k`.
+Use implicit parameters for proof-relevant indices that should not
+clutter the call site.
+
+### Universe of a Π
+
+A Π-type lives in `max(u_domain, u_codomain)` by default, where the
+universes are those of the binder and the body. If the body lands in
+`Prop`, the Π lands in `Prop` — this is the `imax` rule that makes
+propositions impredicative. See [Universes](./universes.md) for the
+full story.
+
+### Relationship to refinement types
+
+A refinement `T { P(self) }` is exactly a Σ (dependent pair)
+`Σ (x: T) . P(x)` with `P(x) : Prop`. The dual, a refinement on a
+function's *output*, is exactly a Π: `Pi (x: A) . { y: B | Q(x, y) }`.
+Refinements and dependent types are **two syntaxes for one machinery**.
+
 ## Type-level computation
 
 ```verum
@@ -113,6 +185,9 @@ Primitive operations:
 HITs allow you to declare **path constructors** — not just values, but
 equalities between them.
 
+Verum accepts two equivalent spellings for the endpoint metadata on a
+path constructor. The range form is concise:
+
 ```verum
 type Circle is
     | Base
@@ -123,6 +198,31 @@ type Interval is
     | One
     | Seg()  = Zero..One;
 ```
+
+The **type-annotation form** mirrors the mathematical `Path<C>(a, b)`
+presentation and is the spelling used throughout `core/math/hott.vr`:
+
+```verum
+type S1 is
+    | base
+    | loop: Path<S1>(base, base);
+
+type Susp<A> is
+    | north
+    | south
+    | merid(a: A): Path<Susp<A>>(north, south);
+
+type Pushout<A, B, C>(f: fn(C) -> A, g: fn(C) -> B) is
+    | inl(a: A)
+    | inr(b: B)
+    | push(c: C): Path<Pushout<A, B, C>(f, g)>(inl(f(c)), inr(g(c)));
+```
+
+Both forms lower to the same `PathConstructor` metadata on the
+variant, and both support unit, tuple, and record payloads on the
+constructor. Variant names may be drawn from Verum's keyword space
+(`loop`, `merid`, etc.) — variant constructors live in their own
+namespace and never collide with reserved identifiers.
 
 Pattern matching on a HIT must handle both point and path constructors
 (checked for coherence by the compiler).

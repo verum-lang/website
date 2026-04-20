@@ -64,6 +64,18 @@ opt-in — you pay only for what you use.
   subtyping, checked by SMT at compile time.
 - **[Dependent Types](/docs/language/dependent-types)** — Σ, Π, path
   types, index refinements, value-dependent generics.
+- **[Linearity](/docs/language/linearity)** — `linear` and `affine`
+  types for exactly-once / at-most-once resources, enforced at
+  compile time with zero runtime cost.
+- **[Universes](/docs/language/universes)** — the `Type(n)` / `Prop`
+  hierarchy, proof irrelevance, universe polymorphism, level
+  arithmetic (`max`, `imax`).
+- **[Row Polymorphism](/docs/language/row-polymorphism)** —
+  extensible records with `{ x: Int | r }`, the lacks predicate,
+  splat syntax, row-preserving transformations.
+- **[Tensor Types](/docs/language/tensor-types)** — shape-typed
+  multi-dimensional arrays (`Tensor<Float32, [3, H, W]>`) with
+  compile-time shape checking and zero runtime overhead for shape.
 - **[Protocols](/docs/language/protocols)** — Verum's interfaces.
   Methods, associated types, GATs, specialisation, negative bounds.
 - **[Generics](/docs/language/generics)** — type parameters, bounds,
@@ -141,7 +153,11 @@ productions. For quick jumps:
 | Lexical layer                         | Syntax, Tagged Literals     | §1 (lexical grammar)             |
 | Core types                            | Types                       | §2.3, 2.8                        |
 | Refinement predicates                 | Refinement Types            | §2.3 (type_refinement)           |
-| Σ / Π / path types                    | Dependent Types             | §2.3 (sigma_bindings, path_type) |
+| Σ / Π / path types                    | Dependent Types             | §2.3 (sigma_bindings, path_type, pi_type) |
+| Linearity (`linear`, `affine`)        | Linearity                   | §2.4 (linearity_qualifier)        |
+| Universe hierarchy                    | Universes                   | §2.7 (universe_type, universe_level_expr) |
+| Row polymorphism                      | Row Polymorphism            | §2.5 (record_type, row_extension) |
+| Tensor types                          | Tensor Types                | §2.7 (tensor_type_expr)           |
 | Protocols                             | Protocols                   | §2.5 + 2.18                      |
 | Generics, bounds                      | Generics                    | §2.4 + 2.4.x                     |
 | `T with [Read]`                       | Capability Types            | §2.8 (capability_type)           |
