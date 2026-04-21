@@ -28,12 +28,19 @@ risks.
 
 ## What still requires discipline
 
-- **Cryptographic correctness** — use vetted cogs (`crypto.aead`,
-  `crypto.sig`). Don't roll your own.
-- **Constant-time code** — the compiler doesn't guarantee side-channel
-  resistance by default. The `crypto` cog provides primitives whose
-  implementations are manually verified as constant-time; avoid
-  branching on secret bytes in your own code.
+- **Cryptographic correctness** — use the vetted stdlib crypto
+  primitives under [`core.security`](/docs/stdlib/security/overview):
+  [`aead`](/docs/stdlib/security/aead) for authenticated encryption,
+  [`ecc`](/docs/stdlib/security/ecc) for X25519, [`pq`](/docs/stdlib/security/pq)
+  for ML-KEM / ML-DSA, [`kdf`](/docs/stdlib/security/kdf) for HKDF.
+  Don't roll your own primitives — picking the wrong mode or
+  truncating tags catastrophically weakens security.
+- **Constant-time code** — the compiler doesn't guarantee side-
+  channel resistance by default. The stdlib crypto primitives are
+  constant-time by construction, and
+  [`core.security.util.constant_time_eq`](/docs/stdlib/security/util)
+  is mandatory for any secret-byte comparison. Don't branch on
+  secret bytes in your own code.
 - **Supply-chain trust** — see the [trust model](/docs/tooling/cog-packages#trust-model)
   for cog signatures and advisories.
 - **Resource exhaustion** — DoS via memory, open FDs, task queues.
@@ -59,7 +66,8 @@ risks.
 - Sensitive operations require `using [Auth]` — no global auth.
 - Use capability-restricted types: `Database with [Read]` for views
   that must not write.
-- Label-track sensitive data with [`security::labels`](/docs/stdlib/security):
+- Label-track sensitive data with
+  [`security.labels`](/docs/stdlib/security/labels):
 
   ```verum
   type SessionToken is Labeled<Text>;
@@ -69,22 +77,46 @@ risks.
   }
   ```
 
+  See also [capabilities](/docs/stdlib/security/capabilities) for
+  the `@cap(declassify)` audit trail on downgrades.
+
+- Workload identity (K8s / multi-cluster / multi-cloud) —
+  [`security.spiffe`](/docs/stdlib/security/spiffe) gives you
+  SPIFFE-ID-based mTLS with automatic rotation.
+
 ### Secrets
 
 - Never log `Labeled<T: Secret>` values (the stdlib logger refuses).
-- For types holding key material, implement `Drop` to zero the buffer
-  explicitly before release.
+- For types holding key material, implement `Drop` to zero the
+  buffer before release — see
+  [`security.util.zeroise`](/docs/stdlib/security/util)
+  (stable wrapper planned; use the `verum.mem.zeroise` intrinsic
+  until then).
+- Pull secrets from a dedicated store, not env vars: HashiCorp
+  Vault, AWS Secrets Manager, or GCP Secret Manager via
+  [`security.secrets`](/docs/stdlib/security/secrets).
 - Environment variables over on-disk plaintext; container secrets
-  over env vars where possible.
+  over env vars where a store is not available.
 
 ### Crypto
 
-- Prefer the `crypto` cog's high-level API over primitives.
-- Authenticated encryption: AES-GCM / ChaCha20-Poly1305 via `crypto.aead`.
-- Signatures: Ed25519 via `crypto.sig`.
-- KDFs: Argon2id for passwords; HKDF for key derivation.
-- Never `unsafe`-cast between `[Byte; N]` and other types without
-  zeroisation.
+- **Authenticated encryption** — use the AEAD layer:
+  [AES-128/256-GCM or ChaCha20-Poly1305](/docs/stdlib/security/aead).
+  Never raw AES / raw ChaCha20 — those lack authentication.
+- **Signatures** — [ML-DSA (post-quantum)](/docs/stdlib/security/pq)
+  for new work; Ed25519 (planned P1) when it lands; ECDSA-P256
+  (planned P1) for legacy interop.
+- **Key exchange** — [X25519](/docs/stdlib/security/ecc) paired
+  with [ML-KEM-768](/docs/stdlib/security/pq) for PQ-hybrid is the
+  TLS 1.3 / QUIC default.
+- **KDFs** — [HKDF-SHA-256 / -SHA-384 / -SHA-512](/docs/stdlib/security/kdf)
+  for key derivation from high-entropy IKM. Argon2id for password
+  hashing (different module, planned).
+- **MACs** — [HMAC-SHA-256](/docs/stdlib/security/mac) is the right
+  default for cookie signing / token MACs. Always verify tags with
+  `constant_time_eq`, never `==`.
+- **Never** `unsafe`-cast between `[Byte; N]` and other types
+  without zeroisation first.
 
 ### Network
 
