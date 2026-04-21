@@ -108,6 +108,39 @@ b"bytes only, ASCII"              // byte string — produces &[Byte]
 f"interpolated {expr}"            // format literal — splices checked
 ```
 
+### `format(fmt, …args)`
+
+`format("…", args…)` is a **compile-time desugar** that rewrites into an
+interpolated string literal and shares the exact same lowering pipeline
+as `f"…"`. Both forms produce a `Text` value.
+
+```verum
+format("released_{}", id)          // ≡  f"released_{id}"
+format("a={}, b={}", 1, 2)         // ≡  f"a={1}, b={2}"
+format("spec {:?}", v)             // ≡  f"spec {v}"  (spec is stripped)
+format("escaped {{ and }}")        // ≡  f"escaped {{ and }}"
+```
+
+Supported placeholder forms in `format`:
+
+| Form         | Meaning                               |
+|--------------|---------------------------------------|
+| `{}`         | anonymous positional splice           |
+| `{:spec}`    | anonymous with spec (spec discarded)  |
+| `{{` / `}}`  | escaped literal `{` / `}`             |
+
+Positional (`{0}`) and named (`{x}`) placeholders are **not** supported
+by the `format(...)` desugar. Use `f"{x}"` directly for named splices.
+
+Arity rule: the number of `{…}` placeholders must equal the number of
+supplied arguments after `fmt`. A mismatch leaves the call unchanged —
+type-checking will then report `undefined function: format`.
+
+Format specifiers (`{:?}`, `{:x}`, `{:.3}`, `{:b}`, `{:e}`, `{:Nw}`)
+are syntactically accepted and stripped today; the interpolation
+result is identical to a bare `{}` splice. Specifier-aware rendering
+is tracked separately.
+
 The **only** doubled-quote rule for raw multiline:
 
 ```verum
