@@ -230,6 +230,33 @@ buffers beyond the input slice.
 | `core/security/hash/sha256.vr` | SHA-256 (340 LOC) |
 | `core/security/hash/sha384.vr` | SHA-384 (180 LOC, shares sha512 core) |
 | `core/security/hash/sha512.vr` | SHA-512 (330 LOC, exposes `compress_block`) |
+| `core/security/hash/crc32.vr` | CRC-32 / IEEE 802.3 — **non-cryptographic** checksum |
+
+## `crc32` — non-cryptographic checksum
+
+Packaged alongside the SHA-2 family because it is a byte-oriented
+digest, but **this is not a cryptographic hash** — adversaries can
+trivially reproduce any target checksum. Use SHA-256 or HMAC when
+the integrity check must be tamper-resistant.
+
+```verum
+mount core.security.hash.crc32.{Crc32, crc32, crc32_continue};
+
+// one-shot
+let digest: UInt32 = crc32(b"hello world");
+
+// streaming
+let mut h = Crc32.new();
+h.update(chunk1);
+h.update(chunk2);
+let digest: UInt32 = h.finalize();
+```
+
+Standard IEEE 802.3 / RFC 1952 (gzip) polynomial 0xEDB88320 with
+reflected input, reflected output, pre-XOR `0xFFFFFFFF`, and final
+XOR `0xFFFFFFFF`. Matches zlib's `crc32`, the `crc32` CLI, Python's
+`binascii.crc32`, and Rust's `crc32fast::hash`. Used internally by
+`core.database.sqlite.native` for WAL frame checksums.
 
 ## References
 
