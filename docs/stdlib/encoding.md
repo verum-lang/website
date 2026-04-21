@@ -18,6 +18,13 @@ strict JSON, URL-safe base64, lowercase hex.
 | `encoding.json` | RFC 8259 strict JSON reader + writer, zero-allocation parsing |
 | `encoding.base64` | RFC 4648 base64 (+ url-safe variant) |
 | `encoding.hex` | Lowercase hex encoder + decoder |
+| `encoding.varint` | SQLite-style variable-length integers (1–9 bytes) |
+
+Two sibling varint encodings live in the stdlib next to the wire
+formats that need them and are not duplicated here: **LEB128** lives
+at `core.protobuf.wire` (Protocol Buffers style, little-endian) and
+**QUIC varint** lives at `core.net.http3.frame` (1/2/4/8-byte
+length-prefixed, RFC 9000 §16).
 
 ## `json`
 
@@ -66,6 +73,34 @@ public fn decode(input: &Text) -> Result<List<Byte>, HexError>;
 ```
 
 Case-insensitive decoder, lowercase encoder (matches RFC 4648 §8).
+
+## `varint` — SQLite-style
+
+```verum
+mount core.encoding.varint.*;
+
+public fn sqlite_encoded_len(value: Int64) -> Int;
+public fn sqlite_encode_into(out: &mut List<Byte>, value: Int64) -> Int;
+public fn sqlite_encode(value: Int64) -> List<Byte>;
+public fn sqlite_decode(buf: &[Byte], start: Int) -> Result<(Int64, Int), VarintError>;
+public fn sqlite_decode_first(buf: &[Byte]) -> Result<(Int64, Int), VarintError>;
+public fn sqlite_skip(buf: &[Byte], start: Int) -> Result<Int, VarintError>;
+```
+
+Big-endian 1–9 byte form used throughout the SQLite file format (see
+[sqlite.org/fileformat2.html](https://www.sqlite.org/fileformat2.html)
+under "Varint"). Bytes 1–8 carry 7 data bits + continuation bit in
+the MSB; byte 9 (if present) holds the remaining 8 bits with no
+continuation. The full signed i64 range is covered — negative values
+use the 9-byte form because their top bit is always set, unlike
+LEB128 which zig-zags first.
+
+Errors (`VarintErrorKind`):
+
+| Kind | When |
+|------|------|
+| `Truncated` | Input buffer ends mid-varint or before byte 9 |
+| `Overflow` | Reserved for future extensions; no i64 input triggers it |
 
 ## Example — JSON round-trip
 
