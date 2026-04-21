@@ -309,6 +309,13 @@ const sidebars: SidebarsConfig = {
       link: {type: 'generated-index', slug: '/category/stdlib-network'},
       items: [
         'stdlib/net',
+        'stdlib/http2',
+        'stdlib/quic-http3',
+        'stdlib/protobuf',
+        'stdlib/compress',
+        'stdlib/encoding',
+        'stdlib/signal',
+        'stdlib/mesh',
       ],
     },
     {
@@ -341,6 +348,15 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Observability',
+      link: {type: 'generated-index', slug: '/category/stdlib-observability'},
+      items: [
+        'stdlib/tracing',
+        'stdlib/metrics',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Foundations',
       link: {type: 'generated-index', slug: '/category/stdlib-foundations'},
       items: [
@@ -348,6 +364,7 @@ const sidebars: SidebarsConfig = {
         'stdlib/control',
         'stdlib/concurrency',
         'stdlib/logic',
+        'stdlib/types',
       ],
     },
   ],
