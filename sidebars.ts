@@ -344,6 +344,41 @@ const sidebars: SidebarsConfig = {
       items: [
         'stdlib/context',
         'stdlib/security',
+        {
+          type: 'category',
+          label: 'security — full docs',
+          link: {type: 'doc', id: 'stdlib/security/overview'},
+          items: [
+            'stdlib/security/overview',
+            {
+              type: 'category',
+              label: 'Cryptographic primitives',
+              link: {type: 'generated-index', slug: '/category/stdlib-security-crypto'},
+              items: [
+                'stdlib/security/hash',
+                'stdlib/security/mac',
+                'stdlib/security/kdf',
+                'stdlib/security/cipher',
+                'stdlib/security/aead',
+                'stdlib/security/ecc',
+                'stdlib/security/pq',
+                'stdlib/security/util',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Identity, secrets, policy',
+              link: {type: 'generated-index', slug: '/category/stdlib-security-policy'},
+              items: [
+                'stdlib/security/spiffe',
+                'stdlib/security/secrets',
+                'stdlib/security/labels',
+                'stdlib/security/regions',
+                'stdlib/security/capabilities',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
