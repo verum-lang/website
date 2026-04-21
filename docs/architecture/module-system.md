@@ -183,3 +183,61 @@ select, nursery, unsafe, ref, move, as, in, public`.
 pattern parser with `expected pattern`. The lexer already produced
 `TokenKind::ByteString`; the parser now accepts it in
 `parse_literal_pattern` and in the literal-or-range dispatch.
+
+## Smart-pointer auto-deref on assignment target
+
+`g.val = 100` where `g: MutexGuard<Inner>` used to fail with
+"field 'val' not found in type 'MutexGuard'". Read-mode field
+access (`let x: Int = g.val`) already dereferenced smart-pointer
+receivers; assignment-mode did not.
+
+`check_expr_assignment_target`'s Field branch now walks the
+`Deref::Target` chain via `protocol_checker.try_find_associated_type
+(ty, "Target")` until a type with the requested field appears (or
+no further Target is defined). Bounded to 8 hops. The stdlib's
+`Deref`/`DerefMut` protocol declarations are the single source of
+truth — no hardcoded list of smart pointers. Chains compose
+naturally: `Shared<Mutex<T>>` → `Mutex<T>` → `T`.
+
+## Protocol method-level type-param scoping
+
+A protocol declaration like
+
+```verum
+type Iterator is protocol {
+    fn map<B, F: fn(Self.Item) -> B>(self, f: F) -> MappedIter<Self, F>;
+    ...
+}
+```
+
+has two layers of generics in play when an impl registers:
+
+- impl-level params (e.g. `implement<T, F: fn() -> T> Iterator for OnceWith<T, F>`)
+- method-level params (`B`, `F` on `map`)
+
+If the two layers share a spelling (`F` is a common example),
+three guards must cooperate to keep them structurally distinct:
+
+1. **At protocol-registration time**, each method-level generic is
+   bound to a fresh `TypeVar` in a dedicated scope. Without this,
+   `fn map<B, F>` lowers with `Type::Named("B")` / `Type::Named("F")`
+   instead of `Type::Var(fresh)` — which then cannot be disambiguated
+   from free-standing same-name references in impl scope.
+
+2. **`ProtocolMethod.type_param_names`** records the list of
+   method-level generic names. This is not used at the wire level
+   of protocol definition itself, but it is read during any
+   subsequent substitution on the method's signature.
+
+3. **`lookup_all_protocol_methods`** prunes method-level names
+   from the impl-level `subst_map` before calling
+   `substitute_type_params`. This prevents a Named-keyed
+   impl-level binding from capturing a Named-keyed method-level
+   reference of the same spelling.
+
+`generalize_ordered` was similarly hardened: a new
+`generalize_with_vars` variant takes the ordered list of
+`TypeVar`s directly, with no name-based lookup, for cases (like
+`register_impl_block`) where the caller already owns both
+impl-level and method-level `TypeVar`s and wants positional
+alignment guarantees.

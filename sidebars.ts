@@ -362,6 +362,7 @@ const sidebars: SidebarsConfig = {
     'architecture/verification-pipeline',
     'architecture/execution-environment',
     'architecture/incremental-compilation',
+    'architecture/module-system',
     'architecture/crate-map',
   ],
   reference: [
