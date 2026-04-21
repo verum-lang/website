@@ -241,3 +241,32 @@ three guards must cooperate to keep them structurally distinct:
 `register_impl_block`) where the caller already owns both
 impl-level and method-level `TypeVar`s and wants positional
 alignment guarantees.
+
+## Smart-pointer receivers calling protocol methods
+
+`Heap<dyn Tracer>.start_span(...)` — calling a protocol method
+on a smart-pointer-wrapped trait object — currently surfaces a
+`MethodNotFound` diagnostic with a targeted hint:
+
+```
+error<E400>: no method named `start_span` found for type
+             `Heap<dyn Tracer>`
+  help: did you mean `deref to access `start_span` on
+        `dyn Tracer` — `Heap<dyn Protocol>.method()` dispatch
+        requires vtable codegen (tracked)`?
+```
+
+The diagnostic walks the `Deref::Target` chain of the receiver
+type (bounded to 4 hops). If a hop produces a
+`Type::DynProtocol { bounds }` whose bounds' `ProtocolDecl`
+contain the requested method, the hint is emitted. Direct
+`&dyn Protocol` calls already dispatch correctly; the full
+auto-dispatch through `Heap<_>` / `Shared<_>` requires a
+vtable-codegen path that has its own dedicated sprint.
+
+Workaround until full dispatch lands:
+
+```verum
+let t: &dyn Tracer = &*tracer;    // explicit deref
+let span = t.start_span(...);      // direct dyn-dispatch
+```
