@@ -244,9 +244,41 @@ alignment guarantees.
 
 ## Smart-pointer receivers calling protocol methods
 
-`Heap<dyn Tracer>.start_span(...)` — calling a protocol method
-on a smart-pointer-wrapped trait object — currently surfaces a
-`MethodNotFound` diagnostic with a targeted hint:
+### Auto-deref cascade at method-resolution entry
+
+`infer_method_call_inner_impl` now walks the receiver's
+`Deref::Target` chain (bounded to 8 hops) before running method
+lookup. The cascade stops as soon as the current level owns the
+method — so `mutex.lock()` still binds to `Mutex`, not to the
+inner `T`. When an unwrap produces a `Type::DynProtocol`
+(inherently unsized), the receiver is wrapped in `&dyn ...`
+because dyn-protocol must live behind a reference to serve as
+a valid method receiver.
+
+The helper `type_or_dyn_has_method` structurally answers "does
+this type own the method here?" without special-casing any
+smart-pointer type — it queries the inherent methods table, the
+protocol-impl set, and (for dyn-protocol) the protocol
+declarations. No hardcoded Heap/Shared/MutexGuard list: the
+stdlib's `Deref::Target` associated-type declarations drive the
+cascade entirely.
+
+### Dyn-protocol method lookup
+
+`ProtocolChecker::lookup_all_protocol_methods` now handles
+`Type::DynProtocol { bounds }` as a first-class receiver: when
+no concrete impl is registered (as is always the case for a
+bare dyn), method signatures are served directly from each
+bound protocol's `ProtocolDecl.methods`. This mirrors how
+`(&dyn Protocol).method(...)` has always dispatched; the
+dyn-protocol type is now a first-class citizen in the lookup
+path.
+
+### Diagnostic fallback
+
+When auto-deref still doesn't find a match, the
+`MethodNotFound` diagnostic embeds a targeted hint pointing at
+the dyn-protocol target:
 
 ```
 error<E400>: no method named `start_span` found for type
@@ -256,13 +288,14 @@ error<E400>: no method named `start_span` found for type
         requires vtable codegen (tracked)`?
 ```
 
-The diagnostic walks the `Deref::Target` chain of the receiver
-type (bounded to 4 hops). If a hop produces a
-`Type::DynProtocol { bounds }` whose bounds' `ProtocolDecl`
-contain the requested method, the hint is emitted. Direct
-`&dyn Protocol` calls already dispatch correctly; the full
-auto-dispatch through `Heap<_>` / `Shared<_>` requires a
-vtable-codegen path that has its own dedicated sprint.
+### Current status
+
+Full `Heap<dyn Protocol>.method()` dispatch still has a
+remaining gap in method-resolution's later stages (after the
+auto-deref entry). The infrastructure documented above is in
+place and correct in isolation; closing the reproducer in full
+requires trace-level debugging of reference-wrapped dyn vs
+plain dyn handling.
 
 Workaround until full dispatch lands:
 
