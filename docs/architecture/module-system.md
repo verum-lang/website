@@ -327,18 +327,41 @@ error<E400>: no method named `start_span` found for type
         requires vtable codegen (tracked)`?
 ```
 
-### Current status
+### Post-cascade dyn-protocol resolution
 
-Full `Heap<dyn Protocol>.method()` dispatch still has a
-remaining gap in method-resolution's later stages (after the
-auto-deref entry). The infrastructure documented above is in
-place and correct in isolation; closing the reproducer in full
-requires trace-level debugging of reference-wrapped dyn vs
-plain dyn handling.
+The cascade lands on `&dyn P` for `Heap<dyn P>` /
+`Shared<dyn P>`, but the **early** DynProtocol branch (which
+matches bare `DynProtocol` receivers) runs before the cascade,
+so wrapped forms would otherwise miss it. A **post-cascade**
+resolution mirrors the early branch:
 
-Workaround until full dispatch lands:
+1. Peel one reference layer (`&T`, `&checked T`, `&unsafe T`,
+   `Ownership<T>`) off `recv_ty`.
+2. If the peeled type is `Type::DynProtocol { bounds, .. }`,
+   iterate `bounds` and serve the method from
+   `protocol_checker.get_method_type(protocol_name, method)`.
+3. Type-check arguments and return the protocol's method type.
 
-```verum
-let t: &dyn Tracer = &*tracer;    // explicit deref
-let span = t.start_span(...);      // direct dyn-dispatch
+Combined with the cascade, this closes the full chain:
+
 ```
+Heap<dyn Tracer>       (receiver)
+  ↓ Deref::Target      (stdlib protocol)
+dyn Tracer             (unsized — cascade wraps)
+  ↓ wrap in &
+&dyn Tracer            (cascade exit)
+  ↓ peel reference
+dyn Tracer             (post-cascade)
+  ↓ protocol_checker
+Tracer::start_span     ✔ resolved
+```
+
+`type_or_dyn_has_method` likewise peels one reference layer so
+the cascade's halt-condition agrees with the post-cascade
+resolver: if `&dyn P` already owns the method, the cascade
+stops rather than fruitlessly walking further targets.
+
+Regression coverage:
+`vcs/specs/L1-core/types/dynamic/heap_dyn_dispatch.vr` covers
+all three forms — `Heap<dyn P>`, `Shared<dyn P>`, and direct
+`&dyn P`.
