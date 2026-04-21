@@ -242,6 +242,45 @@ three guards must cooperate to keep them structurally distinct:
 impl-level and method-level `TypeVar`s and wants positional
 alignment guarantees.
 
+### Positional-alignment reordering
+
+When an impl declares more type parameters than the `for_type`
+mentions, the extras must be placed AFTER the positional-
+alignment slots. Example:
+
+```verum
+implement<I: Iterator, B, F: fn(I.Item) -> B> Iterator for MappedIter<I, F>
+```
+
+- Declaration order: `[I, B, F]`.
+- `for_type = MappedIter<I, F>` — only 2 slots.
+- `receiver.args.len()` at any call site = 2.
+
+If `scheme.vars` is stored in declaration order, `bind_limit = 2`
+binds `receiver.args[0]` to `I` and `receiver.args[1]` to `B` —
+exactly wrong: `F`'s slot is skipped and `B` is poisoned with
+the closure type. `Maybe<B>` then surfaces as
+`Maybe<fn(Int) -> Int>` at `.next()` calls, and user code
+fails with misleading "expected Int, found fn(Int) -> Int".
+
+Fix: at scheme-formation time, partition impl-level TypeVars
+by whether they appear in `for_type.free_vars()`:
+
+1. **First block** — impl TypeVars IN `for_type`, in declaration
+   order. `receiver.args` positionally bind here.
+2. **Second block** — impl TypeVars NOT in `for_type`. Left free;
+   inferred from bounds / unification during the actual call.
+3. **Third block** — method-level TypeVars (method's own `<U>`).
+
+`impl_var_count` stores the size of the first block — so
+`bind_limit = impl_var_count` aligns with `receiver.args.len()`.
+Applied in both the Inherent and Protocol branches of
+`register_impl_block_inner`.
+
+Regression coverage:
+`vcs/specs/L2-standard/iterator/impl_param_reorder.vr` — the
+`once_with(|| 5).map(|x| x*10).next()` reproducer.
+
 ## Smart-pointer receivers calling protocol methods
 
 ### Auto-deref cascade at method-resolution entry
