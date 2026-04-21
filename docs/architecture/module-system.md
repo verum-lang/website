@@ -315,17 +315,24 @@ path.
 
 ### Diagnostic fallback
 
-When auto-deref still doesn't find a match, the
-`MethodNotFound` diagnostic embeds a targeted hint pointing at
-the dyn-protocol target:
+Direct `Heap<dyn P>.method()` dispatch is fully wired through
+the cascade + post-cascade resolution (below). The residual
+`MethodNotFound` hint remains as a safety net: when an upstream
+condition prevents the cascade from propagating on a specific
+call site, the user gets a pointer to the explicit-deref
+workaround rather than a silent "no method named …":
 
 ```
 error<E400>: no method named `start_span` found for type
              `Heap<dyn Tracer>`
-  help: did you mean `deref to access `start_span` on
-        `dyn Tracer` — `Heap<dyn Protocol>.method()` dispatch
-        requires vtable codegen (tracked)`?
+  help: try `(&*receiver).start_span(...)` to call `start_span`
+        on `dyn Tracer` directly — the auto-deref cascade should
+        have reached it but did not on this call site
 ```
+
+Under normal conditions this diagnostic no longer fires for
+`Heap<dyn P>` / `Shared<dyn P>`; its presence in output
+indicates a bug in the cascade and should be filed.
 
 ### Post-cascade dyn-protocol resolution
 

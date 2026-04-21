@@ -16,6 +16,63 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `Heap<dyn P>.method()` / `Shared<dyn P>.method()` dispatch
+
+Smart-pointer receivers carrying a dyn-protocol payload now resolve
+protocol methods through the auto-deref cascade end-to-end.
+
+Previously `h.start_span(...)` on `h: Heap<dyn Tracer>` failed with
+_"no method named `start_span` found for type `&dyn Tracer`"_ — the
+cascade correctly unwrapped `Heap<dyn P>` to `&dyn P` (DynProtocol is
+unsized and must live behind a reference), but the early DynProtocol
+resolution branch ran **before** the cascade, so cascade-derived
+`&dyn P` receivers were never matched.
+
+The fix adds a **post-cascade** DynProtocol resolution that peels one
+reference layer and serves the method from
+`protocol_checker.get_method_type(bound, method)`. Combined with the
+cascade, the full chain `Heap<dyn P> → &dyn P → peel → dyn P →
+protocol method` now succeeds. `type_or_dyn_has_method` also peels one
+reference layer so the cascade's halt condition agrees with the
+resolver. No hardcoded smart-pointer list — the stdlib's
+`Deref::Target` associated-type declarations drive the cascade, and
+the DynProtocol's own `bounds` drive the resolution.
+
+Regression test:
+`vcs/specs/L1-core/types/dynamic/heap_dyn_dispatch.vr` covers
+`Heap<dyn P>`, `Shared<dyn P>`, and direct `&dyn P` receivers.
+
+See **[Architecture — Smart-pointer receivers calling protocol methods](/docs/architecture/module-system#smart-pointer-receivers-calling-protocol-methods)**.
+
+### Fixed — impl-level type parameter positional alignment
+
+`implement<I: Iterator, B, F: fn(I.Item) -> B> Iterator for MappedIter<I, F>`
+no longer poisons `B` when `.next()` is invoked. The previous
+declaration-order scheme.vars (`[I, B, F]`) combined with
+`bind_limit = 2` (matching `for_type = MappedIter<I, F>`'s two slots)
+bound `B` to the closure type, surfacing as
+`Maybe<fn(Int) -> Int>` instead of `Maybe<Int>` at `.next()` call
+sites — with misleading "expected Int, found fn(Int) -> Int" errors.
+
+The fix partitions impl-level TypeVars by whether they appear in
+`for_type.free_vars()` and reorders them as three blocks:
+
+1. Impl vars **in** `for_type`, in declaration order (positional
+   binding slots, `impl_var_count = block size`);
+2. Impl vars **outside** `for_type` (left free, inferred from bounds
+   or unification at the call site);
+3. Method-level TypeVars.
+
+Now `bind_limit = impl_var_count` aligns perfectly with
+`receiver.args.len()`. Applied in both the inherent and protocol
+branches of `register_impl_block_inner`.
+
+Regression test:
+`vcs/specs/L2-standard/iterator/impl_param_reorder.vr` — the
+`once_with(|| 5).map(|x| x*10).next()` reproducer.
+
+See **[Architecture — Positional-alignment reordering](/docs/architecture/module-system#positional-alignment-reordering)**.
+
 ### Added — reference-grade tactic DSL
 
 Industrial-grade extensions to the proof-engine surface. The tactic
