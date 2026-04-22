@@ -37,17 +37,21 @@ already-built `&Logger`.
 Runtime DI with ~5–30 ns overhead (task-local lookup).
 
 ```verum
-context Logger {
-    fn info(&self, msg: Text);
-    fn error(&self, msg: Text);
-};
+public context Logger {
+    fn info(message: Text);
+    fn error(message: Text);
+}
+
+public context Database {
+    fn query(id: UserId) -> User;
+}
 
 fn fetch_user(id: UserId) -> User using [Logger, Database] {
     Logger.info(f"fetching {id}");
     Database.query(id)
 }
 
-fn main() using [IO] {
+fn main() {
     let log = ConsoleLogger.new(LogLevel.Info);
     let db  = PostgresDatabase.connect(...)?;
     provide Logger = log;
@@ -56,6 +60,20 @@ fn main() using [IO] {
     };
 }
 ```
+
+Three syntactic facts worth noting against the stdlib's own contexts
+in `core/context/standard.vr`:
+
+- `context` declarations carry `public` (or no visibility prefix)
+  — not `pub`, and they do **not** end with a semicolon. The body
+  is enclosed in `{ … }` like any other item.
+- Context methods do **not** take `&self`. They're called
+  statically as `Logger.info(msg)` — the runtime looks up the
+  installed backend from the current task-local context stack.
+- `print` is a built-in, so `fn main()` does not need
+  `using [...]`. User-defined contexts (Logger, Database, Clock,
+  Metrics, RateLimiter, ...) do appear there whenever the function
+  depends on them.
 
 The `provide ... in { ... }` scope injects the value. `using [Logger,
 Database]` declares the function's effects. Within the provided scope,
@@ -383,7 +401,7 @@ provide_stmt      = 'provide' , context_path , [ 'as' , identifier ]
 A typical top-level entry point layers every context once:
 
 ```verum
-fn main() using [IO] {
+fn main() {
     let app_layer = Layer.new()
         .with_singleton::<Logger>(ConsoleLogger.new(LogLevel.Info))
         .with_singleton::<Clock>(SystemClock.new())
@@ -413,7 +431,7 @@ the caller didn't provide a `Database`. Tests swap in a mock:
 
 ```verum
 @test
-async fn test_handler() using [IO] {
+async fn test_handler() {
     provide Database = MockDatabase.new() in
     provide Logger   = NullLogger.new() in
     provide Clock    = FakeClock.at(epoch()) in
