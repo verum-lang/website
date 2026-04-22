@@ -32,7 +32,7 @@ error[V3402]: postcondition violated
    = counter-example:
       stack.len() = 2147483647      (UInt32::MAX)
       x           = 42
-   = help: add `where requires self.len() < UInt32::MAX`
+   = help: add `requires self.len() < UInt32::MAX`
 ```
 
 Often the counter-example reveals an edge case you hadn't
@@ -167,7 +167,7 @@ goals are easier.
    ```verum
    // Prove a lemma separately; use it inside the main proof.
    lemma helper_monotonic(a: Int, b: Int)
-       where requires a <= b
+       requires a <= b
        ensures f(a) <= f(b)
    { by induction a { ... } }
    ```

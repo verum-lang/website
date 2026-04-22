@@ -94,7 +94,7 @@ space_around_arrow = true
 - **Extract function / variable.**
 - **Inline function / variable.**
 - **Convert refinement form** — inline ↔ type-level ↔
-  `where requires`.
+  bare `requires` clause.
 - **Lift / sink** — move a binding up or down the block structure.
 - **Desugar** — `if let Some(x) = … else { return }` ↔
   `let Some(x) = … else { return };` ↔ `let x = …?;`.
