@@ -151,7 +151,8 @@ lines (contract clauses):
 - `where T: Bound` — generic constraints (after the `where` keyword).
 - `where meta <expr>` — compile-time predicates on generics.
 - `requires <expr>` — runtime precondition. Bare, on its own
-  signature line; comma-join multiple preconditions.
+  signature line; repeat the keyword for multiple preconditions
+  (no comma-joining).
 - `ensures <expr>` — runtime postcondition. Bare; one keyword per
   clause (no comma-joining).
 
