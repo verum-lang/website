@@ -22,13 +22,15 @@ src/
 ```
 
 The root module is `src/lib.vr` (for libraries) or `src/main.vr` (for
-applications). Its name is the `name` field of `Verum.toml`.
+applications). Its name is the `name` field of `verum.toml`.
 
 ## `mount` — import
 
 ```verum
-mount std.io;                // imports a specific module
-mount std.{io, fmt};         // imports two modules
+mount core.io;               // stdlib module (`core` is the stdlib root)
+mount core.{io, text};       // imports two modules
+mount core.math.frameworks.lurie_htt;
+                             // deep path into a stdlib subtree
 mount util.*;                // glob import (public items only)
 mount http.client as hc;     // aliased import
 mount .self.internal;        // import from the current cog
@@ -37,7 +39,9 @@ mount .crate.util;           // import from the cog's root
 ```
 
 A `mount` brings names into scope. There is no implicit import; even
-items from the same cog must be mounted.
+items from the same cog must be mounted. Verum's stdlib lives under
+the `core` root (not `std`) — every stdlib module is
+`core.<subpath>`.
 
 ## Visibility
 
@@ -92,9 +96,12 @@ If you need to extend a foreign type with a foreign protocol, wrap the
 type in a newtype:
 
 ```verum
-type MyWrapper is (std.some.Foreign);
+mount third_party.some.Foreign;
+mount third_party.other.Protocol;
 
-implement std.other.Protocol for MyWrapper {
+type MyWrapper is (Foreign);
+
+implement Protocol for MyWrapper {
     ...
 }
 ```
