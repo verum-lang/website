@@ -150,11 +150,11 @@ Every safety feature has three modes:
 
 The clearest example is the **three-tier reference system**:
 
-| Tier | Syntax          | Runtime cost | Invariant provided by     |
-|------|-----------------|--------------|---------------------------|
-| 0    | `&T`            | ~15 ns       | CBGR generational counter |
-| 1    | `&checked T`    | 0 ns         | Compiler escape analysis  |
-| 2    | `&unsafe T`     | 0 ns         | You, with `// SAFETY: …`   |
+| Tier | Syntax          | Runtime cost                                 | Invariant provided by     |
+|------|-----------------|----------------------------------------------|---------------------------|
+| 0    | `&T`            | ~0.93 ns measured (≤ 15 ns design target)    | CBGR generational counter |
+| 1    | `&checked T`    | 0 ns                                         | Compiler escape analysis  |
+| 2    | `&unsafe T`     | 0 ns                                         | You, with `// SAFETY: …`   |
 
 Tier 0 is the default — it works for arbitrary lifetimes without the
 user reasoning about them. Tier 1 is what tier 0 **compiles to** when

@@ -202,7 +202,7 @@ Verum has three complementary memory disciplines:
 
 | Discipline | Per-deref cost | Guarantee |
 |---|---|---|
-| Default [CBGR](/docs/language/cbgr) | ~15 ns | Generational-ref safety; handles heterogeneous lifetimes |
+| Default [CBGR](/docs/language/cbgr) | ~0.93 ns measured (≤ 15 ns design target) | Generational-ref safety; handles heterogeneous lifetimes |
 | `@lifetime('r)` + regions (this calculus) | 0 ns | Compile-time non-escape; homogeneous lifetimes |
 | Raw `&unsafe T` | 0 ns | Caller-sworn safety; escape hatch |
 

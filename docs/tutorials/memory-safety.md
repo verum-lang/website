@@ -23,11 +23,11 @@ basic familiarity with `&T`.
 
 ## The reference tiers at a glance
 
-| Tier | Syntax          | Runtime cost | Invariant provided by     |
-|------|-----------------|--------------|---------------------------|
-| 0    | `&T`            | ~15 ns       | CBGR generation counter   |
-| 1    | `&checked T`    | 0 ns         | Compiler escape analysis  |
-| 2    | `&unsafe T`     | 0 ns         | You, with `// SAFETY: …`  |
+| Tier | Syntax          | Runtime cost                              | Invariant provided by     |
+|------|-----------------|-------------------------------------------|---------------------------|
+| 0    | `&T`            | ~0.93 ns measured (≤ 15 ns design target) | CBGR generation counter   |
+| 1    | `&checked T`    | 0 ns                                      | Compiler escape analysis  |
+| 2    | `&unsafe T`     | 0 ns                                      | You, with `// SAFETY: …`  |
 
 See [language/references](/docs/language/references) for the
 normative reference.
