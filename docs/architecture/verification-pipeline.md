@@ -248,11 +248,79 @@ Empirical on a 50 K-LOC mixed project, Apple M3 Max:
 Used to tune the capability router and to detect regressions across
 solver upgrades.
 
+## Trusted kernel
+
+Everything described above — VCGen, encoding, the capability router,
+the SMT executor, proof extraction, caching, bounds elimination —
+runs **outside** Verum's trusted computing base. The sole trusted
+checker is a distinct crate, `verum_kernel`, target size under
+5 000 lines of Rust.
+
+### Surface
+
+```rust
+pub fn infer(ctx: &Context, term: &CoreTerm, axioms: &AxiomRegistry)
+    -> Result<CoreTerm, KernelError>;
+
+pub fn verify_full(ctx: &Context, term: &CoreTerm,
+                   expected: &CoreTerm, axioms: &AxiomRegistry)
+    -> Result<(), KernelError>;
+
+pub fn replay_smt_cert(ctx: &Context, cert: &SmtCertificate)
+    -> Result<CoreTerm, KernelError>;
+```
+
+`CoreTerm` is the explicit typed calculus the kernel checks — Π / Σ /
+Path / HComp / Transp / Glue / Refine / Inductive / Elim / Axiom /
+SmtProof plus the non-dependent constructors. Every other crate
+emits `CoreTerm` values that the kernel re-checks.
+
+### Trusted computing base
+
+After the kernel lands, Verum's TCB is exactly:
+
+1. The Rust compiler and its linked dependencies.
+2. `verum_kernel::{check, infer, verify_full}` and their subroutines
+   (`substitute`, `structural_eq`, universe rules).
+3. Axioms registered via `AxiomRegistry::register`. Each registration
+   stores a `FrameworkId` attribution (framework name + citation),
+   so `verum audit --framework-axioms` can enumerate the entire
+   trusted boundary of any proof corpus.
+
+### Consequences
+
+**SMT out of TCB.** Every SMT backend (Z3, CVC5, E, Vampire,
+Alt-Ergo, Zipperposition, the forthcoming native solver) produces an
+`SmtCertificate` — a backend-neutral proof trace normalised by
+`verum_smt::proof_extraction`. The kernel's `replay_smt_cert`
+re-derives a `CoreTerm` witness from the certificate. A bug that
+lets a solver emit a spurious "proof" fails the replay here and
+cannot leak into an accepted theorem.
+
+**Tactics out of TCB.** Every tactic — all 22 built-ins plus user-
+defined tactics — produces a `CoreTerm`, which the kernel re-checks
+via `infer`. A buggy tactic can refuse to build, or build an ill-
+typed term that `infer` rejects, but it can never lie to the kernel.
+
+**Elaborator out of TCB.** The bidirectional elaborator in
+`verum_types` converts surface `.vr` syntax into `CoreTerm`s; a bug
+in elaboration manifests as "legal program refused" or "kernel
+rejected the elaborated term", not "false theorem accepted".
+
+### Landing status
+
+All `CoreTerm` constructors have real typing rules today except
+`SmtProof`, whose checker is the dedicated `replay_smt_cert` path.
+That routine lands per-backend in follow-up commits (Z3 proof format
+first), completing the "SMT out of TCB" story. Test coverage is
+maintained at 30 / 30 pass in `cargo test -p verum_kernel`.
+
 ## See also
 
 - **[SMT integration](/docs/architecture/smt-integration)** — the
   surrounding SMT subsystem (the SMT backend bindings, proof search tactics).
-- **[Verification → gradual verification](/docs/verification/gradual-verification)** — user-facing model.
+- **[Verification → gradual verification](/docs/verification/gradual-verification)** — user-facing model, `@framework(...)`
+  attribute, trusted-boundary audit.
 - **[Verification → SMT routing](/docs/verification/smt-routing)** —
   solver selection policy.
 - **[proof stdlib → PCC](/docs/stdlib/proof#proof-carrying-code--pccvr)** —
