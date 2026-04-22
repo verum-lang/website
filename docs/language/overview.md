@@ -188,9 +188,12 @@ productions. For quick jumps:
 | **Capability** | A type-level permission: `T with [Read, Write]` narrows what can be done with `T`.                          |
 | **Cog**        | A package — a distributable unit of Verum code with a `Verum.toml` manifest.                                |
 | **Tier**       | A level in the three-tier reference model: `&T` (tier 0), `&checked T` (tier 1), `&unsafe T` (tier 2).       |
-| **CBGR**       | Capability-Based Generational References — the default memory-safety mechanism. ~15 ns per dereference.     |
+| **CBGR**       | Capability-Based Generational References — the default memory-safety mechanism. ~0.93 ns per check (measured; target ≤ 15 ns). |
 | **VBC**        | Verum ByteCode — the language's unified IR, interpreted or compiled to native via LLVM.                     |
 | **Stage**      | Metaprogramming tier: 0 = runtime, 1 = first meta, N = meta-meta-… Each `quote` targets stage N − 1.         |
+| **Framework axiom** | An external result postulated via `@framework(identifier, "citation")`. Every use surfaces in `verum audit --framework-axioms` — no hidden axioms. |
+| **Kernel**     | `verum_kernel` — the LCF-style trusted checker. Every tactic, SMT backend, and elaboration step produces a proof term the kernel re-checks. **The sole member of Verum's trusted computing base** besides the Rust toolchain and registered axioms. |
+| **TCB**        | Trusted Computing Base — the set of components whose bugs can accept false theorems. For Verum: Rust toolchain + `verum_kernel` + registered framework axioms. Enumerable by `verum audit --framework-axioms`. |
 
 ## Reading conventions
 
@@ -223,10 +226,14 @@ The pages cross-reference; there is no strict linear order.
 ### Layer 0–1 only — an expression
 
 ```verum
-fn main() using [IO] {
+fn main() {
     print("hello, world");
 }
 ```
+
+`print` is a built-in that does not require a context; user-defined
+effects (Database, Logger, Clock, …) would appear in `using [...]`
+clauses — see layer 4 below.
 
 ### Add layer 2 — refined types
 
