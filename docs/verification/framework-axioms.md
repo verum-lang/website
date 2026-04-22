@@ -59,21 +59,41 @@ Two arguments, always in this order:
 
 1. A **framework identifier** — short, machine-readable, `snake_case`.
    Convention: match the file under `core/math/frameworks/<name>.vr`
-   where the framework's full axiom package lives. Current canonical
-   names:
+   where the framework's full axiom package lives. The stdlib ships
+   six canonical packages today; the right-hand column says how many
+   axioms ship in each:
 
-   | Identifier              | Source                                             |
-   |-------------------------|----------------------------------------------------|
-   | `lurie_htt`             | Lurie, *Higher Topos Theory*                       |
-   | `schreiber_dcct`        | Schreiber, *Differential cohomology in a cohesive ∞-topos* |
-   | `connes_reconstruction` | Connes–Chamseddine, 2008 reconstruction theorem    |
-   | `petz_classification`   | Petz, *Monotone metrics on matrix spaces* (1996)   |
-   | `arnold_catastrophe`    | Arnold–Mather, catastrophe normal forms (codim ≤ 4)|
-   | `baez_dolan`            | Baez–Dolan / Gordon–Power–Street tricategory coherence |
+   | Identifier              | Source                                                    | Stdlib file                                      | Axioms |
+   |-------------------------|-----------------------------------------------------------|--------------------------------------------------|-------:|
+   | `lurie_htt`             | Lurie, *Higher Topos Theory* (2009)                       | `core/math/frameworks/lurie_htt.vr`              | 7      |
+   | `schreiber_dcct`        | Schreiber, *Differential Cohomology in a Cohesive ∞-Topos* (arXiv:1310.7930) | `core/math/frameworks/schreiber_dcct.vr`        | 5      |
+   | `connes_reconstruction` | Connes (2008) + Connes 2013 Theorem 1.1                   | `core/math/frameworks/connes_reconstruction.vr`  | 8      |
+   | `petz_classification`   | Petz, *Monotone metrics on matrix spaces* (1996)          | `core/math/frameworks/petz_classification.vr`    | 4      |
+   | `arnold_catastrophe`    | Arnold (1972) + Arnold–Mather (1974) codim ≤ 4            | `core/math/frameworks/arnold_catastrophe.vr`     | 8      |
+   | `baez_dolan`            | GPS (1995), Baez–Dolan (1995), Lurie (2009)               | `core/math/frameworks/baez_dolan.vr`             | 4      |
+
+   **36 axioms across 6 frameworks** ship in the stdlib today; adding
+   a new framework is a matter of dropping a new file into
+   `core/math/frameworks/` and citing it from proofs. The audit CLI
+   discovers them automatically.
+
+   Each stdlib file follows a common shape:
+
+   - a carrier protocol (e.g. `Site`, `InfinityTopos`, `SpectralTriple`,
+     `OperatorMonotoneFunction`, `FunctionGerm`, `Tricategory`) that
+     witnesses the minimal algebraic data the axioms talk about;
+   - one `@framework(name, "citation")` axiom per named theorem in the
+     source work;
+   - `requires` / `ensures` clauses carrying the precondition and the
+     conclusion of each theorem so downstream `apply`-based proofs can
+     actually consume them.
 
 2. A **citation** — a free-form string literal. Be specific enough
    that an auditor can find the exact result: section number, theorem
-   number, axiom name, page reference.
+   number, axiom name, page reference. Every stdlib-shipped axiom
+   follows the pattern `"<short-ref> (<short-description>)"`, e.g.
+   `"HTT 6.2.2.7"`, `"DCCT §3.9 (cohesive hexagon)"`, `"Connes 2008
+   axiom (vii) — Poincaré duality"`.
 
 The attribute is grammar-legal via the generic attribute production
 `identifier , [ '(' , attribute_args , ')' ]` (grammar/verum.ebnf
