@@ -70,7 +70,7 @@ doesn't magically appear mid-chain.
 Root sources of capabilities:
 
 - **`fn main`** — the top-level main function can be granted all
-  capabilities via an explicit list in `Verum.toml`:
+  capabilities via an explicit list in `verum.toml`:
   ```toml
   [capabilities]
   main_caps = ["declassify:Secret", "admin", "unsafe_ffi"]
@@ -190,7 +190,7 @@ Output:
 ```
 Capability           Used by              Grant roots
 ───────────────────────────────────────────────────────────
-admin                 3 fns (core/...)    fn main (Verum.toml)
+admin                 3 fns (core/...)    fn main (verum.toml)
 declassify:Secret     2 fns (core/...)    fn run_audit (@cap in src)
 unsafe_ffi            1 fn  (core/...)    fn call_openssl (@cap in src)
 ```
@@ -208,7 +208,7 @@ fn my_module::charge_card
 ├── @cap(name = "billing.write")
 ├── Called from:
 │   └── handlers::pay_endpoint          @cap("billing.write")
-│       └── fn main                     @cap("billing.write") via Verum.toml
+│       └── fn main                     @cap("billing.write") via verum.toml
 └── Requires: [Database with [Write]]
 ```
 
@@ -231,7 +231,7 @@ the reviewer having to spot it by hand.
 The root entry point can declare which capabilities it holds:
 
 ```toml
-# Verum.toml
+# verum.toml
 [capabilities]
 main_caps = ["admin", "declassify:Secret"]
 ```

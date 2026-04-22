@@ -477,7 +477,7 @@ team member leaves.
 
 Secrets belong in a secret store. **Non-secret** configuration
 (timeouts, feature flags, endpoint URLs) belongs in a config file,
-`Verum.toml`, or a config service. Mixing the two makes auditing
+`verum.toml`, or a config service. Mixing the two makes auditing
 harder.
 
 ### Dev / test backends

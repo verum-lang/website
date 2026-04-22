@@ -26,7 +26,7 @@ $ verum new shortl
 $ cd shortl
 ```
 
-`Verum.toml`:
+`verum.toml`:
 
 ```toml
 [cog]
