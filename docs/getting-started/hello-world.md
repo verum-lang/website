@@ -18,19 +18,48 @@ you need `verum --version` to work.
 
 ## Create a project
 
+`verum new` asks which language profile to use — Verum has three
+(`application`, `systems`, `research`) that pick different default
+verification and safety settings. Pass `--profile` to answer up
+front:
+
 ```bash
-$ verum new hello
-  created hello/
-    ├── Verum.toml
-    └── src/
-        └── main.vr
+$ verum new hello --profile application
+         --> Creating binary project: hello (Application)
+         --> Initializing git repository
+
+    Finished Created hello project
+
+Project configuration:
+  Language profile: Application
+  Profile details:  No unsafe, refinements + runtime checks
+  Template:         binary
+
 $ cd hello
+$ ls
+benches  examples  README.md  src  tests  verum.toml
 ```
 
-`verum new <name>` generates a minimum scaffold. The manifest
-(`Verum.toml`) is where the cog (package) name, version, and
-dependencies live; see
-[Project Structure](/docs/getting-started/project-structure).
+The scaffold gives you:
+
+- **`verum.toml`** — the package manifest (also accepted as
+  `Verum.toml`). Cog name, version, dependencies, verify defaults,
+  build profiles, runtime settings.
+- **`src/main.vr`** — the entry point (for binaries) or
+  `src/lib.vr` (for libraries).
+- **`tests/`**, **`benches/`**, **`examples/`** — standard subtrees
+  the build system picks up automatically.
+
+Pick the profile that fits the project:
+
+| Profile        | Defaults                                              |
+|----------------|-------------------------------------------------------|
+| `application`  | no `@unsafe`, refinements + runtime checks, safe-by-default (recommended) |
+| `systems`      | `@unsafe` allowed, manual memory control, FFI enabled |
+| `research`     | dependent types + formal proofs + SMT verification    |
+
+See [Project Structure](/docs/getting-started/project-structure) for
+the full manifest schema.
 
 ## The default program
 
