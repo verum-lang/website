@@ -214,8 +214,8 @@ type RBTree is Tree { is_rb(self) };
 
 @verify(formal)
 fn insert(t: RBTree, k: Int) -> RBTree
-    where ensures is_rb(result),
-          ensures contains(result, k)
+    ensures is_rb(result)
+    ensures contains(result, k)
 { ... }
 
 // --- proofs.vr --- optional, if `auto` can't close
@@ -293,9 +293,38 @@ types and ~100 `@logic` functions, expect:
 If verification dominates your build, scope `formal` / `thorough` to
 the files that need it; leave the rest at `static`.
 
+## Reflection and the trusted kernel
+
+`@logic` functions extend what the SMT solver can prove, not what
+the kernel trusts. When `@verify(formal)` / `(proof)` discharges
+a refinement obligation using a `@logic` axiom, the solver emits
+an `SmtCertificate`; the kernel's `replay_smt_cert` then re-derives
+a `CoreTerm::Refine` witness that records the predicate. A bug in
+the `@logic` function (e.g., an invalid recursion that slipped past
+the termination check) can cause the kernel to reject the replayed
+term, but it cannot accept a false theorem.
+
+`@verify(certified)` is the stronger discharge — it runs cross-
+validation through an orthogonal technique (second SMT backend,
+tactic-based proof, or proof-carrying-code witness). A `@logic`
+function whose semantics diverge between Z3 and CVC5 is caught at
+this gate rather than silently accepted. See
+**[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**.
+
 ## See also
 
 - **[SMT routing](/docs/verification/smt-routing)** — how the router
   picks the SMT backend for your `@logic` function.
 - **[Contracts](/docs/verification/contracts)** — `requires`,
-  `ensures`, `invariant`.
+  `ensures`, `invariant` — including the bare-clause syntax that
+  matches the stdlib convention.
+- **[Refinement types](/docs/language/refinement-types)** — the
+  predicate language itself; `@logic` extends its vocabulary.
+- **[Framework axioms](/docs/verification/framework-axioms)** —
+  when an invariant cannot be a `@logic` function (e.g. a cited
+  theorem from HTT or Petz), postulate it with
+  `@framework(identifier, "citation")` so the trusted boundary stays
+  enumerable.
+- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+  — how refinement obligations are re-checked regardless of which
+  solver produced the witness.
