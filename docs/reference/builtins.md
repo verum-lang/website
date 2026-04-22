@@ -29,7 +29,7 @@ builtin_async         = 'join' | 'try_join' | 'join_all' | 'select_any' | 'ready
 ### `print`
 
 ```verum
-fn print(args: ...Display) using [IO];
+fn print(args: ...Display);
 ```
 
 Writes its arguments to standard output, separated by spaces, followed
@@ -41,13 +41,17 @@ print("x =", x, "y =", y);          // x = 3 y = 4
 print(f"value: {x}");               // value: 3   (format string)
 ```
 
-The `IO` context is **required**. A function calling `print` must
-declare `using [IO]` (or inherit it).
+`print` is a **built-in** — functions calling it do **not** need a
+`using [...]` clause. Standard output is one of a small set of
+built-in effects (`print`, `eprint`, `println`, `assert`, `panic`,
+`unreachable`, `todo`, `unimplemented`) that bypass the user-ctx
+mechanism. User-declared contexts (Logger, Database, Clock, ...)
+still require their explicit `using [...]` declaration.
 
 ### `eprint`
 
 ```verum
-fn eprint(args: ...Display) using [IO];
+fn eprint(args: ...Display);
 ```
 
 Identical to `print`, writing to standard error.

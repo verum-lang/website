@@ -168,7 +168,7 @@ variants, and `TypeName(inner)` for newtypes.
 @derive(Debug)
 type Point is { x: Float, y: Float };
 
-fn demo() using [IO] {
+fn demo() {
     let p = Point { x: 1.5, y: 2.5 };
     print(&f"{p:?}");   // Point { x: 1.5, y: 2.5 }
 }

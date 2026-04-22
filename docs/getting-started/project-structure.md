@@ -262,7 +262,7 @@ visibility story.
 A minimal `main.vr`:
 
 ```verum
-fn main() using [IO] {
+fn main() {
     print("Hello, World!");
 }
 ```

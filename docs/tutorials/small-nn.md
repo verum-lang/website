@@ -54,7 +54,7 @@ pub type Dataset is {
 };
 
 /// Load IDX-format MNIST data (classic Yann LeCun format).
-fn load_images(path: &Path) -> IoResult<Tensor<Float32>> using [IO] {
+fn load_images(path: &Path) -> IoResult<Tensor<Float32>> {
     let bytes = fs::read(path)?;
     // Magic + header
     let magic = u32_from_be(&bytes[0..4]);
@@ -72,7 +72,7 @@ fn load_images(path: &Path) -> IoResult<Tensor<Float32>> using [IO] {
     Result.Ok(Tensor::from_slice::<Float32, shape![n, 784]>(&data))
 }
 
-fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> using [IO] {
+fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> {
     let bytes = fs::read(path)?;
     assert_eq(u32_from_be(&bytes[0..4]), 0x00000801);
     let n = u32_from_be(&bytes[4..8]) as Int;
@@ -183,7 +183,7 @@ const EPOCHS: Int = 10;
 const LR: Float = 0.001;
 const DATA_DIR: &str = "./data";
 
-fn main() using [IO] {
+fn main() {
     print(&"loading data…");
     let train_images = load_images(&Path.from(&f"{DATA_DIR}/train-images-idx3-ubyte")).unwrap();
     let train_labels = load_labels(&Path.from(&f"{DATA_DIR}/train-labels-idx1-ubyte")).unwrap();

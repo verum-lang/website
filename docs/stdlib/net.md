@@ -203,7 +203,7 @@ let mut incoming = listener.incoming_async();
 ### Example — echo server
 
 ```verum
-async fn echo_server() using [IO] {
+async fn echo_server() {
     let listener = TcpListener.bind("0.0.0.0:7").await?;
     loop {
         let (mut stream, peer) = listener.accept_async().await?;
@@ -942,7 +942,7 @@ type TlsError is
 ## End-to-end HTTPS example
 
 ```verum
-async fn fetch_json(url: &Text) -> Result<JsonValue, Error> using [IO] {
+async fn fetch_json(url: &Text) -> Result<JsonValue, Error> {
     let parsed = Url.parse(url)?;
     let host = parsed.host().ok_or(Error.new("no host"))?;
     let port = parsed.port().unwrap_or(443);

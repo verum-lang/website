@@ -106,7 +106,7 @@ are themselves `Serialize` work automatically.
 mount .self.serialize.*;
 mount .self.impls.*;
 
-fn main() using [IO] {
+fn main() {
     let mut out = SerializeBuf.new();
     42.write(&mut out);
     "hello".write(&mut out);
@@ -151,7 +151,7 @@ type User is {
     admin: Bool,
 };
 
-fn main() using [IO] {
+fn main() {
     let u = User { id: 42, name: "Alice", admin: true };
     let mut out = SerializeBuf.new();
     u.write(&mut out);

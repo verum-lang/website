@@ -509,13 +509,13 @@ b.into_text() -> Text
 All require `[IO]` in the current context.
 
 ```verum
-print(s: &Text)                 using [IO]
-println(s: &Text)               using [IO]
-eprint(s: &Text)                using [IO]
-eprintln(s: &Text)              using [IO]
+print(s: &Text)                
+println(s: &Text)              
+eprint(s: &Text)               
+eprintln(s: &Text)             
 format_debug<T: Debug>(x: &T)   -> Text          // pure
 format_display<T: Display>(x: &T) -> Text        // pure
-dbg<T: Debug>(x: T) -> T        using [IO]       // prints to stderr, passes through
+dbg<T: Debug>(x: T) -> T              // prints to stderr, passes through
 ```
 
 ---

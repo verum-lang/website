@@ -258,7 +258,7 @@ Verum's REPL ships with an embeddable API in
 ```verum
 mount core.eval.repl;
 
-fn my_tool() using [IO] {
+fn my_tool() {
     let mut repl = Repl.new()
         .with_project_root(".")
         .with_bind("Logger", ConsoleLogger.new(LogLevel.Info));

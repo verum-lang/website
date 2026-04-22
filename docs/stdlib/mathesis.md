@@ -214,7 +214,7 @@ type MathesisServer is { registry: MathesisRegistry, config: ServerConfig };
 
 new_server(config: ServerConfig) -> MathesisServer
 server.serve_request(&req: &JsonRpcRequest) -> JsonRpcResponse
-server.serve(&"tcp://0.0.0.0:4711").await -> IoResult<()>    using [IO]
+server.serve(&"tcp://0.0.0.0:4711").await -> IoResult<()>   
 ```
 
 ### Method catalogue
@@ -234,7 +234,7 @@ server.serve(&"tcp://0.0.0.0:4711").await -> IoResult<()>    using [IO]
 ## Example
 
 ```verum
-fn main() using [IO] {
+fn main() {
     let mut reg = new_registry();
     let zfc = reg.load(&Path.from("theories/zfc.math"))?;
     let hott = reg.load(&Path.from("theories/hott.math"))?;

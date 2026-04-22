@@ -37,7 +37,7 @@ type ClearMode is Entire | AfterCursor | BeforeCursor | Line | LineAfter | LineB
 
 type TermCapabilities is { ... };
 
-RawTerminal.new() -> IoResult<RawTerminal>       using [IO]
+RawTerminal.new() -> IoResult<RawTerminal>      
 t.enable_raw_mode() -> IoResult<()>
 t.disable_raw_mode() -> IoResult<()>
 t.enable_mouse_capture()                          t.disable_mouse_capture()
@@ -122,7 +122,7 @@ Rgb::to_hsl() -> Hsl              Hsl::to_rgb() -> Rgb
 adapt_color(desired: Color, profile: ColorProfile) -> Color
 
 type ColorProfile is Mono | Ansi16 | Ansi256 | TrueColor;
-detect_color_profile() -> ColorProfile             using [IO]
+detect_color_profile() -> ColorProfile            
 
 type Modifier is bitflags {
     Bold, Dim, Italic, Underline, SlowBlink, RapidBlink,
@@ -170,7 +170,7 @@ type Viewport is { ... };
 vp.scroll(dx: Int, dy: Int)         vp.set_scroll(x, y)
 
 type Terminal is { ... };
-Terminal.new(backend: Backend) -> IoResult<Terminal>    using [IO]
+Terminal.new(backend: Backend) -> IoResult<Terminal>   
 t.draw(|f: &mut Frame| { widget.render(f, &area) })      // diff-based render
 t.clear()                            t.size() -> IoResult<TerminalSize>
 t.flush() -> IoResult<()>
@@ -354,7 +354,7 @@ Subscription.interval(duration, |_| tick_msg)
 
 type AppMessage is Exit | Resize(ResizeEvent) | ...;
 
-fn run<M: Model>(initial: M) -> IoResult<()>     using [IO]
+fn run<M: Model>(initial: M) -> IoResult<()>    
 ```
 
 ### Example
@@ -396,7 +396,7 @@ implement Model for Counter {
     }
 }
 
-async fn main() using [IO] {
+async fn main() {
     run(Counter { count: 0, running: true }).await.expect("tui");
 }
 ```
@@ -406,11 +406,11 @@ async fn main() using [IO] {
 Drop-in for simple scripts:
 
 ```verum
-confirm(&"Proceed?") -> IoResult<Bool>                                using [IO]
-select::<T: Display>(&"Pick", &items) -> IoResult<T>                   using [IO]
-multi_select::<T: Display>(&"Pick", &items) -> IoResult<List<T>>       using [IO]
-input(&"Your name") -> IoResult<Text>                                   using [IO]
-password(&"Password") -> IoResult<Text>                                 using [IO]
+confirm(&"Proceed?") -> IoResult<Bool>                               
+select::<T: Display>(&"Pick", &items) -> IoResult<T>                  
+multi_select::<T: Display>(&"Pick", &items) -> IoResult<List<T>>      
+input(&"Your name") -> IoResult<Text>                                  
+password(&"Password") -> IoResult<Text>                                
 ```
 
 ### Router (multi-screen apps)

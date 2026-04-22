@@ -345,7 +345,7 @@ fn eval(e: &Expr) -> Float {
 ```verum
 use .self.parser.*;
 
-fn main() using [IO] {
+fn main() {
     let stdin = stdin();
     loop {
         print(&"> ");
