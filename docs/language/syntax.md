@@ -501,7 +501,8 @@ fn process<T, U>(xs: &List<T>) -> List<U>
 
 @verify(formal)
 fn transfer(from: &mut Account, to: &mut Account, amount: Money)
-    requires amount > 0, from.balance >= amount
+    requires amount > 0
+    requires from.balance >= amount
     ensures  to.balance == old(to.balance) + amount
     ensures  from.balance == old(from.balance) - amount
 { ... }
@@ -513,12 +514,13 @@ sibling contract clauses that use their own keywords:
 - `where T: Bound` — generic constraints.
 - `where meta ...` — compile-time invariants over generic parameters.
 - `requires ...` / `ensures ...` — contract specifications. These
-  are **bare** clauses on their own signature lines: multiple
-  preconditions comma-join on one `requires`, each postcondition
-  needs its own `ensures`. `where requires` / `where ensures`
-  forms that combine the keyword with `where` do **not** parse —
-  see [verification → contracts](/docs/verification/contracts) for
-  the full grammar and the two-gotchas summary.
+  are **bare** clauses on their own signature lines; each
+  precondition takes its own `requires`, each postcondition takes
+  its own `ensures` (no comma-joining on a single line). `where
+  requires` / `where ensures` forms that combine the keyword with
+  `where` do **not** parse — see
+  [verification → contracts](/docs/verification/contracts) for the
+  full grammar and the two-gotchas summary.
 
 ## Annotations and refinements
 
