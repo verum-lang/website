@@ -144,14 +144,24 @@ fn process<T, U>(xs: List<T>, f: fn(T) -> U) -> List<U>
 }
 ```
 
-Four `where` forms stack on one function:
+Four clause forms stack on one function — two under `where`
+(bounds / meta) and two as bare keywords on their own signature
+lines (contract clauses):
 
-- `where T: Bound` — generic constraints.
-- `where requires <expr>` — runtime precondition.
-- `where ensures <expr>` — runtime postcondition.
+- `where T: Bound` — generic constraints (after the `where` keyword).
 - `where meta <expr>` — compile-time predicates on generics.
+- `requires <expr>` — runtime precondition. Bare, on its own
+  signature line; comma-join multiple preconditions.
+- `ensures <expr>` — runtime postcondition. Bare; one keyword per
+  clause (no comma-joining).
 
-See [language/functions](/docs/language/functions#contracts).
+`where requires` / `where ensures` forms that combine a `where`
+prefix with the contract keyword do **not** parse today — use the
+bare forms.
+
+See [language/functions](/docs/language/functions#contracts) and
+[verification → contracts](/docs/verification/contracts) for the
+full grammar.
 
 ## Const generics
 
