@@ -232,6 +232,24 @@ fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
 The [Verified data structure tutorial](/docs/tutorials/verified-data-structure)
 walks this full example with loop invariants and merge.
 
+## Relation to the trusted kernel
+
+Refinement types reach the kernel as the `Refine { base, binder,
+predicate }` constructor in `verum_kernel::CoreTerm`. The kernel's
+rule is:
+
+> `base` inhabits some `Universe(u)`; `predicate` is well-typed under
+> the extended context ctx ∪ `binder : base`; the refinement lives in
+> `Universe(u)` too.
+
+When the predicate is not syntactically trivial, the SMT discharge
+happens outside the TCB: `verum_smt` produces a `SmtCertificate`
+that the kernel's `replay_smt_cert` re-derives into a checkable
+`CoreTerm` witness. A solver bug cannot accept a false refinement.
+
+See **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+for the `Refine` rule and the surrounding trust story.
+
 ## Cross-references
 
 - **[Cookbook → refinement patterns](/docs/cookbook/refinements)** —
@@ -245,6 +263,13 @@ walks this full example with loop invariants and merge.
 - **[Verified data structure tutorial](/docs/tutorials/verified-data-structure)**
   — end-to-end use with loop invariants.
 - **[Verification → gradual verification](/docs/verification/gradual-verification)**
-  — the five levels.
+  — the nine operational strategies (`runtime`, `static`, `formal`,
+  `proof`, `fast`, `thorough`, `reliable`, `certified`, `synthesize`)
+  and the two-layer dispatch architecture.
 - **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
   — soundness gate for `@logic`.
+- **[Verification → framework axioms](/docs/verification/framework-axioms)**
+  — postulating refinement-relevant results from external
+  mathematics (Petz quantum-metric monotonicity, Bures bounds, ...).
+- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+  — the `Refine` rule and how SMT discharge stays out of the TCB.
