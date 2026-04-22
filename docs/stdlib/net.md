@@ -970,8 +970,90 @@ async fn fetch_json(url: &Text) -> Result<JsonValue, Error> using [IO] {
 
 ---
 
+## HTTP helper modules
+
+### `content_negotiation` — Accept / Accept-Encoding / Accept-Language (RFC 9110 §12)
+
+```verum
+mount core.net.content_negotiation.{
+    parse_accept, parse_accept_encoding, parse_accept_language,
+    select_best_media, select_best_coding,
+};
+
+let prefs = parse_accept(&header);    // "text/html;q=0.9, application/json"
+let offers: List<Text> = [
+    Text.from("application/json"),
+    Text.from("text/html"),
+];
+match select_best_media(&prefs, &offers) {
+    Some(pick) => respond_with(&pick),
+    None       => respond_406_not_acceptable(),
+}
+```
+
+Selection ranks first by q-factor (desc), then by specificity
+(exact > `type/*` > `*/*`), then by caller's offer order.
+`q=0` means explicitly rejected; `"identity"` is implicitly
+acceptable for Accept-Encoding unless rejected (RFC 9110
+§12.5.3).
+
+### `http_range` — Range / Content-Range (RFC 9110 §14)
+
+```verum
+mount core.net.http_range.{
+    RangeSet, ResolvedRange,
+    parse_range_header, resolve_and_merge,
+    encode_content_range, encode_unsatisfiable,
+};
+
+// "Range: bytes=0-499, 600-899, 1000-"
+let rs = parse_range_header(&header)?;
+let merged: List<ResolvedRange> = resolve_and_merge(&rs, total_length)?;
+
+// Response header for one sub-range.
+let hdr = encode_content_range(&merged[0], total_length);
+
+// 416 Range Not Satisfiable body.
+let body_hdr = encode_unsatisfiable(total_length);
+```
+
+Three spec forms: `a-b` closed, `a-` prefix, `-N` suffix.
+Invalid-start sub-ranges drop; if every sub-range drops,
+`UnsatisfiableRange` tells the caller to respond 416. Overlapping
+sub-ranges merge per §14.1.4. Whitespace + case-insensitive
+`bytes=` unit per the ABNF.
+
+### `link_header` — RFC 8288
+
+```verum
+mount core.net.link_header.{parse, format, find_rel, LinkEntry};
+
+let entries = parse(&header)?;
+match find_rel(&entries, "next") {
+    Some(entry) => crawl(&entry.uri),
+    None        => done,
+}
+```
+
+The hypermedia-relation / pagination / preload-hint header used
+by GitHub API pagination, ActivityPub, W3C Annotations, HAL,
+AS2. Quoted-string escapes, space-separated multi-rel matching,
+case-insensitive `find_rel`. Round-trip builder picks the
+minimal valid wire form (bare token vs quoted-string wrapping).
+
+---
+
 ## See also
 
 - **[io](/docs/stdlib/io)** — `Read`/`Write`/`AsyncRead`/`AsyncWrite` protocols.
 - **[async](/docs/stdlib/async)** — the executor driving network I/O.
 - **[sys](/docs/stdlib/sys)** — V-LLSI syscalls beneath the network stack.
+- **[encoding](/docs/stdlib/encoding)** — JSON / CBOR / MessagePack /
+  Base64 / Base32 / Base58 / hex / PEM / JCS / JSON Pointer /
+  varint / DER.
+- **[security/auth-primitives](/docs/stdlib/security/auth-primitives)**
+  — JWT / COSE / TOTP / password hashing / CSPRNG tokens /
+  HPKE / Merkle.
+- **[Weft reverse proxy](/docs/stdlib/net/weft/overview)** —
+  connection-pool, health-check, load-balancer, circuit-breaker,
+  retry, and rate-limiter middleware.

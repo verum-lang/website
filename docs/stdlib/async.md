@@ -788,6 +788,73 @@ See **[Language → context system](/docs/language/context-system)** for the rul
 
 ---
 
+## `semaphore` — cooperative task limiter
+
+```verum
+mount core.async.semaphore.{AsyncSemaphore, SemaphorePermit};
+
+let sem = AsyncSemaphore.new(10);      // cap at 10 concurrent ops
+
+for url in urls {
+    let permit = sem.acquire().await?;
+    spawn(async move {
+        let _p = permit;                // held for task lifetime (RAII)
+        fetch(&url).await;
+    });
+}
+```
+
+Async-task counting semaphore — waiters park via `Future` /
+`Waker` instead of blocking an OS thread (unlike
+`core.sync.Semaphore` which futex-blocks). FIFO waiter fairness;
+`try_acquire()` non-blocking fast path; `add_permits(n)`
+runtime resize; `close()` causes pending + future `acquire`
+calls to fail with `SemaphoreError.Closed`.
+
+Typical deployments:
+
+  - bounded outbound fan-out (N concurrent HTTP fetches)
+  - DB connection-pool checkout
+  - rate-limit async CPU-bound tasks (N parallel inferences)
+  - producer/consumer backpressure without a channel
+
+## `backoff` — retry delay policies
+
+```verum
+mount core.async.backoff.{Backoff, BackoffStrategy};
+
+let mut bo = Backoff.exponential_full_jitter(
+    Duration.from_millis(100),
+    Duration.from_secs(30),
+).with_max_attempts(5);
+
+loop {
+    match try_operation() {
+        Ok(r)    => return r,
+        Err(_)   => match bo.next_delay() {
+            Some(d) => async_sleep(d).await,
+            None    => return Err(MaxAttemptsReached),
+        },
+    }
+}
+```
+
+Four industry-standard strategies:
+
+| Strategy | Formula | Notes |
+| -------- | ------- | ----- |
+| `ExponentialNoJitter` | `base × 2^n` | deterministic |
+| `ExponentialFullJitter` | `rand(0, base × 2^n)` | AWS default |
+| `ExponentialDecorrelated` | `rand(base, prev × 3)` | AWS whitepaper; best for large fleets |
+| `FibonacciFullJitter` | `base × F(n+1)` jittered | gentler ramp |
+
+Overflow-guarded integer arithmetic over microseconds. Once
+`base × 2^attempt` would overflow UInt64, the raw value
+saturates at `cap_us` — pathological `max_attempts` values
+plateau at the configured ceiling instead of wrapping.
+
+---
+
 ## See also
 
 - **[sync](/docs/stdlib/sync)** — atomics, mutexes, condvars used by async code.

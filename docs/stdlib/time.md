@@ -230,6 +230,64 @@ fn now_line(msg: Text, program_start: Instant) -> LogLine {
 
 ---
 
+## `rfc3339` — ISO 8601 timestamps
+
+```verum
+mount core.time.rfc3339.{Rfc3339Time, parse, format_utc, format_with_offset};
+
+// Parse.
+let t = rfc3339.parse(&Text.from("2026-04-22T14:30:00.123Z"))?;
+// t.unix_seconds = 1777213800  (UTC)
+// t.nanos        = 123_000_000
+// t.offset_minutes = 0         (Z preserved)
+
+// Format.
+let s = rfc3339.format_utc(t.unix_seconds, t.nanos);
+let tz = rfc3339.format_with_offset(t.unix_seconds, 0, 180);  // +03:00
+```
+
+Full RFC 3339 grammar with Howard Hinnant civil-from-days date
+arithmetic (no external math-intrinsic dependency). Case-
+insensitive `T` / `Z` separators, space-for-`T` tolerance,
+nanosecond-precision fractions (padded/truncated to 9 digits),
+offset preserved on parse and applied to shift `unix_seconds`
+into true UTC. Out-of-range fields typed as
+`Rfc3339Error.OutOfRange`. Pre-2012 `:60` leap seconds
+accepted on parse, collapsed to `:59` in the unix-seconds output.
+
+## `cron` — crontab expression evaluator
+
+```verum
+mount core.time.cron.{CronExpr};
+
+let c = CronExpr.parse(&Text.from("*/5 8-18 * * MON-FRI"))?;
+let next_unix = c.next_after_unix(now_unix)?;
+```
+
+Parses the POSIX 5-field crontab:
+
+```
+┌─── minute (0-59)
+│ ┌── hour (0-23)
+│ │ ┌─ day-of-month (1-31)
+│ │ │ ┌ month (1-12; JAN-DEC)
+│ │ │ │ ┌ day-of-week (0-6; SUN-SAT)
+│ │ │ │ │
+* * * * *
+```
+
+Every syntactic form (`*`, literal, `a-b`, `a-b/s`, `*/s`, `a,b,c`),
+case-insensitive `JAN..DEC` / `SUN..SAT` aliases, and vixie-cron
+OR-semantics when both DOM and DOW are explicitly constrained
+(the default cron behaviour since Paul Vixie's 1987 rewrite).
+
+`next_after_unix` uses coarsest-field skip scheduling to reduce
+the worst-case scan from minute-by-minute to month-by-month
+when far from a match. 8-year search ceiling guards against
+pathological specs that admit no firing.
+
+---
+
 ## See also
 
 - **[async → timers](/docs/stdlib/async#timers)** — `sleep`, `timeout`, `Interval`.

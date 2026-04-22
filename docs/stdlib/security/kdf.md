@@ -386,9 +386,39 @@ VCS discharge: `vcs/specs/L1-core/security/hmac_hkdf.vr`
 - [`core.net.tls`](/docs/stdlib/net#tls) — consumes HKDF for the
   TLS 1.3 key schedule.
 
+## `pbkdf2` — password-based KDF (RFC 8018 §5.2)
+
+HKDF is the input-key-material stretcher for already-high-entropy
+secrets (e.g. DH-derived shared secrets). PBKDF2 is the
+iteration-based stretcher for **low-entropy inputs** — passwords.
+
+```verum
+mount core.security.kdf.pbkdf2.{
+    pbkdf2_hmac_sha256, pbkdf2_hmac_sha384, pbkdf2_hmac_sha512,
+};
+
+let derived = pbkdf2_hmac_sha256(
+    password_bytes, salt_bytes,
+    600_000_u32,    // NIST SP 800-63B 2024 baseline
+    32,             // output bytes
+)?;
+```
+
+Output length capped at 1 MiB. Zero-iteration input rejected.
+Three PRF widths matching the existing HMAC family — pick the
+width that matches your downstream key length.
+
+For the higher-level **password-hashing protocol** with PHC
+modular-format strings, iteration-count floor, and
+constant-time verify — see
+[`password_hash`](/docs/stdlib/security/auth-primitives#password_hash--phc-modular-format).
+
 ## References
 
 - [RFC 5869 — HMAC-based Key Derivation Function (HKDF)](https://datatracker.ietf.org/doc/html/rfc5869)
+- [RFC 8018 §5.2 — PBKDF2](https://datatracker.ietf.org/doc/html/rfc8018#section-5.2)
 - [NIST SP 800-56C Rev.2](https://doi.org/10.6028/NIST.SP.800-56Cr2) — Derivation of Keying Material
+- [NIST SP 800-63B §5.1.1.2](https://pages.nist.gov/800-63-3/sp800-63b.html#memsecretver)
+  — password-verifier iteration guidance (2024 revision recommends ≥ 600k for SHA-256).
 - Krawczyk, "Cryptographic Extraction and Key Derivation" (2010) — HKDF security proof.
 - [RFC 8446 §7.1](https://datatracker.ietf.org/doc/html/rfc8446#section-7.1) — TLS 1.3 `HKDF-Expand-Label`.
