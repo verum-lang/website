@@ -329,7 +329,7 @@ async fn serve_one(mut stream: TcpStream, peer: SocketAddr) -> Result<(), Error>
     Result.Ok(())
 }
 
-fn main() using [IO] {
+fn main() {
     let rt = Runtime.new(RuntimeConfig.default()
         .worker_threads(8)
         .io_engine(IoEngineKind::IoUring))

@@ -215,9 +215,13 @@ catch-all `_ => ...` is required when they're the only alternatives.
 
 ### 7. Effects are visible in the type
 
-`async fn`, `throws(E)`, `using [IO]` — all effects appear in the
-function type. A call site can tell exactly what a function does
-without opening the body. The type system refuses to hide them.
+`async fn`, `throws(E)`, `using [Logger, Database, ...]` — all
+effects appear in the function type. A call site can tell exactly
+what a function does without opening the body. The type system
+refuses to hide them. (Built-in effects like `print` / `assert` /
+`panic` don't need a `using` clause; user-defined contexts from
+`core/context/standard.vr` — Logger, Database, Clock, Metrics,
+RateLimiter — do.)
 
 ## Data flow across layers
 

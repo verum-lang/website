@@ -296,7 +296,7 @@ async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error
     Result.Ok(())
 }
 
-fn main() using [IO] {
+fn main() {
     let args = env::args();
     let out_path = args.get(1)
         .map(|s| Path.from(s.as_str()))
@@ -374,7 +374,7 @@ module tests {
     use .super.*;
 
     @test
-    async fn pipeline_preserves_count() using [IO] {
+    async fn pipeline_preserves_count() {
         // Inject fake input via an in-memory Reader.
         let input: List<Text> = (0..100).map(|i|
             f"2026-04-15T00:00:{i:02} INFO Message {i}"

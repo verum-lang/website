@@ -41,7 +41,7 @@ holds." When you pass a value, the SMT solver must prove the
 predicate; passing `0` or `-5` is a compile error.
 
 ```verum
-fn main() using [IO] {
+fn main() {
     let n: PositiveInt = 42;                 // OK — 42 > 0 is provable
     let result = divide(100, n);             // OK
     print(f"{result}");

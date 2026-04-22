@@ -131,7 +131,7 @@ that stores orders in memory. We could just as easily implement
 ## Step 4 — Provide at the entry point
 
 ```verum
-fn main() using [IO] {
+fn main() {
     let logger: Logger = ConsoleLogger { prefix: "app" };
     let db: Database   = MemoryDatabase {
         orders: Shared.new(Mutex.new(Map.new())),

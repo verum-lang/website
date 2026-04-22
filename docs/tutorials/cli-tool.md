@@ -74,7 +74,7 @@ fn parse_args(argv: &List<Text>) -> Result<Args, Text> {
 ```verum
 type Counts is { lines: Int, words: Int, bytes: Int, path: Text };
 
-fn count_one(path: &Path) -> IoResult<Counts> using [IO] {
+fn count_one(path: &Path) -> IoResult<Counts> {
     let text = fs::read_to_string(path)?;
     let bytes = text.len();
     let lines = text.lines().count();
@@ -82,7 +82,7 @@ fn count_one(path: &Path) -> IoResult<Counts> using [IO] {
     Result.Ok(Counts { lines, words, bytes, path: path.as_text().to_string() })
 }
 
-fn count_all(paths: &List<Text>) -> IoResult<List<Counts>> using [IO] {
+fn count_all(paths: &List<Text>) -> IoResult<List<Counts>> {
     let mut out = list![];
     for p in paths {
         let path = Path.from(p);
@@ -127,11 +127,11 @@ fn format_counts(counts: &List<Counts>, fmt: OutputFormat) -> Text {
 ## 5. Main
 
 ```verum
-fn print_help() using [IO] {
+fn print_help() {
     print(&"usage: wordcount [--format=text|json|csv] FILE...\n");
 }
 
-fn main() using [IO] {
+fn main() {
     let argv = env::args();
     let args = match parse_args(&argv) {
         Result.Ok(a) => a,
@@ -177,7 +177,7 @@ module tests {
     }
 
     @test
-    fn counts_simple_file() using [IO] {
+    fn counts_simple_file() {
         let tmp = Path.from(&env::temp_dir()).join(&Path.from("wc_test.txt"));
         fs::write_text(&tmp, &"hello world\nfoo bar baz").unwrap();
         let c = count_one(&tmp).unwrap();
@@ -213,7 +213,7 @@ module benches {
     use core.runtime.Bencher;
 
     @bench
-    fn bench_count_1kb(b: &mut Bencher) using [IO] {
+    fn bench_count_1kb(b: &mut Bencher) {
         let tmp = Path.from(&env::temp_dir()).join(&Path.from("bench.txt"));
         fs::write_text(&tmp, &"lorem ipsum ".repeat(80)).unwrap();
         b.iter(|| count_one(&tmp).unwrap());
@@ -237,7 +237,8 @@ $ cp target/release/wordcount ~/bin/
 ## What you learned
 
 - Parsing flags by hand (for small tools; use a cog for complex CLIs).
-- `using [IO]` at the top, flowing through `count_one` and `format_counts`.
+- Built-ins like `print` used directly in `count_one` and
+  `format_counts` — no `using` clause needed for standard output.
 - `@cfg(test)` and `@cfg(bench)` modules co-located with code.
 - `fs::read_to_string`, `text.split_whitespace().count()`,
   `text.lines().count()`.

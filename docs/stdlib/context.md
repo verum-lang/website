@@ -54,7 +54,7 @@ fn handle(req: Request) using [Logger, Database] {
     Database.query("SELECT ...")?
 }
 
-fn main() using [IO] {
+fn main() {
     provide Logger = ConsoleLogger.new() in
     provide Database = connect_db() in {
         handle(request);

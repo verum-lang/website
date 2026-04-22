@@ -193,7 +193,7 @@ const DEFAULT_BUF_CAPACITY: Int = 8192;
 ### Idiomatic line processing
 
 ```verum
-fn process_lines(path: &Path) -> IoResult<Int> using [IO] {
+fn process_lines(path: &Path) -> IoResult<Int> {
     let f = File.open(path)?;
     let mut reader = BufReader.new(f);
     let mut count = 0;
@@ -424,7 +424,7 @@ child.wait_with_output() -> IoResult<Output>
 ### Example — shell pipeline
 
 ```verum
-async fn count_todos(dir: &Path) -> IoResult<Int> using [IO] {
+async fn count_todos(dir: &Path) -> IoResult<Int> {
     let mut child = Command.new(&"grep")
         .args(&["-r", "-c", "TODO", &dir.as_text()])
         .stdout(Stdio.Piped)
