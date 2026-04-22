@@ -138,29 +138,45 @@ unaffected until they restart.
 
 ```bash
 $ verum --version
-verum 0.32.0
+verum 0.1.0
 ```
 
-For build/backend details, add `--verbose`:
+For full build, backend, and feature details, use `verum info --all`:
 
 ```bash
-$ verum --version --verbose
-verum 0.32.0
+$ verum info --all
+Verum Compiler Information
+==================================================
+Version: 0.1.0
+Repository: https://github.com/verum-lang/verum
 
-Build information:
-  Commit:       1fb9f71
-  Build date:   2026-04-17
-  Rust version: 1.82.0
-  LLVM version: 21.1.0
-  Host target:  x86_64-linux
+Features:
+  ✓ Refinement types with SMT verification
+  ✓ CBGR memory management (<15ns overhead)
+  ✓ Bidirectional type checking
+  ✓ Stream comprehensions
+  ✓ Context system (DI)
 
-Capabilities:
-  AOT backend:    LLVM
-  Interpreter:    VBC Tier 0
-  GPU backend:    MLIR (optional)
-  SMT solver:     Z3
-  Verification:   refinement + dependent types
+LLVM Backend:
+  Status: linked against LLVM 21.x
+
+Components:
+  Lexer:        verum_lexer v0.1.0
+  Parser:       verum_parser + verum_fast_parser v0.1.0
+  Type Checker: verum_types v0.1.0
+  Kernel:       verum_kernel v0.1.0   (LCF-style trusted checker)
+  SMT Solver:   Z3 + CVC5 (via verum_smt capability router)
+  CBGR Runtime: verum_cbgr v0.1.0
+
+Usage:
+  Project commands: verum build, verum run, verum test
+  Single file commands: verum run <file.vr>, verum check <file.vr>
+  Verification: verum verify, verum audit --framework-axioms
+  For help: verum --help
 ```
+
+`verum info --features` and `verum info --llvm` narrow the output to
+just one slice if you need it.
 
 ### Diagnose the verification stack
 
