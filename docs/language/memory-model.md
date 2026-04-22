@@ -12,8 +12,10 @@ The answer has three parts:
 
 1. A **three-tier reference model** that lets you choose the safety /
    performance tradeoff per reference.
-2. **CBGR** — Capability-Based Generational References — a ~15 ns
-   runtime check that prevents use-after-free.
+2. **CBGR** — Capability-Based Generational References — a fast
+   runtime check that prevents use-after-free. Measured at
+   **~0.93 ns** on the `production_targets` bench, well under the
+   ≤ 15 ns design target.
 3. **Escape analysis** that promotes CBGR references to zero-cost
    checked references whenever it can prove the check is unnecessary.
 
@@ -174,7 +176,7 @@ duplicate explicitly, call `.clone()`.
 
 | Concept | Syntax | Cost |
 |---------|--------|------|
-| Managed reference | `&T` | ~15 ns deref |
+| Managed reference | `&T` | ~0.93 ns CBGR check (measured; target ≤ 15 ns) |
 | Checked reference | `&checked T` | 0 ns |
 | Unsafe reference | `&unsafe T` | 0 ns |
 | Mutable variants | `&mut T`, `&checked mut T`, ... | same as above |

@@ -20,8 +20,10 @@ For unsized types (slices, `dyn Protocol`), the reference is a 32-byte
 `FatRef<T>` carrying an additional length or vtable pointer.
 
 **Each dereference** performs one CBGR check against the object's
-header (~15 ns on typical x86_64). If the generation has advanced, the
-check aborts with a `UseAfterFreeError`.
+header — measured at ~0.93 ns on the `production_targets` bench
+(x86_64, release build), well under the ≤ 15 ns design target. If
+the generation has advanced, the check aborts with a
+`UseAfterFreeError`.
 
 ```verum
 fn first<T>(xs: &List<T>) -> &T { &xs[0] }
@@ -29,8 +31,8 @@ fn first<T>(xs: &List<T>) -> &T { &xs[0] }
 
 **When the compiler can prove the reference cannot dangle**, escape
 analysis rewrites the function signature from `&T` to `&checked T`
-automatically — the 15 ns disappears. This is a compile-time decision;
-no runtime logic changes.
+automatically — the CBGR check disappears entirely. This is a
+compile-time decision; no runtime logic changes.
 
 ## Tier 1 — `&checked T` (zero-cost)
 
@@ -59,7 +61,8 @@ error[V5201]: cannot prove reference is safe for `&checked T`
 ```
 
 `&checked T` is typically used:
-- on hot paths where ~15 ns per deref compounds;
+- on hot paths where even the ~0.93 ns per deref compounds into
+  measurable overhead (billions of iterations per frame);
 - at function boundaries where the caller naturally provides a short-lived reference;
 - in generic numeric / iterator code where the compiler's escape
   analysis is robust.
@@ -212,7 +215,7 @@ survives all the way from the compiler to the executor:
 
 | Opcode | Hex | Tier | Runtime behaviour |
 |--------|-----|------|-------------------|
-| `Ref` | 0x70 | 0 | CBGR-validated ~15 ns deref |
+| `Ref` | 0x70 | 0 | CBGR-validated deref (~0.93 ns measured) |
 | `RefMut` | 0x71 | 0 | mutable CBGR-validated |
 | `Deref` | 0x72 | — | deref with validation |
 | `DerefMut` | 0x73 | — | mutable deref with validation |
