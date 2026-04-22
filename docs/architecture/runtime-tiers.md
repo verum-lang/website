@@ -75,9 +75,11 @@ Ahead-of-time compilation through LLVM — the default for
 
 - **Compile time**: seconds per function, dominated by LLVM.
 - **Execution**: 0.85–0.95× of equivalent C.
-- **CBGR**: tier-aware. `&T` references emit the ~15 ns check;
-  `&checked T` and `&unsafe T` compile to direct loads (0 ns).
-  Escape analysis elides 50–90 % of remaining Tier 0 checks.
+- **CBGR**: tier-aware. `&T` references emit a CBGR check
+  (measured ~0.93 ns on the `production_targets` bench against a
+  ≤ 15 ns design target); `&checked T` and `&unsafe T` compile to
+  direct loads (0 ns). Escape analysis elides 50–90 % of remaining
+  Tier 0 checks.
 - **Features**: full LLVM optimisation stack, LTO, PGO, cross-target
   support through MLIR-aware target triples.
 - **Use when**: shipping production binaries.
@@ -141,16 +143,19 @@ made by CBGR analysis, not a global setting.
 Four tiers are defined in `core/runtime/env.vr` as the enum
 `ExecutionTier`:
 
-| Variant           | Overhead per deref | What's checked                             | How it's reached                               |
-|-------------------|-------------------:|--------------------------------------------|------------------------------------------------|
-| `Tier0_Full`      | ~15 ns             | generation + epoch + bounds                | default for `&T` when analysis is uncertain    |
-| `Tier1_Epoch`     | ~8 ns              | generation + epoch                          | analysis proves bounds safe                    |
-| `Tier2_Gen`       | ~3 ns              | generation only                             | analysis proves bounds + epoch safe            |
-| `Tier3_Unchecked` | 0 ns               | nothing — caller asserts safety             | explicit `&unsafe T` or proven `&checked T`    |
+| Variant           | Overhead per deref              | What's checked                             | How it's reached                               |
+|-------------------|---------------------------------|--------------------------------------------|------------------------------------------------|
+| `Tier0_Full`      | ≤ 15 ns target (measured ~0.93 ns on `production_targets`) | generation + epoch + bounds | default for `&T` when analysis is uncertain    |
+| `Tier1_Epoch`     | ~0.93 ns                        | generation + epoch                         | analysis proves bounds safe                    |
+| `Tier2_Gen`       | < Tier1_Epoch (design target)    | generation only                            | analysis proves bounds + epoch safe            |
+| `Tier3_Unchecked` | 0 ns                            | nothing — caller asserts safety            | explicit `&unsafe T` or proven `&checked T`    |
 
 These are **not** the interpreter/AOT tiers; they are orthogonal.
-A reference compiled at `Tier1_Epoch` pays ~8 ns whether it is
-interpreted or AOT-compiled.
+A reference compiled at `Tier1_Epoch` pays its per-deref cost
+whether it is interpreted or AOT-compiled. The `Tier1_Epoch`
+measurement above comes directly from
+`benches/production_targets.rs` (gen + epoch check fused into the
+same cacheline as the pointer itself).
 
 ### Tier selection in the compiler
 
@@ -264,7 +269,7 @@ The CLI flag `--tier interpret|aot|check` overrides both.
 
 ## Cost of a CBGR check, by execution mode
 
-The ~15 ns in the CBGR table above is the AOT cost. The
+The CBGR figures in the table above are AOT costs. The
 interpreter pays more because instruction dispatch dominates:
 
 ### Interpreter
@@ -283,7 +288,8 @@ deref(&T) = 1 load (pointer) + 1 load (header) + 1 compare + 1 branch
 **Tier-aware lowering**. Each VBC reference opcode maps to a distinct
 code sequence per CBGR safety tier:
 
-- `Ref` / `RefMut` (`Tier0_Full`) → full CBGR validation, ~15 ns.
+- `Ref` / `RefMut` (`Tier0_Full`) → full CBGR validation (≤ 15 ns
+  design target; ~0.93 ns measured for the gen + epoch fast path).
 - `RefChecked` (`Tier3_Unchecked` after verification) → direct
   `llvm.load`, 0 ns.
 - `RefUnsafe` (`Tier3_Unchecked`) → direct `llvm.load`, 0 ns.
@@ -319,7 +325,7 @@ safety checks run versus are proven away at compile time.
 | Tier           | Alloc fast path | CBGR deref | Cross-thread free | Notes |
 |----------------|-----------------|-----------|-------------------|-------|
 | T0 Interpreter | ~80 ns  | ~100 ns (always) | ~70 ns | every check runs; VBC bookkeeping |
-| T1 AOT (debug) | ~20 ns  | ~15 ns (surviving checks) | ~55 ns | 60–80 % of Tier 0 checks elided |
+| T1 AOT (debug) | ~20 ns  | ~1 ns (surviving checks)  | ~55 ns | 60–80 % of Tier 0 checks elided |
 | T1 AOT (release + LTO) | < 20 ns | < 5 ns (or 0 for `&checked`) | ~50 ns | 90–98 % of Tier 0 checks elided |
 | GPU path       | device allocator | N/A | N/A | kernel scratchpad only |
 

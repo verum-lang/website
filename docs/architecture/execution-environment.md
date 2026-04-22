@@ -64,12 +64,12 @@ annotation per function indicating how much runtime safety the
 compiler has to insert. The four tiers are defined in
 `core/runtime/env.vr`:
 
-| Variant           | Overhead per deref | Guarantee                                    |
-|-------------------|-------------------:|----------------------------------------------|
-| `Tier0_Full`      | ~15 ns             | Full CBGR: generation + epoch + bounds       |
-| `Tier1_Epoch`     | ~8 ns              | Generation + epoch only                      |
-| `Tier2_Gen`       | ~3 ns              | Generation only                              |
-| `Tier3_Unchecked` | 0 ns               | No runtime checks (requires `unsafe`)        |
+| Variant           | Overhead per deref                              | Guarantee                                    |
+|-------------------|-------------------------------------------------|----------------------------------------------|
+| `Tier0_Full`      | ≤ 15 ns target (~0.93 ns measured for gen+epoch) | Full CBGR: generation + epoch + bounds       |
+| `Tier1_Epoch`     | ~0.93 ns                                        | Generation + epoch only                      |
+| `Tier2_Gen`       | < Tier1_Epoch                                   | Generation only                              |
+| `Tier3_Unchecked` | 0 ns                                            | No runtime checks (requires `unsafe`)        |
 
 The compiler picks the minimum tier it can prove correct per
 reference. See [CBGR internals](/docs/architecture/cbgr-internals)
