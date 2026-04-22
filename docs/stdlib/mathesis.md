@@ -4,7 +4,7 @@ title: mathesis
 description: ∞-Topos of formal theories — Yoneda loading, Kan translation, descent coherence.
 ---
 
-# `core::mathesis` — ∞-Topos of formal theories
+# `core.mathesis` — ∞-Topos of formal theories
 
 A research-facing module: organise, translate, and audit formal
 theories as objects in an ∞-topos. Used by proof infrastructure and

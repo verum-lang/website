@@ -6,7 +6,7 @@ description: Rect, Constraint, Flex, Grid — three complementary layout engines
 
 # Layout
 
-`core::term::layout` ships three layout engines. They are not alternatives;
+`core.term::layout` ships three layout engines. They are not alternatives;
 each is the right tool for a different shape of problem. All three share a
 common output — `List<Rect>` — so you can freely mix them inside a single
 view.

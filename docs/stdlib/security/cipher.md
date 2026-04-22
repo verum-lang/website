@@ -4,7 +4,7 @@ title: cipher — AES + ChaCha20
 description: Block cipher (AES) and stream cipher (ChaCha20) primitives. Used internally by the AEAD constructions; rarely used directly.
 ---
 
-# `core::security::cipher` — symmetric ciphers
+# `core.security::cipher` — symmetric ciphers
 
 ## Two ciphers, both used through AEAD
 

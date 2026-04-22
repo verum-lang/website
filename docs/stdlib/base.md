@@ -4,9 +4,9 @@ title: base
 description: The Verum prelude — Maybe, Result, Iterator, operator protocols, panic, env, cells.
 ---
 
-# `core::base` — Foundational types and protocols
+# `core.base` — Foundational types and protocols
 
-Everything in `core::base` is loaded by the prelude — you do not need
+Everything in `core.base` is loaded by the prelude — you do not need
 to `mount` it. It contains the types and protocols that every other
 module assumes.
 

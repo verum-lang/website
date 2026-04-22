@@ -4,7 +4,7 @@ title: kdf — HKDF key-derivation
 description: HKDF (RFC 5869) over SHA-256 / SHA-384 / SHA-512 — the standard key-derivation function for TLS 1.3, QUIC, and modern protocols.
 ---
 
-# `core::security::kdf` — HKDF key-derivation
+# `core.security::kdf` — HKDF key-derivation
 
 ## What is a KDF and why do we need one?
 

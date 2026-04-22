@@ -4,7 +4,7 @@ title: io
 description: Files, paths, stdio, processes, Read/Write protocols, buffered I/O.
 ---
 
-# `core::io` — Files, paths, streams, processes
+# `core.io` — Files, paths, streams, processes
 
 File I/O, path manipulation, standard streams, processes, and the
 `Read`/`Write`/`Seek`/`BufRead` protocol family. Both sync and async

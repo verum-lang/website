@@ -4,7 +4,7 @@ title: regions — Tofte-Talpin region calculus
 description: User-facing surface for Verum's region-calculus analysis — model and reason about region-typed values, lifetime environments, and escape checks.
 ---
 
-# `core::security::regions` — region calculus
+# `core.security::regions` — region calculus
 
 ## What is this module, really?
 

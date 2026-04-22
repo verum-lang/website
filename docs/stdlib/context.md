@@ -4,7 +4,7 @@ title: context
 description: Scopes, providers, layers, 10 standard contexts, async propagation — the runtime side of `using` / `provide`.
 ---
 
-# `core::context` — Dependency injection primitives
+# `core.context` — Dependency injection primitives
 
 The runtime side of the language-level context system. Users interact
 via `using [...]` and `provide ... = ... in { ... }`; the types here

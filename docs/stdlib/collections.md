@@ -4,7 +4,7 @@ title: collections
 description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every semantic-honest collection.
 ---
 
-# `core::collections` — Lists, Maps, Sets, Deques
+# `core.collections` — Lists, Maps, Sets, Deques
 
 Semantic-honest data structures. You talk to the protocol; the compiler
 chooses the implementation.

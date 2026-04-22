@@ -4,7 +4,7 @@ title: proof
 description: Proof-carrying code bundles and refinement reflection — every public type.
 ---
 
-# `core::proof` — Proof infrastructure
+# `core.proof` — Proof infrastructure
 
 Runtime support for `@verify(certified)` and proof-carrying bytecode.
 Two public files; one legacy.

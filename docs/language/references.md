@@ -83,7 +83,7 @@ You use `&unsafe T` when:
 - interfacing with C code;
 - the compiler genuinely cannot verify a property you know to hold
   (e.g., a pointer sourced from a memory-mapped region);
-- writing primitives inside `core::mem`.
+- writing primitives inside `core.mem`.
 
 In application code, `&unsafe T` should be rare — typically confined
 to a single function with a comment explaining the obligation.

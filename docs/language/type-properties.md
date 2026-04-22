@@ -118,8 +118,8 @@ usize.max    // 2^64 - 1 on 64-bit platforms
 `T.name` is the canonical path-qualified name:
 
 ```verum
-List<Int>.name                  // "core::collections::List<Int>"
-Map<Text, User>.name            // "core::collections::Map<core::text::Text, User>"
+List<Int>.name                  // "core.collections::List<Int>"
+Map<Text, User>.name            // "core.collections::Map<core.text::Text, User>"
 Point.name                      // "crate::geom::Point" (if defined in crate::geom)
 ```
 

@@ -116,7 +116,7 @@ will confirm the promotion was possible.
 
 ## Targeted optimisations
 
-### Explicit SIMD via `core::simd`
+### Explicit SIMD via `core.simd`
 
 ```verum
 use core.simd.{Vec8f, Mask8};

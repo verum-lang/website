@@ -132,7 +132,7 @@ implement Config {
 Like `OnceCell::get_or_init`, but the initialiser is baked into the
 cell. Good for expensive computations you might never need.
 
-## Thread-safe equivalents (`core::sync`)
+## Thread-safe equivalents (`core.sync`)
 
 ```verum
 // Single-threaded Cell<u64>   →   multi-threaded AtomicU64
@@ -157,14 +157,14 @@ single-threaded to multi-threaded by substituting types and
 ## Atomics
 
 Primitive-sized atomic operations go through the `AtomicT` types in
-`core::sync::atomic`:
+`core.sync::atomic`:
 
 ```verum
-type AtomicInt32  is core::sync::atomic::AtomicI32;
-type AtomicInt64  is core::sync::atomic::AtomicI64;
-type AtomicU64    is core::sync::atomic::AtomicU64;
-type AtomicBool   is core::sync::atomic::AtomicBool;
-type AtomicUsize  is core::sync::atomic::AtomicUsize;
+type AtomicInt32  is core.sync::atomic::AtomicI32;
+type AtomicInt64  is core.sync::atomic::AtomicI64;
+type AtomicU64    is core.sync::atomic::AtomicU64;
+type AtomicBool   is core.sync::atomic::AtomicBool;
+type AtomicUsize  is core.sync::atomic::AtomicUsize;
 ```
 
 API:

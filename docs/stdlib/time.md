@@ -4,7 +4,7 @@ title: time
 description: Duration, Instant, SystemTime, Interval — monotonic and wall-clock time.
 ---
 
-# `core::time` — Durations, instants, timers
+# `core.time` — Durations, instants, timers
 
 Monotonic time (`Instant`), wall-clock time (`SystemTime`), durations,
 and interval streams.
@@ -140,7 +140,7 @@ let unix_ms = now.duration_since(&SystemTime.UNIX_EPOCH)
 Time::sleep(duration)                            // blocking
 Time::sleep_ms(ms)                               Time::sleep_secs(secs)
 
-sleep(duration).await                            // async (from core::async)
+sleep(duration).await                            // async (from core.async)
 sleep_until(instant).await
 ```
 

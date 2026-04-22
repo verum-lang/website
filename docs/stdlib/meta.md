@@ -4,7 +4,7 @@ title: meta
 description: Compile-time programming — tokens, AST, reflection, quote, capability contexts.
 ---
 
-# `core::meta` — Compile-time programming
+# `core.meta` — Compile-time programming
 
 The stdlib side of metaprogramming. Defines the **14 capability
 contexts** a `meta fn` may request (declared via `using [...]`), the

@@ -4,7 +4,7 @@ title: sys
 description: V-LLSI kernel bootstrap — direct syscalls, I/O engine, platform abstractions.
 ---
 
-# `core::sys` — V-LLSI kernel bootstrap
+# `core.sys` — V-LLSI kernel bootstrap
 
 `sys` is the lowest-level module, the one and only FFI boundary. All
 higher-level stdlib modules (`io`, `net`, `async`, `mem`) sit on top.

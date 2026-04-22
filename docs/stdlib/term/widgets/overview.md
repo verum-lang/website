@@ -6,7 +6,7 @@ description: Every built-in widget at a glance, with a minimal example for each.
 
 # Widget catalogue
 
-`core::term::widget` ships twenty composable widgets. Each implements
+`core.term::widget` ships twenty composable widgets. Each implements
 `Widget` (stateless) or `StatefulWidget` (with an associated `State` type).
 Every widget accepts a `Style` and an optional `Block` wrapper.
 

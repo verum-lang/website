@@ -4,7 +4,7 @@ title: util — constant-time ops, zeroise, RNG
 description: Timing-safe comparisons, secret-wipe, and the platform CSPRNG. Small utilities that matter enormously.
 ---
 
-# `core::security::util` — small utilities
+# `core.security::util` — small utilities
 
 Three primitives that every cryptographic program needs, in one
 module. Each is tiny but essential — using the wrong alternative

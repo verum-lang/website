@@ -127,7 +127,7 @@ changes.
 
 Yes: `&unsafe T`, `*const T`, `*mut T`, `*volatile T`, `unsafe fn`,
 `extern "C"` blocks. Used for FFI, memory-mapped I/O, allocator
-implementations, and primitives inside `core::mem`.
+implementations, and primitives inside `core.mem`.
 
 ---
 

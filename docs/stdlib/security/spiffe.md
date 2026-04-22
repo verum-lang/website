@@ -4,7 +4,7 @@ title: spiffe — workload identity (SPIFFE / SPIRE)
 description: SPIFFE workload identity — X.509-SVID, JWT-SVID, trust bundles, and the SPIRE workload API client.
 ---
 
-# `core::security::spiffe` — workload identity
+# `core.security::spiffe` — workload identity
 
 ## What is SPIFFE and why does it matter?
 
