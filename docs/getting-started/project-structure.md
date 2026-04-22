@@ -11,82 +11,140 @@ manifest, the module system, and how all of that plays together.
 
 ## Anatomy of a cog
 
+After `verum new my-project --profile application`:
+
 ```
 my-project/
-├── Verum.toml            # package manifest
+├── verum.toml            # package manifest (also accepts Verum.toml)
+├── README.md             # scaffolded
+├── .gitignore            # scaffolded
 ├── src/
-│   ├── main.vr           # entry point (application)
-│   ├── lib.vr            # library root (optional)
-│   ├── config.vr         # module: crate::config
-│   ├── handlers/         # directory module: crate::handlers
-│   │   ├── mod.vr        #   the module's root
-│   │   ├── user.vr       #   submodule: crate::handlers::user
-│   │   └── order.vr      #   submodule: crate::handlers::order
-│   └── protocols.vr      # module: crate::protocols
+│   └── main.vr           # entry point
 ├── tests/
-│   └── integration.vr    # integration tests
-├── benches/
-│   └── bench.vr          # criterion-style benchmarks
-├── examples/
-│   └── quickstart.vr     # executable examples
-├── proofs/               # @verify(certified) exports (optional)
-│   └── kernel.verum-cert
-├── build.vr              # build script (optional, for FFI)
-├── Verum.lock            # dependency lock file
-└── target/               # build artefacts (gitignored)
-    ├── debug/
-    ├── release/
-    └── proof-cache/      # SMT results cache
+│   └── main_test.vr      # integration tests
+├── benches/              # criterion-style benchmarks
+└── examples/             # executable examples
 ```
 
-Only three things are required: `Verum.toml`, `src/`, and either
+As the project grows you organise `src/` into modules — `.vr` files
+and `mod.vr`-directories:
+
+```
+my-project/src/
+├── main.vr
+├── lib.vr                # optional library root
+├── config.vr             # module: my_project.config
+├── handlers/             # directory module: my_project.handlers
+│   ├── mod.vr            #   the module's root
+│   ├── user.vr           #   submodule: my_project.handlers.user
+│   └── order.vr          #   submodule: my_project.handlers.order
+└── protocols.vr          # module: my_project.protocols
+```
+
+Optional project-level subtrees picked up by the build system:
+
+| Directory     | Purpose                                             |
+|---------------|-----------------------------------------------------|
+| `tests/`      | Integration tests — one file per binary             |
+| `benches/`    | Criterion-style benchmarks                          |
+| `examples/`   | Executable examples runnable with `verum run --example <name>` |
+| `proofs/`     | Exported `.verum-cert` bundles (produced by `@verify(certified)`) |
+| `target/`     | Build artefacts (gitignored). `debug/`, `release/`, plus `target/smt-cache/` — content-addressed SMT result cache. |
+| `build.vr`    | Build script (optional, used for FFI and code-gen)  |
+| `verum.lock`  | Dependency lock file                                |
+
+Only three things are required: `verum.toml`, `src/`, and either
 `main.vr` or `lib.vr` inside `src/`.
 
-## `Verum.toml` — the manifest
+## `verum.toml` — the manifest
 
-The manifest describes the cog's identity and dependencies.
+The manifest describes the cog's identity and dependencies. Both
+`verum.toml` (lowercase, what `verum new` generates) and `Verum.toml`
+(uppercase) are accepted; the lowercase form is canonical.
 
 ```toml
 [cog]
 name        = "my-project"
 version     = "0.1.0"
-edition     = "2026"
-profile     = "application"          # application | systems | research
 description = "Verum URL shortener"
 license     = "Apache-2.0 OR MIT"
 authors     = ["Alice Smith <alice@example.com>"]
-repository  = "https://github.com/alice/my-project"
+keywords    = []
+categories  = []
+
+[language]
+profile     = "application"     # application | systems | research
 
 [dependencies]
-serde       = "1.4"
-http        = { version = "0.8", features = ["tls"] }
-my-utils    = { path = "../utils" }
-security    = { git = "https://github.com/verum-lang/security-ext", tag = "v0.3" }
+stdlib       = "0.1"
+serde        = "1.4"
+http         = { version = "0.8", features = ["tls"] }
+my-utils     = { path = "../utils" }
+security     = { git = "https://github.com/verum-lang/security-ext", tag = "v0.3" }
 optional-dep = { version = "2.0", optional = true }
 
-[dev-dependencies]
+[dev_dependencies]
 test-helpers = { path = "../test-helpers" }
 proptest     = "1.0"
 
 [features]
-default       = ["tls"]
-tls           = []
-metrics       = ["dep:optional-dep"]
+default      = ["tls"]
+tls          = []
+metrics      = ["dep:optional-dep"]
 
 [verify]
-default_strategy   = "static"   # runtime | static | formal | fast | thorough | certified | synthesize
-default_timeout_ms = 500
+default_strategy       = "formal"   # runtime | static | formal | proof | fast | thorough | reliable | certified | synthesize
+solver_timeout_ms      = 10000
+enable_telemetry       = true
+persist_stats          = true
+fail_on_divergence     = true
+profile_slow_functions = true
 
 [build]
-optimize     = "aggressive"     # none | balanced | aggressive
-lto          = "thin"           # off | thin | fat
-target-cpu   = "native"         # or a specific LLVM CPU name
-link-search  = ["/usr/local/lib"]
+target       = ""              # "" = host
+opt_level    = 0               # 0..3
+incremental  = false
+lto          = false
+panic        = "unwind"        # unwind | abort
 
 [profile.release]
-overflow-checks = false
+tier            = "1"
+verification    = "runtime"
+opt_level       = 3
 debug           = false
+overflow_checks = false
+lto             = true
+
+[runtime]
+cbgr_mode            = "mixed"   # all | mixed | optimized
+async_scheduler      = "work_stealing"
+async_worker_threads = 0         # 0 = CPU count
+futures              = true
+nurseries            = true
+
+[types]
+dependent              = true
+refinement             = true
+cubical                = true
+higher_kinded          = true
+universe_polymorphism  = false
+coinductive            = true
+quotient               = true
+instance_search        = true
+coherence_check_depth  = 16
 ```
+
+This mirrors a representative `verum.toml` after `verum new --profile
+application`, trimmed for readability. The full schema covers
+additional sections for `[codegen]`, `[meta]`, `[protocols]`,
+`[context]`, `[safety]`, `[test]`, `[debug]`, `[lsp]`, `[registry]`,
+and `[verify.modules]`.
+
+All nine `verify_strategy` names — `runtime`, `static`, `formal`,
+`proof`, `fast`, `thorough`, `reliable`, `certified`, `synthesize` —
+are accepted in `default_strategy`. See
+[gradual verification](/docs/verification/gradual-verification) for
+what each one does.
 
 See [reference/verum-toml](/docs/reference/verum-toml) for the full
 schema and every configurable field.
