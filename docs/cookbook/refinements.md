@@ -125,8 +125,7 @@ For complex cross-parameter constraints, use `requires`:
 
 ```verum
 fn substring(s: &Text, start: Int, len: Int) -> &Text
-    where requires 0 <= start,
-                   start + len <= s.len()
+    requires 0 <= start, start + len <= s.len()
 {
     &s[start..start + len]
 }
