@@ -20,7 +20,7 @@ follows the `is` determines what kind of type you get.
 | `Float` / `Float64` | canonical 64-bit IEEE 754 |
 | `Float32` | 32-bit IEEE 754 |
 | `Char` | Unicode scalar value (4 bytes, U+0000..U+10FFFF) |
-| `Text` | UTF-8 string (heap-backed, in `std`) |
+| `Text` | UTF-8 string (heap-backed, in `core.text`) |
 | `Byte` | alias for `UInt8` |
 | `()` | unit (0 bytes) |
 | `!` / `Never` | never (uninhabited bottom) |
@@ -186,10 +186,13 @@ the concrete type leaking into the signature.
 ## Dynamic (trait) objects
 
 ```verum
-let shapes: List<dyn Drawable> = list![Circle(1.0), Square(2.0)];
+let shapes: List<dyn Drawable> = [Circle(1.0), Square(2.0)];
 ```
 
-`dyn P` is a runtime-polymorphic pointer. See
+`dyn P` is a runtime-polymorphic pointer. `List<T>` is constructed
+from a literal array with the canonical `[a, b, c]` syntax — no
+`list!` macro, no `List.from_array`; the compiler coerces the
+array literal at the let-binding boundary. See
 **[Protocols](/docs/language/protocols)** for when to prefer `impl P`.
 
 ## Generics
@@ -223,8 +226,10 @@ Covered in **[Refinement types](/docs/language/refinement-types)**.
 // Sigma type — length-indexed vector
 type Vec is n: Int, data: [Int; n];
 
-// Path type (cubical HoTT)
-type Loop<A> is Path<A>(x, x);
+// Path type constructor (cubical HoTT): the type of paths
+// from `a` to `b` in carrier `A`.
+mount core.math.hott.Path;
+type SelfLoop<A> is fn(x: A) -> Path<A>(x, x);
 ```
 
 Covered in **[Dependent types](/docs/language/dependent-types)**.
