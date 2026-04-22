@@ -189,7 +189,7 @@ fn double_sat(x: Int) -> Int { x.saturating_add(x) }
       | UnclosedDelimiter(Char);
   ```
 
-- Reserve `core::base::Error` (the string-based catch-all) for quick
+- Reserve `core.base::Error` (the string-based catch-all) for quick
   scripts and the innermost wrapper.
 - In async code, attach a source via `@derive(Error)` so chains render
   properly.

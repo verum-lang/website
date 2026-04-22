@@ -84,7 +84,7 @@ unsafe fn memcpy_like(dst: &unsafe mut [Byte], src: &unsafe [Byte]) {
 Use `&unsafe T` when:
 
 - Writing FFI wrappers — pointers come from C code.
-- Implementing primitives in `core::mem`.
+- Implementing primitives in `core.mem`.
 - You need zero cost AND the compiler cannot prove safety AND you can
   articulate why it's safe in a comment.
 

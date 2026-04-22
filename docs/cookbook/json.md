@@ -12,7 +12,7 @@ Verum has three layers of JSON support:
    record.
 2. **`@derive(Serialize, Deserialize)`** on record types — typed
    round-tripping with refinement enforcement.
-3. **`core::base.data::Data`** — dynamic JSON-like value for when
+3. **`core.base.data::Data`** — dynamic JSON-like value for when
    the schema is unknown.
 
 This page covers all three.
@@ -157,7 +157,7 @@ Without `tag = "..."`, `Event` is serialised untagged — use the
 ## 3. Dynamic JSON — `Data`
 
 When the schema is unknown at compile time, parse into
-`core::base.data::Data`:
+`core.base.data::Data`:
 
 ```verum
 let raw: Data = json::parse_to_data(&text)?;

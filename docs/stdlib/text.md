@@ -4,7 +4,7 @@ title: text
 description: Text, Char, format strings, regex, tagged literals — every string utility.
 ---
 
-# `core::text` — UTF-8 strings
+# `core.text` — UTF-8 strings
 
 `Text` is Verum's string type: UTF-8, immutable by default, with
 **SSO** (small-string optimisation — up to 23 bytes stored inline,

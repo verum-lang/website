@@ -4,7 +4,7 @@ title: simd
 description: Portable SIMD — Vec<T,N>, Mask<N>, arithmetic, reduction, shuffle, gather/scatter, GPU.
 ---
 
-# `core::simd` — Portable SIMD
+# `core.simd` — Portable SIMD
 
 Vectorised data types with platform dispatch. On x86_64 you get
 SSE/AVX/AVX-512 where available; on aarch64 you get NEON/SVE; scalar

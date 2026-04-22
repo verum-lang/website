@@ -4,7 +4,7 @@ title: Overview
 description: The Verum TUI framework — seven layers from raw terminal to application runtime.
 ---
 
-# `core::term` — Terminal / TUI framework
+# `core.term` — Terminal / TUI framework
 
 Verum's TUI framework is a seven-layer stack. Each layer is self-contained:
 use raw mode for a shell, the rendering engine for a scripted output, or the
@@ -24,7 +24,7 @@ flowchart TB
 
 ## What makes it production-grade
 
-| Area | Verum `core::term` |
+| Area | Verum `core.term` |
 |---|---|
 | **Async** | First-class: `Command.Async(Future)` lands directly in the runtime via `core.async`. Subscriptions run as detached tasks. |
 | **Cancellation** | Every spawned task observes a `CancellationToken`; cleanup on `Quit` is automatic. |
@@ -88,4 +88,4 @@ fn main() -> IoResult<()> {
 * **Guides** — [async commands & subscriptions](./guides/async-commands.md), [styling & themes](./guides/styling-theming.md), [layout recipes](./guides/layout-guide.md).
 * **Examples** — [counter](./examples/counter.md), [TODO app](./examples/todo-app.md), [dashboard](./examples/dashboard.md).
 * **Reference** — the full API surface organised by layer in the [reference section](./reference/api-widgets.md).
-* **Comparisons** — [how `core::term` stacks up against Ratatui, Textual, Ink and Bubble Tea](./comparisons.md).
+* **Comparisons** — [how `core.term` stacks up against Ratatui, Textual, Ink and Bubble Tea](./comparisons.md).

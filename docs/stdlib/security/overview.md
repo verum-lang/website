@@ -4,7 +4,7 @@ title: security — overview
 description: Verum's security primitives — cryptography, information-flow control, regions, capabilities, identity, secrets. Unified industrial-standard library.
 ---
 
-# `core::security` — overview
+# `core.security` — overview
 
 The `core.security` subtree is Verum's consolidated security layer.
 Everything every other module touches for authentication,

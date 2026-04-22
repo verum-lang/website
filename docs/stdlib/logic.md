@@ -4,7 +4,7 @@ title: logic
 description: Modal logic (Kripke) and linear logic — the metatheory behind session types, capabilities, and affine modifiers.
 ---
 
-# `core::logic` — Modal and linear logic
+# `core.logic` — Modal and linear logic
 
 Term algebras for two logical systems used as Verum's metatheory:
 

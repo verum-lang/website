@@ -40,7 +40,7 @@ Attributes attach to the **following** item. Inner attributes
 type Config is { ... }
 ```
 
-Each derive is a procedural macro under `core::derives`.
+Each derive is a procedural macro under `core.derives`.
 
 ### Layout — `@repr`
 

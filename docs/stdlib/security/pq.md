@@ -4,7 +4,7 @@ title: pq — post-quantum (ML-KEM, ML-DSA)
 description: NIST FIPS 203 (ML-KEM / Kyber) and FIPS 204 (ML-DSA / Dilithium) — post-quantum key encapsulation and signatures.
 ---
 
-# `core::security::pq` — post-quantum cryptography
+# `core.security::pq` — post-quantum cryptography
 
 ## Why post-quantum now?
 

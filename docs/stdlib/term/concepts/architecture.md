@@ -6,7 +6,7 @@ description: The seven-layer architecture of the Verum TUI framework and why it'
 
 # Architecture
 
-`core::term` is decomposed into seven layers. Each layer has a single
+`core.term` is decomposed into seven layers. Each layer has a single
 responsibility and depends only on the layers beneath it, so you can drop in
 at the exact level of abstraction your program needs.
 

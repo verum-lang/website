@@ -5,7 +5,7 @@ description: Read, write, stream, and memory-map files — sync and async.
 
 # File I/O
 
-Every recipe below uses `core::io::fs` and assumes the function is
+Every recipe below uses `core.io::fs` and assumes the function is
 in scope for `using [FileSystem, IO]`. See
 [`stdlib/io`](/docs/stdlib/io) for the full API.
 

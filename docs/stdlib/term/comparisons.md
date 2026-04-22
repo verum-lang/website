@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 title: Comparison
-description: How core::term stacks up against Ratatui, Textual, Ink and Bubble Tea.
+description: How core.term stacks up against Ratatui, Textual, Ink and Bubble Tea.
 ---
 
 # Comparison with other TUI frameworks
@@ -11,7 +11,7 @@ borrows freely from all of them, and differs in a few opinionated ways.
 
 ## At a glance
 
-| Aspect | Verum `core::term` | Ratatui (Rust) | Textual (Python) | Ink (Node) | Bubble Tea (Go) |
+| Aspect | Verum `core.term` | Ratatui (Rust) | Textual (Python) | Ink (Node) | Bubble Tea (Go) |
 |---|---|---|---|---|---|
 | Architecture | TEA — Elm | Immediate | Reactive / CSS | React + hooks | TEA — Elm |
 | Rendering | Double-buffer + diff + row-skip + sync-output | Double-buffer + diff | Diff + dirty regions | VDOM diff | Double-buffer + diff |

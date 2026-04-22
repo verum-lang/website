@@ -4,7 +4,7 @@ title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 ---
 
-# `core::intrinsics` — Compiler intrinsics
+# `core.intrinsics` — Compiler intrinsics
 
 The compiler-provided bridge between Verum code and CPU/runtime
 operations. Higher-level stdlib modules wrap these with safe APIs;

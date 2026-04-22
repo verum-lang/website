@@ -4,7 +4,7 @@ title: sync
 description: Atomics, Mutex, RwLock, Once, Semaphore, Condvar, Barrier, WaitGroup.
 ---
 
-# `core::sync` — Synchronisation primitives
+# `core.sync` — Synchronisation primitives
 
 Atomic operations and locking types. All types in this module are
 `Send`/`Sync` as appropriate so they compose across threads.

@@ -91,7 +91,7 @@ Near-term items already underway for **v0.33**:
   obligation.
 - **Effect-polymorphic protocol methods** — fine-grained effect
   rows that unify with context clauses.
-- **Quantum-safe cryptography in `core::crypto`** — ML-KEM / ML-DSA
+- **Quantum-safe cryptography in `core.crypto`** — ML-KEM / ML-DSA
   as first-class primitives alongside ECDSA / Ed25519.
 - **Self-hosting** — Verum compiler written in Verum. Currently
   Rust + LLVM; self-hosting requires a mature meta-compilation

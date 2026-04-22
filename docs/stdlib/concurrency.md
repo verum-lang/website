@@ -4,7 +4,7 @@ title: concurrency
 description: π-calculus processes and session types — formal concurrency foundations.
 ---
 
-# `core::concurrency` — Process algebra & session types
+# `core.concurrency` — Process algebra & session types
 
 Formal models for concurrent computation: the **π-calculus** (for
 process semantics) and **session types** (for structured protocol

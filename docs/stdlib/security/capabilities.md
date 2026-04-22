@@ -4,7 +4,7 @@ title: capabilities — @cap, declassification, audit
 description: Capability annotations, declassification primitives, and the build-manifest audit trail for security-sensitive operations.
 ---
 
-# `core::security::capabilities` — capability annotations & audit
+# `core.security::capabilities` — capability annotations & audit
 
 ## What is a capability?
 

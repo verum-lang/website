@@ -4,7 +4,7 @@ title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 ---
 
-# `core::mem` — Memory management
+# `core.mem` — Memory management
 
 The implementation of CBGR (Capability-Based Generational References),
 the three-tier reference model, and the allocator stack. User code

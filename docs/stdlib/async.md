@@ -4,7 +4,7 @@ title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 ---
 
-# `core::async` — Asynchronous execution
+# `core.async` — Asynchronous execution
 
 Full async toolkit: `Future` protocol, executors, channels, async
 streams, timers, structured concurrency (`nursery`), racing (`select`),

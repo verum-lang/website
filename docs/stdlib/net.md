@@ -4,7 +4,7 @@ title: net
 description: TCP, UDP, HTTP, TLS, DNS — V-LLSI-native networking with zero FFI.
 ---
 
-# `core::net` — Networking
+# `core.net` — Networking
 
 Full network stack built directly on V-LLSI syscalls (no libc
 dependency). RFC-conformant DNS, TLS 1.0–1.3 with platform-native
@@ -342,7 +342,7 @@ const DNS_TYPE_ANY:   UInt16 = 255;
 ## HTTP
 
 Types and protocol. Full client implementation lives in a separate
-cog (`http`); `core::net::http` gives you the building blocks.
+cog (`http`); `core.net::http` gives you the building blocks.
 
 ### `Method`
 

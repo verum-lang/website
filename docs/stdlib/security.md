@@ -4,7 +4,7 @@ title: security
 description: The security stdlib — cryptographic primitives, information-flow control, workload identity, secrets, and regions.
 ---
 
-# `core::security`
+# `core.security`
 
 Verum's security stdlib is a consolidated subtree covering:
 

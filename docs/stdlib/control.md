@@ -4,7 +4,7 @@ title: control
 description: Delimited continuations — shift / reset term algebra.
 ---
 
-# `core::control` — Delimited Continuations
+# `core.control` — Delimited Continuations
 
 Term algebra for **delimited continuations** via `shift` and `reset`.
 

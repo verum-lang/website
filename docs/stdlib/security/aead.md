@@ -4,7 +4,7 @@ title: aead — AEAD ciphers (AES-GCM, ChaCha20-Poly1305)
 description: Authenticated encryption with associated data. AES-128/256-GCM and ChaCha20-Poly1305. The AEAD layer used by TLS 1.3 and QUIC.
 ---
 
-# `core::security::aead` — authenticated encryption
+# `core.security::aead` — authenticated encryption
 
 ## What is AEAD and why does it matter?
 

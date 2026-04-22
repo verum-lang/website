@@ -253,7 +253,7 @@ verum check my_script.vr            # just type-check (no eval)
 ## Using the REPL programmatically
 
 Verum's REPL ships with an embeddable API in
-`core::eval::repl`:
+`core.eval::repl`:
 
 ```verum
 mount core.eval.repl;

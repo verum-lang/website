@@ -4,7 +4,7 @@ title: math
 description: Layered mathematics stack — libm, linalg, calculus, tensors, autodiff, NN, SSM, agents, pure math.
 ---
 
-# `core::math` — Mathematics
+# `core.math` — Mathematics
 
 The largest module in the stdlib — a 10-layer mathematical stack plus a
 substantial pure-mathematics branch. libm-free: every function is

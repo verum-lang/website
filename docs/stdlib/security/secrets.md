@@ -4,7 +4,7 @@ title: secrets — Vault / cloud secret stores
 description: Unified SecretStore protocol with AWS Secrets Manager, GCP Secret Manager, and HashiCorp Vault backends.
 ---
 
-# `core::security::secrets` — secret stores
+# `core.security::secrets` — secret stores
 
 ## Why a secrets module?
 

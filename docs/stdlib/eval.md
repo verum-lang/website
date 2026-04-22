@@ -4,7 +4,7 @@ title: eval
 description: Call-by-push-value term algebra — foundations for effects and evaluation strategies.
 ---
 
-# `core::eval` — Call-by-Push-Value
+# `core.eval` — Call-by-Push-Value
 
 Term algebra for **Call-by-Push-Value** (CBPV) — Levy's unifying
 framework that sits between call-by-value and call-by-name. This
@@ -197,14 +197,14 @@ The module is intentionally minimal:
 - No effects layer — the user-level effect system is encoded by
   context tracking, not by CBPV operators.
 
-## Relationship to `core::control`
+## Relationship to `core.control`
 
 Both modules expose term algebras for control-flow studies:
 
 | Module              | Calculus                                       |
 |---------------------|------------------------------------------------|
-| `core::control`     | Delimited continuations (shift/reset).         |
-| `core::eval`        | Call-by-push-value (CBPV).                     |
+| `core.control`     | Delimited continuations (shift/reset).         |
+| `core.eval`        | Call-by-push-value (CBPV).                     |
 
 They are **orthogonal** — each suits a different kind of semantic
 study. CBPV is the canonical home for monadic semantics and effect

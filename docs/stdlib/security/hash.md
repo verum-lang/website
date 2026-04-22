@@ -4,7 +4,7 @@ title: hash — SHA-2 family
 description: SHA-256, SHA-384, SHA-512 — FIPS 180-4 streaming digests.
 ---
 
-# `core::security::hash` — SHA-2 family
+# `core.security::hash` — SHA-2 family
 
 The SHA-2 family of cryptographic hash functions, per **FIPS PUB
 180-4**. Three variants ship:
