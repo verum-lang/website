@@ -31,26 +31,30 @@ does reduce to `x`.
 
 ## Path types
 
-```verum
-// Path in type A from a to b.
-type Path<A> is (a: A, b: A) -> I -> A;
+The stdlib's `core/math/hott.vr` declares the type and its
+introduction / elimination forms. These are the canonical
+signatures — the compiler binds each `@builtin_*` to a
+`CubicalExtended` VBC sub-op (see
+`verum_vbc/src/codegen/expressions.rs` §4077+).
 
-// Conceptually: a function from the interval [0,1] to A such that
-// p(0) = a and p(1) = b.
+```verum
+// Path in type A from a to b. Conceptually a function from the
+// interval [0, 1] to A such that p(i0) = a and p(i1) = b.
+public type Path<A>(a: A, b: A) is @builtin_path;
 
 // Reflexivity
-fn refl<A>(x: A) -> Path<A>(x, x) {
+public fn refl<A>(x: A) -> Path<A>(x, x) {
     @builtin_refl(x)
 }
 
 // Inverse (symmetry)
-fn sym<A>(p: Path<A>(x, y)) -> Path<A>(y, x) {
-    @builtin_path_lambda(|i| p(rev(i)))
+public fn sym<A>(a: A, b: A, p: Path<A>(a, b)) -> Path<A>(b, a) {
+    @builtin_sym(p)
 }
 
 // Concatenation (transitivity)
-fn trans<A>(p: Path<A>(x, y), q: Path<A>(y, z)) -> Path<A>(x, z) {
-    @builtin_hcomp(p, q)
+public fn trans<A>(a: A, b: A, c: A, p: Path<A>(a, b), q: Path<A>(b, c)) -> Path<A>(a, c) {
+    @builtin_trans(p, q)
 }
 ```
 
@@ -120,16 +124,26 @@ fn circle_map<B>(base: B, loop_proof: Path<B>(base, base), c: Circle) -> B {
 
 The univalence axiom says: _type equivalence implies type equality_.
 Verum's cubical normaliser implements this computationally.
+`ua` is declared as a Verum axiom in `core/math/hott.vr`:
 
 ```verum
-fn ua<A, B>(e: Equiv<A, B>) -> Path<Type>(A, B) {
-    @builtin_ua(e)
-}
+public axiom ua<A, B>(e: Equiv<A, B>) -> Path<Type>(A, B);
+```
 
-// Now:
+Because `ua` is an axiom rather than a meta-intrinsic, every use of
+it is visible to `verum audit --framework-axioms` tooling at the
+proof-corpus level. With a concrete equivalence, transport along
+`ua(e)` reduces by the cubical normaliser's rules (five of them,
+implemented in `verum_smt/src/cubical_tactic.rs`):
+
+```verum
 let p = ua(int_to_nat_equiv);
 let n: Nat = transport(p, 42);
-// `transport` along `ua(e)` computes as `e.to(x)` — no opaque proxy.
+// transport(ua(e), x)        ↦ e.forward(x)
+// transport(sym(ua(e)), x)   ↦ e.inverse(x)
+// transport(refl, x)         ↦ x
+// hcomp(φ, const, base)      ↦ base
+// Path(i, body)[endpoint]    ↦ body[i/endpoint]
 ```
 
 Applications:
@@ -167,22 +181,27 @@ common cases.
 
 ## Tactics for cubical
 
+The grammar exposes three cubical-specific tactics in its
+`tactic_name` production: `cubical`, `category_simp`, and
+`category_law`, plus the descent verifier `descent_check`.
+
 ```verum
 theorem circle_loop_squared_is_refl() ->
-    Path<Circle>(trans(Loop, Loop), refl(Base))
+    Path<Circle>(trans(Base, Base, Base, Loop, Loop), refl(Base))
 {
-    by cubical_tactic;
+    by cubical;
 }
 ```
 
-The `cubical_tactic` combinator dispatches to specialised proof search
-including:
-- path reduction;
-- HIT coherence;
-- transport normalisation;
-- glue / unglue simplifications.
+`by cubical` dispatches to the cubical normaliser
+(`verum_smt::cubical_tactic`) which implements:
 
-See `verum_smt::cubical_tactic` for the routing.
+- path reduction (the five bullet-listed rules above);
+- transport normalisation along `refl` / `ua(e)` / `sym(ua(e))`;
+- HIT coherence checking for path-case branches;
+- glue / unglue simplifications when Glue types land fully.
+
+See `verum_smt/src/cubical_tactic.rs` for the routing.
 
 ## Limitations
 
@@ -207,7 +226,16 @@ dependent types are enough. Cubical is there when you need it.
 ## See also
 
 - **[Dependent types](/docs/language/dependent-types)** — Σ, Π, paths
-  at the surface level.
-- **[Proofs](/docs/verification/proofs)** — tactic DSL.
+  at the surface level; how they interleave with the rest of the
+  language.
+- **[Proofs](/docs/verification/proofs)** — tactic DSL and the
+  kernel's role in re-checking every cubical proof term.
+- **[Framework axioms](/docs/verification/framework-axioms)** —
+  postulating external HoTT-adjacent results (Lurie HTT ∞-topoi,
+  Baez–Dolan coherence, Schreiber DCCT super-cohesion) whose
+  machinisation is out of scope.
 - **[Architecture → SMT integration](/docs/architecture/smt-integration)**
   — cubical tactic dispatch.
+- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+  — the typing rules for `PathTy`, `Refl`, `HComp`, `Transp`, and
+  `Glue` that the kernel actually checks.
