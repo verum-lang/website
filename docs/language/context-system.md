@@ -197,7 +197,7 @@ fn maybe_log(msg: &Text)
 }
 ```
 
-`cfg.flag` is a compile-time boolean from `Verum.toml` features.
+`cfg.flag` is a compile-time boolean from `verum.toml` features.
 Compiling with `--features analytics` enables the conditional
 capability; without it the context is neither required nor emitted.
 

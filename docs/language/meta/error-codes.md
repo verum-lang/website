@@ -192,7 +192,7 @@ categories:
   after `@derive` when the usual convention is `@verify` first.
 
 Each advisory can be individually silenced, demoted to note, or
-elevated to error under `[lint]` in `Verum.toml`:
+elevated to error under `[lint]` in `verum.toml`:
 
 ```toml
 [lint]

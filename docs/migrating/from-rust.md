@@ -209,7 +209,7 @@ See [metaprogramming](/docs/language/meta/overview).
 
 ## No-std / embedded
 
-`Verum.toml`:
+`verum.toml`:
 
 ```toml
 [language]
@@ -285,7 +285,7 @@ See [gradual verification](/docs/verification/gradual-verification).
 | `cargo fmt` | `verum fmt` |
 | `cargo clippy` | `verum lint` |
 | `cargo publish` | `verum publish` |
-| `Cargo.toml` | `Verum.toml` |
+| `Cargo.toml` | `verum.toml` |
 | `Cargo.lock` | `Verum.lock` |
 | `rustup` | not needed — `verum` is a single self-contained binary |
 

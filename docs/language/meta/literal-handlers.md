@@ -346,7 +346,7 @@ priority:
 
 A project can opt a handler into cog-wide default by re-exporting
 it under `core.tagged.*` or by listing it in `[meta.tagged_literals]`
-in `Verum.toml`.
+in `verum.toml`.
 
 ## Safety attributes
 
@@ -362,7 +362,7 @@ A handler without a safety attribute is conventionally treated as
 `@safe` when it is itself pure string-level escaping and as `@unsafe`
 when it emits any interpolated value verbatim. Security-sensitive
 projects can elevate the unsafety-missing warning to error in
-`Verum.toml` under `[lint]`.
+`verum.toml` under `[lint]`.
 
 ## Debugging literals
 

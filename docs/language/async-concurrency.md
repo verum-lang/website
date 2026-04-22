@@ -328,7 +328,7 @@ step on the roadmap.
 
 ## Runtime configurations
 
-`Verum.toml` can select the runtime flavour:
+`verum.toml` can select the runtime flavour:
 
 ```toml
 [runtime]

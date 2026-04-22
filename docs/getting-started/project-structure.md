@@ -15,7 +15,7 @@ After `verum new my-project --profile application`:
 
 ```
 my-project/
-├── verum.toml            # package manifest (also accepts Verum.toml)
+├── verum.toml            # package manifest (also accepts verum.toml)
 ├── README.md             # scaffolded
 ├── .gitignore            # scaffolded
 ├── src/
@@ -58,9 +58,11 @@ Only three things are required: `verum.toml`, `src/`, and either
 
 ## `verum.toml` — the manifest
 
-The manifest describes the cog's identity and dependencies. Both
-`verum.toml` (lowercase, what `verum new` generates) and `Verum.toml`
-(uppercase) are accepted; the lowercase form is canonical.
+The manifest describes the cog's identity and dependencies. The
+canonical filename is `verum.toml` (lowercase — what `verum new`
+generates); the compiler also accepts the historical `Verum.toml`
+spelling for back-compat, but new projects should stick with
+lowercase.
 
 ```toml
 [cog]
@@ -355,24 +357,24 @@ Multi-cog workspaces share a lock file and a build target:
 
 ```
 my-workspace/
-├── Verum.toml                 # workspace root
+├── verum.toml                 # workspace root
 ├── Verum.lock                 # shared lock
 ├── target/                    # shared build target
 ├── core/
-│   ├── Verum.toml
+│   ├── verum.toml
 │   └── src/lib.vr
 ├── api/
-│   ├── Verum.toml
+│   ├── verum.toml
 │   └── src/main.vr
 └── cli/
-    ├── Verum.toml
+    ├── verum.toml
     └── src/main.vr
 ```
 
 Workspace manifest:
 
 ```toml
-# my-workspace/Verum.toml
+# my-workspace/verum.toml
 [workspace]
 members = ["core", "api", "cli", "tools/*"]
 exclude = ["experiments/*"]
@@ -386,7 +388,7 @@ http  = "0.8"
 Individual member manifests can inherit:
 
 ```toml
-# api/Verum.toml
+# api/verum.toml
 [cog]
 name    = "api"
 version = "0.1.0"
@@ -450,7 +452,7 @@ Verum.lock              # applications: commit  |  libraries: don't commit
 Commit `Verum.lock` for applications (reproducible builds); leave it
 out for libraries (callers pick their own dependency versions).
 
-## Verum.toml minimum
+## verum.toml minimum
 
 The absolute minimum is four lines:
 

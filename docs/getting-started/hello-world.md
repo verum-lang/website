@@ -48,7 +48,7 @@ benches  examples  README.md  src  tests  verum.toml
 The scaffold gives you:
 
 - **`verum.toml`** — the package manifest (also accepted as
-  `Verum.toml`). Cog name, version, dependencies, verify defaults,
+  `verum.toml`). Cog name, version, dependencies, verify defaults,
   build profiles, runtime settings.
 - **`src/main.vr`** — the entry point (for binaries) or
   `src/lib.vr` (for libraries).
@@ -294,7 +294,7 @@ That is the whole shape of day-to-day Verum. Every program:
 - **[Language Tour](/docs/getting-started/tour)** — the rest of the
   language in ten minutes.
 - **[Project Structure](/docs/getting-started/project-structure)** —
-  `Verum.toml`, modules, cog packages, workspace layout.
+  `verum.toml`, modules, cog packages, workspace layout.
 - **[Typed CLI tool tutorial](/docs/tutorials/cli-tool)** — build a
   small, real program from scratch (30 min).
 - **[Philosophy](/docs/philosophy/principles)** — the six design

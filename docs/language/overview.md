@@ -186,7 +186,7 @@ productions. For quick jumps:
 | **Protocol**   | An interface: a set of method and associated-type signatures. Implemented with `implement ... for ...`.     |
 | **Context**    | A typed capability injected into a function via `using [...]`. Explicit; no hidden globals.                 |
 | **Capability** | A type-level permission: `T with [Read, Write]` narrows what can be done with `T`.                          |
-| **Cog**        | A package — a distributable unit of Verum code with a `Verum.toml` manifest.                                |
+| **Cog**        | A package — a distributable unit of Verum code with a `verum.toml` manifest.                                |
 | **Tier**       | A level in the three-tier reference model: `&T` (tier 0), `&checked T` (tier 1), `&unsafe T` (tier 2).       |
 | **CBGR**       | Capability-Based Generational References — the default memory-safety mechanism. ~0.93 ns per check (measured; target ≤ 15 ns). |
 | **VBC**        | Verum ByteCode — the language's unified IR, interpreted or compiled to native via LLVM.                     |

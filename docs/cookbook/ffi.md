@@ -161,7 +161,7 @@ unsafe { register_callback(&mut state as *mut TimerState as *mut Void, on_tick);
 
 ### Linking
 
-`Verum.toml`:
+`verum.toml`:
 
 ```toml
 [ffi.foo]

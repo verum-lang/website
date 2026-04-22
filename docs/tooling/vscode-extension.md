@@ -52,7 +52,7 @@ per [Installation](/docs/getting-started/installation).
 The extension activates on any of:
 
 - Opening a `.vr` file (`onLanguage:verum`).
-- Opening a workspace that contains `Verum.toml` or any `.vr` file.
+- Opening a workspace that contains `verum.toml` or any `.vr` file.
 - Starting a debug session of `type: verum`.
 
 On activation the extension spawns:
@@ -111,7 +111,7 @@ recommendations in [CLI](/docs/tooling/cli) and
 | `verum.lsp.showInlayHints` | `true` | Inline inferred types and CBGR tiers. |
 | `verum.lsp.diagnosticDelay` | `200` ms | Debounce between keystroke and validation. |
 | `verum.lsp.smtSolver` | `"auto"` | `auto` / `z3` / `cvc5`. `auto` lets the compiler's capability router pick. Override only to reproduce a specific result. |
-| `verum.lsp.smtTimeout` | `50` ms | Per-obligation SMT timeout for live validation (build-time timeout is separate; see `Verum.toml [verify] solver_timeout_ms`). |
+| `verum.lsp.smtTimeout` | `50` ms | Per-obligation SMT timeout for live validation (build-time timeout is separate; see `verum.toml [verify] solver_timeout_ms`). |
 | `verum.lsp.cacheValidationResults` | `true` | Cache SMT results keyed by goal hash. |
 | `verum.lsp.cacheTtlSeconds` | `300` | Cache entry TTL. The server hot-swaps capacity/TTL on `workspace/didChangeConfiguration` — no restart. |
 | `verum.lsp.cacheMaxEntries` | `1000` | Cache capacity. On downsize, oldest entries are evicted. |

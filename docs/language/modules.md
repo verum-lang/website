@@ -182,7 +182,7 @@ runtime-tier-specific implementations without IFDEF-style noise.
 ## Language profiles
 
 Every cog picks a **profile** that constrains which features are
-available. The profile is declared in `Verum.toml` and propagates to
+available. The profile is declared in `verum.toml` and propagates to
 every module of the cog.
 
 | Profile       | `async` | `unsafe` | Heap | Typical target |
@@ -217,7 +217,7 @@ use site.
 
 ## `cog` — the package
 
-A cog is the unit of distribution. Cogs are described in `Verum.toml`;
+A cog is the unit of distribution. Cogs are described in `verum.toml`;
 see **[Cog Packages](/docs/tooling/cog-packages)** and
 **[verum.toml reference](/docs/reference/verum-toml)**.
 

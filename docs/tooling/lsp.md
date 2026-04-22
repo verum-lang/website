@@ -213,7 +213,7 @@ Features unique to the VS Code extension:
 require('lspconfig').verum.setup{
   cmd = {'verum', 'lsp'},
   filetypes = {'verum'},
-  root_dir = require('lspconfig.util').root_pattern('Verum.toml'),
+  root_dir = require('lspconfig.util').root_pattern('verum.toml'),
   settings = {
     verum = {
       verify = { strategy = "static" },
@@ -264,7 +264,7 @@ args = ["lsp"]
 
 ### Kate / Sublime / any LSP-capable editor
 
-Generic LSP setup: command `verum lsp`, root marker `Verum.toml`,
+Generic LSP setup: command `verum lsp`, root marker `verum.toml`,
 filetype `.vr`.
 
 ## Custom LSP extensions
