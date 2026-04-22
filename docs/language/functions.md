@@ -128,24 +128,31 @@ while lo < hi
 
 ```verum
 fn divide(a: Int, b: Int) -> Int
-    where requires b != 0
+    requires b != 0
 {
     a / b
 }
 ```
 
+Multiple preconditions comma-join on a single `requires` line.
+
 ### `ensures` — postconditions
 
 ```verum
 fn abs(x: Int) -> Int
-    where ensures result >= 0,
-          ensures result == x || result == -x
+    ensures result >= 0
+    ensures result == x || result == -x
 {
     if x >= 0 { x } else { -x }
 }
 ```
 
-Multiple clauses are conjoined.
+Each `ensures` keyword takes one boolean expression; multiple
+clauses are conjoined by repeating the keyword. `result` refers
+to the return value. See
+**[verification → contracts](/docs/verification/contracts)** for
+the two-gotchas summary (no `where requires`; one `ensures` per
+clause).
 
 ### `old(expr)` in postconditions
 
@@ -154,7 +161,7 @@ for "delta" contracts:
 
 ```verum
 fn push<T>(xs: &mut List<T>, x: T)
-    where ensures xs.len() == old(xs.len()) + 1
+    ensures xs.len() == old(xs.len()) + 1
 {
     xs.data.push(x);
 }
@@ -164,7 +171,7 @@ fn push<T>(xs: &mut List<T>, x: T)
 
 ```verum
 fn binary_search(xs: &List<Int>, key: Int) -> Maybe<Int>
-    where ensures result is Some(i) => xs[i] == key
+    ensures result is Some(i) => xs[i] == key
 {
     let (mut lo, mut hi) = (0, xs.len());
     while lo < hi
@@ -189,7 +196,7 @@ iteration — it proves the loop terminates.
 
 ### How contracts are discharged
 
-1. `where requires / ensures` clauses generate SMT obligations in
+1. `requires` / `ensures` clauses generate SMT obligations in
    **Phase 3a** (contracts) and **Phase 4** (semantic analysis).
 2. `invariant + decreases` generate loop-local obligations in
    Phase 4.
