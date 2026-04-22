@@ -122,10 +122,30 @@ theorem sum_first_n(n: Int { self >= 0 }) -> sum(0..=n) == n * (n+1) / 2 {
 
 ## Machine checking
 
-`@verify(certified)` requires a proof term; the compiler machine-checks
-it against the obligation via `verum_verification::proof_validator`. A
-valid proof is permanent — it does not need to be rechecked unless the
-underlying axioms change.
+Every proof term — whether written by hand, produced by a tactic,
+or generated from an SMT certificate — reaches **`verum_kernel`**,
+the LCF-style trusted checker. The kernel re-checks the proof term
+against its declared type using 18 dedicated typing rules (Pi, Lam,
+App, Sigma, Pair, Fst, Snd, PathTy, Refl, HComp, Transp, Glue,
+Refine, Inductive, Elim, Var, Universe, Axiom). The one constructor
+that is not self-contained is `SmtProof`, whose check dispatches to
+`replay_smt_cert` and reconstructs a checkable witness from the
+solver's proof trace.
+
+This is why tactics are *outside* Verum's trusted computing base —
+a buggy tactic either fails to build a proof term or builds an
+ill-typed one that the kernel rejects; it cannot sneak a false
+theorem past the gate.
+
+`@verify(certified)` additionally runs cross-validation through an
+orthogonal verification technique (via `solve_cross_validate` in
+`verum_smt::backend_switcher`) and, on success, emits a
+`.verum-cert` carrying the proof-term plus its framework-axiom
+dependency list. See
+**[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+for the full rule set and
+**[Framework axioms](/docs/verification/framework-axioms)** for how
+postulated results surface in the certificate envelope.
 
 ## Proof-carrying bytecode
 
@@ -206,8 +226,15 @@ theorem foo() -> ... {
 ## See also
 
 - **[Gradual verification](/docs/verification/gradual-verification)**
-  — when to reach for proofs.
+  — when to reach for proofs; the two-layer strategy dispatch.
 - **[Cubical & HoTT](/docs/verification/cubical-hott)** — proof
   techniques for path types.
+- **[Framework axioms](/docs/verification/framework-axioms)** —
+  postulating external results (Lurie HTT, Connes, Petz, …) with
+  explicit citations, consumed by `apply` inside proof bodies.
 - **[Architecture → SMT integration](/docs/architecture/smt-integration)**
   — how tactics invoke the solver.
+- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+  — the LCF check loop that re-verifies every proof term tactics
+  emit; every one of the 22 grammar-tactics is outside the TCB
+  because the kernel's check is the sole gate.
