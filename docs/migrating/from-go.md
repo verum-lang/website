@@ -270,8 +270,10 @@ No `nil`-pointer dereferences by construction.
 
 ## Performance
 
-- **CBGR references (~15 ns check)** are roughly the cost of a Go
-  bounds-check + refcount bump. Escape analysis eliminates most.
+- **CBGR references (~0.93 ns check, measured)** are roughly the
+  cost of a Go bounds-check — far cheaper than a refcount bump.
+  Escape analysis eliminates the check entirely for references
+  that can be promoted to `&checked T`.
 - **Native binaries via LLVM** with aggressive optimisation — expect
   0.9–1.0× C speeds.
 - **No GC.** Memory management via RAII + CBGR. No GC pauses.
