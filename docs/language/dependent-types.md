@@ -150,19 +150,23 @@ fn refl<A>(x: A) -> Path<A>(x, x) {
     @builtin_refl(x)
 }
 
-// Symmetry.
-fn sym<A>(p: Path<A>(x, y)) -> Path<A>(y, x) {
-    @builtin_path_lambda(|i| p(1 - i))
+// Symmetry: flip a path.
+fn sym<A>(a: A, b: A, p: Path<A>(a, b)) -> Path<A>(b, a) {
+    @builtin_sym(p)
 }
 
 // Transport along a path: moves a value from one equal type to another.
-fn transport<A: Type -> Type>(
-    p: Path<Type>(A, B),
-    x: A,
-) -> B {
+fn transport<A, B>(p: Path<Type>(A, B), x: A) -> B {
     @builtin_transport(p, x)
 }
 ```
+
+These are the exact signatures the stdlib ships in
+`core/math/hott.vr` — the `@builtin_*` intrinsics on the RHS are
+bound to `CubicalExtended` VBC opcodes by the compiler
+(`verum_vbc/src/codegen/expressions.rs` §4077+), and their return
+types are carried by the surrounding signature through the generic
+opaque-intrinsic rule in `verum_types::infer`.
 
 ## Interval type
 
@@ -233,15 +237,28 @@ Verum's cubical normaliser implements **computational univalence** —
 an equivalence between types becomes a path between them, and
 transport along that path behaves operationally.
 
-```verum
-fn ua<A, B>(e: Equiv<A, B>) -> Path<Type>(A, B) {
-    @builtin_ua(e)
-}
+`ua` is postulated as a Verum axiom (the canonical univalence
+postulate) and lives in `core/math/hott.vr`:
 
+```verum
+public axiom ua<A, B>(e: Equiv<A, B>) -> Path<Type>(A, B);
+```
+
+Because it's an axiom rather than a meta-intrinsic, any use of `ua`
+is visible to downstream trusted-boundary tooling. With a concrete
+equivalence you can then transport:
+
+```verum
 // Now we can transport a value along the equivalence:
-let a: A = ...;
-let b: B = transport(ua(e), a);
-// And the compiler computes what transport does — no runtime proxy.
+let p: Path<Type>(A, B) = ua(e);
+let b: B = transport(p, a);
+// And the cubical normaliser computes what transport does —
+//   transport(ua(e), x)       ↦ e.forward(x)
+//   transport(sym(ua(e)), x)  ↦ e.inverse(x)
+//   transport(refl, x)        ↦ x
+// — so there is no runtime proxy; the equivalence is computationally
+// eliminated by the cubical reduction rules in
+// verum_smt::cubical_tactic.
 ```
 
 ## Proof erasure
@@ -279,7 +296,7 @@ production use of dependent types. The shape is a compile-time list
 of sizes; the compiler checks every operation against it.
 
 ```verum
-mount std.tensor.{Tensor, matmul, softmax, reshape};
+mount core.math.tensor.{Tensor, matmul, softmax, reshape};
 
 fn attention<
     T: Numeric,
@@ -355,11 +372,34 @@ The shape error is a type mismatch, not a runtime `DimensionError`.
 See **[Cookbook → shape-safe tensors](/docs/cookbook/shape-safe)**
 for the stdlib `Tensor<Dims, T>` that generalises this pattern.
 
+## Relation to the trusted kernel
+
+Π, Σ, Path, HComp, Transp, Glue, and the inductive elimination
+principle each have a dedicated typing rule in `verum_kernel`.
+Dependent-type proofs reach the kernel as `CoreTerm` values with
+the exact domain / codomain structure preserved, so the kernel's
+App rule substitutes arguments into codomains capture-avoidingly
+and the Path rule checks endpoint types against the carrier.
+
+The kernel is the **sole** trusted checker — a bug in the cubical
+NbE evaluator, the dependent elaborator, or a tactic cannot accept
+a false theorem; it can only fail to construct a valid proof term
+or fail at the kernel gate.
+
+See **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+for the full typing-rule table.
+
 ## See also
 
 - **[Cubical & HoTT](/docs/verification/cubical-hott)** — deeper
   treatment of cubical features.
 - **[Proofs](/docs/verification/proofs)** — theorem/lemma/proof DSL.
+- **[Framework axioms](/docs/verification/framework-axioms)** —
+  postulating dependent results from external mathematics
+  (Lurie HTT ∞-topos results, Connes reconstruction, etc.) so
+  stratified corpora stay audit-able.
+- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+  — the LCF-style check loop and the 18 active typing rules.
 - **[Cookbook → shape-safe tensors](/docs/cookbook/shape-safe)**
 - **[Cookbook → calc proofs](/docs/cookbook/calc-proofs)** — writing
   equational proofs with `Path` and the proof DSL.
