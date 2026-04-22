@@ -57,7 +57,7 @@ use .self.derives.derive_display_all;
 @derive(DisplayAll)
 type User is { id: Int, name: Text, email: Text };
 
-fn main() using [IO] {
+fn main() {
     let u = User { id: 42, name: "Alice".to_string(), email: "a@b.c".to_string() };
     println(&f"{u}");
     // => User {id: 42, name: Alice, email: a@b.c}

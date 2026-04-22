@@ -68,7 +68,7 @@ implement Model for Counter {
     }
 }
 
-async fn main() using [IO] {
+async fn main() {
     run(Counter.new()).await.expect("tui");
 }
 ```
