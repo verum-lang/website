@@ -186,7 +186,7 @@ a navigable site.
 
 ```
 my-cog/
-├── Verum.toml
+├── verum.toml
 ├── README.md
 ├── src/
 │   ├── lib.vr             # public API re-exports

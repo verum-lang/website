@@ -252,8 +252,8 @@ fn load_or_default(input: &Text) -> Output {
 | `jest` / `vitest` | `verum test` |
 | `eslint` | `verum lint` |
 | `prettier` | `verum fmt` |
-| `tsconfig.json` | `Verum.toml` |
-| `package.json` | `Verum.toml` (same file) |
+| `tsconfig.json` | `verum.toml` |
+| `package.json` | `verum.toml` (same file) |
 
 ---
 

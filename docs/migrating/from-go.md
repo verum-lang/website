@@ -238,7 +238,7 @@ Go generics (1.18+) are close to Verum's. Differences:
 | `package foo` | Implicit — determined by directory |
 | `import "foo/bar"` | `mount foo.bar` |
 | `init()` functions | `@init` attribute on a regular function |
-| `go.mod` | `Verum.toml` |
+| `go.mod` | `verum.toml` |
 | `go.sum` | `Verum.lock` |
 | `go mod tidy` | `verum build` (auto-tidy) |
 | `go get example.com/pkg` | `verum add pkg` |

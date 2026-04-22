@@ -28,7 +28,7 @@ typically eliminates it anyway).
 
 ### Can I use it for embedded / bare-metal work?
 
-Yes. `Verum.toml` supports `runtime = "embedded"` (stack allocator,
+Yes. `verum.toml` supports `runtime = "embedded"` (stack allocator,
 no heap) and `runtime = "no_runtime"` (kernel / bootloader). Direct
 syscalls on Linux, libSystem on macOS, kernel32 on Windows — no libc
 dependency.
@@ -83,7 +83,7 @@ them. A Verum-native solver is on the roadmap. See
 ### What happens when the solver times out?
 
 Default 5 s per obligation. On timeout, the fallback retries with a
-different solver. Configurable in `Verum.toml [verify]` via
+different solver. Configurable in `verum.toml [verify]` via
 `solver_timeout_ms` and per-module `[verify.modules."my.module"]`
 overrides.
 

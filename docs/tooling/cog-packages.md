@@ -15,7 +15,7 @@ A `.cog` file is a compressed tarball:
 
 ```
 my-cog-1.2.3.cog
-├── manifest.toml          # expanded Verum.toml
+├── manifest.toml          # expanded verum.toml
 ├── vbc/
 │   ├── lib.vbc
 │   └── ...

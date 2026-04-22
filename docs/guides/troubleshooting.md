@@ -43,7 +43,7 @@ note: pattern `Err(ConnectionError::Timeout { .. })` not covered
 
 ### `[V1001]: `mount` target not found`
 
-Mistyped path, or the dep isn't declared in `Verum.toml`. Run
+Mistyped path, or the dep isn't declared in `verum.toml`. Run
 `verum check` — it validates imports before compiling.
 
 ### `error: linking with `cc` failed`
@@ -62,7 +62,7 @@ Default timeout is 5 s per obligation. Causes:
   with CVC5 (whose CAD engine is better at nonlinear arithmetic).
 - Cached stale result: `verum clean` and retry.
 
-Increase per-project: `Verum.toml [verify] solver_timeout_ms = 30_000`.
+Increase per-project: `verum.toml [verify] solver_timeout_ms = 30_000`.
 
 ### "Solvers disagreed on obligation"
 
@@ -107,7 +107,7 @@ sure the claimed invariant actually holds.
 
 Deep recursion. Either:
 - Rewrite as iteration.
-- Increase stack size: `Verum.toml [runtime] stack_size = 4_194_304`.
+- Increase stack size: `verum.toml [runtime] stack_size = 4_194_304`.
 - Use a trampoline / CPS for mutually-recursive call chains.
 
 ### "attempt to panic during panic"
@@ -188,14 +188,14 @@ source ~/.zshrc
 ### "verum.toml not found"
 
 You're running `verum build` from outside a project directory. Either
-`cd` into one, or `--manifest-path path/to/Verum.toml`.
+`cd` into one, or `--manifest-path path/to/verum.toml`.
 
 ### "LSP not responding"
 
 In your editor, check the log: `VerumLSPLog` command in VS Code, or
 `:LspLog` in neovim. Usual causes:
 - Wrong `verum` binary on PATH; check `verum --version`.
-- Workspace without `Verum.toml`; LSP needs a project root.
+- Workspace without `verum.toml`; LSP needs a project root.
 - Huge project on first open; initial indexing can take tens of
   seconds.
 
@@ -214,7 +214,7 @@ Add one — start with `by auto`, refine from there. See
 ### "Cannot publish — checksum mismatch"
 
 Someone else already published this `name@version`. Bump the version
-in `Verum.toml` and re-run `verum publish`.
+in `verum.toml` and re-run `verum publish`.
 
 ### "Dependency version conflict"
 

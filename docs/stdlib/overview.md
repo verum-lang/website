@@ -132,7 +132,7 @@ Some stdlib features require a runtime that supports them:
 | `embedded` | no | stack-only | 1 |
 | `no_runtime` | stubs | no | 1 |
 
-Configure via `Verum.toml`:
+Configure via `verum.toml`:
 
 ```toml
 [runtime]

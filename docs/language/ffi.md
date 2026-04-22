@@ -176,7 +176,7 @@ you need to suppress them.
 
 ## Build-system integration
 
-`Verum.toml`:
+`verum.toml`:
 
 ```toml
 [dependencies]

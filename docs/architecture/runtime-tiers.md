@@ -32,7 +32,7 @@ either; the choice is per-build, not per-function.
 `verum run` is interpreter-first by default — startup is instant,
 every VBC opcode is available (including cubical, HoTT, and
 autodiff). Pass `--aot` (or set `[build].tier = "aot"` in
-`Verum.toml`) to compile through LLVM for production-speed
+`verum.toml`) to compile through LLVM for production-speed
 execution.
 
 ### Interpreter — VBC
@@ -197,7 +197,7 @@ A program that uses a feature its profile doesn't support is a
 to link `runtime = "no_heap"` against any transitive dependency
 that allocates from `Heap<T>`.
 
-Select a profile in `Verum.toml`:
+Select a profile in `verum.toml`:
 
 ```toml
 [build]
@@ -248,7 +248,7 @@ verum build        # AOT, debug profile
 verum build --release   # AOT, release profile
 ```
 
-### Per-project (`Verum.toml`)
+### Per-project (`verum.toml`)
 
 ```toml
 [build]

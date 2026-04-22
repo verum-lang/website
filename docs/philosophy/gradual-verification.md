@@ -215,7 +215,7 @@ SMT-discharged `ensures` clauses until you opt in.
 To change the project-wide default:
 
 ```toml
-# Verum.toml
+# verum.toml
 [verify]
 default_strategy = "formal"
 default_timeout_ms = 500

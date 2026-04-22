@@ -235,7 +235,7 @@ practice:
 
 ## Project manifest (`verum.toml`)
 
-Projects use a `verum.toml` manifest (capitalised `Verum.toml` is
+Projects use a `verum.toml` manifest (capitalised `verum.toml` is
 also accepted on case-sensitive filesystems). The top-level section
 is `[cog]`, not `[verum]`:
 
@@ -335,7 +335,7 @@ require('lspconfig').verum = {
   default_config = {
     cmd = { 'verum', 'lsp' },
     filetypes = { 'verum' },
-    root_dir = require('lspconfig.util').root_pattern('verum.toml', 'Verum.toml'),
+    root_dir = require('lspconfig.util').root_pattern('verum.toml', 'verum.toml'),
     settings = {
       verum = {
         verify = { strategy = 'static' },

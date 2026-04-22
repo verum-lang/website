@@ -198,7 +198,7 @@ Semantics:
 
 - Paths are always resolved against the cog's manifest root or
   against a directory explicitly listed in the `[assets]` section of
-  `Verum.toml`. Absolute paths and paths with `..` segments are
+  `verum.toml`. Absolute paths and paths with `..` segments are
   rejected.
 - Reads are recorded in the build's dependency graph. Editing an
   asset invalidates every `BuildAssets`-using macro that read it.
@@ -247,7 +247,7 @@ that are *permitted but suspicious*. Examples:
 
 Linter findings are visible in `verum build` output and in the LSP.
 The active set is configured under `[meta.linter]` in
-`Verum.toml`; individual checks can be silenced with
+`verum.toml`; individual checks can be silenced with
 `@allow(...)` attributes at the meta function's declaration site.
 See the [Diagnostics](./error-codes) page for the authoritative
 list of diagnostic categories.

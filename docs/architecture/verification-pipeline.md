@@ -154,7 +154,7 @@ Three execution strategies:
 | **Cross-validate** | Portfolio plus an orthogonal technique; require agreement; error on disagreement | `@verify(certified)` |
 
 Timeout: default 5 s per obligation, configurable via
-`Verum.toml [verify] solver_timeout_ms`. On timeout, the fallback
+`verum.toml [verify] solver_timeout_ms`. On timeout, the fallback
 strategy (`other-solver` by default) retries with the non-preferred
 solver.
 

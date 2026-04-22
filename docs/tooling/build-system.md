@@ -17,7 +17,7 @@ Three built-in profiles:
 - **`release`** — LLVM -O3, LTO, stripped, aggressive CBGR promotion.
 - **`bench`** — release + profile-guided hints, debug symbols kept.
 
-Customise in `Verum.toml`:
+Customise in `verum.toml`:
 
 ```toml
 [profile.release]
@@ -130,7 +130,7 @@ target/
 ## `cargo`-like workspace
 
 ```toml
-# Verum.toml at workspace root
+# verum.toml at workspace root
 [workspace]
 members = ["core", "api", "cli", "tools/*"]
 default-members = ["api", "cli"]
