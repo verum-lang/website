@@ -52,7 +52,7 @@ async fn handle_client(mut stream: TcpStream, peer: SocketAddr)
     Logger.info(f"{peer} disconnected");
 }
 
-fn main() using [IO] {
+fn main() {
     block_on(async {
         provide Logger = ConsoleLogger.new(LogLevel.Info) in {
             echo_server("0.0.0.0:7777").await.expect("server")
@@ -234,7 +234,7 @@ listener.set_reuse_port(true)?;             // multiple listeners
 
 ```verum
 async fn ping(host: &Text, port: Int) -> IoResult<Duration>
-    using [IO]
+   
 {
     let t0 = Instant.now();
     let mut stream = TcpStream.connect(f"{host}:{port}").await?;

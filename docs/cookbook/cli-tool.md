@@ -8,7 +8,7 @@ description: Arguments, subcommands, config, error reporting.
 ### Minimal
 
 ```verum
-fn main() using [IO] -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let args = env::args();
     match args.get(1).map(|s| s.as_str()) {
         Maybe.Some("--help") | Maybe.Some("-h") => print_help(),
@@ -18,11 +18,11 @@ fn main() using [IO] -> Result<(), Error> {
     Result.Ok(())
 }
 
-fn greet(name: &Text) using [IO] {
+fn greet(name: &Text) {
     print(&f"Hello, {name}!");
 }
 
-fn print_help() using [IO] {
+fn print_help() {
     println(&"usage: greet <name>");
 }
 ```
@@ -60,7 +60,7 @@ fn parse_args(args: &List<Text>) -> Result<Command, Error> {
     }
 }
 
-fn main() using [IO] {
+fn main() {
     match parse_args(&env::args()).and_then(dispatch) {
         Result.Ok(()) => (),
         Result.Err(e) => { eprintln(&f"error: {e}"); env::exit(1); }
@@ -71,7 +71,7 @@ fn main() using [IO] {
 ### Reading config files
 
 ```verum
-fn load_config() -> Result<Config, Error> using [IO] {
+fn load_config() -> Result<Config, Error> {
     let path = env::var_opt("MYTOOL_CONFIG")
         .unwrap_or_else(|| format!("{}/.mytool/config.toml", env::home_dir().unwrap_or(".".to_string())));
 
@@ -88,7 +88,7 @@ fn load_config() -> Result<Config, Error> using [IO] {
 ```verum
 use term::style::{Color, Style};
 
-fn report_error(e: &Error) using [IO] {
+fn report_error(e: &Error) {
     let red = Style.new().fg(Color.Red).add_modifier(Modifier.Bold);
     eprint(&red.paint(&"error: "));
     eprintln(&e.to_string());
@@ -101,7 +101,7 @@ fn report_error(e: &Error) using [IO] {
 ### Exit codes
 
 ```verum
-fn main() using [IO] {
+fn main() {
     match run() {
         Result.Ok(())                                  => env::exit_success(),
         Result.Err(e) if e.is_user_error()             => { report_error(&e); env::exit(1); }
@@ -116,7 +116,7 @@ fn main() using [IO] {
 ```verum
 use term::widget::{Spinner, SpinnerFrames};
 
-async fn slow_task() using [IO] {
+async fn slow_task() {
     let mut spin = Spinner.new().frames(&SpinnerFrames.Dots);
     spin.start(&"loading");
     let result = heavy_compute().await;

@@ -137,7 +137,7 @@ message. Strategies for handling lag:
 
 ```verum
 async fn merge(mut a: Receiver<Msg>, mut b: Receiver<Msg>)
-    using [IO]
+   
 {
     loop {
         select {

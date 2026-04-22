@@ -53,7 +53,7 @@ let removed: Maybe<Node> = arena.remove(h);         // None if already removed
 Set the arena as the active allocator for a scope:
 
 ```verum
-fn parse<'a>() -> Ast using [IO] {
+fn parse<'a>() -> Ast {
     let arena = GenerationalArena::<Byte>.new(1 << 20);     // 1 MiB
     provide Allocator = arena in {
         parse_body()                                          // uses arena for all Heap.new
