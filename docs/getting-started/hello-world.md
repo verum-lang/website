@@ -37,20 +37,23 @@ dependencies live; see
 `src/main.vr`:
 
 ```verum
-fn main() using [IO] {
+fn main() {
     print("Hello, World!");
 }
 ```
 
 Two things are worth noticing:
 
-1. **`using [IO]`** — printing to stdout is an effect, and effects are
-   typed. `main` requests the `IO` context; the runtime provides it.
-   A function that wanted to print without declaring `IO` would be
-   rejected by the compiler.
-2. **`print` is a function**, not a macro. No `!`, no `println!`. See
-   [reference/builtins](/docs/reference/builtins) for the full list of
-   built-ins.
+1. **`print` is a function**, not a macro. No `!`, no `println!`.
+   Standard output is one of a small set of *built-in* effects that do
+   not need an explicit context — see
+   [reference/builtins](/docs/reference/builtins) for the full list.
+2. **User-defined effects are explicit.** The moment you need a
+   database, a logger, a clock, or anything else beyond the built-ins,
+   you declare it: `fn handle(...) using [Database, Logger, Clock]`.
+   No globals, no `@Autowired`. The
+   [context system](/docs/language/context-system) chapter covers the
+   full propagation rules.
 
 ## Build and run
 
@@ -79,7 +82,7 @@ debug-only assertions, and strips the binary. Expect it to be about
 Format strings use `f"..."`:
 
 ```verum
-fn main() using [IO] {
+fn main() {
     let name = "Verum";
     let version = 1;
     print(f"Hello, {name} v{version}!");
@@ -109,13 +112,13 @@ Update `src/main.vr`:
 ```verum
 type Greeting is Text { !self.is_empty() && self.len() < 100 };
 
-fn greet(name: Text) -> Greeting using [IO] {
+fn greet(name: Text) -> Greeting {
     let msg = f"Hello, {name}!";
     print(msg);
     msg
 }
 
-fn main() using [IO] {
+fn main() {
     greet("World");
     greet("Verum");
 }
