@@ -18,7 +18,7 @@ $ verum new wordcount
 $ cd wordcount
 ```
 
-`Verum.toml`:
+`verum.toml`:
 
 ```toml
 [cog]

@@ -1,11 +1,11 @@
 ---
 sidebar_position: 6
-title: Verum.toml
+title: verum.toml
 ---
 
-# `Verum.toml` — Manifest Reference
+# `verum.toml` — Manifest Reference
 
-Every cog has a `Verum.toml` manifest at its root. The schema below
+Every cog has a `verum.toml` manifest at its root. The schema below
 is the authoritative description of every field the compiler and CLI
 will consume.
 
@@ -362,7 +362,7 @@ verum test -Z test.parallel=false -Z test.timeout_secs=120
 Precedence (low → high):
 
 1. Built-in defaults
-2. `Verum.toml` values
+2. `verum.toml` values
 3. High-level CLI flags (`--tier`, `--no-cubical`, `--cbgr`, `--gpu`)
 4. `-Z KEY=VALUE` overrides
 
@@ -379,7 +379,7 @@ verum config validate          # exit 0 on valid, non-zero with diagnostics
 
 `verum config show` displays every flag's effective value after all
 overrides are applied, so you can verify that your `-Z` flags and
-`Verum.toml` produce the expected configuration.
+`verum.toml` produce the expected configuration.
 
 ## See also
 

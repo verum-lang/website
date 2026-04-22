@@ -82,7 +82,7 @@ public type RuntimeConfig is protocol {
 
 The canonical implementation for the `full` profile is
 `DefaultRuntimeConfig`, which reads from the `[runtime]` section of
-`Verum.toml` and falls back to sensible defaults (`worker_threads =
+`verum.toml` and falls back to sensible defaults (`worker_threads =
 num_cpus`, `max_blocking_threads = 512`, `stack_size = 2 MiB`,
 `cbgr_tier = Tier0_Full`).
 

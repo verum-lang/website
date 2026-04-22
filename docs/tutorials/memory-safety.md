@@ -251,7 +251,7 @@ The compiler prints promotion/rejection reasons via
 Configure three builds:
 
 ```toml
-# Verum.toml
+# verum.toml
 [profile.managed]
 runtime.cbgr_mode = "managed"     # all refs stay tier 0
 

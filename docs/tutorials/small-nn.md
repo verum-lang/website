@@ -20,7 +20,7 @@ $ verum new mnist
 $ cd mnist
 ```
 
-`Verum.toml`:
+`verum.toml`:
 
 ```toml
 [cog]

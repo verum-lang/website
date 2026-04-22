@@ -389,7 +389,7 @@ Flags: `--json`.
 
 ### `verum config validate`
 
-Validate `Verum.toml` without building. Exits 0 on success, non-zero
+Validate `verum.toml` without building. Exits 0 on success, non-zero
 with diagnostics on invalid values (including "did you mean"
 suggestions for enum typos).
 
@@ -420,7 +420,7 @@ language-feature overrides:
 
 **High-level flags:**
 
-| Flag | Verum.toml equivalent |
+| Flag | verum.toml equivalent |
 |------|----------------------|
 | `--tier <interpret\|aot\|check>` | `[codegen] tier` |
 | `--gpu` / `--no-gpu` | `[codegen] mlir_gpu` |
@@ -448,7 +448,7 @@ language-feature overrides:
 Any dotted path into the manifest (e.g., `-Z types.cubical=false`,
 `-Z test.timeout_secs=120`, `-Z safety.mls_level=secret`).
 
-**Precedence** (low → high): defaults < `Verum.toml` < high-level
+**Precedence** (low → high): defaults < `verum.toml` < high-level
 flags < `-Z` overrides.
 
 Invalid `-Z` keys produce a descriptive error listing all valid

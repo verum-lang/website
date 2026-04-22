@@ -207,7 +207,7 @@ context MetaRuntime {
     fn runtime_config() -> Text;               // "full" | "embedded" | ...
     fn compiler_version() -> (Int, Int, Int);
 
-    // Execution limits (from Verum.toml [meta])
+    // Execution limits (from verum.toml [meta])
     fn recursion_limit() -> Int;
     fn iteration_limit() -> Int;
     fn memory_limit() -> Int;
@@ -791,7 +791,7 @@ type MetaError is
 type MetaResult<T> = Result<T, MetaError>;
 ```
 
-### Defaults (override in `Verum.toml [meta]`)
+### Defaults (override in `verum.toml [meta]`)
 
 ```verum
 const DEFAULT_RECURSION_LIMIT: Int = 256;
