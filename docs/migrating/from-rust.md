@@ -69,7 +69,9 @@ generation checking absorbs what Rust's lifetime analysis statically
 tracked. When the compiler cannot infer, you add lifetimes explicitly
 — but that's rare in practice.
 
-**Three reference tiers.** `&T` is CBGR-checked (~15 ns per deref).
+**Three reference tiers.** `&T` is CBGR-checked (~0.93 ns per
+deref, measured on the `production_targets` bench — a single
+cacheline-local generation+epoch compare).
 Escape analysis promotes most `&T` to `&checked T` (zero cost) at
 compile time. Use `&checked T` **explicitly** when you want the
 compiler to refuse code that would otherwise force a runtime check.

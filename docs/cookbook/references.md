@@ -7,7 +7,7 @@ description: Three reference tiers, one decision.
 
 **In order, ask yourself:**
 
-### 1. Do I care about the ~15 ns per deref?
+### 1. Do I care about the ~0.93 ns per deref?
 
 - **No** → use `&T`. Default for 90%+ of code.
 - **Yes** → continue.
@@ -153,7 +153,7 @@ generation + epoch+caps. In practice the Shared version inlines better.
 ### Chained methods
 
 ```verum
-user.address.city.name       // each `.` deref is ~15 ns unless promoted
+user.address.city.name       // each `.` deref is ~0.93 ns unless promoted
 ```
 
 The optimiser typically collapses adjacent CBGR checks into one
