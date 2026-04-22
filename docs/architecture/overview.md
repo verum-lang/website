@@ -52,6 +52,7 @@ flowchart TD
         L2C["verum_smt<br/>capability-routed SMT backend"]
         L2D["verum_verification<br/>VCGen · Hoare · tactics"]
         L2E["verum_modules<br/>resolver · coherence · parallel loader"]
+        L2F["verum_kernel<br/>LCF-style trusted checker"]
     end
 
     subgraph L3["Layer 3 — Execution (VBC-first)"]
@@ -86,6 +87,7 @@ Line counts reflect the current release.
 | `verum_fast_parser` | Main recursive-descent parser | 89 K |
 | `verum_codegen` | LLVM (CPU) + MLIR (GPU) backends | 81 K |
 | `verum_verification` | VCGen, Hoare logic, tactic evaluator | 59 K |
+| `verum_kernel` | LCF-style trusted checker — sole member of the TCB | 1.2 K |
 | `verum_parser` | Legacy parser (partial, being phased out) | 49 K |
 | `verum_ast` | AST definitions | 47 K |
 | `verum_lsp` | Language server (LSP 3.17) | 33 K |

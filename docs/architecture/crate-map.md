@@ -34,6 +34,7 @@ release.
 | `verum_cbgr`         | 103 K | Three-tier reference analysis suite | `tier_analysis.rs`, `escape_analysis.rs`, `ownership_analysis.rs`, `concurrency_analysis.rs`, `lifetime_analysis.rs`, `nll_analysis.rs`, `polonius_analysis.rs`, `smt_alias_verification.rs` |
 | `verum_smt`          | 139 K | SMT integration (the SMT backend) | `z3_backend.rs`, `cvc5_backend.rs`, `capability_router.rs`, `portfolio_executor.rs`, `proof_search.rs`, `cubical_tactic.rs` |
 | `verum_verification` | 59 K  | Hoare logic, VCGen, dependent verifier, tactics | `hoare_logic.rs`, `vcgen.rs`, `proof_validator.rs`, `tactic_evaluation.rs`, `dependent_verification.rs` |
+| `verum_kernel`       | 1.2 K | **LCF-style trusted checker — sole member of the TCB.** Explicit CoreTerm calculus, AxiomRegistry, SmtCertificate replay surface. Target at completion: &lt; 5 K LOC. | `lib.rs` |
 | `verum_diagnostics`  | 19 K  | Error formatting, spans, labels | `diagnostic.rs` |
 | `verum_modules`      | 17 K  | Module resolution, loader, coherence checker | `loader.rs`, `resolver.rs`, `coherence.rs`, `parallel.rs` |
 
