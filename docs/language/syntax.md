@@ -253,21 +253,26 @@ Special operators with keyword-like behaviour:
 A file (module) is a sequence of items. An **item** is any of:
 
 ```verum
-mount std.io;                              // import
-pub type Color is Red | Green | Blue;      // type definition
-pub const MAX: Int = 1024;                 // constant
-pub static mut LOG_LEVEL: Int = 0;         // mutable static
+mount core.io;                             // import (stdlib module)
+public type Color is Red | Green | Blue;   // type definition
+public const MAX: Int = 1024;              // constant
+public static mut LOG_LEVEL: Int = 0;      // mutable static
 module net { /* nested module */ }         // submodule
-fn main() using [IO] { ... }               // function
-implement Display for Color { ... }        // protocol implementation
-context Database { ... }                   // context definition
-protocol Serializable { ... }              // protocol (inside type_def)
+fn main() { /* … */ }                      // function (no ctx needed for built-ins)
+implement Display for Color { /* … */ }    // protocol implementation
+context Database { /* … */ }               // context definition
+type Serializable is protocol { /* … */ }; // protocol (as a type kind)
 extern "C" { fn c_fn(x: Int) -> Int; }     // FFI
-ffi OpenSSL extends Crypto { ... }         // FFI boundary
-pattern Even(n: Int) -> Bool = n%2==0;     // active pattern
-meta fn sql_query(input: tt) { ... }       // meta (macro) definition
-theorem add_comm(...) { proof by auto }    // theorem
-@verify(formal) fn critical() { ... }      // attributed item
+ffi OpenSSL extends Crypto { /* … */ }     // FFI boundary
+pattern Even(n: Int) -> Bool = n % 2 == 0; // active pattern
+meta fn sql_query(input: tt) { /* … */ }   // meta (macro) definition
+theorem add_comm(a: Int, b: Int) -> Bool
+    ensures a + b == b + a
+    proof by auto;                         // theorem
+@framework(lurie_htt, "HTT 6.2.2.7")
+axiom sheafification_is_topos<C>(c: C) -> Bool
+    ensures true;                          // framework axiom
+@verify(formal) fn critical() { /* … */ }  // attributed item
 ```
 
 ### Visibility
@@ -409,8 +414,9 @@ whether statements span one line or many.
 A **path** is a dotted sequence of identifiers that names an item:
 
 ```verum
-std.io.print
+core.io.print
 core.collections.Map
+core.math.frameworks.lurie_htt.sheafification_is_infinity_topos
 self.field
 super.function
 crate.types.User
@@ -418,6 +424,9 @@ crate.types.User
 
 Roots:
 
+- `core` — the stdlib root (the package that ships with every Verum
+  install: `core.io`, `core.collections`, `core.math`, `core.async`,
+  `core.net`, `core.security`, ...).
 - `crate` — the root of the current cog.
 - `self` — the current module.
 - `super` — the parent module.
