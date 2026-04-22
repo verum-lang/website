@@ -9,11 +9,49 @@ Contracts attach preconditions, postconditions, and invariants to
 functions and loops. They are the bridge between "I think this holds"
 and "the compiler proved this holds."
 
-## `where requires` — preconditions
+## Clause syntax at a glance
+
+Verum accepts contract clauses in two equivalent shapes.
+
+**Bare form** — each clause keyword stands alone on its own
+signature line. Multiple preconditions share a single `requires`
+(comma-separated); each postcondition takes its own `ensures`
+keyword. This is the form used throughout the stdlib and the VCS
+conformance specs under `vcs/specs/L1-core/proof/contracts/`:
+
+```verum
+fn foo(...) -> T
+    requires pre1, pre2, ...
+    ensures  post1
+    ensures  post2
+{
+    body
+}
+```
+
+**`where` form** — accepted for single-line signatures with one
+`ensures`:
+
+```verum
+fn abs(x: Int) -> Int where ensures result >= 0 {
+    if x >= 0 { x } else { -x }
+}
+```
+
+Two gotchas the compiler enforces today:
+
+1. `where requires` does not parse — use the bare `requires`
+   keyword on its own signature line.
+2. Multiple `ensures` clauses each take their own keyword; comma-
+   joining postconditions on a single `ensures` line fails to
+   parse. Preconditions, on the other hand, *do* accept
+   comma-joining on one `requires` line.
+
+## `requires` — preconditions
 
 ```verum
 fn divide(a: Int, b: Int) -> Int
-    where requires b != 0
+    requires b != 0
 {
     a / b
 }
@@ -38,28 +76,30 @@ fn divide(a: Int, b: Int { self != 0 }) -> Int { a / b }
 ```
 
 Prefer the refinement form when the precondition concerns a single
-parameter; prefer `where requires` when it spans several parameters or
-references external state:
+parameter; prefer the `requires` clause when it spans several
+parameters or references external state:
 
 ```verum
 fn transfer(from: &mut Account, to: &mut Account, amount: Money)
-    where requires from.balance >= amount,
-          requires from != to
+    requires from.balance >= amount,
+             from != to
 { ... }
 ```
 
-## `where ensures` — postconditions
+## `ensures` — postconditions
 
 ```verum
 fn abs(x: Int) -> Int
-    where ensures result >= 0,
-          ensures result == x || result == -x
+    ensures result >= 0
+    ensures result == x || result == -x
 {
     if x >= 0 { x } else { -x }
 }
 ```
 
-Multiple clauses are conjoined. `result` refers to the return value.
+Each `ensures` keyword takes one boolean expression; multiple
+clauses are conjoined by repeating the keyword. `result` refers
+to the return value.
 
 ## Loop `invariant` and `decreases`
 
@@ -88,8 +128,8 @@ A function with `throws(E)` commits to a contract on its error cases:
 
 ```verum
 fn parse_u32(s: Text) -> Int throws(ParseError)
-    where ensures result >= 0,
-          ensures result <= U32_MAX
+    ensures result >= 0
+    ensures result <= U32_MAX
 {
     let n: Int64 = s.parse()?;
     if n < 0 || n > U32_MAX {
@@ -105,7 +145,7 @@ Bounded quantifiers are first class:
 
 ```verum
 fn all_positive(xs: &List<Int>) -> Bool
-    where ensures result == (forall i in 0..xs.len(). xs[i] > 0)
+    ensures result == (forall i in 0..xs.len(). xs[i] > 0)
 {
     xs.iter().all(|x| *x > 0)
 }
@@ -121,8 +161,8 @@ the field's value at call-entry:
 
 ```verum
 fn push(&mut self, x: T)
-    where ensures self.len() == old(self.len()) + 1,
-          ensures self[old(self.len())] == x
+    ensures self.len() == old(self.len()) + 1
+    ensures self[old(self.len())] == x
 { ... }
 ```
 
@@ -133,10 +173,10 @@ A protocol can declare contracts; implementations must satisfy them:
 ```verum
 type Stack<T> is protocol {
     fn push(&mut self, x: T)
-        where ensures self.len() == old(self.len()) + 1;
+        ensures self.len() == old(self.len()) + 1;
 
     fn pop(&mut self) -> Maybe<T>
-        where ensures match result {
+        ensures match result {
             Some(_) => self.len() == old(self.len()) - 1,
             None    => self.len() == 0 && old(self.len()) == 0,
         };
@@ -156,10 +196,9 @@ tool (`verum doc`) extracts them into the generated reference:
 /// Transfers `amount` from `from` to `to`, assuming both accounts
 /// are distinct and `from` has sufficient balance.
 fn transfer(from: &mut Account, to: &mut Account, amount: Money)
-    where requires from.balance >= amount,
-          requires from != to,
-          ensures  from.balance == old(from.balance) - amount,
-          ensures  to.balance   == old(to.balance)   + amount
+    requires from.balance >= amount, from != to
+    ensures  from.balance == old(from.balance) - amount
+    ensures  to.balance   == old(to.balance)   + amount
 { ... }
 ```
 
@@ -172,7 +211,7 @@ limited to array partitioning and disjointness of mutable references:
 
 ```verum
 fn swap_regions<'a>(a: &'a mut [Int], b: &'a mut [Int])
-    where requires disjoint(a, b)
+    requires disjoint(a, b)
 { ... }
 ```
 
