@@ -130,19 +130,19 @@ let v2 = User { name: "Bob".to_string(), ..user };
 
 ### Ordering
 
-1. Standard library (`mount std.*` / `mount core.*`).
+1. Standard library (`mount core.*`).
 2. External cogs.
 3. Current cog (`mount .self.*`, `mount .super.*`, `mount .crate.*`).
 
 One blank line between groups. Within a group, alphabetical.
 
 ```verum
-mount std.io.*;
-mount std.collections.{List, Map};
-mount std.time.Duration;
+mount core.io.*;
+mount core.collections.{List, Map};
+mount core.time.Duration;
 
-mount http::{Request, Response};
-mount serde::Deserialize;
+mount http.{Request, Response};
+mount serde.Deserialize;
 
 mount .self.config.Config;
 mount .self.util.*;
@@ -150,7 +150,7 @@ mount .self.util.*;
 
 ### Glob imports
 
-Allowed for prelude-style modules (`mount std.*`). Avoid elsewhere;
+Allowed for prelude-style modules (`mount core.*`). Avoid elsewhere;
 be explicit about what you're bringing in.
 
 ## Visibility
