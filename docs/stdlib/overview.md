@@ -24,8 +24,7 @@ Meta     Compile-time            meta, proof, mathesis
 ```
 
 Each layer depends only on layers below it. `core` is the root
-namespace; users typically see its children via `mount std.*` or
-`mount core.*`.
+namespace; users see its children via `mount core.*`.
 
 ## Top-level modules
 
