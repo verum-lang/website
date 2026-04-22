@@ -23,16 +23,34 @@ negotiated — not imposed — by an explicit verification ladder.
   integrated with unification — not bolted on.
 - **Dual SMT backends**: the SMT backend with capability-based routing, so
   the solver that best handles your proof obligation actually gets it.
-- **Three-tier references**: `&T` (~15 ns CBGR check), `&checked T`
-  (zero overhead, compiler-proven), `&unsafe T` (zero overhead, you
-  prove it).
+- **Three-tier references**: `&T` (~0.93 ns CBGR check, measured;
+  target ≤ 15 ns), `&checked T` (zero overhead, compiler-proven),
+  `&unsafe T` (zero overhead, you prove it).
 - **Explicit contexts**: no hidden globals; capabilities flow through
   typed context parameters that propagate across async boundaries.
 - **Semantic-honest types**: `List`, `Text`, `Map`, `Heap`, `Shared` —
-  types describe meaning, not implementation.
-- **Gradual verification**: nine strategies from `@verify(runtime)` to
-  `@verify(certified)` — semantic intents, not solver names; the
-  capability router picks the SMT backend, portfolio, or tactics for you.
+  types describe meaning, not implementation. `Vec`, `String`,
+  `HashMap` don't appear anywhere.
+- **Gradual verification**: nine operational strategies — `runtime`,
+  `static`, `formal`, `proof`, `fast`, `thorough`, `reliable`,
+  `certified`, `synthesize` — dispatched distinctly through a
+  two-layer architecture (coarse `VerificationLevel` gradient +
+  fine-grained `VerifyStrategy` routing). See
+  **[Gradual verification](/docs/verification/gradual-verification)**.
+- **LCF-style trusted kernel** (`verum_kernel`, target &lt; 5 K LOC at
+  completion): every tactic, every SMT backend, every elaboration step
+  produces a proof term that the kernel re-checks. A bug outside the
+  kernel can refuse a valid program or fail a certificate replay, but
+  **never** accept a false theorem. See
+  **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**.
+- **Framework axioms with explicit attribution**:
+  `@framework(lurie_htt, "HTT 6.2.2.7")` marks a postulate as coming
+  from a specific external result. `verum audit --framework-axioms`
+  enumerates the full trusted boundary of any proof corpus — no
+  hidden axioms. Six stdlib packages (Lurie HTT, Schreiber DCCT,
+  Connes reconstruction, Petz classification, Arnold–Mather, Baez–
+  Dolan) ship 36 citation-tagged axioms today. See
+  **[Framework axioms](/docs/verification/framework-axioms)**.
 
 ## A first taste
 
@@ -60,6 +78,31 @@ types on `UserId` and `age` are erased — there is no runtime cost. The
 `using [...]` clause makes the function's effects explicit. The `&List`
 reference is CBGR-checked unless escape analysis promotes it to
 `&checked List`, which costs nothing.
+
+## Where the trust lives
+
+Verum's soundness story is not "the SMT solver said so, trust us".
+The explicit trusted computing base is exactly three items:
+
+1. The Rust compiler and its linked dependencies (unavoidable).
+2. The **LCF-style kernel** in `verum_kernel` — a small, audit-able
+   check loop targeting &lt; 5 K lines of code at completion.
+3. **Framework axioms**, each registered with an explicit
+   `FrameworkId { framework, citation }`.
+
+Everything else — the elaborator, all 22 tactics, the SMT backends
+(Z3, CVC5, ...), the cubical NbE evaluator — lives **outside** the
+TCB. Every tactic produces a proof term the kernel re-checks. Every
+SMT backend produces a certificate that `replay_smt_cert` re-derives
+into a kernel-checkable term. A bug in any one of them manifests as
+"refused a valid program" or "certificate replay failed"; never as
+"false theorem accepted".
+
+The trusted boundary is *enumerable*: `verum audit --framework-axioms`
+walks every `.vr` file in a project, collects every
+`@framework(name, "citation")` marker, groups them by framework, and
+prints the exact set of external results the corpus depends on. No
+implicit extensions, no hidden axioms.
 
 ## How this site is organised
 
