@@ -195,7 +195,8 @@ type BankAccount is {
 };
 
 fn transfer(from: &mut BankAccount, to: &mut BankAccount, amount: Positive)
-    requires from != to, from.balance >= amount
+    requires from != to
+    requires from.balance >= amount
     ensures  from.balance == old(from.balance) - amount
     ensures  to.balance   == old(to.balance)   + amount
 {

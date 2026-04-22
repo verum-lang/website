@@ -14,14 +14,15 @@ and "the compiler proved this holds."
 Verum accepts contract clauses in two equivalent shapes.
 
 **Bare form** — each clause keyword stands alone on its own
-signature line. Multiple preconditions share a single `requires`
-(comma-separated); each postcondition takes its own `ensures`
-keyword. This is the form used throughout the stdlib and the VCS
-conformance specs under `vcs/specs/L1-core/proof/contracts/`:
+signature line. Each precondition takes its own `requires`; each
+postcondition takes its own `ensures`. This is the form used
+throughout the stdlib and the VCS conformance specs under
+`vcs/specs/L1-core/proof/contracts/`:
 
 ```verum
 fn foo(...) -> T
-    requires pre1, pre2, ...
+    requires pre1
+    requires pre2
     ensures  post1
     ensures  post2
 {
@@ -42,10 +43,9 @@ Two gotchas the compiler enforces today:
 
 1. `where requires` does not parse — use the bare `requires`
    keyword on its own signature line.
-2. Multiple `ensures` clauses each take their own keyword; comma-
-   joining postconditions on a single `ensures` line fails to
-   parse. Preconditions, on the other hand, *do* accept
-   comma-joining on one `requires` line.
+2. Each precondition / postcondition takes its own keyword;
+   comma-joining on one line (e.g. `requires a, b, c` or
+   `ensures x, y`) fails to parse. Repeat the keyword per clause.
 
 ## `requires` — preconditions
 
@@ -57,7 +57,20 @@ fn divide(a: Int, b: Int) -> Int
 }
 ```
 
-Every caller must establish `b != 0`. Failure becomes:
+Multiple preconditions: repeat the `requires` keyword (no
+comma-joining on a single line).
+
+```verum
+fn middle(xs: &List<Int>, i: Int) -> Int
+    requires i >= 0
+    requires i < xs.len()
+{
+    xs[i]
+}
+```
+
+Every caller must establish the conjunction of all `requires`
+clauses. Failure becomes:
 
 ```
 error[V3401]: precondition not established
@@ -196,7 +209,8 @@ tool (`verum doc`) extracts them into the generated reference:
 /// Transfers `amount` from `from` to `to`, assuming both accounts
 /// are distinct and `from` has sufficient balance.
 fn transfer(from: &mut Account, to: &mut Account, amount: Money)
-    requires from.balance >= amount, from != to
+    requires from.balance >= amount
+    requires from != to
     ensures  from.balance == old(from.balance) - amount
     ensures  to.balance   == old(to.balance)   + amount
 { ... }
