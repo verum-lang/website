@@ -126,7 +126,7 @@ is ordered and incrementable (integers, characters). Float ranges
 ## Unary reference operators
 
 ```verum
-&x              // tier-0 managed (CBGR ~15 ns)
+&x              // tier-0 managed (CBGR ~0.93 ns measured)
 &checked x      // tier-1 compiler-proven (0 ns)
 &unsafe x       // tier-2 programmer-proven (0 ns), needs `unsafe` block
 &mut x          // mutable reference

@@ -61,9 +61,9 @@ public fn with_forked_env<T, F: fn() -> T>(f: F) -> T;
 
 /// CBGR safety tier (four variants, see architecture docs).
 public type ExecutionTier is
-    | Tier0_Full       // full CBGR: ~15 ns per deref
-    | Tier1_Epoch      // gen + epoch: ~8 ns
-    | Tier2_Gen        // gen only: ~3 ns
+    | Tier0_Full       // full CBGR: ≤ 15 ns design target; ~0.93 ns measured (gen+epoch)
+    | Tier1_Epoch      // gen + epoch: ~0.93 ns
+    | Tier2_Gen        // gen only: < Tier1_Epoch
     | Tier3_Unchecked; // no checks: 0 ns (unsafe)
 ```
 

@@ -20,9 +20,11 @@ Expect early-adopter friction.
 ### How fast is it?
 
 LLVM-AOT builds run at **0.85–1.0× of equivalent C**. The
-[CBGR reference model](/docs/language/cbgr) adds ~15 ns to
-non-promoted dereferences — invisible in most code; measurable in
-tight loops (where escape analysis typically eliminates it anyway).
+[CBGR reference model](/docs/language/cbgr) adds ~0.93 ns
+(measured on the `production_targets` bench, well under the
+≤ 15 ns design target) to non-promoted dereferences — invisible
+in most code; measurable in tight loops (where escape analysis
+typically eliminates it anyway).
 
 ### Can I use it for embedded / bare-metal work?
 
@@ -35,8 +37,8 @@ dependency.
 
 No. CBGR is the memory model: unique ownership (`Heap<T>`),
 atomically ref-counted sharing (`Shared<T>`), and borrowed references
-(`&T`) that carry a generation counter checked on deref (~15 ns). No
-GC pauses.
+(`&T`) that carry a generation counter checked on deref
+(~0.93 ns). No GC pauses.
 
 ### What about async?
 

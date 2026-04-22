@@ -93,7 +93,8 @@ fn deref<T>(r: ThinRef<T>) -> &T {
 }
 ```
 
-Measured: ~15 ns on an M3 Max.
+Measured: **~0.93 ns** on the `production_targets` bench
+(x86_64 release build), well under the ≤ 15 ns design target.
 
 ---
 
