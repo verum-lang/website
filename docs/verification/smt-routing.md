@@ -83,6 +83,15 @@ an orthogonal technique. Disagreement is a hard build error. The
 resulting proof term is embedded in the VBC archive as an exportable
 certificate (Coq / Lean / Dedukti / Metamath). Timeout multiplier: 3×.
 
+### `@verify(synthesize)` — synthesis
+
+Treats the obligation as a *synthesis problem* — given a
+specification, the solver should generate a term that satisfies it
+rather than check a provided one. The router dispatches to the
+synthesis-capable backend (CVC5's SyGuS engine today; a Verum-native
+synthesis engine on the roadmap). Used for invariant generation,
+hole filling, and tactic writing. Timeout multiplier: 5×.
+
 ## Classification
 
 The capability router lives in `verum_smt::capability_router`. The
@@ -119,7 +128,7 @@ z3 timeout  →  cvc5
 cvc5 timeout →  z3
 ```
 
-Configurable via `Verum.toml`:
+Configurable via `verum.toml`:
 
 ```toml
 [verify]
@@ -180,9 +189,35 @@ as feedback.
   rather than forcing a solver — the router always picks correctly
   given enough time.
 
+## The router, the kernel, and the TCB
+
+The capability router picks *which* solver to dispatch to; it does
+not decide *whether* to trust the result. Every SMT success
+produces an `SmtCertificate` — a backend-neutral proof trace
+normalised by `verum_smt::proof_extraction`. The kernel's
+`replay_smt_cert` reconstructs a `CoreTerm` witness from the
+certificate, and that reconstruction runs inside `verum_kernel`.
+
+This is why the solvers named in this page — Z3, CVC5, the
+forthcoming E / Vampire / Alt-Ergo / Zipperposition backends —
+all live **outside** Verum's trusted computing base. A bug in a
+routed solver that produced a spurious `unsat` fails the kernel's
+replay; it cannot accept a false theorem. See
+**[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+for the full structural guarantee.
+
 ## See also
 
 - **[Gradual verification](/docs/verification/gradual-verification)**
+  — the 9-strategy surface and the two-layer dispatch architecture.
 - **[Refinement reflection](/docs/verification/refinement-reflection)**
+  — how `@logic` functions extend the solver's vocabulary without
+  expanding the TCB.
+- **[Framework axioms](/docs/verification/framework-axioms)** —
+  explicit postulates (Lurie HTT, Connes, Petz, ...) for results
+  no SMT solver can discharge.
 - **[Architecture → SMT integration](/docs/architecture/smt-integration)**
   — the compiler's internal handling of obligations.
+- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
+  — how `SmtCertificate` replay keeps every SMT backend outside
+  the TCB.
