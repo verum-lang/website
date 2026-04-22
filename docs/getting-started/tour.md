@@ -96,13 +96,25 @@ and measures ~0.93 ns today against a 15 ns design target.
 ## 6. Explicit contexts
 
 ```verum
+public context Database { fn load(auth: Int) -> Int; }
+public context Logger { fn info(msg: &Text); }
+public context Clock { fn now() -> Int; }
+public context RateLimiter { fn check(ip: &Text); }
+
+public type Request is { path: Text, client_ip: Text, auth: Int };
+public type Response is { body: Text };
+
+fn build_response(user: Int, req: Request) -> Response {
+    Response { body: f"{user}: {req.path}" }
+}
+
 fn handle(req: Request) -> Response
     using [Database, Logger, Clock, RateLimiter]
 {
     let now = Clock.now();
-    Logger.info(f"request at {now}: {req.path}");
-    RateLimiter.check(req.client_ip)?;
-    let user = Database.load_user(req.auth)?;
+    Logger.info(&f"request at {now}: {req.path}");
+    RateLimiter.check(&req.client_ip);
+    let user = Database.load(req.auth);
     build_response(user, req)
 }
 ```
@@ -215,7 +227,7 @@ meta fn repeat(n: Int, body: quote) -> quote {
     quote { for _ in 0..${n} { ${body} } }
 }
 
-fn warmup() using [IO] {
+fn warmup() {
     @repeat(3, { print("warming"); })
 }
 ```
