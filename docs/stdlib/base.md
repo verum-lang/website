@@ -992,6 +992,93 @@ Byte::from_int(n)
 
 ---
 
+## IDs and versioning
+
+### `uuid` — RFC 4122 / 9562
+
+```verum
+let v4 = Uuid.new_v4();                // 122 bits random
+let v7 = Uuid.new_v7();                // 48-bit unix-ms + 74 random bits
+let text: Text = v7.to_text();
+let back = Uuid.parse(&text)?;
+```
+
+v7 is time-ordered — lexicographic sort matches chronological
+sort, ideal for DB primary keys (no B-tree fragmentation).
+
+### `snowflake` — Twitter 64-bit IDs
+
+```verum
+let mut gen = Snowflake.new(DEFAULT_EPOCH_MS, worker_id)?;
+let id: UInt64 = gen.next_id()?;
+
+// Decompose.
+let parts = snowflake.parse(id, DEFAULT_EPOCH_MS);
+// { timestamp_ms, worker_id, sequence }
+```
+
+Bit layout: `[ 0 | 41-bit unix-ms | 10-bit worker | 12-bit seq ]`.
+Monotonically increasing within a worker; `ClockRegressed`
+error on non-monotone wall clocks (no silent non-monotone IDs).
+Saturates at 4 M IDs/sec per worker (12-bit sequence wraps each
+ms).
+
+Pick UUID v4/v7 for cross-system interop, Snowflake for compact
+DB primary keys with explicit worker sharding.
+
+### `nanoid` — URL-safe short IDs
+
+```verum
+let id = nanoid.generate();                                 // 21 chars ≈ 126 bits
+let short = nanoid.generate_len(10);
+let hex = nanoid.generate_with_alphabet(b"0123456789abcdef", 16);
+```
+
+Byte-exact compatible with the `nanoid` JS/Go/Rust/Python
+libraries. Rejection sampling over the smallest power-of-two
+mask covering the alphabet eliminates modulo-bias. Birthday
+collision ≈ 1 per 2.4 × 10¹⁸ IDs at default length.
+
+### `semver` — Semantic Versioning 2.0.0
+
+```verum
+let v = semver.parse(&Text.from("1.0.0-beta.1+build.5"))?;
+// v.major = 1, v.pre_release = ["beta", "1"], v.build_meta = ["build", "5"]
+
+let a = semver.parse(&Text.from("1.0.0-alpha"))?;
+let b = semver.parse(&Text.from("1.0.0"))?;
+assert(semver.cmp(&a, &b) < 0);      // release > prerelease (§11.3)
+```
+
+Strict §9 parser — leading zeros in numeric identifiers
+rejected. Full §11 total ordering: major/minor/patch →
+prerelease-vs-release → numeric < alphanumeric → fewer
+identifiers < more at common prefix equal. Build metadata
+ignored in precedence (§10).
+
+### `glob` — shell-style pattern matching
+
+```verum
+glob.matches("src/**/*.rs", "src/foo/bar.rs")    // true
+glob.matches("*.rs", "src/lib.rs")               // false — * doesn't cross /
+
+let pat = glob.compile("target/**")?;
+pat.matches_path("target/debug/verum")           // true
+```
+
+| Form | Matches |
+| ---- | ------- |
+| `*` | sequence of non-separator chars |
+| `**` | any number of path segments |
+| `?` | single non-separator char |
+| `[abc]` / `[a-z]` / `[!abc]` | class / range / negated |
+| `\c` | literal `c` |
+
+`**` follows `fnmatch(FNM_PATHNAME \| FNM_LEADING_DIR)` — the
+Bazel / Cargo / Jest / `.gitignore` convention.
+
+---
+
 ## See also
 
 - **[collections](/docs/stdlib/collections)** — `List`, `Map`, `Set`, `Deque`, `BinaryHeap`, `BTreeMap`, `BTreeSet`.

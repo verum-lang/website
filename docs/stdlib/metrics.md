@@ -107,3 +107,54 @@ There is no built-in hard limit on entries per family; callers are
 expected to enforce bounded cardinality at instrumentation time (e.g.
 avoid raw user-IDs / request-IDs as label values). A future
 `CardinalityBudget` helper may enforce this at the registry boundary.
+
+## `ewma` — moving-average estimators
+
+Three layered primitives for "recent-heavy" smoothed quantities in
+constant memory. Used by Unix load averages, TCP SRTT estimator
+(RFC 6298 α=0.125), load-balancer response-time tracking, storage
+write-amplification monitors.
+
+### Fixed-α `Ewma`
+
+```
+S_t = α × x_t + (1 - α) × S_{t-1}
+```
+
+```verum
+let mut srtt = Ewma.new(0.125);   // TCP SRTT
+srtt.update(rtt_ms);
+let smoothed = srtt.value();
+```
+
+Presets `Ewma.one_minute()` / `five_minute()` / `fifteen_minute()`
+match the Unix `uptime` load-average constants. First `update`
+seeds without mixing; `is_seeded()` and `reset()` expose the
+pre-seeded state.
+
+### `TimeDecayingEwma` (Dropwizard-style)
+
+For observations arriving at non-uniform cadence:
+
+```
+decay = exp(-Δt / τ)
+S_t = S_{t-1} × decay + x_t × (1 - decay)
+```
+
+In-module `exp(-x)` approximation — no math-intrinsic dependency;
+accuracy ~1e-6 for x ∈ [0, 20].
+
+### `RateMeter`
+
+Convenience wrapper over `TimeDecayingEwma`. 1/5/15-minute
+events-per-second windows — the familiar Dropwizard output
+shape every Prometheus / Grafana / Datadog dashboard renders.
+
+```verum
+let mut meter = RateMeter.new();
+meter.mark(1_u64);
+meter.one_minute_rate();
+meter.five_minute_rate();
+meter.fifteen_minute_rate();
+meter.count();
+```

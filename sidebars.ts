@@ -363,6 +363,7 @@ const sidebars: SidebarsConfig = {
                 'stdlib/security/ecc',
                 'stdlib/security/pq',
                 'stdlib/security/util',
+                'stdlib/security/auth-primitives',
               ],
             },
             {

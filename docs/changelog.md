@@ -16,6 +16,56 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — wide stdlib primitive expansion (2026-04-22/23)
+
+A large batch of reusable user-level primitives shipped across
+`encoding` / `security` / `collections` / `base` / `time` /
+`metrics` / `async` / `net`. Every addition carries a
+typecheck-verified VCS test under `vcs/specs/L2-standard/`.
+
+**Encoding** — `base32` (RFC 4648 §6), `base58` + `base58check`
+(Bitcoin), `cbor` (RFC 8949 with canonical map sort + f16/f32/f64
+widening), `msgpack`, `jcs` (RFC 8785 UTF-16 code-unit sort), `pem`
+(RFC 7468 label-agnostic), `json_pointer` (RFC 6901).
+
+**Security** — `hpke` (RFC 9180 Mode Base, DHKEM-X25519 +
+ChaCha20-Poly1305), `jwt` (RFC 7519/7515 with `alg:none` rejected +
+algorithm-confusion blocked), `cose` (RFC 9052 Sign1 + Mac0), `otp`
+(HOTP/TOTP RFC 4226/6238), `password_hash` + `pbkdf2` (PHC modular
+format, 100k-iteration floor), `merkle` (RFC 6962, CVE-2012-2459-safe
+odd-leaf promotion), `token` (CSPRNG session/CSRF/OTP),
+`server_identity` (RFC 6125), `hash/crc32c`, `hash/xxhash` (XXH64),
+`hash/murmur3` (32 + 128-bit Cassandra-compatible).
+
+**Collections** — `lru`, `ttl_cache`, `bloom`, `hyperloglog`,
+`count_min`, `reservoir` (Vitter Algorithm R), `consistent_hash`
+(Ketama-compatible).
+
+**Base** — `snowflake`, `nanoid`, `semver`, `glob`
+(`fnmatch(FNM_PATHNAME|FNM_LEADING_DIR)` semantics).
+
+**Time** — `rfc3339` (ISO 8601 w/ Howard Hinnant date math),
+`cron` (POSIX 5-field with Vixie OR-semantics).
+
+**Metrics** — `ewma` (fixed-α + Dropwizard time-decaying +
+`RateMeter` with 1/5/15-minute windows).
+
+**Async** — `semaphore` (cooperative task limiter, RAII permit),
+`backoff` (exponential / decorrelated / Fibonacci with jitter).
+
+**Net** — `content_negotiation` (Accept / Accept-Encoding /
+Accept-Language q-factor selection), `http_range` (RFC 9110 §14),
+`link_header` (RFC 8288), `proxy/rate_limit` (TokenBucket +
+LeakyBucket + SlidingWindow under one `RateLimiter` protocol).
+
+**QUIC / TLS (warp stack)** — `stateless_reset` (RFC 9000 §10.3),
+`cid_pool` + `CidIssuer`, `key_update` (RFC 9001 §6 + §6.6),
+`address_token` (§8.1.3), `pacer` (RFC 9002 §7.7), `stats` +
+`stats_prometheus`, `batch_io` (GSO/GRO/sendmmsg); TLS 1.3
+`sni_resolver` (RFC 6066), `zero_rtt_antireplay` (RFC 8446 §8
+with `ReplayGuard` protocol), `resume_verify`, `client_session_from_nst`,
+`ticket_issuer`. HTTP/3: `h3/priority` (RFC 9218).
+
 ### Fixed — `Heap<dyn P>.method()` / `Shared<dyn P>.method()` dispatch
 
 Smart-pointer receivers carrying a dyn-protocol payload now resolve

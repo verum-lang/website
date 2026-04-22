@@ -9,6 +9,8 @@ description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every sem
 Semantic-honest data structures. You talk to the protocol; the compiler
 chooses the implementation.
 
+### Core data structures
+
 | File | What's in it |
 |---|---|
 | `list.vr` | `List<T>` + adapters (`ListIter`, `Drain`, `Chunks`, `Windows`, …) |
@@ -19,8 +21,23 @@ chooses the implementation.
 | `btree.vr` | `BTreeMap<K,V>`, `BTreeSet<T>`, `BTreeEntry`, range iterators |
 | `slice.vr` | slice utilities — `slice_iter`, `chunks`, `windows`, `split_at` |
 
-Every collection in this module implements `Iterator`, `IntoIterator`,
-`Clone`, `Debug`, `Eq`, `Default`.
+### Caches + probabilistic sketches
+
+| File | What's in it |
+|---|---|
+| `lru.vr` | `LruCache<K,V>` — pure capacity-bounded LRU |
+| `ttl_cache.vr` | `TtlCache<K,V>` — LRU + per-entry TTL |
+| `bloom.vr` | `BloomFilter` — "is X present?" probabilistic set |
+| `hyperloglog.vr` | `HyperLogLog` — "how many distinct?" cardinality |
+| `count_min.vr` | `CountMinSketch` — "how often was X seen?" frequency |
+| `reservoir.vr` | `Reservoir<T>` — Algorithm R uniform streaming sample |
+| `consistent_hash.vr` | `ConsistentHashRing` — Ketama-compatible distribution |
+
+Every core data structure implements `Iterator`, `IntoIterator`,
+`Clone`, `Debug`, `Eq`, `Default`. Caches and sketches carry
+stats counters (hits/misses/evicted) instead of the `Iterator`
+shape since they're lossy or ordered by workload rather than
+enumeration.
 
 ---
 
@@ -499,3 +516,140 @@ s.as_ptr() / s.as_mut_ptr() -> *const/mut T    // unsafe bridge
 - **[text](/docs/stdlib/text)** — `Text` (semantic "collection of Unicode scalars").
 - **[sync](/docs/stdlib/sync)** — locking wrappers (`Mutex<List<T>>`, etc.).
 - **[Language → patterns](/docs/language/patterns)** — slice, record, rest patterns over these types.
+
+---
+
+## Caches
+
+### `LruCache<K, V>`
+
+```verum
+let mut cache: LruCache<Text, User> = LruCache.new(1024);
+let prev = cache.insert(key.clone(), user);
+match cache.get(&key) { Some(u) => ..., None => ... }
+```
+
+Capacity-bounded hash map with LRU eviction on full. `insert`
+returns the prior value when the key was already present
+(useful for refcount bookkeeping). `peek` inspects without
+touching LRU order; `remove` / `clear` / `contains` cover the
+usual surface. `stats()` returns `{ size, hits, misses, evicted }`.
+
+### `TtlCache<K, V>`
+
+```verum
+let cfg = TtlCacheConfig { capacity: 1024, default_ttl: Duration.from_secs(300) };
+let mut cache: TtlCache<Text, Session> = TtlCache.new(cfg);
+
+cache.insert(key.clone(), session);                               // default TTL
+cache.insert_with_ttl(key2, session2, Duration.from_secs(60));   // override
+cache.purge_expired();                                            // periodic sweep
+```
+
+Combines capacity-based LRU eviction with per-entry time-based
+expiration. Expiry is lazy on read (hot-path cost = one
+compare) — callers schedule `purge_expired` for idle reclamation.
+`TtlCacheStats` surfaces hit/miss/expired/evicted counts for
+scraping.
+
+Use `LruCache` when only capacity matters; use `TtlCache` when
+freshness windows also apply (session cache, JWT replay cache,
+DNS cache).
+
+---
+
+## Probabilistic sketches
+
+The Bloom / HLL / Count-Min trio — bounded-memory answers to
+"is X there?", "how many distinct?", "how often?". HMAC-SHA256
+keyed hashing with per-filter CSPRNG-sourced keys; adversarial
+inputs cannot skew past the theoretical error bound.
+
+### `BloomFilter`
+
+```verum
+let mut bf = BloomFilter.with_target(
+    100_000,   // expected items
+    1000,      // target FP rate × 1,000,000 (0.1%)
+);
+
+bf.insert(key);
+if bf.contains(key) { ... }
+let was_present = bf.check_and_set(key);   // atomic check-and-set
+bf.clear();                                 // new HMAC key generated
+```
+
+Kirsch-Mitzenmacher double hashing: one HMAC call → two 64-bit
+halves → k probe offsets via `h1 + i × h2 mod m`. Typical
+operation: ~150 ns end-to-end.
+
+### `HyperLogLog`
+
+```verum
+let mut hll = HyperLogLog.new(DEFAULT_PRECISION);   // p=14 ≈ 12 KiB, 0.81% error
+hll.add(b"user:alice");
+hll.add(b"user:bob");
+let approx_distinct: UInt64 = hll.estimate();
+
+// Mergeable sketches across processes share a 32-byte key.
+let merged = HyperLogLog.new_with_key(p, shared_key);
+merged.merge(&other)?;
+```
+
+Flajolet et al. 2007 with small-range linear-counting correction.
+Precision `p ∈ [4, 16]` controls memory/accuracy: p=14 is the
+Redis PFCOUNT default.
+
+### `CountMinSketch`
+
+```verum
+let mut cms = CountMinSketch.with_target(0.001, 0.001);
+// ≤ 0.1% error (ε) at 99.9% confidence (1 - δ) — 76 KiB.
+
+cms.add(b"user:alice");
+cms.add_n(b"bulk-import", 500);
+let upper_bound = cms.estimate(b"user:alice");   // may over- but never under-report
+```
+
+Cormode & Muthukrishnan 2005. Width w = ⌈e / ε⌉, depth d =
+⌈ln(1/δ)⌉. Saturating u32 cells — no wraparound even at hot
+items past 4 billion observations.
+
+### `Reservoir<T>`
+
+```verum
+let mut res: Reservoir<TraceId> = Reservoir.new(1000);
+while let Some(trace) = stream.next() {
+    res.offer(trace);
+}
+let sample: List<TraceId> = res.take();
+```
+
+Vitter 1985 Algorithm R — uniform sampling from a stream of
+unknown length. Every item has marginal probability
+`capacity / stream_length` of surviving. Used by tail-sampling
+tracers, streaming analytics, ML out-of-core shuffling.
+
+---
+
+## `ConsistentHashRing`
+
+```verum
+let mut ring = ConsistentHashRing.new();    // 160 vnodes default (Ketama)
+ring.add_node(Text.from("cache-a"));
+ring.add_node(Text.from("cache-b"));
+ring.add_node(Text.from("cache-c"));
+
+let primary: Maybe<Text> = ring.node_for_key(b"session:42");
+let replicas: List<Text> = ring.nodes_for_key(b"key", 3);
+```
+
+Ketama-compatible position derivation — virtual-node positions
+are `sha256(node_name + "-" + decimal(vnode_idx))[..8]` as LE
+u64. Wire-compatible with memcached Ketama, Redis ring_hash,
+Envoy `ring_hash` load balancer.
+
+Adding/removing one node moves only `key_count / node_count`
+entries (the consistent-hashing property). `nodes_for_key(key, N)`
+returns N distinct nodes in preference order — primary first,
+then replicas.

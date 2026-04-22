@@ -258,6 +258,66 @@ XOR `0xFFFFFFFF`. Matches zlib's `crc32`, the `crc32` CLI, Python's
 `binascii.crc32`, and Rust's `crc32fast::hash`. Used internally by
 `core.database.sqlite.native` for WAL frame checksums.
 
+## `crc32c` — Castagnoli polynomial
+
+```verum
+mount core.security.hash.crc32c.{Crc32c, crc32c};
+let digest: UInt32 = crc32c(b"123456789");   // 0xE3069283 (RFC 3720)
+```
+
+Reflected polynomial `0x82F63B78` (Castagnoli). Better error-
+detection properties than CRC-32/IEEE over 27..127-bit payloads
+(Koopman & Chakravarty 2004). Used by SCTP (RFC 4960 §6.8),
+iSCSI data digest (RFC 7143 §10.4.3), ext4/btrfs/f2fs/XFS
+filesystems, Google Cloud Storage object checksums. SSE4.2 /
+ARMv8 CRC32C hardware instructions can accelerate ~10× behind
+a follow-up intrinsic.
+
+## `xxhash` — XXH64 fast non-crypto hash
+
+```verum
+mount core.security.hash.xxhash.{XxHash64, xxh64};
+
+let h: UInt64 = xxh64(data, seed);
+
+let mut hasher = XxHash64.new(seed);
+hasher.update(chunk1);
+hasher.update(chunk2);
+let h: UInt64 = hasher.finalize();
+```
+
+Yann Collet's XXH64. The non-crypto speed champion: ~3 GB/s in
+pure Verum (4-lane parallel accumulator for inputs ≥ 32 bytes;
+seed + PRIME64_5 for smaller inputs; final 3-round avalanche).
+Streaming output always equals one-shot — the `update` /
+`finalize` path buffers tails identically.
+
+Used by Facebook RocksDB blob-file integrity, LZ4 frame-format
+content checksums, ClickHouse analytics column hashing, Redis
+rax, Ceph. **Not** cryptographic — adversarial inputs trivially
+collide.
+
+## `murmur3` — MurmurHash3 (32-bit + 128-bit)
+
+```verum
+mount core.security.hash.murmur3.{murmur3_32, murmur3_128, Murmur3Hash128};
+
+let h32: UInt32 = murmur3_32(key_bytes, seed);
+
+let h128: Murmur3Hash128 = murmur3_128(key_bytes, seed);
+// { high: UInt64, low: UInt64 }
+```
+
+Austin Appleby 2011. Wire-compatible with Cassandra
+Murmur3Partitioner, Guava `Hashing.murmur3_*`, Apache Spark
+partitioning, Apache Commons Codec, Rust `fastmurmur3`. Two
+variants — 32-bit for hash tables, 128-bit (x64 variant) when
+birthday collisions at scale matter.
+
+Same "not cryptographic" caveat as XXH64 — partition keys,
+BloomFilter fingerprints, dedup fingerprints only. Use SHA-256
+or HMAC against untrusted peers.
+
 ## References
 
 - [FIPS PUB 180-4](https://doi.org/10.6028/NIST.FIPS.180-4) — Secure Hash Standard
