@@ -133,12 +133,19 @@ public type TrackedBinding is { name: Text, declared: Quantity };
 public type QttViolation is
     | Underuse { binding: Text, declared: Quantity, observed: UsageCount }
     | Overuse  { binding: Text, declared: Quantity, observed: UsageCount };
+
+public fn check_binding(
+    name: Text,
+    declared: Quantity,
+    observed: Int{>= 0},
+) -> Maybe<QttViolation>;
 ```
 
-The compiler walks a function body and produces a `List<QttViolation>`
-under refinement: `Underuse` fires when `declared = One` and
-`observed.runtime != 1`; `Overuse` fires when `declared = AtMost { n }`
-and the sum exceeds `n`.
+`check_binding` is the atomic per-binding query the compiler runs
+over each function body — `Some(Underuse …)` fires when `declared
+= One` and `observed != 1`; `Some(Overuse …)` fires when `declared
+= AtMost { n }` and `observed > n`; `None` means the binding
+satisfies its declared quantity.
 
 ### Typical consumers
 

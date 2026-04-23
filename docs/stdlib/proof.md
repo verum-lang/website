@@ -72,13 +72,19 @@ type ProofBundle is {
     metadata: BundleMetadata,
 };
 
-fn empty_bundle(compiler_version: Text, source_path: Text) -> ProofBundle
-fn bundle_add(b: ProofBundle, h: GoalHash, c: ProofCertificate) -> ProofBundle
-fn bundle_lookup(b: &ProofBundle, digest: Text) -> Maybe<&ProofCertificate>
-fn bundle_size(b: &ProofBundle) -> Int
-fn bundle_total_duration_ms(b: &ProofBundle) -> Int
-fn bundle_merge(a: ProofBundle, b: ProofBundle) -> ProofBundle
+// v0.1 surface (authoritative — see core/proof/pcc.vr)
+public fn empty_bundle(compiler_version: Text, source_path: Text) -> ProofBundle;
+public fn bundle_add(b: ProofBundle, h: GoalHash, c: ProofCertificate) -> ProofBundle;
+public fn bundle_lookup(b: ProofBundle, digest: Text) -> Maybe<ProofCertificate>;
 ```
+
+Running statistics are available on the bundle itself via
+`b.metadata.certificate_count` and `b.metadata.total_duration_ms`
+— the constructor `empty_bundle` seeds them and `bundle_add`
+increments them on every insertion, so callers don't need a
+separate accessor. Merge semantics (combining two bundles) are
+deferred to a future release — today callers fold
+`bundle_add` over the second bundle's `certificates` list.
 
 ### Example
 
@@ -94,8 +100,9 @@ let cert = proof_certificate(
 );
 bundle = bundle_add(bundle, goal_hash("g/binary_search/postcond#1"), cert);
 
-if let Maybe.Some(c) = bundle_lookup(&bundle, "g/binary_search/postcond#1") {
-    print(f"verified by {c.solver} in {c.duration_ms} ms");
+match bundle_lookup(bundle.clone(), "g/binary_search/postcond#1") {
+    Some(c) => print(f"verified by {c.solver} in {c.duration_ms} ms"),
+    None    => print("no certificate found"),
 }
 ```
 
@@ -161,12 +168,17 @@ decreases measure, free variables captured from environment.
 ### SMT-LIB rendering
 
 ```verum
-fn to_smtlib_decl(f: &ReflectedFunction) -> Text
-fn to_smtlib_axiom(f: &ReflectedFunction) -> Text
+public fn to_smtlib_decl(f: ReflectedFunction) -> Text;
+public fn to_smtlib_axiom(f: ReflectedFunction) -> Text;
 ```
 
-- `to_smtlib_decl` emits a `declare-fun` for uninterpreted use.
-- `to_smtlib_axiom` emits a `define-fun-rec` with the function's body.
+- `to_smtlib_decl` emits `(declare-fun NAME (S₁ … Sₙ) S)` — an
+  uninterpreted function declaration.
+- `to_smtlib_axiom` emits `(assert (forall ((x₁ S₁) … (xₙ Sₙ))
+  (= (NAME x₁ … xₙ) BODY)))` — or `(assert (= (NAME) BODY))` for
+  nullary functions. A universally-quantified equation rather than
+  a recursive definition, so the solver stays in first-order
+  fragments without needing `define-fun-rec` support.
 
 ### Example
 
@@ -186,7 +198,7 @@ let r = reflected_fn(
 );
 
 // The axiom form is what the solver sees:
-let ax = to_smtlib_axiom(&r);
+let ax = to_smtlib_axiom(r);
 ```
 
 Now `Sorted<Int> is List<Int> { is_sorted(self) }` is a usable
