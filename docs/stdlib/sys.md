@@ -26,7 +26,10 @@ authors, driver writers, and kernel engineers.
 | Wrapped operations | `file_ops.vr`, `time_ops.vr`, `net_ops.vr`, `process_ops.vr`, `context_ops.vr` |
 | I/O abstraction | `io_engine.vr` |
 | Initialization | `init.vr` |
+| Signals | `signal.vr` |
 | Hardware control | `bitfield.vr`, `mmio.vr`, `interrupt.vr` |
+| Byte-range file locking | `locking/mod.vr` (`LockHandle` affine RAII) |
+| Crash-safe persistence | `durability.vr` (`full_fsync`, `sync_directory`) |
 | Alternative runtimes | `embedded.vr`, `no_runtime.vr` |
 | Linux (`@cfg(target_os="linux")`) | `syscall.vr`, `errno.vr`, `io.vr`, `mem.vr`, `thread.vr`, `time.vr`, `tls.vr` |
 | macOS (`@cfg(target_os="macos")`) | `libsystem.vr`, `mach.vr`, `io.vr`, `errno.vr`, `thread.vr`, `time.vr`, `tls.vr` |
@@ -271,6 +274,72 @@ fn disable_interrupts() -> CriticalSection       // RAII guard
 fn enable_interrupts()
 cs.release()                                     // re-enables on drop
 ```
+
+---
+
+## Byte-range file locking — `sys.locking`
+
+Advisory byte-range locking, typed and capability-safe. Wraps
+`fcntl(F_OFD_SETLK)` on Linux, `fcntl(F_SETLK)` on macOS, and
+`LockFileEx` on Windows. Used by [`core.database`](/docs/stdlib/database)
+to implement SQLite's 5-state locking protocol.
+
+```verum
+mount core.sys.locking.{LockRegion, LockKind, LockHandle, try_lock, unlock};
+
+public type LockKind is Shared | Exclusive;     // no Unlock variant — unlock consumes
+public type LockRegion is { start: Int, length: Int };  // length == -1 ⇒ to EOF
+public type LockError is
+      Conflict(owner_pid: Maybe<Int>)           // EAGAIN / EWOULDBLOCK
+    | IoError(OSError);
+
+public type affine LockHandle is { /* ... */ }; // RAII; must be consumed
+```
+
+### Core surface
+
+```verum
+public fn try_lock(fd: FileDesc, region: LockRegion, kind: LockKind)
+    -> Result<LockHandle, LockError>;
+
+public fn unlock(handle: LockHandle) -> Result<(), LockError>;
+
+// Convenience for single-byte locks (SQLite PENDING_BYTE / RESERVED_BYTE)
+public fn try_lock_byte_exclusive(fd: FileDesc, offset: Int)
+    -> Result<LockHandle, LockError>;
+public fn try_lock_byte_shared(fd: FileDesc, offset: Int)
+    -> Result<LockHandle, LockError>;
+```
+
+The **affine** annotation on `LockHandle` is the safety surface: the
+handle may be moved but not copied, and dropping without calling
+`unlock` is a compile error. The lock cannot leak on the underlying
+fd.
+
+Advisory on POSIX, mandatory on Windows. NFS is not supported —
+`try_lock` on an NFS fd surfaces as `IoError(OSError)` rather than
+silently returning "success".
+
+## Crash-safe persistence — `sys.durability`
+
+Named re-exports of the durability primitives inside `sys.common`.
+The dedicated module lets callers declare their intent at the import
+site:
+
+```verum
+mount core.sys.durability.{full_fsync, sync_directory};
+```
+
+| Function | Behaviour |
+|----------|-----------|
+| `full_fsync(fd)` | Linux: `fsync(fd)`. macOS: `fcntl(fd, F_FULLFSYNC)`. Windows: `FlushFileBuffers(handle)`. Returns only after the data is on stable storage — not just in the OS page cache. |
+| `sync_directory(path)` | Open directory read-only, `fsync` it, close. Required on POSIX after `rename`/`unlink`/`creat` for the name change to survive power loss. No-op on Windows (NTFS journals directory updates synchronously). |
+
+Used by [`core.database`](/docs/stdlib/database) between WAL frame
+flush and checkpoint; by [`core.io.atomic_write`](/docs/stdlib/io)
+for the rename-after-write pattern; by file-backed caches anywhere.
+The `F_FULLFSYNC` distinction matters on macOS — ordinary `fsync()`
+on Darwin does **not** flush the disk's write cache.
 
 ---
 
