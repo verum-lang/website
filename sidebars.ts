@@ -393,6 +393,14 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Data',
+      link: {type: 'generated-index', slug: '/category/stdlib-data'},
+      items: [
+        'stdlib/database',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Foundations',
       link: {type: 'generated-index', slug: '/category/stdlib-foundations'},
       items: [
