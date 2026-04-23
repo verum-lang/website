@@ -34,46 +34,53 @@ Foundations come from the [`math`](/docs/stdlib/math) sub-modules
 ### Registry
 
 ```verum
-type MathesisRegistry is { ... };
+public type MathesisRegistry is {
+    theories: List<LoadedTheory>,
+    translations: List<TranslationRecord>,
+    next_handle: Int,
+};
 
-new_registry() -> MathesisRegistry
-registry.load(path: &Path) -> Result<TheoryId, LoadError>
-registry.find(id: TheoryId) -> Maybe<&LoadedTheory>
-registry.list() -> List<TheoryId>
-registry.unload(id: TheoryId) -> Bool
-registry.size() -> Int
+public fn new_registry() -> MathesisRegistry;
 ```
 
 ### `LoadedTheory`
 
 ```verum
-type LoadedTheory is {
-    id: TheoryId,
-    name: Text,
-    version: Text,
-    statements: List<Statement>,          // axioms, definitions, theorems
-    dependencies: List<TheoryId>,
-    metadata: TheoryMetadata,
+public type LoadedTheory is {
+    /// The underlying theory data (statements + dependencies).
+    theory: Theory,
+    /// Sheaf handle: the Yoneda image y(T) in the sheaf category.
+    sheaf_handle: Int,
+    /// Number of claims in the theory.
+    claim_count: Int,
+    /// Number of dependency edges.
+    dependency_count: Int,
 };
-
-type Statement is
-    | Axiom       { name: Text, body: Text }
-    | Definition  { name: Text, body: Text }
-    | Theorem     { name: Text, body: Text, proof: Maybe<Text> }
-    | Tactic      { name: Text, body: Text };
 ```
+
+Theories are keyed **by name** (Text) rather than by a separate id
+type — the sheaf handle exists for internal bookkeeping and is not
+part of the query surface.
 
 ### Loading
 
 ```verum
-load_theory(path: &Path) -> Result<LoadedTheory, LoadError>
-find_theory(registry: &MathesisRegistry, id: TheoryId) -> Maybe<&LoadedTheory>
-list_theories(registry: &MathesisRegistry) -> List<TheoryId>
+public fn load_theory(registry: &mut MathesisRegistry, theory: Theory) -> LoadedTheory;
+public fn find_theory(registry: &MathesisRegistry, name: &Text) -> Maybe<&LoadedTheory>;
+public fn list_theories(registry: &MathesisRegistry) -> List<Text>;
 ```
 
-Conceptually, loading is a **Yoneda embedding**: the theory becomes a
-presheaf over its own syntactic category, and the registry tracks all
-such presheaves.
+Conceptually, `load_theory` is the **Yoneda embedding**: the theory
+becomes a representable sheaf y(T)(S) = Hom(S, T) over its own
+syntactic category. The registry is the collection of loaded
+representables; `next_handle` monotonically assigns fresh sheaf
+handles.
+
+Properties (SMT-discharged on registration):
+
+- *y is fully faithful*: `Hom(T₁, T₂) ≃ Hom(y(T₁), y(T₂))`
+- *y preserves limits*: `y(lim Tᵢ) = lim y(Tᵢ)`
+- *y(T) is always a sheaf*: representables are sheaves
 
 ---
 
@@ -82,44 +89,52 @@ such presheaves.
 ### `TranslationResult`
 
 ```verum
-type TranslationResult is {
-    source_id: TheoryId,
-    target_id: TheoryId,
-    mapping: ExtensionMap,             // symbol map + sort map
-    preserved: List<Statement>,        // statements translated successfully
-    lost: List<Statement>,             // statements that could not be translated
-    records: List<TranslationRecord>,
+public type TranslationResult is {
+    /// Left Kan extension Lan_F: optimistic translation.
+    /// Each target claim mapped to the colimit of matching source claims.
+    optimistic: List<KanExtensionResult>,
+    /// Right Kan extension Ran_F: conservative translation.
+    /// Each target claim mapped to the limit of matching source claims.
+    conservative: List<KanExtensionResult>,
+    /// Obstruction data: measures information loss per claim.
+    obstruction: ObstructionData,
+    /// Overall translation quality (0 = perfect, 1 = total loss).
+    quality: Float,
 };
-type TranslationRecord is {
-    kind: TranslationKind,
-    statement: Text,
-    justification: Text,
+
+public type TranslationRecord is {
+    source_name: Text,
+    target_name: Text,
+    result: TranslationResult,
 };
-type TranslationKind is
-    | Identity
-    | ParameterInstantiation
-    | KanExtension
-    | OracleGuidance
-    | Descent;
 ```
+
+Every translation surfaces **both** the optimistic (`Lan_F`) and the
+conservative (`Ran_F`) readings — downstream callers pick based on
+risk tolerance. The `obstruction` measures the deviation
+`Ran_F ∘ F* - Id`, the categorical witness for information loss.
 
 ### Operations
 
 ```verum
-translate(src: &LoadedTheory, tgt: &LoadedTheory) -> TranslationResult
-translate_with_oracle(src: &LoadedTheory, oracle: &LlmOracle) -> TranslationResult
+public fn translate(
+    source: &LoadedTheory,
+    target: &LoadedTheory,
+    partial_map: &List<(Int, Int)>,   // (source_claim_idx, target_claim_idx)
+) -> TranslationResult;
+
+public fn translate_with_oracle<C, D: InfinityCategory>(
+    source: &LoadedTheory,
+    target: &LoadedTheory,
+    oracle: &InfinityFunctor<C, D>,
+) -> TranslationResult;
 ```
 
-Translation is implemented as a **Kan extension** along the shared
-language between source and target theories:
-- **Left Kan extension** when translating *from* a richer theory to a
-  coarser one (lossy, but syntactically minimal).
-- **Right Kan extension** when translating *to* a richer theory (fills
-  in universally-quantified details).
-
-The LLM oracle variant is used to suggest mappings for unrecognised
-statements; the compiler ultimately checks every oracle suggestion for
-coherence (see below).
+Translation is implemented as a **Kan extension** along the partial
+functor `F: C_S → C_T` specified by `partial_map`. The oracle variant
+consumes a suggested ∞-functor (typically from an LLM or another
+solver); the compiler re-verifies every suggestion against descent
+coherence before accepting it.
 
 ---
 
@@ -132,51 +147,72 @@ the source remains gluing in the target.
 ### `CoherenceResult`
 
 ```verum
-type CoherenceResult is {
-    ok: Bool,
-    obstructions: List<DescentObstruction>,
-};
-type DescentObstruction is {
-    statement: Text,
-    witness_required: Text,
-    reason: Text,
-};
+public type CoherenceResult is
+    /// All translations coherent: a global section exists.
+    | Coherent { global_quality: Float }
+    /// Translations incoherent: descent fails.
+    | Obstruction { violations: List<CoherenceViolation>, severity: Float };
 ```
+
+The result is a **sum type**, not a record — callers pattern-match
+and extract either the global quality score or the list of descent
+violations.
 
 ### Operations
 
 ```verum
-check_coherence(t: &LoadedTheory) -> CoherenceResult
-check_translation_coherence(r: &TranslationResult) -> CoherenceResult
+public fn check_coherence(
+    registry: &MathesisRegistry,
+    translation_pairs: &List<(Text, Text)>,
+) -> CoherenceResult;
 ```
 
-An incoherent translation is still a partial function; it simply
-cannot be trusted as a theorem-transporting map. Users can:
+`check_coherence` consumes a web of `(source_name, target_name)`
+pairs and verifies three properties:
 
-- reduce the target theory (drop gluing conditions);
-- enrich the translation (supply more witnesses);
-- accept the incoherence and operate piecewise.
+1. **Functorial composition**: `F_jk ∘ F_ij ≈ F_ik`
+2. **Descent condition**: the Čech nerve of the covering resolves
+3. **No circular contradictions** in epistemic status
+
+An incoherent result is still informative — callers can reduce the
+target theory (drop gluing conditions), enrich the translation
+(supply more witnesses), or accept the obstruction and operate
+piecewise.
 
 ---
 
 ## Auditing
 
 ```verum
-type AuditResult is {
-    theory_id: TheoryId,
-    checks_passed: Int,
-    checks_failed: Int,
-    findings: List<AuditFinding>,
-};
-type AuditFinding is {
-    severity: Severity,              // Info | Warning | Error
-    statement: Text,
-    message: Text,
+public type AuditResult is {
+    theory_name: Text,
+    claim_count: Int,
+    dependency_count: Int,
+    /// Claims with status downgrades after propagation.
+    status_changes: List<StatusChange>,
+    /// Detected circular dependencies (each path listed by claim id).
+    circular_dependencies: List<List<Text>>,
+    /// Dependency targets that reference non-existent claims.
+    dangling_references: List<(Text, Text)>,
+    /// Overall health score (0 = broken, 1 = perfect).
+    health: Float,
 };
 
-audit_theory(t: &LoadedTheory) -> AuditResult
-audit_meta(registry: &MathesisRegistry) -> AuditResult    // audit all loaded theories
+public fn audit_theory(theory: &mut Theory) -> AuditResult;
+public fn audit_meta() -> AuditResult;
 ```
+
+`audit_theory` checks four invariants:
+
+1. **Status propagation** — no claim has a stronger status (e.g.
+   `Proven`) than its weakest dependency.
+2. **Circular dependencies** — no claim transitively depends on
+   itself.
+3. **Dangling references** — every dependency target exists.
+4. **Epistemic coherence** — theorem claims have valid proof chains.
+
+`audit_meta` runs Mathesis's self-audit — the mathesis module's
+own internal consistency check, independent of any loaded theory.
 
 The audit checks: unbound names, type mismatches, circular definitions,
 missing proofs for theorems, statements whose justifications the
