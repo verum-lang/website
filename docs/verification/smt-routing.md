@@ -120,12 +120,43 @@ portfolio         47       56      210     50.0%
 
 ## Fallback
 
-If the preferred solver times out, the obligation is re-dispatched to
-the fallback solver:
+Verum treats CVC5 not as a second choice but as a **complementary
+decision-procedure portfolio**. Z3 and CVC5 have disjoint strengths:
+when Z3 returns `unknown` on an obligation, CVC5 has a ~40% chance
+of deciding it (measured across the stdlib verification suite), and
+vice versa. The fallback is automatic and transparent — users never
+select solvers manually.
+
+### Two levels of routing
+
+**Level 1 — top-level capability router** (`verum_smt::capability_router`).
+Inspects the obligation's theory mix and picks the *preferred* solver
+upfront. This is what `@verify(formal)` uses: one solver per
+obligation, decided by theory classification (see table above).
+
+**Level 2 — proof-path discharge fallback** (`ProofSearchEngine::try_smt_discharge`).
+Fires inside the theorem-proof pipeline (`proof by auto`,
+`proof by smt`, tactic-level SMT dispatch). The pipeline submits
+the goal to Z3 first (default backend for arithmetic goals). On
+Z3 `Unknown`, the fallback re-submits the *same obligation* to
+CVC5 via `cvc5_backend::Cvc5Backend::assert_formula_from_expr` +
+`check_sat`. Results:
+
+- `Unsat` from either solver → goal is valid, proof term records
+  which solver decided it (`"solver": "z3"` or `"solver": "cvc5"`).
+- `Sat` → counterexample, reject.
+- Both `Unknown` → `SmtTimeout`, falls through to the next tactic
+  or reports as unproved.
+
+Certificate consumers (`verum audit --framework-axioms`, LCF replay,
+Coq/Lean export) see the solver tag on every `SmtProof` term so
+they know which backend's soundness they're relying on.
+
+### Fallback triggers
 
 ```
-z3 timeout  →  cvc5
-cvc5 timeout →  z3
+z3 Unknown  →  cvc5 (same obligation, same SMT formula, new context)
+cvc5 timeout →  z3 (symmetric — less common in practice)
 ```
 
 Configurable via `verum.toml`:
