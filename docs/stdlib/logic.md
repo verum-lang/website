@@ -22,7 +22,7 @@ proof-heavy user code that wants to reason about these systems.
 
 | File        | What's in it                                                        |
 |-------------|---------------------------------------------------------------------|
-| `kripke.vr` | `World`, `Edge`, `KripkeFrame`, `ModalFormula`, `Valuation`, `evaluate` |
+| `kripke.vr` | `World`, `Edge`, `KripkeFrame`, `ModalForm`, `WorldFact`, `Valuation`, `evaluate` |
 | `linear.vr` | `LinForm` + smart constructors + dualities + predicates             |
 
 ---
@@ -32,35 +32,65 @@ proof-heavy user code that wants to reason about these systems.
 ### Frames
 
 ```verum
-public type World      is { id: Text };
-public type Edge       is { from: World, to: World };
+public type World       is { id: Text };
+public type Edge        is { from: World, to: World };
 public type KripkeFrame is { worlds: List<World>, edges: List<Edge> };
+
+// Smart constructors
+public fn world(id: Text) -> World;
+public fn edge(from: World, to: World) -> Edge;
+public fn frame(worlds: List<World>, edges: List<Edge>) -> KripkeFrame;
+public fn accessible(f: KripkeFrame, w: World) -> List<World>;
 ```
 
 A **Kripke frame** is a set of worlds plus a binary accessibility
 relation. Modal formulas are evaluated **at a world**.
 
+### Valuations
+
+```verum
+public type WorldFact  is { world_id: Text, atom: Text, truth: Bool };
+public type Valuation  is { facts: List<WorldFact> };
+
+public fn valuation(facts: List<WorldFact>) -> Valuation;
+public fn lookup(v: Valuation, w: World, atom: Text) -> Bool;
+```
+
+A `Valuation` is a flat list of `(world, atom, truth)` facts; a
+`lookup` defaults to `false` for atoms with no entry.
+
 ### Formulas
 
 ```verum
-public type ModalFormula is
-    | Atom    { name: Text }                            // propositional atom p
-    | Not     { inner: Heap<ModalFormula> }             // ¬φ
-    | And     { left: Heap<ModalFormula>, right: Heap<ModalFormula> }
-    | Or      { left: Heap<ModalFormula>, right: Heap<ModalFormula> }
-    | Implies { hyp: Heap<ModalFormula>, conc: Heap<ModalFormula> }
-    | Box     { inner: Heap<ModalFormula> }             // □φ — necessarily
-    | Diamond { inner: Heap<ModalFormula> };            // ◇φ — possibly
+public type ModalForm is
+    | True
+    | False
+    | Atom    { name: Text }                               // propositional atom p
+    | Not     { inner: Heap<ModalForm> }                   // ¬φ
+    | And     { left: Heap<ModalForm>, right: Heap<ModalForm> }
+    | Or      { left: Heap<ModalForm>, right: Heap<ModalForm> }
+    | Implies { left: Heap<ModalForm>, right: Heap<ModalForm> }
+    | Box     { inner: Heap<ModalForm> }                   // □φ — necessarily
+    | Diamond { inner: Heap<ModalForm> };                  // ◇φ — possibly
+
+// Smart constructors — wrap children in Heap<ModalForm>
+public fn modal_atom(name: Text) -> ModalForm;
+public fn modal_not(inner: ModalForm) -> ModalForm;
+public fn modal_and(a: ModalForm, b: ModalForm) -> ModalForm;
+public fn modal_or(a: ModalForm, b: ModalForm) -> ModalForm;
+public fn modal_implies(a: ModalForm, b: ModalForm) -> ModalForm;
+public fn modal_box(inner: ModalForm) -> ModalForm;
+public fn modal_diamond(inner: ModalForm) -> ModalForm;
 ```
 
 ### Evaluation
 
 ```verum
 public fn evaluate(
-    formula: &ModalFormula,
-    frame:   &KripkeFrame,
-    v:       &Valuation,          // maps (world, atom) → Bool
-    at:      &World,
+    formula: ModalForm,
+    f:       KripkeFrame,
+    v:       Valuation,
+    w:       World,
 ) -> Bool;
 ```
 
@@ -87,19 +117,21 @@ monotonically-growing evidence.
 
 ```verum
 // Frame with two worlds and w0 → w1.
-let frame = KripkeFrame {
-    worlds: list![world("w0"), world("w1")],
-    edges:  list![edge(world("w0"), world("w1"))],
-};
+let f: KripkeFrame = frame(
+    list![world("w0".into()), world("w1".into())],
+    list![edge(world("w0".into()), world("w1".into()))],
+);
 
 // Valuation: "p" holds at w1.
-let v = Valuation.empty().with("w1", "p", true);
+let v: Valuation = valuation(list![
+    WorldFact { world_id: "w1".into(), atom: "p".into(), truth: true },
+]);
 
 // □p holds at w0 (every world reachable from w0 satisfies p):
-assert(evaluate(&modal_box(modal_atom("p")), &frame, &v, &world("w0")));
+assert(evaluate(modal_box(modal_atom("p".into())), f, v, world("w0".into())));
 
 // But p itself does NOT hold at w0:
-assert(!evaluate(&modal_atom("p"), &frame, &v, &world("w0")));
+assert(!evaluate(modal_atom("p".into()), f, v, world("w0".into())));
 ```
 
 ---
@@ -151,10 +183,10 @@ lin_lolli(a: LinForm, b: LinForm) -> LinForm
 ## Predicates
 
 ```verum
-is_unrestricted(f: &LinForm) -> Bool
+public fn is_unrestricted(f: LinForm) -> Bool;
     // true iff f is of the form !A — can be duplicated freely
 
-is_weakenable(f: &LinForm) -> Bool
+public fn is_weakenable(f: LinForm) -> Bool;
     // true iff f is of the form !A — can be discarded freely
 ```
 
