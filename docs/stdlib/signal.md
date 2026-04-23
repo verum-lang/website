@@ -16,27 +16,36 @@ This keeps user-facing API safe to call from any async context —
 no signal-handler UB, no partial writes, no missed signals under
 concurrent subscribers.
 
-## Top-level shortcuts
+## Top-level one-shot awaits
 
 ```verum
 mount core.signal.*;
 
-pub async fn ctrl_c() -> SignalStream;            // SIGINT
-pub async fn terminate() -> SignalStream;         // SIGTERM
-pub async fn hup() -> SignalStream;               // SIGHUP
-pub async fn shutdown_signals() -> SignalStream;  // SIGINT + SIGTERM
+// Wait for exactly one signal; return when it arrives.
+public async fn ctrl_c();                // SIGINT
+public async fn terminate();             // SIGTERM
+public async fn hup();                   // SIGHUP
+
+// Wait for ANY shutdown-class signal (SIGINT | SIGTERM | SIGHUP).
+// Returns the signal that actually arrived so callers can distinguish
+// reload-config (SIGHUP) from terminate (Int/Term).
+public async fn shutdown_signals() -> Signal;
 ```
 
-All four return a `SignalStream` you can iterate with `for await`.
+These are one-shot futures — `.await` resolves the first time the
+signal fires. For a repeating stream, use `signal_stream` below.
 
 ## Explicit subscription
 
 ```verum
-pub fn signal_stream(signals: &[Signal]) -> SignalStream;
+public fn signal_stream(signals: &[Signal]) -> SignalStream;
 ```
 
-`Signal` is an enum over the common POSIX signals (SIGINT, SIGTERM,
-SIGHUP, SIGUSR1, SIGUSR2, SIGCHLD, SIGPIPE).
+`Signal` is a sum type over the common POSIX signals (`Signal.Int`,
+`Signal.Term`, `Signal.Hup`, `Signal.Usr1`, `Signal.Usr2`,
+`Signal.Chld`, `Signal.Pipe`). An empty slice yields a stream that
+terminates on first `.next()`. Multiple overlapping subscriptions
+are fanned out — every subscriber sees every matching signal.
 
 ## `SignalStream`
 
@@ -50,8 +59,11 @@ implement AsyncIterator for SignalStream { type Item = Signal; ... }
 Use as an async iterator:
 
 ```verum
-let signals = shutdown_signals().await;
-for await _sig in signals {
+// Subscribe, then iterate. shutdown_signals().await is a one-shot
+// convenience that returns the single Signal that fired; use
+// signal_stream(...) when you want multiple fires.
+let mut stream = signal_stream(&[Signal.Int, Signal.Term, Signal.Hup]);
+for await _sig in stream {
     initiate_graceful_shutdown();
     break;
 }
@@ -69,7 +81,7 @@ async fn serve(listener: TcpListener) {
     let token = shutdown.token();
 
     spawn_detached(async move {
-        shutdown_signals().await.next().await;
+        let _sig: Signal = shutdown_signals().await;
         shutdown.initiate();
     });
 
