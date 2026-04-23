@@ -311,6 +311,7 @@ const sidebars: SidebarsConfig = {
         'stdlib/net',
         'stdlib/http2',
         'stdlib/quic-http3',
+        'stdlib/proxy',
         'stdlib/protobuf',
         'stdlib/compress',
         'stdlib/encoding',
