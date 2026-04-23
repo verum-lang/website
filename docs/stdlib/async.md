@@ -379,19 +379,42 @@ for await event in stream_events("wss://…") using [Http] {
 ## Nursery — structured concurrency
 
 ```verum
-type NurseryOptions is {
-    timeout: Maybe<Duration>,
+public type NurseryOptions is {
+    timeout:   Maybe<Duration>,
     max_tasks: Maybe<Int>,
-    error_behavior: NurseryErrorBehavior,
+    on_error:  NurseryErrorBehavior,         // field name matches the surface syntax
 };
-type NurseryErrorBehavior is CancelAll | WaitAll | FailFast;
-type NurseryError is
-    | Single(Error)
-    | Multiple(List<Error>)
+
+public type NurseryErrorBehavior is CancelAll | WaitAll | FailFast;
+
+public type NurseryError is
+    | Single(Heap<Error>)                    // single-task failure
+    | Multiple(List<Heap<Error>>)            // WaitAll collected multiple failures
     | Timeout
     | Cancelled
     | Panic(PanicInfo)
     | TaskLimitExceeded(Int);
+
+// Builder
+implement NurseryOptions {
+    public fn new() -> Self;
+    public fn default() -> Self;                                   // alias for new
+    public fn with_timeout(self, timeout: Duration) -> Self;
+    public fn with_timeout_ms(self, ms: Int) -> Self;
+    public fn with_max_tasks(self, max: Int) -> Self;
+    public fn with_error_behavior(self, behavior: NurseryErrorBehavior) -> Self;
+}
+
+// Underlying async functions the nursery { ... } block lowers to:
+public async fn with_nursery<T>(
+    options: NurseryOptions,
+    f: fn(&mut Nursery) -> T,
+) -> Result<T, NurseryError>;
+
+public async fn with_nursery_timeout<T>(
+    duration: Duration,
+    f: fn(&mut Nursery) -> T,
+) -> Result<T, NurseryError>;
 ```
 
 ### Usage
