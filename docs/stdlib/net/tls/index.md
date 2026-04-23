@@ -9,18 +9,18 @@ Z3-proven pipeline.
 
 | Concern | Module | Doc |
 |---------|--------|-----|
-| Record layer | `core.net.tls13.record` | [record.md](record.md) |
-| Key schedule | `core.net.tls13.keyschedule` | [keyschedule.md](keyschedule.md) |
-| Handshake messages | `core.net.tls13.handshake` | [handshake.md](handshake.md) |
-| Typed sessions | `core.net.tls13.session` | [session.md](session.md) |
-| Cipher suites | `core.net.tls13.cipher_suite` | [cipher_suite.md](cipher_suite.md) |
-| Alert protocol | `core.net.tls13.alert` | [alert.md](alert.md) |
-| Signature schemes | `core.net.tls13.sig_scheme` | [sig_scheme.md](sig_scheme.md) |
-| Extensions | `core.net.tls13.handshake.extension` | [extensions.md](extensions.md) |
-| 0-RTT / early_data | `core.net.tls13.handshake.{ticket_issuer,zero_rtt_antireplay,resumption}` | [zero_rtt.md](zero_rtt.md) |
-| Performance | — | [performance.md](performance.md) |
-| Security audit | — | [security.md](security.md) |
-| Refinement contracts | — | [refinement_contracts.md](refinement_contracts.md) |
+| Record layer | `core.net.tls13.record` | record.md |
+| Key schedule | `core.net.tls13.keyschedule` | keyschedule.md |
+| Handshake messages | `core.net.tls13.handshake` | handshake.md |
+| Typed sessions | `core.net.tls13.session` | session.md |
+| Cipher suites | `core.net.tls13.cipher_suite` | cipher_suite.md |
+| Alert protocol | `core.net.tls13.alert` | alert.md |
+| Signature schemes | `core.net.tls13.sig_scheme` | sig_scheme.md |
+| Extensions | `core.net.tls13.handshake.extension` | extensions.md |
+| 0-RTT / early_data | `core.net.tls13.handshake.{ticket_issuer,zero_rtt_antireplay,resumption}` | zero_rtt.md |
+| Performance | — | performance.md |
+| Security audit | — | security.md |
+| Refinement contracts | — | refinement_contracts.md |
 
 ## Minimal client flow
 

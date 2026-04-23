@@ -16,7 +16,7 @@ the escape-soundness gate that the compiler uses under the hood.
 The actual runtime allocator (bump pointer, generational arena) lives
 in **[`core.mem.arena`](/docs/stdlib/mem)**, and Weft's per-request
 arena pool at
-[`core.net.weft.arena_pool`](/docs/stdlib/net/weft). This file is
+[`core.net.weft.arena_pool`](/docs/stdlib/net/weft/overview). This file is
 the region-theory formalisation that sits alongside those — so
 analyses, tests, and custom verification passes can talk about
 regions programmatically.
@@ -30,7 +30,7 @@ regions programmatically.
 
 If you're writing ordinary application code and want an
 arena-allocated scope, you want the first one — read the
-[`mem`](/docs/stdlib/mem) and [Weft arena_pool](/docs/stdlib/net/weft)
+[`mem`](/docs/stdlib/mem) and [Weft arena_pool](/docs/stdlib/net/weft/overview)
 documentation.
 
 If you're building a compiler extension, static analyser, or
@@ -191,7 +191,7 @@ Legitimate direct uses:
 
 For everyday arena-backed scoped allocation, reach for
 [`core.mem.arena`](/docs/stdlib/mem) (the actual bump-pointer
-allocator) or [`core.net.weft.arena_pool`](/docs/stdlib/net/weft)
+allocator) or [`core.net.weft.arena_pool`](/docs/stdlib/net/weft/overview)
 (per-request arena pool).
 
 ---
@@ -247,7 +247,7 @@ request-scope" — runtime arenas *implement* scopes, the calculus
 
 - [`core.mem.arena`](/docs/stdlib/mem) — the runtime bump-pointer
   allocator that implements regions in memory.
-- [`core.net.weft.arena_pool`](/docs/stdlib/net/weft) — per-request
+- [`core.net.weft.arena_pool`](/docs/stdlib/net/weft/overview) — per-request
   arena pool on top of `GenerationalArena`.
 - [`labels`](/docs/stdlib/security/labels) — information-flow
   labels; regions and labels are *orthogonal* dimensions of

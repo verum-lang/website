@@ -104,7 +104,7 @@ Every secure AEAD deployment obeys them.
 
 ---
 
-## AES-GCM — `core.security.aead.aes_gcm`
+## AES-GCM — `core.security.aead.aes_gcm` {#aes-gcm}
 
 ### What is AES-GCM?
 
@@ -275,7 +275,7 @@ connection), not for bulk (data-center encrypting GB/s).
 
 ---
 
-## ChaCha20-Poly1305 — `core.security.aead.chacha20_poly1305`
+## ChaCha20-Poly1305 — `core.security.aead.chacha20_poly1305` {#chacha20-poly1305}
 
 ### What is it?
 
