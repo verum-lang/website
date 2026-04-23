@@ -520,6 +520,40 @@ dbg<T: Debug>(x: T) -> T              // prints to stderr, passes through
 
 ---
 
+## Case-folded comparison — `core.text.case_fold`
+
+ASCII-subset case folding — matches SQLite's documented `NOCASE`
+collation semantics. Non-ASCII bytes pass through unchanged; for full
+Unicode case folding (`CaseFolding.txt`, status = C+S+T) opt in to
+the `cog.verum.collation-icu` package.
+
+```verum
+mount core.text.case_fold.{
+    fold_char_ascii, fold_byte_ascii, fold_text_ascii,
+    compare_ascii_nocase, equal_ascii_nocase,
+};
+
+// Folding
+let lower: Char = fold_char_ascii('A'.into());            // 'a'
+let lb: Byte    = fold_byte_ascii(0x41 as Byte);          // 0x61
+let ls: Text    = fold_text_ascii(&"Hello".into());       // "hello"
+
+// Comparison — does not allocate; byte-wise case-insensitive
+let cmp: Ordering = compare_ascii_nocase(&a, &b);
+let eq:  Bool     = equal_ascii_nocase(&a, &b);
+```
+
+| Function | Behaviour |
+|----------|-----------|
+| `fold_char_ascii(c)` | `A..Z` → `a..z`; identity otherwise |
+| `fold_byte_ascii(b)` | Byte variant — caller pre-verified ASCII (`b < 0x80`) |
+| `fold_text_ascii(s)` | Whole-string ASCII lowercase; non-ASCII untouched |
+| `compare_ascii_nocase(a, b)` | `Ordering` — lexicographic over folded bytes |
+| `equal_ascii_nocase(a, b)` | Boolean equality, early-exit |
+
+Used by `core.database.sqlite.native.l2_record.collation.NOCASE`,
+which is the collation the native SQLite port exposes out-of-the-box.
+
 ## Implementation notes
 
 - **SSO**: 23 bytes stored inline. Transitions to heap silently; no
