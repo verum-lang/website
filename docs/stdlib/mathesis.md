@@ -222,48 +222,76 @@ coherence check cannot replay.
 
 ## JSON-RPC protocol (`protocol.vr`)
 
-Mathesis can run as a service — handy for integrations with external
-tools (notebooks, LLM harnesses, proof-browsers).
+Mathesis can run as an MCP-style service — handy for integrations
+with external tools (notebooks, LLM harnesses, proof-browsers).
 
 ### Envelope types
 
 ```verum
-type JsonRpcRequest is {
-    jsonrpc: Text,                    // "2.0"
-    method: Text,                     // "load_theory", "translate", "check_coherence", ...
-    params: JsonValue,
-    id: Maybe<JsonValue>,
+public type JsonRpcRequest is {
+    id:     Int,        // -1 signals a notification
+    method: Text,       // e.g. "theory/list"
+    params: Text,       // method-specific payload as a JSON Text blob
 };
-type JsonRpcResponse is {
-    jsonrpc: Text,
-    result: Maybe<JsonValue>,
-    error: Maybe<JsonRpcError>,
-    id: Maybe<JsonValue>,
+
+public type JsonRpcResponse is {
+    id:     Int,
+    result: Maybe<Text>,                  // present on success
+    error:  Maybe<JsonRpcError>,          // present on failure
 };
-type JsonRpcError is { code: Int, message: Text, data: Maybe<JsonValue> };
+
+public type JsonRpcError is {
+    code:    Int,
+    message: Text,
+};
+```
+
+**Shape notes.** The envelopes are intentionally minimal — no
+`jsonrpc: "2.0"` version field, `params` is a raw JSON Text blob the
+handler parses, and `id` is a plain `Int` rather than an arbitrary
+JSON value. The error record has no `data` field. Exactly one of
+`result` / `error` is `Some`.
+
+### Typed parameter records
+
+```verum
+public type TranslateParams   is { source: Text, target: Text, map_json: Text };
+public type AuditParams       is { theory_name: Text };
+public type LoadParams        is { name: Text, body: Text };
+public type CoherenceParams   is { pairs_json: Text };
+
+public fn parse_translate_params(params: &Text) -> Maybe<TranslateParams>;
+public fn parse_audit_params(params: &Text) -> Maybe<AuditParams>;
+public fn parse_load_params(params: &Text) -> Maybe<LoadParams>;
+public fn parse_coherence_params(params: &Text) -> Maybe<CoherenceParams>;
 ```
 
 ### Server
 
 ```verum
-type MathesisServer is { registry: MathesisRegistry, config: ServerConfig };
+public type MathesisServer is { registry: MathesisRegistry };
 
-new_server(config: ServerConfig) -> MathesisServer
-server.serve_request(&req: &JsonRpcRequest) -> JsonRpcResponse
-server.serve(&"tcp://0.0.0.0:4711").await -> IoResult<()>   
+public fn new_server() -> MathesisServer;
+
+public fn handle_request(server: &mut MathesisServer, req: &JsonRpcRequest)
+    -> JsonRpcResponse;
+public fn serve_request(server: &mut MathesisServer, json_line: &Text) -> Text;
+
+public fn make_request(method: Text, params: Text) -> JsonRpcRequest;
+public fn is_ok(resp: &JsonRpcResponse) -> Bool;
+public fn is_err(resp: &JsonRpcResponse) -> Bool;
+public fn error_code(resp: &JsonRpcResponse) -> Int;
 ```
 
 ### Method catalogue
 
 | Method | Purpose |
-|---|---|
-| `load_theory` | load a theory from path |
-| `list_theories` | enumerate loaded theories |
-| `translate` | produce a translation record |
-| `translate_with_oracle` | LLM-guided translation |
-| `check_coherence` | descent check |
-| `audit_theory` | one-theory audit |
-| `audit_meta` | whole-registry audit |
+|--------|---------|
+| `theory/list` | enumerate loaded theories |
+| `theory/load` | load a theory from an inline JSON body |
+| `theory/audit` | one-theory audit |
+| `theory/coherence` | descent check across named translation pairs |
+| `claim/translate` | produce a translation record via Kan extension |
 
 ---
 
