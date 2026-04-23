@@ -12,9 +12,13 @@ and interval streams.
 | File | What's in it |
 |---|---|
 | `duration.vr` | `Duration` — time span |
+| `duration_parse.vr` | Human-readable duration string parser (`"1h30m"`, `"500ms"`, ISO 8601 `"PT…"`) |
 | `instant.vr` | `Instant` — monotonic point in time |
 | `system_time.vr` | `SystemTime`, `SystemTimeError` |
 | `interval.vr` | `Interval`, `AsyncInterval` — tick streams |
+| `rfc3339.vr` | RFC 3339 timestamp parser and printer |
+| `cron.vr` | POSIX 5-field crontab parser and next-fire scheduler |
+| `julian.vr` | Julian Day ↔ Unix / Gregorian conversions (Richards 1998) |
 | `mod.vr` | `Time` namespace + re-exports |
 
 ---
@@ -288,8 +292,94 @@ pathological specs that admit no firing.
 
 ---
 
+## `duration_parse` — human-readable duration strings
+
+```verum
+mount core.time.duration_parse;
+
+let d: Duration = duration_parse.parse(&Text.from("1h30m"))?;       // 1 h + 30 min
+let t: Duration = duration_parse.parse(&Text.from("500ms"))?;       // 500 ms
+let f: Duration = duration_parse.parse(&Text.from("1.5s"))?;        // 1.5 s
+let n: Duration = duration_parse.parse(&Text.from("-15m"))?;        // negative span
+let i: Duration = duration_parse.parse(&Text.from("PT1H30M"))?;     // ISO 8601
+```
+
+Two grammars recognised:
+
+| Form | Example | Notes |
+|------|---------|-------|
+| Compact Go-style | `1h30m`, `500ms`, `2h 30m` | whitespace tolerated; fractional OK |
+| ISO 8601 duration | `PT1H30M`, `P1D`, `PT0.5S` | cross-language config files |
+
+### Supported units
+
+| Unit | Suffix | Example |
+|------|--------|---------|
+| nanoseconds | `ns` | `100ns` |
+| microseconds | `us` / `µs` | `250us` |
+| milliseconds | `ms` | `500ms` |
+| seconds | `s` | `30s` |
+| minutes | `m` | `5m` |
+| hours | `h` | `2h` |
+| days | `d` | `7d` |
+| weeks | `w` | `1w` |
+
+Used in config files (`timeout = "30s"`), CLI flags (`--interval 5m`),
+and scheduler APIs. Typos surface as `DurationParseError.UnknownUnit`
+rather than silently defaulting.
+
+## `julian` — Julian Day ↔ Unix / Gregorian
+
+```verum
+mount core.time.julian;
+```
+
+Julian Day (JD) is the continuous count of days since noon UTC on
+4713-01-01 BC (proleptic Julian calendar). SQLite's
+`julianday(...)` / `strftime('%J', ...)` store timestamps in this
+form; astronomy and ephemeris computations use it too.
+
+### Epoch constants
+
+| Constant | Value | Reference |
+|----------|-------|-----------|
+| `JD_UNIX_EPOCH` | 2440587.5 | 1970-01-01 00:00 UTC |
+| `JD_J2000` | 2451545.0 | 2000-01-01 12:00 UTC |
+| `JD_MJD_EPOCH` | 2400000.5 | Modified Julian Day base (1858-11-17) |
+
+### Conversion surface
+
+```verum
+public fn julian_from_unix_ms(ms: Int64) -> Float64;
+public fn unix_ms_from_julian(jd: Float64) -> Int64;
+public fn julian_from_unix_secs(s: Int64) -> Float64;
+public fn unix_secs_from_julian(jd: Float64) -> Int64;
+
+public fn julian_from_ymd(year: Int, month: Int, day: Int) -> Float64;
+public fn ymd_from_julian(jd: Float64) -> (Int, Int, Int);
+
+public fn time_fraction_from_hms(hour: Int, min: Int, sec: Int, ms: Int) -> Float64;
+public fn hms_from_julian(jd: Float64) -> (Int, Int, Int, Int);  // (h, m, s, ms)
+
+public fn julian_from_gregorian(y: Int, mo: Int, d: Int,
+                                h: Int, mi: Int, s: Int, ms: Int) -> Float64;
+public fn gregorian_from_julian(jd: Float64)
+    -> (Int, Int, Int, Int, Int, Int, Int);  // (y, mo, d, h, mi, s, ms)
+
+public fn mjd_from_julian(jd: Float64) -> Float64;
+public fn julian_from_mjd(mjd: Float64) -> Float64;
+```
+
+Algorithms are Richards (*Mapping Time*, 1998). The day-number path
+is integer arithmetic; only the fractional time-of-day uses
+`Float64` — Float64's 53-bit mantissa carries millisecond resolution
+losslessly for ±80 million years around 1970.
+
+---
+
 ## See also
 
 - **[async → timers](/docs/stdlib/async#timers)** — `sleep`, `timeout`, `Interval`.
 - **[intrinsics](/docs/stdlib/intrinsics)** — `monotonic_nanos`, `rdtsc`, `rdtscp`.
 - **[sys](/docs/stdlib/sys)** — platform `clock_gettime` / libSystem equivalents.
+- **[`stdlib/database`](/docs/stdlib/database)** — native SQLite consumes `julian` for `julianday(...)` / `date(...)` timestamps.
