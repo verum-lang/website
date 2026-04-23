@@ -58,7 +58,7 @@ Three files in `core/security/spiffe/`:
 | `workload_api.vr` | SPIRE Workload API client — fetches SVIDs, streams rotation updates |
 
 Plus a higher-level Weft middleware
-([`net/weft/spiffe.vr`](/docs/stdlib/net/weft) — not in this
+([`net/weft/spiffe.vr`](/docs/stdlib/net/weft/overview) — not in this
 subtree) that wraps these into an HTTP authentication layer.
 
 ---
@@ -338,7 +338,7 @@ impl WorkloadApiClient {
 
 `X509SvidStream` and `JwtBundlesStream` both implement
 [`Stream`](/docs/stdlib/async#stream) and
-[`AsyncIterator`](/docs/stdlib/async#asynciterator) — use either
+[`AsyncIterator`](/docs/stdlib/async#stream) — use either
 `.poll_next(cx)` or `for await item in stream { ... }`.
 
 ### Errors
@@ -403,7 +403,7 @@ async fn run_with_rotation(mut app_tls_config: TlsConfig) {
 ```
 
 This is the pattern behind
-[`net/weft/spiffe.vr`](/docs/stdlib/net/weft)'s `SpiffeAuthLayer`
+[`net/weft/spiffe.vr`](/docs/stdlib/net/weft/overview)'s `SpiffeAuthLayer`
 and `SpiffeClientTransport` — they manage the SVID stream in the
 background and hand fresh credentials to the TLS stack.
 
@@ -521,7 +521,7 @@ to start with a clock > 5 min off.
 
 ## Related modules
 
-- [`net.weft.spiffe`](/docs/stdlib/net/weft#spiffe) — HTTP middleware
+- [`net.weft.spiffe`](/docs/stdlib/net/weft/overview#spiffe) — HTTP middleware
   that wraps these types for per-request SPIFFE auth.
 - [`core.net.tls`](/docs/stdlib/net#tls) — consumes `X509Svid` as
   identity cert + `X509BundleSet` as trust roots.

@@ -260,7 +260,7 @@ last-sender-drop closes the channel and wakes all receivers.
 
 ---
 
-## Streams
+## Streams {#stream}
 
 ```verum
 type Stream is protocol {

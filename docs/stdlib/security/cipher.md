@@ -64,7 +64,7 @@ preferences.
 
 ---
 
-## AES — `core.security.cipher.aes`
+## AES — `core.security.cipher.aes` {#aes}
 
 ### What is AES?
 
@@ -294,7 +294,7 @@ for surface tests and the KAT-driven runs in `run/`.
 
 ---
 
-## ChaCha20 — `core.security.cipher.chacha20`
+## ChaCha20 — `core.security.cipher.chacha20` {#chacha20}
 
 ### What is ChaCha20?
 

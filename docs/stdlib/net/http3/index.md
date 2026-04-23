@@ -7,16 +7,16 @@ Part of the **warp** stack.
 
 | Concern | Module | Doc |
 |---------|--------|-----|
-| H3 frames (DATA / HEADERS / ...) | `core.net.h3.frame` | [frames.md](frames.md) |
-| Settings | `core.net.h3.settings` | [settings.md](settings.md) |
-| Request / response | `core.net.h3.{request,client,server}` | [request.md](request.md) |
-| Connection | `core.net.h3.connection` | [connection.md](connection.md) |
-| Priority (RFC 9218) | `core.net.h3.priority` | [priority.md](priority.md) |
-| QPACK encoder | `core.net.h3.qpack.encoder` | [qpack_encoder.md](qpack_encoder.md) |
-| QPACK decoder | `core.net.h3.qpack.decoder` | [qpack_decoder.md](qpack_decoder.md) |
-| QPACK static table (99 entries) | `core.net.h3.qpack.static_table` | [qpack_static.md](qpack_static.md) |
-| QPACK dynamic table | `core.net.h3.qpack.dynamic_table` | [qpack_dynamic.md](qpack_dynamic.md) |
-| Huffman (RFC 7541 App B) | `core.net.h3.qpack.huffman` | [huffman.md](huffman.md) |
+| H3 frames (DATA / HEADERS / ...) | `core.net.h3.frame` | frames.md |
+| Settings | `core.net.h3.settings` | settings.md |
+| Request / response | `core.net.h3.{request,client,server}` | request.md |
+| Connection | `core.net.h3.connection` | connection.md |
+| Priority (RFC 9218) | `core.net.h3.priority` | priority.md |
+| QPACK encoder | `core.net.h3.qpack.encoder` | qpack_encoder.md |
+| QPACK decoder | `core.net.h3.qpack.decoder` | qpack_decoder.md |
+| QPACK static table (99 entries) | `core.net.h3.qpack.static_table` | qpack_static.md |
+| QPACK dynamic table | `core.net.h3.qpack.dynamic_table` | qpack_dynamic.md |
+| Huffman (RFC 7541 App B) | `core.net.h3.qpack.huffman` | huffman.md |
 
 ## v0.1 scope
 
