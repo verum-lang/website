@@ -228,6 +228,22 @@ in Verum).
 - Anti-replay cache unit tests simulate 10⁶-entry bloom filters and
   verify false-positive rate.
 
+## Deep-dive pages
+
+- [Handshake state machine (RFC 8446 §4)](/docs/stdlib/net/tls/handshake) — typed-state
+  client / server progression, all 10 handshake messages, transcript
+  hash folding + HRR reseed, Finished MAC, CertificateVerify context.
+- [Extensions (RFC 8446 §4.2)](/docs/stdlib/net/tls/extensions) — full catalogue with
+  wire layout: SNI, ALPN, key_share, supported_versions, PSK,
+  early_data, signature_algorithms(_cert), cookie, status_request,
+  record_size_limit, quic_transport_parameters.
+- [Key schedule (RFC 8446 §7)](/docs/stdlib/net/tls/keyschedule) — HKDF-Expand-Label,
+  Derive-Secret, the early → handshake → master chain, V1/V2
+  theorems.
+- [Record layer (RFC 8446 §5)](/docs/stdlib/net/tls/record-layer) — TLSPlaintext outer
+  header, TLSInnerPlaintext, AEAD seal/open, nonce construction, V8
+  monotonicity.
+
 ## See also
 
 - [`core.net.quic`](/docs/stdlib/net/quic/) — QUIC consumes `tls13.handshake` via
@@ -237,9 +253,15 @@ in Verum).
   chain validation (`TrustStore.verify(...)`) and the cipher /
   AEAD / KDF primitives the key schedule consumes.
 
-## Status (2026-04)
+## Status (2026-04-25)
 
-Full handshake path (1-RTT + 0-RTT) lands. L2 typecheck suite covers
-every message type; RFC 8448 byte-level KAT suite passes. Server-side
-post-handshake auth is wired; anti-replay ships as two independent
-strategies.
+Full handshake path (1-RTT + 0-RTT) + resumption + HRR ships. L2
+conformance suite: **76/76** byte-exact + surface tests, plus the
+RFC 8448 Appendix A/B/C KAT suite (simple 1-RTT, resumed 0-RTT, and
+HelloRetryRequest). Server-side post-handshake auth is wired;
+anti-replay ships as two independent strategies (bloom-filter +
+monotonic clock).
+
+V1 (derive_secret distinctness), V2 (KeyUpdate monotonicity), and V8
+(AEAD sequence monotonicity) are discharged by Z3 as `verify-pass`
+theorems alongside the runtime tests.

@@ -186,12 +186,26 @@ dynamic table carries one):
 | HEADERS frame Huffman tree well-formed (RFC 7541 Appendix B) | `qpack.huffman` |
 | Control stream id < 4 (reserved) | `connection` |
 
-## Status (2026-04)
+## Deep-dive pages
 
-Client + server facades are shipping; QPACK operates in
-`max_table_capacity = 0` mode (the baseline every client negotiates).
-The L2 typecheck suite exercises every frame variant; the QPACK test
-suite is complete for the static + literal path.
+- [Frames (RFC 9114 §7)](/docs/stdlib/net/http3/frames) — all 7 frame types byte-exact,
+  control-vs-request legality, SETTINGS identifiers.
+- [QPACK (RFC 9204)](/docs/stdlib/net/http3/qpack) — static + dynamic table, prefixed-integer
+  codec, Huffman, encoder / decoder stream instructions, field sections.
+- [Priority (RFC 9218)](/docs/stdlib/net/http3/priority) — H3Priority, PRIORITY_UPDATE
+  frames, Structured-Header parsing.
+- [Server push (§4.6 + §7.2.5)](/docs/stdlib/net/http3/server-push) — PushEmitter,
+  push_id lifecycle, MAX_PUSH_ID / CANCEL_PUSH.
+
+## Status (2026-04-25)
+
+Client + server facades ship. QPACK baseline (`max_table_capacity=0`)
+is production-ready; dynamic-table encoder extensions are scaffolded
+for v1.1. The L2 conformance suite: **24/24** byte-exact + surface
+tests covering every frame type, full QPACK instruction + field
+section encoding, priority parsing, and the push emitter lifecycle.
+The RFC 9204 Huffman codec passes byte-for-byte against the
+canonical HPACK table ([`rfc9204_qpack_huffman`](#see-also)).
 
 ## See also
 
