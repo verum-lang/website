@@ -54,6 +54,7 @@ the capability router. The full set admitted by the grammar:
 | `@verify(reliable)`   | fn, type | alias of `thorough`, emphasising result reliability |
 | `@verify(certified)`  | fn, type | independently cross-verified; required for proof-certificate export (Coq/Lean/Dedukti/Metamath) |
 | `@verify(synthesize)` | fn, type | synthesis mode — generate a term satisfying the spec rather than checking it |
+| `@framework(name, "citation")` | axiom, theorem, lemma | Mark a statement as a trusted axiom borrowed from an external framework. `name` is the framework identifier (identifier syntax); the string is a human-readable citation (paper / URL / section). Surfaced by `verum audit --framework-axioms` for supply-chain review. |
 
 Project-wide defaults and per-module overrides live in the `[verify]`
 section of `verum.toml` — see **[reference → verum.toml](/docs/reference/verum-toml#verify--formal-verification)**.
@@ -93,6 +94,7 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 | `@multiversion` | fn | emit multiple versions for CPU feature dispatch |
 | `@link_section("name")` | fn, static | place into a named section |
 | `@no_mangle` | fn, static | disable name mangling |
+| `@vbc_direct_lowering` | fn (intrinsic) | Intrinsic function lowers directly to a VBC opcode without a regular call frame. Used on time/CPU/sleep primitives in `core/intrinsics/runtime/`; users should not hand-apply this attribute. |
 
 ## Testing
 

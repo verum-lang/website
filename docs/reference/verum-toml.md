@@ -132,20 +132,61 @@ interpreter mode and `"1"`, `"aot"`, `"release"`, `"native"` for AOT.
 
 ```toml
 [verify]
-default_strategy  = "formal"         # runtime | static | formal | fast |
-                                     # thorough | certified | synthesize
-solver_timeout_ms = 10000
-enable_telemetry  = true             # write .verum/state/smt-stats.json
-persist_stats     = true
-fail_on_divergence = true
+# Base behaviour
+default_strategy      = "formal"          # runtime | static | formal | fast |
+                                          # thorough | certified | synthesize
+solver_timeout_ms     = 10_000
+enable_telemetry      = true              # write .verum/state/smt-stats.json
+persist_stats         = true
+fail_on_divergence    = true              # certified + cross-verifier divergence = build fail
 
-[verify.modules."crypto.signing"]    # per-module override
-strategy          = "certified"
-solver_timeout_ms = 60000
+# Budget / profiling knobs — see `docs/verification/performance.md` and
+# `docs/verification/cli-workflow.md` for the workflow.
+total_budget            = "120s"          # fail the build past this wall-clock
+slow_threshold          = "5s"            # flag functions slower than this
+profile_slow_functions  = true            # enable profiler when --profile given
+profile_threshold       = "1s"            # only profile functions past this
+
+# On-disk cache
+cache_dir               = ".verum/verify-cache"
+cache_max_size          = "500MB"
+cache_ttl               = "30d"           # evict entries older than this
+
+# Shared CI cache — S3 or Redis, reads + writes proofs across runs.
+distributed_cache       = "s3://my-bucket/verify-cache"
+
+# Per-module override: narrower scope than top-level [verify].
+[verify.modules."crypto.signing"]
+strategy                = "certified"
+solver_timeout_ms       = 60_000
+
+# Named profiles — selected via `verum verify --verify-profile <name>`.
+# Inheritance: CLI flag > profile > [verify] > default.
+[verify.profiles.release]
+default_strategy        = "certified"
+solver_timeout_ms       = 300_000
+fail_on_divergence      = true
+
+[verify.profiles.ci]
+default_strategy        = "fast"
+solver_timeout_ms       = 3_000
+total_budget            = "60s"
 ```
 
 Strategy-specific timeout multipliers: `fast 0.3×`, `thorough 2×`,
 `certified 3×`, `synthesize 5×`.
+
+Precedence (highest → lowest):
+
+1. CLI flag (`--solver`, `--timeout`, `--budget`, `--distributed-cache`, …).
+2. Active `[verify.profiles.<name>]` if `--verify-profile <name>` is set.
+3. Per-module override in `[verify.modules."module.path"]` (for functions
+   that live in that module and its descendants).
+4. Top-level `[verify]`.
+5. Built-in default.
+
+Human-readable durations: `s`, `m`, `h`, `d` suffixes (or a bare
+integer = seconds).
 
 ## `[workspace]`
 
@@ -328,10 +369,48 @@ strip             = true
 
 ## `[llvm]`, `[optimization]`, `[lto]`, `[pgo]`, `[cross_compile]`
 
-LLVM backend fine-tuning — target CPU, feature flags, optimisation
-pass selection, LTO modes, profile-guided optimisation, and cross-
-compilation sysroots. These are parsed but sparsely used; stick to
-`[build]`, `[profile.*]`, and `[linker]` for normal projects.
+LLVM backend fine-tuning. These sections let you control the native
+code generator beyond what `[build]` exposes.
+
+```toml
+[llvm]
+target_triple    = "x86_64-unknown-linux-gnu"   # override `[build].target` for LLVM
+target_cpu       = "native"                     # "native" | "generic" | "znver3" | …
+target_features  = "+avx2,+fma"                 # comma-separated, `+`/`-` prefixed
+
+[optimization]
+level    = 3           # 0–3, orthogonal to `[build].opt_level` when you need
+size_opt = false       # to diverge from the CLI's debug/release mapping
+inline   = true
+
+[lto]
+enabled = true
+mode    = "thin"       # "thin" (fast, moderate wins) | "full" (slow, maximum wins)
+
+[pgo]
+enabled      = true
+profile_path = "target/pgo/default.profdata"
+
+[cross_compile]
+target  = "aarch64-apple-darwin"
+sysroot = "/opt/xcode-sdks/MacOSX.sdk"
+linker  = "clang"
+```
+
+CLI equivalents (build-time):
+
+| TOML field | CLI flag |
+|------------|----------|
+| `[build].target`, `[cross_compile].target` | `--target TRIPLE` |
+| `[optimization].level`, `[build].opt_level` | `--release` (= 3) |
+| `[lto].enabled` + `[lto].mode` | `--lto thin\|full` |
+| `[build].incremental` | `--timings` triggers report when enabled |
+| static linking | `--static-link` |
+| stripping | `--strip` / `--strip-debug` |
+| emit artefacts | `--emit-asm`, `--emit-llvm`, `--emit-bc`, `--emit-types`, `--emit-vbc` |
+
+CLI flags **always override** the manifest for the current build;
+`verum.toml` values describe the project baseline.
 
 ## `[lsp]`
 

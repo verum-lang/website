@@ -51,13 +51,18 @@ PBT deep dive in **[Tooling → Property testing](/docs/tooling/property-testing
 ## Verification & analysis
 
 ```bash
-verum verify [FILE] --mode <runtime|proof|compare|cubical|dependent> \
+verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthesize> \
                     --solver <z3|cvc5|auto|portfolio|capability> \
-                    --timeout 120 [--cache] [--function NAME] \
-                    [--profile] [--budget DURATION] [--export PATH] \
-                    [--distributed-cache URL]
+                    --timeout 120 [--cache] [--function NAME] [--diff GIT_REF] \
+                    [--verify-profile NAME] [--smt-proof-preference z3|cvc5] \
+                    [--profile] [--profile-obligation] [--budget DURATION] \
+                    [--export PATH] [--distributed-cache URL] \
+                    [--dump-smt DIR] [--check-smt-formula FILE] \
+                    [--solver-protocol] [--show-cost] [--compare-modes] \
+                    [--interactive] [--interactive-tactic] [--lsp-mode]
 verum analyze [--escape] [--context] [--refinement] [--all]
-verum audit [--details] [--direct-only]
+verum audit [--details] [--direct-only] [--framework-axioms] \
+             [--kernel-rules] [--format plain|json]
 verum lint [--fix] [--deny-warnings]
 verum fmt [--check]
 ```
@@ -69,14 +74,24 @@ gradual verification](/docs/verification/gradual-verification)**.
 
 | Flag | Purpose |
 |------|---------|
-| `--profile` | Collect per-function timings, bottleneck categories, and cache stats; prints the report at the end of the run. |
-| `--budget DURATION` | Project-wide wall-clock budget — `120s`, `2m`, `1h`, or a bare number (seconds). Fails the build if the total time exceeds the budget; already-finished files are reported, the remainder are skipped. |
-| `--export PATH` | Write the profile report as JSON to `PATH`. Implies `--profile`. Intended for CI/CD integration — trend tracking, dashboards, regression alerts. |
-| `--distributed-cache URL` | Advertise a distributed verification cache (e.g. `s3://bucket/verify-cache`, `redis://host`). Plumbed through to the compiler via `CompilerOptions::distributed_cache_url`; actual wire-up is a server-side feature. |
+| `--profile` | Per-function timings, bottleneck categories, cache stats; printed at end of run. |
+| `--profile-obligation` | Break each function's time into individual obligations (pre/postconditions, refinements, loop invariants). Implies `--profile`. |
+| `--budget DURATION` | Project-wide wall-clock budget — `120s`, `2m`, `1h`, or bare integer (seconds). Fails the build past the limit. |
+| `--export PATH` | Write profile report as JSON to `PATH`. Implies `--profile`. |
+| `--distributed-cache URL` | S3 / Redis shared proof cache (e.g. `s3://bucket/verify-cache`). |
+| `--verify-profile NAME` | Apply `[verify.profiles.<NAME>]` from `verum.toml`. CLI flags still win over the profile. |
+| `--diff GIT_REF` | Only verify functions whose source has changed since the ref (`HEAD~1`, `origin/main`, `abc123`). |
+| `--dump-smt DIR` | Dump every SMT-LIB query to `DIR/<function>-<idx>.smt2`. |
+| `--check-smt-formula FILE` | Dispatch a raw `.smt2` file to the configured solver; prints `sat/unsat/unknown`. Ignores `FILE` argument. |
+| `--solver-protocol` | Log every solver send/recv on stderr, prefixed `[→]` / `[←]`. |
+| `--lsp-mode` | Emit LSP `Diagnostic` JSON on stdout, one per line. Suppresses human output. |
+| `--interactive-tactic` | Ltac2-style tactic REPL — prints the goal, accepts tactics one line at a time. |
+| `--smt-proof-preference BACKEND` | Which backend exports proof traces for `Certified` strategy. Default `cvc5` (ALETHE, more stable). |
 
-Defaults for all four knobs can live in the `[verify]` block of
-`verum.toml` (`total_budget`, `distributed_cache`, `profile_slow_functions`,
-`profile_threshold`). CLI flags always override the manifest.
+Manifest equivalents in `[verify]`: `total_budget`, `slow_threshold`,
+`distributed_cache`, `cache_dir`, `cache_max_size`, `cache_ttl`,
+`profile_slow_functions`, `profile_threshold`, `profiles.<name>.*`.
+CLI flags always override the manifest.
 
 ## Profiling
 
@@ -166,12 +181,24 @@ verum dap --transport stdio|socket [--port N]
 ## Configuration
 
 ```bash
-verum config show [--json]
-verum config get <key>
-verum config set <key> <value>
+verum config show [--json] [-Z key=val] [--tier interpret|aot]
+verum config validate [-Z key=val]    # typo-check verum.toml
+
+verum export --to <dedukti|coq|lean|metamath> [-o PATH]
+verum export-proofs --to <dedukti|coq|lean|metamath> [-o PATH]  # alias
+
 verum clean [--all]
 verum version [--verbose]
 ```
+
+`config show` resolves `verum.toml` + CLI overrides and prints the
+effective configuration — the source of truth for "what's actually
+compiled". See **[Reference → verum.toml](/docs/reference/verum-toml)**
+for the manifest schema.
+
+`verum export` walks every theorem / lemma / axiom in the project and
+emits a statement-only certificate file; proofs are admitted. See
+**[Verification → proof export](/docs/verification/proof-export)**.
 
 ## Global flags
 

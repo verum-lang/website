@@ -270,6 +270,75 @@ Pins a value to its current memory location so that self-referential
 futures can be polled safely. Most users encounter `pin` only through
 the `async` expansion — manual use is rarely needed.
 
+## Time & system intrinsics
+
+From `core.intrinsics.runtime.time` — auto-mounted in every crate.
+These are direct wrappers over OS clocks; cost is one syscall or a
+single `mach_absolute_time` / `QueryPerformanceCounter` call on the
+respective platform.
+
+### `monotonic_nanos`
+
+```verum
+fn monotonic_nanos() -> UInt64
+```
+
+Nanoseconds from an opaque, monotonically-increasing reference point
+(kernel boot on Linux; `mach_absolute_time` on macOS). The returned
+value has no Unix-epoch meaning — use it only for *differences*.
+
+```verum
+let t0 = monotonic_nanos();
+do_work();
+let elapsed_ns = monotonic_nanos() - t0;
+```
+
+Immune to wall-clock adjustments (NTP step, DST, user-set). The single
+correct choice for benchmarking, timeouts, and rate-limiting.
+
+### `realtime_nanos`
+
+```verum
+fn realtime_nanos() -> UInt64
+```
+
+Nanoseconds since the Unix epoch (1970-01-01T00:00:00Z UTC). Use for
+timestamps and logs; **not** for measuring intervals — the clock can
+go backwards.
+
+### `realtime_secs`
+
+```verum
+fn realtime_secs() -> Int64
+```
+
+Whole seconds since the Unix epoch. Same caveats as
+`realtime_nanos`.
+
+### `num_cpus`
+
+```verum
+fn num_cpus() -> Int
+```
+
+Logical-CPU count as the kernel sees it. Use when sizing thread pools
+or work-queue fan-out. Matches what the async scheduler would auto-
+pick when `async_worker_threads = 0`.
+
+### `sleep_ms` / `sleep_ns`
+
+```verum
+fn sleep_ms(ms: Int)
+fn sleep_ns(ns: Int)
+```
+
+Block the current thread (or task, when called from an `async` fn)
+for at least the given duration. Precision is OS-dependent — on Linux
+`sleep_ns` resolves to `nanosleep`; on macOS to `mach_wait_until`.
+
+Use from async code sparingly — prefer cancellable sleeps exposed by
+the async runtime (`time.sleep(...).await`).
+
 ## Format strings (`f"..."`)
 
 Not a function, but tightly coupled to `print`. `f"..."` is a literal
