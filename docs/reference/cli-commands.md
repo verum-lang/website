@@ -83,19 +83,66 @@ Flags:
 
 ### `verum test`
 
-Flags:
-- `--filter <regex>`.
+Discovers `@test`, `@property`, and `@test_case` functions in `tests/`
+and runs them. Tier is controlled by `--interp` / `--aot` (default:
+AOT; property tests always route through the interpreter regardless
+— see **[Tooling → Property testing](/docs/tooling/property-testing)**).
+
+Filtering:
+- `--filter <STR>` — substring match on test name.
+- `--exact` — require full-match instead of substring.
+- `--skip <PATTERN>` — exclude tests whose name contains `PATTERN`; repeatable.
+- `--include-ignored` — run all tests, including `@ignore`d.
+- `--ignored` — run ONLY `@ignore`d tests.
+- `--list` — print discovered tests and exit without running.
+
+Tier:
+- `--interp` — Tier 0 interpreter (in-process, fast iteration).
+- `--aot` — Tier 1 native binary per test (default).
+- `--tier interpret|aot` — same, long form.
+
+Runtime:
 - `--release`.
 - `--nocapture` — don't suppress stdout/stderr.
-- `--test-threads <N>`.
-- `--coverage` — enable coverage instrumentation.
+- `--test-threads <N>` — parallel-worker count (requires `[test] parallel = true` in `verum.toml`). Honoured by a dedicated rayon pool.
+- `--coverage` — enable coverage instrumentation (pass-through to llvm-cov).
+
+Output:
+- `--format pretty|terse|json|junit|tap|sarif` (default `pretty`).
+  `json` is NDJSON (one event per test plus a summary). `junit`, `tap`,
+  and `sarif` suppress the preamble and emit a single parseable
+  document for CI ingest.
 
 ### `verum bench`
 
-Flags:
-- `--filter <regex>`.
-- `--save-baseline <name>` — save results as a baseline.
-- `--baseline <name>` — compare against a saved baseline.
+Discovers `@bench` functions and measures per-function timing using
+time-budget–driven sampling (Criterion convention).
+
+Filtering:
+- `--filter <STR>`.
+
+Tier:
+- `--interp` / `--aot` / `--tier interpret|aot` — default AOT.
+  Interpreter is in-process (no `fn main()` needed); AOT synthesises
+  one driver binary per `@bench` function.
+
+Sampling:
+- `--warm-up-time <SECS>` (default `3.0`).
+- `--measurement-time <SECS>` (default `5.0`).
+- `--min-samples <N>` (default `10`).
+- `--max-samples <N>` (default `100`).
+- `--sample-size <N>` — fixed iteration count (overrides time budget).
+
+Output:
+- `--format table|json|csv|markdown` (default `table`).
+  Statistics reported: median, mean, stddev, MAD, bootstrap 95 % CI,
+  Tukey 1.5×IQR outlier count.
+
+Baselines:
+- `--save-baseline <NAME>` → `target/bench/<NAME>.json`.
+- `--baseline <NAME>` — diff current run against the saved baseline.
+- `--noise-threshold <PCT>` (default `2.0`) — percentage below which
+  a regression is classified as noise.
 
 ### `verum fmt`
 

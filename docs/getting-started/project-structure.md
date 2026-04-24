@@ -277,38 +277,41 @@ pub fn create_user(name: Text) -> User { ... }
 
 ## Tests
 
-Tests live inline or in `tests/`. Inline tests use `@test`:
+Tests live in `tests/`. Three styles, all discovered automatically:
 
 ```verum
+// tests/arith.vr
+
+// Plain unit test — passes iff no panic.
 @test
 fn addition_commutes() {
     assert(1 + 2 == 2 + 1);
 }
 
-@test(property)
+// Property-based test — harness picks 100 random (Int, Int) pairs and
+// shrinks any failure to a minimal counterexample.
+@property
 fn sort_is_idempotent(xs: List<Int>) {
-    assert(xs.sorted().sorted() == xs.sorted());
+    assert_eq(xs.sorted().sorted(), xs.sorted());
 }
 
-@test(async)
-async fn fetches_the_right_page() {
-    let page = fetch(&url).await?;
-    assert_eq(page.title, "Welcome");
+// Parametrised table-driven test — expands into add[0]..add[2].
+@test
+@test_case(0, 0, 0)
+@test_case(1, 2, 3)
+@test_case(-5, 5, 0)
+fn add(a: Int, b: Int, expected: Int) {
+    assert_eq(a + b, expected);
 }
 ```
 
-Integration tests live in `tests/`:
+Each file is compiled as a separate top-level program; they share the
+project's dependencies but run independently. A file with `fn main()`
+and no attributes is treated as one whole-file test (exit-0 means pass).
 
-```
-tests/
-├── integration.vr
-├── http_test.vr
-└── fixtures/
-    └── golden.json
-```
-
-Each file is compiled as a separate top-level program; they share
-the project's dependencies but each file runs independently.
+See **[Tooling → Testing](/docs/tooling/testing)** for the full guide,
+or **[Tooling → Property testing](/docs/tooling/property-testing)**
+for the `@property` harness in depth.
 
 Run tests:
 

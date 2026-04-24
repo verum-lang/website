@@ -26,13 +26,27 @@ verum deps list [--tree]
 verum build [--release] [--target TRIPLE] [--lto thin|full] [--timings]
 verum run [--interp | --aot] [-- args...]
 verum check [PATH] [--workspace] [--parse-only]
-verum test [--filter REGEX] [--coverage] [--nocapture]
-verum bench [--filter REGEX] [--save-baseline NAME | --baseline NAME]
+verum test  [--filter STR] [--exact] [--skip PAT] [--include-ignored] \
+            [--ignored] [--list] [--interp | --aot] \
+            [--format pretty|terse|json|junit|tap|sarif] \
+            [--test-threads N] [--nocapture] [--coverage]
+verum bench [--filter STR] [--interp | --aot] \
+            [--warm-up-time SECS] [--measurement-time SECS] \
+            [--min-samples N] [--max-samples N] [--sample-size N] \
+            [--save-baseline NAME | --baseline NAME] \
+            [--noise-threshold PCT] [--format table|json|csv|markdown]
 verum watch [<command>] [--clear] [--skip-verify]
 ```
 
 `verum run` is interpreter-first. Add `--aot` for LLVM native
 execution when latency matters (LLVM warmup adds ~200 ms).
+
+`verum test` and `verum bench` form the developer-facing testing
+surface — property-based testing with integrated shrinking,
+parametrised tests, deterministic seed replay, CI output formats
+(JUnit / TAP / SARIF), and Criterion-style time-budget benchmarks.
+Full guide in **[Tooling → Testing](/docs/tooling/testing)**;
+PBT deep dive in **[Tooling → Property testing](/docs/tooling/property-testing)**.
 
 ## Verification & analysis
 

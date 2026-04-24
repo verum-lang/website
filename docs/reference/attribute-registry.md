@@ -98,11 +98,18 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 
 | Attribute | Targets | Semantics |
 |-----------|---------|-----------|
-| `@test` | fn | register as a unit test |
-| `@test(property)` | fn | property-based test |
-| `@test(ignore)` | fn | skip in normal runs |
-| `@bench` | fn | register as a benchmark |
-| `@fuzz` | fn | register as a fuzz target |
+| `@test` | fn (no args) | register as a unit test; passes iff it returns without panicking |
+| `@property` | fn (typed params) | property-based test — harness feeds N random inputs per invocation (default 100) and performs integrated shrinking on failure. See **[Tooling → Property testing](/docs/tooling/property-testing)**. |
+| `@property(runs = N)` | fn | override per-property iteration count (positive integer). |
+| `@property(seed = 0x…)` | fn | pin a single deterministic seed — useful for CI and reproducing a specific failure. |
+| `@test_case(args…)` | fn (positional params) | parametrise a test. Repeating the attribute expands the function into `fn_name[0]`, `fn_name[1]`, … Each case runs as a separate test entry. Args accept `Int`, `Bool`, `Text`, `Float` literals (and negated forms). |
+| `@ignore` / `@ignored` | fn | skip in normal runs. Surfaces in `--format pretty` with `… ignored`. Re-enable with `--include-ignored` (all) or `--ignored` (only ignored). |
+| `@bench` | fn | register as a benchmark — see **[Tooling → Benchmarking](/docs/tooling/testing#benchmarking)** for the harness flags (`--warm-up-time`, `--measurement-time`, baselines, etc.). |
+| `@bench(group)` | fn | associate the bench with a named group (shown in the report and preserved in JSON/CSV output). |
+| `@fuzz` | fn | register as a fuzz target (VCS fuzz infra — distinct from PBT). |
+
+Reserved for Stage 2 (tracked in `docs/testing/reference-quality-roadmap.md`):
+`@before_each`, `@after_each`, `@snapshot`, `@timeout(ms)`.
 
 ## Conditional compilation
 
