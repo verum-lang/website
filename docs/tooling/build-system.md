@@ -106,14 +106,69 @@ verum build --no-default-features
 verum build --all-features
 ```
 
-## Link configuration
+## Linking
+
+CLI flags handle the common cases; the `[linker]` manifest section
+covers per-platform overrides.
+
+**Fast toggles** (map 1-to-1 to CLI flags):
+
+```bash
+verum build --lto thin            # link-time optimisation
+verum build --lto full            # max wins, longer link
+verum build --static-link         # produce a static binary (musl /
+                                  # no-libc targets where applicable)
+verum build --strip               # strip all symbols
+verum build --strip-debug         # strip only debug info, keep names
+```
+
+**Manifest section**:
 
 ```toml
-[build]
-link-search = ["/usr/local/lib", "./vendor/lib"]
-c-flags    = ["-march=native", "-DVERSION=\"3\""]
-linker     = "lld"                    # ld | lld | mold | system
+[linker]
+# Global defaults
+extra_flags = ["-Wl,--as-needed"]
+libraries   = ["m", "pthread"]
+
+# Per-platform overrides — merged with the global defaults on the
+# matching target.
+[linker.macos]
+extra_flags = ["-framework", "CoreFoundation"]
+
+[linker.linux]
+libraries   = ["dl", "rt"]
+
+[linker.windows]
+libraries   = ["kernel32", "user32"]
 ```
+
+Profile-scoped overrides (production wins take hold only in `release`):
+
+```toml
+[profile.release.linker]
+lto   = "full"
+strip = true
+```
+
+Precedence for a given build: `CLI flag > [profile.<active>.linker] >
+[linker.<os>] > [linker] > default`.
+
+## Emitting intermediate artefacts
+
+When you need to inspect the compiler's output step by step:
+
+```bash
+verum build --emit-asm      # → target/*.s     (target-specific assembly)
+verum build --emit-llvm     # → target/*.ll    (LLVM IR, human-readable)
+verum build --emit-bc       # → target/*.bc    (LLVM bitcode, for external LTO)
+verum build --emit-types    # → target/*.vtyp  (type metadata for separate compilation)
+verum build --emit-vbc      # → target/*.vbc.txt (VBC disassembly)
+verum build --keep-temps    # don't delete scratch files after build
+```
+
+Any combination can be passed; each flag is independent. These replace
+the output binary when set (a build that only emits `--emit-llvm`
+stops before the native codegen stage).
 
 ## Output
 
@@ -123,8 +178,14 @@ target/
 │   ├── myprog            # executable (or myprog.cog for a library)
 │   ├── myprog.vbc        # bytecode
 │   └── deps/             # dependency artefacts
-└── release/
-    └── myprog            # LTO'd, stripped
+├── release/
+│   └── myprog            # LTO'd, stripped
+├── generated/            # build.vr outputs, auto-mounted
+├── bench/drivers/        # `verum bench --aot` synthesised drivers
+├── test/                 # per-test binaries + coverage profraw
+│   ├── pbt-regressions.json  # PBT regression database
+│   └── coverage/
+└── .verum-cache/         # incremental fingerprints
 ```
 
 ## `cargo`-like workspace

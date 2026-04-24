@@ -620,6 +620,8 @@ exit(code) -> !
 
 ### Assertions
 
+Core assertions — always on, panic on failure:
+
 ```verum
 assert(cond, "message")
 assert_eq(left, right, "message")     // T: Eq + Debug
@@ -628,8 +630,36 @@ assert_some(maybe, "expected Some")
 assert_none(maybe, "expected None")
 assert_ok(result, "expected Ok")
 assert_err(result, "expected Err")
+```
 
-debug_assert(cond, "msg")             // stripped in release
+Extended assertions (added for reference-quality testing — see
+**[Tooling → Testing](/docs/tooling/testing)**):
+
+```verum
+// Float comparison with tolerance — use this INSTEAD of assert_eq
+// on any Float-typed value; direct IEEE-754 equality is almost never
+// what you want after arithmetic.
+assert_approx_eq(left: Float, right: Float, tolerance: Float = 1e-9, msg: Text)
+
+// Inclusive-range check: fails if v < lo or v > hi.
+assert_between<T: Ord>(v: T, lo: T, hi: T, msg: Text)
+
+// Sorted-ascending check over &List<T>. O(n).
+assert_is_sorted<T: Ord>(list: &List<T>, msg: Text)
+
+// Membership check. O(n) linear scan.
+assert_contains<T: Eq>(list: &List<T>, needle: &T, msg: Text)
+
+// Expects the closure to panic. Succeeds iff it does; fails the
+// assertion if the closure returns normally. Implemented via
+// catch_unwind.
+assert_panics<T>(f: fn() -> T, msg: Text)
+```
+
+Debug-only variants — stripped in release builds:
+
+```verum
+debug_assert(cond, "msg")
 debug_assert_eq(a, b, "msg")
 debug_assert_ne(a, b, "msg")
 ```

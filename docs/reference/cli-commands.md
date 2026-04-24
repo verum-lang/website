@@ -181,22 +181,72 @@ Flags:
 
 ### `verum verify [FILE]`
 
-Run the formal-verification pipeline.
+Run the formal-verification pipeline on the given file (or the whole
+project, when `FILE` is omitted). See also
+**[Verification → CLI workflow](/docs/verification/cli-workflow)**.
 
-Flags:
-- `--mode <strategy>` — `runtime | static | formal | fast | thorough | certified | synthesize`
-  (aliases: `none → runtime`, `proof → formal`).
-- `--profile` — include timing breakdown.
-- `--show-cost` — print the SMT obligation cost model.
-- `--compare-modes` — run several modes and compare.
+**Strategy**:
+- `--mode <strategy>` / `-m <strategy>` — `runtime | static | formal |
+  fast | thorough | certified | synthesize` (aliases: `none → runtime`,
+  `proof → formal`). **Default `proof`** (= `formal`).
 - `--solver <z3|cvc5|auto|portfolio|capability>` — default `z3`.
   Unknown values error with the accepted-values list. CVC5 / portfolio /
   capability routing ships in stub mode in the default build (transparent
   Z3 fallback); build with `--features cvc5-ffi` to link real libcvc5.
-- `--timeout <seconds>` (default 30).
-- `--cache` — populate / read the proof cache.
-- `--interactive` — step through obligations.
-- `--function <name>` — verify a single function.
+- `--timeout <SECONDS>` — base solver timeout (default `120`).
+  Strategy-specific multipliers apply: `fast 0.3×`, `thorough 2×`,
+  `certified 3×`, `synthesize 5×`.
+- `--smt-proof-preference <BACKEND>` — backend used when the `Certified`
+  strategy exports a proof certificate. Default `cvc5` (ALETHE proofs
+  are more stable across releases than Z3 native proofs). Only affects
+  export; does not change which solver closes an obligation.
+
+**Scope**:
+- `--function <NAME>` — verify a single function.
+- `--diff <GIT_REF>` — verify only the functions whose source has changed
+  since the given ref (`HEAD~1`, `main`, `origin/main`, `abc123`, …).
+  Ideal for CI: `verum verify --diff origin/main`.
+- `--verify-profile <NAME>` — apply a named `[verify.profiles.<NAME>]`
+  profile from `verum.toml`. CLI flags still win over the profile; the
+  profile wins over the top-level `[verify]` block.
+
+**Budget & cache**:
+- `--budget <DURATION>` — project-wide wall-clock budget; build fails
+  past this. Accepts `120s`, `5m`, `1h`, or a bare number (seconds).
+- `--cache` — populate and read the on-disk proof cache (default at
+  `.verum/verify-cache`).
+- `--distributed-cache <URL>` — advertise a shared cache, e.g.
+  `s3://bucket/path` or `redis://host/`. Plumbed through for CI proof
+  reuse across runs.
+
+**Profiling**:
+- `--profile` — per-function timings, bottleneck categories, cache
+  stats, ranked recommendations. Printed at end of run.
+- `--profile-obligation` — break each function's time into individual
+  proof obligations (preconditions, postconditions, refinement checks,
+  loop invariants, …). Implies `--profile`.
+- `--export <PATH>` — write the profile report as JSON to `PATH`.
+  Implies `--profile`. Intended for CI trend tracking.
+
+**Debugging**:
+- `--dump-smt <DIR>` — dump every generated SMT-LIB query, one file per
+  obligation (`<function>-<idx>.smt2`). Verifier still runs; dumping is a
+  side-effect. Replay a dumped query with `--check-smt-formula`.
+- `--check-smt-formula <SMT_FILE>` — bypass the verifier, dispatch a
+  raw SMT-LIB 2 file to the configured solver and print
+  `sat | unsat | unknown`. Incompatible with the positional `FILE`.
+- `--solver-protocol` — log every solver send/recv on stderr (prefixed
+  `[→]` / `[←]`). Useful for diagnosing cross-solver quirks.
+- `--show-cost` — print the SMT obligation cost model.
+- `--compare-modes` — run several modes on the same goals and diff.
+
+**Interactive / integration**:
+- `--interactive` — step through obligations one at a time.
+- `--interactive-tactic` — Ltac2-style tactic REPL, prints goal +
+  accepts tactics one line at a time.
+- `--lsp-mode` — emit diagnostics as newline-delimited JSON LSP
+  `Diagnostic`s on stdout (suppresses the human report). For IDE
+  integrations piping `verum verify` through JSON-RPC.
 
 ### `verum analyze`
 
@@ -210,11 +260,25 @@ Flags:
 
 ### `verum audit`
 
-Scan dependencies against the security advisory DB.
+Two orthogonal audits under one command:
+
+- **Dependency advisories** (default) — scans the resolved cog graph
+  against the security advisory database.
+- **Trust-boundary enumeration** (`--framework-axioms`) — lists every
+  `@framework(name, "citation")` marker in the project, grouped by
+  framework. Exits non-zero on any malformed `@framework(...)`.
+- **Kernel-rule catalog** (`--kernel-rules`) — prints the 18 primitive
+  inference rules implemented by `verum_kernel` so auditors can check
+  the trust-boundary against the documented rule set.
 
 Flags:
-- `--details` — per-advisory details.
+- `--details` — per-advisory full details.
 - `--direct-only` — skip transitive deps.
+- `--framework-axioms` — enumerate trusted-axiom markers.
+- `--kernel-rules` — list `verum_kernel`'s primitive inference rules.
+- `--format <plain|json>` — default `plain`. `json` is stable-schema
+  output for CI enforcement (e.g. fail the build if a PR adds a new
+  framework-axiom dependency).
 
 ### `verum smt-info`
 
@@ -236,17 +300,37 @@ Flags:
 
 ### `verum profile [FILE]`
 
-Performance profiling with CBGR overhead analysis.
+Performance profiling — CBGR overhead, hot-function CPU, cache
+behaviour, and compilation phases. Report is printed to stdout unless
+`--output` redirects it.
 
-Flags:
+**Slice selection** (pick one or more; `--all` short-circuits the lot):
 - `--memory` — Tier 0 / 1 / 2 reference distribution, per-function
   heap-allocation report.
 - `--cpu` — hot-function profile.
 - `--cache` — proof-cache performance.
 - `--compilation` — phase-level compilation timings.
-- `--hot-threshold <pct>` (default `5.0`) — percent CPU considered hot.
-- `--output <path>`.
-- `--suggest` — print actionable optimisation hints.
+- `--all` — enable all four slices and render the unified dashboard.
+  Conflicts with the individual slice flags.
+
+**Thresholds & sampling**:
+- `--hot-threshold <PCT>` (default `5.0`) — percent CPU considered
+  "hot" for ranking.
+- `--sample-rate <PERCENT>` (default `1.0`) — CBGR sampling rate.
+  Lower reduces overhead on hot paths; `1.0` is safe for production.
+- `--precision <UNIT>` (default `us`) — timing resolution, `us`
+  (microseconds) or `ns` (RDTSC-based, more expensive, distinguishes
+  sub-microsecond checks).
+
+**Scope**:
+- `--functions <NAMES>` — comma-separated function-name allowlist; only
+  samples from these functions are reported.
+
+**Output**:
+- `--output <PATH>` / `-o <PATH>` — write the report to a file instead
+  of stdout.
+- `--suggest` — print actionable optimisation hints alongside the
+  numbers.
 
 ## Documentation & diagnostics
 
@@ -430,15 +514,50 @@ Run a command in every workspace member.
 
 ### `verum config show`
 
-Print the resolved feature set.
+Load `verum.toml`, apply any CLI `-Z …` / language-feature overrides,
+run the validator, and print the resolved effective configuration.
+Useful for debugging flag interactions — "what's actually being
+compiled" is one command away.
 
-Flags: `--json`.
+Flags:
+- `--json` — machine-readable output (stable schema across releases).
+- `-Z key=val` — any manifest value (shown in the result).
+- `--tier interpret|aot` — preview effect of overriding the tier.
+- All other language-feature overrides (`--cbgr MODE`, `--scheduler`,
+  `--no-cubical`, `--no-refinement`, …) are honoured.
 
 ### `verum config validate`
 
 Validate `verum.toml` without building. Exits 0 on success, non-zero
 with diagnostics on invalid values (including "did you mean"
 suggestions for enum typos).
+
+Flags:
+- `-Z key=val` and language-feature overrides — validation runs
+  against the merged effective config, so unsupported combinations
+  from CLI flags are caught too.
+
+## Proof export
+
+### `verum export --to <FORMAT>` / `verum export-proofs --to <FORMAT>`
+
+Walks every `.vr` file in the project, collects every top-level
+axiom / theorem / lemma / corollary, and emits a statement-only file
+for the chosen external proof assistant. `@framework(name, "citation")`
+markers ride along so the trusted boundary is visible in the
+exported artefact.
+
+`verum export-proofs` is an exact alias for `verum export --to <F>` —
+it matches the wording in docs/verification/proof-export.md and
+docs/verification/cli-workflow.md §12.
+
+Flags:
+- `--to <FORMAT>` — `dedukti | coq | lean | metamath`.
+- `-o <PATH>` / `--output <PATH>` — output file path (default:
+  `certificates/<format>/export.<ext>`).
+
+Full proof-term export through `verum_kernel` is a follow-up and lands
+per-backend; today's output is statement-only with proofs admitted.
 
 ### `verum completions <SHELL>`
 
