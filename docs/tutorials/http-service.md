@@ -460,7 +460,7 @@ $ curl localhost:8080/health
 - **Persistent store**: write a `PostgresStore` that implements the
   `Store` protocol. No other code changes.
 - **TLS**: wrap the `TcpListener` in a `TlsAcceptor` (see
-  [net → TLS](/docs/stdlib/net#tls)).
+  [net → TLS](/docs/stdlib/net/tls/)).
 - **Rate limiting**: add a `RateLimiter` context; the sem-owned
   permit pattern extends naturally.
 - **Observability**: add a `Metrics` context; record request

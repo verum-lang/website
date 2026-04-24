@@ -383,7 +383,7 @@ VCS discharge: `vcs/specs/L1-core/security/hmac_hkdf.vr`
   underlying PRF.
 - [`core.security.hash`](/docs/stdlib/security/hash) — the hashes
   HMAC is keyed with.
-- [`core.net.tls`](/docs/stdlib/net#tls) — consumes HKDF for the
+- [`core.net.tls`](/docs/stdlib/net/tls/) — consumes HKDF for the
   TLS 1.3 key schedule.
 
 ## `pbkdf2` — password-based KDF (RFC 8018 §5.2)

@@ -120,11 +120,26 @@ risks.
 
 ### Network
 
-- TLS everywhere by default. `TlsConfig.client()` loads system roots
-  and enforces TLS 1.2+.
-- Certificate pinning when appropriate: `TlsConfig.with_pinned(...)`.
-- Validate `Host` header for virtual hosting — don't route on Host
-  content without whitelisting.
+- **TLS 1.3 only.** Verum's pure-Verum TLS stack at
+  [`core.net.tls13`](/docs/stdlib/net/tls/) is 1.3-only by design;
+  there is no `tls12_fallback` flag. Clients detect RFC 8446 §4.1.3
+  downgrade sentinels (`"DOWNGRD\x01"` / `"DOWNGRD\x00"`) in
+  `ServerHello.random` and abort with `ProtocolVersion`.
+- Load the system trust store explicitly:
+  `ClientOptions.with_system_trust()` (H3) or
+  `QuicClientOptions.with_system_trust()` — both wrap
+  `TrustStore.system()` with a deterministic fallback to an empty
+  store on macOS / Windows backends that fail.
+- Certificate pinning: construct a `TrustStore` from your pinned
+  DER chains via `TrustStore.from_der(&[...])` and pass it as
+  `opts.trust`.
+- Hostname verification — on by default
+  (`opts.verify_hostname = true`) via RFC 6125 §6.4 SAN matching.
+  CN fallback is **not supported** (deprecated).
+- [QUIC](/docs/stdlib/net/quic/) is anti-amplification limited to
+  3× received bytes (§21.1) before path validation completes; no
+  configuration required — the limit is enforced in `path.vr` and
+  verified by V7.
 - Rate-limit inbound: `Semaphore` for concurrent connections, leaky
   bucket for per-IP throughput.
 

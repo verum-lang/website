@@ -145,6 +145,6 @@ async fn uses_cached_response() {
 
 ### See also
 
-- **[net → HTTP](/docs/stdlib/net#http)** — full `Request`/`Response` API.
+- **[net → HTTP](/docs/stdlib/http2)** — full `Request`/`Response` API.
 - **[Resilience](/docs/cookbook/resilience)** — retries, circuit breakers, timeouts.
 - **[HTTP server](/docs/cookbook/http-server)** — the other side.

@@ -404,7 +404,7 @@ ref10 port for bootstrap / audit purposes.
 - [`core.security.util`](/docs/stdlib/security/util) — `zeroise`
   for clearing scalar memory; `constant_time_eq` if you compare
   public keys.
-- [`core.net.tls`](/docs/stdlib/net#tls) — consumes X25519 in the
+- [`core.net.tls`](/docs/stdlib/net/tls/) — consumes X25519 in the
   TLS 1.3 handshake key_share.
 
 ## References

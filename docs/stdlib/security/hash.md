@@ -219,7 +219,7 @@ buffers beyond the input slice.
   as its compression function.
 - [`core.security.kdf.hkdf`](/docs/stdlib/security/kdf) builds on
   HMAC-SHA-{256, 384, 512}.
-- [`core.net.tls`](/docs/stdlib/net#tls) uses SHA-256/SHA-384 in
+- [`core.net.tls`](/docs/stdlib/net/tls/) uses SHA-256/SHA-384 in
   the TLS 1.3 key schedule and the transcript hash.
 
 ## File layout
