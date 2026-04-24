@@ -419,8 +419,8 @@ gradient lets you climb:
    cross-tooling verification.
 
 See [CLI workflow](./cli-workflow.md) for the complete command
-set; see [UHM proof corpus](./uhm-proof-corpus.md) for a
-223-theorem example at Phase 1 of this migration.
+set; see [Proof corpora](./proof-corpora.md) for how
+large-scale corpora are structured on Verum.
 
 ---
 
@@ -472,7 +472,8 @@ read the subsections in this order:
 12. [Gradual verification](./gradual-verification.md) — the
     strategy spectrum (full reference).
 13. [CLI workflow](./cli-workflow.md) — end-to-end command use.
-14. [UHM proof corpus](./uhm-proof-corpus.md) — capstone example.
+14. [Proof corpora](./proof-corpora.md) — how large-scale
+    proof corpora are structured on Verum.
 
 If you only have ten minutes, read
 [Gradual verification](./gradual-verification.md) and

@@ -161,8 +161,9 @@ The parser, AST, visitor, proof-checker, tactic evaluator, and quote
 backend were updated end-to-end. New anchors in
 `vcs/specs/L1-core/proof/tactics/` lock the grammar. The stdlib
 parse-success count moved from 2/10 → 6/10 math modules
-(`cubical`, `day_convolution`, `infinity_topos`, `kan_extension`,
-`tactics`, `mathesis.core` all parse cleanly now).
+(`cubical`, `day_convolution`, `infinity_topos`,
+`kan_extension`, `tactics`, `theory_interop.core` all parse
+cleanly now).
 
 See **[Proof DSL — `tactic` declarations](/docs/language/proof-dsl#tactic--custom-proof-strategies)**
 and **[reference/tactics — User-defined tactics](/docs/reference/tactics#user-defined-tactics)**.
@@ -783,8 +784,9 @@ reintroduces a failing build.
   operations; shape errors at compile time.
 - `math.agent` — LLM-adjacent primitives (tokeniser, KV cache,
   speculative decoding, ReAct, guardrails, RAG).
-- `math.mathesis` — ∞-topos of formal theories; Yoneda loading,
-  Kan-extension-based translation, descent coherence.
+- `theory_interop` — theory registry for formally-represented
+  theories; Yoneda loading, Kan-extension-based translation,
+  descent coherence.
 - Terminal UI framework (`core::term`) — 7 layers from raw termios
   to Elm-architecture apps.
 - 800+ runtime intrinsics documented in `core::intrinsics`.

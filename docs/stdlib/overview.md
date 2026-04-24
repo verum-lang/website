@@ -20,7 +20,7 @@ Layer 2  Collections             collections, sync
 Layer 1  Text                    text
 Layer 0  Core                    base, mem, intrinsics
 Kernel   V-LLSI                  sys
-Meta     Compile-time            meta, proof, mathesis
+Meta     Compile-time            meta, proof, theory_interop
 ```
 
 Each layer depends only on layers below it. `core` is the root
@@ -47,7 +47,7 @@ namespace; users see its children via `mount core.*`.
 | [`simd`](/docs/stdlib/simd) | portable SIMD types and operations |
 | [`meta`](/docs/stdlib/meta) | compile-time programming (tokens, AST, quote, reflection) |
 | [`proof`](/docs/stdlib/proof) | proof carrying code, reflection protocol |
-| [`mathesis`](/docs/stdlib/mathesis) | ∞-topos of formal theories, Kan extensions |
+| [`theory_interop`](/docs/stdlib/theory-interop) | Theory registry, translation, coherence audit, JSON-RPC interchange protocol |
 | [`context`](/docs/stdlib/context) | scope, providers, context layers |
 | [`security`](/docs/stdlib/security) | security labels, regions |
 

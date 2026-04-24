@@ -164,9 +164,9 @@ and collects two things:
    hypothesis-elaboration pass (`variant_exhaustiveness_hypotheses`)
    when a theorem parameter is typed as a variant.
 
-No stdlib hardcoding — the same machinery applies to user-defined
-types, stdlib types (`Maybe`, `Result`), and UHM-corpus types
-indistinguishably.
+No stdlib hardcoding — the same machinery applies
+indistinguishably to user-defined types, stdlib types
+(`Maybe`, `Result`), and external-corpus types.
 
 ## Soundness
 

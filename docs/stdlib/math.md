@@ -35,7 +35,7 @@ Layer 0  Foundation                             ieee754/ integers/ bits/ checked
 `kan_extension/`, `fibration/`, `model_category/`, `operad/`,
 `number_theory/`.
 
-**Mathesis foundations**: `quantum_logic/`, `giry/`, `epistemic/`,
+**∞-topos foundations**: `quantum_logic/`, `giry/`, `epistemic/`,
 `cohesive/`, `day_convolution/`, `sdg/`.
 
 **Others**: `complex/`, `category_finite/`, `bitvec/`,
@@ -498,9 +498,10 @@ RAGPipeline.new(retriever, llm, prompt_template)
 
 ## Pure mathematics
 
-Self-contained formalisations, used by the verification system and by
-`mathesis`. Depth varies per branch; most define the usual algebraic
-structures and their universal constructions.
+Self-contained formalisations, used by the verification system
+and by `theory_interop`. Depth varies per branch; most define
+the usual algebraic structures and their universal
+constructions.
 
 - **`algebra/`** — groups, rings, fields, lattices, modules.
 - **`category/`** — categories, functors, natural transformations,
@@ -523,7 +524,7 @@ structures and their universal constructions.
 - **`operad/`** — operads, `E_n` operads, ∞-operads.
 - **`number_theory/`** — Peano naturals, primes, modular arithmetic.
 
-### Mathesis foundations
+### ∞-Topos foundations
 
 - **`quantum_logic/`** — `OrthomodularLattice`, `EpistemicHilbertSpace`,
   measure, commutator.
@@ -554,6 +555,6 @@ structures and their universal constructions.
 
 - **[simd](/docs/stdlib/simd)** — SIMD vectors that `math::tensor` uses under the hood.
 - **[intrinsics](/docs/stdlib/intrinsics)** — raw CPU/GPU primitives.
-- **[mathesis](/docs/stdlib/mathesis)** — ∞-topos of theories; consumes `math::infinity_topos` + `math::kan_extension`.
+- **[theory_interop](/docs/stdlib/theory-interop)** — theory registry + translation + coherence audit; consumes `math::infinity_topos` + `math::kan_extension`.
 - **[proof](/docs/stdlib/proof)** — proof certificates that verify math-module obligations.
 - **[Verification → cubical & HoTT](/docs/verification/cubical-hott)** — the path types that `math::hott` encodes.

@@ -44,7 +44,7 @@ const sidebars: SidebarsConfig = {
         'verification/gradual-verification',
         'verification/performance',
         'verification/cli-workflow',
-        'verification/uhm-proof-corpus',
+        'verification/proof-corpora',
       ],
     },
     {
@@ -344,7 +344,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'stdlib/meta',
         'stdlib/proof',
-        'stdlib/mathesis',
+        'stdlib/theory-interop',
       ],
     },
     {

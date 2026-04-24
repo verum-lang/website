@@ -171,9 +171,9 @@ Either way the dependency is surfaced, not silent.
 
 ## Stratified theorem tags
 
-For corpora that distinguish *rigorous* from *framework-conditional*
-from *stratified* theorems — the Unitary Holonomic Monism (UHM)
-formalisation is the canonical example — the workflow is:
+For corpora that distinguish *rigorous* from
+*framework-conditional* from *stratified* theorems, the
+workflow is:
 
 1. A rigorous-core theorem has no `@framework` on itself and depends
    only on axioms marked `@framework`. The proof is as strong as the
