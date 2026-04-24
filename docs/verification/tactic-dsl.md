@@ -18,11 +18,15 @@ write. This page is for authors of custom tactics — library
 developers, framework integrators, and anyone who needs a proof
 pattern that isn't in the standard set.
 
-:::note Status
-The tactic DSL is **partially implemented**. `@tactic meta fn` is
-recognized by the parser; quote/unquote of goals and hypothesis
-introspection work for common patterns but are not yet complete
-for dependent types. Tracked as task #73.
+:::note
+The tactic DSL is composable at multiple granularities:
+surface tactic expressions (`auto; simp`), `@tactic`
+declarations for reusable named tactics, and `@tactic meta
+fn` for meta-programmed tactics that inspect and manipulate
+the goal shape. Quote/unquote roundtrip is structurally
+enforced for propositional and first-order terms; richer
+quotation for dependent (Π/Σ/Path) terms is the natural
+extension.
 :::
 
 ---
@@ -418,21 +422,187 @@ Five patterns the linter flags with
 
 ---
 
-## 10. Roadmap
+## 10. Meta-programming primitives
 
-- **Interactive tactic mode**: `verum verify --interactive-tactic`
-  drops into a REPL showing the current goal and accepting tactic
-  commands one at a time.
-- **Tactic packages**: a community registry of user-authored
-  tactics, installable via `cog add @math/ring-proofs`.
-- **SyGuS-driven tactic synthesis**: the `synthesize` strategy
-  proposes tactic applications, not just function bodies. Task
-  #68.
-- **Complete quote/unquote for dependent types**: currently
-  quote supports Propositions and first-order terms; dependent
-  terms (Π, Σ, Path) require richer quote syntax. Task #73.
-- **Tactic profiling**: per-tactic flamegraph from a proof run,
-  identifying which tactics dominate proof-search time.
+Three meta-programming tactic-expression variants form the
+compile-time foundation of Ltac2-style proof-script
+generation:
+
+### 10.1 `Quote` / `` ` ``
+
+```verum
+let handle = quote { auto; simp }
+// or with backtick syntax:
+let handle = `(auto; simp)
+```
+
+`Quote(t)` returns a first-class value representing `t`
+*without* executing it. The handle can be passed as an
+argument to a user-defined tactic, composed with other
+handles, or later invoked via `Unquote`. At compilation the
+Quote node compiles to a `skip_strategy()` combinator — the
+inner tactic's side effects do not fire until a matching
+Unquote runs.
+
+Semantic contract: `Quote(t)` is `t`-inert. The solver does
+not observe `t`'s effects until Unquote.
+
+### 10.2 `Unquote` / `$(…)`
+
+```verum
+tactic run_with_fallback(handle: Tactic) {
+    try { $(handle) } else { smt }
+}
+```
+
+`Unquote(handle)` splices the inner tactic into the current
+proof context and executes it. The roundtrip invariant
+`Unquote(Quote(t)) ≡ t` is structurally enforced —
+`compile_tactic` pattern-matches `Unquote(Quote(_))` and
+strips the intermediate wrapping, producing combinator-layer
+output identical to compiling `t` directly.
+
+### 10.3 `GoalIntro` / `goal_intro()`
+
+```verum
+tactic meta dispatch_by_shape() {
+    let g = goal_intro();
+    if g is Forall(_) {
+        intro
+    } else if g is Exists(_) {
+        witness(...)
+    } else {
+        smt
+    }
+}
+```
+
+`goal_intro()` captures a snapshot of the current goal's
+expression and returns a handle that meta-tactics can
+destructure, inspect, or pass to another meta-tactic.
+Subsequent tactics that modify the goal don't retroactively
+update the snapshot — it's a value, not a view.
+
+---
+
+## 11. Algebraic laws and normalization
+
+`verum_smt::tactic_laws` provides the algebraic laws every
+combinator obeys + a `normalize()` fixed-point simplifier
+that is funneled through `compile_tactic` on the hot path.
+Every compiled tactic is in canonical form by the time it
+reaches the executor.
+
+### 11.1 The laws
+
+| Law | Statement |
+|-----|-----------|
+| L1 AndThen left identity  | `skip ; t ≡ t` |
+| L2 AndThen right identity | `t ; skip ≡ t` |
+| L3 AndThen associativity  | `(a;b);c ≡ a;(b;c)` (canonical form: right-associated) |
+| L4 OrElse left identity   | `fail \| t ≡ t` |
+| L5 OrElse right identity  | `t \| fail ≡ t` |
+| L7 Repeat zero-unfold     | `Repeat(t, 0) ≡ skip` |
+| L8 Repeat one-unfold      | `Repeat(t, 1) ≡ t` |
+| L9 OrElse-idempotent (Single) | `Single(k) \| Single(k) ≡ Single(k)` |
+
+**Not** applied: `t ; t ≡ t`. Solver trace side-effects may
+differ per invocation, so AndThen-idempotence is unsafe. L9
+applies only to leaf Singles where the second invocation
+can never run in practice (OrElse short-circuits on success).
+
+### 11.2 Why normalization matters
+
+A user-written tactic `Seq(GoalIntro, body)` compiles
+pre-patch to `AndThen(skip, body)` and the executor dispatches
+a no-op skip step before `body`. With normalize wired in,
+every compile output is right-associated with skip/fail
+identities removed — the shape the executor sees is the
+shape the user wrote.
+
+### 11.3 Identity elements
+
+  * `skip()` — zero-iter Repeat of Simplify (succeeds, no effect)
+  * `fail()` — `Single(Custom("fail"))` (always fails)
+
+`skip` and `fail` are deliberately different shapes because
+they're the absorbing elements for *different* monoids
+(AndThen vs OrElse respectively).
+
+---
+
+## 12. Stdlib tactic library layout
+
+The standard tactic library is organised across seven
+topic-specific files under `core.proof.tactics`:
+
+| File | Tactics | Count |
+|------|---------|-------|
+| `basic.vr`       | `refl`, `assumption`, `trivial`, `exact`, `by_axiom` | 5 |
+| `arithmetic.vr`  | `omega`, `linarith`, `nlinarith`, `ring`, `field`, `norm_num` | 6 |
+| `logical.vr`     | `intro`, `intro_as`, `split`, `left`, `right`, `witness`, `auto`, `smt`, `blast`, `by_contradiction` | 10 |
+| `structural.vr`  | `induction`, `destruct`, `destruct_as`, `case`, `cases`, `induction_on` | 6 |
+| `rewrite.vr`     | `simp`, `simp_with`, `rewrite`, `rewrite_reverse`, `unfold`, `fold`, `change`, `symm`, `trans`, `congr` | 10 |
+| `combinators.vr` | `skip`, `fail`, `seq`, `orelse`, `repeat_n`, `repeat_until_done`, `first_of`, `all_goals`, `focus`, `try_tactic` | 10 |
+| `meta.vr`        | `quote`, `unquote`, `goal_intro`, `hypotheses_intro` | 4 |
+
+Total: 51 declared tactics. `mount core.proof.tactics.*`
+pulls the whole library; topic-specific `mount
+core.proof.tactics.arithmetic.*` is idiomatic when you only
+want a subset.
+
+---
+
+## 13. Tactic-package registry
+
+The cog-level tactic-package registry binds tactic names at
+the dependency layer rather than the intrinsic layer. Four
+consumer classes:
+
+  1. **stdlib** (`Stdlib` scope) — `core.proof.tactics.*`
+  2. **user project** (`Project` scope) — local `@tactic`
+     declarations
+  3. **imported cogs** (`ImportedCog` scope) — third-party
+     tactic packages
+  4. **verify CLI** — name lookup for every DSL reference
+
+### 13.1 Shadowing
+
+Lookup order:
+
+```
+Project > ImportedCog (registration order) > Stdlib
+```
+
+The first match wins. A project-local tactic always shadows
+the stdlib or an imported cog with the same name. Shadowing
+is explicit, not accidental — two imported cogs that both
+define `auto` don't fight; the earlier-registered cog wins
+deterministically.
+
+### 13.2 Duplicate registration
+
+Registering the same `(package, name)` twice fails with
+`E701 duplicate_tactic_registration`. Registering a package
+under two different scopes (e.g. once as `Project`, once as
+`Stdlib`) fails with `E702 package_scope_conflict` —
+usually a manifest-merge bug.
+
+---
+
+## 14. Extension points
+
+- **Tactic packages via cog manifests**: `cog add @math/
+  ring-proofs` wires an imported tactic package into the
+  `ImportedCog` scope automatically.
+- **SyGuS-driven tactic synthesis**: the `synthesize`
+  strategy extends from function-body synthesis to proposing
+  whole tactic compositions.
+- **Quote/unquote for dependent types**: current quotation
+  supports propositions and first-order terms; richer
+  quotation for Π / Σ / Path terms is the natural extension.
+- **Tactic profiling**: per-tactic flamegraph from a proof
+  run, identifying which tactics dominate proof-search time.
 
 ---
 

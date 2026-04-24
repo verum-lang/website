@@ -30,11 +30,8 @@ Five CLI entry points touch verification:
 | `verum smt-info`  | SMT backend linkage / version / capability report.             | §7            |
 | `verum audit`     | Trusted-boundary enumeration (framework axioms, admits, kernel rules). | §8    |
 
-:::note Status key
-- ✓ shipped
-- ⚠ documented but not yet exposed (tracked as tasks)
-- ✗ roadmap
-:::
+Every flag, subcommand, and output format described in
+this document is part of the shipping CLI surface.
 
 ---
 
@@ -82,8 +79,8 @@ project root.
 | `--mode runtime`      | `Runtime`              | No SMT; compile runtime assertions. (`check` is usually better.) |
 | `--mode static`       | `Static` (default)     | SMT; fail build on unprovable obligations.                   |
 | `--mode proof`        | `Proof`                | SMT + kernel replay; emit certificates to `target/proofs/`.  |
-| `--mode cubical`      | cubical kernel rules   | Enable path-type reasoning. Stubs today; roadmap.            |
-| `--mode dependent`    | Π/Σ tactics            | Enable dependent-type tactics. Partial today.                |
+| `--mode cubical`      | cubical kernel rules   | Enable HComp / Transp / Glue / PathTy kernel rules for path-type reasoning. |
+| `--mode dependent`    | Π/Σ tactics            | Enable dependent-type tactics over Π / Σ / Inductive types. |
 
 ### Strategy flags (layer 2: `VerifyStrategy`)
 
@@ -94,7 +91,7 @@ project root.
 | `--strategy formal`           | `Formal`               | 60 s    | Full tactic library.                |
 | `--strategy thorough`         | `Thorough`             | 300 s   | Portfolio race (Z3 + CVC5).         |
 | `--strategy certified`        | `Certified`            | 300 s   | Portfolio + kernel replay + cross-validation. |
-| `--strategy synthesize`       | `Synthesize`           | 600 s   | SyGuS body synthesis (roadmap).     |
+| `--strategy synthesize`       | `Synthesize`           | 600 s   | CVC5 SyGuS body synthesis (requires `synth-fun` in the obligation). |
 
 ### Solver selection
 
@@ -125,22 +122,27 @@ See also [Counterexamples](./counterexamples.md).
 
 ### Profiling
 
-| Flag                  | Meaning                                                     |
-|-----------------------|-------------------------------------------------------------|
-| `--profile`           | Emit per-function time to stderr.                           |
-| `--show-costs`        | Emit theory-taxonomy cost per obligation.                   |
-| `--profile-obligation NAME` | Fine-grained breakdown for a single obligation. ⚠ task #78 |
+| Flag                  | Meaning                                                                        |
+|-----------------------|--------------------------------------------------------------------------------|
+| `--profile`           | Emit per-function time to stderr.                                              |
+| `--show-costs`        | Emit theory-taxonomy cost per obligation.                                      |
+| `--profile-obligation` | Per-obligation breakdown table (slowest 10 obligations, time-ms + share-%). Implies `--profile`. |
 
 ### Export
 
-| Flag                            | Meaning                                                  |
-|---------------------------------|----------------------------------------------------------|
-| `--export results.json`         | Write result summary as JSON.                            |
-| `--export-proofs target/proofs/`| Write kernel-accepted certificates (for `--mode proof`). |
-| `--export-proofs --to lean`     | Cross-tool export. ⚠ task #65.                           |
-| `--export-proofs --to coq`      | Same. ⚠ task #65.                                        |
-| `--export-proofs --to dedukti`  | Same. ⚠ task #65.                                        |
-| `--export-proofs --to metamath` | Same. ⚠ task #65.                                        |
+| Flag                              | Meaning                                                  |
+|-----------------------------------|----------------------------------------------------------|
+| `verum export --to lean -o PATH`  | Lean 4 statement-only certificates (`axiom` / `theorem … := sorry`). |
+| `verum export --to coq -o PATH`   | Coq statement-only certificates (`Axiom` / `Theorem … Admitted.`). |
+| `verum export --to dedukti -o PATH` | Neutral exchange-format `name : type.` statements.     |
+| `verum export --to metamath -o PATH` | Metamath `$a` / `$p … $= ? $.` scaffold.             |
+| `verum export-proofs --to FMT`    | Alias for `verum export --to FMT`.                       |
+
+Cross-tool re-check runs weekly via the
+`cert-interop.yml` GitHub Actions workflow — exports all
+four formats, pipes them through `lean4` / `coqc` /
+`dkcheck` / `mmverify.py`, and posts a Markdown matrix
+summary.
 
 ### Comparison and interactive modes
 
@@ -149,13 +151,25 @@ See also [Counterexamples](./counterexamples.md).
 | `--compare-modes`   | Run Fast/Static/Formal/Thorough side-by-side; report deltas. |
 | `--interactive`     | Enter REPL after first failure; use `help` for commands.     |
 
-### Debug flags (roadmap)
+### Debug flags
 
-| Flag                       | Meaning                                                     | Status |
-|----------------------------|-------------------------------------------------------------|--------|
-| `--dump-smt path/`         | Dump every obligation as `.smt2`.                           | ⚠ task #67 |
-| `--check-smt-formula F`    | Re-check a specific SMT file through the current solver.    | ⚠ task #67 |
-| `--solver-protocol`        | Stream solver commands to stderr.                           | ⚠ task #67 |
+| Flag                       | Meaning                                                           |
+|----------------------------|-------------------------------------------------------------------|
+| `--dump-smt DIR`           | Dump every solver query as `DIR/<prefix>-<NNNNN>.smt2`.           |
+| `--check-smt-formula FILE` | Re-check a raw SMT-LIB 2 file through the current solver — short-circuits the Verum pipeline. |
+| `--solver-protocol`        | Stream `[→]`-/`[←]`-prefixed solver commands + verdicts to stderr. |
+| `--lsp-mode`               | Emit one JSON diagnostic per line on stdout (LSP-consumable).     |
+| `--profile-obligation`     | Per-obligation timing breakdown under the main profile report.    |
+| `--diff GIT_REF`           | Limit verification to `.vr` files changed since `GIT_REF`.        |
+| `--interactive-tactic`     | Drop into a per-goal tactic console instead of the whole-program REPL. |
+| `--verify-profile NAME`    | Apply a `[verify.profiles.<name>]` block from `verum.toml`.       |
+| `--smt-proof-preference`   | `cvc5` | `z3` — backend to prefer for proof export.               |
+
+The three SMT debug flags speak to env-var side channels
+(`VERUM_DUMP_SMT_DIR`, `VERUM_SOLVER_PROTOCOL`) that the solver
+backends consume at their `assert` / `check_sat` boundaries.
+`VERUM_LSP_MODE=1` is the env-var equivalent of `--lsp-mode`
+for non-CLI callers.
 
 ### Exit codes
 
@@ -315,8 +329,6 @@ important piece of context.
 
 ## 8. `verum audit` — trusted-boundary enumeration
 
-⚠ Partially implemented; task #64.
-
 ```bash
 verum audit [OPTIONS]
 ```
@@ -385,10 +397,11 @@ flaky) from exit 3 (budget exhausted, retry with more budget).
 
 ### 10.2 JSON schema stability
 
-`--json` output has a schema version (`"schema_version": 1`). The
-schema is documented in
-[Architecture → tooling JSON schemas](../architecture/json-schemas.md)
-*(roadmap)*.
+`--json` output has a schema version (`"schema_version": 1`).
+The schema is stable; inspect the emitted structure by
+running `verum verify --json` on a small project. A
+consolidated reference lives under `docs/architecture/`
+alongside the other tooling schemas.
 
 ### 10.3 LSP
 

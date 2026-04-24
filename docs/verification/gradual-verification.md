@@ -353,6 +353,41 @@ There is no flag-day — functions upgrade independently:
 5. For the critical 0.01 %, use `@verify(certified)` and review the
    exported proof.
 
+## The `core.verify` stdlib surface
+
+Library code that needs to reason about its own verification
+posture uses the user-facing mirror of the internal policy
+types exposed under `core.verify`:
+
+| Module                      | Surface                                                                                   |
+|-----------------------------|-------------------------------------------------------------------------------------------|
+| `core.verify.level`         | `VerificationLevel { Runtime \| Static \| Proof }` + `parse_level` / `to_annotation` / `requires_smt` / `allows_runtime_fallback` |
+| `core.verify.attempt`       | `ProofAttempt { Proven \| Failed(Text) \| Unattempted }` + `VerificationOutcome { ElideCheck \| EmitRuntimeCheck \| FallbackWithWarning(Text) \| HardFail(Text) }` + `evaluate_attempt` policy dispatch |
+| `core.verify.certificate`   | `CertificateSummary` (read-only view of `verum_kernel::SmtCertificate` envelope fields) + `validate_schema` + `get_metadata` |
+
+Callers that want the same "prove or fall-back" semantics the
+compiler enforces go through `evaluate_attempt(level, attempt)
+-> outcome`. The outcome table:
+
+| Level   | `Proven`    | `Failed(r)`                | `Unattempted`                |
+|---------|-------------|----------------------------|------------------------------|
+| Runtime | `EmitRuntimeCheck` | `EmitRuntimeCheck`  | `EmitRuntimeCheck`           |
+| Static  | `ElideCheck`       | `FallbackWithWarning(r)` | `FallbackWithWarning(…)` |
+| Proof   | `ElideCheck`       | `HardFail(r)`       | `HardFail(…)`                |
+
+This is exactly the table enforced by the compiler's
+`VerificationLevel::evaluate_attempt` — user libraries
+cannot roll their own policy without diverging from the
+compiler's enforcement.
+
+Construction of real certificates remains on the kernel
+side; `CertificateSummary` is an inspection-only view, so
+user code cannot forge trace bytes. The envelope carries a
+`schema_version` field and a free-form `metadata` key-value
+list for diagnostic context; `validate_schema` rejects any
+certificate whose version exceeds the kernel's current
+`CERTIFICATE_SCHEMA_VERSION`.
+
 ## See also
 
 - **[Refinement reflection](/docs/verification/refinement-reflection)**

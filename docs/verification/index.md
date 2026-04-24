@@ -415,7 +415,7 @@ gradient lets you climb:
 5. **Certify** — `#[verify(strategy = Certified)]` on the
    theorems that matter most. Certificates land in
    `target/proofs/` and survive in CI artifact storage.
-6. **Export** — `verum export-proofs --to lean` (roadmap) for
+6. **Export** — `verum export-proofs --to lean` for
    cross-tooling verification.
 
 See [CLI workflow](./cli-workflow.md) for the complete command
@@ -480,6 +480,47 @@ If you only have ten minutes, read
 the design.
 
 ---
+
+## Feature inventory
+
+Every feature described across this verification section is
+part of the shipping release:
+
+- **Two-layer dispatch** — `VerificationLevel` × `VerifyStrategy`
+  with machine-checked policy table (`evaluate_attempt`).
+- **Refinement types + `@logic` reflection** — user functions
+  lifted into solver axioms with unfold-budget knobs.
+- **ADT encoding** — real Z3 datatypes per variant with cached
+  sort reuse.
+- **Cubical / HoTT primitives** — `PathTy`, `HComp`, `Transp`,
+  `Glue` as first-class kernel rules with subterm validation.
+- **Trusted kernel** — LCF-style 18-rule core with
+  allowlist-gated SMT proof-tree replay (28 Z3 rules + 29
+  ALETHE rules), hierarchical composition via `CoreTerm::App`,
+  UIP rejection for univalence preservation.
+- **Tactic DSL** — block-form combinators with algebraic
+  `normalize` pass, Quote/Unquote/GoalIntro meta-programming,
+  cog-level tactic-package registry (Project > ImportedCog >
+  Stdlib shadowing), 51-tactic stdlib split across 7 files.
+- **Counterexample lifecycle** — extract → syntactic
+  minimization (pure, always-on) → semantic minimization
+  (delta-debugging, Thorough/Certified) → fix suggestions.
+- **Trigger diagnostics** — W502 / W503 / W504 structural
+  validation of every quantifier trigger.
+- **Proof export** — Lean / Coq / Dedukti / Metamath targets
+  with weekly cross-tool re-check CI matrix.
+- **Obligation-level profiling** — `--profile-obligation`
+  breakdown table with per-obligation timings.
+- **Solver diagnostic side channels** — `--dump-smt` /
+  `--solver-protocol` / `--lsp-mode` threaded through both
+  Z3 and CVC5 backends via pay-for-only-what-you-use env
+  vars.
+- **`core.verify` stdlib** — user-facing surface mirroring the
+  compiler's `VerificationLevel` / `ProofAttempt` /
+  `VerificationOutcome` / certificate-envelope types.
+- **SmtCertificate envelope v1** — `schema_version` gate,
+  `verum_version` + `created_at` + free-form `metadata`,
+  machine-checked schema validation on replay.
 
 ## See also
 

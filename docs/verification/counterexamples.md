@@ -173,21 +173,46 @@ referencing the actual divergence.
 
 Implementation: `verum_verification::counterexample::synthesize_contradiction`.
 
-### 4.4 Stage 4 — Minimization (optional)
+### 4.4 Stage 4 — Minimization
 
-For `Thorough` and `Certified`, a delta-debugging pass reduces
-the counterexample:
+Verum applies minimization in two phases — one pure, one
+solver-backed:
 
-- **Value reduction.** For each integer parameter, binary-search
-  toward zero while the obligation remains falsifiable.
-- **Collection reduction.** For each `List<T>`, repeatedly remove
-  elements and retest.
-- **Constraint pruning.** Drop hypotheses from the context one at
-  a time; those that don't change the outcome are extraneous and
-  are omitted from the report.
+**Phase 4a: syntactic minimization** (always applied). Pure
+zero-callback pass that drops every
+assignment whose variable name doesn't appear in the violated
+constraint string. Z3 frequently reports helper-predicate
+constants the user never wrote; the syntactic pass removes
+those so the counterexample mentions only the variables the
+violation actually depends on.
 
-Minimization is capped at 30s by default, tunable via
-`--minimize-timeout`.
+Word-boundary matching: `x` is kept only when the constraint
+contains `x` as a whole identifier token — substring match in
+`xyz` does NOT count. This keeps the pruner conservative on
+false negatives (false positives are cheap — we keep an
+unused variable; false negatives are bugs — we'd hide a
+relevant one).
+
+**Phase 4b: semantic minimization** (on `Thorough` /
+`Certified`). Delta-debugging pass that requires solver
+re-invocation:
+
+- **Value reduction.** For each integer parameter,
+  binary-search toward zero while the obligation remains
+  falsifiable.
+- **Collection reduction.** For each `List<T>`, repeatedly
+  remove elements and retest.
+- **Constraint pruning.** Drop hypotheses from the context
+  one at a time; those that don't change the outcome are
+  extraneous and are omitted from the report.
+
+Pipeline composition: `extract → minimize_syntactic →
+minimize_semantic`. The syntactic pass reduces the input
+domain for the semantic pass; on Fast-strategy verification,
+only the syntactic pass runs (no re-solve cost).
+
+Semantic minimization is capped at 30s by default, tunable
+via `--minimize-timeout`.
 
 ### 4.5 Stage 5 — Fix suggestion
 
@@ -321,9 +346,9 @@ Implementation pointer:
 
 ---
 
-## 10. Roadmap
+## 10. Extensions
 
-- **Delta-debugging at the AST level** (task #69): minimize the
+- **Delta-debugging at the AST level**: minimize the
   program, not just the inputs, to isolate the contradiction.
 - **Counterexample diffing**: when a proof starts failing, diff
   the new counterexample against the last-known-good one.
@@ -344,7 +369,7 @@ Implementation pointer:
   `sat` verdict.
 - [Proofs](./proofs.md) — when you write a proof, the failing
   tactic and its residual goal are shown instead.
-- [Performance tuning](./performance.md) *(roadmap)* — how to
+- [Performance tuning](./performance.md) — how to
   profile and accelerate verification.
 - [CLI workflow](./cli-workflow.md) — counterexample flags in
   context.

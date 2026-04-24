@@ -144,8 +144,11 @@ each branch.
 For those claims use the `@verify(certified)` strategy or a
 `proof by induction` body with explicit case bodies; the
 underlying CVC5 backend has ADT datatype support (activated
-via the SyGuS path at `@verify(synthesize)`), and a Verum-native
-ADT encoding is on the roadmap.
+via the SyGuS path at `@verify(synthesize)`). Verum also
+emits real Z3 datatypes for `Type::Variant` via the type
+translator — each variant becomes a Z3 constructor with
+payload-typed fields, and structurally identical variant
+types cache to the same sort.
 
 ## How the registry is populated
 

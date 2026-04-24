@@ -10,12 +10,12 @@ Verum's verification layer dispatches each obligation through a
 picks an appropriate solver. This page documents the routing policy.
 
 :::note Implementation detail vs language contract
-The language itself makes **no commitment to a specific SMT solver**.
-The current release bundles Z3 and CVC5 as backends behind the router
-because that combination covers the theories Verum's verification
-layer needs today, and a Verum-native SMT solver is on the roadmap.
-Anywhere a specific backend is named below, treat it as a note about
-*the current implementation* — the router's contract is what is
+The language itself makes **no commitment to a specific SMT
+solver**. The current release bundles Z3 and CVC5 as backends
+behind the router because that combination covers the theories
+Verum's verification layer needs. Anywhere a specific backend
+is named below, treat it as a note about the current
+implementation — the router's contract is what is
 load-bearing.
 :::
 
@@ -86,11 +86,15 @@ certificate (Coq / Lean / Dedukti / Metamath). Timeout multiplier: 3×.
 ### `@verify(synthesize)` — synthesis
 
 Treats the obligation as a *synthesis problem* — given a
-specification, the solver should generate a term that satisfies it
-rather than check a provided one. The router dispatches to the
-synthesis-capable backend (CVC5's SyGuS engine today; a Verum-native
-synthesis engine on the roadmap). Used for invariant generation,
-hole filling, and tactic writing. Timeout multiplier: 5×.
+specification, the solver should generate a term that satisfies
+it rather than check a provided one. The router dispatches to
+CVC5's SyGuS engine. The obligation must carry at least one
+`synth-fun` declaration (via `@synth_fun` or explicit
+`SyGuSProblem` construction); synthesis requests without a
+target function signature are rejected with a clear error
+rather than silently routed through satisfiability. Used for
+invariant generation, hole filling, and tactic writing.
+Timeout multiplier: 5×.
 
 ## Classification
 
