@@ -1,26 +1,35 @@
 ---
 sidebar_position: 3
-title: mathesis
-description: ∞-Topos of formal theories — Yoneda loading, Kan translation, descent coherence.
+title: theory interop
+description: Theory registry, translation, coherence audit, JSON-RPC interchange protocol.
 ---
 
-# `core.mathesis` — ∞-Topos of formal theories
+# `core.theory_interop` — theory interchange primitives
 
-A research-facing module: organise, translate, and audit formal
-theories as objects in an ∞-topos. Used by proof infrastructure and
-by external tooling (e.g. LLM-driven theorem translation) via the
-JSON-RPC protocol.
+A research-facing stdlib module that organises, translates, and
+audits **formally represented theories** as objects in an
+∞-topos. Intended for proof infrastructure and external tooling
+that needs to exchange or compare theories across tools
+(theorem-prover bridges, IDE plugins, LLM-driven translators).
+
+:::note Name migration
+The module's public re-exports are currently reachable under two
+paths during a transition window: the neutral
+`core.theory_interop.*` and the legacy `core.mathesis.*`. New
+code should use the neutral path; the legacy path is retained
+for source compatibility until downstream consumers migrate.
+:::
 
 :::caution Audience
-If you are writing application code you do not need this module. If
-you are building a theorem-prover on top of Verum or integrating
-external automated reasoners, read on.
+If you are writing application code you do not need this module.
+If you are building a theorem-prover on top of Verum or
+integrating external automated reasoners, read on.
 :::
 
 | File | What's in it |
 |---|---|
-| `core.vr` | `MathesisRegistry`, `LoadedTheory`, `TranslationResult`, `CoherenceResult`, `AuditResult`, core operations |
-| `protocol.vr` | JSON-RPC 2.0 wire protocol (`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `MathesisServer`, `serve_request`) |
+| `core.vr` | `TheoryRegistry`, `LoadedTheory`, `TranslationResult`, `CoherenceResult`, `AuditResult`, core operations |
+| `protocol.vr` | JSON-RPC 2.0 wire protocol (`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `TheoryInteropServer`, `serve_request`) |
 | `mod.vr` | re-exports |
 
 Foundations come from the [`math`](/docs/stdlib/math) sub-modules
@@ -34,13 +43,13 @@ Foundations come from the [`math`](/docs/stdlib/math) sub-modules
 ### Registry
 
 ```verum
-public type MathesisRegistry is {
+public type TheoryRegistry is {
     theories: List<LoadedTheory>,
     translations: List<TranslationRecord>,
     next_handle: Int,
 };
 
-public fn new_registry() -> MathesisRegistry;
+public fn new_registry() -> TheoryRegistry;
 ```
 
 ### `LoadedTheory`
@@ -65,9 +74,9 @@ part of the query surface.
 ### Loading
 
 ```verum
-public fn load_theory(registry: &mut MathesisRegistry, theory: Theory) -> LoadedTheory;
-public fn find_theory(registry: &MathesisRegistry, name: &Text) -> Maybe<&LoadedTheory>;
-public fn list_theories(registry: &MathesisRegistry) -> List<Text>;
+public fn load_theory(registry: &mut TheoryRegistry, theory: Theory) -> LoadedTheory;
+public fn find_theory(registry: &TheoryRegistry, name: &Text) -> Maybe<&LoadedTheory>;
+public fn list_theories(registry: &TheoryRegistry) -> List<Text>;
 ```
 
 Conceptually, `load_theory` is the **Yoneda embedding**: the theory
@@ -162,7 +171,7 @@ violations.
 
 ```verum
 public fn check_coherence(
-    registry: &MathesisRegistry,
+    registry: &TheoryRegistry,
     translation_pairs: &List<(Text, Text)>,
 ) -> CoherenceResult;
 ```
@@ -211,8 +220,9 @@ public fn audit_meta() -> AuditResult;
 3. **Dangling references** — every dependency target exists.
 4. **Epistemic coherence** — theorem claims have valid proof chains.
 
-`audit_meta` runs Mathesis's self-audit — the mathesis module's
-own internal consistency check, independent of any loaded theory.
+`audit_meta` runs the registry's self-audit — the module's
+own internal consistency check, independent of any loaded
+theory.
 
 The audit checks: unbound names, type mismatches, circular definitions,
 missing proofs for theorems, statements whose justifications the
@@ -222,8 +232,9 @@ coherence check cannot replay.
 
 ## JSON-RPC protocol (`protocol.vr`)
 
-Mathesis can run as an MCP-style service — handy for integrations
-with external tools (notebooks, LLM harnesses, proof-browsers).
+The theory-interop layer can run as an MCP-style service — handy
+for integrations with external tools (notebooks, LLM harnesses,
+proof-browsers).
 
 ### Envelope types
 
@@ -269,13 +280,13 @@ public fn parse_coherence_params(params: &Text) -> Maybe<CoherenceParams>;
 ### Server
 
 ```verum
-public type MathesisServer is { registry: MathesisRegistry };
+public type TheoryInteropServer is { registry: TheoryRegistry };
 
-public fn new_server() -> MathesisServer;
+public fn new_server() -> TheoryInteropServer;
 
-public fn handle_request(server: &mut MathesisServer, req: &JsonRpcRequest)
+public fn handle_request(server: &mut TheoryInteropServer, req: &JsonRpcRequest)
     -> JsonRpcResponse;
-public fn serve_request(server: &mut MathesisServer, json_line: &Text) -> Text;
+public fn serve_request(server: &mut TheoryInteropServer, json_line: &Text) -> Text;
 
 public fn make_request(method: Text, params: Text) -> JsonRpcRequest;
 public fn is_ok(resp: &JsonRpcResponse) -> Bool;
@@ -333,4 +344,4 @@ fn main() {
 - **[proof](/docs/stdlib/proof)** — proof certificates for translated
   theorems.
 - **[Verification → proofs](/docs/verification/proofs)** — how
-  Mathesis-translated theorems become Verum `theorem` declarations.
+  interop-translated theorems become Verum `theorem` declarations.

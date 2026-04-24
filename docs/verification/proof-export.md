@@ -255,8 +255,8 @@ Additional flags:
 ## 6. Round-trip test suite
 
 The exporter is tested with a round-trip harness: for each of
-`core/math/hott.vr`, the UHM corpus, and a sample of refinement
-obligations:
+`core/math/hott.vr`, representative external proof corpora,
+and a sample of refinement obligations:
 
 1. Verify with `--strategy certified`.
 2. Export to each target.

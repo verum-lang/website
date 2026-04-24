@@ -40,9 +40,9 @@ Production-ready:
   (0.85–0.95× of C), MLIR GPU path.
 - **Stdlib**: ~180 K lines of `.vr` across `core/` — `base`, `collections`,
   `text`, `mem`, `async`, `sync`, `runtime`, `io`, `time`, `sys`,
-  `term`, `net`, `math`, `simd`, `meta`, `proof`, `mathesis`,
-  `context`, `security`, foundations (`eval` / `control` /
-  `concurrency` / `logic`).
+  `term`, `net`, `math`, `simd`, `meta`, `proof`,
+  `theory_interop`, `context`, `security`, foundations
+  (`eval` / `control` / `concurrency` / `logic`).
 - **Single binary**: all tools ship in one `verum` executable — LSP
   3.17 with refinement hints, DAP debugger, Playbook TUI, REPL,
   formatter, linter, package manager.
@@ -97,9 +97,10 @@ Near-term items already underway for **v0.33**:
   Rust + LLVM; self-hosting requires a mature meta-compilation
   path. This is not a priority for ergonomic reasons but is
   technically tractable.
-- **Formalised operational semantics** in the `mathesis` module —
-  the language semantics expressed as a theory object that
-  Mathesis tooling can translate.
+- **Formalised operational semantics** exposed through
+  `core.theory_interop` — the language semantics expressed as
+  a theory object that interoperability tooling can translate
+  between proof assistants.
 
 ## Research directions (exploratory)
 

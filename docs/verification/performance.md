@@ -377,10 +377,10 @@ Verum pipeline each time.
 
 Some obligations are genuinely expensive. Examples:
 
-- **Cross-stratum proofs** in the UHM corpus (a physics
-  theorem invoking a category-theory axiom from a different
-  layer) can run 10s–60s in the Certified strategy. This is the
-  cost of cross-validation.
+- **Cross-stratum proofs** (a physics-level theorem invoking a
+  category-theory axiom from a different layer) can run
+  10s–60s in the Certified strategy. This is the cost of
+  cross-validation.
 - **Large-state invariants** in concurrent data structures —
   the theory combination is non-trivial.
 - **Refinement chains** 5+ deep — the transitively-unfolded
@@ -393,7 +393,7 @@ strategy only on release branches. Configure per-file in
 
 ```toml
 [[verify.override]]
-path = "internal/verum-proofs-uhm/foundations/*"
+path = "src/foundations/*"
 strategy = "certified"
 timeout = 600
 ```

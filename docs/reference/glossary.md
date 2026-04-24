@@ -117,8 +117,10 @@ Stronger than affine.
 
 ## M
 
-**Mathesis** — Verum's ∞-topos of formal theories; a research-facing
-stdlib module.
+**Theory interop** — `core.theory_interop`, the research-facing
+stdlib module that organises formally-represented theories as
+objects in an ∞-topos, translates between them via Kan
+extensions, and audits coherence via descent conditions.
 
 **Meta function** — `meta fn` — a function that runs at compile time.
 
