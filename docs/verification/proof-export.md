@@ -19,11 +19,22 @@ in Lean, the chain of trust extends from Verum's 2 000-LOC kernel
 through Lean's ~2 500-LOC kernel, providing independent
 cross-validation.
 
-:::note Status
-Export infrastructure is **roadmap**, tracked as task #65.
-Certificate schema stable; envelope validated. Target-language
-printers are partially implemented for Lean (prototype), with
-Coq / Dedukti / Metamath on the roadmap.
+:::note
+Statement-level export ships for all four targets —
+Lean / Coq / Dedukti / Metamath — via
+`verum export --to <format>` or the
+`verum export-proofs --to <format>` alias. Each target
+emits the theorem's signature and framework attribution
+as an admitted-proof scaffold; the target's own tactics
+close the proof on the re-check side. A weekly
+cross-tool re-check matrix exercises every target
+against its reference verifier.
+
+Full proof-term export — each step of the kernel witness
+re-serialised in the target's native proof-step grammar
+— is the natural extension, gated on rule-specific
+conclusion types in the kernel's proof-tree replay
+(see [Trusted kernel §5.2](./trusted-kernel.md)).
 :::
 
 ---
@@ -126,7 +137,7 @@ system. Running
 verum audit --framework-axioms --cone <module>
 ```
 
-produces exactly this list. Task #64.
+produces exactly this list.
 
 ---
 
@@ -136,7 +147,7 @@ produces exactly this list. Task #64.
 
 **Granularity:** proof term (full).
 **Re-check path:** Lean's own kernel.
-**Status:** prototype; task #65.
+**Coverage:** statement-level emission ships; full proof-term emission is gated on kernel-side rule-specific conclusion types.
 
 Export to `.lean` translates `CoreTerm` to Lean's `Expr`
 structure directly:
@@ -162,7 +173,7 @@ re-derives under their preferred framework formalization.
 
 **Granularity:** proof term.
 **Re-check path:** Coq's kernel.
-**Status:** roadmap; task #65.
+**Coverage:** statement-level emission ships; full proof-term emission is gated on kernel-side rule-specific conclusion types.
 
 Export to `.v` uses the same `CoreTerm` → `Expr` mapping adapted
 for Coq's Gallina syntax. The main differences from Lean:
@@ -176,7 +187,7 @@ for Coq's Gallina syntax. The main differences from Lean:
 
 **Granularity:** SMT certificate (for `smt_unsat` traces).
 **Re-check path:** `dkcheck` rewrite system.
-**Status:** roadmap; task #65.
+**Coverage:** statement-level emission ships; full proof-term emission is gated on kernel-side rule-specific conclusion types.
 
 Dedukti is a shallow logical framework — it is the best target
 for exporting SMT proofs because the `.dk` format is
@@ -189,7 +200,7 @@ signatures.
 
 **Granularity:** theorem skeleton + framework axioms.
 **Re-check path:** community `.mm` database.
-**Status:** roadmap; task #65.
+**Coverage:** statement-level emission ships; full proof-term emission is gated on kernel-side rule-specific conclusion types.
 
 Metamath is optimized for foundational certainty: its proofs are
 low-level, long, and completely explicit. Full proof-term export
@@ -238,8 +249,6 @@ Additional flags:
 | `--bundle`              | Pack all exported proofs into a tarball.                     |
 | `--verify-after`        | After export, invoke target's kernel to re-check.            |
 | `--on-mismatch {error,warn,ignore}` | What happens if re-check disagrees.              |
-
-Task #65.
 
 ---
 

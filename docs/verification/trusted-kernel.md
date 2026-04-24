@@ -243,30 +243,50 @@ a corresponding kernel rule is implemented to verify them.
    hash for the obligation in question. A lying backend that
    forges a certificate with a different hash will fail this step.
 
-Current status: **Phase 1 — trust-tag replay** is committed
-(`a1c92bea`). Phase 2 (parse Z3's `(proof …)` tree into a
-rule-by-rule derivation so each step is re-checked) is tracked
-as a roadmap item.
+The replay operates in two layers:
+
+**Trust-tag replay.** The certificate's single-byte tag
+identifies one of three rule families — `refl` / `asserted`
+/ `smt_unsat` — produced by the `Unsat`-means-valid
+protocol. Accepted for obligations the SMT portfolio closes
+via the standard unsat contract.
+
+**Proof-tree replay.** For backends emitting richer proof
+traces (Z3's `(proof …)` format, CVC5's ALETHE format), the
+kernel parses the trace as an S-expression tree, validates
+every rule name against the backend's allowlist, and
+recursively replays each rule to build a `CoreTerm`
+witness. Hierarchical composition: sub-proof children are
+replayed and threaded as `CoreTerm::App` arguments to the
+parent rule's axiom, so a legitimate outer rule wrapping a
+forged inner rule fails the allowlist at any depth.
+
+Allowlist coverage:
+
+| Backend       | Rules | Completeness invariant |
+|---------------|-------|-------------------------|
+| Z3            | 28    | machine-checked by `replay_covers_every_rule_in_allowlist` |
+| CVC5 ALETHE   | 29    | parallel invariant for `replay_aletha_tree` |
 
 ### 5.3 What the kernel cannot catch
 
-The current replay accepts any certificate whose trust-tag is in
-the allow-list and whose obligation hash matches. This means:
+Even with rule-level replay, there remain residual gaps:
 
 - A **buggy solver** that returns `unsat` for a satisfiable
-  formula produces a kernel-accepted theorem. Mitigation: the
-  `Certified` strategy runs the portfolio with cross-validation,
-  so at least two disagreeing backends are required to admit a
-  false theorem.
-- A **malicious solver** that crafts a trust-tag trace for a
-  formula it did not actually solve is harder to detect without
-  Phase 2 replay. Mitigation: backends are pinned, built from
-  source, and `obligation_hash` is computed by the compiler (not
-  the backend) — so the attacker must also match the hash, which
-  means they must solve the problem.
-
-Phase 2 closes both gaps by requiring every step of the backend's
-reasoning to correspond to a kernel rule.
+  formula, *and* constructs a locally consistent proof tree,
+  produces a kernel-accepted theorem. Mitigation: the
+  `Certified` strategy runs the portfolio with
+  cross-validation — two disagreeing backends required to
+  admit a false theorem.
+- A **semantically wrong proof** whose every rule name is
+  in the allowlist but whose conclusions don't actually
+  follow from its premises. Current replay catches forged
+  *rule names*, but not forged *conclusions*. Rule-specific
+  conclusion-type checking (every rule's conclusion type
+  is computed from its children's conclusion types under
+  the rule's own semantics) is the final soundness tightening
+  and depends on an S-expression-to-`CoreTerm` expression
+  bridge.
 
 ---
 
@@ -350,14 +370,20 @@ rules plus the allow-listed backends.
 
 Caveats (the honest list):
 
-- Phase 2 of SMT-cert replay is not yet implemented for Z3's
-  proof-tree or CVC5's ALETHE format. Until then, `Certified`
-  strategy's protection is **two independent unsat results agree
-  on the obligation hash**, not "step-by-step re-verification of
-  the solver's reasoning."
-- Cubical rules (HComp, Transp, Glue) are typed correctly but
-  their normalization behavior is not yet tested against the full
-  cubical type theory equations. See roadmap.
+- SMT proof replay currently validates rule *names* (every
+  rule the backend cites must be in the kernel's allowlist)
+  and *structure* (every sub-proof is recursively replayed).
+  Rule-specific conclusion types — checking that each rule's
+  conclusion follows from its premises' conclusions under
+  the rule's semantics — is the final soundness tightening
+  and gates on the S-expression-to-`CoreTerm` expression
+  bridge.
+- Cubical rules (HComp, Transp, Glue) are typed correctly
+  but their normalization behaviour has not yet been
+  validated against the full cubical-type-theory equation
+  set. The type-inference paths are exercised by the kernel
+  test suite; the reduction rules are scheduled as a
+  dedicated cubical-kernel pass.
 
 ---
 

@@ -15,10 +15,11 @@ If your `verum verify` run completes in seconds, this page is
 not for you yet. If it takes minutes, hours, or fails to finish
 — start here.
 
-:::note Status
-Some of the flags referenced on this page are roadmap (task
-#78). The diagnostic information via `verum smt-stats` is shipped
-and useful today.
+:::note
+Every flag referenced on this page — `--profile`,
+`--profile-obligation`, `--show-costs`, `--dump-smt`,
+`--solver-protocol`, `--check-smt-formula`, `verum
+smt-stats` — is part of the shipping CLI surface.
 :::
 
 ---
@@ -140,6 +141,46 @@ ensures forall x: Int. forall y: Int. P(x, y)
 
 The `@trigger` attribute is the single most impactful performance
 knob in Verum verification. Learn it.
+
+### 4.1 Trigger diagnostics (W502 / W503 / W504)
+
+Verum applies structural validation of quantifier triggers.
+Both auto-extracted triggers and user-provided `@trigger(…)`
+expressions are checked against three shape-level defects —
+the same catalogue the SMT-LIB / Simplify literature flags
+as "trigger will silently fail to fire":
+
+| Code  | Defect                                        | Fix                                                      |
+|-------|-----------------------------------------------|----------------------------------------------------------|
+| W502  | No bound-var references                       | Trigger mentions no quantifier variable — it never fires. Usually means the syntax is off; the outer-scope term you meant to match isn't the trigger's target. |
+| W503  | Missing bound vars                            | Partial coverage — the listed variables aren't mentioned. Z3 can't instantiate them through this trigger alone. Add them to the pattern or provide a second trigger. |
+| W504  | Interpreted head                              | Trigger's outermost head is `+` / `<=` / `=` / Boolean combinators. Z3 never instantiates on interpreted heads — the trigger is dead code. Wrap the operand in an uninterpreted function or drop the trigger entirely. |
+
+The validation runs unconditionally on every extracted
+trigger — a project that emits thousands of triggers sees
+any structural defect immediately. The W-coded diagnostics
+carry `tag()` + `summary()` for consumption by the CLI /
+LSP renderer.
+
+Example of the W504 anti-pattern:
+
+```verum
+@trigger(x + y)   // WRONG — `+` is interpreted; trigger
+                  // never fires.
+ensures forall x, y: Int. x + y == y + x
+```
+
+Rewrite:
+
+```verum
+// Use an auxiliary uninterpreted function so Z3 has
+// something to instantiate on.
+@logic
+fn sum(x: Int, y: Int) -> Int { x + y }
+
+@trigger(sum(x, y))
+ensures forall x, y: Int. sum(x, y) == sum(y, x)
+```
 
 ---
 
@@ -264,27 +305,71 @@ Cache entries are invalidated when:
 
 ## 7. Profiling a single obligation
 
-⚠ The `--profile-obligation` flag is roadmap (task #78). When
-shipped, it will produce per-obligation flamegraph:
+### 7.1 `--profile-obligation`
 
-```text
-verum verify --profile-obligation bridge_to_n_7
+The per-obligation breakdown surface:
 
-  Obligation:      bridge_to_n_7
-  Location:        internal/verum-proofs-uhm/foundations/bridge.vr:42:5
-  Theory class:    LIA + quantifiers + reflection(baez_dolan_aut_g2)
-  Time breakdown:
-      translate           4 ms   ████
-      reflection unfold  12 ms   ████████████
-      quantifier inst    46 ms   ██████████████████████████████████████
-      SMT solve         184 ms   ██████████████████████████████████████████████████████████████████████████████
-      kernel replay       2 ms   ██
-      total             248 ms
-  Proof term size: 327 bytes
+```bash
+verum verify --profile-obligation src/
 ```
 
-Until that ships, use `--show-costs` for per-obligation totals
-and inspect the SMT-LIB dump manually via `--dump-smt`.
+Output includes the standard profile report plus a
+"Slowest obligations" table sorted by wall-clock time:
+
+```text
+Slowest obligations:
+============================================================
+  obligation                             time (ms)   share %
+  ----------------------------------------------------------------
+  sort.postcondition                       184.2     62.1%
+  sort.loop_inv.inner                       46.7     15.7%
+  sort.pre                                  22.1      7.4%
+  map.get_or.pre                            12.5      4.2%
+  …
+  (… 17 more obligations omitted; pass --export to dump full list)
+```
+
+When the verifier has per-obligation instrumentation
+available (`VerificationReport::add_obligation_timings`
+populated), rows are labelled `function.obligation` —
+e.g. `sort.postcondition`, `sort.loop_inv.inner`. Otherwise
+the rendering falls back to function-granular aggregates
+(one row per function).
+
+### 7.2 SMT debugging side channels
+
+Three env-var toggles control diagnostic output (exported by
+the CLI flags or by the user):
+
+| Env var                | CLI flag                | Effect                                                  |
+|------------------------|-------------------------|---------------------------------------------------------|
+| `VERUM_DUMP_SMT_DIR`   | `--dump-smt DIR`        | Every solver query written as `DIR/<prefix>-<NNNNN>.smt2`. |
+| `VERUM_SOLVER_PROTOCOL` | `--solver-protocol`    | `[→]` send + `[←]` recv lines streamed to stderr.      |
+| `VERUM_LSP_MODE`       | `--lsp-mode`            | Verification diagnostics emitted as newline-delimited JSON on stdout. |
+
+All three are **pay-for-only-what-you-use**: solvers
+short-circuit the diagnostic calls at the env-var check, so
+the CI default (no env vars set) pays no observable
+overhead. Both `verum_smt::z3_backend` and
+`verum_smt::cvc5_backend` thread through the same
+`solver_diagnostics` helpers — a single IDE adapter can
+consume either backend's output without special-casing.
+
+### 7.3 Round-trippable dumps
+
+The `--dump-smt` output is directly replayable:
+
+```bash
+verum verify --dump-smt /tmp/queries src/
+# … queries dumped to /tmp/queries/z3-query-*.smt2 …
+
+verum verify --check-smt-formula /tmp/queries/z3-query-00042.smt2
+# sat
+```
+
+Use this loop when a specific obligation is slow and you
+want to iterate on solver flags without running the full
+Verum pipeline each time.
 
 ---
 
