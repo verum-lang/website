@@ -450,7 +450,7 @@ updates.
   with ML-KEM for PQ-hybrid KEX.
 - [`core.security.kdf.hkdf`](/docs/stdlib/security/kdf) — combine
   hybrid shared secrets via HKDF.
-- [`core.net.tls`](/docs/stdlib/net#tls) — negotiates
+- [`core.net.tls`](/docs/stdlib/net/tls/) — negotiates
   `X25519MLKEM768` by default.
 
 ## References

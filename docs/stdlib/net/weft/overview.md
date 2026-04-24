@@ -8,7 +8,7 @@ description: Connection pooling, health checks, load balancing, circuit breakers
 
 `weft` is Verum's reverse-proxy / server-side-middleware subsystem.
 It sits between the transport primitives in
-[`core.net.tcp`](/docs/stdlib/net#tcp) /
+[`core.net.tcp`](/docs/stdlib/net/) /
 [`core.net.quic`](/docs/stdlib/net/quic/) /
 [`core.net.tls`](/docs/stdlib/net/tls/) and your application
 handlers, providing the orthogonal "plumbing" concerns that every
@@ -31,7 +31,7 @@ Weft is **deliberately unopinionated about HTTP version**: the
 connection pool, health checker, circuit breaker, and retry
 middleware are indistinguishable between HTTP/1.1, HTTP/2, and
 HTTP/3. The HTTP-version-specific layer
-([`http2`](/docs/stdlib/net#http) / [`http3`](/docs/stdlib/net/http3/))
+([`http2`](/docs/stdlib/http2) / [`http3`](/docs/stdlib/net/http3/))
 plugs in as a protocol adapter on top of the Weft primitives.
 
 :::info Status

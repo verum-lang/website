@@ -523,7 +523,7 @@ to start with a clock > 5 min off.
 
 - [`net.weft.spiffe`](/docs/stdlib/net/weft/overview#spiffe) — HTTP middleware
   that wraps these types for per-request SPIFFE auth.
-- [`core.net.tls`](/docs/stdlib/net#tls) — consumes `X509Svid` as
+- [`core.net.tls`](/docs/stdlib/net/tls/) — consumes `X509Svid` as
   identity cert + `X509BundleSet` as trust roots.
 - [`core.security.secrets`](/docs/stdlib/security/secrets) — if you
   need a secret in addition to an identity (e.g. a DB password),
