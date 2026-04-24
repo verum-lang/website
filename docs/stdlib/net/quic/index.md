@@ -260,10 +260,39 @@ fn metrics_endpoint(server: &QuicServer) -> Text {
 - [`core.net.weft`](/docs/stdlib/net/weft/overview) — connection pools, health
   checks, and circuit breakers sit on top of this (transport-agnostic).
 
-## Status (2026-04)
+## Deep-dive pages
 
-All twenty-plus modules listed above are shipped. The L2 typecheck
-suite is at 41/41 (100 %). L3 (integration scenarios with simulated
-network) is wired end-to-end; the remaining gap is CUBIC's aggressive
-slow-start window which is being tuned against the reference
-implementation.
+The map above gives the surface; the dedicated pages below cover
+each sub-system with the byte-exact wire layout, refinement
+contracts, and KAT file references:
+
+- [Frames (RFC 9000 §19)](/docs/stdlib/net/quic/frames) — all 20 frame types + DATAGRAM,
+  varint size classes, ack-eliciting vs probing classification.
+- [Packets (RFC 9000 §17)](/docs/stdlib/net/quic/packets) — Long-header Initial / Handshake
+  / 0-RTT / Retry, Short-header 1-RTT, Version Negotiation.
+- [Cryptography (RFC 9001)](/docs/stdlib/net/quic/crypto) — Initial secrets, header
+  protection (AES-ECB + ChaCha20), Retry integrity tag.
+- [Transport parameters (RFC 9000 §18)](/docs/stdlib/net/quic/transport-params) — the 19
+  wire parameters, V9 bounds theorem, encode/decode discipline.
+- [Recovery (RFC 9002)](/docs/stdlib/net/quic/recovery) — loss detection, RTT estimator,
+  PTO back-off, NewReno / CUBIC / BBR.
+
+## Status (2026-04-25)
+
+All modules in the map are shipped. The L2 conformance suite:
+
+| Layer | Tests | Pass |
+|-------|------:|------|
+| `core.net.quic` (byte-exact + surface) | 128 | 100 % |
+| `core.net.tls13` (TLS 1.3 handshake) | 76 | 100 % |
+| `core.net.h3` (HTTP/3 + QPACK) | 24 | 100 % |
+| RFC 8448 + 9001 known-answer tests | 6 | 100 % |
+| `core.security.x509` (PKIX + DER) | 31 | 100 % |
+
+Verification obligations V1–V10 from the spec are all discharged
+via Z3 (`vcs/specs/L2-standard/net/{tls13,quic}/v*_theorem.vr` +
+`vcs/specs/L2-standard/security/x509/v10_chain_validation_theorem.vr`).
+CUBIC + BBR match RFC 9438 / draft-ietf-ccwg-bbr reference traces.
+`SimNetwork` provides deterministic replay for integration tests;
+`core.net.quic.transport.batch_io` exposes `recvmmsg`/`sendmmsg`
+under Linux for production builds.
