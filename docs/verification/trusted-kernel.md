@@ -151,6 +151,69 @@ stable across versions.
 | 6 | `Ind-Intro`       | `Ctor(args)` well-typed iff args match the declared constructor signature.      |
 | 7 | `Ind-Elim`        | Pattern-match exhaustive over constructors; each arm typed uniformly in the motive. |
 
+#### `K-Pos` — strict positivity in detail
+
+`Ind-Form` is operationalised via the `K-Pos` walker
+(`crates/verum_kernel/src/lib.rs::check_strict_positivity`). The kernel
+runs the walker on **every** constructor's argument types when an
+`InductiveRegistry::register(...)` call is made; the first violation
+rejects the whole declaration with `KernelError::PositivityViolation`.
+
+The discipline (per VUVA §7.3, after Coquand & Paulin 1990):
+
+- `Pi(domain, codomain)` — the type's name MUST NOT appear anywhere in
+  `domain` (the negative position of the arrow); `codomain` itself
+  must be strictly positive in the type's name.
+- `Inductive(name, args)` — every `arg` must itself be strictly
+  positive in the type's name. This catches indirect non-positive
+  recursion via parametrised types (e.g. `BadList = Cons(BadList →
+  A)` where the function smuggles `BadList` into a negative position
+  through its own argument list).
+- `Sigma`, `App`, `Refine`, `Lam`, `PathTy` — descend into both
+  halves; strict positivity is closed under products, applications,
+  refinements, lambdas, and path types.
+- Atoms (`Universe`, `Var`, `Axiom`, `SmtProof`, `Elim`) — vacuously
+  OK.
+
+**Why it matters.** Berardi 1998 establishes that a system with even
+minimal impredicativity admits `False` whenever a non-positive
+inductive is admissible. Concretely the witness:
+
+```verum
+type Bad is Wrap(Bad -> A);    // would derive False if admitted
+```
+
+The diagnostic carries a breadcrumb to the offending site — for
+`Wrap(Bad -> A)` the kernel returns:
+
+```text
+strict positivity violation in inductive 'Bad': constructor 'Wrap'
+has 'Bad' in constructor 'Wrap' arg #0 → left of an arrow (negative
+position)
+```
+
+so the user can fix the offending constructor without a debugger.
+
+**Closed under nesting.** The walker handles second-order non-
+positivity (e.g. `Bad2 = Wrap((Bad2 → A) → A)`) by treating *every*
+arrow domain as a hard barrier — even when the outer position is a
+positive codomain, an inner negative occurrence still fails the
+check.
+
+**Test coverage.** Thirteen end-to-end tests at
+`crates/verum_kernel/tests/k_pos_strict_positivity.rs` cover:
+
+- accept paths: `Nat = Zero | Succ(Nat)`, `List<A> = Nil | Cons(A,
+  List<A>)`, `Tree<A> = Leaf(A) | Branch(Tree<A>, Tree<A>)`,
+  `Rose<A> = Node(A, List<Rose<A>>)`, `InductiveRegistry::register`
+  admits `Nat`;
+- reject paths: direct `Bad = Wrap(Bad → A)`, second-order
+  `Bad2 = Wrap((Bad2 → A) → A)`, indirect non-positive via
+  `BadList = Cons(BadList → A)`, `InductiveRegistry::register`
+  rejects `Bad`, duplicate-name registration;
+- atom invariants: universe, variable, arrow-codomain occurrence
+  (positive position) all admitted.
+
 ### 4.3 Equality rules (`rules::equality`)
 
 | # | Rule              | Purpose                                                                         |
