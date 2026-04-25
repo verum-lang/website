@@ -31,6 +31,10 @@ The following are **available today** in the `verum` binary:
   `--format pretty | json | github-actions`.
 - AST-driven rules `redundant-refinement` and `empty-refinement-bound`
   (the foundation that unblocks every Phase B/C rule).
+- In-source `@allow("rule", reason = "...")` / `@deny("rule")` /
+  `@warn("rule")` attributes — call-site suppression / promotion
+  scoped to the enclosing item's source span. Most-specific scope
+  wins; beats `[lint.severity]` and CLI flags.
 
 The following are **documented design** (the schema below), with
 implementations rolling out incrementally:
@@ -44,7 +48,6 @@ implementations rolling out incrementally:
   `[lint.context_policy]` / `[lint.cbgr_budgets]` /
   `[lint.verification_policy]` enforcement (Phases C.1 – C.4).
 - `[lint.documentation]` / `[lint.style]` ceilings (Phases C.5 / C.6).
-- In-source `@allow / @deny / @warn(rule, reason = "...")` (Phase B.2).
 
 Tracked in `docs/testing/lint-configuration-design.md`.
 :::

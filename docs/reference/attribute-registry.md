@@ -163,6 +163,35 @@ Reserved for Stage 2 (tracked in `docs/testing/reference-quality-roadmap.md`):
 | `@universe_poly` | fn, type | enable universe polymorphism |
 | `@cap(name = "X", domain = "Y")` | fn | declares a capability it holds |
 
+## Lint suppression / promotion
+
+In-source severity overrides for `verum lint`. The first arg is the
+**string-literal** rule name (kebab-case, matches `[lint.severity]`
+keys exactly); `reason = "..."` is optional today but recommended.
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@allow("rule", reason = "...")` | fn, type, theorem/lemma/corollary, axiom, module-level | suppress diagnostics of the named rule for everything inside the item's source span |
+| `@deny("rule")` | same | force the rule to **error** for everything inside the item's span |
+| `@warn("rule")` | same | force the rule to **warning** |
+
+Examples:
+
+```verum
+@allow("redundant-refinement", reason = "kept for documentation")
+type Always is Int{ true };
+
+@deny("todo-in-code")
+public fn release_critical() { … }
+
+@warn("deprecated-syntax")
+fn experimental() { … }
+```
+
+Most-specific (smallest source-span) suppression wins on overlap;
+in-source attributes always beat `[lint.severity]` and CLI flags.
+See **[Reference → Lint configuration → precedence stack](/docs/reference/lint-configuration#precedence-stack)**.
+
 ## Custom attributes
 
 User-defined via `@meta_macro` (see

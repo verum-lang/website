@@ -142,21 +142,33 @@ Today the biggest beneficiary is `deprecated-syntax`:
 
 ## Suppressing one issue
 
-`@allow / @deny / @warn` in source (Phase B.2 — coming):
+`@allow / @deny / @warn` in source (Phase B.2 — **shipped**):
 
 ```verum
-@allow(unused-import, reason = "needed by derive macro to see it")
+@allow("unused-import", reason = "needed by derive macro to see it")
 mount stdlib.derive.*;
+
+@deny("todo-in-code")
+public fn release_critical_path() { /* … */ }
+
+@warn("deprecated-syntax")
+fn experimental_path() { /* … */ }
 ```
 
-Until then, suppress at the rule level via config:
+The first arg is a **string literal** (rule names use kebab-case
+which can't parse as a Verum identifier). Suppression scope is the
+item's source span; most-specific (smallest) match wins on overlap;
+in-source attributes always beat `[lint.severity]` and CLI flags.
+See **[Reference → Attribute registry → Lint suppression](/docs/reference/attribute-registry#lint-suppression--promotion)**.
+
+You can also suppress at the rule level via config:
 
 ```toml
 [lint.severity]
 unused-import = "off"       # globally
 ```
 
-…or per-file:
+…or per-file (Phase A.3, planned):
 
 ```toml
 [lint.per_file_overrides]
