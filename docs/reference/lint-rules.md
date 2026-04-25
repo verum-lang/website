@@ -528,6 +528,50 @@ error: module `core.crypto.sign` may not import `core.testing`
        [architecture-violation]
 ```
 
+### `custom-ast-rule` — *warn* — AST-driven (Phase D)
+
+A meta-rule covering every user-authored entry in `[[lint.custom]]`
+that uses the `[lint.custom.ast_match]` block instead of a regex
+`pattern`. Each user rule emits diagnostics under its own `name` and
+participates in the standard severity flow (`[lint.severity]`,
+per-file overrides, in-source `@allow(...)`, the `--severity` filter).
+
+The AST matcher exposes four shapes — exhaustive coverage of the
+patterns most teams want to express without writing a Rust pass:
+
+| `kind` | Selectors | Fires on |
+|--------|-----------|----------|
+| `method_call` | `method = "<name>"` | `recv.method(args)` calls |
+| `call` | `path = "<a.b.c>"` | dotted-path free calls (`a.b.c(args)`) |
+| `attribute` | `name = "<attr>"` | items annotated with `@attr` |
+| `unsafe_block` | (none) | every `unsafe { … }` block |
+
+Worked example:
+
+```toml
+# verum.toml
+[[lint.custom]]
+name        = "no-unwrap-in-prod"
+description = "use `?` or `expect(\"why\")` instead of unwrap()"
+severity    = "error"
+paths       = ["src/**"]
+exclude     = ["src/legacy/**"]
+[lint.custom.ast_match]
+kind   = "method_call"
+method = "unwrap"
+```
+
+```text
+error: use `?` or `expect("why")` instead of unwrap() [no-unwrap-in-prod]
+  --> src/main.vr:8:13
+```
+
+AST-pattern rules are strictly more precise than regex rules — they
+walk the parsed module via `verum_ast::Visitor`, so they will not
+fire on text inside string literals or comments. The full schema is
+documented in
+[`[[lint.custom]]` · AST-pattern rules](/docs/reference/lint-configuration#ast-pattern-rules-phase-d).
+
 ## Severity / category cross-reference
 
 | Rule | Cat. | Default | Implementation |
@@ -567,6 +611,7 @@ error: module `core.crypto.sign` may not import `core.testing`
 | `max-fn-params` | style | hint | **AST** (Phase C.6) |
 | `max-match-arms` | style | hint | **AST** (Phase C.6) |
 | `public-must-have-doc` | style | hint | **AST** (Phase C.5) |
+| `custom-ast-rule` | style | warn | **AST** (Phase D — user-authored) |
 | `shadow-binding` | style | info | text-scan |
 
 AST-driven rules (built on `verum_ast::Visitor`) are zero-false-positive
