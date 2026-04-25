@@ -36,7 +36,10 @@ The following are **available today** in the `verum` binary:
   policy rules (`unrefined-public-int`, `verify-implied-by-refinement`,
   `public-must-have-verify` — Phase C.1), `forbidden-context`
   (Phase C.3), `architecture-violation` (Phase B.4),
-  `cbgr-budget-exceeded` (Phase C.4).
+  `cbgr-budget-exceeded` (Phase C.4), four style ceilings —
+  `max-line-length`, `max-fn-lines`, `max-fn-params`,
+  `max-match-arms` (Phase C.6), and `public-must-have-doc`
+  (Phase C.5).
 - In-source `@allow("rule", reason = "...")` / `@deny("rule")` /
   `@warn("rule")` attributes — call-site suppression / promotion
   scoped to the enclosing item's source span. Most-specific scope
@@ -56,7 +59,7 @@ implementations rolling out incrementally:
   `--profile NAME`, `--since GIT_REF`, `--severity LEVEL` (Phase A.3).
 - `--format sarif | tap` (Phase A.4).
 - `[lint.capability_policy]` enforcement (Phase C.2).
-- `[lint.documentation]` / `[lint.style]` ceilings (Phases C.5 / C.6).
+- AST-pattern custom rules + LSP integration (Phase D).
 
 Tracked in `docs/testing/lint-configuration-design.md`.
 :::
