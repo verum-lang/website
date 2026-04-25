@@ -31,6 +31,16 @@ The following are **available today** in the `verum` binary:
   `--format pretty | json | github-actions`.
 - AST-driven rule engine on top of `verum_ast::Visitor` — every Verum-
   unique policy below is a `LintPass` plugged into one slice.
+- `[lint.profiles.<name>]` named profiles + `--profile NAME` CLI
+  flag (falls back to `$VERUM_LINT_PROFILE` env var). Profiles
+  inherit + override the base config; CLI flags still win.
+- `[lint.per_file_overrides]` glob → allow/deny/warn/disable.
+  Glob patterns: `**`, `**/`, `/**`, `*` (single segment), generic
+  substring `*`. Most-specific (longest) match wins.
+- `--severity LEVEL` filters to issues at that level or higher
+  (error > warn > info > hint).
+- `--since GIT_REF` lints only files changed since the ref
+  (`git diff --name-only <REF>...HEAD -- '*.vr'`).
 - AST-driven rules: `redundant-refinement`, `empty-refinement-bound`
   (Phase B.1), `naming-convention` (Phase B.3), three refinement-
   policy rules (`unrefined-public-int`, `verify-implied-by-refinement`,
@@ -56,8 +66,6 @@ The following are **available today** in the `verum` binary:
 The following are **documented design** (the schema below), with
 implementations rolling out incrementally:
 
-- `[lint.profiles.<name>]`, `[lint.per_file_overrides]`,
-  `--profile NAME`, `--since GIT_REF`, `--severity LEVEL` (Phase A.3).
 - `--format sarif | tap` (Phase A.4).
 - AST-pattern custom rules + LSP integration (Phase D).
 
