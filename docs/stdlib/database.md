@@ -372,9 +372,9 @@ name is redefined.
 | Concern | State | Notes |
 |---------|-------|-------|
 | **Catalogues / typed surface** | **~80 %** of the spec encoded | 1,382 `.vr` files, 107 KLOC; ~360 catalogue modules + 8 engine layers; 503 typecheck-pass smokes green |
-| **End-to-end runtime tests** | **3 / 516** sqlite VCS tests are `@test: run-*` | `l0_vfs/memdb_open_write_read.vr`, `l2_record/varint_roundtrip.vr`, `l2_record/crc32_vectors.vr` are the only paths exercised under VBC interpretation; remaining 503 are typecheck-only |
-| **L4 VDBE / L5 SQL** | scaffolded, not yet end-to-end on a real DDL+DML+SELECT cycle | 3,203 LOC + 7,519 LOC respectively; first end-to-end smoke is the next milestone |
-| **In-memory `:memory:` path** | working through L0 (`MemDbVfs`) | byte-pattern round-trips green; pager-level page reads pending end-to-end test |
+| **End-to-end runtime tests** | **4 / 516** sqlite VCS tests are `@test: run-*` | `l0_vfs/memdb_open_write_read.vr`, `l1_pager/page_roundtrip.vr`, `l2_record/varint_roundtrip.vr`, `l2_record/crc32_vectors.vr`; remaining 502 are typecheck-only |
+| **L4 VDBE / L5 SQL end-to-end** | **blocked on VBC interpreter stdlib-cache bug** | A verbatim copy of `open_memory` defined inside a test file runs cleanly; the *stdlib-cached* version panics with "method 'I.next' not found on value" on first call.  Until the runtime/cache discrepancy is resolved, L6 (Connection) and L7 (Database) facades cannot be exercised end-to-end under the VBC interpreter |
+| **In-memory `:memory:` path** | working through L0 (`MemDbVfs`) and L1 single-page round-trip | byte-pattern + 4 KiB-page round-trips green; multi-page round-trip (`memdb_pager_roundtrip.vr`) demoted to typecheck-pass due to interpreter `List<Byte>.push` quadratic growth |
 | **Production `PosixVfs`** | scaffolded, gated on `core.sys.locking` + `core.sys.durability` | not yet exercised under fault injection |
 | **Differential testing vs C-SQLite** | **4** SQL files in `vcs/differential/sqlite/cross-impl/sql/` | `001_create_insert_select.sql` … `004_window_cte.sql`; `compare.sh` runner exists but corpus is small |
 | **File-format on-disk parity** | **not verified** | catalogues encode header offsets (e.g. `application_id` at byte 68) but we have not yet opened a C-SQLite-written file with our pager and round-tripped |
