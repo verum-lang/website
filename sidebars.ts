@@ -497,6 +497,7 @@ const sidebars: SidebarsConfig = {
     'reference/attribute-registry',
     'reference/cli-commands',
     'reference/verum-toml',
+    'reference/lint-configuration',
     'reference/glossary',
   ],
 };

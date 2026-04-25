@@ -412,6 +412,45 @@ CLI equivalents (build-time):
 CLI flags **always override** the manifest for the current build;
 `verum.toml` values describe the project baseline.
 
+## `[lint]` — linter policy
+
+The `[lint]` section drives `verum lint`. It supports per-rule
+severity, profiles, per-file overrides, named architecture layers,
+naming-convention enforcement, plus refinement / capability / context
+/ CBGR-tier / verification policies that are unique to Verum.
+
+```toml
+[lint]
+extends  = "recommended"          # minimal | recommended | strict | relaxed
+disabled = []
+denied   = ["deprecated-syntax"]
+
+[lint.severity]
+unused-import     = "warn"
+deprecated-syntax = "error"
+
+[lint.rules.large-copy]
+size-threshold-bytes = 256
+exempt-types         = ["UserId", "Hash"]
+
+[lint.per_file_overrides]
+"tests/**" = { allow = ["unused-result", "todo-in-code"] }
+
+[lint.architecture.layers]
+core   = { allow_imports = ["core", "std"] }
+domain = { allow_imports = ["core", "std", "domain"] }
+
+[lint.refinement_policy]
+public_api_must_refine_int   = true
+require_verify_on_refined_fn = true
+
+[lint.context_policy.modules]
+"core.*" = { forbid = ["Database", "Logger", "Clock"] }
+```
+
+Full schema, every knob, every preset and the precedence stack:
+**[Reference → Lint configuration](/docs/reference/lint-configuration)**.
+
 ## `[lsp]`
 
 ```toml

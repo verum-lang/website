@@ -152,9 +152,35 @@ Flags:
 
 ### `verum lint`
 
-Flags:
-- `--fix` — apply autofixes where available.
-- `--deny-warnings`.
+Verum's static-analysis suite. Configurable via the `[lint]` block
+in `verum.toml`; see **[Reference → Lint configuration](/docs/reference/lint-configuration)**
+for the full schema (severity per rule, profiles, per-file overrides,
+architecture layering, naming conventions, plus refinement /
+capability / context / CBGR-tier / verification policy blocks unique
+to Verum).
+
+Flags (extending the existing `--fix` / `--deny-warnings`):
+
+- `--fix` — apply autofixes where available; honours `[lint.policy].auto_fix`
+  (`safe-only` by default).
+- `--deny-warnings` — every warning becomes an error (CI gate).
+- `--profile <NAME>` — apply `[lint.profiles.<NAME>]`. Selectable
+  also via `VERUM_LINT_PROFILE` env var.
+- `--explain <RULE>` — print the rule's documentation, examples of
+  violations, and the recommended fix.
+- `--list-rules` — every known rule + its category and default
+  severity.
+- `--validate-config` — run only the config-loader's validator;
+  exits 0 / non-zero. Use in pre-commit hooks.
+- `--since <GIT_REF>` — lint only files changed since the ref
+  (`HEAD~1`, `origin/main`, `abc123`, …).
+- `--severity <LEVEL>` — report at this level or higher
+  (`error | warn | info | hint`).
+- `--format <FMT>` — `pretty` (default) | `json` | `sarif` |
+  `github-actions` | `tap`.
+- `-D <RULE>` / `-W <RULE>` / `-A <RULE>` / `-F <RULE>` — single-rule
+  override (deny / warn / allow / forbid). Same convention as the
+  build-time flags.
 
 ### `verum doc`
 
