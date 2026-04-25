@@ -45,6 +45,7 @@ const sidebars: SidebarsConfig = {
         'verification/performance',
         'verification/cli-workflow',
         'verification/proof-corpora',
+        'verification/networking',
       ],
     },
     {
@@ -71,6 +72,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'tutorials/cli-tool',
         'tutorials/http-service',
+        'tutorials/h3-service',
         'tutorials/parser',
         'tutorials/verified-data-structure',
         'tutorials/async-pipeline',
