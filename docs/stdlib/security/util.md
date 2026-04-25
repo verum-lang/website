@@ -16,7 +16,7 @@ real-world crypto deployments get compromised.
 | Need | Naive alternative that fails | What to use |
 |---|---|---|
 | Compare a secret byte-slice to a user-supplied one | `==` | [`constant_time_eq`](#constant-time-equality) |
-| Clear secret bytes from memory before drop | `= 0` / `memset` | `zeroise` (planned) |
+| Clear secret bytes from memory before drop | `= 0` / `memset` | the `verum.mem.zeroise` intrinsic — see [Zeroise](#zeroise--clearing-secrets-from-memory) |
 | Generate cryptographically-random bytes | `rand::random`, `Math.random()` | `verum.rng.fill_secure` intrinsic |
 
 The theme: each alternative looks right, runs in tests, but leaks
@@ -203,8 +203,21 @@ fn generate_nonce() -> [Byte; 12] {
 }
 ```
 
-A stable wrapper `core.security.util.random.secure_random_bytes(n)`
-is planned for the next iteration of this module.
+For the common case, `core.security.util.rng` exposes ergonomic
+helpers built on top of the intrinsic:
+
+```verum
+mount core.security.util.rng;
+
+let mut nonce: [Byte; 12] = [0; 12];
+rng::fill_secure_array(&mut nonce);   // const-N form, no bounds check
+
+let mut buf = List<Byte>::with_size(32);
+rng::fill_secure(&mut buf);           // dynamic-size form
+```
+
+Use the `_array` form when the buffer length is known at compile
+time (key, nonce, MAC tag); use `fill_secure` when it's dynamic.
 
 ### What NOT to use
 
@@ -219,7 +232,7 @@ nonce, IV, salt, or signature randomness**, it must come from
 
 ---
 
-## Zeroise — clearing secrets from memory (planned)
+## Zeroise — clearing secrets from memory
 
 ### The problem
 
@@ -244,27 +257,22 @@ A `zeroise` function that:
 3. Ideally uses a platform-specific syscall (`explicit_bzero`,
    `memset_s`, `SecureZeroMemory`) when available.
 
-### Status
+### Today's pattern — the intrinsic
 
-`zeroise` is planned for the P1 iteration of this module. The
-tracking issue specifies:
-
-```verum
-public fn zeroise(buf: &mut [Byte]);
-public fn zeroise_array<const N: Int>(buf: &mut [Byte; N]);
-```
-
-Until then, a manual pattern using `@intrinsic` is available:
+The compiler intrinsic `verum.mem.zeroise` carries a *don't elide*
+hint that survives DSE and lowers to `explicit_bzero` / `memset_s` /
+`SecureZeroMemory` on platforms that expose one:
 
 ```verum
-fn manual_zeroise(buf: &mut [Byte; 32]) {
-    // The intrinsic carries a compiler hint to prevent DSE.
+fn wipe(buf: &mut [Byte; 32]) {
     @intrinsic("verum.mem.zeroise", buf);
 }
 ```
 
-When the stable API lands, `manual_zeroise` will become a
-one-line call to `zeroise`.
+A stable wrapper module (`core.security.util.zeroise`) is on the
+short list of additions to this module — when it lands, the call
+collapses to `zeroise(buf)`. Until then, the intrinsic is the
+authoritative way to clear secrets.
 
 ### Best practices — defence in depth
 
@@ -299,8 +307,7 @@ one-line call to `zeroise`.
 | File | Role |
 |---|---|
 | `core/security/util/constant_time.vr` | Timing-safe compare + 3-way compare — ~120 LOC |
-| `core/security/util/random.vr` | (planned) stable wrapper over `verum.rng.fill_secure` |
-| `core/security/util/zeroise.vr` | (planned) memory-clearing with DSE prevention |
+| `core/security/util/rng.vr` | random helpers building on the `verum.rng.fill_secure` intrinsic |
 
 ## References
 
