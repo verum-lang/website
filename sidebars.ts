@@ -130,6 +130,7 @@ const sidebars: SidebarsConfig = {
         'cookbook/logic-functions',
         'cookbook/smt-debug',
         'cookbook/testing-recipes',
+        'cookbook/linter-recipes',
       ],
     },
     {
@@ -486,6 +487,7 @@ const sidebars: SidebarsConfig = {
     'architecture/incremental-compilation',
     'architecture/module-system',
     'architecture/crate-map',
+    'architecture/lint-engine',
   ],
   reference: [
     'reference/grammar-ebnf',
@@ -498,6 +500,7 @@ const sidebars: SidebarsConfig = {
     'reference/cli-commands',
     'reference/verum-toml',
     'reference/lint-configuration',
+    'reference/lint-rules',
     'reference/glossary',
   ],
 };
