@@ -63,7 +63,10 @@ verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthe
 verum analyze [--escape] [--context] [--refinement] [--all]
 verum audit [--details] [--direct-only] [--framework-axioms] \
              [--kernel-rules] [--format plain|json]
-verum lint [--fix] [--deny-warnings]
+verum lint [--fix] [--deny-warnings] [--profile NAME] [--explain RULE] \
+            [--list-rules] [--validate-config] [--since GIT_REF] \
+            [--severity error|warn|info|hint] \
+            [--format pretty|json|sarif|github-actions|tap]
 verum fmt [--check]
 ```
 
