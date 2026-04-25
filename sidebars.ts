@@ -46,6 +46,7 @@ const sidebars: SidebarsConfig = {
         'verification/actic-dual',
         'verification/msfs-coord',
         'verification/owl2',
+        'verification/quantitative-types',
         'verification/performance',
         'verification/cli-workflow',
         'verification/proof-corpora',
