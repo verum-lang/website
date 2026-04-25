@@ -453,6 +453,7 @@ const sidebars: SidebarsConfig = {
       link: {type: 'generated-index', slug: '/category/stdlib-data'},
       items: [
         'stdlib/database',
+        'stdlib/database-sqlite-architecture',
       ],
     },
     {
