@@ -238,6 +238,31 @@ User rules participate in every downstream feature for free:
 `[lint.severity]`, per-file overrides, `@allow(...)` attributes,
 `--severity` filtering, `--format sarif|tap|json|github-actions`.
 
+## Performance contract
+
+The linter has three distinct cost models, each pinned by tests so
+a future regression breaks CI rather than slipping past review:
+
+| Scenario | Target | Where it's verified |
+|----------|--------|---------------------|
+| One ~1 KLOC file, every rule on | < 5 ms | criterion bench `lint_single_file` |
+| 100-file cold scan, 8 threads | < 500 ms | criterion bench `lint_repo_parallel` + integration test caps wall clock at 2 s |
+| 100-file warm-cache scan, 8 threads | < 50 ms | criterion bench `lint_cache_hit` + integration test caps wall clock at 1 s |
+| Parallel runner vs sequential at 200 files | within ±50 % | `lint_perf_contract::parallel_speedup_is_at_least_1_5x` (catastrophic-regression floor) |
+
+Run the benches with:
+
+```bash
+cargo bench -p verum_cli --bench lint_throughput
+cargo bench -p verum_cli --bench lint_throughput -- --save-baseline main
+cargo bench -p verum_cli --bench lint_throughput -- --baseline main
+```
+
+The integration tests run as part of `cargo test -p verum_cli` and
+have wall-clock caps deliberately ~3× the criterion targets so they
+don't flake on slow runners while still catching the case where
+someone reintroduces O(n²) behaviour.
+
 ## See also
 
 - **[Reference → Lint rules](/docs/reference/lint-rules)** — every rule the linter currently checks.
