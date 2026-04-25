@@ -29,24 +29,33 @@ The following are **available today** in the `verum` binary:
 - `.verum/lint.toml` standalone file (preferred when present).
 - CLI: `--list-rules`, `--explain RULE`, `--validate-config`,
   `--format pretty | json | github-actions`.
-- AST-driven rules `redundant-refinement` and `empty-refinement-bound`
-  (the foundation that unblocks every Phase B/C rule).
+- AST-driven rule engine on top of `verum_ast::Visitor` — every Verum-
+  unique policy below is a `LintPass` plugged into one slice.
+- AST-driven rules: `redundant-refinement`, `empty-refinement-bound`
+  (Phase B.1), `naming-convention` (Phase B.3), three refinement-
+  policy rules (`unrefined-public-int`, `verify-implied-by-refinement`,
+  `public-must-have-verify` — Phase C.1), `forbidden-context`
+  (Phase C.3), `architecture-violation` (Phase B.4),
+  `cbgr-budget-exceeded` (Phase C.4).
 - In-source `@allow("rule", reason = "...")` / `@deny("rule")` /
   `@warn("rule")` attributes — call-site suppression / promotion
   scoped to the enclosing item's source span. Most-specific scope
   wins; beats `[lint.severity]` and CLI flags.
+- `[lint.rules.<name>]` per-rule typed config + the typed accessor
+  `LintConfig::rule_config<T>()` (Phase A.5).
+- Synthetic-key mapping for policy blocks: `[lint.naming]`,
+  `[lint.refinement_policy]`, `[lint.context_policy.modules.*]`,
+  `[lint.cbgr_budgets.modules.*]`, `[lint.verification_policy]`,
+  `[lint.architecture.{layers,bans}]` all parse and route to their
+  respective rules' typed configs.
 
 The following are **documented design** (the schema below), with
 implementations rolling out incrementally:
 
 - `[lint.profiles.<name>]`, `[lint.per_file_overrides]`,
   `--profile NAME`, `--since GIT_REF`, `--severity LEVEL` (Phase A.3).
-- `[lint.rules.<name>]` per-rule typed thresholds (Phase A.5).
 - `--format sarif | tap` (Phase A.4).
-- `[lint.naming]` / `[lint.architecture]` enforcement (Phases B.3 / B.4).
-- `[lint.refinement_policy]` / `[lint.capability_policy]` /
-  `[lint.context_policy]` / `[lint.cbgr_budgets]` /
-  `[lint.verification_policy]` enforcement (Phases C.1 – C.4).
+- `[lint.capability_policy]` enforcement (Phase C.2).
 - `[lint.documentation]` / `[lint.style]` ceilings (Phases C.5 / C.6).
 
 Tracked in `docs/testing/lint-configuration-design.md`.
