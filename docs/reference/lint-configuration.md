@@ -18,14 +18,16 @@ This page is the reference. The corresponding design doc lives in
 the main repo at
 [`docs/testing/lint-configuration-design.md`](https://github.com/verum-lang/verum/blob/main/docs/testing/lint-configuration-design.md).
 
-:::tip[Implementation status — Phases A.1 + A.2 + B.1 shipped]
+:::tip[Implementation status — full Phase A/B/C/D shipped]
 The following are **available today** in the `verum` binary:
 
 - `[lint]` top-level keys (`extends`, `disabled`, `denied`, `allowed`, `warned`).
 - `[lint.severity]` per-rule severity map, including `"off"`.
 - All four presets (`minimal | recommended | strict | relaxed`)
   with the concrete behaviour documented in [§ Presets](#presets).
-- `[[lint.custom]]` regex-based custom rules.
+- `[[lint.custom]]` regex-based custom rules **and** structured
+  AST-pattern rules via `[lint.custom.ast_match]` (Phase D —
+  `kind = "method_call" | "call" | "attribute" | "unsafe_block"`).
 - `.verum/lint.toml` standalone file (preferred when present).
 - CLI: `--list-rules`, `--explain RULE`, `--validate-config`,
   `--format pretty | json | github-actions`.
@@ -69,7 +71,9 @@ The following are **available today** in the `verum` binary:
 The following are **documented design** (the schema below), with
 implementations rolling out incrementally:
 
-- AST-pattern custom rules + LSP integration (Phase D).
+- LSP integration for in-editor diagnostics (Phase D extension —
+  the lint engine itself is feature-complete; what remains is
+  surfacing diagnostics through `verum_lsp` instead of the CLI).
 
 Tracked in `docs/testing/lint-configuration-design.md`.
 :::
@@ -421,35 +425,85 @@ Attribute scope:
 
 ## Custom rules
 
-Pattern-matching custom rules today (AST-based custom rules tracked
-on the roadmap):
+Two flavours: **regex** rules (text-scan, fast, fuzzy) and
+**AST-pattern** rules (Phase D, AST-aware, strictly more precise —
+won't fire on substrings inside string literals or comments). A rule
+provides exactly one of `pattern` or `[lint.custom.ast_match]`.
+
+### Regex rules
 
 ```toml
-[[lint.custom]]
-name        = "no-unwrap-in-prod"
-pattern     = "\\.unwrap\\(\\)"
-message     = "use `?` or `expect(\"why\")` instead of unwrap()"
-level       = "warn"
-paths       = ["src/**"]
-exclude     = ["src/legacy/**"]
-suggestion  = "?"             # auto-fix replacement (optional)
-
 [[lint.custom]]
 name        = "no-todo-without-issue"
 pattern     = "\\bTODO(?!\\(#\\d+\\))"
 message     = "TODO must reference an issue: TODO(#1234)"
 level       = "error"
+paths       = ["src/**"]
+exclude     = ["src/legacy/**"]
+suggestion  = "TODO(#XXXX)"   # auto-fix replacement (optional)
 ```
+
+### AST-pattern rules (Phase D)
+
+```toml
+# 1. Method-call match: any `.method(...)` invocation.
+[[lint.custom]]
+name        = "no-unwrap-in-prod"
+description = "use `?` or `expect(\"why\")` instead of unwrap()"
+severity    = "error"
+paths       = ["src/**"]
+[lint.custom.ast_match]
+kind   = "method_call"
+method = "unwrap"
+
+# 2. Free-call match: dotted path callee.
+[[lint.custom]]
+name        = "no-direct-panic"
+description = "panics belong behind a refinement-checked precondition"
+severity    = "warn"
+[lint.custom.ast_match]
+kind = "call"
+path = "panic"
+
+# 3. Attribute match: any item with this @attribute.
+[[lint.custom]]
+name        = "no-deprecated"
+description = "@deprecated items must be removed before release"
+severity    = "warn"
+[lint.custom.ast_match]
+kind = "attribute"
+name = "deprecated"
+
+# 4. Unsafe-block match: any `unsafe { ... }` block.
+[[lint.custom]]
+name        = "no-unsafe-blocks-in-app"
+description = "unsafe is reserved for the runtime / FFI bridges"
+severity    = "error"
+paths       = ["src/app/**"]
+[lint.custom.ast_match]
+kind = "unsafe_block"
+```
+
+The four `kind` values exhaustively cover the AST shapes most teams
+need — method calls, free calls, attribute checks, and `unsafe`
+blocks. Each rule walks the parsed module via `verum_ast::Visitor`
+and emits diagnostics under its `name`, so the same `[lint.severity]`,
+per-file overrides, `@allow(...)` attributes, and `--severity` filter
+that built-in rules use applies uniformly to user rules.
 
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `name` | yes | rule name (kebab-case, no built-in conflicts) |
-| `pattern` | yes | PCRE-flavoured regex |
-| `message` | yes | what to display |
-| `level` | no | `error \| warn \| info \| hint`; default `warn` |
+| `pattern` | one of pattern / ast_match | PCRE-flavoured regex |
+| `ast_match.kind` | one of pattern / ast_match | `method_call \| call \| attribute \| unsafe_block` |
+| `ast_match.method` | for `method_call` | the method name (e.g. `"unwrap"`); empty matches any method |
+| `ast_match.path` | for `call` | dotted callee path (e.g. `"core.unsafe.from_raw"`); empty matches any free call |
+| `ast_match.name` | for `attribute` | attribute name without `@` (e.g. `"deprecated"`) |
+| `message` / `description` | yes | what to display |
+| `level` / `severity` | no | `error \| warn \| info \| hint`; default `warn` |
 | `paths` | no | glob includes |
 | `exclude` | no | glob excludes |
-| `suggestion` | no | replacement text for `--fix` |
+| `suggestion` | no | replacement text for `--fix` (regex rules only) |
 
 ## Presets
 

@@ -195,6 +195,48 @@ That's it — no other files touched. The CLI, JSON / GitHub Actions
 formatters, severity-map / preset / `--validate-config` plumbing
 all light up automatically.
 
+## User-authored AST rules (Phase D)
+
+Built-in passes are not the only way to add structural lints —
+`[[lint.custom]]` accepts a `[lint.custom.ast_match]` block that
+describes an AST shape declaratively. The `CustomAstRulesPass` reads
+each user rule from the loaded `LintConfig` and runs a tiny `Visitor`
+against the parsed module per file.
+
+Why a single pass for *all* user AST rules instead of one pass per
+rule:
+
+- The user rule names live in `LintConfig`, not the static `PASSES`
+  registry — they're discovered at runtime, not compile-time.
+- Each user rule's matcher is one of four fixed shapes — there's no
+  user-supplied logic, just data. So one pass + one match on
+  `spec.kind` covers all of them.
+- One visitor per file, all rules folded in, keeps the AST walked
+  exactly once regardless of how many user rules are defined.
+
+The four supported `kind` values
+(`method_call | call | attribute | unsafe_block`) match the same AST
+shapes that built-in passes use, via:
+
+```rust
+match self.spec.kind.as_str() {
+    "method_call" => match expr.kind { ExprKind::MethodCall { .. } => … },
+    "call"        => match expr.kind { ExprKind::Call { .. }       => … },
+    "attribute"   => /* iterate Module.items, inspect item attrs */,
+    "unsafe_block"=> match expr.kind { ExprKind::Unsafe(_)         => … },
+    _ => {}
+}
+```
+
+The user-rule `name` field becomes the diagnostic's static `rule`
+field via a tiny `Box::leak` — bounded by the number of distinct
+user-rule names defined in the lifetime of one `verum lint` process,
+which is small (handfuls, not thousands).
+
+User rules participate in every downstream feature for free:
+`[lint.severity]`, per-file overrides, `@allow(...)` attributes,
+`--severity` filtering, `--format sarif|tap|json|github-actions`.
+
 ## See also
 
 - **[Reference → Lint rules](/docs/reference/lint-rules)** — every rule shipped today.
