@@ -412,20 +412,61 @@ code matches a well-known class — `DbConstraint`, `DbBusy`,
 | L7 | ✓ | — | — | — |
 
 The "first end-to-end run-test that drives L5 → L4 → L3 → L1 → L0
-through `CREATE TABLE` + `INSERT` + `SELECT`" is **blocked on a VBC
-interpreter / stdlib-cache discrepancy**: an in-test verbatim copy
-of `l6_session::open_memory` runs cleanly under VBC interpretation,
-but the *stdlib-cached* form of the same function panics with
-`Panic: method 'I.next' not found on value` on first call.
+through `CREATE TABLE` + `INSERT` + `SELECT`" was historically blocked
+on the VBC codegen non-determinism (#143).  Determinism was fixed
+across commits `0723ad43` (`pipeline.rs`) and `82303f94`
+(`codegen/mod.rs` + `phases/vbc_codegen.rs`) — see the [stdlib
+database doc](./database#status-2026-04-25--honest) for the seven
+sort-by-stable-key sites.  After determinism, four further
+deterministic codegen layers were peeled in sequence:
 
-Bisection narrowed the discrepancy to the cached function body —
-`pager_open_memory()`, `schema_cache_new()`, `tx_state_autocommit()`,
-and direct `Connection { … }` record construction all run cleanly in
-isolation, both via stdlib import and verbatim local copy.  The
-failure surfaces only when calling stdlib-cached `open_memory` (which
-combines those four pieces).  Tracked as task #143 in this session;
-likely root cause is a stale cache entry or a bytecode-vs-source
-mismatch in the registry's `open_memory` body.
+1. **`FilterMapIter.clone not found`** — closed in `506135ad` by
+   adding 14 Clone implementations for forward-declared iterator
+   adapters in `core/base/iterator.vr` (`MappedIter`, `FilterIter`,
+   `FilterMapIter`, `FlatMapIter`, `TakeIter`, `SkipIter`,
+   `TakeWhileIter`, `SkipWhileIter`, `ChainIter`, `ZipIter`,
+   `EnumerateIter`, `StepByIter`, `InspectIter`, `FuseIter`).
+
+2. **Thin-wrapper null-deref** in `open_admin` / `open_readonly` /
+   `open_readwrite` — worked around in `c4dfffd5` by inlining the
+   `open_memory_db` body directly into each mode-specific opener.
+
+3. **Variant-tag layout drift on stdlib `Result` match** — captured
+   as a regression repro in
+   `vcs/specs/L0-critical/_codegen_regressions/result_match_stdlib_l6_open_memory.vr`.
+   Without an explicit `mount l1_pager.{Pager}` in the consumer, the
+   match `{ Ok(c) => …, Err(e) => … }` over a stdlib-returned
+   `Result<Connection, ConnectionError>` deterministically takes the
+   `Err` arm even when the producer returned `Ok`.  Transitive-import
+   workaround makes the test green; durable fix tracked as #146
+   (layout-invariant verification pass).
+
+4. **Method-dispatch transitivity for impl blocks** — when stdlib
+   defines `implement Database { fn execute(...) ... }` and the
+   compiler's `compile_module_items_lenient` cannot resolve
+   cross-module references in the body (e.g. `Database.execute`
+   calls `parse_one` from `l5_sql`), the impl-block method gets
+   silently dropped.  The runtime dispatch then panics with
+   `method 'Database.execute' not found on value`.
+
+   Commit `444dd00d` promoted these silent drops from `debug`-level
+   tracing to `warn`-level emissions so every dropped impl-block
+   method now surfaces in normal CI / dev runs as
+
+   ```text
+   WARN [lenient] SKIP Database.execute: undefined function:
+        parse_one (in function Database.execute) — runtime calls to
+        this method will panic 'method 'Database.execute' not found
+        on value'.  Add the missing dependency to the caller's mount
+        list or fix the cross-module reference in Database stdlib.
+   ```
+
+   A typical L7-touching test currently emits ~93 such warnings —
+   each is a fix-once, deterministic stdlib-hygiene item.  The
+   most-common cluster is `undefined variable: None` (`core.base.maybe`
+   is intentionally excluded from `ALWAYS_INCLUDE` due to historical
+   user-fixture collision — see the inline comment in
+   `crates/verum_compiler/src/pipeline.rs::ALWAYS_INCLUDE`).
 
 In the meantime, **L1's `page_roundtrip.vr`** is the deepest
 end-to-end run-test that exists, exercising L0+L1 round-trip.
