@@ -205,6 +205,45 @@ zero-overhead but requires manual safety proof at every call site;
 keeping it out of public surfaces forces the proof to live in the
 implementer's code, not every consumer's.
 
+### `unsafe-without-capability` — *warn* — AST-driven (Phase C.2)
+
+Function declares `unsafe { ... }` blocks but doesn't carry a
+`@cap(...)` attribute. Verum's capability system makes every
+safety-relaxation explicit at the type level; this rule turns that
+convention into a static check.
+
+```toml
+[lint.capability_policy]
+require_cap_for_unsafe = true
+```
+
+```verum
+fn raw_unsafe() -> Int { unsafe { 42 } }            // fires
+
+@cap(name = "memory.unsafe", domain = "low_level")
+fn declared_unsafe() -> Int { unsafe { 42 } }       // silenced
+```
+
+### `ffi-without-capability` — *warn* — AST-driven (Phase C.2)
+
+Same idea for FFI declarations. Items annotated `@ffi(...)` or
+`@extern(...)` should also declare `@cap(...)` so the foreign-
+boundary capability stays walkable.
+
+```toml
+[lint.capability_policy]
+require_cap_for_ffi = true
+```
+
+```verum
+@ffi("libc")
+fn raw_ffi() -> Int { 0 }                           // fires
+
+@cap(name = "ffi.libc", domain = "ffi")
+@ffi("libc")
+fn declared_ffi() -> Int { 0 }                      // silenced
+```
+
 ### `forbidden-context` — *error* — AST-driven (Phase C.3)
 
 Function uses a context (`using [X]`) that the project's
@@ -517,6 +556,8 @@ error: module `core.crypto.sign` may not import `core.testing`
 | `unrefined-public-int` | verification | warn | **AST** (Phase C.1) |
 | `verify-implied-by-refinement` | verification | warn | **AST** (Phase C.1) |
 | `public-must-have-verify` | verification | hint | **AST** (Phase C.1) |
+| `unsafe-without-capability` | safety | warn | **AST** (Phase C.2) |
+| `ffi-without-capability` | safety | warn | **AST** (Phase C.2) |
 | `forbidden-context` | safety | error | **AST** (Phase C.3) |
 | `architecture-violation` | style | error | **AST** (Phase B.4) |
 | `cbgr-budget-exceeded` | performance | warn | **AST** (Phase C.4) |
