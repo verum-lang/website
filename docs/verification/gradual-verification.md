@@ -47,20 +47,47 @@ strategy controls the solver.
 ## The nine strategies
 
 The grammar production `verify_strategy` (grammar/verum.ebnf §2)
-admits exactly these nine keywords — seven distinct operational
-behaviours plus two pairs of aliases. All nine are **live today**:
+admits exactly these nine keywords. Each one has a **distinct**
+operational behaviour (no aliases — `proof` and `reliable` are no
+longer collapsed into `formal` and `thorough` per VUVA §12).
+All nine are **live today**:
 
-| Strategy      | Gradient | Operational shape | What it does | When to use |
-|---------------|----------|-------------------|--------------|-------------|
-| `runtime`     | Runtime  | Runtime           | runtime assertion check only; no SMT | prototyping, dev builds |
-| `static`      | Static   | Static            | static type-level verification; no solver calls on the fast path | the default fast path |
-| `formal`      | Proof    | Formal            | full SMT verification, capability router picks backend | recommended production default |
-| `proof`       | Proof    | Formal            | alias of `formal`, emphasises proof extraction | when you want to inspect the term |
-| `fast`        | Proof    | Fast              | capability router with 0.3× timeout; unknowns don't block | iterative development |
-| `thorough`    | Proof    | Thorough          | portfolio race with 2× timeout — first success wins | hard obligations |
-| `reliable`    | Proof    | Thorough          | alias of `thorough`, emphasises reliability | critical code |
-| `certified`   | Proof    | Certified         | cross-validation: two independent techniques must agree; 3× timeout | security-critical, external audit, `.verum-cert` export |
-| `synthesize`  | Proof    | Synthesize        | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (CVC5 SyGuS today) | program synthesis, hole filling, invariant generation |
+| Strategy      | ν-ordinal | Gradient | What it does | When to use |
+|---------------|:---------:|----------|--------------|-------------|
+| `runtime`     | 0         | Runtime  | runtime assertion check only; no SMT | prototyping, dev builds |
+| `static`      | 1         | Static   | static type-level verification; no solver calls on the fast path | the default fast path |
+| `fast`        | 2         | Proof    | capability router with 0.3× timeout; unknowns don't block | iterative development |
+| `formal`      | ω         | Proof    | full SMT verification, capability router picks backend | recommended production default |
+| `proof`       | ω + 1     | Proof    | user-supplied tactic block; kernel rechecks. Dominates SMT and admits induction. | theorems, foundational lemmas |
+| `thorough`    | ω · 2     | Proof    | portfolio race with 2× timeout — first success wins; mandatory `decreases` / `invariant` / `frame` | hard obligations |
+| `reliable`    | ω · 2 + 1 | Proof    | `thorough` + Z3 ∧ CVC5 must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
+| `certified`   | ω · 2 + 2 | Proof    | `reliable` + certificate materialisation, kernel re-check, multi-format export | security-critical, external audit, `.verum-cert` export |
+| `synthesize`  | ≤ ω · 3 + 1 | Proof  | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (CVC5 SyGuS today) | program synthesis, hole filling, invariant generation |
+
+**Strict monotonicity.** The ν-ordinals are pinned to make the
+ladder strictly monotone:
+
+```text
+ν-rank: 0 < 1 < 2 < ω < ω+1 < ω·2 < ω·2+1 < ω·2+2 < ω·3+1
+strategy: runtime < static < fast < formal < proof < thorough < reliable < certified < synthesize
+```
+
+The Diakrisis ν-invariant lives at the level of countable ordinals;
+Verum's `verum_smt::verify_strategy::NuOrdinal` enum encodes the
+nine strata exactly so a CI check can assert distinct ranks per
+strategy. See the
+[MSFS coordinate page](msfs-coord.md#2-the-ordinal-type) for the
+full Cantor-normal-form encoding used for theorem-level coords.
+
+**Synthesize orthogonality.** `synthesize` is *modally orthogonal*
+to the linear ladder: it returns a `(GoalShape, WitnessShape)`
+pair rather than a Bool verdict, so its ν is an **upper bound**,
+not a fixed value. A successful synthesis collapses to the
+witness-strategy's ν (per MSFS Thm 4.4).
+
+`formal` is the recommended default today and is what `verum verify`
+selects when no `--mode` is passed; `@verify` without an argument
+behaves the same.
 
 `formal` is the recommended default today and is what `verum verify`
 selects when no `--mode` is passed; `@verify` without an argument
