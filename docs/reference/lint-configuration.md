@@ -18,6 +18,37 @@ This page is the reference. The corresponding design doc lives in
 the main repo at
 [`docs/testing/lint-configuration-design.md`](https://github.com/verum-lang/verum/blob/main/docs/testing/lint-configuration-design.md).
 
+:::tip[Implementation status — Phases A.1 + A.2 + B.1 shipped]
+The following are **available today** in the `verum` binary:
+
+- `[lint]` top-level keys (`extends`, `disabled`, `denied`, `allowed`, `warned`).
+- `[lint.severity]` per-rule severity map, including `"off"`.
+- All four presets (`minimal | recommended | strict | relaxed`)
+  with the concrete behaviour documented in [§ Presets](#presets).
+- `[[lint.custom]]` regex-based custom rules.
+- `.verum/lint.toml` standalone file (preferred when present).
+- CLI: `--list-rules`, `--explain RULE`, `--validate-config`,
+  `--format pretty | json | github-actions`.
+- AST-driven rules `redundant-refinement` and `empty-refinement-bound`
+  (the foundation that unblocks every Phase B/C rule).
+
+The following are **documented design** (the schema below), with
+implementations rolling out incrementally:
+
+- `[lint.profiles.<name>]`, `[lint.per_file_overrides]`,
+  `--profile NAME`, `--since GIT_REF`, `--severity LEVEL` (Phase A.3).
+- `[lint.rules.<name>]` per-rule typed thresholds (Phase A.5).
+- `--format sarif | tap` (Phase A.4).
+- `[lint.naming]` / `[lint.architecture]` enforcement (Phases B.3 / B.4).
+- `[lint.refinement_policy]` / `[lint.capability_policy]` /
+  `[lint.context_policy]` / `[lint.cbgr_budgets]` /
+  `[lint.verification_policy]` enforcement (Phases C.1 – C.4).
+- `[lint.documentation]` / `[lint.style]` ceilings (Phases C.5 / C.6).
+- In-source `@allow / @deny / @warn(rule, reason = "...")` (Phase B.2).
+
+Tracked in `docs/testing/lint-configuration-design.md`.
+:::
+
 ## Quick start
 
 The defaults are sane — a project with no `[lint]` block uses the
@@ -397,18 +428,48 @@ level       = "error"
 
 ## Presets
 
-Built-in `extends` values:
+Built-in `extends` values. Each preset fills the severity map from
+the table below; explicit `[lint.severity]` entries always win over
+preset choices, so `extends = "strict"` and
+`severity.deprecated-syntax = "warn"` keep strict everywhere except
+that single rule.
 
-| Preset | Philosophy | Rules |
-|--------|------------|-------|
-| `minimal` | hard errors only — `deprecated-syntax`, `missing-context-decl`, `mutable-capture-in-spawn`. Useful when porting legacy code. | 3-5 errors |
-| `recommended` (default) | all Safety + Verification rules; Performance and Style at warn / info. | 20-30 |
-| `strict` | `recommended` + refinement-policy + public-api-must-doc + max-fn-lines + naming + layering. CI-grade. | 40-60 |
-| `relaxed` | only Style at info; never errors. Useful for IDE-only suggestions. | 8-12 |
+| Preset | Behaviour |
+|--------|-----------|
+| `minimal` | Only `Error`-level rules survive at error; everything else is `Off`. Useful when porting legacy code into Verum without a flood of warnings. |
+| `recommended` *(default)* | Each rule keeps its built-in level. Status quo behaviour when no preset is set. |
+| `strict` | Every error stays an error; **Safety** and **Verification** warnings are *promoted to errors*; everything else keeps its level. CI-grade. |
+| `relaxed` | Errors stay errors; warnings → info; info → hint. Useful as an IDE-only "suggestion mode" without breaking the build. |
 
-Presets compose with explicit overrides — `extends = "strict"` then
-`disabled = ["max-fn-lines"]` keeps strict everywhere except that one
-rule.
+The full mapping for the 22 built-in rules:
+
+| Rule | category | default | minimal | recommended | strict | relaxed |
+|------|---------|---------|---------|------------|--------|---------|
+| `missing-context-decl` | safety | error | error | error | error | error |
+| `deprecated-syntax` | style | error | error | error | error | error |
+| `mutable-capture-in-spawn` | safety | error | error | error | error | error |
+| `empty-refinement-bound` | verification | error | error | error | error | error |
+| `unchecked-refinement` | verification | warn | off | warn | error | info |
+| `unused-import` | style | warn | off | warn | warn | info |
+| `unnecessary-heap` | performance | warn | off | warn | warn | info |
+| `missing-error-context` | safety | warn | off | warn | error | info |
+| `large-copy` | performance | warn | off | warn | warn | info |
+| `unused-result` | safety | warn | off | warn | error | info |
+| `missing-cleanup` | safety | warn | off | warn | error | info |
+| `unbounded-channel` | performance | warn | off | warn | warn | info |
+| `missing-timeout` | safety | warn | off | warn | error | info |
+| `redundant-clone` | performance | warn | off | warn | warn | info |
+| `empty-match-arm` | style | warn | off | warn | warn | info |
+| `todo-in-code` | style | warn | off | warn | warn | info |
+| `unsafe-ref-in-public` | safety | warn | off | warn | error | info |
+| `cbgr-hotspot` | performance | info | off | info | info | hint |
+| `single-variant-match` | style | hint | off | hint | hint | hint |
+| `missing-type-annotation` | style | hint | off | hint | hint | hint |
+| `redundant-refinement` | verification | hint | off | hint | hint | hint |
+| `shadow-binding` | style | info | off | info | info | hint |
+
+Implementation: see `LintPreset::level_for` in
+`crates/verum_cli/src/commands/lint.rs`.
 
 ## Precedence stack
 

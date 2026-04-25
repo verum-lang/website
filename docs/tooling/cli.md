@@ -70,6 +70,15 @@ verum lint [--fix] [--deny-warnings] [--profile NAME] [--explain RULE] \
 verum fmt [--check]
 ```
 
+`verum lint` runs two cooperating engines: a fast text-scan path
+(20 rules — Rust-isms, missing context decls, CBGR hot paths, …)
+and an AST-driven path (refinement-type and other Verum-unique
+rules whose evidence is structural). See **[Reference →
+Lint rules](/docs/reference/lint-rules)** for every rule shipped
+today, **[Architecture → Lint engine](/docs/architecture/lint-engine)**
+for the design, and **[Cookbook → Linter recipes](/docs/cookbook/linter-recipes)**
+for pre-commit / CI / migration recipes.
+
 Verification modes map to strategies documented in **[Verification →
 gradual verification](/docs/verification/gradual-verification)**.
 
