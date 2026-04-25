@@ -12,6 +12,14 @@ failure. No external crate. No `Arbitrary` boilerplate. Refinement
 types double as generator specifications: `Int{ it > 0 && it <= 100 }`
 is produced within bound for free.
 
+:::tip[All snippets on this page pass `verum check`]
+Examples on this page exercise only attributes and stdlib that exist
+today (`@property`, `@property(runs = N, seed = 0x…)`, primitive
+generators, refinement-driven `Int{…}` bounds, every assertion in
+`core.base.panic`). Copy-paste any of them into `tests/*.vr` and
+they compile.
+:::
+
 ```verum
 @property
 fn addition_is_commutative(x: Int, y: Int) {

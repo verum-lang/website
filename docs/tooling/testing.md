@@ -11,6 +11,14 @@ and nothing equivalent to `cargo test` vs `nextest` vs `proptest` vs
 `insta` vs `criterion` vs `tap-junit` — every style of testing a
 production codebase needs is reachable from one command.
 
+:::tip[All examples on this page pass `verum check`]
+Every code snippet uses real attributes, real stdlib functions, and
+real CLI flags as of the current `verum` build. Examples that
+demonstrate Stage-2 features (`@before_each`, `@after_each`,
+`@snapshot`, context-system mocks via `provide [...]`) are explicitly
+called out — copy-pasting them today will *not* compile.
+:::
+
 This page is the entry point to that surface. Each section links to a
 deeper document where applicable.
 

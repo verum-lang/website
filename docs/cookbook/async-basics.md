@@ -322,10 +322,10 @@ fine; custom runtimes are for fine-tuned server deployments.
 
 ## Testing async code
 
-Use `@test(async)` to mark an async test:
+Use `@test` to mark an async test:
 
 ```verum
-@test(async)
+@test
 async fn test_fetch_timeout() {
     let result = timeout(100.ms(), pending::<()>()).await;
     assert(result.is_err());
@@ -335,7 +335,7 @@ async fn test_fetch_timeout() {
 For deterministic time tests, inject a `FakeClock` context:
 
 ```verum
-@test(async)
+@test
 async fn test_retry_backoff() {
     let clock = FakeClock.at(epoch());
     provide Clock = clock.clone() in {

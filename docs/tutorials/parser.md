@@ -395,7 +395,7 @@ module tests {
         assert(parse(&"1 + 2)".to_string()).is_err());
     }
 
-    @test(property)
+    @property
     fn round_trip(n: Float) {
         // Parse a rendered float; expect it back.
         let s = n.to_text();

@@ -293,7 +293,7 @@ a `TlsStream` that implements the same read/write interface.
 ## Tests
 
 ```verum
-@test(async)
+@test
 async fn test_health_endpoint() {
     let mock_db = MockDatabase.empty();
     let mock_log = NullLogger.new();
@@ -307,7 +307,7 @@ async fn test_health_endpoint() {
     }
 }
 
-@test(async)
+@test
 async fn test_user_not_found() {
     let mock_db = MockDatabase.empty();
     provide Database = mock_db in

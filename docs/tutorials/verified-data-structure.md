@@ -187,7 +187,7 @@ module tests {
         assert_eq(c, list![1, 2, 3, 4, 5, 6]);
     }
 
-    @test(property)
+    @property
     fn insert_preserves_sort_forall(xs: SortedList<Int>, x: Int) {
         let ys = insert(xs.clone(), x);
         assert(is_sorted(&ys));

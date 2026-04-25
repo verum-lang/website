@@ -72,7 +72,7 @@ $ verum analyze --refinement
 Obvious but essential. Trace by hand; write a property test:
 
 ```verum
-@test(property)
+@property
 fn push_grows_len(s: Stack<Int>, x: Int) {
     let before = s.len();
     let after = s.push(x).len();

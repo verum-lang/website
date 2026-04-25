@@ -374,7 +374,7 @@ module tests {
         assert(c.matches(rx#"^[a-hj-km-np-z2-9]+$"));
     }
 
-    @test(property)
+    @property
     fn codegen_is_always_valid(seed: UInt64, length: Int { 6 <= self && self <= 10 }) {
         let c = codegen::generate(seed, length);
         assert_eq(c.len(), length);

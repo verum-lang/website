@@ -87,6 +87,7 @@ const sidebars: SidebarsConfig = {
         'tutorials/protocols',
         'tutorials/context-system',
         'tutorials/memory-safety',
+        'tutorials/testing-walkthrough',
       ],
     },
     {
@@ -128,6 +129,7 @@ const sidebars: SidebarsConfig = {
         'cookbook/adding-verification',
         'cookbook/logic-functions',
         'cookbook/smt-debug',
+        'cookbook/testing-recipes',
       ],
     },
     {
@@ -148,6 +150,7 @@ const sidebars: SidebarsConfig = {
         'guides/faq',
         'guides/style-guide',
         'guides/best-practices',
+        'guides/testing-best-practices',
         'guides/troubleshooting',
         'guides/performance',
         'guides/security',
