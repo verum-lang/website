@@ -403,7 +403,7 @@ code matches a well-known class — `DbConstraint`, `DbBusy`,
 | Layer | Smoke (typecheck-pass) | Run-tests | Property tests | Differential vs C-SQLite |
 |-------|-----------------------|-----------|----------------|--------------------------|
 | L0 | ✓ (catalogues per VFS method) | ✓ `memdb_open_write_read.vr` | scaffolded, no harness yet | — |
-| L1 | ✓ | — | journal-replay vectors | — |
+| L1 | ✓ | ✓ `page_roundtrip.vr` (single page); multi-page demoted typecheck-pass (interpreter perf) | journal-replay vectors | — |
 | L2 | ✓ (varint, affinity, collation, …) | ✓ `varint_roundtrip.vr`, `crc32_vectors.vr` | varint round-trip | byte-vectors against C |
 | L3 | ✓ | — | scaffolded | — |
 | L4 | ✓ (per opcode) | — | — | — |
@@ -412,8 +412,23 @@ code matches a well-known class — `DbConstraint`, `DbBusy`,
 | L7 | ✓ | — | — | — |
 
 The "first end-to-end run-test that drives L5 → L4 → L3 → L1 → L0
-through `CREATE TABLE` + `INSERT` + `SELECT`" is tracked as task #141
-in this session's task list — that's the next gate.
+through `CREATE TABLE` + `INSERT` + `SELECT`" is **blocked on a VBC
+interpreter / stdlib-cache discrepancy**: an in-test verbatim copy
+of `l6_session::open_memory` runs cleanly under VBC interpretation,
+but the *stdlib-cached* form of the same function panics with
+`Panic: method 'I.next' not found on value` on first call.
+
+Bisection narrowed the discrepancy to the cached function body —
+`pager_open_memory()`, `schema_cache_new()`, `tx_state_autocommit()`,
+and direct `Connection { … }` record construction all run cleanly in
+isolation, both via stdlib import and verbatim local copy.  The
+failure surfaces only when calling stdlib-cached `open_memory` (which
+combines those four pieces).  Tracked as task #143 in this session;
+likely root cause is a stale cache entry or a bytecode-vs-source
+mismatch in the registry's `open_memory` body.
+
+In the meantime, **L1's `page_roundtrip.vr`** is the deepest
+end-to-end run-test that exists, exercising L0+L1 round-trip.
 
 ## See also
 
