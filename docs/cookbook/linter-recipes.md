@@ -142,7 +142,9 @@ Today the biggest beneficiary is `deprecated-syntax`:
 
 ## Suppressing one issue
 
-`@allow / @deny / @warn` in source (Phase B.2 — **shipped**):
+Use `@allow / @deny / @warn` in source for the call-site case — when
+the suppression belongs *with* the code it explains, not in a config
+file far away:
 
 ```verum
 @allow("unused-import", reason = "needed by derive macro to see it")
@@ -168,12 +170,19 @@ You can also suppress at the rule level via config:
 unused-import = "off"       # globally
 ```
 
-…or per-file (Phase A.3, planned):
+…or per-file, when the noise is concentrated in a known set of
+paths (legacy modules, generated glue, integration tests):
 
 ```toml
 [lint.per_file_overrides]
-"src/legacy/derive_macro_glue.vr" = { allow = ["unused-import"] }
+"src/legacy/**"  = { allow = ["unused-import", "deprecated-syntax"] }
+"tests/**"       = { allow = ["unused-result", "todo-in-code"] }
+"src/codegen/glue.vr" = { allow = ["unused-import"] }
 ```
+
+Glob patterns understand `**`, `**/`, `/**`, `*` (single segment),
+and a generic substring `*`. When several patterns match the same
+file, the most specific (longest) one wins.
 
 ## Catching refinement-type traps
 
@@ -189,7 +198,7 @@ type Empty  is Int{ it > 100 && it < 50 };   // ERROR: empty-refinement-bound
 value of `Empty` is dead code. Catching this at lint time is much
 cheaper than at runtime.
 
-## Author a project-local AST rule (Phase D)
+## Author a project-local AST rule
 
 Want to forbid `.unwrap()` in production code without writing a Rust
 pass? `[lint.custom.ast_match]` describes the AST shape declaratively:

@@ -230,7 +230,7 @@ fn thorough(x: Int) { ... }
 
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
-| `runs` | `Int` | `100` | Positive iteration count. Per-property override; a manifest `[test].property_runs` setting is planned for Stage 2. |
+| `runs` | `Int` | `100` | Positive iteration count. Per-property override applied to that one property. |
 | `seed` | `Int` | random | Pin execution to a single seed. With this set, the harness performs exactly one iteration, making the property effectively a `@test` with a hardcoded input. Used for CI regression-locking. |
 
 Put `@ignore` on a property to skip it just like a regular `@test`:
@@ -302,8 +302,10 @@ Verum's PBT implementation draws from decades of prior art:
 | **PropTest** (Rust) | File-backed regression DB conventions, noise-threshold regression detection. |
 | **FastCheck** (JS) | Replay-via-short-string — our `--property-seed 0x…` idiom. |
 
-The full literature survey and Verum-specific design choices live at
-`docs/testing/reference-quality-roadmap.md` in the main repo.
+Each row is something a Verum user inherits *for free*: the
+generator subsystem, the regression DB, and the failure-replay
+ergonomics are not bolt-on libraries — they are built into
+`verum test`.
 
 ## Gotchas
 
@@ -321,9 +323,8 @@ The full literature survey and Verum-specific design choices live at
   for refinements used by `@property`.
 - **Shrinks are greedy, not optimal.** For very large input trees the
   greedy walk can terminate at a local minimum that's still two shrinks
-  away from the truly minimal case. Raise `max_shrinks` if you suspect
-  this — it's a per-property setting in the CLI today and will move to
-  `@property(max_shrinks = N)` in Stage 2.
+  away from the truly minimal case. Raise `--max-shrinks` if you
+  suspect this — the default of 100 is enough for most failures.
 
 ## Related
 

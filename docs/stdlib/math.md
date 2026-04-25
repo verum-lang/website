@@ -544,7 +544,7 @@ constructions.
 - **`category_finite/`** — finite categories (decidable equality).
 - **`bitvec/`** — bit-vectors for cryptography.
 - **`observational/`** — observational type theory.
-- **`examples/`** — reference implementations of Phase B/C content.
+- **`examples/`** — worked examples covering the algebra and topology layers.
 - **`internal/`** — library internals (`@internal` marked).
 - **`simple/` / `advanced/`** — convenience API / fine-grained API.
 - **`tactics/`** — tactic library for proof automation.

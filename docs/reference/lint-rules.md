@@ -5,21 +5,33 @@ title: Lint rules
 
 # Lint rules catalogue
 
-Every built-in lint rule shipped with `verum lint`, grouped by
-category. Each entry has a stable name (kebab-case, used in
-`[lint.severity]` and `@allow / @deny / @warn` attributes), a
-default severity, the category that drives preset promotion, and a
-short description with one example.
+The lint rules grouped here fall into four categories — **safety**,
+**verification**, **performance**, and **style** — each with a
+distinct meaning when you pick a preset:
+
+- The `strict` preset promotes every **safety** and **verification**
+  warning to an *error*. CI gates that want a hard "no slipping" line
+  use this.
+- The `relaxed` preset demotes warnings to *info* and infos to
+  *hint*. IDE-friendly suggestion mode that never breaks a build.
+- The `recommended` preset (default) keeps each rule at its built-in
+  severity. The middle ground.
+
+Every rule has a stable kebab-case name. That name is what you pass
+to `[lint.severity]`, to `@allow / @deny / @warn` attributes, and to
+the `--severity` filter — the linter never asks you to spell the
+same thing two different ways.
+
+To inspect or print rules from the binary itself, without leaving
+the terminal:
+
+```bash
+verum lint --list-rules                # alphabetised dump with categories
+verum lint --explain unused-import     # one rule's full doc + example
+```
 
 For configuration, see **[Reference → Lint configuration](/docs/reference/lint-configuration)**.
 For CLI usage, see **[Reference → CLI commands → `verum lint`](/docs/reference/cli-commands#verum-lint)**.
-
-To inspect or print these from the binary itself:
-
-```bash
-verum lint --list-rules                # alphabetised dump
-verum lint --explain unused-import     # one rule's full doc
-```
 
 ## Verification
 
@@ -71,7 +83,7 @@ type Empty is Int{ it > 100 && it < 50 };
 //         bound `101..=49` is empty
 ```
 
-### `unrefined-public-int` — *warn* — AST-driven (Phase C.1)
+### `unrefined-public-int` — *warn*
 
 Public function takes or returns a raw `Int` / `Text` parameter
 without a refinement. The type system can't express usage
@@ -92,7 +104,7 @@ public fn add(a: Int, b: Int) -> Int { a + b }
 public fn add(a: Int{ it > 0 }, b: Int{ it > 0 }) -> Int { a + b }
 ```
 
-### `verify-implied-by-refinement` — *warn* — AST-driven (Phase C.1)
+### `verify-implied-by-refinement` — *warn*
 
 A function uses refinement types in any signature position but lacks
 `@verify(...)`. The type-level obligation is then checked only at
@@ -113,7 +125,7 @@ public fn pos_only(x: Int{ it > 0 }) -> Int { x }
 public fn pos_only(x: Int{ it > 0 }) -> Int { x }
 ```
 
-### `public-must-have-verify` — *hint* — AST-driven (Phase C.1)
+### `public-must-have-verify` — *hint*
 
 Every public function should declare its verification strategy —
 `runtime`, `static`, `formal`, etc. The default is `hint` because not
@@ -205,7 +217,7 @@ zero-overhead but requires manual safety proof at every call site;
 keeping it out of public surfaces forces the proof to live in the
 implementer's code, not every consumer's.
 
-### `unsafe-without-capability` — *warn* — AST-driven (Phase C.2)
+### `unsafe-without-capability` — *warn*
 
 Function declares `unsafe { ... }` blocks but doesn't carry a
 `@cap(...)` attribute. Verum's capability system makes every
@@ -224,7 +236,7 @@ fn raw_unsafe() -> Int { unsafe { 42 } }            // fires
 fn declared_unsafe() -> Int { unsafe { 42 } }       // silenced
 ```
 
-### `ffi-without-capability` — *warn* — AST-driven (Phase C.2)
+### `ffi-without-capability` — *warn*
 
 Same idea for FFI declarations. Items annotated `@ffi(...)` or
 `@extern(...)` should also declare `@cap(...)` so the foreign-
@@ -244,7 +256,7 @@ fn raw_ffi() -> Int { 0 }                           // fires
 fn declared_ffi() -> Int { 0 }                      // silenced
 ```
 
-### `forbidden-context` — *error* — AST-driven (Phase C.3)
+### `forbidden-context` — *error*
 
 Function uses a context (`using [X]`) that the project's
 `[lint.context_policy.modules]` forbids in its module path. Off by
@@ -320,7 +332,7 @@ let c = Channel.with_capacity(1024); // silenced
 `.clone()` on a value that is not used after this point — moving
 would have been free. Common when refactoring borrows out.
 
-### `cbgr-budget-exceeded` — *warn* — AST-driven (Phase C.4)
+### `cbgr-budget-exceeded` — *warn*
 
 Managed CBGR reference (`&` / `&mut`, ~15 ns per deref) used in a
 module whose `[lint.cbgr_budgets].max_check_ns` budget is below the
@@ -337,10 +349,12 @@ default_check_ns = 15            # default: matches the spec
 ```
 
 Resolution: most-specific module pattern wins; falls back to
-`default_check_ns`. Today's enforcement is **static**: if the budget
-is below `15 ns` (the cheapest single deref), every managed `&`
-fires. Profile-driven enforcement (compare measured runtime cost
-against the budget) is on the roadmap.
+`default_check_ns`. Enforcement is **static**: if the configured
+budget is below `15 ns` (the cheapest single deref), every managed
+`&` reference inside the matching module fires. The check is meant
+as a tripwire — set the budget for hot modules and the linter will
+flag any reference shape that *cannot* meet it, before a profile
+ever runs.
 
 ## Style
 
@@ -414,7 +428,7 @@ let x = 1;
 }
 ```
 
-### `naming-convention` — *warn* — AST-driven (Phase B.3)
+### `naming-convention` — *warn*
 
 Identifier doesn't match the project's `[lint.naming]` convention.
 Per-construct: `fn`, `type`, `const`, `variant`, `field`, `module`,
@@ -438,7 +452,7 @@ fn camelFn() { … }       // fires (fn must be snake_case)
 type bad_type is Int;    // fires (type must be PascalCase)
 ```
 
-### `max-line-length` — *hint* — AST-driven (Phase C.6)
+### `max-line-length` — *hint*
 
 Source line exceeds `[lint.style].max_line_length` characters.
 Counts UTF-8 *characters*, not bytes. Default 100; set to 0 to disable.
@@ -448,7 +462,7 @@ Counts UTF-8 *characters*, not bytes. Default 100; set to 0 to disable.
 max_line_length = 100
 ```
 
-### `max-fn-lines` — *hint* — AST-driven (Phase C.6)
+### `max-fn-lines` — *hint*
 
 Function body exceeds `[lint.style].max_fn_lines`. Length is computed
 from the item's source span — `fn` keyword through closing brace.
@@ -459,7 +473,7 @@ Default 80.
 max_fn_lines = 80
 ```
 
-### `max-fn-params` — *hint* — AST-driven (Phase C.6)
+### `max-fn-params` — *hint*
 
 Function declares more parameters than `[lint.style].max_fn_params`.
 Default 5.
@@ -469,7 +483,7 @@ Default 5.
 max_fn_params = 5
 ```
 
-### `max-match-arms` — *hint* — AST-driven (Phase C.6)
+### `max-match-arms` — *hint*
 
 A `match` expression has more arms than `[lint.style].max_match_arms`.
 Walks the AST, so nested matches are checked independently. Default 12.
@@ -479,7 +493,7 @@ Walks the AST, so nested matches are checked independently. Default 12.
 max_match_arms = 12
 ```
 
-### `public-must-have-doc` — *hint* — AST-driven (Phase C.5)
+### `public-must-have-doc` — *hint*
 
 Public function or type lacks a `///` doc comment. Detection scans
 the source lines immediately above the item, skipping blank lines
@@ -498,7 +512,7 @@ public fn no_doc() -> Int { 0 }    // fires
 public fn yes_doc() -> Int { 0 }   // silenced
 ```
 
-### `architecture-violation` — *error* — AST-driven (Phase B.4)
+### `architecture-violation` — *error*
 
 A `mount` crosses a layer boundary (not in `allow_imports`) or
 matches an explicit ban. Off by default; opt in by declaring layers
@@ -528,7 +542,7 @@ error: module `core.crypto.sign` may not import `core.testing`
        [architecture-violation]
 ```
 
-### `custom-ast-rule` — *warn* — AST-driven (Phase D)
+### `custom-ast-rule` — *warn*
 
 A meta-rule covering every user-authored entry in `[[lint.custom]]`
 that uses the `[lint.custom.ast_match]` block instead of a regex
@@ -597,28 +611,29 @@ documented in
 | `single-variant-match` | style | hint | text-scan |
 | `missing-type-annotation` | style | hint | text-scan |
 | `redundant-refinement` | verification | hint | **AST** (lint_engine.rs) |
-| `unrefined-public-int` | verification | warn | **AST** (Phase C.1) |
-| `verify-implied-by-refinement` | verification | warn | **AST** (Phase C.1) |
-| `public-must-have-verify` | verification | hint | **AST** (Phase C.1) |
-| `unsafe-without-capability` | safety | warn | **AST** (Phase C.2) |
-| `ffi-without-capability` | safety | warn | **AST** (Phase C.2) |
-| `forbidden-context` | safety | error | **AST** (Phase C.3) |
-| `architecture-violation` | style | error | **AST** (Phase B.4) |
-| `cbgr-budget-exceeded` | performance | warn | **AST** (Phase C.4) |
-| `naming-convention` | style | warn | **AST** (Phase B.3) |
-| `max-line-length` | style | hint | **AST** (Phase C.6) |
-| `max-fn-lines` | style | hint | **AST** (Phase C.6) |
-| `max-fn-params` | style | hint | **AST** (Phase C.6) |
-| `max-match-arms` | style | hint | **AST** (Phase C.6) |
-| `public-must-have-doc` | style | hint | **AST** (Phase C.5) |
-| `custom-ast-rule` | style | warn | **AST** (Phase D — user-authored) |
+| `unrefined-public-int` | verification | warn | **AST**  |
+| `verify-implied-by-refinement` | verification | warn | **AST**  |
+| `public-must-have-verify` | verification | hint | **AST**  |
+| `unsafe-without-capability` | safety | warn | **AST**  |
+| `ffi-without-capability` | safety | warn | **AST**  |
+| `forbidden-context` | safety | error | **AST**  |
+| `architecture-violation` | style | error | **AST**  |
+| `cbgr-budget-exceeded` | performance | warn | **AST**  |
+| `naming-convention` | style | warn | **AST**  |
+| `max-line-length` | style | hint | **AST**  |
+| `max-fn-lines` | style | hint | **AST**  |
+| `max-fn-params` | style | hint | **AST**  |
+| `max-match-arms` | style | hint | **AST**  |
+| `public-must-have-doc` | style | hint | **AST**  |
+| `custom-ast-rule` | style | warn | **AST** (user-authored) |
 | `shadow-binding` | style | info | text-scan |
 
 AST-driven rules (built on `verum_ast::Visitor`) are zero-false-positive
 on their concern — `redundant-refinement` cannot be fooled by a
-`{ true }` inside a string literal or a comment, the way text-scan
-would. New AST passes land per Phase B/C of the
-[lint configuration roadmap](/docs/reference/lint-configuration).
+`{ true }` inside a string literal or a comment, the way a text-scan
+rule would. The two engines complement each other: AST rules read
+*structure*, text-scan rules read *strings*, and each is the right
+tool for one shape of evidence.
 
 ## How to control rule severity
 
@@ -637,12 +652,22 @@ extends = "strict"           # promotes safety/verification warnings to errors
 # 3. By category — implicit through the preset table above.
 ```
 
-Plus, in upcoming phases:
+Plus call-site control inside the source itself — most-specific
+scope wins, beating both `[lint.severity]` and CLI flags:
 
 ```verum
 @allow(unused-import, reason = "needed by derive macro to see it")
 mount stdlib.derive.*;
+
+@deny(unused-result)
+fn must_use_result() -> Result<Int, Error> { /* ... */ }
+
+@warn(redundant-clone)
+type LegacyShim is { /* opt this type back into stricter checking */ };
 ```
+
+The rule name passed to `@allow / @deny / @warn` is the same
+identifier shown in `verum lint --list-rules`.
 
 ## See also
 

@@ -281,7 +281,6 @@ See [gradual verification](/docs/verification/gradual-verification).
 | `cargo test` | `verum test` (libtest-compatible flag set; see below) |
 | `cargo bench` | `verum bench` (Criterion-style time budgets, baselines) |
 | `proptest!` macro | `@property fn(args)` attribute — built-in, no crate |
-| `cargo-insta` snapshots | `@snapshot` (Stage 2) |
 | `cargo-llvm-cov` | `verum test --coverage` + `llvm-cov` |
 | `cargo check` | `verum check` |
 | `cargo doc` | `verum doc` |
