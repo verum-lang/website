@@ -234,10 +234,10 @@ verum test --coverage
 ```
 
 Compiles each test binary with LLVM source-based coverage, writes
-`*.profraw` files under `target/coverage/`, and instructs the user to
-run `llvm-cov report` for a summary. Fully-integrated HTML/lcov
-reporting is tracked on the **[reference-quality roadmap](https://github.com/verum-lang/verum/blob/main/docs/testing/reference-quality-roadmap.md)**
-as a Stage 2 item.
+`*.profraw` files under `target/coverage/`, and prints the
+`llvm-cov` invocation you'd use for a summary or HTML report. The
+generated `default.profdata` works with every LLVM tool — `llvm-cov
+report`, `llvm-cov show`, and any IDE that consumes profdata.
 
 ## Benchmarking
 
@@ -312,33 +312,18 @@ tier = "aot"                 # default tier for run/test/bench
 See **[Reference → `verum.toml`](/docs/reference/verum-toml)** for the
 full manifest schema.
 
-## What's shipped vs on the roadmap
+## What `verum test` covers today
 
-Full design and research notes live in-repo at
-`docs/testing/reference-quality-roadmap.md`. A summary:
+A capability-level summary of what the runner does, so you can plan
+your test strategy at a glance:
 
-**Stage 1 (available today)**:
-- PBT runner with integrated Hedgehog shrinking, refinement-type-driven
-  generators, seed-based replay, and an auto-pruning regression DB.
-- `@test_case` parametrisation.
-- Extended assertions (`assert_approx_eq`, `assert_panics`, `assert_between`,
-  `assert_is_sorted`, `assert_contains`).
-- CI output: JUnit XML, TAP v13, SARIF 2.1.0, NDJSON.
-- Coverage pass-through to `llvm-cov`.
-- `verum bench` with Criterion-style time budgets, bootstrap 95 % CI,
-  Tukey outlier classification, baseline save/load/diff.
+| Capability | What it gives you |
+|------------|-------------------|
+| `@test`, `@test_case`, `@property` | Three test shapes — single, parametrised, randomised — driven from one CLI |
+| Extended assertions | `assert_approx_eq`, `assert_panics`, `assert_between`, `assert_is_sorted`, `assert_contains` — every one printing structural diagnostics, not just *“assertion failed”* |
+| Property runner | Hedgehog-style integrated shrinking, refinement-type-driven generators, seed-based replay, auto-pruning regression database |
+| CI integration | JUnit XML, TAP v13, SARIF 2.1.0, NDJSON output formats — all stable schemas |
+| Coverage | `verum test --coverage` produces LLVM `*.profraw` / `*.profdata` for `llvm-cov` (HTML, summary, `show`) |
+| Bench harness | Criterion-style time budgets, bootstrap 95 % CI, Tukey outlier classification, baseline save / load / diff |
 
-**Stage 2 (next)**:
-- `@before_each` / `@after_each` fixtures.
-- `@snapshot` testing with `--update-snapshots`.
-- Context-system mocks (`test_provide` for DI).
-- Integrated `verum coverage` command wrapping `llvm-cov` with HTML.
-- Doctest extraction from `/// @example` blocks.
-- Watch mode for tests.
-
-**Stage 3 (research)**:
-- Coverage-guided PBT (CrowBar / AFL-style fuzzing feedback).
-- Targeted PBT (simulated-annealing input search).
-- Model-based / stateful testing.
-- Loom-style permutation for concurrency.
-- Mutation testing (`verum test --mutate`).
+The rest of this page works through each of those in detail.

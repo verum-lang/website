@@ -110,8 +110,6 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 | `@bench(group)` | fn | associate the bench with a named group (shown in the report and preserved in JSON/CSV output). |
 | `@fuzz` | fn | register as a fuzz target (VCS fuzz infra — distinct from PBT). |
 
-Reserved for Stage 2 (tracked in `docs/testing/reference-quality-roadmap.md`):
-`@before_each`, `@after_each`, `@snapshot`, `@timeout(ms)`.
 
 ## Conditional compilation
 

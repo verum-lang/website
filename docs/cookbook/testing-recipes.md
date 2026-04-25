@@ -172,10 +172,11 @@ fn is_palindrome_table(input: Text, expected: Bool) {
 
 Add a row whenever a bug surfaces; `[6]` becomes the historic record.
 
-## Snapshot via stdout (today's recipe)
+## Snapshot via stdout
 
-Until first-class `@snapshot` lands (Stage 2), capture stdout and
-diff against a golden file:
+Capture rendered output and diff against a golden file checked into
+the repo. Useful for any code whose contract is *“produce this exact
+text”* — error formatters, codegen, pretty-printers, CLI help screens:
 
 ```verum
 mount stdlib.fs;

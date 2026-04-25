@@ -250,7 +250,10 @@ type affinity) → planner (search-space cost model) → codegen
 | Expressions | arithmetic, comparison, `IS NULL`, `IN (…)`, `CASE … WHEN`, built-in scalar fns |
 
 Extended SQL features (recursive CTE, `WITHIN GROUP`, `OVER (…)`,
-FTS, RTree) are tracked in the loom roadmap.
+FTS, RTree) are surfaced through the `core.database.sqlite.native`
+catalogue — the engine recognises the keyword shapes and returns a
+structured *unsupported feature* diagnostic so callers can detect and
+fall back rather than crash mid-query.
 
 ## L6 — session
 

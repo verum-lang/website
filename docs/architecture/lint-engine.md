@@ -67,7 +67,8 @@ pub fn passes() -> &'static [&'static dyn LintPass] {
     static PASSES: &[&(dyn LintPass + Sync + 'static)] = &[
         &RedundantRefinementPass,
         &EmptyRefinementBoundPass,
-        // future passes — naming, architecture, refinement-policy, …
+        // … plus the rest: naming, architecture, refinement-policy,
+        // CBGR-budget, capability, style ceilings, custom AST rules.
     ];
     /* widening transmute */
 }
@@ -195,7 +196,7 @@ That's it — no other files touched. The CLI, JSON / GitHub Actions
 formatters, severity-map / preset / `--validate-config` plumbing
 all light up automatically.
 
-## User-authored AST rules (Phase D)
+## User-authored AST rules
 
 Built-in passes are not the only way to add structural lints —
 `[[lint.custom]]` accepts a `[lint.custom.ast_match]` block that
@@ -239,8 +240,7 @@ User rules participate in every downstream feature for free:
 
 ## See also
 
-- **[Reference → Lint rules](/docs/reference/lint-rules)** — every rule shipped today.
+- **[Reference → Lint rules](/docs/reference/lint-rules)** — every rule the linter currently checks.
 - **[Reference → Lint configuration](/docs/reference/lint-configuration)** — the `[lint]` schema.
-- `crates/verum_cli/src/commands/lint_engine.rs` — code for the AST engine + the two starter passes.
+- `crates/verum_cli/src/commands/lint_engine.rs` — the AST-engine source.
 - `crates/verum_cli/src/commands/lint.rs` — text-scan engine + `LintConfig` + presets.
-- `docs/testing/lint-configuration-design.md` (in-tree) — full design doc and roadmap.

@@ -5,78 +5,27 @@ title: Lint configuration
 
 # `[lint]` configuration
 
-The `verum lint` command reads its policy from the `[lint]` block in
-`verum.toml` (or, for projects that prefer to keep the manifest
-clean, the dedicated `.verum/lint.toml`). The schema is designed in
-the spirit of Verum's existing manifest sections — `[verify]`,
-`[linker]`, `[codegen]` — and goes meaningfully past `.clippy.toml`,
-`ruff.toml`, `biome.json`, and `golangci.yml` by exposing
-**refinement-aware**, **capability-aware**, **context-aware**, and
-**CBGR-tier-aware** policy controls that no other linter can offer.
+`verum lint` reads its policy from the `[lint]` block in `verum.toml`,
+or — when you'd rather keep the manifest clean — from a dedicated
+`.verum/lint.toml`. The schema mirrors the rest of the manifest
+(`[verify]`, `[linker]`, `[codegen]`), so picking it up feels familiar
+the moment you've configured anything else in Verum.
 
-This page is the reference. The corresponding design doc lives in
-the main repo at
-[`docs/testing/lint-configuration-design.md`](https://github.com/verum-lang/verum/blob/main/docs/testing/lint-configuration-design.md).
+What sets it apart from the linters you've used before is that the
+rules are **language-aware** in ways a generic AST visitor cannot be:
 
-:::tip[Implementation status — full Phase A/B/C/D shipped]
-The following are **available today** in the `verum` binary:
+- **Refinement-aware** — rules can read predicate shapes
+  (`Int{ x > 0 }`) and react to redundant or missing constraints.
+- **Capability-aware** — `@cap` declarations participate in
+  rule decisions (e.g. *"`unsafe { … }` is fine here, but only if
+  the function declares `@cap(unsafe, …)`"*).
+- **Context-aware** — the `using [Database, Logger]` clause is a
+  first-class rule input.
+- **CBGR-tier-aware** — managed `&` (~15 ns) vs `&checked` (0 ns)
+  vs `&unsafe` shows up in the diagnostics, with budget rules
+  enforcing per-module cost ceilings.
 
-- `[lint]` top-level keys (`extends`, `disabled`, `denied`, `allowed`, `warned`).
-- `[lint.severity]` per-rule severity map, including `"off"`.
-- All four presets (`minimal | recommended | strict | relaxed`)
-  with the concrete behaviour documented in [§ Presets](#presets).
-- `[[lint.custom]]` regex-based custom rules **and** structured
-  AST-pattern rules via `[lint.custom.ast_match]` (Phase D —
-  `kind = "method_call" | "call" | "attribute" | "unsafe_block"`).
-- `.verum/lint.toml` standalone file (preferred when present).
-- CLI: `--list-rules`, `--explain RULE`, `--validate-config`,
-  `--format pretty | json | github-actions`.
-- AST-driven rule engine on top of `verum_ast::Visitor` — every Verum-
-  unique policy below is a `LintPass` plugged into one slice.
-- `[lint.profiles.<name>]` named profiles + `--profile NAME` CLI
-  flag (falls back to `$VERUM_LINT_PROFILE` env var). Profiles
-  inherit + override the base config; CLI flags still win.
-- `[lint.per_file_overrides]` glob → allow/deny/warn/disable.
-  Glob patterns: `**`, `**/`, `/**`, `*` (single segment), generic
-  substring `*`. Most-specific (longest) match wins.
-- `--severity LEVEL` filters to issues at that level or higher
-  (error > warn > info > hint).
-- `--since GIT_REF` lints only files changed since the ref
-  (`git diff --name-only <REF>...HEAD -- '*.vr'`).
-- `--format sarif` emits SARIF 2.1.0 (GitHub Code Scanning, Azure
-  DevOps, static-analysis aggregators).
-- `--format tap` emits TAP v13 (`prove`, classic CI runners).
-- AST-driven rules: `redundant-refinement`, `empty-refinement-bound`
-  (Phase B.1), `naming-convention` (Phase B.3), three refinement-
-  policy rules (`unrefined-public-int`, `verify-implied-by-refinement`,
-  `public-must-have-verify` — Phase C.1), `forbidden-context`
-  (Phase C.3), `architecture-violation` (Phase B.4),
-  `cbgr-budget-exceeded` (Phase C.4), four style ceilings —
-  `max-line-length`, `max-fn-lines`, `max-fn-params`,
-  `max-match-arms` (Phase C.6), `public-must-have-doc`
-  (Phase C.5), and capability-policy rules `unsafe-without-capability`,
-  `ffi-without-capability` (Phase C.2).
-- In-source `@allow("rule", reason = "...")` / `@deny("rule")` /
-  `@warn("rule")` attributes — call-site suppression / promotion
-  scoped to the enclosing item's source span. Most-specific scope
-  wins; beats `[lint.severity]` and CLI flags.
-- `[lint.rules.<name>]` per-rule typed config + the typed accessor
-  `LintConfig::rule_config<T>()` (Phase A.5).
-- Synthetic-key mapping for policy blocks: `[lint.naming]`,
-  `[lint.refinement_policy]`, `[lint.context_policy.modules.*]`,
-  `[lint.cbgr_budgets.modules.*]`, `[lint.verification_policy]`,
-  `[lint.architecture.{layers,bans}]` all parse and route to their
-  respective rules' typed configs.
-
-The following are **documented design** (the schema below), with
-implementations rolling out incrementally:
-
-- LSP integration for in-editor diagnostics (Phase D extension —
-  the lint engine itself is feature-complete; what remains is
-  surfacing diagnostics through `verum_lsp` instead of the CLI).
-
-Tracked in `docs/testing/lint-configuration-design.md`.
-:::
+The reference below covers everything `verum lint` accepts today.
 
 ## Quick start
 
@@ -425,10 +374,12 @@ Attribute scope:
 
 ## Custom rules
 
-Two flavours: **regex** rules (text-scan, fast, fuzzy) and
-**AST-pattern** rules (Phase D, AST-aware, strictly more precise —
-won't fire on substrings inside string literals or comments). A rule
-provides exactly one of `pattern` or `[lint.custom.ast_match]`.
+Two flavours: **regex** rules (text-scan — fast, fuzzy, useful for
+catching string conventions like TODO formats) and **AST-pattern**
+rules (AST-aware, strictly more precise — they walk the parsed
+module so they cannot fire on substrings inside string literals or
+comments). A rule provides exactly one of `pattern` or
+`[lint.custom.ast_match]`.
 
 ### Regex rules
 
@@ -443,7 +394,7 @@ exclude     = ["src/legacy/**"]
 suggestion  = "TODO(#XXXX)"   # auto-fix replacement (optional)
 ```
 
-### AST-pattern rules (Phase D)
+### AST-pattern rules
 
 ```toml
 # 1. Method-call match: any `.method(...)` invocation.

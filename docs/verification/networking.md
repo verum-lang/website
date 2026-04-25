@@ -162,8 +162,8 @@ v10_chain_validation_theorem.vr  verify-pass   (3389 ms)
 
 If any of the ten flips to `verify-fail` after a change to its
 underlying module, the change is rejected at compile time — same
-discipline as a type error. The CI gate has been green continuously
-since the warp Phase 8 closeout.
+discipline as a type error. The CI gate runs each obligation against
+the `warp` networking corpus on every commit.
 
 ## See also
 
