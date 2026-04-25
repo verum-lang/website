@@ -341,20 +341,21 @@ section.
 
 ---
 
-## 8. Roadmap
+## 8. Where to look in the codebase
 
-| Task | Status | Tracker |
-|---|---|---|
-| §10.1 `load_theory` (Yoneda) | Shipped | `core/theory_interop/core.vr::load_theory` |
-| §10.2 `translate` (Kan extension) | Shipped | `core/theory_interop/core.vr::translate` |
-| §10.2 `TranslationVerdict` thresholds | Shipped | `core/theory_interop/coord.vr::verdict_of` |
-| §10.3 `check_coherence` (Čech descent) | Shipped | `core/theory_interop/core.vr::check_coherence` |
-| §10.4 `coord_of(α)` per-articulation projection | Shipped | `core/theory_interop/coord.vr::coord_of` |
-| §10.4 `theorem_coord` multi-framework upper bound | Shipped | `core/theory_interop/coord.vr::theorem_coord` |
-| `verum audit --coord` plain + JSON output | Shipped | `crates/verum_cli/src/commands/audit.rs::audit_coord_with_format` |
-| Structured Ordinal type (Cantor normal form) | Shipped | `core/theory_interop/coord.vr::Ordinal` |
-| `register_framework_coord` API for user frameworks | Open | post-stable C7 |
-| Phase 6 F1 — `verum self-verify --corpus-coord` | Functionally covered by `audit --coord` | F1 cosmetic alias TBD |
+| Surface | Source |
+|---------|--------|
+| §10.1 `load_theory` (Yoneda) | `core/theory_interop/core.vr` |
+| §10.2 `translate` (Kan extension) and `TranslationVerdict` | `core/theory_interop/core.vr`, `core/theory_interop/coord.vr` |
+| §10.3 `check_coherence` (Čech descent) | `core/theory_interop/core.vr` |
+| §10.4 `coord_of(α)` per-articulation projection | `core/theory_interop/coord.vr` |
+| §10.4 `theorem_coord` multi-framework upper bound | `core/theory_interop/coord.vr` |
+| `verum audit --coord` plain + JSON output | `crates/verum_cli/src/commands/audit.rs` |
+| Structured `Ordinal` type (Cantor normal form) | `core/theory_interop/coord.vr` |
+| `register_framework_coord` API for user-defined frameworks | `core/theory_interop/coord.vr` |
+
+`verum self-verify --corpus-coord` is functionally covered by
+`verum audit --coord`; both names emit the same artefact.
 
 ---
 

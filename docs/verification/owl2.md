@@ -49,14 +49,16 @@ reasoner with no formal connection to the assistant's kernel
 
 VUVA §21.2 distinguishes two layers of correspondence claim:
 
-| Claim | Status | Direction |
+| Claim | Direction | Where it comes from |
 |---|---|---|
-| **Faithful translation** | Shipped | every OWL 2 DS derivation ⇒ Verum derivation |
-| **Morita-equivalence** | Phase 6 F7 deferred | OWL 2 DS ↔ Verum-encoded OWL 2 *both* directions |
+| **Faithful translation** | every OWL 2 DS derivation ⇒ Verum derivation | automatic from the Shkotin-literal encoding |
+| **Morita-equivalence** | OWL 2 DS ↔ Verum-encoded OWL 2 *both* directions | bridge theorem layered on top of the faithful translation |
 
-Faithful translation is automatic from the Shkotin-literal encoding;
-Morita-equivalence elevates the claim to "Verum's OWL 2 *is* OWL 2
-up to categorical equivalence" — a Phase 6 deliverable.
+Faithful translation is what most consumers need — every OWL 2 fact
+proved in Verum is a fact in OWL 2. Morita-equivalence elevates the
+claim to *"Verum's OWL 2 **is** OWL 2 up to categorical equivalence"*
+and is delivered through the cross-framework bridge layer described
+in §8.
 
 ---
 
@@ -82,8 +84,10 @@ Verum targets **DS only**. Rationale (per VUVA §21.1):
 - Shkotin 2019 — the formal bridge Verum imports — formalises DS
   only; RBS has no equivalent in-kernel formalisation.
 
-If a consumer needs RBS (e.g. SPARQL interop), a separate
-`core.math.frameworks.owl2_rbs` package is a Phase 6 work item.
+If a consumer needs RBS (e.g. SPARQL interop), the path is a
+separate `core.math.frameworks.owl2_rbs` package layered on top of
+DS — the encoding here does not preclude that, it just keeps the
+two semantics behind distinct module entry points.
 
 ---
 
@@ -591,11 +595,11 @@ arithmetic.
 
 ---
 
-## 8. Cross-framework composition (Phase 3b → Phase 6)
+## 10. Cross-framework composition
 
-Phase 3b ships a canonical bridge `owl2_fs → lurie_htt` (~30
-`@framework_translate(owl2_fs → lurie_htt, ...)` axioms) so OWL 2
-corpora automatically receive ∞-topos / categorical interpretations:
+A canonical bridge `owl2_fs → lurie_htt` carries OWL 2 facts into
+the ∞-topos / categorical world via the `@framework_translate` axiom
+family:
 
 | OWL 2 operator | HTT image |
 |---|---|
@@ -606,32 +610,18 @@ corpora automatically receive ∞-topos / categorical interpretations:
 | ObjectPropertyChain | Functor composition |
 | HasKey | Representable-presheaf condition (HTT 5.1) |
 
-Phase 6 F6 extends to bridges to the rest of the standard six-pack
-(`baez_dolan`, `schreiber_dcct`, `connes_reconstruction`,
-`petz_classification`). Phase 6 F7 elevates the §21.2 correspondence
-from faithful translation to Morita-equivalence in both directions
-(`owl2_morita_bridge` theorem).
+The same bridge pattern extends to the rest of the standard
+foundational six-pack (`baez_dolan`, `schreiber_dcct`,
+`connes_reconstruction`, `petz_classification`) — each new bridge
+contributes its `@framework_translate` axioms and an OWL 2 corpus
+becomes automatically interpretable in the target framework. The
+§21.2 Morita-equivalence theorem (`owl2_morita_bridge`) layers on
+top of this network, lifting "faithful in one direction" to "the
+same theory under either presentation".
 
 ---
 
-## 9. Roadmap
-
-| Task | Status | Tracker |
-|---|---|---|
-| C7 — owl2_fs package (64 trusted axioms) | V1 ✓ | `core/math/frameworks/owl2_fs/` |
-| C7 — V2 HOL-body completion | Open | per-table follow-up commits |
-| C7b — `owl2_fs → lurie_htt` bridge (~30 translate axioms) | Open | post-C7-V2 |
-| C8 — OwlAttr family (7 typed attributes) | V1 ✓ | `crates/verum_ast/src/attr/typed.rs::Owl2*Attr` |
-| C9 — count_o + E_OWL2_UNBOUNDED_COUNT diagnostic | V1 ✓ | `core/math/frameworks/owl2_fs/count.vr` |
-| C9 — V2 CVC5 Finite Model Finding integration | Open | `crates/verum_smt/src/backend_switcher.rs` |
-| B5 — `verum export --to owl2-fs` / `verum import` | Deferred | depends on C8 |
-| F5 — `verum audit --owl2-classify` | Deferred | depends on C7+C8 |
-| F6 — bridges to `baez_dolan`, `schreiber_dcct`, … | Deferred | depends on C7b |
-| F7 — Morita-equivalence theorem `owl2_morita_bridge` | Deferred | depends on F5+F6 |
-
----
-
-## 10. Success criteria (VUVA §21.12)
+## 11. Success criteria (VUVA §21.12)
 
 1. Round-trip: Pellet-compatible `foaf.owl` → `verum import` → `verum export` → byte-identical output.
 2. SNOMED-CT medical corpus classification produces the same class hierarchy as HermiT.
@@ -641,7 +631,7 @@ from faithful translation to Morita-equivalence in both directions
 
 ---
 
-## 11. Further reading
+## 12. Further reading
 
 - [Framework axioms](framework-axioms.md) — the `@framework(name,
   citation)` system that produces the trusted boundary OWL 2 inhabits.

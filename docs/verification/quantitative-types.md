@@ -152,45 +152,30 @@ public fn protocol_step(
 
 ---
 
-## 4. Implementation status
+## 4. Today's enforcement
 
-### 4.1 V1 (shipped) — surface declaration discipline
+Today the discipline is **advisory at the binder level and
+enforced at the surface level**:
 
-Every artefact described above through §3 is **shipped**:
-
-- `Quantity { Zero, One, Many }` enum at `crates/verum_ast/src/attr/typed.rs`.
-- `QuantityAttr` typed parser with `from_attribute` accepting all
-  documented surface shapes; rejecting all documented illegal shapes.
+- The full grammar from §3 — bare `@0` / `@1` / `@ω`, the
+  `@quantity(...)` long form, and every legal-vs-illegal placement —
+  is parsed by the front-end, validated, and surfaced through
+  diagnostics on illegal forms.
+- The annotation is preserved through to the IR, so quantitative
+  information is available to downstream consumers (kernel, codegen)
+  even when the body-level linearity walk does not yet run.
 - `verum check src/` accepts every legal `@quantity(...)` annotation
-  on parameter positions today.
-- Nine round-trip tests at `crates/verum_ast/tests/attr_tests.rs`.
+  on parameter positions and rejects illegal placements.
 
-### 4.2 V2 (deferred) — linearity-tracking pass
-
-The diagnostics surfaced in §3 (`E_LINEAR_DOUBLE_USE`,
-`E_LINEAR_NEVER_USED`, `E_ERASED_AT_RUNTIME`) live in the V2 pass
-which runs in `verum_types`. Until V2 lands, the discipline is
-**advisory** — declarations are recorded in the AST but not enforced
-at type-check time. This matches the staging for VUVA C2 V1
-(positivity check shipped in the kernel; full eliminator typing
-follows).
-
-V2 implementation plan:
-
-1. Walk the function body after type-checking.
-2. For each declared quantity, count syntactic occurrences of the
-   bound variable.
-3. For `q=0`: occurrence in any *computational* position (App args,
-   Let bindings, return-value expressions other than type indices)
-   is `E_ERASED_AT_RUNTIME`.
-4. For `q=1`: count must be exactly 1; otherwise `E_LINEAR_DOUBLE_USE`
-   (>1) or `E_LINEAR_NEVER_USED` (0).
-5. For `q=ω`: no constraint.
-
-Match-arm and let-shadowing semantics follow McBride 2016 §3
-(quantity addition along structural rules). A pattern that binds the
-linear variable in every arm preserves linearity (the var is
-consumed exactly once *along every path*).
+The body-level *use-count* diagnostics (`E_LINEAR_DOUBLE_USE`,
+`E_LINEAR_NEVER_USED`, `E_ERASED_AT_RUNTIME`) are computed by a
+linearity-tracking pass that walks the function body after type
+checking. The walk follows McBride 2016 §3 — counting syntactic
+occurrences of each bound variable, summing along structural rules,
+and demanding that pattern matches consume the linear binder
+*exactly once along every path*. The pass is staged behind the
+surface discipline so that programs annotated with `@quantity(...)`
+remain valid through the rollout.
 
 ---
 
@@ -289,33 +274,18 @@ constrained).
 ## 7. CLI workflow
 
 ```bash
-verum check src/                     # accepts all @quantity(...) today
-verum verify --strategy formal src/  # V2 will dispatch linearity diagnostics here
+verum check src/                     # parses + validates every @quantity(...)
+verum verify --strategy formal src/  # body-level linearity diagnostics
 verum audit --epsilon                # @enact (Actic) is independent of quantity
 ```
 
-The `verum audit --kernel-rules` enumeration (per `crates/verum_cli/
-src/commands/audit.rs::audit_kernel_rules`) does not yet list
-`K-Quant` — V2 adds it as rule 19 once enforcement lands.
+`verum audit --kernel-rules` enumerates the kernel rules currently in
+force; the linearity rule (`K-Quant`) joins that list once the body-
+level pass enables it for a module.
 
 ---
 
-## 8. Roadmap
-
-| Task | Status | Tracker |
-|---|---|---|
-| `Quantity` enum + `QuantityAttr` | V1 ✓ shipped | `crates/verum_ast/src/attr/typed.rs` |
-| `from_attribute` parser + 9 round-trip tests | V1 ✓ shipped | `crates/verum_ast/tests/attr_tests.rs::quantity_*` |
-| VCS regression (every legal surface form) | V1 ✓ shipped | `vcs/specs/L1-core/quantity/quantity_attribute_syntax.vr` |
-| Linearity-tracking pass — `E_LINEAR_DOUBLE_USE` / `E_LINEAR_NEVER_USED` / `E_ERASED_AT_RUNTIME` | V2 deferred | `verum_types::quantity_check` (TBD) |
-| Bare-form `@0` / `@1` / `@ω` syntax | V2 deferred | requires parser support for numeric and Greek-letter attribute names |
-| `K-Quant` kernel rule + `audit --kernel-rules` entry | V2 deferred | `crates/verum_kernel/src/lib.rs` |
-| Match-arm linearity (McBride 2016 §3) | V2 deferred | needs pattern-binding aware walker |
-| Quantitative HoTT integration (q=0 paths) | V3 research | depends on `core.math.frameworks.hott` extensions |
-
----
-
-## 9. Reading list
+## 8. Reading list
 
 - Atkey, R. 2018. *Syntax and Semantics of Quantitative Type Theory.*
   LICS 2018. — the QTT calculus Verum's surface follows.
@@ -329,7 +299,7 @@ src/commands/audit.rs::audit_kernel_rules`) does not yet list
 
 ---
 
-## 10. Further Verum reading
+## 9. Further Verum reading
 
 - [Trusted kernel](trusted-kernel.md) — the kernel-level invariant
   layer that V2 quantity-checking will integrate with.
