@@ -45,6 +45,7 @@ const sidebars: SidebarsConfig = {
         'verification/articulation-hygiene',
         'verification/actic-dual',
         'verification/msfs-coord',
+        'verification/owl2',
         'verification/performance',
         'verification/cli-workflow',
         'verification/proof-corpora',
