@@ -346,6 +346,75 @@ file       = ""              # "" = stdout
 - `manual` — emit a unified diff to `target/lint/fixes.diff` for the
   user to apply.
 
+## Output schemas
+
+Each `--format` produces a stable, documented stream — CI scripts
+and dashboards can rely on the shape staying the same across
+patch releases.
+
+### `--format json` — newline-delimited JSON
+
+One issue per line. Every line carries `schema_version` so a
+consumer can assert it understands the shape before parsing fields.
+Adding new fields is non-breaking; renaming or removing fields
+bumps the version.
+
+```json
+{
+  "event": "lint",
+  "schema_version": 1,
+  "rule": "deprecated-syntax",
+  "level": "error",
+  "file": "src/main.vr",
+  "line": 4,
+  "column": 13,
+  "message": "use `Heap(x)` instead of `Box::new(x)`",
+  "fixable": true,
+  "suggestion": "Heap(x)"
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `event` | string | Always `"lint"` for diagnostic lines |
+| `schema_version` | integer | Currently `1` |
+| `rule` | string | Kebab-case rule name |
+| `level` | string | `error` \| `warning` \| `info` \| `hint` \| `off` |
+| `file` | string | Path relative to invocation directory |
+| `line` | integer | 1-indexed |
+| `column` | integer | 1-indexed |
+| `message` | string | Human-readable summary |
+| `fixable` | boolean | `true` when `--fix` knows how to repair this issue |
+| `suggestion` | string | Replacement / hint text. Present when `fixable` is `true`; may also appear on non-fixable issues as a manual-action hint |
+
+### `--format sarif` — SARIF 2.1.0
+
+One JSON document per run, conformant to the OASIS SARIF 2.1.0
+schema. Used by GitHub Code Scanning, Azure DevOps, and most
+static-analysis aggregators. The level vocabulary maps as follows:
+
+| Verum level | SARIF level |
+|-------------|-------------|
+| error | error |
+| warning | warning |
+| info, hint | note |
+| off | (omitted) |
+
+### `--format tap` — TAP v13
+
+`TAP version 13` followed by a `1..N` plan and one `ok` /
+`not ok` line per issue. Errors and warnings emit `not ok`; info
+and hint emit `ok ... # SKIP info` so strict TAP consumers don't
+fail on non-blocking issues. Each `not ok` carries a YAML
+diagnostic block with the rule, level, file, line, and column.
+
+### `--format github-actions`
+
+One workflow-annotation line per issue:
+`::error file=path,line=N,col=M,title=<rule>::<message>`. Newlines
+in the message are encoded as `%0A` so multi-line messages survive
+GitHub's line-oriented annotation parser.
+
 ## In-source attributes
 
 Override for one item without touching `verum.toml`:
