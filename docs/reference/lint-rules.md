@@ -399,6 +399,66 @@ fn camelFn() { … }       // fires (fn must be snake_case)
 type bad_type is Int;    // fires (type must be PascalCase)
 ```
 
+### `max-line-length` — *hint* — AST-driven (Phase C.6)
+
+Source line exceeds `[lint.style].max_line_length` characters.
+Counts UTF-8 *characters*, not bytes. Default 100; set to 0 to disable.
+
+```toml
+[lint.style]
+max_line_length = 100
+```
+
+### `max-fn-lines` — *hint* — AST-driven (Phase C.6)
+
+Function body exceeds `[lint.style].max_fn_lines`. Length is computed
+from the item's source span — `fn` keyword through closing brace.
+Default 80.
+
+```toml
+[lint.style]
+max_fn_lines = 80
+```
+
+### `max-fn-params` — *hint* — AST-driven (Phase C.6)
+
+Function declares more parameters than `[lint.style].max_fn_params`.
+Default 5.
+
+```toml
+[lint.style]
+max_fn_params = 5
+```
+
+### `max-match-arms` — *hint* — AST-driven (Phase C.6)
+
+A `match` expression has more arms than `[lint.style].max_match_arms`.
+Walks the AST, so nested matches are checked independently. Default 12.
+
+```toml
+[lint.style]
+max_match_arms = 12
+```
+
+### `public-must-have-doc` — *hint* — AST-driven (Phase C.5)
+
+Public function or type lacks a `///` doc comment. Detection scans
+the source lines immediately above the item, skipping blank lines
+and `@`-attributes, until it sees `///` (silenced) or anything else
+(fires).
+
+```toml
+[lint.documentation]
+public_must_have_doc = true
+```
+
+```verum
+public fn no_doc() -> Int { 0 }    // fires
+
+/// Returns zero.
+public fn yes_doc() -> Int { 0 }   // silenced
+```
+
 ### `architecture-violation` — *error* — AST-driven (Phase B.4)
 
 A `mount` crosses a layer boundary (not in `allow_imports`) or
@@ -461,6 +521,11 @@ error: module `core.crypto.sign` may not import `core.testing`
 | `architecture-violation` | style | error | **AST** (Phase B.4) |
 | `cbgr-budget-exceeded` | performance | warn | **AST** (Phase C.4) |
 | `naming-convention` | style | warn | **AST** (Phase B.3) |
+| `max-line-length` | style | hint | **AST** (Phase C.6) |
+| `max-fn-lines` | style | hint | **AST** (Phase C.6) |
+| `max-fn-params` | style | hint | **AST** (Phase C.6) |
+| `max-match-arms` | style | hint | **AST** (Phase C.6) |
+| `public-must-have-doc` | style | hint | **AST** (Phase C.5) |
 | `shadow-binding` | style | info | text-scan |
 
 AST-driven rules (built on `verum_ast::Visitor`) are zero-false-positive
