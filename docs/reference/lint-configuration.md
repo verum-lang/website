@@ -41,6 +41,9 @@ The following are **available today** in the `verum` binary:
   (error > warn > info > hint).
 - `--since GIT_REF` lints only files changed since the ref
   (`git diff --name-only <REF>...HEAD -- '*.vr'`).
+- `--format sarif` emits SARIF 2.1.0 (GitHub Code Scanning, Azure
+  DevOps, static-analysis aggregators).
+- `--format tap` emits TAP v13 (`prove`, classic CI runners).
 - AST-driven rules: `redundant-refinement`, `empty-refinement-bound`
   (Phase B.1), `naming-convention` (Phase B.3), three refinement-
   policy rules (`unrefined-public-int`, `verify-implied-by-refinement`,
@@ -66,7 +69,6 @@ The following are **available today** in the `verum` binary:
 The following are **documented design** (the schema below), with
 implementations rolling out incrementally:
 
-- `--format sarif | tap` (Phase A.4).
 - AST-pattern custom rules + LSP integration (Phase D).
 
 Tracked in `docs/testing/lint-configuration-design.md`.
