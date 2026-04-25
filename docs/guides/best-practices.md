@@ -149,12 +149,12 @@ module tests {
 ## Property tests for anything algebraic
 
 ```verum
-@test(property)
+@property
 fn sort_is_idempotent(xs: List<Int>) {
     assert_eq(xs.sorted().sorted(), xs.sorted());
 }
 
-@test(property)
+@property
 fn reverse_reverse_is_identity(xs: List<Int>) {
     assert_eq(xs.reversed().reversed(), xs);
 }

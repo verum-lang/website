@@ -249,11 +249,73 @@ fn load_or_default(input: &Text) -> Output {
 | `npm install` | `verum add <dep>` |
 | `tsc --watch` | `verum watch` |
 | `tsc` / `tsc --noEmit` | `verum build` / `verum check` |
-| `jest` / `vitest` | `verum test` |
+| `jest` / `vitest` | `verum test` (libtest-style flag set) |
+| `fast-check` | `@property` (built in — refinement types feed the generator) |
+| `jest --coverage` | `verum test --coverage` (LLVM source-based coverage) |
+| `jest-junit` | `verum test --format junit` (built in) |
 | `eslint` | `verum lint` |
 | `prettier` | `verum fmt` |
 | `tsconfig.json` | `verum.toml` |
 | `package.json` | `verum.toml` (same file) |
+
+---
+
+## Testing
+
+Tests live under `tests/`, never alongside source. The runner walks
+the directory, dispatches by attribute (`@test`, `@property`,
+`@test_case`), and reports each as a discrete entry:
+
+```typescript
+// jest
+import { add } from './math';
+import fc from 'fast-check';
+
+test('add is commutative', () => {
+    fc.assert(fc.property(fc.integer(), fc.integer(), (a, b) =>
+        add(a, b) === add(b, a)
+    ));
+});
+
+test.each([
+    [0, 0, 0],
+    [1, 2, 3],
+])('%i + %i = %i', (a, b, expected) => {
+    expect(add(a, b)).toBe(expected);
+});
+```
+
+```verum
+// Verum
+@property
+fn add_is_commutative(a: Int, b: Int) {
+    assert_eq(add(a, b), add(b, a));
+}
+
+@test
+@test_case(0, 0, 0)
+@test_case(1, 2, 3)
+fn add_table(a: Int, b: Int, expected: Int) {
+    assert_eq(add(a, b), expected);
+}
+```
+
+Notable mappings:
+
+- **`describe` blocks** → split into separate `tests/*.vr` files.
+- **`expect(...).toBe(...)`** → `assert_eq(left, right)`.
+- **`expect(...).toBeCloseTo(x, digits)`** → `assert_approx_eq(a, b, tol)`.
+- **`expect(fn).toThrow()`** → `assert_panics(\|\| fn())`.
+- **`test.each(...)`** → `@test_case(...)` (one attribute per row).
+- **`fc.assert(fc.property(...))`** → `@property` on a typed fn.
+- **`it.skip` / `xit`** → `@ignore(reason = "…")`.
+- **`it.only`** → `verum test --filter <name> --exact`.
+
+CI output: `verum test --format junit > results.xml` is the drop-in
+for `jest-junit`. SARIF is built in for GitHub Code Scanning.
+
+Full reference: **[Tooling → Testing](/docs/tooling/testing)**.
+Walkthrough: **[Tutorials → Testing walkthrough](/docs/tutorials/testing-walkthrough)**.
 
 ---
 

@@ -294,7 +294,74 @@ No `nil`-pointer dereferences by construction.
 | `godoc -http` | `verum doc --open` |
 | `pprof` | `verum profile` |
 | `go test -bench` | `verum bench` |
+| `testing/quick`, `gopter` | `@property` (built in) |
+| `go test -coverprofile=cover.out` | `verum test --coverage` |
 | `delve` (debugger) | `verum dap` (DAP server) |
+
+---
+
+## Testing
+
+Verum's testing primitives live in attributes, not naming
+conventions:
+
+```go
+// Go
+package mypkg
+
+import "testing"
+
+func TestAddCommutes(t *testing.T) {
+    if 1+2 != 2+1 { t.Errorf("not commutative") }
+}
+
+func BenchmarkParse(b *testing.B) {
+    for i := 0; i < b.N; i++ { Parse("foo") }
+}
+```
+
+```verum
+// Verum
+@test
+fn add_commutes() {
+    assert_eq(1 + 2, 2 + 1);
+}
+
+@bench
+fn parse_short() {
+    let mut n: Int = 0;
+    while n < 10_000 {
+        let _ = parse(&"foo");
+        n = n + 1;
+    }
+}
+```
+
+Property tests are first-class — no `testing/quick` boilerplate, no
+`gopter` import:
+
+```verum
+@property
+fn add_commutes(a: Int, b: Int) {
+    assert_eq(a + b, b + a);
+}
+```
+
+Notable differences:
+
+- **No `t *testing.T` parameter** — assertions panic, the runner
+  catches the panic. The model is libtest-shaped, not `testing.T`-shaped.
+- **`@test_case(args…)` instead of table-driven loops** — each row
+  becomes its own test entry (`name[0]`, `name[1]`, …) so a failure
+  points at the exact case.
+- **Tests live under `tests/`**, not next to production code with a
+  `_test.go` suffix.
+- **CI output**: `verum test --format junit | tap | sarif | json`
+  ships built in. No `gotestsum`-style adapter.
+
+The full reference is at **[Tooling → Testing](/docs/tooling/testing)**;
+the walkthrough at **[Tutorials → Testing walkthrough](/docs/tutorials/testing-walkthrough)**
+mirrors the test-driven loop a Go dev would expect.
 
 ---
 

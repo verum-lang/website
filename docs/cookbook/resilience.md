@@ -261,7 +261,7 @@ Route these to a `Metrics` context (see
 Use a `FakeClock` + injectable `Http` mock:
 
 ```verum
-@test(async)
+@test
 async fn breaker_trips_after_five_failures() {
     let mut mock_http = MockHttp.new()
         .on_get(url, || Result.Err(HttpError.Timeout));

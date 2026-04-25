@@ -278,8 +278,11 @@ See [gradual verification](/docs/verification/gradual-verification).
 | `cargo new` | `verum new` |
 | `cargo build` | `verum build` |
 | `cargo run` | `verum run` |
-| `cargo test` | `verum test` |
-| `cargo bench` | `verum bench` |
+| `cargo test` | `verum test` (libtest-compatible flag set; see below) |
+| `cargo bench` | `verum bench` (Criterion-style time budgets, baselines) |
+| `proptest!` macro | `@property fn(args)` attribute — built-in, no crate |
+| `cargo-insta` snapshots | `@snapshot` (Stage 2) |
+| `cargo-llvm-cov` | `verum test --coverage` + `llvm-cov` |
 | `cargo check` | `verum check` |
 | `cargo doc` | `verum doc` |
 | `cargo fmt` | `verum fmt` |
@@ -288,6 +291,70 @@ See [gradual verification](/docs/verification/gradual-verification).
 | `Cargo.toml` | `verum.toml` |
 | `Cargo.lock` | `Verum.lock` |
 | `rustup` | not needed — `verum` is a single self-contained binary |
+
+---
+
+## Testing
+
+Verum's testing surface is built into the `verum` binary — no
+separate `proptest`, `criterion`, `insta`, or `cargo-llvm-cov` crates
+to install. The mental mapping is roughly libtest-shaped, with
+property testing native:
+
+```rust
+// Rust — separate crates
+#[test]
+fn add_works() { assert_eq!(1 + 2, 3); }
+
+#[test] #[ignore] fn slow_test() { /* … */ }
+
+#[cfg(test)]
+mod tests {
+    use proptest::prelude::*;
+    proptest! {
+        #[test]
+        fn add_commutes(a in 0i64.., b in 0i64..) {
+            prop_assert_eq!(a + b, b + a);
+        }
+    }
+}
+```
+
+```verum
+// Verum — built in
+@test
+fn add_works() { assert_eq(1 + 2, 3); }
+
+@test
+@ignore(reason = "slow on CI")
+fn slow_test() { /* … */ }
+
+@property
+fn add_commutes(a: Int{ it >= 0 }, b: Int{ it >= 0 }) {
+    assert_eq(a + b, b + a);
+}
+```
+
+Notable differences:
+
+- **No `#[cfg(test)]`** — tests live under `tests/`, never inline. The
+  per-file structure replaces the `mod tests` boilerplate.
+- **No `proptest!` block** — `@property` is an ordinary attribute on
+  an ordinary fn. Refinement types feed the generator, eliminating
+  most of the `Strategy` boilerplate.
+- **Built-in regression DB** — failing seeds persist to
+  `target/test/pbt-regressions.json` and replay first; commit it for
+  permanent CI coverage. No separate file like `proptest-regressions/`.
+- **Built-in baselines** — `verum bench --save-baseline main`,
+  `--baseline main`, `--noise-threshold 5.0` ship with the binary. No
+  Criterion-style HTML report yet; JSON / Markdown / CSV cover most
+  needs.
+- **Output formats**: `--format pretty | terse | json | junit | tap | sarif`.
+  No need for `cargo2junit` or `tap-junit` adapters.
+
+The full reference is at **[Tooling → Testing](/docs/tooling/testing)**;
+the walkthrough at **[Tutorials → Testing walkthrough](/docs/tutorials/testing-walkthrough)**
+mirrors the test-driven development loop a Rust dev would expect.
 
 ---
 
