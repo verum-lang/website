@@ -329,17 +329,260 @@ The compiler:
 
 ---
 
-## 7. CLI workflow
+## 7. Graph audit semantics — `verum audit --owl2-classify`
+
+`verum audit --owl2-classify` is a **graph-aware** audit, not a flat
+marker enumeration. It walks every `Owl2*Attr` in the project,
+constructs the canonical OWL 2 classification graph, runs four
+graph-theoretic algorithms on it, and exits with a non-zero status
+on any DL-unsatisfiability condition.
+
+The graph type is `crates/verum_cli/src/commands/owl2.rs::Owl2Graph` —
+a single source of truth shared with the OWL 2 Functional-Syntax
+exporter (§8). Both consumers parse the project once and read the
+same canonical graph.
+
+### 7.1 Graph construction
+
+`Owl2Graph` is a flat record of three components:
+
+```rust
+pub struct Owl2Graph {
+    pub entities: BTreeMap<Text, Owl2Entity>,
+    pub subclass_edges: BTreeSet<(Text, Text)>,
+    pub equivalence_pairs: BTreeSet<(Text, Text)>,
+    pub disjoint_pairs: BTreeSet<(Text, Text)>,
+}
+```
+
+Equivalence pairs and disjoint pairs are stored **symmetrised**: when
+the user writes `@owl2_disjoint_with([Pizza, IceCream])` on `Salad`,
+the graph stores both `(Salad, Pizza)` and `(Pizza, Salad)`. This
+keeps the closure walkers orientation-blind.
+
+Each entity is either a Class or a Property. Multi-attribute merging
+is built in: when a single declaration carries `@owl2_class` *and*
+`@owl2_subclass_of` *and* `@owl2_disjoint_with` *and* `@owl2_has_key`,
+all four feed into the same `Owl2Entity` record without overwriting
+earlier metadata. Property attributes similarly merge characteristic
+flags from a flag-only `@owl2_characteristic` block into a richer
+`@owl2_property` block on the same `fn`.
+
+### 7.2 Subclass closure
+
+`Owl2Graph::subclass_closure() -> BTreeMap<Text, BTreeSet<Text>>`
+computes the **reflexive-transitive** ancestor set of every class.
+Iterative fixed-point — the lattice of possible ancestor sets is
+finite (bounded above by the entity count squared), so termination is
+guaranteed.
+
+```rust
+loop {
+    let mut changed = false;
+    for (child, parent) in &self.subclass_edges {
+        let parent_anc = closure.get(parent).cloned().unwrap_or_default();
+        let entry = closure.entry(child.clone()).or_default();
+        for a in parent_anc {
+            if entry.insert(a) {
+                changed = true;
+            }
+        }
+    }
+    if !changed { break; }
+}
+```
+
+Each pass propagates one level deeper; the fixed-point is reached
+after at most `depth(graph)` iterations. For the canonical Pizza
+ontology (~200 classes, depth ~5) the closure converges in microseconds.
+
+### 7.3 Cycle detection
+
+Any class C with `C ⊑* C` (transitively) is unsatisfiable in DL.
+`Owl2Graph::detect_cycles(closure)` walks subclass edges and flags
+both halves of every cycle:
+
+```rust
+for (child, parent) in &self.subclass_edges {
+    if child == parent {
+        cyclic.insert(child.clone());                // direct self-loop
+        continue;
+    }
+    if let Some(p_anc) = closure.get(parent) {
+        if p_anc.contains(child) {                   // transitive cycle
+            cyclic.insert(child.clone());
+            cyclic.insert(parent.clone());
+        }
+    }
+}
+```
+
+Both `child` and `parent` are added when a transitive cycle is
+detected, so the user sees the full ring rather than just one
+edge. Ring length is implicit in the closure — every member of the
+cycle gets the same closure set.
+
+### 7.4 Equivalence partition
+
+OWL 2 equivalences are pairwise; the canonical mathematical object
+is the *equivalence-class partition*. `Owl2Graph::equivalence_partition`
+computes it via union-find:
+
+1. Initialise `parent[c] = c` for every class mentioned in an
+   equivalence pair.
+2. For each `(a, b)` in `equivalence_pairs`, union the two roots.
+3. Group by final root; emit groups of size ≥ 2.
+
+The output is `Vec<BTreeSet<Text>>` — each set is one equivalence
+class. The downstream OWL 2 FS exporter uses this projection to emit
+exactly one `EquivalentClasses(...)` axiom per partition, rather than
+one redundant pairwise edge per declaration.
+
+### 7.5 Disjoint/subclass conflict detection
+
+The canonical DL inconsistency: a class C declared *disjoint from*
+D AND C is also a *subclass of* D (directly or transitively). Such an
+ontology has no model.
+
+`Owl2Graph::detect_disjoint_violations(closure)` returns every
+offending pair:
+
+```rust
+for (a, b) in &self.disjoint_pairs {
+    if a == b {
+        violations.insert((a.clone(), b.clone()));   // disjoint with self
+        continue;
+    }
+    if let Some(a_anc) = closure.get(a) {
+        if a_anc.contains(b) {                       // subclass conflict
+            violations.insert((a.clone(), b.clone()));
+        }
+    }
+}
+```
+
+Both directions are checked — disjointness is symmetric — but each
+violation surfaces only once (the underlying `BTreeSet` deduplicates).
+
+### 7.6 Inconsistency policy
+
+`audit --owl2-classify` propagates cycles and disjoint violations
+as **non-zero exit code**. The CLI is strict: any inconsistency
+fails the build. CI dashboards consuming the JSON output see the
+same `cycles[]` and `disjoint_violations[]` arrays so dashboards can
+fail PRs that introduce ontology defects without re-running the
+audit themselves.
+
+A loose-lint mode (warnings only) is a future-only flag; the spec
+treats DL inconsistency as a hard error per VUVA §21.10 success
+criterion #3.
+
+---
+
+## 8. OWL 2 Functional-Syntax export — `verum export --to owl2-fs`
+
+`verum export --to owl2-fs` walks the same `Owl2Graph` shared with
+the audit (§7), and emits a Pellet/HermiT/Protégé/FaCT++/ELK/
+Konclude-compatible `.ofn` file per the W3C OWL 2 Functional-Style
+Syntax Recommendation (Second Edition, 11 December 2012).
+
+### 8.1 Output structure
+
+```text
+# Exported by `verum export --to owl2-fs` (VUVA §21.8 / B5).
+# OWL 2 Functional-Style Syntax — round-trips through Pellet, HermiT,
+# Protégé, FaCT++, ELK, Konclude. BTreeMap-sorted output for byte-
+# deterministic CI diffs.
+
+Prefix(:=<http://verum-lang.org/ontology/<package-name>#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+
+Ontology(<http://verum-lang.org/ontology/<package-name>>
+  Declaration(Class(:Animal))
+  Declaration(Class(:Mammal))
+  Declaration(ObjectProperty(:knows))
+  …
+  SubClassOf(:Mammal :Animal)
+  EquivalentClasses(:HumanBeing :Person2)
+  DisjointClasses(:Mammal :Mineral)
+  HasKey(:Citizen (:ssn :dob) ())
+  ObjectPropertyDomain(:knows :Person)
+  ObjectPropertyRange(:knows :Person)
+  TransitiveObjectProperty(:knows)
+  SymmetricObjectProperty(:knows)
+  InverseObjectProperties(:knows :knownBy)
+  …
+)
+```
+
+The base IRI is derived from `Verum.toml`'s `[package].name` —
+`http://verum-lang.org/ontology/<package-name>`. A `:` prefix
+declaration maps the local namespace to that IRI base, so all
+local-name references in the body (`:Animal`, `:knows`) resolve
+correctly without per-axiom IRI repetition.
+
+### 8.2 Byte-determinism
+
+Every collection that contributes to the body is a `BTreeMap` or
+`BTreeSet` keyed alphabetically. The same project produces the same
+bytes across runs, file systems, and platforms — making the export
+a CI-friendly artefact. `verum export --to owl2-fs > old.ofn ; …
+edit … ; verum export --to owl2-fs > new.ofn ; diff old.ofn new.ofn`
+produces a minimal diff highlighting exactly the user's change.
+
+The de-symmetrisation step in `DisjointClasses` emission deserves a
+note: the graph stores both `(Pizza, IceCream)` and `(IceCream,
+Pizza)` symmetrised; the exporter keeps only the lex-min ordering
+(`(IceCream, Pizza)` since `IceCream < Pizza`) so the output has
+exactly one `DisjointClasses(...)` axiom per declared pair, not two.
+
+### 8.3 Per-attribute mapping
+
+| Verum attribute | OWL 2 FS axiom |
+|---|---|
+| `@owl2_class` | `Declaration(Class(:Name))` |
+| `@owl2_property(...)` | `Declaration(ObjectProperty(:Name))` + `ObjectPropertyDomain` + `ObjectPropertyRange` + per-flag axiom |
+| `@owl2_subclass_of(C)` | `SubClassOf(:Self :C)` |
+| `@owl2_equivalent_class(...)` | `EquivalentClasses(...)` per partition |
+| `@owl2_disjoint_with([...])` | `DisjointClasses(...)` per pair, lex-min ordered |
+| `@owl2_characteristic(F)` | `<F>ObjectProperty(:Name)` per flag |
+| `@owl2_has_key(p, ...)` | `HasKey(:Self (:p1 :p2 ...) ())` |
+
+Characteristic flags map directly to their canonical W3C axiom
+names: `Symmetric` → `SymmetricObjectProperty`, `Transitive` →
+`TransitiveObjectProperty`, `Functional` → `FunctionalObjectProperty`,
+etc. (seven total per Shkotin Table 6).
+
+### 8.4 Round-trip status
+
+V1 ships export only. Import (`verum import --from owl2-fs`) is a
+follow-up commit; the round-trip success criterion (§21.12 #1) —
+Pellet-compatible `foaf.owl` → `verum import` → `verum export` →
+byte-identical output — is gated on the import path landing.
+
+---
+
+## 9. CLI workflow
 
 ```bash
 verum audit --framework-axioms --by-lineage owl2_fs   # OWL 2 footprint
 verum audit --coord                                    # MSFS coord projection
+verum audit --owl2-classify                            # graph-aware classification (§7)
 verum audit --hygiene                                  # Articulation hygiene
-verum audit --epsilon                                  # Actic ε-distribution
+verum audit --epsilon                                  # Actic ε-distribution (incl. ε_classify)
 verum check --hygiene                                  # V2: kernel-level hygiene
 verum verify --strategy formal                         # subsumption / classification
-verum export --to owl2-fs ./src/ontology.vr            # B5 (deferred)
+verum export --to owl2-fs                              # OWL 2 FS emitter (§8)
 ```
+
+`verum audit --epsilon` recognises `ε_classify` as the eighth Actic
+primitive — a function decorated `@enact(epsilon: "ε_classify")` is
+classified as ontology-classification work and surfaces in its own
+bucket of the ε-distribution. See [OC/DC dual stdlib](actic-dual.md#2-the-seven-ε-primitives)
+for the full primitive table.
 
 `verum audit --coord` projects every owl2_fs theorem to its MSFS
 coordinate `(owl2_fs, ν=1, τ=intensional)` — the SROIQ DL-decidable
