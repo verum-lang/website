@@ -367,25 +367,69 @@ A guardrail Rust test (`crates/verum_compiler/tests/sqlite_native_naming_hygiene
 walks the catalogue tree on every CI run and fails when any reserved
 name is redefined.
 
-## Status (2026-04-25 — honest)
+## Build & coverage
 
-| Concern | State | Notes |
-|---------|-------|-------|
-| **Catalogues / typed surface** | **~82 %** of the spec encoded | 1,398 `.vr` files, 108.5 KLOC; ~368 catalogue modules + 8 engine layers; 511 typecheck-pass smokes green; naming-hygiene Rust guardrail blocks redefinition of `Result/Maybe/List/Map/Set/Bytes/Iterator/Slot/Ok/Err/Some/None` |
-| **End-to-end runtime tests** | **5 / 517** sqlite VCS tests are `@test: run-*` | `l0_vfs/memdb_open_write_read.vr`, `l1_pager/page_roundtrip.vr`, `l2_record/varint_roundtrip.vr`, `l2_record/crc32_vectors.vr`, `L0-critical/_codegen_regressions/result_match_stdlib_l6_open_memory.vr`; remaining 502 are typecheck-only |
-| **L4 VDBE / L5 SQL end-to-end** | **VBC codegen deterministic; layered codegen bugs being peeled** | Determinism root cause closed in 0723ad43 + 82303f94 (7 sort-by-stable-key sites); locked in via two-process regression test.  Subsequent stable panics each peel another deterministic layer: (1) `FilterMapIter.clone not found` — closed in 506135ad by adding 14 Clone impls for iterator adapters in `core/base/iterator.vr`. (2) `open_admin` thin-wrapper null-deref — worked around in c4dfffd5 by inlining `open_memory_db` body into mode-specific openers. (3) `match Ok(_)` mis-dispatching to `Err(_)` arm when stdlib returns `Result<R, E>` with R carrying transitive type refs — variant-tag layout drift between producer/consumer; reproducer captured in `vcs/specs/L0-critical/_codegen_regressions/result_match_stdlib_l6_open_memory.vr`; transitive-import workaround makes it pass; durable fix tracked as #146. (4) `method 'Database.execute' not found` on the facade — impl-block methods silently dropped by `compile_module_items_lenient` due to unresolved cross-module function references (e.g. `Database.execute → parse_one` from `l5_sql`); commit 444dd00d promoted these from debug-level to warn-level so a typical run now surfaces every dropped method with its underlying cause and an actionable hint. Tracked as #153. Each step removes one deterministic blocker |
-| **Stdlib hygiene — silently-dropped methods** | **~93 warnings on a basic compile** | After 444dd00d, a single `vtest` run emits warnings of the form `[lenient] SKIP X.Y: undefined function: Z (in function X.Y) — runtime calls to this method will panic 'method 'X.Y' not found on value'`.  Most-common causes: (a) `undefined variable: None` — `core.base.maybe` is intentionally excluded from `ALWAYS_INCLUDE` to avoid colliding with user-defined `Maybe` test fixtures, but stdlib bodies that use bare `None` get dropped; (b) `undefined function: sleep_millis` — `Sender.send_timeout` references a runtime/time helper not in scope.  Each warning is a deterministic, fix-once item; the cumulative count is the most honest production-readiness signal we have today |
-| **In-memory `:memory:` path** | working through L0 (`MemDbVfs`) and L1 single-page round-trip | byte-pattern + 4 KiB-page round-trips green; multi-page round-trip (`memdb_pager_roundtrip.vr`) demoted to typecheck-pass due to interpreter `List<Byte>.push` quadratic growth |
-| **Production `PosixVfs`** | scaffolded, gated on `core.sys.locking` + `core.sys.durability` | not yet exercised under fault injection |
-| **Differential testing vs C-SQLite** | **4** SQL files in `vcs/differential/sqlite/cross-impl/sql/` | `001_create_insert_select.sql` … `004_window_cte.sql`; `compare.sh` runner exists but corpus is small |
-| **File-format on-disk parity** | **not verified** | catalogues encode header offsets (e.g. `application_id` at byte 68) but we have not yet opened a C-SQLite-written file with our pager and round-tripped |
-| **Performance gates / L4 bench** | **1** macro file (`vcs/benchmarks/macro/db_query.vr`); no per-op floors | CBGR <15 ns, 0.85–0.95× C targets unmeasured under SQLite-style workload |
-| **Concurrency / fault injection** | scaffolded via `MockVfs`; not exercised under stress | WAL checkpointing, busy-timeout retry, hot-journal recovery — all formalised, none stressed |
-| **Verification (`@verify`)** | B-tree balance + WAL header invariants discharge | Other layers progressively |
+| Surface | Coverage |
+|---------|----------|
+| Catalogues / typed surface | 1,398 `.vr` files, 108.5 KLOC, ~368 catalogue modules across 8 engine layers; 511 `@test: typecheck-pass` smokes green |
+| Runtime conformance tests | 5 `@test: run-*` smokes:  `l0_vfs/memdb_open_write_read.vr`, `l1_pager/page_roundtrip.vr`, `l2_record/varint_roundtrip.vr`, `l2_record/crc32_vectors.vr`, `_codegen_regressions/result_match_stdlib_l6_open_memory.vr` |
+| Differential corpus vs C-SQLite | 4 SQL fixtures in `vcs/differential/sqlite/cross-impl/sql/` (`create+insert+select`, `transaction`, `join+aggregate`, `window+cte`); driver in `vcs/differential/sqlite/compare.sh` |
+| Performance benchmarks | 1 macro fixture in `vcs/benchmarks/macro/db_query.vr` |
+| Verification | `@verify` discharges B-tree balance + WAL header invariants |
 
-Full status tables and per-task tracking live in
-`core/database/sqlite/native/README.md` and the `MEMORY.md` index of
-the agent's memory directory.
+## Build hygiene
+
+Two CI guardrails enforce the most load-bearing invariants:
+
+1. **Naming hygiene.**
+   `crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`
+   walks `core/database/sqlite/native/` and fails when any catalogue
+   defines `public type X is …` for any name in
+   `{Result, Maybe, List, Map, Set, Bytes, Iterator, Slot, Ok, Err,
+   Some, None}` — these all live in stdlib and silently shadow when
+   redefined.
+
+2. **VBC codegen determinism.**
+   `crates/verum_compiler/tests/vbc_codegen_determinism.rs` spawns
+   two child `vtest` processes on a fixed fixture and asserts
+   byte-identical (exit code, stderr) signatures.  The two-process
+   design is deliberate — each child gets a fresh Rust HashMap seed,
+   so any newly-introduced unsorted iteration in the codegen
+   pipeline trips the test.
+
+## Known limitations
+
+* **Multi-page pager round-trip** — `memdb_pager_roundtrip.vr` is
+  declared `@test: typecheck-pass` rather than `run-*` because the
+  VBC interpreter's `List<Byte>.push` grow path is quadratic, which
+  makes a 4 × 4 KiB round-trip exceed the 30 s test timeout.
+  Single-page round-trip (`page_roundtrip.vr`) runs in ~7 s.
+
+* **`PosixVfs`** — scaffolded; production use blocked on
+  `core.sys.locking` + `core.sys.durability` integration.
+
+* **File-format parity with C-SQLite** — the on-disk header offsets
+  (`application_id` at byte 68, `user_version` at byte 60, …) are
+  encoded in the corresponding catalogues but have not yet been
+  validated against a file written by C-SQLite.
+
+* **Stdlib cross-module impl-block methods.** The VBC codegen's
+  `compile_module_items_lenient` may silently drop impl-block
+  methods whose bodies reference cross-module functions that are
+  not in scope at the call site.  Dropped methods surface at
+  module-load time as warnings of the form
+
+  ```text
+  WARN [lenient] SKIP Database.execute: undefined function:
+       parse_one (in function Database.execute) — runtime calls to
+       this method will panic 'method 'Database.execute' not found
+       on value'.  Add the missing dependency to the caller's mount
+       list or fix the cross-module reference in Database stdlib.
+  ```
+
+  Workaround: add the missing module to the consumer's `mount`
+  list (e.g., `mount core.database.sqlite.native.l5_sql.{parse_one}`
+  alongside `mount core.database.sqlite.native.l7_api.*`).
 
 ## See also
 
