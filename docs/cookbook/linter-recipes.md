@@ -189,6 +189,61 @@ type Empty  is Int{ it > 100 && it < 50 };   // ERROR: empty-refinement-bound
 value of `Empty` is dead code. Catching this at lint time is much
 cheaper than at runtime.
 
+## Author a project-local AST rule (Phase D)
+
+Want to forbid `.unwrap()` in production code without writing a Rust
+pass? `[lint.custom.ast_match]` describes the AST shape declaratively:
+
+```toml
+# verum.toml
+[[lint.custom]]
+name        = "no-unwrap-in-prod"
+description = "use `?` or `expect(\"why\")` instead of unwrap()"
+severity    = "error"
+paths       = ["src/**"]
+exclude     = ["src/legacy/**"]
+[lint.custom.ast_match]
+kind   = "method_call"
+method = "unwrap"
+```
+
+Other shapes available out of the box:
+
+```toml
+# Forbid every direct `panic(...)` call.
+[[lint.custom]]
+name        = "no-direct-panic"
+severity    = "warn"
+description = "panics belong behind a refinement-checked precondition"
+[lint.custom.ast_match]
+kind = "call"
+path = "panic"
+
+# Surface every `@deprecated` item — useful before a release cut.
+[[lint.custom]]
+name        = "no-deprecated"
+severity    = "warn"
+description = "@deprecated items must be removed before release"
+[lint.custom.ast_match]
+kind = "attribute"
+name = "deprecated"
+
+# Forbid every `unsafe { ... }` block in the application layer.
+[[lint.custom]]
+name        = "no-unsafe-blocks-in-app"
+severity    = "error"
+description = "unsafe is reserved for the runtime / FFI bridges"
+paths       = ["src/app/**"]
+[lint.custom.ast_match]
+kind = "unsafe_block"
+```
+
+AST-pattern rules are strictly more precise than regex rules — they
+walk the parsed module via `verum_ast::Visitor`, so they will not
+fire on text inside string literals or comments. They participate
+in `[lint.severity]`, per-file overrides, and `@allow(...)` exactly
+like built-in rules.
+
 ## Reading lint output programmatically
 
 ```bash
