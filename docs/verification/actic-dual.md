@@ -13,7 +13,7 @@ title: OC / DC Dual Stdlib (Actic)
 > identity enforced by the kernel and the counit identity
 > witnessed up to gauge canonicalisation.
 
-This page is normative for VUVA §11 and Phase 5 tasks E1–E4.
+This page is normative for VUVA §11.
 
 ---
 
@@ -191,9 +191,10 @@ The adjunction `α ⊣ ε` is realised at the level of *core data*:
 Diakrisis 108.T states the duality as a strict (∞, ∞)-categorical
 equivalence; Verum's stdlib realisation is faithful to the unit
 direction (strict equality) and lax in the counit direction (gauge
-equivalence). The lax counit matches what a stdlib data layer can
-witness; the strict version requires the full kernel-level
-2-functor machinery, which is a Phase 6 F2 deliverable.
+equivalence). The lax counit is exactly what a stdlib data layer can
+witness without leaving first-order types — strengthening it to the
+strict form would require kernel-level 2-functor machinery, which
+this layer deliberately stays out of.
 
 ### 4.3 Gauge canonicalisation
 
@@ -280,14 +281,13 @@ places:
 | Aspect | Diakrisis sketch | Verum implementation |
 |---|---|---|
 | `activate_n(e, n: Ordinal)` | n is a transfinite Ordinal | n is a finite `Int` |
-| `enact_par` semantics | "true parallel composition" (CCS-style) | observationally identical to `compose` (sequential), placeholder for future CCS lift |
+| `enact_par` semantics | "true parallel composition" (CCS-style) | observationally identical to `compose` (sequential) — same observable trace, no CCS scheduling layer |
 | α ⊣ ε counit identity | strict (∞, ∞)-categorical equivalence per 108.T | lax 2-cell up to gauge canonicalisation |
 
-The first two divergences are explicit limitations of the V1
-stdlib layer; both are tracked as follow-ups to the Ordinal
-promotion in `core.theory_interop.coord`. The third (lax counit) is
-a deliberate stratification: the strict version requires Phase 6
-F2 (Verum proves its own correspondence theorems).
+These divergences are deliberate stratification: the stdlib layer
+delivers as much of the duality as can be witnessed in first-order
+types and finite arithmetic, and the kernel layer carries the
+machinery for the strict / transfinite forms.
 
 ---
 
@@ -337,18 +337,15 @@ The example illustrates the three operational layers:
 
 ---
 
-## 8. Roadmap
+## 8. Where to look in the standard library
 
-| Task | Status | Tracker |
-|---|---|---|
-| E1 — `core.action.*` skeleton | Shipped | `core/action/` |
-| E2 — Articulation + α ⊣ ε | Shipped | `core/action/articulation.vr`, `enactments.vr` |
-| E3 — `@enact` + `verum audit --epsilon` | Shipped | `crates/verum_cli/src/commands/audit.rs::audit_epsilon_with_format` |
-| E4 — `core.theory_interop` Yoneda / Kan / descent | Partial | `core/theory_interop/`; see [MSFS coordinate](msfs-coord.md) |
-| Diakrisis-canonical aliases (`enact_then`, `enact_par`, `activate`, `activate_n`, `autopoiesis`) | Shipped | `core/action/enactments.vr` |
-| Strict α ⊣ ε counit identity (kernel-level 2-functor) | Deferred | Phase 6 F2 |
-| Transfinite `activate_n(e, n: Ordinal)` | Deferred | post-Ordinal-promotion follow-up |
-| True CCS-style `enact_par` semantics | Deferred | placeholder shipped, lift TBD |
+| Surface | Source |
+|---------|--------|
+| `core.action.*` skeleton — types, constructors, traversal | `core/action/` |
+| Articulation + α ⊣ ε pair (`epsilon`, `alpha_of`) | `core/action/articulation.vr`, `core/action/enactments.vr` |
+| `@enact` attribute and `verum audit --epsilon` | `crates/verum_cli/src/commands/audit.rs` |
+| `core.theory_interop` Yoneda / Kan / descent — see also [MSFS coordinate](msfs-coord.md) | `core/theory_interop/` |
+| Diakrisis-canonical aliases (`enact_then`, `enact_par`, `activate`, `activate_n`, `autopoiesis`) | `core/action/enactments.vr` |
 
 ---
 

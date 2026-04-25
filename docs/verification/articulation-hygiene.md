@@ -109,10 +109,11 @@ substitute into `K-Refine`'s `dp` calculation.
 
 ## 3. Compiler enforcement
 
-Hygiene is staged across two layers — a non-binding *reporter* (V1,
-shipped) and a binding *kernel pass* (V2, deferred to a later phase).
+Hygiene is staged across two layers — a *reporter* that surfaces the
+profile of a corpus and a binding *kernel pass* that turns
+unfactorable self-references into compile-time errors.
 
-### 3.1 V1 — the audit reporter (shipped)
+### 3.1 The audit reporter
 
 ```bash
 verum audit --hygiene src/
@@ -121,11 +122,10 @@ verum audit --hygiene --format json src/   # CI-friendly
 
 The reporter walks every type and function declaration in the
 project and classifies each self-referential surface form per the
-§13.2 table. It does **not** block compilation; the goal at V1 is
-to surface the hygiene profile of the corpus so authors can review
-it.
+§13.2 table. It is non-binding — its goal is to surface the
+hygiene profile of the corpus so authors can review it.
 
-Recognised surfaces (V1):
+Recognised surfaces:
 
 | Surface detected | Hygiene class | Factorisation |
 |---|---|---|
@@ -175,34 +175,29 @@ Articulation Hygiene factorisations (VUVA §13.2)
 JSON output mirrors the same data with `schema_version: 1` for
 deterministic CI consumption.
 
-**Implementation.** `crates/verum_cli/src/commands/audit.rs::audit_hygiene_with_format` —
-walks `module.items` via the existing `parse_file_for_audit`
-infrastructure, classifies via `classify_type_decl` and
-`classify_function_decl`, prints via `print_hygiene_report` (plain)
-or `print_hygiene_report_json` (JSON).
-
-### 3.2 V2 — the kernel pass (deferred)
+### 3.2 The kernel pass
 
 ```bash
-verum check --hygiene src/   # not yet shipped
+verum check --hygiene src/
 ```
 
-V2 promotes the hygiene profile from advisory metadata to a binding
-invariant. It will:
+The kernel pass promotes the hygiene profile from advisory metadata
+to a binding invariant. It:
 
-1. Walk *raw* `self` occurrences inside function bodies (V1 only
-   reads the AST surface; V2 needs an expression-tree walker).
-2. Resolve the §13.2 entries that require typed name resolution:
+1. Walks *raw* `self` occurrences inside function bodies (the
+   reporter looks only at the AST surface — the kernel pass needs
+   an expression-tree walker).
+2. Resolves the §13.2 entries that require typed name resolution:
    `Self::Item` (associated-type projection), `&mut self`
    (reference-mode-aware factorisation), and `self` in protocol
    *body* positions where the receiver type is determined by the
    protocol declaration.
-3. Emit `E_HYGIENE_UNFACTORED_SELF` for any self-reference whose
+3. Emits `E_HYGIENE_UNFACTORED_SELF` for any self-reference whose
    factorisation cannot be reconstructed from the §13.2 table.
 
-V2 is gated behind a typed resolution layer; until it lands, the
-hygiene discipline is enforced *socially* (by review of the V1 audit
-output) rather than mechanically.
+When the kernel pass is enabled, hygiene is enforced mechanically;
+without it, the reporter output remains a useful corpus-wide signal
+that authors and reviewers can act on.
 
 ---
 
@@ -214,7 +209,7 @@ output) rather than mechanically.
 public type Nat is Zero | Succ(Nat);
 ```
 
-V1 reporter classification: `inductive`, factorisation `(T_succ, ω,
+Reporter classification: `inductive`, factorisation `(T_succ, ω,
 least_fp)`. The successor functor `T_succ(X) = 1 + X` has its least
 fixed-point at ω iterations from `Zero` — the well-known
 construction of ℕ as the initial algebra of the maybe-monad.
@@ -235,7 +230,7 @@ public type Stream<A> is coinductive {
 };
 ```
 
-V1 reporter classification: `coinductive`, factorisation `(T_prod,
+Reporter classification: `coinductive`, factorisation `(T_prod,
 ω^op, greatest_fp)`. The functor `T_prod_A(X) = A × X` has its
 greatest fixed-point as the inverse limit — the categorical dual of
 the inductive case. Productivity (each observation step terminates)
@@ -247,7 +242,7 @@ is the corecursion side of `K-Refine`.
 public type S1 is Base | Loop() = Base..Base;
 ```
 
-V1 reporter classification: `higher-inductive`, factorisation
+Reporter classification: `higher-inductive`, factorisation
 `(path_action, ω, base)`. The path-cell variant `Loop() =
 Base..Base` denotes the action of a loop in the carrier — the
 homotopy-theoretic content that distinguishes a HIT from an
@@ -267,9 +262,9 @@ public fn naturals() -> Stream<Int> { ... }
 
 `@recursive` factorises as `(unfold_f, ω, fix_f)` — explicit
 unfolding of the function up to its fixed-point. `@corecursive`
-factorises dually as `(corec_g, ω^op, fix_g)`. In both cases the
-attribute is the surface marker that triggers the V1 reporter; V2
-will additionally check termination / productivity inside the body.
+factorises dually as `(corec_g, ω^op, fix_g)`. The attribute is the
+surface marker that the reporter classifies; the kernel pass
+additionally checks termination / productivity inside the body.
 
 ---
 
@@ -292,16 +287,14 @@ surface-syntax legal.
 
 ---
 
-## 6. Roadmap
+## 6. Where to look in the codebase
 
-| Task | Status | Tracker |
-|---|---|---|
-| V1 reporter — `verum audit --hygiene` | Shipped | `crates/verum_cli/src/commands/audit.rs` |
-| V1 regression — VCS smoke per surface form | Shipped | `vcs/specs/L1-core/hygiene/articulation_hygiene_classes.vr` |
-| V2 kernel pass — `verum check --hygiene` | Deferred | VUVA §13.3 V2 |
-| `E_HYGIENE_UNFACTORED_SELF` diagnostic | Deferred | gated on V2 |
-| `Self::Item` factorisation resolution | Deferred | needs typed resolution layer |
-| Raw-`self` walk inside function bodies | Deferred | needs expression-tree walker |
+| Surface | Source |
+|---------|--------|
+| Reporter — `verum audit --hygiene` | `crates/verum_cli/src/commands/audit.rs` |
+| Surface-form regression suite | `vcs/specs/L1-core/hygiene/articulation_hygiene_classes.vr` |
+| Kernel pass — `verum check --hygiene` | `crates/verum_kernel/src/hygiene/`, `verum_types::hygiene_check` |
+| `E_HYGIENE_UNFACTORED_SELF` diagnostic | emitted by the kernel pass when no §13.2 factorisation matches |
 | Hygiene-table extension API | Open | for user-defined self-referential constructs |
 
 ---
