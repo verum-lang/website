@@ -71,6 +71,62 @@ type Empty is Int{ it > 100 && it < 50 };
 //         bound `101..=49` is empty
 ```
 
+### `unrefined-public-int` — *warn* — AST-driven (Phase C.1)
+
+Public function takes or returns a raw `Int` / `Text` parameter
+without a refinement. The type system can't express usage
+constraints, so every caller is allowed to pass anything; bugs are
+only caught at runtime. Off by default; enable with:
+
+```toml
+[lint.refinement_policy]
+public_api_must_refine_int  = true
+public_api_must_refine_text = false
+```
+
+```verum
+// fires (raw Int parameters)
+public fn add(a: Int, b: Int) -> Int { a + b }
+
+// silenced — usage is type-level explicit
+public fn add(a: Int{ it > 0 }, b: Int{ it > 0 }) -> Int { a + b }
+```
+
+### `verify-implied-by-refinement` — *warn* — AST-driven (Phase C.1)
+
+A function uses refinement types in any signature position but lacks
+`@verify(...)`. The type-level obligation is then checked only at
+runtime, defeating the static-verification value of refinements.
+Enable with:
+
+```toml
+[lint.refinement_policy]
+require_verify_on_refined_fn = true
+```
+
+```verum
+// fires
+public fn pos_only(x: Int{ it > 0 }) -> Int { x }
+
+// silenced — has @verify (any strategy)
+@verify(formal)
+public fn pos_only(x: Int{ it > 0 }) -> Int { x }
+```
+
+### `public-must-have-verify` — *hint* — AST-driven (Phase C.1)
+
+Every public function should declare its verification strategy —
+`runtime`, `static`, `formal`, etc. The default is `hint` because not
+every project wants every public fn formally verified. Enable with:
+
+```toml
+[lint.verification_policy]
+public_must_have_verify = true
+```
+
+For security-critical codebases this turns "you forgot @verify" into
+a build error.
+
 ## Safety
 
 ### `missing-context-decl` — *error*
@@ -149,6 +205,29 @@ zero-overhead but requires manual safety proof at every call site;
 keeping it out of public surfaces forces the proof to live in the
 implementer's code, not every consumer's.
 
+### `forbidden-context` — *error* — AST-driven (Phase C.3)
+
+Function uses a context (`using [X]`) that the project's
+`[lint.context_policy.modules]` forbids in its module path. Off by
+default; opt in by declaring rules:
+
+```toml
+[lint.context_policy.modules]
+"core.*"        = { forbid     = ["Database", "Logger"] }
+"core.math.*"   = { forbid_all = true }
+"app.handlers"  = { allow      = ["Database", "Logger"] }
+```
+
+Most-specific match wins (`"core.math.*"` beats `"core.*"`).
+Diagnostic names the module path, the offending context, the matched
+glob, and the reason:
+
+```text
+error: module `core.math.linalg` may not use context `Database`
+       (matched pattern `core.math.*`, forbid_all = true)
+       [forbidden-context]
+```
+
 ## Performance
 
 ### `unnecessary-heap` — *warn*
@@ -201,6 +280,28 @@ let c = Channel.with_capacity(1024); // silenced
 
 `.clone()` on a value that is not used after this point — moving
 would have been free. Common when refactoring borrows out.
+
+### `cbgr-budget-exceeded` — *warn* — AST-driven (Phase C.4)
+
+Managed CBGR reference (`&` / `&mut`, ~15 ns per deref) used in a
+module whose `[lint.cbgr_budgets].max_check_ns` budget is below the
+static per-deref cost. Promote to `&checked` (compiler-proven, 0 ns)
+or `&unsafe` (manual safety, 0 ns).
+
+```toml
+[lint.cbgr_budgets]
+default_check_ns = 15            # default: matches the spec
+
+[lint.cbgr_budgets.modules]
+"app.handlers.*" = { max_check_ns = 30 }
+"core.runtime.*" = { max_check_ns = 0 }    # 0 = managed refs forbidden
+```
+
+Resolution: most-specific module pattern wins; falls back to
+`default_check_ns`. Today's enforcement is **static**: if the budget
+is below `15 ns` (the cheapest single deref), every managed `&`
+fires. Profile-driven enforcement (compare measured runtime cost
+against the budget) is on the roadmap.
 
 ## Style
 
@@ -274,6 +375,60 @@ let x = 1;
 }
 ```
 
+### `naming-convention` — *warn* — AST-driven (Phase B.3)
+
+Identifier doesn't match the project's `[lint.naming]` convention.
+Per-construct: `fn`, `type`, `const`, `variant`, `field`, `module`,
+`generic`. Recognised values:
+
+`snake_case | kebab-case | PascalCase | camelCase | SCREAMING_SNAKE_CASE | lowercase | UPPERCASE`.
+
+```toml
+[lint.naming]
+fn       = "snake_case"
+type     = "PascalCase"
+const    = "SCREAMING_SNAKE_CASE"
+
+[lint.naming.exempt]
+fn   = ["__init", "drop_impl"]    # FFI / convention exceptions
+type = ["I32", "F64"]
+```
+
+```verum
+fn camelFn() { … }       // fires (fn must be snake_case)
+type bad_type is Int;    // fires (type must be PascalCase)
+```
+
+### `architecture-violation` — *error* — AST-driven (Phase B.4)
+
+A `mount` crosses a layer boundary (not in `allow_imports`) or
+matches an explicit ban. Off by default; opt in by declaring layers
+and/or bans:
+
+```toml
+[lint.architecture.layers]
+core   = { allow_imports = ["core", "stdlib"] }
+domain = { allow_imports = ["core", "stdlib", "domain"] }
+
+[lint.architecture.bans]
+"core.crypto" = ["core.testing"]
+"app.ui"      = ["app.persistence", "app.network"]
+```
+
+Layer resolution: most-specific top-segment-prefix match.
+Ban resolution: a key like `"core.crypto"` covers `core.crypto` and
+every nested path under it (`core.crypto.sign`, …); glob patterns
+work too (`"core.*"`).
+
+```text
+error: module `core.util` (layer `core`) may not import `domain.users`
+       — not in `allow_imports`
+       [architecture-violation]
+error: module `core.crypto.sign` may not import `core.testing`
+       — explicit ban (matched `core.crypto`)
+       [architecture-violation]
+```
+
 ## Severity / category cross-reference
 
 | Rule | Cat. | Default | Implementation |
@@ -299,6 +454,13 @@ let x = 1;
 | `single-variant-match` | style | hint | text-scan |
 | `missing-type-annotation` | style | hint | text-scan |
 | `redundant-refinement` | verification | hint | **AST** (lint_engine.rs) |
+| `unrefined-public-int` | verification | warn | **AST** (Phase C.1) |
+| `verify-implied-by-refinement` | verification | warn | **AST** (Phase C.1) |
+| `public-must-have-verify` | verification | hint | **AST** (Phase C.1) |
+| `forbidden-context` | safety | error | **AST** (Phase C.3) |
+| `architecture-violation` | style | error | **AST** (Phase B.4) |
+| `cbgr-budget-exceeded` | performance | warn | **AST** (Phase C.4) |
+| `naming-convention` | style | warn | **AST** (Phase B.3) |
 | `shadow-binding` | style | info | text-scan |
 
 AST-driven rules (built on `verum_ast::Visitor`) are zero-false-positive
