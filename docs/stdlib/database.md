@@ -371,7 +371,7 @@ name is redefined.
 
 | Concern | State | Notes |
 |---------|-------|-------|
-| **Catalogues / typed surface** | **~80 %** of the spec encoded | 1,382 `.vr` files, 107 KLOC; ~360 catalogue modules + 8 engine layers; 503 typecheck-pass smokes green |
+| **Catalogues / typed surface** | **~82 %** of the spec encoded | 1,398 `.vr` files, 108.5 KLOC; ~368 catalogue modules + 8 engine layers; 511 typecheck-pass smokes green; naming-hygiene Rust guardrail blocks redefinition of `Result/Maybe/List/Map/Set/Bytes/Iterator/Slot/Ok/Err/Some/None` |
 | **End-to-end runtime tests** | **4 / 516** sqlite VCS tests are `@test: run-*` | `l0_vfs/memdb_open_write_read.vr`, `l1_pager/page_roundtrip.vr`, `l2_record/varint_roundtrip.vr`, `l2_record/crc32_vectors.vr`; remaining 502 are typecheck-only |
 | **L4 VDBE / L5 SQL end-to-end** | **blocked on VBC interpreter stdlib-cache bug** | A verbatim copy of `open_memory` defined inside a test file runs cleanly; the *stdlib-cached* version panics with "method 'I.next' not found on value" on first call.  Until the runtime/cache discrepancy is resolved, L6 (Connection) and L7 (Database) facades cannot be exercised end-to-end under the VBC interpreter |
 | **In-memory `:memory:` path** | working through L0 (`MemDbVfs`) and L1 single-page round-trip | byte-pattern + 4 KiB-page round-trips green; multi-page round-trip (`memdb_pager_roundtrip.vr`) demoted to typecheck-pass due to interpreter `List<Byte>.push` quadratic growth |
