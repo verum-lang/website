@@ -47,30 +47,54 @@ strategy controls the solver.
 ## The nine strategies
 
 The grammar production `verify_strategy` (grammar/verum.ebnf §2)
-admits exactly these nine keywords. Each one has a **distinct**
-operational behaviour (no aliases — `proof` and `reliable` are no
-longer collapsed into `formal` and `thorough` per VUVA §12).
-All nine are **live today**:
+admits exactly these **thirteen** keywords today. Each has a
+**distinct** operational behaviour (no aliases — `proof` and
+`reliable` are no longer collapsed into `formal` and `thorough` per
+VUVA §12). The pre-VFE-6/8 baseline shipped nine; VFE-6 added three
+*coherence* strategies and VFE-8 added one *complexity-typed*
+strategy:
 
-| Strategy      | ν-ordinal | Gradient | What it does | When to use |
-|---------------|:---------:|----------|--------------|-------------|
-| `runtime`     | 0         | Runtime  | runtime assertion check only; no SMT | prototyping, dev builds |
-| `static`      | 1         | Static   | static type-level verification; no solver calls on the fast path | the default fast path |
-| `fast`        | 2         | Proof    | capability router with 0.3× timeout; unknowns don't block | iterative development |
-| `formal`      | ω         | Proof    | full SMT verification, capability router picks backend | recommended production default |
-| `proof`       | ω + 1     | Proof    | user-supplied tactic block; kernel rechecks. Dominates SMT and admits induction. | theorems, foundational lemmas |
-| `thorough`    | ω · 2     | Proof    | portfolio race with 2× timeout — first success wins; mandatory `decreases` / `invariant` / `frame` | hard obligations |
-| `reliable`    | ω · 2 + 1 | Proof    | `thorough` + Z3 ∧ CVC5 must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
-| `certified`   | ω · 2 + 2 | Proof    | `reliable` + certificate materialisation, kernel re-check, multi-format export | security-critical, external audit, `.verum-cert` export |
-| `synthesize`  | ≤ ω · 3 + 1 | Proof  | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (CVC5 SyGuS today) | program synthesis, hole filling, invariant generation |
+| Strategy            | ν-ordinal      | Gradient | What it does | When to use |
+|---------------------|:--------------:|----------|--------------|-------------|
+| `runtime`           | 0              | Runtime  | runtime assertion check only; no SMT | prototyping, dev builds |
+| `static`            | 1              | Static   | static type-level verification; no solver calls on the fast path | the default fast path |
+| `fast`              | 2              | Proof    | capability router with 0.3× timeout; unknowns don't block | iterative development |
+| `complexity_typed`  | < ω (n)        | Proof    | bounded-arithmetic verification (V_0 / V_1 / S^1_2 / V_NP / V_PH / IΔ_0); polynomial-time; CI budget ≤ 30 s | crypto protocols, real-time, embedded |
+| `formal`            | ω              | Proof    | full SMT verification, capability router picks backend | recommended production default |
+| `proof`             | ω + 1          | Proof    | user-supplied tactic block; kernel rechecks. Dominates SMT and admits induction. | theorems, foundational lemmas |
+| `thorough`          | ω · 2          | Proof    | portfolio race with 2× timeout — first success wins; mandatory `decreases` / `invariant` / `frame` | hard obligations |
+| `reliable`          | ω · 2 + 1      | Proof    | `thorough` + Z3 ∧ CVC5 must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
+| `certified`         | ω · 2 + 2      | Proof    | `reliable` + certificate materialisation, kernel re-check, multi-format export | security-critical, external audit, `.verum-cert` export |
+| `coherent_static`   | ω · 2 + 3      | Proof    | α-cert + symbolic ε-claim; polynomial in `|P|·|φ|`; CI ≤ 60 s | weak coherence; production fallback for VFE-6 |
+| `coherent_runtime`  | ω · 2 + 4      | Hybrid   | α-cert + runtime ε-monitor; trace-bounded; CI ≤ 5 min | hybrid coherence; runtime monitoring |
+| `coherent`          | ω · 2 + 5      | Proof    | α/ε bidirectional check via 108.T-bridge; single-exponential; CI ≤ 30 min | critical-safety code requiring full operational coherence |
+| `synthesize`        | ≤ ω · 3 + 1    | Proof    | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (CVC5 SyGuS today) | program synthesis, hole filling, invariant generation |
 
 **Strict monotonicity.** The ν-ordinals are pinned to make the
 ladder strictly monotone:
 
 ```text
-ν-rank: 0 < 1 < 2 < ω < ω+1 < ω·2 < ω·2+1 < ω·2+2 < ω·3+1
-strategy: runtime < static < fast < formal < proof < thorough < reliable < certified < synthesize
+ν-rank:   0 < 1 < 2 < n<ω < ω < ω+1 < ω·2 < ω·2+1 < ω·2+2 < ω·2+3 < ω·2+4 < ω·2+5 < ω·3+1
+strategy: runtime < static < fast < complexity_typed < formal < proof < thorough <
+          reliable < certified < coherent_static < coherent_runtime < coherent < synthesize
 ```
+
+**VFE-6 coherence triplet.** The `coherent_*` family realises Theorem
+18.T1 (operational coherence): for a program `P` with property `φ`,
+the strict `coherent` strategy verifies BOTH the static α-certificate
+AND the runtime ε-monitor for the dual `T_108(φ)` and rejects the
+verdict iff either side fails or they disagree. The polynomial /
+trace-bound variants give practical fallbacks. See VFE foundational-
+extensions.md §6 for full semantics.
+
+**VFE-8 complexity_typed strategy.** Routes the goal through the
+bounded-arithmetic stratum (V_0 / V_1 / S^1_2 / V_NP / V_PH / IΔ_0
+per `core.math.frameworks.bounded_arithmetic`). Verification is
+*polynomial-time* per the system's complexity class, and the
+weak-AFN-T result (Theorem 137.T) guarantees that no L_Abs can be
+realised inside the weak stratum — bounded-arithmetic verification is
+strictly weaker than full-arithmetic verification but with a tractable
+performance budget.
 
 The Diakrisis ν-invariant lives at the level of countable ordinals;
 Verum's `verum_smt::verify_strategy::NuOrdinal` enum encodes the
