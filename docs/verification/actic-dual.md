@@ -47,10 +47,11 @@ duality as stdlib. The DC side enables:
 
 ---
 
-## 2. The seven ε-primitives
+## 2. The eight ε-primitives
 
-`core.action.primitives` ships seven canonical primitive acts —
-the leaves of the Actic dual:
+`core.action.primitives` ships seven canonical Diakrisis primitive
+acts plus the catalogue extension `ε_classify` introduced by VUVA §21
+(OWL 2 V1 ecosystem). All eight are leaves of the Actic dual:
 
 | Primitive | Surface name | Diakrisis intent |
 |---|---|---|
@@ -61,11 +62,12 @@ the leaves of the Actic dual:
 | `EpsilonDecide` | `ε_decide` | Branch on a decidable predicate. |
 | `EpsilonTranslate` | `ε_translate` | Cross-framework articulation translation (Kan extension). |
 | `EpsilonConstruct` | `ε_construct` | Constructive existence proof producing a witness. |
+| `EpsilonClassify` | `ε_classify` | Ontology classification / subsumption / instance check (VUVA §21 extension). |
 
 Classifier predicates (`is_observational`, `is_constructive`,
-`is_proof_producing`, `is_decision_point`, `is_translation`) lift
-each primitive to a Bool so user code can pattern-match on the
-*kind* of ε without enumerating all seven cases.
+`is_proof_producing`, `is_decision_point`, `is_translation`,
+`is_classification`) lift each primitive to a Bool so user code can
+pattern-match on the *kind* of ε without enumerating all eight cases.
 
 ```verum
 mount core.action.primitives;
