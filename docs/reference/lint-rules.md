@@ -33,6 +33,20 @@ verum lint --explain unused-import     # one rule's full doc + example
 For configuration, see **[Reference → Lint configuration](/docs/reference/lint-configuration)**.
 For CLI usage, see **[Reference → CLI commands → `verum lint`](/docs/reference/cli-commands#verum-lint)**.
 
+:::tip[Rule-doc template]
+Every rule entry below follows the same shape:
+
+- `### \`<rule-name>\` — *<level>* [— <category>]` heading.
+- One-line summary describing the bug shape the rule catches.
+- A **fires-on** example — the smallest snippet that triggers the rule.
+- A **silent-on** example showing the corrected form.
+- Configuration knobs (when the rule has any) under `[lint.<section>]`.
+- Cross-references to related rules.
+
+When you author a custom rule, follow the same template — the
+generated docs page reads like the rest of the catalogue.
+:::
+
 ## Verification
 
 Verum-unique. These rules cover refinement-types, formal-verification,
@@ -197,8 +211,22 @@ write_to_disk(&buf)?;                 // propagate
 ### `missing-cleanup` — *warn*
 
 A type that holds a resource (file, socket, lock, allocation) lacks
-a `Cleanup` protocol implementation. Resource is leaked unless
-freed explicitly.
+a `Cleanup` protocol implementation. Without `Cleanup`, the
+resource is leaked unless freed explicitly — relying on the user
+to remember an explicit `close()` call is exactly the bug pattern
+RAII / `Cleanup` was invented to prevent.
+
+```verum
+// fires
+type FileHandle is { fd: Int };
+
+// silenced — destruction releases the FD automatically
+type FileHandle is { fd: Int };
+
+implement Cleanup for FileHandle {
+    fn cleanup(self) { close_fd(self.fd); }
+}
+```
 
 ### `missing-timeout` — *warn*
 
@@ -216,6 +244,17 @@ A public function exposes `&unsafe T` in its API. The unsafe tier is
 zero-overhead but requires manual safety proof at every call site;
 keeping it out of public surfaces forces the proof to live in the
 implementer's code, not every consumer's.
+
+```verum
+// fires
+public fn raw_buffer(buf: &unsafe [Byte]) -> Int { /* ... */ }
+
+// silenced — wrap the unsafe interior behind a checked surface
+public fn raw_buffer(buf: &checked [Byte]) -> Int {
+    let bytes = unsafe { buf.as_unsafe() };
+    /* ... */
+}
+```
 
 ### `unsafe-without-capability` — *warn*
 
@@ -331,6 +370,22 @@ let c = Channel.with_capacity(1024); // silenced
 
 `.clone()` on a value that is not used after this point — moving
 would have been free. Common when refactoring borrows out.
+
+```verum
+// fires — `name` is consumed at last use, no clone needed
+fn greet(name: Text) {
+    print(f"hello, {name.clone()}");
+}
+
+// silenced — the move version is one character shorter and faster
+fn greet(name: Text) {
+    print(f"hello, {name}");
+}
+```
+
+`--fix` strips the trailing `.clone()` automatically; the bot's
+fix.edits payload carries the precise byte range for LSP code
+actions.
 
 ### `cbgr-budget-exceeded` — *warn*
 
@@ -603,6 +658,20 @@ Fires only on cycles entirely within the corpus — `mount-cycle-via-stdlib`
 catches the harder variant where the cycle is laundered through a
 standard-library re-export.
 
+```verum
+// fires — src/a.vr ↔ src/b.vr
+// src/a.vr
+mount b;          // a depends on b
+public fn from_a() { b::from_b(); }
+
+// src/b.vr
+mount a;          // and b depends on a — cycle
+public fn from_b() { a::from_a(); }
+```
+
+Standard fix: extract the shared types into a third leaf module
+that both can mount.
+
 ### `orphan-module` — *hint*
 
 A `.vr` file under `src/` that no other file mounts. Skips
@@ -636,6 +705,20 @@ Non-public symbol with no callers in its own file. Complements
 `unused-public`; together they cover dead code on both sides of
 the visibility boundary. Skips `main` / `init` / `_start` —
 runtime entry-points are referenced externally.
+
+```verum
+// fires — helper is private and never called
+fn helper() -> Int { 0 }
+fn main() {}
+
+// silenced — main calls helper
+fn helper() -> Int { 0 }
+fn main() { let _ = helper(); }
+```
+
+Use `@allow("unused-private")` on the declaration when the symbol
+is intentionally retained for future use; the rule keeps quiet
+for that one item without disabling itself across the file.
 
 ### `inconsistent-public-doc` — *hint* — opt-in
 
