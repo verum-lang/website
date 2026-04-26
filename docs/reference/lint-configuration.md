@@ -352,6 +352,32 @@ Each `--format` produces a stable, documented stream — CI scripts
 and dashboards can rely on the shape staying the same across
 patch releases.
 
+### `--format human` — span-underlined diagnostics
+
+The shape every Rust / Python / JS developer recognises: rule code
+in brackets, file path with `--> `, the offending source line, a
+caret underline at the column the issue points to, and a help line
+when the rule provides a suggestion.
+
+```text
+error[deprecated-syntax]: Use 'Heap(x)' instead of 'Box::new(x)'
+  --> src/main.vr:2:13
+     |
+ 2 |     let x = Box::new(5);
+     |             ^^^
+   = help: Use 'Heap(x)' instead of 'Box::new(x)'
+```
+
+Caret length walks through the identifier-like token starting at
+the column, capped at 80 characters so a runaway long line never
+fills the screen. ANSI colour is added through the existing
+`--color`-aware path; setting `NO_COLOR=1` produces the same
+diagnostic in monochrome — useful for CI logs that strip ANSI.
+
+This format is the recommended default for human readers. The
+`pretty` format remains available (and is currently the default)
+for back-compat with existing scripts that grep its output.
+
 ### `--format json` — newline-delimited JSON
 
 One issue per line. Every line carries `schema_version` so a
