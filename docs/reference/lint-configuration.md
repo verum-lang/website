@@ -414,6 +414,29 @@ bumps the version.
 | `suggestion` | string | Replacement / hint text. Present when `fixable` is `true`; may also appear on non-fixable issues as a manual-action hint |
 | `fix.edits` | array | LSP-style structured edits when an autofix is available. Present only on `fixable` issues that have a precise replacement. Each element: `{start_line, start_column, end_line, end_column, new_text}`, all 1-indexed. Adding this field is non-breaking — `schema_version` stays at 1; consumers that don't understand `fix` ignore it |
 
+#### Streaming + ordering
+
+`--format json` runs in **streaming mode** when the run uses
+neither `--baseline` (read or `--write-baseline`) nor `--fix`.
+Diagnostics flush to stdout as each file's per-file phase
+completes, with cross-file findings emitted at the end of the
+cross-file phase. Time-to-first-byte drops from "whole-corpus
+latency" to "single-file latency" — useful for IDE / CI
+consumers that want to render the first issues while later
+files are still being analysed.
+
+Consequence: **the order is not file-sorted**. Streaming order
+follows worker-thread completion, which is non-deterministic
+under rayon parallelism. The schema-stable identity of a
+diagnostic is `(rule, file, line, column)` — consumers that
+need a sorted list should sort post-hoc on those keys.
+
+When any of `--baseline` / `--write-baseline` / `--fix` are in
+effect, the runner falls back to the non-streaming path: every
+diagnostic is buffered, sorted, filtered, and emitted as a
+single block. The schema and field set are identical; only the
+order changes.
+
 ### `--format sarif` — SARIF 2.1.0
 
 One JSON document per run, conformant to the OASIS SARIF 2.1.0

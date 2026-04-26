@@ -16,6 +16,78 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — linter production hardening + stdlib algebra surfaces (2026-04-26)
+
+**Linter (`verum lint`)** — promoted to 100 % production-ready.
+
+- Lex-mask: every text-scan rule now consults a per-byte
+  classification (Code / LineComment / BlockComment / String /
+  RawString) so substrings inside string literals or comments no
+  longer fire `deprecated-syntax`, `todo-in-code`,
+  `unbounded-channel`, etc. Multi-byte UTF-8 (em-dash, CJK, math
+  symbols) handled correctly — earlier the masked-view builder
+  produced invalid UTF-8 on multi-byte chars in comments.
+- Unified parse: per-file phase hands its parsed `Module` to the
+  cross-file phase via `lint_one_with_cache → CorpusFile`,
+  eliminating the second parse per file. Cache-hit entries are
+  re-parsed in a single batched pass.
+- `parse-error` meta-rule: parser failures surface as a structured
+  diagnostic (Error / Safety) so users see when AST passes were
+  skipped. Always on; cannot be suppressed.
+- Structured `--fix`: `apply_fix_edits(content, &[FixEdit])` is the
+  canonical edit applier (LSP-style 1-indexed ranges,
+  reverse-order application, overlap detection).
+  `synthesize_fix_edits_for(issue, content)` covers all 9 fixable
+  rules; on-disk `--fix` and JSON `fix.edits` consumers produce
+  byte-identical output. Old per-rule line-rewrite helpers
+  retired.
+- Streaming JSON: `--format json` (without `--baseline` / `--fix`)
+  flushes each file's diagnostics as soon as that file's per-file
+  phase completes — time-to-first-byte drops from corpus-latency
+  to single-file-latency. Order is non-deterministic;
+  schema-stable identity is `(rule, file, line, column)`.
+- New CLI flags: `--watch` / `--watch-clear`, `--threads`,
+  `--no-cache` / `--clean-cache`, `--baseline FILE` /
+  `--write-baseline` / `--no-baseline`, `--max-warnings N`,
+  `--new-only-since GIT_REF`, `--list-groups`.
+
+Tests: 47 → 173+ lint tests across 19 test files.
+
+**Stdlib algebra surfaces** — modules that previously shipped
+only data-type definitions now ship the full algebra promised
+by their doc-strings.
+
+- `core.eval.cbpv` — `cbpv_occurs_free`, capture-avoiding
+  `cbpv_substitute`, `CbpvStep` outcome type, `cbpv_step` (β /
+  force-thunk / sequence-bind with congruences),
+  `cbpv_normalise(t, gas)` to fixed point, `cbpv_alpha_eq`.
+- `core.control.continuation` — `CcStep`, `cc_step`
+  (β / reset-value / shift-capture), `cc_normalise(t, gas)`,
+  `cc_alpha_eq`.
+- `core.logic.linear` — `lin_to_nnf` (de Morgan + involutivity),
+  `lin_negate`, `lin_is_nnf`, `lin_eq`, `lin_size`,
+  `lin_atom_count`.
+- `core.logic.kripke` — `valid_in_frame`,
+  `semantically_equivalent`, frame-property predicates
+  `is_serial` / `is_reflexive` / `is_transitive` / `is_symmetric`
+  / `is_euclidean` (modal axioms D / T / 4 / B / 5), `is_s5`.
+- `core.types.poly_kinds` — full Robinson `kind_unify` +
+  `kind_apply` + `kind_compose`, plus `is_concrete`,
+  `kind_arity`, `apply_args`, `free_vars`.
+- `core.types.qtt` — `mul_quantity` (multiplicative scaling under
+  λ-binders), `is_sub` (subquantity lattice
+  `Zero ≤ One ≤ AtMost(n) ≤ Many`), `top_quantity` /
+  `bottom_quantity`, `quantity_eq`.
+- `core.meta.tactic` — recursive `meta_normalise` (bottom-up
+  β-cancel + seq-elim), `meta_is_normal`, `seq_eliminate`.
+
+**Intrinsic safety contracts** —
+`core/intrinsics/arithmetic.vr` div / rem / neg / abs / mul /
+wrapping_div / wrapping_rem now document panic conditions
+(`b == 0`, `T::MIN / -1`, `T::MIN` for neg / abs, IEEE 754 float
+behaviour) per the convention set by
+`core/intrinsics/memory.vr`.
+
 ### Added — wide stdlib primitive expansion (2026-04-22/23)
 
 A large batch of reusable user-level primitives shipped across

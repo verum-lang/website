@@ -31,7 +31,7 @@ authors, driver writers, and kernel engineers.
 | Byte-range file locking | `locking/mod.vr` (`LockHandle` affine RAII) |
 | Crash-safe persistence | `durability.vr` (`full_fsync`, `sync_directory`) |
 | Alternative runtimes | `embedded.vr`, `no_runtime.vr` |
-| Linux (`@cfg(target_os="linux")`) | `syscall.vr`, `errno.vr`, `io.vr`, `mem.vr`, `thread.vr`, `time.vr`, `tls.vr` |
+| Linux (`@cfg(target_os="linux")`) | `syscall.vr`, `arch.vr`, `errno.vr`, `auxv.vr`, `io.vr`, `mem.vr`, `thread.vr`, `time.vr`, `tls.vr`, `bpf/` (eBPF map+program loader). Supports both x86_64 and aarch64 — architecture-specific syscall numbers live in `arch.vr` and are re-exported by `syscall.vr`; x86_64-only legacy syscalls (`open`, `stat`, `mkdir`, …) are gated behind `@cfg(target_arch="x86_64")`, with the portable `*at` variants (`openat`, `newfstatat`, `mkdirat`, …) available on both. |
 | macOS (`@cfg(target_os="macos")`) | `libsystem.vr`, `mach.vr`, `io.vr`, `errno.vr`, `thread.vr`, `time.vr`, `tls.vr` |
 | Windows (`@cfg(target_os="windows")`) | `kernel32.vr`, `ntdll.vr`, `io.vr`, `errno.vr`, `thread.vr`, `time.vr`, `tls.vr`, `ntstatus.vr`, `winsock2.vr` |
 

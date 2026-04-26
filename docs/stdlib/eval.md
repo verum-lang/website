@@ -135,6 +135,44 @@ These three rules are complete for pure CBPV. Effects extend them —
 a real implementation adds rules for `IO`, `State`, and friends; the
 pure algebra above is what Verum's `pure` checker operates on.
 
+## Substitution + reduction surface
+
+```verum
+public fn cbpv_occurs_free(t: CbpvTerm, name: Text) -> Bool;
+public fn cbpv_substitute(t: CbpvTerm, from: Text, to: CbpvTerm) -> CbpvTerm;
+
+public type CbpvStep is
+    | Stepped { next: CbpvTerm }
+    | Normal  { term: CbpvTerm };
+
+public fn cbpv_step(t: CbpvTerm) -> CbpvStep;
+public fn cbpv_normalise(t: CbpvTerm, gas: Int) -> (CbpvTerm, Int);
+public fn cbpv_alpha_eq(a: CbpvTerm, b: CbpvTerm) -> Bool;
+```
+
+- `cbpv_substitute` is **capture-avoiding**: when descending under
+  a binder that would capture a free variable of the replacement,
+  the binder is α-renamed to a fresh name.
+- `cbpv_step` returns the term back in either branch
+  (`Stepped` / `Normal`) so iteration doesn't require Clone — the
+  ADT carries `Heap<CbpvTerm>` children and ownership is threaded
+  through the loop.
+- `cbpv_normalise(t, gas)` drives the small-step reducer to a
+  fixed point with a hard step budget. Returns
+  `(final_term, steps_used)`; `steps_used < gas` means a normal
+  form was reached, `steps_used == gas` means the budget was
+  exhausted on a non-terminating reduction (e.g. `ω = thunk (force x)`).
+- `cbpv_alpha_eq` compares two terms up to consistent renaming of
+  bound variables, via depth-tracking renaming contexts (de
+  Bruijn-level approach).
+
+```verum
+let prog   = cbpv_app(cbpv_lam("x", cbpv_return(cbpv_var("x"))),
+                      cbpv_var("y"));
+let (norm, steps) = cbpv_normalise(prog, 100);
+// norm ≡ return y; steps == 1.
+```
+
 ## Worked example — CBV vs. CBN encoding
 
 Consider the expression `(λx. x + x) (1 + 2)`.

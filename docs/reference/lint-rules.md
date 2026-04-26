@@ -155,6 +155,33 @@ a build error.
 
 ## Safety
 
+### `parse-error` — *error*
+
+Meta-rule. Surfaces parser failures as a structured diagnostic so
+the user knows the AST half of the lint pipeline was skipped for
+that file. The text-scan rules above still ran; the AST-driven
+passes (refinement / capability / context / linearity / cross-
+file) did NOT, because they need a parsed `Module`.
+
+One issue per parser error (the parser may report a small list
+when it can recover). The diagnostic carries the parser's own
+span and message; the `suggestion` field, when present, is the
+parser's recovery hint.
+
+```verum
+// fires — unbalanced brace
+fn main() { let x = 1;
+            ^                   // parser error: expected `}` before EOF
+
+// silenced — well-formed
+fn main() { let x = 1; }
+```
+
+This rule is always on. It cannot be suppressed via
+`[lint.severity]` or `@allow` because losing AST coverage is
+never a user choice — it always reflects a broken file. Fix the
+parse error to silence it.
+
 ### `missing-context-decl` — *error*
 
 Function uses a context (e.g. `Logger.info(...)`) without a

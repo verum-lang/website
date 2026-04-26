@@ -224,11 +224,40 @@ predictable.
 
 ## Reduction engine
 
-If you need an actual reducer (e.g. to test equivalences), build one
-atop `cc_substitute` and pattern matching on `CcTerm`. A minimal call-
-by-value small-step reducer fits in about thirty lines and is a good
-exercise; a starter is available in
-[`vcs/specs/L3-extended/continuation_reducer.vr`](/docs/verification/gradual-verification).
+The three documented rules ship as a small-step reducer alongside
+the substitution and α-equivalence:
+
+```verum
+public type CcStep is
+    | Stepped { next: CcTerm }
+    | Normal  { term: CcTerm };
+
+public fn cc_step(t: CcTerm) -> CcStep;
+public fn cc_normalise(t: CcTerm, gas: Int) -> (CcTerm, Int);
+public fn cc_alpha_eq(a: CcTerm, b: CcTerm) -> Bool;
+```
+
+- `cc_step` fires β at the top of `App`, the value/shift rules
+  inside `Reset`, and reduces beneath congruences (under `App`
+  head and argument, under `Reset`'s body). A `Shift` outside
+  any `Reset` is stuck — matching the operational semantics of
+  delimited control.
+- The captured continuation in the shift-capture rule is
+  reified as `λx. reset x` with a fresh `x` (chosen so it does
+  not accidentally shadow a free variable inside `body`).
+- `cc_normalise(t, gas)` runs `cc_step` to a fixed point with a
+  hard step budget, returning `(final, steps_used)`.
+  `steps_used < gas` means a normal form was reached.
+- `cc_alpha_eq` compares terms up to consistent renaming of `Lam`
+  / `Shift` binders, via the same depth-tracking technique as
+  [`cbpv_alpha_eq`](/docs/stdlib/eval).
+
+```verum
+// reset (shift k. k 5) ↦ reset (5 5) … via the reified continuation
+let t = cc_reset(cc_shift("k",
+    cc_app(cc_var("k"), cc_const("5"))));
+let (norm, steps) = cc_normalise(t, 100);
+```
 
 ## See also
 
