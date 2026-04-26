@@ -89,6 +89,25 @@ wrapping_next_power_of_two<T>(a) -> T
 Width-specific variants (e.g. `wrapping_add_u32`, `saturating_mul_u8`)
 are provided to avoid generic instantiation in hot paths.
 
+### Panic conditions on the trapping forms
+
+The non-`checked` / non-`wrapping` / non-`saturating` operations
+panic on the inputs below. Use the `checked_*` family to recover
+without panicking.
+
+| Op | Panics on (signed integer T) | Float behaviour |
+|----|-------------------------------|-----------------|
+| `add` / `sub` / `mul` | overflow / underflow | IEEE 754 — saturates to `±inf` |
+| `div` | `b == 0`; **also** `T::MIN / -1` (mathematical result is unrepresentable) | `x / 0.0 = ±inf`; `0.0 / 0.0 = NaN` |
+| `rem` | `b == 0`; `T::MIN % -1` | IEEE 754 |
+| `neg` / `abs` | `T::MIN` (mathematical result `|T::MIN|` is not representable) | flips sign / `abs(NaN) = NaN`, `abs(±inf) = +inf` |
+| `wrapping_div` / `wrapping_rem` | `b == 0` (the `T::MIN / -1` pair wraps instead of panicking) | n/a |
+
+`signum` is total: returns `-1` / `0` / `1` for ints; for float
+NaN it returns NaN. `add` / `sub` / `mul` on unsigned T are the
+ordinary modular operations on bit widths and never panic from
+overflow.
+
 ---
 
 ## Bitwise

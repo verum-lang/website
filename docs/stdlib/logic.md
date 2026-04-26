@@ -215,6 +215,62 @@ Linear logic has perfect duality via `(·)^⊥`:
 A^⊥⊥       =  A
 ```
 
+## NNF normaliser + structural utilities
+
+```verum
+public fn lin_to_nnf(f: LinForm) -> LinForm;
+public fn lin_is_nnf(f: LinForm) -> Bool;
+public fn lin_eq(a: LinForm, b: LinForm) -> Bool;
+public fn lin_size(f: LinForm) -> Int;
+public fn lin_atom_count(f: LinForm) -> Int;
+```
+
+- `lin_to_nnf` rewrites every formula to **negation-normal form** —
+  every `Dual` constructor wraps an `Atom` only; every other
+  connective appears with positive (non-dualised) arguments. The
+  function applies the de Morgan / involutivity rewrites above.
+  Idempotent: `lin_to_nnf(lin_to_nnf(g))` ≡ `lin_to_nnf(g)`.
+- `lin_is_nnf` is the postcondition predicate.
+- `lin_eq` is **structural** equality on the constructor tree
+  (LinForm has no binders). For semantic equivalence, normalise
+  both sides with `lin_to_nnf` first.
+- `lin_size` counts non-leaf connectives (each binary connective
+  contributes 1; each unary modality contributes 1; atoms /
+  units contribute 0). Use as a termination metric for proof
+  search.
+- `lin_atom_count` — number of `Atom` leaves.
+
+```verum
+let f = lin_dual(lin_tensor(lin_atom("A"), lin_atom("B")));
+let g = lin_to_nnf(f);
+// g ≡ lin_par(lin_dual(lin_atom("A")), lin_dual(lin_atom("B")))
+assert(lin_is_nnf(g));
+```
+
+## Frame validity + axiom-correspondence predicates (Kripke)
+
+```verum
+public fn valid_in_frame(
+    f: KripkeFrame, v: Valuation, formula: ModalForm
+) -> Bool;
+public fn semantically_equivalent(
+    f: KripkeFrame, v: Valuation, a: ModalForm, b: ModalForm
+) -> Bool;
+
+public fn is_serial(f: KripkeFrame) -> Bool;       // axiom D
+public fn is_reflexive(f: KripkeFrame) -> Bool;    // axiom T
+public fn is_transitive(f: KripkeFrame) -> Bool;   // axiom 4
+public fn is_symmetric(f: KripkeFrame) -> Bool;    // axiom B
+public fn is_euclidean(f: KripkeFrame) -> Bool;    // axiom 5
+public fn is_s5(f: KripkeFrame) -> Bool;           // T + 4 + B
+```
+
+`valid_in_frame` lifts the per-world `evaluate` to a frame-level
+"holds at every world" judgement. The five frame-property
+predicates correspond to the modal axioms in the table above —
+checking `is_reflexive(f) && is_transitive(f) && is_symmetric(f)`
+is the bridge from `evaluate` to "this frame is an S5 model".
+
 ---
 
 ## Connection to Verum's type system

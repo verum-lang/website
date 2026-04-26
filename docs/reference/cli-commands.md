@@ -181,6 +181,44 @@ Flags (extending the existing `--fix` / `--deny-warnings`):
 - `-D <RULE>` / `-W <RULE>` / `-A <RULE>` / `-F <RULE>` — single-rule
   override (deny / warn / allow / forbid). Same convention as the
   build-time flags.
+- `--watch` — re-lint on file changes. Initial scan runs, then
+  the watcher debounces FS events (300 ms) and re-runs the
+  pipeline. Banner lines (`Watching for changes`, `change detected`)
+  go to stderr.
+- `--watch-clear` — like `--watch` but clears the screen before
+  each re-run (ANSI `2J` + cursor home).
+- `--threads <N>` — rayon worker count for the per-file phase.
+  `0` = sequential (debugging aid). Defaults to logical-CPU count.
+- `--no-cache` — bypass the per-file digest cache for this run
+  (also `VERUM_LINT_NO_CACHE=1`).
+- `--clean-cache` — wipe `target/lint-cache/` and exit. Idempotent.
+- `--baseline <FILE>` — read a pre-recorded suppression set; live
+  issues that match an entry are silenced (with a count line).
+- `--write-baseline` — snapshot the current run's issue set to
+  `.verum/lint-baseline.json` (or the path passed via `--baseline`)
+  and exit 0 regardless of issue count.
+- `--no-baseline` — disable the baseline-read path even when a
+  default-path file exists.
+- `--max-warnings <N>` — fail the run if warnings exceed `N`
+  (supersedes `--deny-warnings` when both are set; `N=0` is
+  identical to `--deny-warnings`).
+- `--new-only-since <GIT_REF>` — like `--since`, but additionally
+  filters out issues that were also present at `<GIT_REF>` —
+  surfaces only issues introduced by the current branch.
+- `--list-groups` — list every preset / group (`verum::strict`,
+  `verum::pedantic`, etc.) and the rules each contains.
+
+#### Output ordering with `--format json`
+
+When `--format json` is in effect AND none of `--baseline` /
+`--write-baseline` / `--fix` are set, `verum lint` runs in
+**streaming mode**: each file's diagnostics flush to stdout as
+soon as that file's per-file phase completes. Order is
+non-deterministic (worker-thread completion). Schema-stable
+identity is `(rule, file, line, column)`; consumers that need a
+sorted list sort post-hoc on those keys. Other formats (pretty /
+human / sarif / tap / gha) and the baseline / fix paths buffer
+to a single block in the existing sorted order.
 
 ### `verum doc`
 

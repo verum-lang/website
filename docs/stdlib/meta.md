@@ -825,8 +825,74 @@ meta fn derive_debug<T>() -> TokenStream using [TypeInfo, AstAccess, CompileDiag
 
 ---
 
+## Tactic metaprogramming algebra — `tactic.vr`
+
+A small, well-typed term algebra for **modeling** tactic combinators
+as Verum data. Distinct from the AST-quasi-quotation surface above:
+that one operates on actual compiler AST nodes; `tactic.vr` is the
+abstract calculus over an opaque `MetaTerm` — useful for *modeling*
+tactic combinators, *reasoning about* meta-language reductions, and
+serving as the user-facing surface for the tactic-meta analysis core
+in `verum_types::tactic_meta`.
+
+### Term shape
+
+```verum
+public type MetaTerm is
+    | Quote   { payload: Text }                    // ⌜e⌝
+    | Splice  { inner: Heap<MetaTerm> }            // ▸M
+    | Reflect { goal_name: Text }                  // reflect(g)
+    | Custom  { name: Text, arg: Heap<MetaTerm> }  // F(arg)
+    | Seq     { first: Heap<MetaTerm>, second: Heap<MetaTerm> }
+    | Const   { payload: Text };
+```
+
+### Reduction rules
+
+```text
+splice(quote(e))      ↦ quote(e)            (β-cancellation)
+custom(F, arg)        ↦ F(arg)              (analyzer-side, when F registered)
+reflect(g)            ↦ cached(g)           (analyzer-side, when cached)
+seq(M₁, M₂)           ↦ M₂                  (after M₁ reaches a value)
+```
+
+### Surface
+
+```verum
+public fn meta_quote(payload: Text) -> MetaTerm;
+public fn meta_splice(inner: MetaTerm) -> MetaTerm;
+public fn meta_reflect(goal_name: Text) -> MetaTerm;
+public fn meta_custom(name: Text, arg: MetaTerm) -> MetaTerm;
+public fn meta_seq(first: MetaTerm, second: MetaTerm) -> MetaTerm;
+public fn meta_const(payload: Text) -> MetaTerm;
+
+public fn is_meta_value(t: MetaTerm) -> Bool;
+public fn references_elaborator(t: MetaTerm, name: Text) -> Bool;
+
+// One-step β-cancellation at the outermost position.
+public fn beta_cancel(t: MetaTerm) -> MetaTerm;
+
+// Recursive bottom-up normaliser: applies β-cancel and
+// seq-elimination at every position. Idempotent.
+public fn meta_normalise(t: MetaTerm) -> MetaTerm;
+
+// True iff `t` admits no further reduction inside this surface
+// module. (External Custom-elaborator dispatch and Reflect
+// caching may still alter the term in the analyzer core.)
+public fn meta_is_normal(t: MetaTerm) -> Bool;
+```
+
+The Custom-elaborator and Reflect rewrites depend on external state
+(elaborator registry, goal cache) held by the analyzer core; they
+remain analyzer-side. The library half — β-cancel and seq-elim —
+runs purely on the `MetaTerm` data and is the building block for
+tactic-combinator equivalence proofs.
+
+---
+
 ## See also
 
 - **[Language → metaprogramming](/docs/language/meta/overview)** — user surface.
 - **[Language → attributes](/docs/language/attributes)** — the `@` forms this module supports.
 - **[proof](/docs/stdlib/proof)** — proof reflection consumes `TypeInfo` / `FunctionInfo`.
+- **[reference → tactics](/docs/reference/tactics)** — names of the registered tactics that `Custom` resolves to.

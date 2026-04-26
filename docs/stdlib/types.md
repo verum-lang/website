@@ -73,19 +73,54 @@ public fn k_var(name: Text) -> Kind;
 
 ### Unification
 
-`kind_occurs(k, var_name) -> Bool` is the occurs-check; the stdlib's
-unifier returns a `KindUnifyResult` discriminated as `KindOk {
-bindings: List<KindBinding> }` or `KindError { reason: Text }`.
+The full Robinson-style first-order unifier ships in this module.
+Returns a `KindUnifyResult` discriminated as `KindOk { bindings:
+List<KindBinding> }` (the most-general substitution that makes
+`a ≡ b`) or `KindError { reason: Text }` (structural mismatch /
+occurs-check failure).
 
 ```verum
-mount core.types.poly_kinds.{k_type, k_arrow, k_var, kind_occurs};
-
-// Kind of `Functor<F<_>>` ≈ (* → *) → Constraint
-let k_functor = k_arrow(k_arrow(k_type(), k_type()), k_constraint());
-
-// Is κ₀ free in `* → κ₀`?  Yes — occurs check triggers on substitution.
-assert(kind_occurs(k_arrow(k_type(), k_var("κ₀")), "κ₀"));
+public fn kind_unify(a: Kind, b: Kind) -> KindUnifyResult;
+public fn kind_apply(bindings: List<KindBinding>, k: Kind) -> Kind;
+public fn kind_occurs(k: Kind, var_name: Text) -> Bool;
 ```
+
+The occurs-check rules out cycles like `α ~ * → α` that would
+otherwise expand to an infinite kind. `kind_apply` walks a kind
+substituting every `KVar` whose name has a binding — idempotent
+once the substitution is in normal form.
+
+```verum
+mount core.types.poly_kinds.{k_type, k_arrow, k_var, kind_unify};
+
+// (α → *) ~ (* → β) ⇒ α ↦ *, β ↦ *
+let lhs = k_arrow(k_var("α"), k_type());
+let rhs = k_arrow(k_type(), k_var("β"));
+match kind_unify(lhs, rhs) {
+    KindUnifyResult.KindOk { bindings } => /* α ↦ *, β ↦ * */ ,
+    KindUnifyResult.KindError { reason } => panic(reason),
+}
+```
+
+### Convenience helpers
+
+```verum
+public fn is_concrete(k: Kind) -> Bool;
+public fn kind_arity(k: Kind) -> Int;
+public fn apply_args(k: Kind, args: List<Kind>) -> KindUnifyResult;
+public fn free_vars(k: Kind) -> List<Text>;
+```
+
+- `is_concrete` — every leaf is `KType` / `KConstraint`; no `KVar`
+  anywhere. Production-shape after inference completes.
+- `kind_arity` — count of `KArrow` levels on the right spine.
+  `Type` has arity 0; `Type → Type → Type` has arity 2.
+- `apply_args` — chain-unify a list of argument kinds through the
+  spine, returning the result kind under the unifying
+  substitution. Errors on over-application or any pairwise
+  mismatch.
+- `free_vars` — collect every `KVar` name (with duplicates;
+  callers that need a set walk the list once).
 
 ### Typical consumers
 
@@ -115,14 +150,38 @@ public type Quantity is
     | AtMost { n: Int{>= 0} };        // affine (at most n uses)
 
 public fn allows(q: Quantity, uses: Int{>= 0}) -> Bool;
+
+// Sequential composition (sum of uses across `let`-sequencing).
 public fn add_quantity(a: Quantity, b: Quantity) -> Quantity;
+
+// Multiplicative composition (scaling under λ-binders).
+public fn mul_quantity(a: Quantity, b: Quantity) -> Quantity;
+
+// Subquantity ordering: Zero ≤ One ≤ AtMost(n) ≤ Many.
+public fn is_sub(a: Quantity, b: Quantity) -> Bool;
+public fn quantity_eq(a: Quantity, b: Quantity) -> Bool;
+public fn top_quantity() -> Quantity;        // Many
+public fn bottom_quantity() -> Quantity;     // Zero
 ```
+
+The algebra:
+
+| Operation | Identity | Absorbing | Note |
+|-----------|----------|-----------|------|
+| `add_quantity` | `Zero` | `Many` | sequential `let`-flow |
+| `mul_quantity` | `One`  | `Zero`/`Many` | scaling under λ |
+| `is_sub`       | reflexive, antisymmetric, transitive | — | drives quantity-coercion |
 
 `add_quantity` is the sequential-composition operation: when a
 binding flows through both branches of a sequence, the observed
-usage is summed. The implementation is total — the `AtMost` ladder
-keeps exact counts rather than collapsing to `Many` prematurely,
-which preserves useful refinement feedback.
+usage is summed. `mul_quantity` is what you reach for when scaling
+under a binder — if a parameter is used `outer` times in the
+function body and the bound thing was annotated `inner`, the
+effective usage of that thing per call site is `outer × inner`.
+
+The implementation is total and the `AtMost` ladder keeps exact
+counts rather than collapsing to `Many` prematurely, which
+preserves useful refinement feedback.
 
 ### Usage tracking
 
