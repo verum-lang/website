@@ -389,6 +389,39 @@ actions.
 
 ### `cbgr-budget-exceeded` — *warn*
 
+Static + profile-driven CBGR-budget enforcement. Per-module budgets
+declared via `[lint.cbgr_budgets]` are compared against either
+the static 15 ns per-managed-deref estimate (default) or the
+measured `deref_ns_p99` from a profile file.
+
+```toml
+[lint.cbgr_budgets]
+default_check_ns = 15
+measurements     = "target/cbgr-profile.json"
+
+[lint.cbgr_budgets.modules]
+"app.handlers.*" = { max_check_ns = 30 }
+"core.runtime"   = { max_check_ns = 0 }   # 0 = managed refs forbidden
+```
+
+Profile file shape (from `verum bench --emit-cbgr-profile`):
+
+```json
+{
+  "schema_version": 1,
+  "modules": {
+    "app.handlers": { "deref_ns_p99": 25 }
+  }
+}
+```
+
+When a module appears in the profile, its measured cost wins —
+the rule fires when `max_check_ns < deref_ns_p99`. When the
+profile is missing or unparseable, the static fallback applies and
+a stderr warning surfaces.
+
+
+
 Managed CBGR reference (`&` / `&mut`, ~15 ns per deref) used in a
 module whose `[lint.cbgr_budgets].max_check_ns` budget is below the
 static per-deref cost. Promote to `&checked` (compiler-proven, 0 ns)
