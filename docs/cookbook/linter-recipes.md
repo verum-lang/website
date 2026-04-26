@@ -14,11 +14,20 @@ for individual rule semantics see
 ## Local "what's broken right now"
 
 ```bash
-verum lint                        # 20-rule sweep, default severity
+verum lint                        # 45-rule sweep, default severity
+verum lint --format human         # span-underlined, colour, human-readable
 verum lint --format json | jq .   # NDJSON for ad-hoc analysis
 verum lint --explain todo-in-code # one rule's full doc
-verum lint --list-rules           # everything available
+verum lint --explain todo-in-code --open  # open the docs page in a browser
+verum lint --list-rules           # every rule the binary knows
+verum lint --list-groups          # verum::strict / nursery / pedantic / ...
+verum lint --watch                # re-lint on save (debounced 300 ms)
 ```
+
+The `--format human` shape is the one rust / clippy / ruff users
+recognise — rule code in brackets, file path with `--> `,
+caret-underlined source line, help suggestion. Set `NO_COLOR=1`
+in CI logs.
 
 ## Adopting strict mode incrementally with a baseline
 
@@ -189,6 +198,50 @@ lint:
     reports:
       codequality: lint.json
 ```
+
+## Comprehensive CI recipe (production)
+
+This pipeline combines every stable flag in the recommended order
+for a serious production CI:
+
+```yaml
+- name: Validate the lint config itself
+  run: verum lint --validate-config
+
+- name: PR-only gate — fail on NEW issues only
+  if: github.event_name == 'pull_request'
+  run: |
+    git fetch origin "$GITHUB_BASE_REF":"$GITHUB_BASE_REF"
+    verum lint --new-only-since "$GITHUB_BASE_REF" \
+               --severity error \
+               --format human
+
+- name: Full corpus warning budget
+  run: |
+    verum lint --severity warn \
+               --max-warnings 50 \
+               --baseline .verum/lint-baseline.json \
+               --format human
+
+- name: SARIF upload for code-scanning
+  if: always() && github.event_name == 'pull_request'
+  run: verum lint --format sarif > target/lint.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  if: always() && github.event_name == 'pull_request'
+  with: { sarif_file: target/lint.sarif }
+```
+
+What each step buys you:
+
+- **validate-config** — fail-fast on a malformed `verum.toml`. Cheap.
+- **--new-only-since** — fail the PR only on NEW issues so the
+  baseline of legacy noise doesn't gate every change.
+- **--max-warnings + --baseline** — full-corpus check after the PR
+  gate. Baseline silences the legacy 200; the budget keeps the
+  team honest about not adding more.
+- **SARIF upload** — runs even on failure (`if: always()`) so
+  GitHub Code Scanning gets the report regardless of the build
+  outcome.
 
 ## Migrating a legacy codebase
 
