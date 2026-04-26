@@ -586,6 +586,87 @@ fire on text inside string literals or comments. The full schema is
 documented in
 [`[[lint.custom]]` · AST-pattern rules](/docs/reference/lint-configuration#ast-pattern-rules-phase-d).
 
+## Cross-file rules
+
+These rules operate on the assembled corpus, not one file at a
+time. They land in the post-aggregation phase after every per-file
+pass has run, so they see the full mount graph + the full set of
+public symbols + every file's source. Useful for rules that
+require a project-wide view: cycle detection, dead-code search,
+public-API consistency.
+
+### `circular-import` — *error*
+
+DFS over the mount graph; reports every cycle once at its entry
+node, with the full chain in the message (`a → b → c → a`).
+Fires only on cycles entirely within the corpus — `mount-cycle-via-stdlib`
+catches the harder variant where the cycle is laundered through a
+standard-library re-export.
+
+### `orphan-module` — *hint*
+
+A `.vr` file under `src/` that no other file mounts. Skips
+entry-point conventions (`main.vr` / `lib.vr` / `mod.vr`) and any
+file whose dotted name has a prefix that's already mounted —
+`mount foo` covers `foo.bar` implicitly.
+
+### `dead-module` — *hint*
+
+A file isn't reached from any entry point along the mount graph.
+Differs from `orphan-module`: orphan-module is *"no one mounts it"*;
+dead-module is *"no chain of mounts from an entry point reaches it"* —
+a file can be mounted-and-unreachable when the chain itself is dead.
+
+### `unused-public` — *hint* — opt-in
+
+Public symbol whose name doesn't appear as a standalone identifier
+in any other file. Heuristic — qualified renames and reflective
+use are out of scope; off by default to avoid nuisance reports on
+library projects whose consumers live outside the workspace. Opt
+in via:
+
+```toml
+[lint.rules.unused-public]
+enabled = true
+```
+
+### `unused-private` — *hint*
+
+Non-public symbol with no callers in its own file. Complements
+`unused-public`; together they cover dead code on both sides of
+the visibility boundary. Skips `main` / `init` / `_start` —
+runtime entry-points are referenced externally.
+
+### `inconsistent-public-doc` — *hint* — opt-in
+
+A module exports K public symbols, M of them have `///` doc
+comments. Fires when 0 < M < K — the inconsistency case. All-or-
+nothing is left alone (some modules legitimately don't need docs;
+that's the user's call). Opt in via:
+
+```toml
+[lint.rules.inconsistent-public-doc]
+enabled = true
+```
+
+### `mount-cycle-via-stdlib` — *warn*
+
+A user-corpus file mounts a stdlib path (`stdlib.X` or `core.X`)
+whose first non-stdlib segment overlaps with a top-level user
+namespace. Catches the round-trip cycle that `circular-import`
+misses because the standard library is a black box from the
+linter's point of view. False positives are rare but possible —
+suppress with `@allow("mount-cycle-via-stdlib")` when the stdlib
+path is a legitimate forward of a different name.
+
+### `pub-exports-unsafe` — *warn*
+
+Public symbol's signature mentions `&unsafe` or `unsafe fn`.
+Catches unintentional unsafe-surface leakage at the project's
+public API boundary. The signature scan is text-level on the
+declaration's source; the false-positive rate is low because
+those tokens essentially never appear in safe code.
+
 ## Severity / category cross-reference
 
 | Rule | Cat. | Default | Implementation |
