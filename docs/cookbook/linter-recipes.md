@@ -127,6 +127,35 @@ todo-in-code = "warn"        # don't fail CI on TODOs
 an error. The override carves out `tests/` and `benches/` so test-only
 patterns don't break the build.
 
+## PR-only issue reporting
+
+`--since GIT_REF` lints only files changed since REF, but reports
+*every* issue in those files — pre-existing problems show up too.
+For *"keep this PR clean"* gates you usually want only the NEW
+issues introduced by the diff. That's what `--new-only-since` does:
+
+```yaml
+# .github/workflows/lint-pr.yml
+- name: Lint NEW issues only
+  run: |
+    git fetch origin "$GITHUB_BASE_REF":"$GITHUB_BASE_REF"
+    verum lint --new-only-since "$GITHUB_BASE_REF" \
+               --severity error \
+               --format human
+```
+
+How it works:
+
+1. Lints HEAD (the PR branch) → set A.
+2. Spawns a `git worktree add --detach <REF>` in a temp dir, lints
+   that → set B.
+3. Reports A − B (matched on rule, file, line, message hash).
+4. Cleans up the worktree.
+
+The worktree approach means the user's index / staging area is
+never disturbed, and a concurrent edit on the live tree can't
+change the result mid-run. Mutually exclusive with `--since`.
+
 ## CI gate (GitHub Actions)
 
 ```yaml
