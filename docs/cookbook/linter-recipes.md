@@ -22,7 +22,26 @@ verum lint --list-rules           # everything available
 
 ## Pre-commit hook
 
-`.git/hooks/pre-commit`:
+The fast path — one command, no copy-paste:
+
+```bash
+verum hooks install
+```
+
+That writes `.git/hooks/pre-commit` running
+`verum lint --since HEAD --severity error` and `verum fmt --check`.
+The script carries a header marker so `verum hooks uninstall` only
+removes hooks we wrote — a hand-authored hook is never silently
+clobbered.
+
+```bash
+verum hooks status      # is the hook installed? is it ours?
+verum hooks install --force   # overwrite an existing hook
+verum hooks uninstall   # remove (only if we own it)
+```
+
+When you need a custom hook (extra checks, project-specific
+gates), here's the manual recipe:
 
 ```bash
 #!/usr/bin/env bash
@@ -39,9 +58,12 @@ verum lint --validate-config
 # 2. Run the linter at error severity only — warnings / info don't
 #    block commits, but they do show up in the editor.
 verum lint --severity error
+
+# 3. Optional: warning budget for gradual cleanup
+verum lint --severity warn --max-warnings 50
 ```
 
-`chmod +x .git/hooks/pre-commit` and you're done.
+Save as `.git/hooks/pre-commit` and `chmod +x` it.
 
 ## Pin a project to "strict" mode
 
