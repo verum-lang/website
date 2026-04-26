@@ -467,6 +467,33 @@ Attribute scope:
   to it
 - on a `module` declaration → covers every item in the file
 
+## Lint groups
+
+`extends` accepts the four built-in presets *and* `verum::<group>`
+handles for opt-in rule families. Use a group when you want a
+named bundle of rules switched on without enumerating each name in
+`[lint.severity]`.
+
+```toml
+[lint]
+extends = "verum::strict"
+```
+
+Available groups:
+
+| Group | Members |
+|-------|---------|
+| `verum::correctness` | every error-level rule. The bare-minimum gate that catches actual bugs. |
+| `verum::strict` | every safety + verification rule, plus every error-level rule. CI-grade. |
+| `verum::pedantic` | every hint-level rule. Refactor-the-codebase mode. |
+| `verum::nursery` | experimental rules (`inconsistent-public-doc`, `unused-public`, `mount-cycle-via-stdlib`). Off by default in every other preset. |
+| `verum::deprecated` | rules slated for removal. Empty today; populated via the deprecation framework as renames land. |
+
+Run `verum lint --list-groups` to print every group with its
+current member rules — the registry is the source of truth, so
+this command always agrees with whatever the binary actually
+applies.
+
 ## Custom rules
 
 Two flavours: **regex** rules (text-scan — fast, fuzzy, useful for
