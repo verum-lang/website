@@ -626,12 +626,41 @@ verum lint --list-rules                  # every known rule + category
 verum lint --validate-config             # config-only validation, exits 0/non-0
 verum lint --since origin/main           # only files changed vs ref
 verum lint --severity error              # report at this level or higher
+verum lint --format human                # span-underlined human output
 verum lint --format sarif > x.sarif      # machine-readable
 verum lint --format github-actions       # ::warning file=…::msg annotations
+verum lint --max-warnings 50             # fail if warnings exceed budget
+verum lint --no-cache                    # bypass the per-file digest cache
+verum lint --clean-cache                 # wipe target/lint-cache/ and exit
+verum lint --watch                       # watch for changes, re-lint on save
+verum lint --threads 4                   # worker count (0 = sequential)
 ```
 
 `-D`, `-W`, `-A`, `-F` from `verum build` continue to work as
 single-rule overrides.
+
+### `--max-warnings N` budget
+
+Fails the run when more than N warnings are emitted (after every
+filter — severity_map, per-file overrides, `--severity`, baseline,
+`@allow`). Errors always fail regardless of N — the budget is for
+the warning bucket only.
+
+| Invocation | Effect |
+|------------|--------|
+| `--max-warnings 0` | Any warning fails. Equivalent to `--deny-warnings`. |
+| `--max-warnings 50` | Pass while warnings ≤ 50, fail when > 50. |
+| (omitted) | No cap. `--deny-warnings` semantics apply when set. |
+
+A typical CI gate during gradual cleanup:
+
+```bash
+verum lint --severity warn --max-warnings 50
+```
+
+When the team fixes warnings, lower the budget. The build fails the
+moment someone adds a 51st warning, so the line never moves
+backwards.
 
 ## Validation
 
