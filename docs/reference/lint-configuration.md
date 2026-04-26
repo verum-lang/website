@@ -467,6 +467,31 @@ Attribute scope:
   to it
 - on a `module` declaration → covers every item in the file
 
+## Rule deprecations & migration
+
+When a rule is renamed (or slated for removal), it doesn't
+disappear immediately — that would break every config that
+references it. Instead the rule moves to *Deprecated* status: it
+no longer fires its own diagnostics, but references to it
+(`[lint.severity]`, `@allow / @deny / @warn`, CLI flags) keep
+working for one minor release and emit a hint pointing at the
+replacement.
+
+The deprecation cycle:
+
+1. **Mark deprecated.** The rule moves into the `DEPRECATED_RULES`
+   side-map with `since: "<version>"` and `replacement: Some(...)`.
+   `--list-rules` annotates it: `[DEPRECATED — use new-name]`.
+2. **One-release grace.** During this window both names work; the
+   old one's suppressions still apply to the new one's fires.
+3. **Removal.** The next minor release drops the entry from both
+   the catalogue and the deprecated map. Configs that still
+   reference the old name fail `--validate-config`.
+
+The framework today ships with an EMPTY deprecated list — no rule
+has been renamed yet. The plumbing is in place for the first
+deprecation to land cleanly.
+
 ## Lint groups
 
 `extends` accepts the four built-in presets *and* `verum::<group>`
