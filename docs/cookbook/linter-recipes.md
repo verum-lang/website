@@ -20,6 +20,47 @@ verum lint --explain todo-in-code # one rule's full doc
 verum lint --list-rules           # everything available
 ```
 
+## Adopting strict mode incrementally with a baseline
+
+Turning on a stricter lint preset on a corpus that has 200 existing
+warnings is the classic *"good idea, never happens"* problem.
+`--write-baseline` snapshots the current state to a JSON file
+checked into the repo; future runs only fail on issues that
+*aren't* in the baseline.
+
+```bash
+# 1. Snapshot the current N issues. Commit the file.
+verum lint --write-baseline
+git add .verum/lint-baseline.json
+git commit -m "chore: seed lint baseline"
+
+# 2. From now on, CI fails only on NEW issues. Existing 200
+#    warnings are silenced until the team gets to them.
+verum lint --severity warn --max-warnings 0
+```
+
+When someone fixes an old warning the rule is no longer fires, so
+the next `--write-baseline` run drops it from the baseline (entries
+that don't appear in the current run are pruned automatically).
+
+Match policy:
+- (rule, file, message_hash) must match exactly.
+- Line position is allowed to drift by ±5 — moving a TODO comment
+  three lines down doesn't unfreeze the suppression. Beyond ±5 the
+  issue is treated as a fresh fire.
+
+CLI flags:
+
+| Flag | Effect |
+|------|--------|
+| `--baseline FILE` | Read suppressions from FILE (default `.verum/lint-baseline.json` if it exists). |
+| `--no-baseline` | Disable baseline lookup for this run. |
+| `--write-baseline` | Snapshot the current run's issue set to FILE; exit 0 even with issues. |
+
+The default baseline path is auto-detected — if `.verum/lint-baseline.json`
+exists, it's used without any flag. So `verum lint` after a seeded
+baseline already does the right thing.
+
 ## Pre-commit hook
 
 The fast path — one command, no copy-paste:
