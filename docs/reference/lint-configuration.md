@@ -412,6 +412,7 @@ bumps the version.
 | `message` | string | Human-readable summary |
 | `fixable` | boolean | `true` when `--fix` knows how to repair this issue |
 | `suggestion` | string | Replacement / hint text. Present when `fixable` is `true`; may also appear on non-fixable issues as a manual-action hint |
+| `fix.edits` | array | LSP-style structured edits when an autofix is available. Present only on `fixable` issues that have a precise replacement. Each element: `{start_line, start_column, end_line, end_column, new_text}`, all 1-indexed. Adding this field is non-breaking — `schema_version` stays at 1; consumers that don't understand `fix` ignore it |
 
 ### `--format sarif` — SARIF 2.1.0
 
