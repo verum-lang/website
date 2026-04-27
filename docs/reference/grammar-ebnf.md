@@ -280,6 +280,9 @@ attribute      = std_attribute
                | derive_attribute
                | verify_attribute
                | identifier , [ '(' , attribute_args , ')' ] ;
+attribute_args = expression_list | named_arg_list ;
+named_arg_list = named_arg , { ',' , named_arg } ;
+named_arg      = identifier , '=' , expression ;
 
 std_attribute        = 'std' , [ '(' , identifier , ')' ] ;
 specialize_attribute = 'specialize' ;
@@ -288,12 +291,58 @@ derive_attribute     = 'derive' , '(' , identifier , { ',' , identifier } , ')' 
 verify_attribute = 'verify' , '(' ,
     ( 'runtime' | 'static' | 'formal' | 'proof'
     | 'fast' | 'thorough' | 'reliable'
-    | 'certified' | 'synthesize' ) , ')' ;
+    | 'certified' | 'synthesize'
+    | 'coherent' | 'coherent_static' | 'coherent_runtime'
+    | 'complexity_typed' ) , ')' ;
 ```
 
 `@verify` selects a **semantic strategy** rather than a particular
 solver — the compiler chooses the SMT backend / portfolio per the router.
 See [SMT routing](/docs/verification/smt-routing).
+
+#### Attribute classification (the architecture rework)
+
+Verum's attributes split into two architectural classes:
+
+**1. Compiler-internal typed attributes** — recognised by name in
+the parser; their semantic shape lives in
+`verum_ast::attr::typed::*` because Rust passes (TCB / pipeline /
+audit walker / CLI driver) dispatch on them at compile time:
+
+| Attribute | Spec | Dispatch site |
+|---|---|---|
+| `@verify(strategy)` | §12 | `verum_smt::verify_strategy::extract_from_attributes` |
+| `@framework(name, "cite")` | §6 | `verum_kernel::axiom::load_framework_axioms` (TCB) |
+| `@framework_translate(s, t, "cite")` | Task C7b | `verum_cli::audit::collect_framework_markers_from` |
+| `@extract[(target)]` / `@extract_witness[(target)]` / `@extract_contract[(target)]` | §8.6 | `verum_cli::extract::collect_extract_requests` |
+| `@enact(epsilon = "...")` | §11 | `verum_cli::audit::audit_epsilon` |
+| `@accessibility(λ)` | Diakrisis Axi-4 | audit walker |
+| `@quantity(0 \| 1 \| omega)` | §7.6 | type checker |
+| `@derive(Trait, ...)` | §8.7 | derive macros |
+| `@cfg(...)` | §3.2 | conditional compilation |
+| `@inline` / `@cold` / `@repr(C)` / etc. | misc | code generation hints |
+
+**2. Meta-system advisory attributes** — parsed via the generic
+`identifier(args)` form; semantic validation happens in
+`core/meta/diakrisis_attrs.vr` (and other meta-modules). No
+parser extension required; users may define analogous classifiers
+in their own meta-modules:
+
+| Attribute | Spec | Meta-fn |
+|---|---|---|
+| `@effect(kind)` | Part B §9 | `parse_effect_attr` |
+| `@infinity_category(level)` | Part B §4 | `parse_infinity_category` |
+| `@autopoietic(epsilon, depth)` | Part B §5 | `parse_autopoietic` |
+| `@ludic_design` | Part B §10 | `parse_ludic_design` |
+| `@cut_elimination[(bound)]` | Part B §10 | `parse_cut_elimination` |
+
+**Architectural principle (V8.1 META1)**: *typed attributes are
+reserved for compiler-internal dispatch where Rust-side performance
+or TCB constraints matter*. Every advisory marker that does NOT
+participate in compile-time dispatch is BETTER expressed via the
+meta-system — zero grammar bloat, user-extensible, single source
+of truth (definition + validation + docstring + spec citation
+all in one `.vr` file).
 
 ### 2.3 Modules and imports
 
@@ -715,6 +764,18 @@ impl_type         = type_expr , 'for' , type_expr     (* implement P for T *)
                   | type_expr ;                       (* implement T (inherent impl) *)
 
 impl_item         = visibility , [ 'default' ] , ( function_def | type_alias | const_def ) ;
+
+(* Associated type binding inside `implement` / `protocol` blocks.            *)
+(* Distinct from the top-level `type_def` (§2.4) — only the associated-type   *)
+(* binding uses `=`. Top-level type definitions ALWAYS use `is`.              *)
+(*                                                                            *)
+(* Example:                                                                   *)
+(*   implement Iterator for Range {                                           *)
+(*       type Item = Int;            (* this production *)                    *)
+(*       fn next(&mut self) -> ... { ... }                                    *)
+(*   }                                                                        *)
+type_alias        = 'type' , identifier , [ type_params ] , [ ':' , type_bounds ]
+                  , '=' , type_expr , ';' ;
 ```
 
 ### 2.9 Contexts

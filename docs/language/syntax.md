@@ -443,16 +443,18 @@ type Pair<A, B> is (A, B);
 implement<T: Ord> SortedList for List<T> { ... }
 ```
 
-Invocation with explicit types uses the same angle brackets:
+Invocation with explicit types uses the same angle brackets — both in type
+position and as call-site type arguments:
 
 ```verum
-List.new<Int>()
-identity::<Text>("hi")            // Rust-style turbofish on expression position
+let xs: List<Int> = List.new();
+let xs = List.new<Int>();
+let n  = identity<Text>("hi");
 ```
 
-The turbofish `::<...>` disambiguates in expression positions where
-`<` could parse as a comparison. In type positions, bare `<...>` is
-unambiguous.
+Verum has **no Rust-style turbofish (`::<T>`)**: `::` is not a token in
+[`grammar/verum.ebnf`](../reference/grammar-ebnf.md). The grammar
+disambiguates `foo<T>(args)` from `foo < T` by lookahead alone.
 
 ## `using` context clauses
 

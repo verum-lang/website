@@ -12,7 +12,7 @@ title: MSFS Coordinate (Framework, ν, τ)
 > computed at audit time and projects the theorem into the
 > classifying 2-stack `𝔐` of MSFS.
 
-This page is normative for VUVA §10 (`core.theory_interop` Yoneda /
+This page is normative for the verification spec (`core.theory_interop` Yoneda /
 Kan / descent operations) and the §10.4 coord projection. It pairs
 the Object-Centric layer (`core.math.*` framework axioms) with
 Verum's *meta-theoretic locator* — the 2-stack coordinate every
@@ -106,8 +106,8 @@ the single source of truth.
 ## 3. The standard six-pack ν-table
 
 `core.theory_interop.coord::known_ordinal` ships the curated
-`(framework, ν)` lookup for the VUVA standard six-pack
-([VUVA §6.2](framework-axioms.md)) plus the neutral Actic
+`(framework, ν)` lookup for the VVA standard six-pack
+([the verification spec](framework-axioms.md)) plus the neutral Actic
 articulation:
 
 | Framework | ν | Justification |
@@ -281,7 +281,7 @@ ordinal_finite_offset)` lets dashboards sort
 
 ## 7. The three theory-interop operations
 
-`core.theory_interop.core` ships three operations from VUVA §10:
+`core.theory_interop.core` ships three operations from the verification spec:
 
 ```verum
 public fn load_theory(T: TheoryDescriptor) -> Articulation;        // §10.1
@@ -370,7 +370,7 @@ section.
   framework-axiom layer.
 - [Trusted kernel](trusted-kernel.md) — the kernel rules
   (`K-FwAx`, `K-Refine`) that consume framework axioms.
-- VUVA spec §10 (`docs/architecture/verification-architecture.md`).
+- the verification spec.
 - Diakrisis MSFS (`internal/holon/internal/math-msfs/`) — the
   canonical source for the 2-stack `𝔐` and the
   `(Fw, ν, τ)` projection.

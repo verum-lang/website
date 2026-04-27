@@ -13,7 +13,7 @@ title: OC / DC Dual Stdlib (Actic)
 > identity enforced by the kernel and the counit identity
 > witnessed up to gauge canonicalisation.
 
-This page is normative for VUVA §11.
+This page is normative for the verification spec
 
 ---
 
@@ -50,7 +50,7 @@ duality as stdlib. The DC side enables:
 ## 2. The eight ε-primitives
 
 `core.action.primitives` ships seven canonical Diakrisis primitive
-acts plus the catalogue extension `ε_classify` introduced by VUVA §21
+acts plus the catalogue extension `ε_classify` introduced by the verification spec
 (OWL 2 V1 ecosystem). All eight are leaves of the Actic dual:
 
 | Primitive | Surface name | Diakrisis intent |
@@ -62,7 +62,7 @@ acts plus the catalogue extension `ε_classify` introduced by VUVA §21
 | `EpsilonDecide` | `ε_decide` | Branch on a decidable predicate. |
 | `EpsilonTranslate` | `ε_translate` | Cross-framework articulation translation (Kan extension). |
 | `EpsilonConstruct` | `ε_construct` | Constructive existence proof producing a witness. |
-| `EpsilonClassify` | `ε_classify` | Ontology classification / subsumption / instance check (VUVA §21 extension). |
+| `EpsilonClassify` | `ε_classify` | Ontology classification / subsumption / instance check (the verification spec extension). |
 
 Classifier predicates (`is_observational`, `is_constructive`,
 `is_proof_producing`, `is_decision_point`, `is_translation`,
@@ -144,7 +144,7 @@ Both Diakrisis-canonical names (`enact_then`, `enact_par`,
 (`compose`, `activation`, `activation_iterate`, `is_autopoietic`)
 are public and stable; user code may pick either.
 
-### 4.2 The α ⊣ ε adjunction (VUVA §11.3)
+### 4.2 The α ⊣ ε adjunction (the verification spec)
 
 ```verum
 public fn epsilon(alpha: Articulation) -> Enactment {
@@ -357,7 +357,7 @@ The example illustrates the three operational layers:
   hygiene check that pairs with the OC/DC stdlib at the type level.
 - [Framework axioms](framework-axioms.md) — how `@framework(name,
   citation)` axioms install Articulations into the kernel.
-- VUVA spec §11 (`docs/architecture/verification-architecture.md`).
+- the verification spec.
 - Diakrisis 12-actic (`internal/holon/internal/diakrisis/docs/12-actic/`):
     - `02-dual-primitive.md` — the AC primitive and ε-primitive list.
     - `04-ac-oc-duality.md` — the 108.T duality theorem.

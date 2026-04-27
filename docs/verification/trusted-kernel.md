@@ -159,7 +159,7 @@ runs the walker on **every** constructor's argument types when an
 `InductiveRegistry::register(...)` call is made; the first violation
 rejects the whole declaration with `KernelError::PositivityViolation`.
 
-The discipline (per VUVA §7.3, after Coquand & Paulin 1990):
+The discipline ():
 
 - `Pi(domain, codomain)` — the type's name MUST NOT appear anywhere in
   `domain` (the negative position of the arrow); `codomain` itself

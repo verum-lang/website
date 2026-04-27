@@ -36,7 +36,7 @@ per [Installation](/docs/getting-started/installation).
 
 | Component | What it does | Powered by |
 |-----------|--------------|-----------|
-| **TextMate grammar** | Offline syntax highlighting grammar-complete against `grammar/verum.ebnf` — keywords, refinement predicates, raw multiline strings, tagged literals, `@attribute(args)`. | `syntaxes/verum.tmLanguage.json` |
+| **TextMate grammar** | Offline syntax highlighting grammar-complete against the [EBNF specification](../reference/grammar-ebnf.md) — keywords, refinement predicates, raw multiline strings, tagged literals, `@attribute(args)`. | `syntaxes/verum.tmLanguage.json` |
 | **Semantic highlighting** | LSP-driven additions on top of TextMate: refinement vs. regular types, CBGR reference tiers, proof identifiers, context providers / consumers. | `verum lsp` → `textDocument/semanticTokens` |
 | **Snippets** | Prefix-driven scaffolds for `type is`, `is protocol { }`, `implement for`, `mount`, `fn-verify-formal`, `nursery`, `select`, refinement shapes, tagged literals, proof blocks. | `snippets/verum.json` |
 | **Diagnostics** | Parse errors, type errors, refinement counter-examples, CBGR warnings — on-type, debounced, with concrete witness values. | `verum lsp` → `textDocument/publishDiagnostics` |
@@ -152,7 +152,7 @@ them.
 ## Syntax-highlighting model
 
 The grammar is **grammar-driven**: every keyword, literal form, and
-attribute shape in [`grammar/verum.ebnf`](https://github.com/verum-lang/verum/blob/main/grammar/verum.ebnf)
+attribute shape in the [EBNF specification](../reference/grammar-ebnf.md)
 has a corresponding TextMate pattern. Key points:
 
 - **Keywords**. All four tiers — reserved (`let` / `fn` / `is`),

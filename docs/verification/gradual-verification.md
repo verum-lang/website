@@ -46,11 +46,12 @@ strategy controls the solver.
 
 ## The nine strategies
 
-The grammar production `verify_strategy` (grammar/verum.ebnf §2)
+The grammar production `verify_strategy` (see the
+[Grammar reference — Functions](../reference/grammar-ebnf.md#25-functions))
 admits exactly these **thirteen** keywords today. Each has a
 **distinct** operational behaviour (no aliases — `proof` and
 `reliable` are no longer collapsed into `formal` and `thorough` per
-VUVA §12). The pre-VFE-6/8 baseline shipped nine; VFE-6 added three
+the verification spec). The pre-VFE-6/8 baseline shipped nine; VFE-6 added three
 *coherence* strategies and VFE-8 added one *complexity-typed*
 strategy:
 

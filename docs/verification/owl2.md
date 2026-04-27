@@ -16,7 +16,7 @@ This page is the comprehensive surface for the OWL 2 stack. It pairs
 the [framework-axiom system](framework-axioms.md) (which provides the
 trusted-boundary discipline) with the [MSFS coordinate
 projection](msfs-coord.md) (which positions OWL 2 at `ν=1, τ=intensional`
-in the Diakrisis lattice). VUVA spec §21 is the normative source.
+in the Diakrisis lattice). the verification spec is the normative source.
 
 ---
 
@@ -47,7 +47,7 @@ reasoner with no formal connection to the assistant's kernel
   Lurie HTT ∞-categorical infrastructure) is one
   `core.theory_interop.translate` call away.
 
-VUVA §21.2 distinguishes two layers of correspondence claim:
+the verification spec distinguishes two layers of correspondence claim:
 
 | Claim | Direction | Where it comes from |
 |---|---|---|
@@ -74,12 +74,12 @@ W3C ships two OWL 2 semantics:
 - **OWL 2 RDF-Based Semantics (RBS)** — graph-based semantics over
   RDF triples. Undecidable; primarily used for SPARQL interop.
 
-Verum targets **DS only**. Rationale (per VUVA §21.1):
+Verum targets **DS only**. Rationale ():
 
-- DS gives decidability, matching VUVA §12's nine-strategy ladder
+- DS gives decidability, matching the verification spec's nine-strategy ladder
   which expects predictable complexity per strategy.
 - RBS triples don't map cleanly onto Verum's typed refinement
-  structure (VUVA §5) without a graph-modelling layer that would
+  structure (the verification spec) without a graph-modelling layer that would
   duplicate `core.collections.Map<Text, Set<Text>>`.
 - Shkotin 2019 — the formal bridge Verum imports — formalises DS
   only; RBS has no equivalent in-kernel formalisation.
@@ -94,8 +94,8 @@ two semantics behind distinct module entry points.
 ## 3. Three-layer architecture
 
 OWL 2 integration decomposes into three clean layers, each mapping
-onto an existing VUVA architectural slot. This is **not** new
-architecture — OWL 2 is lifted into VUVA's existing surfaces.
+onto an existing VVA architectural slot. This is **not** new
+architecture — OWL 2 is lifted into VVA's existing surfaces.
 
 | Layer | Module | Role | Shipped |
 |---|---|---|---|
@@ -111,7 +111,7 @@ architecture — OWL 2 is lifted into VUVA's existing surfaces.
 | Sub-module | Shkotin §X.Y / Table | Operators |
 |---|---|---|
 | `types` | §Notation | Individual (sort `o`), Literal (sort `d`), count_o axiom (1) |
-| `count` | §21.5 (VUVA) | count_o function + E_OWL2_UNBOUNDED_COUNT diagnostic |
+| `count` | §21.5 (VVA) | count_o function + E_OWL2_UNBOUNDED_COUNT diagnostic |
 | `object_property` | §2.2.1 Table 1 | ObjectInverseOf (1) |
 | `data_range` | §2.2.2 Table 3 | DataIntersectionOf, DataUnionOf, DataComplementOf, DataOneOf, DatatypeRestriction (5) |
 | `class_expr` | §2.2.3 Table 4 | ObjectIntersectionOf, ObjectUnionOf, ObjectComplementOf, ObjectOneOf; 8 object-property restrictions; 8 data-property restrictions; 4 negative range constraints (24) |
@@ -186,10 +186,9 @@ faulty ontology compile.
 
 ### 3.3 Layer 3 — verification obligations
 
-Per VUVA §21.3, OWL 2 reasoning tasks dispatch through the standard
-nine-strategy `@verify` ladder:
+Per the verification specnine-strategy `@verify` ladder:
 
-| OWL 2 task | VUVA strategy | ν-ordinal | Rationale |
+| OWL 2 task | VVA strategy | ν-ordinal | Rationale |
 |---|---|---|---|
 | Consistency of an ontology | `@verify(formal)` | ω | SMT satisfiability on the joint refinement |
 | Classification (EL/QL/RL) | `@verify(fast)` | 2 | Polynomial-time profile; bounded SMT timeout |
@@ -214,7 +213,7 @@ fails.
 
 Direct accommodation of both simultaneously would require every OWL
 2 query to return `Maybe<Bool>` with `Unknown`, breaking composition
-with the rest of Verum's type system. VUVA §21.4 chooses a pragmatic
+with the rest of Verum's type system. the verification spec chooses a pragmatic
 resolution:
 
 - **Default: CWA.** `@owl2_class` / `@owl2_property` without explicit
@@ -314,7 +313,7 @@ public type Citizen is { ssn: Text, birth_date: Text, ... };
 @owl2_equivalent_class(HumanBeing)
 public type Person is { ... };
 
-// A subsumption check — `@verify(formal)` per VUVA §21.3.
+// A subsumption check — `@verify(formal)` per the verification spec
 @verify(formal)
 @theorem
 public fn person_is_animal(p: Person) -> (p is Animal)
@@ -478,7 +477,7 @@ fail PRs that introduce ontology defects without re-running the
 audit themselves.
 
 A loose-lint mode (warnings only) is a future-only flag; the spec
-treats DL inconsistency as a hard error per VUVA §21.10 success
+treats DL inconsistency as a hard error per the verification spec success
 criterion #3.
 
 ---
@@ -493,7 +492,7 @@ Syntax Recommendation (Second Edition, 11 December 2012).
 ### 8.1 Output structure
 
 ```text
-# Exported by `verum export --to owl2-fs` (VUVA §21.8 / B5).
+# Exported by `verum export --to owl2-fs` (the verification spec / B5).
 # OWL 2 Functional-Style Syntax — round-trips through Pellet, HermiT,
 # Protégé, FaCT++, ELK, Konclude. BTreeMap-sorted output for byte-
 # deterministic CI diffs.
@@ -621,7 +620,7 @@ same theory under either presentation".
 
 ---
 
-## 11. Success criteria (VUVA §21.12)
+## 11. Success criteria (the verification spec)
 
 1. Round-trip: Pellet-compatible `foaf.owl` → `verum import` → `verum export` → byte-identical output.
 2. SNOMED-CT medical corpus classification produces the same class hierarchy as HermiT.
@@ -642,7 +641,7 @@ same theory under either presentation".
   expressions.
 - [Trusted kernel](trusted-kernel.md) — the kernel rules
   (`K-FwAx`, `K-Refine`) that consume OWL 2 axioms.
-- VUVA spec §21 (`docs/architecture/verification-architecture.md`).
+- the verification spec.
 - Shkotin 2019 *DS2HOL-1: OWL 2 Functional Style operators from HOL
   point of view* (`internal/OWL2.DS2HOL.pdf`) — the formal bridge.
 - W3C OWL 2 Direct Semantics (Second Edition) Recommendation, 11

@@ -16,6 +16,30 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — extraction lowerers + `@extract(realize=)` directive (2026-04-27)
+
+**`verum extract` AST-lowerer expansion**:
+
+- Match expressions, MethodCall, Field access, Closures (no contexts /
+  no async / no move), Pipeline (`|>`), Tuples + TupleIndex, Index,
+  and NullCoalesce now flow through the OCaml / Lean / Coq
+  partial-coverage lowerers. Each construct is emitted in idiomatic
+  per-target syntax with graceful `None` fallback when a sub-shape
+  exits the lowerer's vocabulary.
+
+**`@extract(realize="<fn_name>")` directive**:
+
+- Short-circuits the body-synthesis path. The verified surface
+  signature is preserved; the emitted body is a thin wrapper that
+  delegates to the named native function. Extends `@extract`,
+  `@extract_witness`, and `@extract_contract` with the same
+  `realize=` keyword. Lets a verified specification bind to a
+  hand-written / runtime-intrinsic primitive (crypto stub,
+  intrinsic wrapper, foreign syscall) without losing proof-checked
+  types at the boundary.
+
+See **[Verification → Program extraction](/docs/verification/program-extraction)**.
+
 ### Added — linter production hardening + stdlib algebra surfaces (2026-04-26)
 
 **Linter (`verum lint`)** — promoted to 100 % production-ready.

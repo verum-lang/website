@@ -404,5 +404,5 @@ in a companion shape tensor.
   model built on tensor types.
 - Source: `crates/verum_types/src/ty.rs`,
   `crates/verum_types/src/tensor_shape_checker.rs`,
-  `crates/verum_types/src/tensor_protocol.rs`,
-  `grammar/verum.ebnf` (`tensor_type_expr`).
+  `crates/verum_types/src/tensor_protocol.rs`. See also the
+  [Grammar reference — Types](../reference/grammar-ebnf.md#27-types).

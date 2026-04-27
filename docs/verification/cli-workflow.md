@@ -19,7 +19,7 @@ the **verification subset**.
 
 ## 1. Command overview
 
-Five CLI entry points touch verification:
+The CLI entry points that touch verification:
 
 | Command           | Purpose                                                        | Covered here? |
 |-------------------|----------------------------------------------------------------|---------------|
@@ -29,6 +29,8 @@ Five CLI entry points touch verification:
 | `verum smt-stats` | Telemetry dump from the session statistics cache.              | §6            |
 | `verum smt-info`  | SMT backend linkage / version / capability report.             | §7            |
 | `verum audit`     | Trusted-boundary enumeration (framework axioms, admits, kernel rules). | §8    |
+| `verum extract`   | Curry-Howard program extraction from constructive proofs into Verum/OCaml/Lean/Coq. | [Program extraction](./program-extraction.md) |
+| `verum export`    | Proof-certificate export to external provers (Lean / Coq / Dedukti / Metamath).     | [Proof export](./proof-export.md) |
 
 Every flag, subcommand, and output format described in
 this document is part of the shipping CLI surface.

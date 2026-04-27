@@ -56,6 +56,106 @@ the capability router. The full set admitted by the grammar:
 | `@verify(synthesize)` | fn, type | synthesis mode — generate a term satisfying the spec rather than checking it |
 | `@framework(name, "citation")` | axiom, theorem, lemma | Mark a statement as a trusted axiom borrowed from an external framework. `name` is the framework identifier (identifier syntax); the string is a human-readable citation (paper / URL / section). Surfaced by `verum audit --framework-axioms` for supply-chain review. |
 
+## Program extraction
+
+`@extract*` attributes mark constructive proofs and theorems for
+**program extraction** by `verum extract`: the emitted file contains
+the function's *computational content* in the chosen target language.
+This is distinct from `verum export`, which emits *proof certificates*
+for re-checking by an external prover.
+
+### Argument grammar
+
+```text
+extract_attr_call    = "(" extract_args? ")"
+extract_args         = ( extract_target | realize_kwarg )
+                     | extract_target "," realize_kwarg
+extract_target       = "verum" | "ocaml" | "lean" | "coq"
+realize_kwarg        = "realize" "=" string_literal
+```
+
+The `realize=` kwarg short-circuits the body-synthesis path —
+the emitter generates a thin wrapper that delegates to the named
+native function. This preserves the verified surface signature
+while binding the extracted scaffold to a hand-written runtime
+primitive (crypto stub, intrinsic wrapper, foreign syscall).
+
+### Attribute table
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@extract` | fn, theorem, lemma, corollary | extract as a runnable program in the default target (`verum`). |
+| `@extract(<target>)` | same | extract into `verum` \| `ocaml` \| `lean` \| `coq`. |
+| `@extract(realize="fn")` | same | bind the verified surface to native function `fn` instead of synthesising. Default target = `verum`. |
+| `@extract(<target>, realize="fn")` | same | explicit target + native binding combined. |
+| `@extract_witness` | theorem | emit only the existential witness from a constructive existence proof; the proof obligation is discharged in the Verum verification ladder, not re-emitted. |
+| `@extract_witness(<target>)` | theorem | same with explicit target. |
+| `@extract_witness(realize="fn")` | theorem | witness binding to a native function. |
+| `@extract_witness(<target>, realize="fn")` | theorem | full combination. |
+| `@extract_contract` | refinement-typed fn | preserve the refinement as a runtime contract check in the extracted code. |
+| `@extract_contract(<target>)` | same | with explicit target. |
+| `@extract_contract(realize="fn")` | same | contract wrapper bound to a native primitive. |
+| `@extract_contract(<target>, realize="fn")` | same | full combination. |
+
+A single declaration can carry multiple `@extract*` attributes —
+each one emits a separate file in its target's directory.
+
+### Output paths
+
+`verum extract` writes one file per (declaration, target) pair:
+
+| Target | Path | Re-checkable by |
+|--------|------|-----------------|
+| `verum` | `extracted/<name>.vr` | `verum check` |
+| `ocaml` | `extracted/<name>.ml` | `dune build` / OCaml 5.x |
+| `lean`  | `extracted/<name>.lean` | `lake build` / Lean 4 |
+| `coq`   | `extracted/<name>.v` | `coqc` / Coq 8.x |
+
+Override the parent directory with `verum extract --output <dir>`.
+
+### Examples
+
+```verum
+// Default Verum extraction — re-checkable by `verum check`.
+@extract
+public theorem add_comm(a: Int, b: Int) -> Int { a + b }
+
+// OCaml extraction with full body.
+@extract(ocaml)
+public fn double(n: Int) -> Int { n + n }
+
+// Witness-only extraction (Coq).
+@extract_witness(coq)
+public theorem isqrt(n: Int { :: n >= 0 }) -> Int
+    where (Int { result :: result * result <= n })
+{ ... }
+
+// Contract-preserving extraction across an FFI boundary.
+@extract_contract(ocaml)
+public fn safe_divide(a: Int, b: Int { :: b != 0 }) -> Int { a / b }
+
+// Bind a verified spec to a runtime intrinsic wrapper.
+@extract(realize = "verum_runtime_x25519_scalar_mult")
+public fn x25519(scalar: [Byte; 32], u: [Byte; 32]) -> [Byte; 32] { ... }
+
+// Coq target + native binding combined.
+@extract(coq, realize = "ext_decode")
+public fn decode(input: List<Byte>) -> Result<Frame, Error> { ... }
+
+// Multi-target deployment of one verified definition.
+@extract(verum)
+@extract(coq)
+@extract(lean)
+public theorem div_uniqueness(
+    a: Int,
+    b: Int { :: b != 0 }
+) -> Int { a / b }
+```
+
+For the full guide — coverage matrix, audit trail, common
+pitfalls, build-pipeline integration — see
+**[Verification → Program extraction](/docs/verification/program-extraction)**.
+
 Project-wide defaults and per-module overrides live in the `[verify]`
 section of `verum.toml` — see **[reference → verum.toml](/docs/reference/verum-toml#verify--formal-verification)**.
 
@@ -190,10 +290,63 @@ Most-specific (smallest source-span) suppression wins on overlap;
 in-source attributes always beat `[lint.severity]` and CLI flags.
 See **[Reference → Lint configuration → precedence stack](/docs/reference/lint-configuration#precedence-stack)**.
 
+## Diakrisis Part B advisory attributes
+
+These attributes annotate functions / theorems / types along Diakrisis
+foundational axes. They are *advisory* — the compiler does not
+dispatch on them; they are validated by meta-fns in
+`core/meta/diakrisis_attrs.vr` and surfaced to downstream tooling
+(audit, IDE, future verification ladders) without grammar bloat.
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@effect(<kind>)` | fn, theorem | computational-effect classifier. Kinds: `pure` \| `io` \| `state` \| `async` \| `exception` (alias `exn`) \| `nondet` (alias `non_det`) \| `quantum`. |
+| `@infinity_category(<level>)` | type | (∞,∞)-categorical level. Level: integer \| `omega` \| `omega_omega`. |
+| `@autopoietic(epsilon = <str>, depth = <int>)` | fn | ε-fixpoint coordinate + finite-depth approximation budget (Theorem 141.T). |
+| `@ludic_design` | type, value | marks a value as a ludics design (lazy-evaluated proof tree). |
+| `@cut_elimination[(bound = <int>)]` | fn, theorem | cut-elimination step bound. Default 1000. |
+
+Examples:
+
+```verum
+// Function classified as performing IO.
+@effect(io)
+public fn read_config() -> Result<Config, Error> { ... }
+
+// (∞, 1)-category type marker (Lurie HTT level).
+@infinity_category(omega)
+public type Topos is { ... };
+
+// Autopoietic recursive computation with depth-32 cutoff.
+@autopoietic(epsilon = "ε_construct", depth = 32)
+public fn fold_autonomy(seed: Genome) -> Organism { ... }
+
+// Ludics proof design with default cut-elimination bound (1000).
+@ludic_design
+@cut_elimination
+public theorem cut_admissible() -> Bool { ... }
+
+// Explicit lower bound for budget-tight CI.
+@cut_elimination(bound = 100)
+public theorem fast_cut() -> Bool { ... }
+```
+
+**Architectural note**: these attributes are advisory markers, not
+compiler-dispatch primitives. They live in the meta-system per the
+principle *typed-attrs are reserved for compiler-internal dispatch*.
+Validation lives in the meta-fns `parse_effect_attr`,
+`parse_infinity_category`, `parse_autopoietic`, `parse_ludic_design`,
+`parse_cut_elimination` (all in `core/meta/diakrisis_attrs.vr`).
+
 ## Custom attributes
 
 User-defined via `@meta_macro` (see
 **[Language → metaprogramming](/docs/language/meta/overview)**).
+
+The Diakrisis Part B advisory attributes above are themselves
+implemented through this same meta-macro infrastructure — users can
+add their own classifiers in sibling meta-modules without modifying
+the compiler.
 
 ## See also
 
@@ -201,3 +354,5 @@ User-defined via `@meta_macro` (see
   guide.
 - **[Language → metaprogramming](/docs/language/meta/overview)** —
   writing your own.
+- **[Reference → grammar](/docs/reference/grammar-ebnf#22-visibility-and-attributes)** —
+  full attribute classification (compiler-internal vs meta-system).

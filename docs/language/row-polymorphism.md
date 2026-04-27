@@ -403,5 +403,5 @@ the remainder symbolically.
 - [Generics](./generics.md) — type/row parameters side by side.
 - [Destructuring](./destructuring.md) — `let { x | rest } = r` patterns.
 - Source: `crates/verum_types/src/ty.rs`,
-  `crates/verum_types/src/unify.rs`,
-  `grammar/verum.ebnf` (§2.5 record_type).
+  `crates/verum_types/src/unify.rs`. See also the
+  [Grammar reference — Types](../reference/grammar-ebnf.md#27-types).
