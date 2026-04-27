@@ -147,6 +147,27 @@ type User is {
 `///` comments are sugar for `@doc("...")`. Attach doc strings
 explicitly via `@doc("...")` when generating docs programmatically.
 
+### Program extraction
+
+```verum
+// Extract a constructive proof as runnable code (default Verum target).
+@extract
+public fn double(n: Int) -> Int { n + n }
+
+// Extract into Lean 4.
+@extract(lean)
+public theorem add_comm(a: Int, b: Int) -> Int { a + b }
+
+// Bind a verified spec to a runtime intrinsic without losing
+// the proof-checked surface signature.
+@extract(realize = "verum_runtime_x25519_scalar_mult")
+public fn x25519(scalar: [Byte; 32], u: [Byte; 32]) -> [Byte; 32] { ... }
+```
+
+See **[Verification → Program extraction](/docs/verification/program-extraction)**
+for the full guide and **[Reference → Attribute registry](/docs/reference/attribute-registry#program-extraction)**
+for the per-attribute table.
+
 ## Attribute targets
 
 Each attribute declares which syntactic positions it may appear on.

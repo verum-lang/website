@@ -19,7 +19,7 @@ path-cell, recursive function, or `self`-bearing protocol body is
 required to admit a `(Φ, κ, t)` factorisation, where Φ is an explicit
 endofunctor and κ a depth witness.
 
-This page is normative for [VUVA](../architecture/verification-pipeline.md)
+This page is normative for [VVA](../architecture/verification-pipeline.md)
 §13.
 
 ---
@@ -148,7 +148,7 @@ valid code.
 **Sample output:**
 
 ```text
-Articulation Hygiene factorisations (VUVA §13.2)
+Articulation Hygiene factorisations (the verification spec)
 ──────────────────────────────────────────────────
   Parsed 1 .vr file(s), skipped 0 unparseable file(s).
 
@@ -307,7 +307,7 @@ surface-syntax legal.
   source of the `(loop_action, ω, base)` factorisation.
 - [Framework axioms](framework-axioms.md) — how axiom-bound surfaces
   interact with the hygiene check.
-- VUVA spec §13 (`docs/architecture/verification-architecture.md`) —
+- the verification spec —
   the normative source for this page.
 - Yanofsky N.S. 2003. *A Universal Approach to Self-Referential
   Paradoxes, Incompleteness and Fixed Points.* Bulletin of Symbolic

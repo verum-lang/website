@@ -623,6 +623,33 @@ Flags:
 Full proof-term export through `verum_kernel` is a follow-up and lands
 per-backend; today's output is statement-only with proofs admitted.
 
+### `verum extract [FILE] [--output DIR]`
+
+Walks `@extract` / `@extract_witness` / `@extract_contract` markers
+across the project and emits per-target program files (Verum, OCaml,
+Lean, or Coq) at `<DIR>/<decl>.<ext>` (default `extracted/`).
+
+This is *program* extraction (the Curry-Howard computational
+content), distinct from `verum export` which emits *proof
+certificates* for external provers.
+
+Flags:
+- `[FILE]` — optional explicit `.vr` input. Without it, all `.vr`
+  files under the manifest dir are scanned.
+- `--output <DIR>` — output directory (default `extracted/`).
+
+Behaviour:
+- Each marker emits one file per target. A declaration carrying
+  multiple `@extract(<target>)` attributes produces one file per
+  target.
+- The `realize="<fn_name>"` keyword on any `@extract*` attribute
+  short-circuits body synthesis and emits a thin wrapper that
+  delegates to the named native function — useful for binding a
+  verified surface to a runtime intrinsic.
+
+See **[Verification → Program extraction](/docs/verification/program-extraction)**
+for the full guide.
+
 ### `verum completions <SHELL>`
 
 Generate shell completion scripts.

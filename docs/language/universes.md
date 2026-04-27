@@ -387,5 +387,5 @@ to accept it. If you need a quick-and-dirty polymorphism, use
   underpins erasable refinements.
 - [Proof DSL](./proof-dsl.md) — where propositions actually live.
 - Source: `crates/verum_types/src/ty.rs` (`UniverseLevel`),
-  `crates/verum_types/src/universe_solver.rs` (solver),
-  `grammar/verum.ebnf` (`universe_type`, `universe_level_expr`).
+  `crates/verum_types/src/universe_solver.rs` (solver). See also the
+  [Grammar reference — Types](../reference/grammar-ebnf.md#27-types).

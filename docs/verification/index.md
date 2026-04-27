@@ -510,6 +510,10 @@ part of the shipping release:
   validation of every quantifier trigger.
 - **Proof export** — Lean / Coq / Dedukti / Metamath targets
   with weekly cross-tool re-check CI matrix.
+- **Program extraction** — Curry-Howard lifting of constructive
+  proofs into runnable code (Verum / OCaml / Lean / Coq) via
+  `@extract` / `@extract_witness` / `@extract_contract` plus the
+  `realize="<fn>"` directive for native-binding wrappers.
 - **Obligation-level profiling** — `--profile-obligation`
   breakdown table with per-obligation timings.
 - **Solver diagnostic side channels** — `--dump-smt` /

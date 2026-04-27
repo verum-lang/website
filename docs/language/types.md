@@ -128,9 +128,9 @@ let ys: &[Int]       = &xs[..];                // slice (length-carrying referen
 ## Function types
 
 ```verum
-type Pred<T>     = fn(T) -> Bool;
-type Reducer<A,R> = fn(R, A) -> R;
-type AsyncHandler = async fn(Request) -> Response using [Http];
+type Pred<T>      is fn(T) -> Bool;
+type Reducer<A,R> is fn(R, A) -> R;
+type AsyncHandler is async fn(Request) -> Response using [Http];
 ```
 
 Function **types** include:
@@ -145,12 +145,19 @@ Function **types** include:
 ## Type aliases
 
 ```verum
-type UserId  = Int { self > 0 };
-type UserMap = Map<UserId, User>;
+type UserId  is Int { self > 0 };
+type UserMap is Map<UserId, User>;
 ```
 
 Aliases are transparent — the compiler treats `UserId` and the
 underlying refined `Int` as the same type for unification.
+
+> **Note:** Top-level type definitions use `is`, not `=`. The `=` form is
+> reserved for **associated-type bindings inside `implement` / `protocol`
+> blocks** (e.g. `type Item = WatchEvent<T>;` inside an
+> `implement Iterator for Watch { … }`). See the
+> [Grammar reference — Type definitions](../reference/grammar-ebnf.md#24-type-definitions--unified-is-syntax)
+> for the full rules.
 
 ## Newtypes
 

@@ -96,8 +96,9 @@ Two arguments, always in this order:
    axiom (vii) — Poincaré duality"`.
 
 The attribute is grammar-legal via the generic attribute production
-`identifier , [ '(' , attribute_args , ')' ]` (grammar/verum.ebnf
-§2), and typed by `verum_ast::attr::FrameworkAttr`. A malformed
+`identifier , [ '(' , attribute_args , ')' ]` (see the
+[Grammar reference — Visibility and attributes](../reference/grammar-ebnf.md#22-visibility-and-attributes)),
+and typed by `verum_ast::attr::FrameworkAttr`. A malformed
 `@framework(...)` (wrong arg count, non-string citation) is a
 reportable user error, not a silent acceptance.
 

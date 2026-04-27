@@ -32,20 +32,22 @@ Conventionally:
 The compiler doesn't enforce these conventions; the standard library
 follows them.
 
-## Explicit type arguments — the turbofish
+## Explicit type arguments
 
-In expression position, `<` would ambiguate with comparison:
-
-```verum
-let xs = List.new<Int>();          // parse error in expression position
-let xs = List.new::<Int>();        // turbofish — explicit type arg
-```
-
-In type position, bare angle brackets work:
+Verum uses the spaceless `<T>` form everywhere — both in type position and
+when supplying explicit type arguments to a generic call:
 
 ```verum
-let xs: List<Int> = List.new();    // fine — no ambiguity
+let xs: List<Int> = List.new();    // type position
+let xs = List.new<Int>();          // explicit type arg on a generic call
+let n  = size_of<Int>();           // explicit type arg on a free function
 ```
+
+Verum has **no Rust-style turbofish (`::<T>`)**: `::` is not a token in
+[`grammar/verum.ebnf`](../reference/grammar-ebnf.md). The grammar disambiguates
+`foo<T>(args)` from `foo < T` by lookahead — the parser knows whether the
+identifier names a generic-capable function in scope, and switches arms
+accordingly.
 
 ## Bounds
 

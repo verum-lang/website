@@ -11,7 +11,7 @@ title: Quantitative Types (Atkey QTT)
 > give one type system that subsumes phantom indices, capability
 > tracking, file-handle linearity, and zero-cost ghost state.
 
-This page is normative for VUVA §7.6. It is the comprehensive
+This page is normative for the verification spec It is the comprehensive
 developer reference: every legal surface form, every reject path,
 every interaction with the rest of the type system, every tradeoff
 the implementation makes.
@@ -307,5 +307,5 @@ level pass enables it for a module.
   subtypes pair orthogonally with quantity.
 - [CBGR](../language/cbgr.md) — runtime memory safety; complements
   quantity at a different layer.
-- VUVA spec §7.6 (`docs/architecture/verification-architecture.md`)
+- the verification spec
   — the normative source for this page.
