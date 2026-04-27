@@ -114,7 +114,7 @@ Per-profile overrides. Each profile carries:
 ```toml
 [profile.release]
 tier             = "1"               # "0" interpreter | "1" aot (aliases accepted)
-verification     = "runtime"         # none | runtime | proof
+verification     = "certified"       # see "verification levels" table below
 opt_level        = 3
 debug            = false
 debug_assertions = false
@@ -127,6 +127,35 @@ cbgr_checks      = "optimized"       # all | optimized | proven
 
 `tier` accepts the strings `"0"`, `"interpreter"`, `"interp"` for
 interpreter mode and `"1"`, `"aot"`, `"release"`, `"native"` for AOT.
+
+### Verification levels — nine-strategy ladder
+
+The `verification` field of every profile (and `default_strategy` of
+`[verify]` below) accepts one of ten lowercase strings, ordered by
+strictly increasing rigour:
+
+| Value          | Strategy                                                      | When to pick |
+|----------------|---------------------------------------------------------------|--------------|
+| `none`         | Unchecked                                                     | Never auto-selected; only by explicit override. |
+| `runtime`      | Runtime assertions                                            | Default for the `application` profile. |
+| `static`       | Dataflow + CBGR                                               | Trivially decidable refinements without SMT. |
+| `fast`         | Bounded SMT                                                   | ≤ 100 ms / goal; UNKNOWN-tolerant. |
+| `formal`       | Z3 + CVC5 portfolio                                           | Default `dev` for `research` profile. |
+| `proof`        | User tactic + kernel re-check                                 | Promotes when SMT cannot discharge. |
+| `thorough`     | `formal` + invariants / frame / termination                   | Catches missing specs. |
+| `reliable`     | `thorough` + Z3 ∧ CVC5 cross-check                            | UNKNOWN on disagreement. |
+| `certified`    | `reliable` + certificate re-check + cross-format export       | Default `release` for `research` profile. |
+| `synthesize`   | Inverse proof search → strictest non-synth strategy           | Holes filled by search; cost is unbounded. |
+
+**Direction** — `@verify(proof)` on a function compiling under
+`@verify(runtime)` is always accepted (lax → strict). The reverse
+requires re-proof and is rejected by the level-inference pass.
+
+Plus the VFE-6/8 verification extensions (`complexity_typed`,
+`coherent_static`, `coherent_runtime`, `coherent`) — see
+[Gradual verification](/docs/verification/gradual-verification)
+for the full ν-coordinate ordering, capability-router dispatch
+table, and cost / completeness trade-off per strategy.
 
 ## `[verify]` — formal verification
 
