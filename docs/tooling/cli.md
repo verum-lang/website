@@ -62,7 +62,10 @@ verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthe
                     [--interactive] [--interactive-tactic] [--lsp-mode]
 verum analyze [--escape] [--context] [--refinement] [--all]
 verum audit [--details] [--direct-only] [--framework-axioms] \
-             [--kernel-rules] [--format plain|json]
+             [--kernel-rules] [--epsilon] [--coord] [--no-coord] \
+             [--hygiene] [--hygiene-strict] [--owl2-classify] \
+             [--framework-conflicts] [--accessibility] \
+             [--round-trip] [--coherent] [--format plain|json]
 verum lint [--fix] [--deny-warnings] [--profile NAME] [--explain RULE] \
             [--list-rules] [--validate-config] [--since GIT_REF] \
             [--severity error|warn|info|hint] \
@@ -81,6 +84,35 @@ for pre-commit / CI / migration recipes.
 
 Verification modes map to strategies documented in **[Verification →
 gradual verification](/docs/verification/gradual-verification)**.
+
+### Audit subcommands
+
+`verum audit` is the project-wide trust-boundary tool. It enumerates
+the framework axioms, kernel-rule footprint, ε-distribution,
+intensional-extensional coordinate, hygiene status, OWL 2
+classification, framework-compatibility matrix, accessibility
+annotations, 108.T round-trip status, and operational coherence —
+each surface gated by an explicit flag.
+
+| Flag | Output | Use case |
+|---|---|---|
+| `--framework-axioms` | every `@framework(name, "citation")` marker, grouped | enumerate the trusted boundary |
+| `--kernel-rules` | the 18 primitive inference rules implemented in `verum_kernel` | auditor verifying kernel TCB |
+| `--epsilon` | every `@enact(epsilon = …)` marker grouped by ε-primitive | dual of `--framework-axioms` |
+| `--coord` | per-theorem `(Framework, ν, τ)` MSFS coordinate (default-on; `--no-coord` to skip) | verification-pipeline projection |
+| `--hygiene` | self-referential surface-form classification | factorisation report |
+| `--hygiene-strict` | reject raw `self` in free functions (CI gate) | `E_HYGIENE_UNFACTORED_SELF` |
+| `--owl2-classify` | OWL 2 subclass closure + cycle / disjointness violations | ontology audit |
+| `--framework-conflicts` | known-incompatible framework pairs (uip ⊥ univalence, etc.) | axiom-bundle consistency |
+| `--accessibility` | enact / EpsilonOf without `@accessibility(λ)` | Diakrisis Axi-4 closure |
+| `--round-trip` | per-theorem 108.T round-trip status (Decidable / SemiDecidable / Undecidable) | corpus acceptance gate |
+| `--coherent` | per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert correspondence status | operational coherence layer |
+
+`--format plain` (default) emits human-readable output. `--format json`
+emits a stable machine-parseable schema suitable for CI dashboards
+and `audit-reports/*.json` archival. Each subcommand may be passed
+solo (e.g. `verum audit --framework-axioms`) or, for the default
+dispatch, the dependency audit + per-theorem coord audit run together.
 
 ### Verification profiling & budgets
 
