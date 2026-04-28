@@ -50,10 +50,13 @@ This is the toolchain binary you run to compile Verum programs. It
 is today built as a Rust binary with the default `x86_64-unknown-linux-gnu`
 target, so it uses the system glibc. A static-linked / musl variant
 is a roadmap item (the `crt-static` build flag is documented in
-`.cargo/config.toml` but not yet enabled in release CI). **Z3** is
-statically linked into the binary. **LLVM/MLIR** are linked against
-the system copy CI uses; release archives carry the needed object
-files, so you do not install LLVM separately. **CVC5** is present as
+`.cargo/config.toml` but not yet enabled in release CI). **Z3**,
+**LLVM**, **LLD**, and **MLIR** are all **statically linked** into
+the binary — the in-tree LLVM build at `llvm/install/` produces
+the static `.a` archives that `crates/llvm/verum_llvm_sys/build.rs`
+links in. End users running a prebuilt `verum` binary therefore
+do **not** install LLVM separately on their machines; the binary
+is self-contained for the target platform. **CVC5** is present as
 a stub; features that name it degrade to Z3 via the capability
 router — see [SMT routing](/docs/verification/smt-routing).
 
@@ -89,15 +92,39 @@ This is the primary install path today. The Verum compiler is
 written in Rust and uses unstable features that require the
 **nightly** toolchain.
 
+:::info Why we don't use system LLVM
+
+`crates/llvm/verum_llvm_sys/build.rs` explicitly **rejects** any
+system / distro LLVM and links against a custom build configured
+in `llvm/llvm.toml`: LLVM 21.1.8 with the exact subset of projects
+(`clang + lld + mlir`), targets (`X86 + AArch64 + WebAssembly`),
+and `MinSizeRel` static libraries Verum needs. The whole bundle —
+LLVM, MLIR, LLD — gets statically linked into the final `verum`
+binary. That's why the **finished `verum` binary** carries no
+`libLLVM*.so` runtime dependency, but the **build process**
+needs you to either (1) download a prebuilt LLVM archive that
+matches `llvm/llvm.toml`, or (2) build LLVM from source via
+`cd llvm && ./build.sh`. **Do not** `apt install llvm-21-dev` /
+`brew install llvm@21` — those installs are unused; the build
+script ignores them.
+:::
+
 ### 1. Install prerequisites
 
 | Tool | Version | Notes |
 |------|---------|-------|
 | **Rust nightly** | The exact channel pinned in [`rust-toolchain.toml`](https://github.com/verum-lang/verum/blob/main/rust-toolchain.toml) | Compiles the `verum_*` crates. The repo uses `#![feature(pattern)]` in `verum_common` and edition 2024 — both require nightly. |
-| LLVM | 21.x | System install — the bindings crate links against it. |
-| CMake | 3.21+ | Needed by the Z3 bundled build. |
-| C/C++ compiler | clang 15+ recommended | LLVM and Z3 native code. |
-| Git | 2.30+ | Submodule fetch (Z3 / CVC5 are submodules). |
+| C++ compiler | clang 12+, gcc 9+, or MSVC 2019+ | Needed by the LLVM build. Also handles Z3's bundled C++. |
+| CMake | 3.20+ | Needed by both the Z3 build and the LLVM build. |
+| Ninja | recommended (Make also works) | Significantly faster LLVM build. |
+| Git | 2.30+ | Submodule fetch (Z3 / CVC5 are submodules; LLVM source comes via `llvm/build.sh`). |
+| Disk | ~50 GB free | LLVM build is the dominant consumer. After the build, `llvm/install/` is ~3 GB. |
+| RAM | 16 GB recommended | Linking LLVM with `lld` peaks around 12-14 GB. |
+
+You do **NOT** need: `llvm-21-dev`, `libllvm21`, `libpolly-21-dev`,
+`libmlir-21-dev`, the apt.llvm.org repository, `LLVM_SYS_*_PREFIX`,
+or any other system LLVM artefact. The Verum build pipeline ignores
+all of them.
 
 #### Install rustup + nightly
 
@@ -116,43 +143,34 @@ also pins the right components (`rustfmt`, `clippy`, `rust-src`,
 `rust-analyzer`) so editor integration and lint commands work
 without extra setup.
 
-#### Install LLVM 21 + CMake + clang
+#### Install build tools
+
+Only the **C++ toolchain + CMake + Ninja + Git** — no LLVM
+packages.
 
 **Ubuntu / Debian (22.04+):**
 
 ```bash
 sudo apt update
 sudo apt install -y \
-    build-essential cmake git pkg-config \
-    clang-15 lld-15 \
-    llvm-21-dev libllvm21 \
-    libpolly-21-dev libmlir-21-dev mlir-21-tools \
-    zlib1g-dev libzstd-dev libxml2-dev libssl-dev
-
-# Make llvm-config-21 the default the bindings crate looks for:
-export LLVM_SYS_210_PREFIX=$(llvm-config-21 --prefix)
+    build-essential cmake ninja-build git pkg-config \
+    libzstd-dev libxml2-dev libssl-dev
 ```
-
-If your distro doesn't carry an `llvm-21-dev` package yet, use the
-[official LLVM apt repository](https://apt.llvm.org/) — the
-`llvm.sh` installer there handles the version-pinned packages.
 
 **macOS (Homebrew):**
 
 ```bash
-brew install llvm@21 cmake
-export LLVM_SYS_210_PREFIX=$(brew --prefix llvm@21)
-export PATH="$LLVM_SYS_210_PREFIX/bin:$PATH"
+brew install cmake ninja
 ```
 
-The `LLVM_SYS_210_PREFIX` environment variable points the
-`llvm-sys` bindings crate at the version-21 install. Without it the
-build will probe `/usr/lib/llvm-21` first and fall back to whatever
-`llvm-config` returns — usually wrong.
+`zstd` is pulled in by the prebuilt-LLVM-archive flow (see step 3a)
+to unpack the `.tar.zst` archive; on macOS / modern Linux it's
+typically already present, but the apt line above pulls it in
+explicitly for clarity.
 
 ### 2. Clone with submodules
 
-The repository carries Z3 and a few other natives as Git
+The repository carries Z3, CVC5, and a few other natives as Git
 submodules. Clone with `--recursive` so they come along:
 
 ```bash
@@ -166,24 +184,86 @@ If you already cloned without `--recursive`:
 git submodule update --init --recursive
 ```
 
-### 3. Build
+### 3a. Get LLVM — option A (fastest): use the prebuilt archive
 
-Default build with the SMT verification stack (Z3 statically linked
-in):
+The Verum project publishes a matching prebuilt LLVM 21.1.8 with
+LLD + MLIR + the right targets / projects under the
+`llvm-prebuilt-llvmorg-21.1.8` GitHub Releases tag. The composite
+action `.github/actions/fetch-llvm` downloads and unpacks it for
+the supported triples (`x86_64-linux-gnu`, `aarch64-linux-gnu`,
+`x86_64-apple-darwin`, `aarch64-apple-darwin`).
+
+For local development you can do the same manually:
+
+```bash
+LLVM_TAG=$(awk -F'"' '/^tag[[:space:]]*=/ { print $2; exit }' llvm/llvm.toml)
+PREBUILT_TAG="llvm-prebuilt-${LLVM_TAG}"
+
+# Pick the triple that matches your machine.
+TRIPLE=x86_64-unknown-linux-gnu      # or aarch64-apple-darwin / etc.
+
+ARCHIVE="verum-llvm-${LLVM_TAG}-${TRIPLE}.tar.zst"
+
+curl -LO "https://github.com/verum-lang/verum/releases/download/${PREBUILT_TAG}/${ARCHIVE}"
+mkdir -p llvm
+tar --zstd -xf "${ARCHIVE}" -C llvm
+test -f llvm/install/bin/llvm-config && echo "LLVM ready"
+```
+
+If the archive isn't published for your `(OS, arch)` pair yet,
+fall through to option B.
+
+### 3b. Get LLVM — option B (slower, fully reproducible): build from source
+
+Run the in-tree build script. It clones the LLVM source matching
+`llvm/llvm.toml`, configures CMake with the exact projects /
+targets / `MinSizeRel` flags Verum requires, and installs into
+`llvm/install/`:
+
+```bash
+cd llvm && ./build.sh
+```
+
+Expect **30–60 minutes** on a 4-core box and ~50 GB of transient
+disk during the build (the source tree + `build/` directory; the
+final `install/` is ~3 GB). The script honours
+`llvm/build.log` for incremental progress.
+
+`./build.sh --clean` wipes `build/` and `install/` for a fresh
+rebuild. `./build.sh llvmorg-21.1.8` overrides the tag from
+`llvm/llvm.toml`.
+
+### 4. Build the Verum compiler
+
+With either option from step 3 producing `llvm/install/bin/llvm-config`,
+the Verum build picks it up automatically. Default build with the
+SMT verification stack (Z3 statically linked in):
 
 ```bash
 cargo build --release -p verum_cli --features verification
 ```
 
-The Z3 build is bundled and will take **5–15 minutes** the first
-time on a 4-core box; subsequent rebuilds reuse the cached object
-files and finish in seconds. LLVM is linked against the system
-install you set up above — `cargo build` does not download or build
-LLVM itself.
+The Z3 build is bundled and takes **5–15 minutes** the first time
+on a 4-core box; subsequent rebuilds reuse the cached object files
+and finish in seconds.
 
-The first build also touches every workspace crate; expect
-**10–25 minutes** end-to-end on a fresh checkout. Increment builds
-after that are sub-minute.
+LLVM, LLD, and MLIR are linked **statically** into the resulting
+`verum` binary — `crates/llvm/verum_llvm_sys/build.rs` produces a
+single self-contained executable. The verum binary itself
+therefore has **no runtime dependency on LLVM** — installing it on
+another machine doesn't require LLVM there.
+
+If you have a non-default LLVM install location, override with
+`VERUM_LLVM_DIR`:
+
+```bash
+VERUM_LLVM_DIR=/path/to/llvm/install \
+  cargo build --release -p verum_cli --features verification
+```
+
+The first Verum build also touches every workspace crate; expect
+**10–25 minutes** end-to-end after LLVM is in place. Incremental
+builds after that are sub-minute.
 
 ### 4. Verify
 
@@ -519,21 +599,31 @@ fails:
   / corporate firewall friction).
 * Try a manual install: `rustup toolchain install nightly`.
 
-### `error: failed to find native library 'LLVM-21'`
+### `panic: llvm-config not found at .../llvm/install/bin/llvm-config`
 
-The `llvm-sys` bindings crate couldn't locate your LLVM 21 install.
-Set `LLVM_SYS_210_PREFIX` to the LLVM install prefix:
+The `verum_llvm_sys` build script could not locate the in-tree
+LLVM build. You haven't completed step 3 yet — either:
+
+* download the prebuilt archive (option A in "Build from source"), or
+* run `cd llvm && ./build.sh` (option B, ~30–60 min).
+
+**Do not** `apt install llvm-21-dev` or `brew install llvm@21`:
+the build script ignores system LLVM by design (`llvm-sys`-style
+fallbacks would link against the wrong projects / targets / build
+type and silently break the AOT pipeline). The error message also
+prints the exact command to run.
+
+If your LLVM install lives somewhere else, point the build at it:
 
 ```bash
-# Linux (apt llvm-21 install)
-export LLVM_SYS_210_PREFIX=/usr/lib/llvm-21
-
-# macOS (Homebrew)
-export LLVM_SYS_210_PREFIX=$(brew --prefix llvm@21)
+VERUM_LLVM_DIR=/path/to/your/llvm/install \
+  cargo build --release -p verum_cli --features verification
 ```
 
-`llvm-config-21 --prefix` prints the right value if `llvm-config-21`
-is on your `$PATH`.
+The directory must contain `bin/llvm-config` and have been
+configured with the project list / target list / `MinSizeRel`
+flags described in `llvm/llvm.toml` — the build script verifies
+the major version on startup and refuses anything other than 21+.
 
 ### Z3 build fails with `cmake: command not found`
 
