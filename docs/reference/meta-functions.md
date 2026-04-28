@@ -339,6 +339,43 @@ meta fn load_template(name: Text) -> Text using [BuildAssets] {
 }
 ```
 
+### `@codegen(path)` / `load_toml(path)` — declarative spec parsing
+
+Parse a TOML document at compile time and lift it into a
+`Map<Text, Any>` for downstream meta-fn consumption. The MVP
+foundation for `@codegen` user-meta-fn invocation: once a meta
+fn can take the parsed spec as a `Map`, it can build whatever
+declarations it needs from the data — record types from a
+schema table, intrinsic stubs from a syscall list, lookup
+tables from a config file.
+
+```verum
+const SPEC: Map<Text, Any> = @codegen("schemas/users.toml");
+// SPEC["table"]   == Text("users")
+// SPEC["columns"] == Array([Map{name=..., kind=...}, ...])
+```
+
+| TOML shape          | `MetaValue` shape                |
+|---------------------|----------------------------------|
+| string              | `Text`                           |
+| integer             | `Int`                            |
+| float               | `Float`                          |
+| boolean             | `Bool`                           |
+| datetime (RFC 3339) | `Text` (Display form)            |
+| array               | `Array<MetaValue>`               |
+| table               | `Map<Text, MetaValue>`           |
+
+The root document **must** be a top-level table. Bare values
+(`name = "x"` is a table with one key, but `[42, 43]` as the
+whole document) are rejected with a clear diagnostic.
+
+Both `load_toml` (function-call form) and `codegen` (macro-call
+attribute form) resolve to the same dispatcher; pick whichever
+reads better at the call site. Both inherit the standard
+`BuildAssets` sandbox: absolute paths, `..` traversal, and
+symlinks crossing the project root all fail before the
+filesystem is touched.
+
 ### Asset queries
 
 | Function                | Signature                                            | Description                       |
@@ -459,6 +496,7 @@ meta fn derive_display<T>() -> TokenStream {
 | `@field_access<T>(e, f)` | expression          | compile |
 | `@embed(path)`      | `Bytes`                  | compile (BuildAssets) |
 | `@embed_glob(pat)`  | `List<(Text, Bytes)>`    | compile (BuildAssets) |
+| `@codegen(p)` / `load_toml(p)` | `Map<Text, Any>` | compile (BuildAssets) |
 | `include_bytes(p)`  | `Bytes`                  | compile (BuildAssets, meta-fn form) |
 | `load_text(p)` / `include_str(p)` | `Text`     | compile (BuildAssets) |
 | `asset_exists(p)`   | `Bool`                   | compile (BuildAssets) |
