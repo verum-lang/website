@@ -643,7 +643,8 @@ same theory under either presentation".
   (`K-FwAx`, `K-Refine`) that consume OWL 2 axioms.
 - the verification spec.
 - Shkotin 2019 *DS2HOL-1: OWL 2 Functional Style operators from HOL
-  point of view* (`internal/OWL2.DS2HOL.pdf`) — the formal bridge.
+  point of view* — the formal bridge between OWL 2 Direct Semantics
+  and Higher-Order Logic that this module's encoding follows.
 - W3C OWL 2 Direct Semantics (Second Edition) Recommendation, 11
   December 2012. <https://www.w3.org/TR/owl2-semantics/>
 - W3C OWL 2 Functional-Style Syntax (Second Edition) Recommendation.

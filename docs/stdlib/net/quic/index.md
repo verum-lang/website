@@ -111,8 +111,12 @@ Three design commitments shape every layer:
 
 ## Refinement contracts
 
-Ten invariants (V1–V10, `internal/specs/tls-quic.md` §7) are encoded
-in the types and discharged by `verum verify`:
+Ten invariants (V1–V10) drive the QUIC protocol-correctness
+guarantee — version mutual exclusion, connection-ID length bound,
+ACK-range monotonicity, packet-number monotonicity, NewReno window
+floor, active-CID cap, anti-amplification ratio, transport-parameter
+peer-address validity and bounds, and X.509 chain validation. Each
+one is encoded in the types and discharged by `verum verify`:
 
 | # | Invariant | Module | Theorem file |
 |---|-----------|--------|--------------|

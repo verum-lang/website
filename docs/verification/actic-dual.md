@@ -268,15 +268,15 @@ canonical primitive list for fix-suggestion.
 
 ---
 
-## 6. Cross-checking against Diakrisis
+## 6. Cross-checking against the Diakrisis specification
 
-The Diakrisis source for the DC layer is
-`internal/holon/internal/diakrisis/docs/12-actic/` — six chapters
-running from the basic dual primitive (02) through the Actic
-theorems (06) to a Verum-stdlib sketch (09). Verum's
-implementation matches the §09 sketch verbatim for the seven
-primitives and the canonical operation names; it diverges in two
-places:
+The DC layer's Diakrisis specification is structured into six
+chapters: basic dual primitive (Ch 02), the seven canonical
+operations (Ch 03–05), the Actic-side theorems (Ch 06), the
+soundness argument (Ch 07–08), and a Verum-stdlib mapping (Ch 09).
+Verum's implementation matches the Ch 09 mapping verbatim for the
+seven primitives and the canonical operation names; it diverges in
+two places:
 
 | Aspect | Diakrisis sketch | Verum implementation |
 |---|---|---|
@@ -358,7 +358,8 @@ The example illustrates the three operational layers:
 - [Framework axioms](framework-axioms.md) — how `@framework(name,
   citation)` axioms install Articulations into the kernel.
 - the verification spec.
-- Diakrisis 12-actic (`internal/holon/internal/diakrisis/docs/12-actic/`):
-    - `02-dual-primitive.md` — the AC primitive and ε-primitive list.
-    - `04-ac-oc-duality.md` — the 108.T duality theorem.
-    - `09-verum-stdlib-sketch.md` — the Diakrisis prescription.
+- Diakrisis Ch 12-actic — the upstream specification this layer
+  implements. Key chapters: Ch 02 (the AC primitive and the
+  ε-primitive list), Ch 04 (the 108.T duality theorem), Ch 09
+  (the Verum-stdlib mapping prescription that this module follows
+  verbatim).

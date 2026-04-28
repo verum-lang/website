@@ -7,10 +7,17 @@ description: How the warp TLS 1.3 + QUIC + X.509 stack discharges ten verificati
 # Refinement-typed networking — V1–V10
 
 The pure-Verum TLS 1.3 + QUIC + X.509 stack (codename **warp**) ships
-with **ten** verification obligations the spec at
-`internal/specs/tls-quic.md §9` requires to hold. Each one is
-refinement-typed at the call site, so Z3 discharges them at compile
-time — they are not runtime asserts, not unit tests.
+with **ten** verification obligations its design requires to hold.
+Each one is refinement-typed at the call site, so Z3 discharges them
+at compile time — they are not runtime asserts, not unit tests.
+
+The ten obligations come from the protocol-correctness contract the
+stack must keep against the surrounding network: TLS 1.3 hand-shake
+state-machine well-formedness, QUIC packet-number monotonicity,
+congestion-control non-degenerate window bounds, anti-amplification
+bookkeeping, AEAD sequence strict-monotonicity, transport-parameter
+bounds, and X.509 chain validation. The matrix below names each one
+and links its proof.
 
 This page maps each obligation to its theorem file, the type that
 carries the contract, and the proof tactic Z3 uses.
@@ -167,8 +174,6 @@ the `warp` networking corpus on every commit.
 
 ## See also
 
-- [`internal/specs/tls-quic.md`](https://github.com/oldman/verum/blob/main/internal/specs/tls-quic.md)
-  §9 — the normative specification of all ten obligations.
 - [QUIC reference](/docs/stdlib/net/quic/) — module structure each
   theorem applies to.
 - [TLS 1.3 reference](/docs/stdlib/net/tls/) — handshake side.

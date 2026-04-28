@@ -31,8 +31,12 @@ single-process world — embedding it inside the Verum runtime gives us:
 
 ## Architecture
 
-The codebase is layered top-to-bottom per spec `internal/specs/sqlite-native.md` §4.
-Each layer depends only on the layers below it.
+The codebase is layered top-to-bottom into eight strata (L0 — VFS
+through L7 — public API) with one rule: each layer depends only on
+the layers below it. The deep-dive at
+[`Loom — SQLite engine deep-dive`](./database-sqlite-architecture)
+walks the layers individually; the diagram below is the bird's-eye
+view.
 
 ```mermaid
 flowchart TD
@@ -436,10 +440,10 @@ Two CI guardrails enforce the most load-bearing invariants:
 
 ## See also
 
-- **Specification.** `internal/specs/sqlite-native.md` — 2943-LOC
-  design document, layer-by-layer contract.
-- **Reference implementation.** `internal/sqlite-reference/` — a
-  vendored C-SQLite snapshot used as the differential oracle.
+- [`Loom — SQLite engine deep-dive`](./database-sqlite-architecture) —
+  layer-by-layer dissection of the eight-stratum stack from L0 (VFS)
+  through L7 (public API), the actual contracts each upward boundary
+  carries, and the catalogue surface that sits beside the engine.
 - [`stdlib/encoding`](/docs/stdlib/encoding) — where the varint codec
   lives.
 - [`stdlib/runtime`](/docs/stdlib/runtime) — supervisor-tree primitives

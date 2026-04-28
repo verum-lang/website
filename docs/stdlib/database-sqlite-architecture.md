@@ -11,12 +11,25 @@ with a layer-by-layer dissection of every module under
 `core/database/sqlite/native/l*`.  Use it as a reading order when
 ramping up on the engine itself (as opposed to the catalogue surface).
 
-The design follows the eight-layer split from
-[`internal/specs/sqlite-native.md`](https://github.com/verum-lang/verum/blob/main/internal/specs/sqlite-native.md)
-§4: each layer depends only on layers below it, and each layer has
-one stable upward boundary.  Catalogues sit *beside* the engine —
-they are typed specifications consumed by the layer that owns the
-corresponding feature, not part of the call chain.
+The design splits into eight layers, L0 through L7, with two firm
+rules: each layer depends only on layers below it, and each layer
+has exactly one stable upward boundary.  Catalogues sit *beside*
+the engine — they are typed specifications consumed by the layer
+that owns the corresponding feature, not part of the call chain.
+
+The layer split (recapped here so you don't need any external
+reference):
+
+| Layer | Responsibility | Upward contract to layer above |
+|-------|----------------|--------------------------------|
+| L0 | VFS — file open / pread / pwrite / fsync / lock | byte-level page I/O on a virtual file |
+| L1 | Pager — page cache, journal mode (rollback or WAL), CRC | typed `Page` handles with checksum guarantees |
+| L2 | Record codec — varint, columnar layout, type affinity | `Row` ↔ raw record bytes |
+| L3 | B-tree — index pages, balancing, range scan | typed `Btree<K, V>` with cursor + insert/delete |
+| L4 | VDBE — bytecode interpreter, register file | opcode stream → row stream |
+| L5 | Compiler — SQL → VDBE program | `Statement` from SQL `Text` |
+| L6 | Session — multi-statement state, savepoints, hooks | session-scoped `Connection` view |
+| L7 | Public API — `Database`, `PreparedStatement` | the surface every user binds against |
 
 ## Bird's-eye
 
@@ -440,8 +453,8 @@ end-to-end run-test that exists, exercising L0+L1 round-trip.
 
 - [`core.database`](./database) — high-level overview, capability
   levels, public API.
-- [`internal/specs/sqlite-native.md`](https://github.com/verum-lang/verum/blob/main/internal/specs/sqlite-native.md) —
-  the 2,943-line specification this engine implements.
+- [`core.database`](./database) — high-level overview of the
+  capability surface this engine exposes.
 - [`crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`](#) —
   the guardrail Rust test that prevents stdlib-name shadowing inside
   catalogues.
