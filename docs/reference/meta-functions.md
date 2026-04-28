@@ -258,6 +258,83 @@ meta fn debug_if_possible<T>(x: T) {
 }
 ```
 
+## Build-asset embedding
+
+Compile-time file loading is sandboxed behind the `BuildAssets`
+context. All paths are restricted to the project root and
+configured asset directories — absolute paths and `..`
+traversal are rejected with a meta error.
+
+### `@embed(path)` — file bytes literal
+
+Loads the file at `path` (relative to the project root) and
+substitutes its bytes as a `Bytes` constant in the AST. Equivalent
+to calling `include_bytes(path)` from inside a `meta fn` but
+spelled as an attribute-style macro call so it composes
+naturally with constant declarations.
+
+```verum
+const ICON: Bytes = @embed("assets/icon.png");
+const FONT: Bytes = @embed("fonts/Inter-Regular.ttf");
+```
+
+The macro call evaluates at compile time; the resulting bytes
+are baked into the binary. Path traversal (`..`) and absolute
+paths produce a compile error rather than reaching the
+filesystem.
+
+### `include_bytes(path)` — meta-fn form
+
+```verum
+meta fn embed_icon(name: Text) -> Bytes using [BuildAssets] {
+    let path = text_concat("icons/", name, ".png");
+    include_bytes(path)
+}
+```
+
+Same dispatcher as `@embed`; pick whichever form composes
+better with the surrounding code. The meta-fn form is the right
+choice when the path is computed (loops, cog-info-driven
+prefixes, etc.); `@embed` is the right choice for a literal
+constant declaration.
+
+### `load_text(path)` / `include_str(path)` — UTF-8 text
+
+Read a file as `Text` instead of `Bytes`. Both names register
+the same dispatcher; pick whichever reads better at the call
+site.
+
+```verum
+meta fn load_template(name: Text) -> Text using [BuildAssets] {
+    let path = text_concat("templates/", name, ".html");
+    include_str(path)
+}
+```
+
+### Asset queries
+
+| Function                | Signature                                            | Description                       |
+|-------------------------|------------------------------------------------------|-----------------------------------|
+| `asset_exists(path)`    | `(Text) -> Bool`                                     | True if the file exists           |
+| `asset_list_dir(path)`  | `(Text) -> List<Text>`                               | List directory entries            |
+| `asset_metadata(path)`  | `(Text) -> (UInt, UInt, Bool, Bool, Bool)`           | size, mtime ns, is_dir/file/symlink |
+
+All four require `using [BuildAssets]` in a `meta fn`; the
+attribute forms (`@embed`, `@include_str`) inherit the same
+sandbox automatically.
+
+### Sandbox guarantees
+
+- **Absolute paths rejected.** `/etc/passwd` and similar fail
+  the precheck before any filesystem syscall fires.
+- **No `..` traversal.** A path containing `..` returns
+  `MetaError::Other("Path traversal …")`.
+- **No symlinks across the root boundary.** A symlink under the
+  project root that resolves outside the root fails the same
+  precheck.
+- **No environment variable expansion.** Paths are taken as
+  literal source-relative paths.
+
 ## Usage in macros
 
 Meta functions are at their most useful inside `meta fn` bodies,
@@ -307,6 +384,12 @@ meta fn derive_display<T>() -> TokenStream {
 | `@is_tuple<T>()`    | `Bool`                   | compile |
 | `@implements<T,P>()`| `Bool`                   | compile |
 | `@field_access<T>(e, f)` | expression          | compile |
+| `@embed(path)`      | `Bytes`                  | compile (BuildAssets) |
+| `include_bytes(p)`  | `Bytes`                  | compile (BuildAssets, meta-fn form) |
+| `load_text(p)` / `include_str(p)` | `Text`     | compile (BuildAssets) |
+| `asset_exists(p)`   | `Bool`                   | compile (BuildAssets) |
+| `asset_list_dir(p)` | `List<Text>`             | compile (BuildAssets) |
+| `asset_metadata(p)` | `(UInt, UInt, Bool, Bool, Bool)` | compile (BuildAssets) |
 
 ## See also
 
