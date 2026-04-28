@@ -77,7 +77,7 @@ epoch capability. Reads validate the generation in ~1 ns; writes are
 gated by capability checks. Escape analysis routinely promotes tier-0
 references to tier-1, eliminating 50–90 % of checks in typical code.
 **See [Language → CBGR](/docs/language/cbgr) and [Architecture →
-CBGR implementation](/docs/architecture/cbgr-architecture).**
+CBGR implementation](/docs/architecture/cbgr-internals).**
 
 ### 2.3 Dual SMT backend with capability routing
 
@@ -305,7 +305,7 @@ calculus version.
 - **[Standard Library](/docs/stdlib/overview)** — `List`, `Map`,
   `Text`, `async`, `math`, `term`, `net`, `database`, `crypto`,
   and the rest of `core/`.
-- **[Verification](/docs/verification/index)** — gradual
+- **[Verification](/category/verification)** — gradual
   verification, refinement reflection, contracts, the tactic DSL,
   framework axioms, proof export, program extraction, the trusted
   kernel.
@@ -315,10 +315,10 @@ calculus version.
 - **[Reference](/docs/reference/grammar-ebnf)** — EBNF grammar,
   keyword list, attribute registry, CLI commands, `verum.toml`
   schema, lint rules, glossary.
-- **[Cookbook](/docs/cookbook/overview)** — task-oriented recipes
+- **[Cookbook](/cookbook)** — task-oriented recipes
   (HTTP server, validation, scheduler, calc proofs, FFI binding,
   …).
-- **[Tutorials](/docs/tutorials/overview)** — guided walkthroughs
+- **[Tutorials](/tutorials)** — guided walkthroughs
   building real programs end-to-end.
 
 ## 9. Who Verum is for

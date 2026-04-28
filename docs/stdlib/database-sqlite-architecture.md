@@ -12,11 +12,11 @@ with a layer-by-layer dissection of every module under
 ramping up on the engine itself (as opposed to the catalogue surface).
 
 The design follows the eight-layer split from
-[`internal/specs/sqlite-native.md`](../../specs/sqlite-native) §4: each
-layer depends only on layers below it, and each layer has one stable
-upward boundary.  Catalogues sit *beside* the engine — they are typed
-specifications consumed by the layer that owns the corresponding
-feature, not part of the call chain.
+[`internal/specs/sqlite-native.md`](https://github.com/verum-lang/verum/blob/main/internal/specs/sqlite-native.md)
+§4: each layer depends only on layers below it, and each layer has
+one stable upward boundary.  Catalogues sit *beside* the engine —
+they are typed specifications consumed by the layer that owns the
+corresponding feature, not part of the call chain.
 
 ## Bird's-eye
 
@@ -440,7 +440,7 @@ end-to-end run-test that exists, exercising L0+L1 round-trip.
 
 - [`core.database`](./database) — high-level overview, capability
   levels, public API.
-- [`internal/specs/sqlite-native.md`](../../specs/sqlite-native) —
+- [`internal/specs/sqlite-native.md`](https://github.com/verum-lang/verum/blob/main/internal/specs/sqlite-native.md) —
   the 2,943-line specification this engine implements.
 - [`crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`](#) —
   the guardrail Rust test that prevents stdlib-name shadowing inside
