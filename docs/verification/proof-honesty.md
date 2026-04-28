@@ -15,6 +15,36 @@ This is the central tool for tracking the "🟡 axiom-placeholder ⟶ ✅
 verified theorem" promotion progress on machine-verification corpora
 such as the [verum-msfs-corpus](https://github.com/verum-lang/verum-msfs-corpus).
 
+## Companion audits (V2 / V3 trusted-boundary surfaces)
+
+Three additional audit surfaces work alongside `--proof-honesty`:
+
+| Flag | What it answers |
+|------|------------------|
+| `--proof-honesty` | "How many theorems carry real deductive content?" |
+| `--bridge-admits` | "Which Diakrisis preprint results does each theorem rely on?" |
+| `--framework-soundness` | "Are the @framework citations real or trivial-placeholder?" |
+| `--coord-consistency` | "Does each theorem's coord majorise its dependencies?" |
+
+See [Diakrisis Bridge Roster](diakrisis-bridge-roster.md) for the
+`--bridge-admits` deep-dive.
+
+## Recent stdlib promotion (2026-04-28)
+
+The 2026-04-28 sweep promoted **47 tautological framework-citation
+axioms** to V2 witness-parameterised theorems across the entire
+`core/action/` module hierarchy:
+
+| Module | Axioms removed | Theorems added |
+|--------|----------------|-----------------|
+| `core/action/monads/{pure,reader,writer,state,probability,quantum}.vr` | 29 | 29 |
+| `core/action/effects.vr` | 10 | 10 (route through `is_commutative_effect`) |
+| `core/action/ludics.vr` + `ludics_lazy.vr` | 8 | 8 (gate via productivity / cut-elim classifier) |
+
+**Result**: Zero tautological axioms remain in `core/action/`. The
+entire monad / effect / ludics layer now ships with theorems whose
+ensures clauses **state the actual law** rather than just `true`.
+
 ## Quick start
 
 ```bash
