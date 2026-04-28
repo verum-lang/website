@@ -142,14 +142,28 @@ system](/docs/language/context-system).**
 
 | Mode | Trigger | Cost | Use case |
 |------|---------|------|----------|
-| Tier-0 (interpreter) | `verum run --interp file.vr` | instant startup | scripts, REPL, hot reload |
-| Tier-1 (AOT) | `verum build` | LLVM compile time | production binaries (85–95 % native speed) |
+| Tier-0 (interpreter) | `verum run [--interp] file.vr` | instant startup | dev iteration, REPL, hot reload |
+| Tier-1 (AOT) | `verum build` / `verum run --aot file.vr` | LLVM compile time | production binaries (85–95 % native speed) |
 | Check-only | `verum check file.vr` | type-check only | CI fast-feedback loop |
 
 The interpreter and AOT path **share the same VBC bytecode** —
 correctness is identical; the difference is execution time vs.
 startup time. **See [Architecture →
 overview](/docs/architecture/overview).**
+
+A fourth invocation form, **script mode**, sits orthogonal to
+these tiers: a `.vr` file with a `#!` shebang line at byte 0
+(`#!/usr/bin/env verum`) can be executed directly via `verum
+hello.vr` or `./hello.vr` — no `fn main()`, no `verum.toml`, no
+boilerplate. Top-level statements are folded into a synthesised
+wrapper that runs through the same Tier-0 / Tier-1 pipeline,
+with full access to refinement types, CBGR memory safety, and
+the standard library. The script's tail expression becomes its
+process exit code (`Int` → status, `Bool` → 0/1, `()` → 0). This
+makes Verum a viable replacement for shell-grade scripts
+(`bash`, `python`, `awk`) while keeping every guarantee that
+distinguishes it as a verified systems language. **See [Getting
+Started → Script mode](/docs/getting-started/script-mode).**
 
 ## 3. A first taste — verified, executable code
 
