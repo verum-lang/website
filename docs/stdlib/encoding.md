@@ -73,6 +73,27 @@ public fn decode_url(input: &Text) -> Result<List<Byte>, Base64Error>;
 Default encoder emits `=` padding. URL-safe variant uses `-_`
 instead of `+/` and omits padding (web-friendly).
 
+### Canonicality
+
+Both decoders enforce the RFC 4648 §3.5 trailing-bits rule:
+unused low bits of the final character must be zero. Both also
+reject non-canonical padding shapes — multiple distinct inputs
+decoding to the same bytes is a malleability surface for
+JWT / capability-token equality checks, so the decoders treat
+non-canonical padding as `Base64Error.InvalidPadding`:
+
+| `n % 4` | Standard `decode` | URL-safe `decode_url` |
+|---------|-------------------|------------------------|
+| 0 | accepted (full block) | accepted |
+| 1 | `InvalidLength` | `InvalidLength` (dangling tail) |
+| 2 | requires `==` (`AABB==`); rejects `AA` | accepts `AA` (no pad) **or** `AA==`; rejects `AA=` (mid-shape) |
+| 3 | requires `=` (`AAA=`); rejects `AAA` | accepts `AAA` (no pad) **or** `AAA=`; rejects `AAA==` |
+
+URL-safe input that mixes shapes (e.g. `AA`, `AA=`, `AA==` all
+decoding to the same byte) is now rejected with
+`InvalidPadding` whenever any padding is present — pre-fix,
+the URL-safe decoder accepted all three.
+
 ## `hex`
 
 ```verum
@@ -224,18 +245,46 @@ inputs return `NestingTooDeep` rather than overflowing the
 stack. Trailing bytes after a complete value return
 `TrailingBytes` — no silent partial-parse.
 
-## `base32` — RFC 4648 §6
+## `base32` — RFC 4648 §6 / §7
 
 ```verum
-mount core.encoding.base32.{encode, decode, decode_no_pad};
+mount core.encoding.base32.{
+    encode, decode, decode_no_pad,                    // §6 standard alphabet
+    encode_hex, decode_hex, decode_hex_no_pad,        // §7 ExtendedHex alphabet
+};
 ```
 
-Alphabet `A-Z` + `2-7`, case-insensitive on decode, `=` padded
-to a multiple of 8 chars. Trailing-bits validation per §3.5
-(the unused low bits of the last quintet MUST be zero; non-zero
-→ `TrailingBits`). `decode_no_pad` accepts QR-code-style inputs
-that drop padding — used for TOTP secret sharing (Google
-Authenticator).
+Standard alphabet `A-Z` + `2-7`, case-insensitive on decode,
+`=` padded to a multiple of 8 chars. ExtendedHex alphabet
+`0-9` + `A-V` (used by NSEC3 hashed-owner names — preserves
+sort order with the underlying bytes).
+
+### Canonicality
+
+Trailing-bits validation per §3.5: unused low bits of the last
+quintet MUST be zero (non-zero → `TrailingBits`). On top of
+that, the decoders reject non-canonical pad counts. RFC 4648 §6
+fixes `pad ∈ {0, 1, 3, 4, 6}` (encoding 5 / 4 / 3 / 2 / 1
+bytes); other counts would let an attacker forge multiple
+distinct encodings of the same TOTP secret / onion address by
+toggling the unused real chars. The decoders surface those as
+`Base32Error.InvalidLength(pad)`:
+
+| pad | Valid | Bytes encoded |
+|-----|-------|---------------|
+| 0 | yes | 5 (full block) |
+| 1 | yes | 4 |
+| 2 | **no** | non-canonical |
+| 3 | yes | 3 |
+| 4 | yes | 2 |
+| 5 | **no** | non-canonical |
+| 6 | yes | 1 |
+| 7, 8 | **no** | non-canonical |
+
+`decode_no_pad` / `decode_hex_no_pad` accept QR-code-style
+inputs that drop padding — used for TOTP secret sharing
+(Google Authenticator). The synthesised pad always lands in the
+canonical set, so the same gate applies.
 
 ## `base58` — Bitcoin-style
 
