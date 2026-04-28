@@ -16,6 +16,64 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — VBC module-load trust boundary (2026-04-28)
+
+A two-tier loader API with explicit trust contracts replaces the
+implicit "everything is trusted" assumption that previously gated
+production module loads. Closes round-1 §3.1 (hand-crafted bytecode
+violating type-table invariants), round-2 §3.1 (assign to read-only
+register), and round-2 §3.2 (mismatched arity calls) of the
+red-team review.
+
+**New strict entry points** in `crates/verum_vbc`:
+
+- `deserialize::deserialize_module_validated(data)` — structural
+  decode → content-hash verification → dependency-hash verification
+  → per-instruction bytecode validation.
+- `archive::VbcArchive::load_module_validated(name)` — same, applied
+  to archive entries (handles decompression).
+- `interpreter::Interpreter::try_new_validated(module)` — runs the
+  validator over a pre-loaded `Arc<VbcModule>` before construction.
+
+The lenient `deserialize_module` / `load_module` / `try_new` entry
+points are preserved for in-process-emitted bytecode where the
+validator's `O(N)` walk is wasted work.
+
+**What the validator catches at load time** (instead of execution
+time / silent corruption):
+
+- Out-of-range `FunctionId` / `ConstId` / `StringId` / `TypeId`
+  cross-references.
+- Register references past the function's declared `register_count`.
+- Branch offsets falling outside the function's bytecode region OR
+  landing mid-instruction in another instruction's operand stream
+  (Jmp / JmpIf / JmpNot / JmpCmp / Switch / TryBegin).
+- **Call-arity mismatches**: every `Call` / `TailCall` / `CallG`
+  has `args.count` checked against the target function's declared
+  `params.len()`.
+- Decoder failures mid-stream.
+- **Content-hash tampering**: blake3 over `data[HEADER_SIZE..]`
+  recomputed and matched against the header's `content_hash`.
+- **Dependency-hash tampering**: the cog-distribution dependency
+  graph's u64 fingerprint.
+
+A new `InterpreterError::ValidationFailed { module_name, reason }`
+variant carries forensic detail. The aggregate
+`VbcError::MultipleErrors(Vec<VbcError>)` now renders with a
+header line followed by indented numbered per-error entries,
+exposing the full defect list to the user instead of a count-only
+summary.
+
+See **[VBC Bytecode → Module-load trust boundary](/docs/architecture/vbc-bytecode#module-load-trust-boundary)**.
+
+### Added — `Opcode::Extended` general-purpose extension byte (2026-04-28)
+
+Reserved opcode `0x1F` (formerly the unused `IntArith1F` slot) is
+now `Opcode::Extended`. Wire format `[0x1F] [sub_op:u8]
+[operands...]`. Foundation for #146 Phase 3 (`MakeVariantTyped`);
+sub-op `0x00` is reserved as a forward-compat anchor that decoders
+must accept and skip without breaking older interpreters.
+
 ### Added — extraction lowerers + `@extract(realize=)` directive (2026-04-27)
 
 **`verum extract` AST-lowerer expansion**:
