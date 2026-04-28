@@ -29,21 +29,65 @@ Three additional audit surfaces work alongside `--proof-honesty`:
 See [Diakrisis Bridge Roster](diakrisis-bridge-roster.md) for the
 `--bridge-admits` deep-dive.
 
-## Recent stdlib promotion (2026-04-28)
+## Recent stdlib promotion (2026-04-28 / 29)
 
-The 2026-04-28 sweep promoted **47 tautological framework-citation
-axioms** to V2 witness-parameterised theorems across the entire
-`core/action/` module hierarchy:
+The April-28/29 sweep promoted **101 tautological framework-citation
+axioms** to V2/V3 witness-parameterised theorems across three
+module hierarchies. Aggregate count + per-module breakdown:
 
-| Module | Axioms removed | Theorems added |
-|--------|----------------|-----------------|
+### Wave 1 — `core/action/` (47 axioms)
+
+| Module | Axioms removed | V2 theorems added |
+|--------|----------------|--------------------|
 | `core/action/monads/{pure,reader,writer,state,probability,quantum}.vr` | 29 | 29 |
 | `core/action/effects.vr` | 10 | 10 (route through `is_commutative_effect`) |
 | `core/action/ludics.vr` + `ludics_lazy.vr` | 8 | 8 (gate via productivity / cut-elim classifier) |
 
-**Result**: Zero tautological axioms remain in `core/action/`. The
-entire monad / effect / ludics layer now ships with theorems whose
-ensures clauses **state the actual law** rather than just `true`.
+**Result**: Zero tautological axioms in `core/action/`. The entire
+monad / effect / ludics layer ships with theorems whose ensures
+clauses **state the actual law** rather than just `true`. 173
+let-bindings naming intermediate β-reducts across 9 monad files
+demonstrate the multi-step proof-body pattern (commit `3fc5255f`
++ companion `11b68b5e`).
+
+### Wave 2 — `core/theory_interop/` (37 axioms)
+
+| Module | Axioms removed | V3 theorems added |
+|--------|----------------|--------------------|
+| `core/theory_interop/bridges/owl2_to_htt.vr` | 30 | 30 (gated by Interpretation predicate) |
+| `core/theory_interop/bridges/oc_dc_bridge.vr` | 3 | 3 + GaugeVerdict enum (Decidable / SemiDecidable / Undecidable) |
+| `core/theory_interop/congruence_closure.vr` | 4 | 4 (via Closure observability API: `closure_merged` / `closure_representative`) |
+
+**Result**: Every OWL2 → HTT bridge axiom routes through the
+`Interpretation` protocol's class/object-property/data-property
+predicates; gauge-decidability axioms gate on the `GaugeVerdict`
+verdict bucket; congruence-closure axioms invoke the actual
+`closure_merged` / `closure_representative` API on a constructed
+`CongruenceClosure` value. Commit `533189ea`.
+
+### Wave 3 — `core/math/frameworks/diakrisis_acts.vr` (17 axioms)
+
+| Theorem range | Carrier | Ensures form |
+|---------------|---------|---------------|
+| 110.T–112.T (classifying space + Grothendieck + universal performance) | `Enactment` / `Articulation` | `is_adjoint(alpha_of(e), e)` round-trip |
+| 113.T / 117.T / 119.T / 123.T / 126.T (κ-rank witnesses) | `Enactment.activation_rank` | `>= 0` (V3 surface; V4 → ordinal-typed ω-bounded) |
+| 114.T / 116.T / 118.T / 120.T / 122.T / 127.T (functor / morphism existence) | `Enactment` | `is_adjoint(alpha_of(e), e)` |
+| 115.T / 121.T (self-reflection / BHK) | `Articulation` | `articulation_eq(alpha_of(epsilon(α)), α)` |
+
+**Result**: All 17 catalogue boundary axioms (110.T–127.T) ship
+with kernel-checkable ensures clauses routing through the
+existing `core.action.{articulation, enactments}` surface. Commit
+`2c32e43a`.
+
+### Aggregate session-wide tautology elimination
+
+```text
+core/action/                              47 ✓
+core/theory_interop/                      37 ✓
+core/math/frameworks/diakrisis_acts.vr    17 ✓
+─────────────────────────────────────── ──
+total tautological axioms removed       101
+```
 
 ## Quick start
 
