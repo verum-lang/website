@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
         'verification/proofs',
         'verification/tactic-dsl',
         'verification/trusted-kernel',
+        'verification/diakrisis-bridge-roster',
         'verification/counterexamples',
         'verification/proof-export',
         'verification/cubical-hott',
@@ -463,6 +464,8 @@ const sidebars: SidebarsConfig = {
       items: [
         'stdlib/database',
         'stdlib/database-sqlite-architecture',
+        'stdlib/database-postgres',
+        'stdlib/database-mysql',
       ],
     },
     {

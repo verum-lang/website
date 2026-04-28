@@ -469,10 +469,47 @@ existing rules do not touch the schema version.
 
 ---
 
-## 10. Further reading
+## 10. V2 / V3 K-rule promotions
+
+The April 2026 sweep introduced V2/V3 promotions across five K-rules,
+each routing preprint-blocked claims through explicit Diakrisis
+bridge admits. **Strict-stronger invariant**: every V0/V1-decidable
+pair remains admitted with empty `BridgeAudit`; new accept classes
+strictly require named bridge admits.
+
+| K-rule | V0/V1 → V2/V3 | Bridges introduced | Module |
+|--------|----------------|---------------------|---------|
+| K-Round-Trip | Universal canonicalize with iteration budget | `ConfluenceOfModalRewrite` (16.10) | `verum_kernel::round_trip::check_round_trip_v2` |
+| K-Eps-Mu | V3-incremental → V3-final τ-witness | `EpsMuTauWitness` (A-3) | `verum_kernel::eps_mu::check_eps_mu_coherence_v3_final` |
+| K-Refine | V2 stub → V3 fold (decidable) | — | `verum_kernel::support::fold_refine_of_refine` |
+| K-Universe-Ascent | V0 3-tier → V2 arbitrary κ-tower | `DrakeReflectionExtended` (131.L4) | `verum_kernel::universe_ascent::check_universe_ascent_v2` |
+
+The audit-trail mechanism is uniform: each K-rule's V2/V3 entry point
+returns `Result<BridgeAudit, KernelError>`; `BridgeAudit` collects
+every preprint admit invoked.
+
+### Façade integration
+
+`verum_verification::kernel_recheck::KernelRecheck` exposes:
+
+- `round_trip_v2(lhs, rhs, ctx) -> Result<BridgeAudit>`
+- `eps_mu_v3_final(lhs, rhs, ctx) -> Result<BridgeAudit>`
+- `universe_ascent_v2(source, target, ctx) -> Result<BridgeAudit>`
+- `canonicalize(term, ctx) -> (CoreTerm, BridgeAudit)`
+- `merge_audits(lhs, rhs) -> BridgeAudit`
+
+See [Diakrisis Bridge Roster](./diakrisis-bridge-roster.md) for the
+complete bridge inventory, V3 promotion paths, and the
+`verum audit --bridge-admits` walker.
+
+---
+
+## 11. Further reading
 
 - [Gradual verification](./gradual-verification.md) — how the
   Certified strategy consumes the kernel.
+- [Diakrisis Bridge Roster](./diakrisis-bridge-roster.md) —
+  named admits surfacing preprint-blocked results.
 - [SMT routing](./smt-routing.md) — what the backends do before
   producing a certificate.
 - [Proofs](./proofs.md) — the tactic DSL that produces
