@@ -66,6 +66,7 @@ verum audit [--details] [--direct-only] [--framework-axioms] \
              [--hygiene] [--hygiene-strict] [--owl2-classify] \
              [--framework-conflicts] [--accessibility] \
              [--round-trip] [--coherent] [--proof-honesty] \
+             [--framework-soundness] [--coord-consistency] \
              [--format plain|json]
 verum lint [--fix] [--deny-warnings] [--profile NAME] [--explain RULE] \
             [--list-rules] [--validate-config] [--since GIT_REF] \
@@ -109,6 +110,8 @@ each surface gated by an explicit flag.
 | `--round-trip` | per-theorem 108.T round-trip status (Decidable / SemiDecidable / Undecidable) | corpus acceptance gate |
 | `--coherent` | per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert correspondence status | operational coherence layer |
 | `--proof-honesty` | per-theorem proof-body shape classification (`axiom-placeholder` / `theorem-no-proof-body` / `theorem-trivial-true` / `theorem-axiom-only` / `theorem-multi-step`) plus by-lineage totals | corpus promotion-progress gate; emits `audit-reports/proof-honesty.json` (schema_v=1) |
+| `--framework-soundness` | per-axiom K-FwAx classification (`sound` if proposition has propositional content / `trivial-placeholder` if just `true` literal) | corpus-side mirror of kernel-side `SubsingletonRegime::ClosedPropositionOnly` gate at audit time; emits `audit-reports/framework-soundness.json` (schema_v=1) |
+| `--coord-consistency` | per-theorem (Fw, ν, τ) supremum-of-cited-coords gate (`consistent` / `verify-lift` / `missing-framework`); fails CI on any `missing-framework` (theorem has `@verify(...)` but no `@framework(...)` citation) | corpus-side mirror of kernel-side V8.1 #232 `check_coord_cite` at audit time; emits `audit-reports/coord-consistency.json` (schema_v=1); non-zero exit on violation |
 
 `--format plain` (default) emits human-readable output. `--format json`
 emits a stable machine-parseable schema suitable for CI dashboards

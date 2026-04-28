@@ -479,6 +479,17 @@ read the subsections in this order:
     `audit-reports/proof-honesty.json` schema, and the
     `core.math.*` carrier-protocol surface (DiakrisisPrimitive,
     DualLAbsCandidate, OpenQuestion, StrictInclusionWitness, ...).
+16. [Coord-consistency + framework-soundness audits](./coord-consistency-audit.md)
+    — `verum audit --coord-consistency` (M4.B; supremum-of-cited-coords
+    gate) and `verum audit --framework-soundness` (M4.A; corpus-side
+    K-FwAx classifier). CI gates closing the kernel-time vs audit-time
+    soundness-gap.
+17. [Operational coherence (VVA-6 stdlib preview)](./coherence.md) —
+    `core/verify/coherence.vr` (M4.E): `CoherenceCert` carrier
+    protocol + 3-way `CoherenceVerdict` sum + concrete
+    `IdentityCoherenceCert` instance. The 12-variant
+    `VerificationLevel` enum extension covering `coherent_static` /
+    `coherent_runtime` / `coherent` strategies (ν = ω·2+3 / ω·2+4 / ω·2+5).
 
 If you only have ten minutes, read
 [Gradual verification](./gradual-verification.md) and

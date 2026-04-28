@@ -324,25 +324,61 @@ Flags:
 
 ### `verum audit`
 
-Two orthogonal audits under one command:
+Multi-modal trust-boundary auditor — one command, many orthogonal
+audits gated by explicit flags. Default mode (no flag) runs
+**dependency advisories** + **per-theorem coord audit**.
 
-- **Dependency advisories** (default) — scans the resolved cog graph
-  against the security advisory database.
-- **Trust-boundary enumeration** (`--framework-axioms`) — lists every
-  `@framework(name, "citation")` marker in the project, grouped by
-  framework. Exits non-zero on any malformed `@framework(...)`.
-- **Kernel-rule catalog** (`--kernel-rules`) — prints the 18 primitive
-  inference rules implemented by `verum_kernel` so auditors can check
-  the trust-boundary against the documented rule set.
+Flags (specific audit modes; pick one):
+- `--framework-axioms` — enumerate every `@framework(name, "citation")`
+  marker grouped by framework. Non-zero on malformed markers.
+- `--kernel-rules` — print the 18 primitive inference rules implemented
+  by `verum_kernel` (auditor-facing TCB enumeration).
+- `--epsilon` — every `@enact(epsilon = …)` marker grouped by
+  ε-primitive (dual to `--framework-axioms`).
+- `--coord` — per-theorem `(Framework, ν, τ)` MSFS coordinate
+  (default-on; `--no-coord` opts out of bare-`audit`'s default coord pass).
+- `--accessibility` — `@enact` / `EpsilonOf` markers without
+  `@accessibility(λ)` annotation (Diakrisis Axi-4 closure check).
+- `--hygiene` — V1 advisory: surface every recognised self-referential
+  surface form (per the §13.2 hygiene table).
+- `--hygiene-strict` — V2 enforcement: walks every top-level free
+  function body for raw `self`; non-method functions cannot legally
+  bind `self`. Non-zero exit on `E_HYGIENE_UNFACTORED_SELF` violations.
+- `--owl2-classify` — OWL 2 classification audit (subclass closure +
+  cycle / disjointness violations).
+- `--framework-conflicts` — known-incompatible framework pairs
+  (uip ⊥ univalence etc.) — non-zero on any conflict.
+- `--round-trip` — per-theorem 108.T round-trip status
+  (Decidable / SemiDecidable / Undecidable).
+- `--coherent` — per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert
+  correspondence status.
+- `--proof-honesty` — per-theorem proof-body shape classification
+  (`axiom-placeholder` / `theorem-no-proof-body` / `theorem-trivial-true`
+  / `theorem-axiom-only` / `theorem-multi-step`) plus by-lineage totals.
+- `--framework-soundness` (M4.A) — per-axiom K-FwAx classification
+  (`sound` / `trivial-placeholder`). Mirror of kernel-side
+  `SubsingletonRegime::ClosedPropositionOnly` gate at audit time.
+- `--coord-consistency` (M4.B) — per-theorem (Fw, ν, τ) supremum
+  invariant (`consistent` / `verify-lift` / `missing-framework`).
+  Mirror of V8.1 #232 kernel-side `check_coord_cite` at audit time.
+  Non-zero on any `missing-framework` violation.
 
-Flags:
+Common flags:
 - `--details` — per-advisory full details.
 - `--direct-only` — skip transitive deps.
-- `--framework-axioms` — enumerate trusted-axiom markers.
-- `--kernel-rules` — list `verum_kernel`'s primitive inference rules.
+- `--no-coord` — opt out of default-on per-theorem coord audit.
 - `--format <plain|json>` — default `plain`. `json` is stable-schema
   output for CI enforcement (e.g. fail the build if a PR adds a new
   framework-axiom dependency).
+
+Each audit mode emits one of:
+`audit-reports/{coord,accessibility,framework-footprint,coherent,round-trip,framework-soundness,coord-consistency,proof-honesty}.json`
+when invoked with `--format json`.
+
+For details on individual audits:
+- [Proof-honesty audit](/docs/verification/proof-honesty)
+- [Coord-consistency + framework-soundness](/docs/verification/coord-consistency-audit)
+- [MSFS coordinate](/docs/verification/msfs-coord)
 
 ### `verum smt-info`
 
