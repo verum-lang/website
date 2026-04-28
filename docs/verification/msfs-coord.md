@@ -371,6 +371,8 @@ section.
 - [Trusted kernel](trusted-kernel.md) — the kernel rules
   (`K-FwAx`, `K-Refine`) that consume framework axioms.
 - the verification spec.
-- Diakrisis MSFS (`internal/holon/internal/math-msfs/`) — the
-  canonical source for the 2-stack `𝔐` and the
-  `(Fw, ν, τ)` projection.
+- The MSFS specification — defines the moduli 2-stack `𝔐` and the
+  `(Fw, ν, τ)` projection that this module's API follows. The
+  upstream document (Sereda preprint, MSFS) is the normative
+  reference for the four strata `L_Fnd ⊋ L_Cls ⊋ L_Cls_top ⊋ L_Abs`
+  and the AFN-T proof that `L_Abs == ∅`.

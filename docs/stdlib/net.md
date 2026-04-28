@@ -538,9 +538,11 @@ for hv in parser.headers().iter() {
 }
 ```
 
-The buffer must outlive the parsed Request; Weft uses a per-request arena
-to bound this lifetime structurally (see `internal/specs/net-framework.md`
-§4.3).
+The buffer must outlive the parsed Request; Weft uses a per-request
+arena (allocated when the request line is first read, dropped at
+response-write completion) to bound this lifetime structurally —
+the parsed `Request<'arena>` cannot escape that scope, so use-after-
+free of the byte view is impossible by construction.
 
 ### DoS guards
 

@@ -18,12 +18,16 @@ database driver, the rate limiter can key on authenticated user — but
 all of them compose cleanly inside a Weft middleware pipeline via the
 shared `Layer` / `Handler` protocols.
 
-## Spec alignment
+## Design rationale
 
-Design traces to `internal/specs/net-framework.md §9.3` — the
-"Pingora-class" example — which argues that every L7 proxy needs
-these six building blocks and that the Envoy / HAProxy / Pingora
-vocabulary for each (states, thresholds, budgets) should be shared.
+The six-building-block carve-up (rate-limit, retry, timeout,
+upstream pool, health-check, circuit-breaker) is the convergent
+shape every production L7 proxy ends up at — Envoy, HAProxy and
+Pingora all expose the same set under different names. Sharing
+that vocabulary (states, thresholds, budgets) makes the Verum
+proxy components drop-in-compatible at the operational level:
+operators reading an Envoy runbook can drive the Verum stack
+without re-learning concepts.
 
 ## Module layout
 
