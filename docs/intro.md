@@ -151,19 +151,23 @@ correctness is identical; the difference is execution time vs.
 startup time. **See [Architecture →
 overview](/docs/architecture/overview).**
 
-A fourth invocation form, **script mode**, sits orthogonal to
-these tiers: a `.vr` file with a `#!` shebang line at byte 0
-(`#!/usr/bin/env verum`) can be executed directly via `verum
-hello.vr` or `./hello.vr` — no `fn main()`, no `verum.toml`, no
-boilerplate. Top-level statements are folded into a synthesised
-wrapper that runs through the same Tier-0 / Tier-1 pipeline,
-with full access to refinement types, CBGR memory safety, and
-the standard library. The script's tail expression becomes its
-process exit code (`Int` → status, `Bool` → 0/1, `()` → 0). This
-makes Verum a viable replacement for shell-grade scripts
-(`bash`, `python`, `awk`) while keeping every guarantee that
-distinguishes it as a verified systems language. **See [Getting
-Started → Script mode](/docs/getting-started/script-mode).**
+Verum draws a strict line between two source roles. A
+**Verum application** declares `fn main()` and runs via the
+interpreter or the AOT pipeline above — `verum run file.vr` or
+`verum build` / `verum run --aot file.vr`. A **Verum script** is a
+`.vr` file with a `#!` shebang line at byte 0 and **no
+`fn main()`** — top-level statements are the program. Scripts run
+directly via `verum hello.vr` or `./hello.vr` with no `verum.toml`,
+no boilerplate, and full access to refinement types, CBGR memory
+safety, and the standard library. The script's tail expression
+becomes its process exit code (`Int` → status, `Bool` → 0/1, `()`
+→ 0). The two roles do not overlap — a `fn main` written inside a
+script-tagged file is a regular callable function, not the
+program entry. This separation makes Verum a viable replacement
+for shell-grade scripts (`bash`, `python`, `awk`) while keeping
+every guarantee that distinguishes it as a verified systems
+language. **See [Getting Started → Script
+mode](/docs/getting-started/script-mode).**
 
 ## 3. A first taste — verified, executable code
 

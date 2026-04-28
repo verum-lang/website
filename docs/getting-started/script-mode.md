@@ -22,18 +22,30 @@ parser, CLI, and runtime enforce.
 
 ---
 
-## The three execution modes
+## Two execution roles, three invocation modes
 
-Verum has exactly three ways to execute a `.vr` source. The
-distinction is structural — driven by what's in the file and how
-you invoke `verum` — and the CLI enforces it strictly so the
-mental model never blurs.
+Verum draws a strict line between two **roles** a `.vr` source can
+play. The role is determined by what's in the file:
 
-| Mode | When | Invocation | Required source signal |
+- A **Verum application** declares `fn main()`. It can be executed
+  by the interpreter or compiled to a native binary by AOT — both
+  paths use the same `main` entry. No shebang.
+
+- A **Verum script** starts with a `#!` shebang at byte 0 and has
+  **no `fn main()`** — top-level statements are the program. A
+  `fn main` written inside a script is a regular function, not the
+  entry point. The synthesised wrapper around the top-level
+  statements is always the entry.
+
+The roles do not overlap. `main` only ever drives an application;
+the script wrapper only ever drives a script. From those two roles
+you get three invocation modes:
+
+| Mode | Role | Invocation | Required source signal |
 |---|---|---|---|
-| **Interpreter** | Fast iteration on a `fn main()` program | `verum run file.vr [-- args…]` | `fn main()` (sync or async) |
-| **AOT** | Production binary, native speed | `verum run --aot file.vr` *or* `verum build` | `fn main()` |
-| **Script** | One-shot tool, shell pipeline, scratch experiment | `verum file.vr [args…]` *or* `./file.vr` | `#!` shebang at byte 0 |
+| **Interpreter** | Application | `verum run file.vr [-- args…]` | `fn main()` (sync or async) |
+| **AOT** | Application | `verum run --aot file.vr` *or* `verum build` | `fn main()` |
+| **Script** | Script | `verum file.vr [args…]` *or* `./file.vr` | `#!` shebang at byte 0 |
 
 The shebang line is **the** signal that distinguishes a script
 from a library/binary source. A `.vr` file without a shebang must
@@ -212,21 +224,22 @@ violation.
 
 ## Arguments
 
-A script that needs command-line arguments declares an explicit
-`fn main(args: List<Text>) -> Int` alongside its top-level
-work. When both an explicit `main` and top-level statements are
-present, `main` is the entry point:
+A script reads command-line arguments via the standard library —
+`core.base.env::args()` returns them as a `List<Text>` with the
+program name at index 0:
 
 ```verum
 #!/usr/bin/env verum
+mount core.base.env;
 
-fn main(args: List<Text>) -> Int {
-    if args.len() < 2 {
-        eprintln("usage: greet.vr <name>");
-        return 2;
-    }
-    print(f"hello, {args[1]}!");
-    return 0;
+let args = env.args();
+if args.len() < 2 {
+    print("usage: greet.vr <name>");
+    2
+} else {
+    print("hello, ");
+    print(args[1]);
+    0
 }
 ```
 
@@ -237,6 +250,10 @@ $ ./greet.vr; echo "exit=$?"
 usage: greet.vr <name>
 exit=2
 ```
+
+A script must not declare `fn main`. If you find yourself reaching
+for `fn main`, your file isn't a script — it's an application;
+remove the shebang and run it via `verum run file.vr`.
 
 ---
 
@@ -287,11 +304,12 @@ The invariants you can rely on:
    followed by `#!`) or the file is a regular library/binary
    source.
 
-2. **`fn main()` always wins.** A script that also declares
-   `fn main()` uses `main` as the entry point. This lets you
-   graduate a script to a regular binary without rewriting it
-   — keep the shebang or remove it, the program runs the same
-   way.
+2. **Roles do not overlap.** An application has `fn main()` and no
+   shebang; a script has a shebang and no `fn main()`. A `fn main`
+   declared inside a script-tagged source is a regular function —
+   it is not the program entry. To graduate a script to an
+   application, remove the shebang and add `fn main()`; to demote
+   an application to a script, do the inverse.
 
 3. **Pure-library sources are unaffected.** A `.vr` file
    without a shebang and without top-level statements compiles
