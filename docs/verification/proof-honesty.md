@@ -79,14 +79,45 @@ with kernel-checkable ensures clauses routing through the
 existing `core.action.{articulation, enactments}` surface. Commit
 `2c32e43a`.
 
+### Wave 4 — `core/math/foundations/self_recognition.vr` (9 axioms)
+
+The kernel's seven primitive rules (K-Refine / K-Univ / K-Pos /
+K-Norm / K-FwAx / K-Adj-Unit / K-Adj-Counit) plus
+ladder-monotonicity and articulation-hygiene axioms are now
+witness-parameterised over `Articulation` / `Enactment` carriers.
+The kernel WITNESSES its OWN rules through its α ⊣ ε round-trip
+machinery (commit `0587d4da`).
+
+### Wave 5 — `core/math/rich_s/{examples,non_examples}.vr` (20 axioms)
+
+13 R-S example axioms (ZFC / NBG / MLTT / CIC / HoTT / Cubical /
+linear+! / Eff / Lurie / cohesive / NCG / motivic + ZFC-inacc) +
+7 non-example axioms (R1..R5 violators + Proposition 3.2 closure).
+Each example asserts its claimed `n_S` value via the `R::n_S()`
+protocol method; each non-example takes a `violated_index: Int`
+parameter naming the failed R-condition (commit `327838c6`).
+
+### Wave 6 — `core/math/strata.vr` + `connes_reconstruction.vr` (11 axioms)
+
+Strata: 4 axioms over `Stratum` enum (class-definability /
+L_Abs-emptiness / strict-inclusion non-collapse). Connes: 7
+spectral-triple axioms threading conjunction of (i)–(vii)
+through `is_compact_resolvent` / `algebra_dimension >= 0`
+predicates; reconstruction theorem now requires-and-ensures the
+full conjunction (commit `1fb014d3`).
+
 ### Aggregate session-wide tautology elimination
 
 ```text
-core/action/                              47 ✓
-core/theory_interop/                      37 ✓
-core/math/frameworks/diakrisis_acts.vr    17 ✓
-─────────────────────────────────────── ──
-total tautological axioms removed       101
+core/action/                                              47 ✓
+core/theory_interop/                                      37 ✓
+core/math/frameworks/diakrisis_acts.vr                    17 ✓
+core/math/foundations/self_recognition.vr                  9 ✓
+core/math/rich_s/{examples,non_examples}.vr               20 ✓
+core/math/strata.vr                                        4 ✓
+core/math/frameworks/connes_reconstruction.vr              7 ✓
+───────────────────────────────────────────────────── ──
+total tautological axioms removed                        141
 ```
 
 ## Quick start
