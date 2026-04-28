@@ -133,100 +133,89 @@ possible (mmap + fixup).
 ## Module-load trust boundary
 
 Loading a `.vbc` module crosses a trust boundary: the bytes might
-have come from this process's own compiler (trusted) or from disk /
-network / archive (untrusted). VBC exposes a **two-tier loader API**
-that lets each call site declare its trust assumption explicitly.
+have come from this process's own compiler (trusted) or from disk,
+network, or a shared cog archive (untrusted).  The runtime exposes
+**two load tiers** so each call site declares its trust assumption
+explicitly.
 
-### Lenient entry points (trusted source)
+### Lenient load (trusted source)
 
-| Entry point | Use when |
-|-------------|----------|
-| `verum_vbc::deserialize::deserialize_module(data)` | Loading bytecode emitted by THIS process's compiler in the same run |
-| `VbcArchive::load_module(name)` | Loading from an in-process-emitted archive |
-| `Interpreter::try_new(module)` | Constructing an interpreter from any pre-loaded `Arc<VbcModule>` |
+The lenient tier does structural decode + the V-LLSI
+"interpretable?" flag check, nothing else.  Use it when the
+bytecode comes from the compiler that's running right now — for
+example, after `verum run` builds a program in-process and hands
+the freshly-emitted bytecode straight to the interpreter.  Running
+the validator on bytecode whose provenance is already trusted would
+just be wasted work.
 
-These do structural decode + V-LLSI `is_interpretable()` flag check,
-nothing else. The validator's O(N) walk is wasted work on bytecode
-the in-process compiler just produced.
+### Validated load (untrusted source)
 
-### Validated entry points (untrusted source)
+The validated tier runs four passes before the module is allowed to
+execute:
 
-| Entry point | Use when |
-|-------------|----------|
-| `verum_vbc::deserialize::deserialize_module_validated(data)` | Loading from disk / network / shared archive |
-| `VbcArchive::load_module_validated(name)` | Loading any archive whose origin you don't fully control |
-| `Interpreter::try_new_validated(module)` | Constructing an interpreter from a module that hasn't already passed the validator |
-
-The validated path runs, in order:
-
-1. **Structural decode** via the lenient deserializer.
-2. **Content-hash verification** — recomputes
-   `blake3(data[HEADER_SIZE..])`, takes the first 8 bytes as `u64`,
-   compares to `header.content_hash`. Catches single-bit on-disk
-   tampering. Runs BEFORE decompression, since the hash is over the
-   raw on-wire bytes (which for a compressed module is the
-   compressed payload — the same bytes the serializer hashed).
-3. **Dependency-hash verification** — recomputes blake3 over the
-   little-endian u64 concatenation of every `dep.hash`. Independent
-   fingerprint of the cog-distribution dependency graph; lets a
-   downstream verifier (cog-resolver, build cache, reproducibility
-   checker) compare two modules' dep trees in O(8) without walking
-   the full table.
-4. **Per-instruction bytecode validation** — walks every function's
-   bytecode, decodes each instruction, and rejects:
-   - Out-of-range `FunctionId` in `Call` / `TailCall` / `CallG` /
-     `NewClosure` (→ `InvalidFunctionId`).
-   - **Call-arity mismatch**: `args.count` against the target
-     function's declared `params.len()` (→
-     `InvalidInstructionEncoding` with arity-mismatch reason).
-   - Register references past `function.register_count` (→
-     `RegisterOutOfBounds { reg, max, context }`).
+1. **Structural decode** — same as the lenient tier.
+2. **Content-hash verification.**  The header carries a blake3
+   fingerprint over the bytes after the header.  At load time the
+   runtime recomputes the fingerprint and rejects any mismatch.
+   This catches single-bit tampering on the disk artifact —
+   somebody edited a `.vbc` file in place and forgot to re-stamp
+   the hash.  The check runs **before decompression**, since the
+   hash is over the raw on-wire bytes.  For a compressed module
+   that's the compressed payload, exactly what the serializer
+   hashed, so tampering is caught without paying the
+   decompression cost first.
+3. **Dependency-hash verification.**  An independent fingerprint
+   of the cog-distribution dependency graph (a blake3 over the
+   concatenated dependency hashes).  Lets a build cache,
+   reproducibility checker, or cog resolver compare two modules'
+   dep trees in `O(8)` without walking the full dependency table.
+4. **Per-instruction bytecode validation.**  Walks every
+   function's bytecode and rejects:
+   - Out-of-range function references in `Call` / `TailCall` /
+     `CallG` / `NewClosure`.
+   - **Call-arity mismatches** — every call site's argument count
+     must match the target's declared parameter count.
+   - Register references past the function's declared register
+     file size.
    - Branch offsets (`Jmp` / `JmpIf` / `JmpNot` / `JmpCmp` /
-     `Switch` / `TryBegin`) outside the function's bytecode region
-     OR landing mid-instruction in another instruction's operand
-     stream (→ `JumpOutOfBounds`). Mid-instruction landing uses a
-     `BTreeSet<u32>` of decoded instruction-start offsets built
-     during the walk.
-   - Out-of-range `ConstId` in `LoadK` (→ `InvalidConstId`).
-   - Out-of-range `StringId` in `CallM.method_id` / `Panic.message_id`
-     (→ `InvalidStringId`).
-   - Out-of-range `TypeId` in `New` / `NewG` (with built-in
-     short-circuit via `TypeId::is_builtin()`; user types must hit
-     `module.get_type()`) (→ `InvalidTypeId`).
-   - Decoder failures mid-stream (→
-     `InvalidInstructionEncoding { offset, reason }`).
+     `Switch` / `TryBegin`) that fall outside the function's
+     bytecode region, OR that land mid-instruction in another
+     instruction's operand stream.
+   - Out-of-range constant-pool, string-table, or type-table
+     references.
+   - Decoder failures mid-stream (a function's bytecode-byte
+     count too small for the encoded instruction sequence).
 
-Aggregate validation failures surface as
-`VbcError::MultipleErrors(Vec<VbcError>)`, which renders as a
-header line followed by indented numbered per-error entries —
-forensic detail flows through end to end.
+When the validator finds multiple defects, the diagnostic is
+rendered as a numbered list — full forensic detail rather than a
+count-only summary.
+
+Use the validated tier whenever bytecode comes from anywhere other
+than the compiler in this process: archives loaded from disk,
+modules pulled from a cog registry, files passed on the command
+line, network-loaded bytecode, IPC-shared modules.  The cost is
+`O(N)` in total bytes (hash) + `O(M)` in instruction count, paid
+once at load — the runtime hot path stays gate-free.
 
 ### Why the architecture matters
 
-The same architectural anti-pattern (security-critical defense
-declared as a public field with **zero production callers**) lived
-in three places:
+The same architectural anti-pattern lived in three places: the
+bytecode validator, the content hash, and the dependency hash.
+Each was a security-critical defense implemented as a public field
+or function with **zero production callers** — inert until the
+load-time wiring acted on it.  The lesson: a public field carrying
+a security-critical value with no code path that ACTS on the value
+is a TODO regardless of how the field is named or documented.
 
-1. The bytecode validator's `validate_module` function — public API,
-   never called from any module-load path.
-2. `VbcHeader.content_hash` — computed at serialize time, never
-   checked at deserialize.
-3. `VbcHeader.dependency_hash` — same.
+### Implementation surface (Rust)
 
-Each was inert until the load-time entry points wired the check.
-The lesson: **a public field carrying a security-critical value with
-no code path that ACTS on the value is a TODO regardless of how the
-field is named or documented.**
-
-### Choosing between the tiers
-
-Use the **lenient** entry points only when the bytecode source is the
-in-process compiler in the same run. For everything else — archives
-loaded from disk, modules pulled from a cog registry, files passed
-on the command line, network-loaded bytecode, IPC-shared modules —
-use the **validated** entry points. The validator's cost is `O(N)`
-in total bytes (hash) + `O(M)` in instruction count, run once at
-load; the runtime hot path stays gate-free.
+For compiler / runtime hackers: the trust boundary is exposed as
+two parallel constructor families on the `verum_vbc` crate
+(lenient → validated): `deserialize_module` / `deserialize_module_validated`,
+`VbcArchive::load_module` / `load_module_validated`, and
+`Interpreter::try_new` / `try_new_validated`.  Validation failure
+surfaces as `InterpreterError::ValidationFailed { module_name,
+reason }`; the `reason` carries the rendered defect list.
 
 ## Interpreter
 
