@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Installation
-description: Install Verum on Linux or macOS — download, verify, and set up your editor.
+description: Install Verum on Linux or macOS — build from source today, prebuilt binaries when 0.1.0 is tagged.
 ---
 
 # Installation
@@ -11,24 +11,33 @@ compiler, interpreter, LSP server, Playbook TUI, formatter, and test
 runner. There is no separate runtime or toolchain directory: one
 binary on your `$PATH` is the whole install.
 
-> This page describes the install flow as it actually ships today.
-> Several pieces still have rough edges (no Windows binary yet, no
-> release-signature chain, no self-update command) — the doc is
-> honest about what exists and what doesn't.
+:::warning Pre-release status
+
+**No tagged release exists yet.** The
+[GitHub Releases page](https://github.com/verum-lang/verum/releases)
+is empty and the prebuilt-archive URLs in older versions of this page
+(`verum-linux-x86_64.tar.gz`, etc.) currently 404. Until `0.1.0` is
+tagged, the only supported install path is **[Build from
+source](#build-from-source)** below.
+
+The release archives _will_ ship from
+[`.github/workflows/release.yml`](https://github.com/verum-lang/verum/blob/main/.github/workflows/release.yml)
+when a `v*` tag lands; the prebuilt-binary section further down is
+kept as forward-looking reference for that flow.
+:::
 
 ## Supported platforms
 
 | Platform | Target triple | Status |
 |----------|---------------|--------|
-| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | Prebuilt binary |
-| macOS Apple Silicon | `aarch64-apple-darwin` | Prebuilt binary |
-| macOS Intel | `x86_64-apple-darwin` | Prebuilt binary |
+| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | Build from source today; prebuilt at first tag |
+| macOS Apple Silicon | `aarch64-apple-darwin` | Build from source today; prebuilt at first tag |
+| macOS Intel | `x86_64-apple-darwin` | Build from source today; prebuilt at first tag |
 | Linux aarch64 / musl | — | Build from source |
 | Windows | — | Build from source (officially unsupported) |
 
-The release workflow (`.github/workflows/release.yml`) currently
-builds the three triples above. Everything else requires a source
-build; see [Build from source](#build-from-source) below.
+The release workflow currently builds the three triples above for
+prebuilt archives. Everything else requires a source build.
 
 ### What the `verum` binary itself links against
 
@@ -74,7 +83,155 @@ on Linux produces a fully-static ELF binary that runs without
 glibc, without an interpreter, and without any runtime the user has
 to ship alongside it.
 
-## Download
+## Build from source
+
+This is the primary install path today. The Verum compiler is
+written in Rust and uses unstable features that require the
+**nightly** toolchain.
+
+### 1. Install prerequisites
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| **Rust nightly** | The exact channel pinned in [`rust-toolchain.toml`](https://github.com/verum-lang/verum/blob/main/rust-toolchain.toml) | Compiles the `verum_*` crates. The repo uses `#![feature(pattern)]` in `verum_common` and edition 2024 — both require nightly. |
+| LLVM | 21.x | System install — the bindings crate links against it. |
+| CMake | 3.21+ | Needed by the Z3 bundled build. |
+| C/C++ compiler | clang 15+ recommended | LLVM and Z3 native code. |
+| Git | 2.30+ | Submodule fetch (Z3 / CVC5 are submodules). |
+
+#### Install rustup + nightly
+
+If you don't already have `rustup`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+Once `rustup` is installed, `cargo` will read
+`rust-toolchain.toml` from the repo root and **download the
+correct nightly channel automatically** the first time you build —
+you don't need a manual `rustup default nightly`. The toolchain file
+also pins the right components (`rustfmt`, `clippy`, `rust-src`,
+`rust-analyzer`) so editor integration and lint commands work
+without extra setup.
+
+#### Install LLVM 21 + CMake + clang
+
+**Ubuntu / Debian (22.04+):**
+
+```bash
+sudo apt update
+sudo apt install -y \
+    build-essential cmake git pkg-config \
+    clang-15 lld-15 \
+    llvm-21-dev libllvm21 \
+    libpolly-21-dev libmlir-21-dev mlir-21-tools \
+    zlib1g-dev libzstd-dev libxml2-dev libssl-dev
+
+# Make llvm-config-21 the default the bindings crate looks for:
+export LLVM_SYS_210_PREFIX=$(llvm-config-21 --prefix)
+```
+
+If your distro doesn't carry an `llvm-21-dev` package yet, use the
+[official LLVM apt repository](https://apt.llvm.org/) — the
+`llvm.sh` installer there handles the version-pinned packages.
+
+**macOS (Homebrew):**
+
+```bash
+brew install llvm@21 cmake
+export LLVM_SYS_210_PREFIX=$(brew --prefix llvm@21)
+export PATH="$LLVM_SYS_210_PREFIX/bin:$PATH"
+```
+
+The `LLVM_SYS_210_PREFIX` environment variable points the
+`llvm-sys` bindings crate at the version-21 install. Without it the
+build will probe `/usr/lib/llvm-21` first and fall back to whatever
+`llvm-config` returns — usually wrong.
+
+### 2. Clone with submodules
+
+The repository carries Z3 and a few other natives as Git
+submodules. Clone with `--recursive` so they come along:
+
+```bash
+git clone --recursive https://github.com/verum-lang/verum
+cd verum
+```
+
+If you already cloned without `--recursive`:
+
+```bash
+git submodule update --init --recursive
+```
+
+### 3. Build
+
+Default build with the SMT verification stack (Z3 statically linked
+in):
+
+```bash
+cargo build --release -p verum_cli --features verification
+```
+
+The Z3 build is bundled and will take **5–15 minutes** the first
+time on a 4-core box; subsequent rebuilds reuse the cached object
+files and finish in seconds. LLVM is linked against the system
+install you set up above — `cargo build` does not download or build
+LLVM itself.
+
+The first build also touches every workspace crate; expect
+**10–25 minutes** end-to-end on a fresh checkout. Increment builds
+after that are sub-minute.
+
+### 4. Verify
+
+```bash
+./target/release/verum --version
+./target/release/verum info --all
+```
+
+You should see version `0.1.0` and the LLVM-linked-21.x line in the
+`verum info --all` output.
+
+### 5. Install on `$PATH`
+
+```bash
+sudo install -m755 ./target/release/verum /usr/local/bin/verum
+verum --version
+```
+
+If you don't have `sudo` access, copy the binary somewhere on your
+own `$PATH` instead — the binary is fully relocatable:
+
+```bash
+mkdir -p ~/.local/bin
+install -m755 ./target/release/verum ~/.local/bin/verum
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc
+```
+
+### Interpreter-only build (faster, no LLVM)
+
+If you only need `verum run` / `verum check` / `verum test` and the
+REPL — skipping native AOT builds — drop the LLVM-heavy backend by
+omitting the `verification` feature:
+
+```bash
+cargo build --release -p verum_cli
+```
+
+This skips LLVM linkage entirely; the binary still runs Verum code
+through the VBC interpreter, formats source, runs tests via the
+interpreter tier, and serves LSP. It cannot produce native ELFs /
+Mach-O / PE files.
+
+## Prebuilt binaries (once `0.1.0` is tagged)
+
+The instructions below describe the planned prebuilt-binary install
+flow. **They will start working when the first `v*` tag is pushed
+and the release workflow uploads archives to GitHub Releases.** Until
+then the URLs return 404.
 
 Every tagged release publishes three archives to the
 [GitHub Releases page](https://github.com/verum-lang/verum/releases):
@@ -90,8 +247,6 @@ checksum for integrity verification. There is no aggregate
 `SHA256SUMS` file and no minisign signature chain today — verify the
 per-archive checksum and use HTTPS to the GitHub release URL as your
 trust anchor.
-
-## Install
 
 ### Linux (x86_64)
 
@@ -128,8 +283,7 @@ There is no `verum upgrade` command. To update:
 
 1. Download the newer archive from GitHub Releases.
 2. Verify the SHA-256.
-3. Replace the binary in place (`sudo install -m755 verum
-   /usr/local/bin/verum`).
+3. Replace the binary in place (`sudo install -m755 verum /usr/local/bin/verum`).
 
 Already-running processes keep the old binary's inode open and are
 unaffected until they restart.
@@ -274,45 +428,6 @@ to be present; defaults are built in.
 Pinning a specific `verum` version inside the manifest is not yet
 implemented — pin the binary at the install layer instead.
 
-## Build from source
-
-For unsupported targets (aarch64 Linux, musl, Windows) or compiler
-development, build from source.
-
-**Requirements:**
-
-| Tool | Version | Notes |
-|------|---------|-------|
-| Rust | 1.82+ (see `rust-toolchain.toml`) | Compiles the `verum_*` crates |
-| LLVM | 21.x | System install — the bindings crate links against it |
-| CMake | 3.21+ | Needed by the Z3 bundled build |
-| C/C++ compiler | clang 15+ recommended | LLVM and Z3 native code |
-| Git | 2.30+ | Submodule fetch |
-
-```bash
-git clone --recursive https://github.com/verum-lang/verum
-cd verum
-cargo build --release -p verum_cli --features verification
-./target/release/verum --version
-```
-
-The Z3 build is bundled and will take several minutes the first
-time. LLVM must already be installed on the build host (`brew
-install llvm@21` on macOS; `apt install llvm-21-dev` on Debian /
-Ubuntu, or equivalent). MLIR support comes from the same LLVM
-install.
-
-### Interpreter-only build
-
-If you only need `verum run` / `verum check` / `verum test` and the
-REPL — skipping native AOT builds — drop the LLVM-heavy backend:
-
-```bash
-cargo build --release -p verum_cli
-```
-
-without the `verification` feature for the fastest possible build.
-
 ## IDE integration
 
 ### VS Code
@@ -385,6 +500,62 @@ no binary lives there.
 
 ## Troubleshooting
 
+### `404: Not Found` on the release archive URL
+
+There is no tagged release yet. The `verum-linux-x86_64.tar.gz` /
+`verum-macos-*.tar.gz` archives are produced by the
+[release workflow](https://github.com/verum-lang/verum/blob/main/.github/workflows/release.yml)
+when a `v*` Git tag is pushed; until that happens the URLs 404.
+Use **[Build from source](#build-from-source)** instead.
+
+### `error: failed to download \`rustc nightly-...\``
+
+The repo's `rust-toolchain.toml` pins the nightly channel and
+`rustup` will try to download it on first build. If the download
+fails:
+
+* Confirm `rustup` is installed (`rustup --version`).
+* Confirm `rustup` can reach `https://static.rust-lang.org` (proxy
+  / corporate firewall friction).
+* Try a manual install: `rustup toolchain install nightly`.
+
+### `error: failed to find native library 'LLVM-21'`
+
+The `llvm-sys` bindings crate couldn't locate your LLVM 21 install.
+Set `LLVM_SYS_210_PREFIX` to the LLVM install prefix:
+
+```bash
+# Linux (apt llvm-21 install)
+export LLVM_SYS_210_PREFIX=/usr/lib/llvm-21
+
+# macOS (Homebrew)
+export LLVM_SYS_210_PREFIX=$(brew --prefix llvm@21)
+```
+
+`llvm-config-21 --prefix` prints the right value if `llvm-config-21`
+is on your `$PATH`.
+
+### Z3 build fails with `cmake: command not found`
+
+The Z3 submodule builds via CMake. Install it via your package
+manager (`apt install cmake` / `brew install cmake` /
+`dnf install cmake`).
+
+### Linux: `GLIBC_2.xx not found`
+
+(Once prebuilt archives ship.) The Linux archive targets glibc
+2.31+. On older distributions, [build from source](#build-from-source)
+against your system glibc. A musl variant is not currently shipped.
+
+### macOS: "cannot be opened because the developer cannot be verified"
+
+(Once prebuilt archives ship.) Gatekeeper blocks the downloaded
+binary. Clear the quarantine attribute:
+
+```bash
+xattr -d com.apple.quarantine /usr/local/bin/verum
+```
+
 ### `verum: command not found`
 
 The binary isn't on `$PATH`. Either reinstall to `/usr/local/bin`
@@ -394,21 +565,6 @@ directory you used:
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-```
-
-### Linux: `GLIBC_2.xx not found`
-
-The prebuilt Linux archive targets glibc 2.31+. On older
-distributions, [build from source](#build-from-source) against your
-system glibc. A musl variant is not currently shipped.
-
-### macOS: "cannot be opened because the developer cannot be verified"
-
-Gatekeeper blocks the downloaded binary. Clear the quarantine
-attribute:
-
-```bash
-xattr -d com.apple.quarantine /usr/local/bin/verum
 ```
 
 ### SMT verification times out
@@ -435,6 +591,9 @@ fn hard_to_prove() { ... }
 https_proxy=http://proxy.corp:3128 \
   curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz
 ```
+
+The same applies to `cargo` / `rustup` — both honour the standard
+`HTTPS_PROXY` environment variable for fetching crates and toolchains.
 
 ## Next steps
 
