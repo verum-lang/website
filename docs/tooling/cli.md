@@ -41,6 +41,28 @@ verum watch [<command>] [--clear] [--skip-verify]
 `verum run` is interpreter-first. Add `--aot` for LLVM native
 execution when latency matters (LLVM warmup adds ~200 ms).
 
+### Script invocation
+
+Verum has a third execution mode reserved for **single-file
+scripts** with a `#!` shebang line. Bare `verum file.vr` (no
+`run` subcommand) and `./file.vr` direct exec both route into
+script mode, where top-level statements are accepted without an
+enclosing `fn main()`:
+
+```bash
+$ cat hello.vr
+#!/usr/bin/env verum
+print("hello");
+$ ./hello.vr        # OS-level shebang exec (chmod +x first)
+$ verum hello.vr    # bare invocation, no `run`
+```
+
+A `.vr` file lacking the shebang must use the explicit `verum
+run` form — the bare shorthand surfaces an actionable advisory
+that points back at `verum run`. Full contract, exit-code
+propagation, and roadmap live in **[Getting Started → Script
+mode](/docs/getting-started/script-mode)**.
+
 `verum test` and `verum bench` form the developer-facing testing
 surface — property-based testing with integrated shrinking,
 parametrised tests, deterministic seed replay, CI output formats

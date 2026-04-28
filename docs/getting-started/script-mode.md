@@ -1,204 +1,310 @@
 ---
 sidebar_position: 5
 title: Script mode
-description: Top-level statements, the synthesised __verum_script_main entry, and the parser/compiler contract that distinguishes a script from a library or binary cog.
+description: Single-file Verum scripts via `#!` shebang — top-level statements, exit-code propagation, and the three-mode contract that keeps interpreter, AOT, and script invocations unambiguous.
 ---
 
 # Script mode
 
-Verum's parser and compiler accept three module shapes —
-**library**, **binary**, and **script**. Library / binary modules
-follow the strict decls-only grammar at the module top level
-(only `fn` / `type` / `const` / `mount` / `implement` / `protocol`
-/ `module` / `static` items, etc.). Script-mode modules **also**
-accept top-level statements (let-bindings, expression statements,
-`defer`, …), folding them into a single synthesised
-`__verum_script_main` function that becomes the program's entry
-point.
+Most languages force a choice: a small shell-grade scripting tool
+(`bash`, `python`, `awk`) for one-shot work, or a full project
+toolchain (Rust, Go, Java) when correctness and types matter.
+Verum collapses that choice. The same compiler that runs your
+verified, refinement-typed cog with SMT-checked contracts can also
+boot a single `.vr` file with a shebang in milliseconds, no
+`verum.toml`, no `fn main()`, no boilerplate — and that file gets
+**the same type system, the same memory model, the same standard
+library** as a production binary.
 
-This page is the source-of-truth for what script mode does
-today, what it doesn't do yet, and the invariants the
-parser / compiler enforce.
+This page is the source-of-truth for what script mode does, how
+to write a Verum script today, and the precise contract the
+parser, CLI, and runtime enforce.
 
 ---
 
-## The three module kinds
+## The three execution modes
 
-Each module carries a synthetic `@![__verum_kind(...)]`
-attribute that records its kind. The attribute is normally set
-by the pipeline driver (lexer shebang detection, manifest hint,
-explicit attribute in source); user code can also set it
-manually via the AST API
-(`verum_ast::CogKind::set_on_module(&mut module)`).
+Verum has exactly three ways to execute a `.vr` source. The
+distinction is structural — driven by what's in the file and how
+you invoke `verum` — and the CLI enforces it strictly so the
+mental model never blurs.
 
-| Kind | Tag | Top-level grammar | Entry point |
-|------|-----|-------------------|-------------|
-| Library | `@![__verum_kind("library")]` (default) | decls only | none — exported items |
-| Binary  | `@![__verum_kind("binary")]` | decls only | `fn main()` (sync or async) |
-| Script  | `@![__verum_kind("script")]` | decls **and** statements | `fn main()` if present, else synthesised `__verum_script_main` |
+| Mode | When | Invocation | Required source signal |
+|---|---|---|---|
+| **Interpreter** | Fast iteration on a `fn main()` program | `verum run file.vr [-- args…]` | `fn main()` (sync or async) |
+| **AOT** | Production binary, native speed | `verum run --aot file.vr` *or* `verum build` | `fn main()` |
+| **Script** | One-shot tool, shell pipeline, scratch experiment | `verum file.vr [args…]` *or* `./file.vr` | `#!` shebang at byte 0 |
 
-Library is the default when no attribute is present.
-`Module::is_script()` returns `true` only for the explicit
-`Script` tag. Tests and tooling can introspect via
-`CogKind::of(&module)`; the value is also visible to meta
-functions through `project_kind()` (planned, tracked under #20).
+The shebang line is **the** signal that distinguishes a script
+from a library/binary source. A `.vr` file without a shebang must
+be invoked through `verum run`; trying the bare shorthand on it
+surfaces a precise advisory:
+
+```text
+$ verum hello.vr
+error: `hello.vr` looks like a Verum source file but is missing a `#!` shebang line.
+
+The bare `verum hello.vr` shorthand is reserved for **scripts**, which must
+declare a shebang at byte 0 (e.g. `#!/usr/bin/env verum`). Choose one of:
+
+  • Run as a library/binary entry point:  verum run hello.vr
+  • Convert to a script:                  add `#!/usr/bin/env verum` as the first line
+```
+
+The advisory fires before any subcommand dispatch, so a
+mistyped invocation gets a one-line fix instead of a confusing
+"unknown subcommand" error.
+
+---
+
+## Your first script
+
+Save this as `hello.vr` and make it executable:
+
+```verum
+#!/usr/bin/env verum
+print("hello from Verum");
+```
+
+```bash
+chmod +x hello.vr
+./hello.vr            # via OS shebang exec
+verum hello.vr        # bare invocation
+verum run hello.vr    # explicit form, also works
+```
+
+All three forms produce identical output. The kernel-level
+shebang exec on Unix and the bare `verum hello.vr` shorthand both
+end at the same script entry inside the compiler.
+
+### What happens behind the scenes
+
+When the source begins with `#!` (BOM-tolerant — editors that
+prepend a UTF-8 BOM are accepted), the compiler accepts top-level
+statements alongside the usual declarations and wraps them in an
+implicit entry function. Every later phase — type checking,
+refinement verification, memory analysis, codegen — treats the
+script identically to a regular `fn main()` program. Script mode
+is a single signal at the top of the file; everything downstream
+runs through the same compiler that builds your binaries.
+
+---
+
+## Top-level statements
+
+Inside script mode, statements that would be parse errors at the
+module level of a library are accepted. The full set:
+
+```verum
+#!/usr/bin/env verum
+
+// 1. let-bindings — Python-style locals scoped to the wrapper.
+let greeting = "hello";
+let target = "world";
+
+// 2. Expression statements — call any function, print, etc.
+print(f"{greeting}, {target}!");
+
+// 3. defer / errdefer — RAII cleanup at script end.
+defer print("(cleanup ran)");
+
+// 4. Mixed with top-level decls — declared here, called below.
+fn shout(s: Text) -> Text {
+    return s.to_uppercase();
+}
+
+print(shout("done"));
+```
+
+Source order is preserved verbatim: items appear before the
+wrapper in the AST, but the wrapper's body holds statements in
+the exact order you wrote them, so a `let x = …` references the
+`fn` declared above it without any extra ceremony.
+
+A non-script `.vr` file (no shebang) does **not** accept these
+top-level forms — `let user = "x"` would parse as the
+library-mode constant shorthand, and `print(user); defer
+cleanup()` would fail because they are not declarations. The
+strict shebang requirement keeps the two grammars unambiguous so
+the same file never silently flips between modes.
+
+---
+
+## Exit codes
+
+The unique payoff of script mode meeting Verum's type system is
+that **a script's value is its exit code**. Three rules cover
+every case:
+
+### Rule 1 — tail expression becomes the exit code
+
+If the last top-level statement is an expression *without* a
+trailing semicolon, the parser lifts it into the wrapper's
+tail-position and returns its value. An `Int` value is the
+process exit status:
+
+```verum
+#!/usr/bin/env verum
+print("doing work");
+42
+```
+
+```bash
+$ ./script.vr; echo "exit=$?"
+doing work
+exit=42
+```
+
+Standard Verum block-as-expression semantics — the same rule
+that makes `fn f() -> Int { print("x"); 7 }` return 7 — applied
+to the implicit script wrapper. No new syntax, no `return`
+gymnastics, no special-cased "last value" heuristic.
+
+### Rule 2 — `Bool` follows Unix convention
+
+A `Bool` tail value maps to Unix exit-code convention: `true` →
+0 (success), `false` → 1 (failure):
+
+```verum
+#!/usr/bin/env verum
+let ok = check_thing();
+ok    // exit 0 if check_thing() returned true, 1 otherwise
+```
+
+### Rule 3 — anything else is success
+
+`Unit` (`()`), `Nil`, `Float`, `Text`, objects, pointers — none
+have exit-code semantics. The script exits 0 unless something
+panicked or returned a non-zero `Int`/`false`. So a script that
+just prints things finishes successfully:
+
+```verum
+#!/usr/bin/env verum
+print("done");        // exit 0
+```
+
+### Tier-parity with `fn main()`
+
+The same propagation kicks in when an explicit `fn main() -> Int`
+runs under the interpreter — its return value becomes the exit
+code, matching what AOT compilation produces (where the C
+runtime takes `main`'s return value as `_exit`'s argument). So:
+
+```verum
+fn main() -> Int {
+    print("checking…");
+    if check_failed() { return 2; }
+    return 0;
+}
+```
+
+```bash
+$ verum run main.vr; echo "exit=$?"
+checking…
+exit=2
+```
+
+The interpreter and AOT paths produce identical exit codes —
+divergence between Tier 0 and Tier 1 is a hard contract
+violation.
+
+---
+
+## Arguments
+
+A script that needs command-line arguments declares an explicit
+`fn main(args: List<Text>) -> Int` alongside its top-level
+work. When both an explicit `main` and top-level statements are
+present, `main` is the entry point:
+
+```verum
+#!/usr/bin/env verum
+
+fn main(args: List<Text>) -> Int {
+    if args.len() < 2 {
+        eprintln("usage: greet.vr <name>");
+        return 2;
+    }
+    print(f"hello, {args[1]}!");
+    return 0;
+}
+```
+
+```bash
+$ ./greet.vr Alice
+hello, Alice!
+$ ./greet.vr; echo "exit=$?"
+usage: greet.vr <name>
+exit=2
+```
+
+---
+
+## Why scripts in a verified language
+
+Most "scripting" languages are dynamic for a reason: they
+prioritise iteration speed over correctness. Verum's bet is that
+those two are not actually in tension if the type system is
+inferred enough, the cold-start latency is small enough, and the
+compiler is incremental enough.
+
+Concretely, a Verum script gets:
+
+- **Refinement types.** `let port: Int{1024..=65535} = …` is
+  checked at script load. A wrong literal fails before the
+  process does any I/O.
+- **Memory safety.** Three-tier CBGR (Cycle-Breaking Generation
+  References). Default `&T` has ~15 ns runtime overhead;
+  `&checked T` is compile-time-proven safe and zero-cost. A
+  shell-replacement script gets the same `O(1)` no-leak guarantee
+  as a long-lived service.
+- **Effect-tracking.** The function's return type already says
+  whether it can fail, allocate, or perform I/O. A script that
+  crosses an unexpected effect boundary fails at compile time,
+  not three minutes into a deploy.
+- **The full standard library.** HTTP clients, SQLite, JSON,
+  concurrency nurseries — the primitives that make a binary
+  worth shipping are also what make a 30-line script worth
+  keeping.
+- **The same SMT solver.** Add `@verify(formal)` to a function
+  inside a script and the same Z3/CVC5 routing that audits a
+  protocol library checks the script's contracts.
+
+The cost of script mode for users who don't use it is **zero**.
+A `.vr` file without a shebang compiles exactly as it would
+have before script mode existed, and a script-mode source
+containing only declarations produces no wrapper.
 
 ---
 
 ## The contract
 
-A script-mode module is recognised by the parser when
-[`FastParser::parse_module_script_str`][parser] is used (or the
-internal `RecursiveParser::set_script_mode(true)` is set).
-Inside that mode:
+The invariants you can rely on:
 
-1. **Statement-starter short-circuit.** When the next token is
-   `let`, `defer`, `errdefer`, or `provide`, the parser routes
-   directly to `parse_stmt`. The library-mode item-keyword
-   recogniser never sees the keyword. This is the language-
-   level distinction between script mode and library mode:
-   script `let` is a Python-style local binding folded into the
-   wrapper, **not** the library-mode `const` shorthand.
+1. **The `#!` shebang at byte 0 is the only script signal.**
+   Not the `.vr` extension, not a directory layout convention.
+   Either the first two bytes are `#!` (or `EF BB BF` BOM
+   followed by `#!`) or the file is a regular library/binary
+   source.
 
-2. **Item-failure fallback.** Tokens that don't unambiguously
-   start a statement still pass through `parse_item` first. If
-   parsing as an item fails AND the parser hasn't advanced (no
-   tokens consumed), the parser retries via `parse_stmt`. This
-   catches expression statements (`print(x);`,
-   `do_thing();`) without a brittle look-ahead.
+2. **`fn main()` always wins.** A script that also declares
+   `fn main()` uses `main` as the entry point. This lets you
+   graduate a script to a regular binary without rewriting it
+   — keep the shebang or remove it, the program runs the same
+   way.
 
-3. **Wrapper synthesis.** Every collected statement is folded
-   into a private `FunctionDecl` named **`__verum_script_main`**
-   and appended to the module after the regular items. Source
-   order is preserved: items appear before the wrapper, but the
-   wrapper's body holds statements in the exact order they were
-   parsed.
+3. **Pure-library sources are unaffected.** A `.vr` file
+   without a shebang and without top-level statements compiles
+   exactly as it always has, with no extra wrapper or runtime
+   cost.
 
-4. **No-stmt elision.** A pure-decl source compiled in script
-   mode does **not** get an empty wrapper. This matters for
-   tooling that compiles every `.vr` file in script mode by
-   default — pure libraries pass through unchanged.
+4. **Missing entry is an error.** A `.vr` file without a
+   shebang AND without `fn main()` produces a clear "No entry
+   point found" diagnostic that lists both recovery paths
+   (add a shebang, or define `fn main()`).
 
-5. **Entry-point fallback.** The compiler's
-   `EntryDetectionPhase` looks for `fn main` first; if no
-   `main` is found AND at least one module is script-tagged,
-   it falls back to `__verum_script_main` from the script
-   module. Modules tagged as Library / Binary that happen to
-   declare a `__verum_script_main` are **not** treated as
-   entry points — only the kind tag opts in.
-
-6. **Explicit `main` wins.** A script-mode source that also
-   declares `fn main()` (mid-migration) keeps `main` as the
-   entry point. The wrapper is still emitted but is dead code
-   at runtime. This lets you graduate a script to a binary
-   without flipping the parser kind back.
-
-[parser]: https://github.com/verum-lang/verum/blob/main/crates/verum_fast_parser/src/lib.rs
-
----
-
-## Worked example
-
-Source `hello.vr`:
-
-```verum
-fn greet(name: Text) -> Text {
-    f"Hello, {name}!"
-}
-
-let user = "world";
-print(greet(user));
-defer cleanup();
-```
-
-In **library mode** the parser rejects `let user = "world"` (it
-parses as a top-level `const` shorthand, then `print(...)` and
-`defer cleanup()` fail because they aren't items). In
-**script mode** the parser produces:
-
-```text
-Module
-├── fn greet(name: Text) -> Text { … }       (user-written item)
-└── fn __verum_script_main() {               (synthesised wrapper)
-        let user = "world";
-        print(greet(user));
-        defer cleanup();
-    }
-```
-
-`EntryDetectionPhase::detect_entry_point(&[module])` then
-returns `MainConfig::Sync` with `__verum_script_main` as the
-entry. (If `greet`'s definition were `async fn`, it wouldn't
-matter — the wrapper itself isn't async, so the program is
-sync.)
-
----
-
-## What's not yet shipping
-
-The script-mode foundation (parser flag, statement collection,
-wrapper synthesis, entry-detection fallback) is fully wired and
-covered by an end-to-end test suite at
-`crates/verum_compiler/tests/script_mode_e2e.rs` (8 tests).
-Pieces still in the queue:
-
-- **`#!` shebang lexer hook.** Today script mode is opted in
-  programmatically (`parse_module_script_str` or
-  `set_script_mode(true)`). The driver-side hook that flips
-  the flag automatically when the source starts with `#!` is
-  tracked separately.
-
-- **Script-arg propagation.** The implicit `__verum_script_main`
-  has no parameters in the current implementation. The
-  signature `fn __verum_script_main(args: List<Text>) -> Int`
-  with auto-bridging from the platform's `argv` is on the
-  follow-up list.
-
-- **Script exit codes.** A script that returns `()` should map
-  to exit code `0`; an explicit `Int` return should propagate
-  through to the OS exit. The linker's entry-symbol
-  parameterisation work is part of this thread.
-
-- **Top-level `await`.** `await` at the script top level
-  requires the wrapper to be `async fn` and an executor wired
-  by the runtime. The parser already accepts `await` inside a
-  block; the script wrapper just needs to flip to `async`
-  when the body contains an `.await`.
-
-- **Async script entry.** Once the wrapper can be `async`, the
-  compiler will run it through the implicit-executor path the
-  same way `async fn main()` is handled today.
-
-These are tracked under task #8 (P1.8) and its continuations.
-
----
-
-## Compiler / parser surface
-
-| Concern | API |
-|---------|-----|
-| Parse a script source | `verum_fast_parser::FastParser::parse_module_script_str(&source, file_id)` |
-| Set the kind on an existing module | `verum_ast::CogKind::set_on_module(&mut module)` |
-| Read the kind | `verum_ast::CogKind::of(&module)` / `module.is_script()` |
-| Detect the entry point | `verum_compiler::phases::entry_detection::EntryDetectionPhase::detect_entry_point(&modules)` |
-| Synthesised wrapper name | `__verum_script_main` (private; pinned by the parser, recognised by the entry-detection phase) |
-| Kind-tag attribute | `@![__verum_kind("script")]` (literal string argument) |
-
----
-
-## Tests
-
-End-to-end coverage lives in two suites:
-
-- `crates/verum_fast_parser/tests/script_mode_tests.rs` — 5
-  parser-level tests (library rejects `defer`, script accepts
-  `defer`, intermixed decls + stmts preserve source order,
-  no-stmt source emits no wrapper, expression statements
-  routed through the item-failure fallback).
-- `crates/verum_compiler/tests/script_mode_e2e.rs` — 8
-  parser-to-entry-detection tests (covers the kind-tag
-  fallback, explicit-main precedence, untagged-module
-  rejection, idempotency of `set_on_module`).
-
-Both surfaces pass with **0 regressions** across the wider
-parser and compiler test suites.
+5. **Interpreter and AOT exit codes match.** Whether you run
+   the script via the interpreter or compile it ahead of time
+   (`verum run --aot script.vr`), the process exit code is
+   the same: tail-int / fn-main return value reaches the OS
+   identically through both tiers.
