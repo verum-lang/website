@@ -46,19 +46,12 @@ prebuilt archives. Everything else requires a source build.
 | Linux | `libc.so.6` (glibc ≥ 2.31 — Debian 11+ / Ubuntu 22.04+ / RHEL 9+) |
 | macOS | `libSystem.B.dylib` (Apple's stable ABI) — macOS 12+ |
 
-This is the toolchain binary you run to compile Verum programs. It
-is today built as a Rust binary with the default `x86_64-unknown-linux-gnu`
-target, so it uses the system glibc. A static-linked / musl variant
-is a roadmap item (the `crt-static` build flag is documented in
-`.cargo/config.toml` but not yet enabled in release CI). **Z3**,
-**LLVM**, **LLD**, and **MLIR** are all **statically linked** into
-the binary — the in-tree LLVM build at `llvm/install/` produces
-the static `.a` archives that `crates/llvm/verum_llvm_sys/build.rs`
-links in. End users running a prebuilt `verum` binary therefore
-do **not** install LLVM separately on their machines; the binary
-is self-contained for the target platform. **CVC5** is present as
-a stub; features that name it degrade to Z3 via the capability
-router — see [SMT routing](/docs/verification/smt-routing).
+This is the toolchain binary you run to compile Verum programs.
+End users running a prebuilt `verum` binary do not install any
+extra toolchain — the binary is self-contained for the target
+platform. **CVC5** is present as a stub; features that name it
+degrade to Z3 via the capability router — see
+[SMT routing](/docs/verification/smt-routing).
 
 ### What programs compiled by `verum build` link against
 
@@ -90,41 +83,75 @@ to ship alongside it.
 
 This is the primary install path today. The Verum compiler is
 written in Rust and uses unstable features that require the
-**nightly** toolchain.
-
-:::info Why we don't use system LLVM
-
-`crates/llvm/verum_llvm_sys/build.rs` explicitly **rejects** any
-system / distro LLVM and links against a custom build configured
-in `llvm/llvm.toml`: LLVM 21.1.8 with the exact subset of projects
-(`clang + lld + mlir`), targets (`X86 + AArch64 + WebAssembly`),
-and `MinSizeRel` static libraries Verum needs. The whole bundle —
-LLVM, MLIR, LLD — gets statically linked into the final `verum`
-binary. That's why the **finished `verum` binary** carries no
-`libLLVM*.so` runtime dependency, but the **build process**
-needs you to either (1) download a prebuilt LLVM archive that
-matches `llvm/llvm.toml`, or (2) build LLVM from source via
-`cd llvm && ./build.sh`. **Do not** `apt install llvm-21-dev` /
-`brew install llvm@21` — those installs are unused; the build
-script ignores them.
-:::
+**nightly** toolchain. The build is fully self-contained: a single
+`cargo build` clones, configures, and links every native dependency
+the compiler needs.
 
 ### 1. Install prerequisites
 
+The Verum build only needs a Rust toolchain and the standard
+C/C++ build essentials — `cargo build` will pull in everything else
+(including the LLVM source build) automatically the first time.
+
 | Tool | Version | Notes |
 |------|---------|-------|
-| **Rust nightly** | The exact channel pinned in [`rust-toolchain.toml`](https://github.com/verum-lang/verum/blob/main/rust-toolchain.toml) | Compiles the `verum_*` crates. The repo uses `#![feature(pattern)]` in `verum_common` and edition 2024 — both require nightly. |
-| C++ compiler | clang 12+, gcc 9+, or MSVC 2019+ | Needed by the LLVM build. Also handles Z3's bundled C++. |
-| CMake | 3.20+ | Needed by both the Z3 build and the LLVM build. |
-| Ninja | recommended (Make also works) | Significantly faster LLVM build. |
-| Git | 2.30+ | Submodule fetch (Z3 / CVC5 are submodules; LLVM source comes via `llvm/build.sh`). |
-| Disk | ~50 GB free | LLVM build is the dominant consumer. After the build, `llvm/install/` is ~3 GB. |
-| RAM | 16 GB recommended | Linking LLVM with `lld` peaks around 12-14 GB. |
+| **Rust nightly** | The exact channel pinned in [`rust-toolchain.toml`](https://github.com/verum-lang/verum/blob/main/rust-toolchain.toml) | `cargo` reads the toolchain file and downloads the correct nightly automatically the first time you build. |
+| **C++ compiler** | clang 12+, gcc 9+, or MSVC 2019+ | |
+| **CMake** | 3.20+ | |
+| **Ninja** | recommended (Make also works) | Significantly faster builds. |
+| **Git** | 2.30+ | Used for submodule fetch and the auto-cloned native dependencies. |
+| **Disk** | ~50 GB free | Most of this is transient build state; the final tree settles around ~3 GB. |
+| **RAM** | 16 GB recommended | Peak link step needs ~12–14 GB. |
 
-You do **NOT** need: `llvm-21-dev`, `libllvm21`, `libpolly-21-dev`,
-`libmlir-21-dev`, the apt.llvm.org repository, `LLVM_SYS_*_PREFIX`,
-or any other system LLVM artefact. The Verum build pipeline ignores
-all of them.
+#### Per-platform install
+
+**Ubuntu / Debian (22.04+):**
+
+```bash
+sudo apt update
+sudo apt install -y \
+    build-essential cmake ninja-build git pkg-config \
+    libzstd-dev libxml2-dev libssl-dev curl
+```
+
+**Fedora / RHEL 9+:**
+
+```bash
+sudo dnf install -y \
+    @development-tools cmake ninja-build git pkgconf-pkg-config \
+    libzstd-devel libxml2-devel openssl-devel curl
+```
+
+**Arch Linux:**
+
+```bash
+sudo pacman -S --needed base-devel cmake ninja git pkgconf zstd libxml2 openssl curl
+```
+
+**macOS (Homebrew):**
+
+```bash
+xcode-select --install        # Apple's C/C++ toolchain
+brew install cmake ninja git zstd
+```
+
+The Apple Command Line Tools provide `clang`, `make`, `ar`, etc.;
+Homebrew supplies the rest. macOS ships `git` and `curl` already.
+
+**Windows:**
+
+Native MSVC builds are not supported by the in-repo native build
+scripts. Use **WSL2** with one of the Linux recipes above (recommended)
+or **MSYS2 / Git-Bash** with these packages:
+
+```bash
+pacman -S --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake \
+    mingw-w64-x86_64-ninja git pkgconf zstd
+```
+
+If you want to avoid the in-tree LLVM build on Windows entirely,
+point the build at a prebuilt LLVM tree via the `VERUM_LLVM_DIR`
+environment variable (see [troubleshooting](#troubleshooting)).
 
 #### Install rustup + nightly
 
@@ -135,38 +162,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 ```
 
-Once `rustup` is installed, `cargo` will read
-`rust-toolchain.toml` from the repo root and **download the
-correct nightly channel automatically** the first time you build —
-you don't need a manual `rustup default nightly`. The toolchain file
-also pins the right components (`rustfmt`, `clippy`, `rust-src`,
-`rust-analyzer`) so editor integration and lint commands work
-without extra setup.
-
-#### Install build tools
-
-Only the **C++ toolchain + CMake + Ninja + Git** — no LLVM
-packages.
-
-**Ubuntu / Debian (22.04+):**
-
-```bash
-sudo apt update
-sudo apt install -y \
-    build-essential cmake ninja-build git pkg-config \
-    libzstd-dev libxml2-dev libssl-dev
-```
-
-**macOS (Homebrew):**
-
-```bash
-brew install cmake ninja
-```
-
-`zstd` is pulled in by the prebuilt-LLVM-archive flow (see step 3a)
-to unpack the `.tar.zst` archive; on macOS / modern Linux it's
-typically already present, but the apt line above pulls it in
-explicitly for clarity.
+Once `rustup` is installed, `cargo` reads `rust-toolchain.toml` from
+the repo root and downloads the correct nightly channel
+automatically the first time you build — no manual
+`rustup default nightly` step is needed. The toolchain file also
+pins the right components (`rustfmt`, `clippy`, `rust-src`,
+`rust-analyzer`) so editor integration works without extra setup.
 
 ### 2. Clone with submodules
 
@@ -184,86 +185,23 @@ If you already cloned without `--recursive`:
 git submodule update --init --recursive
 ```
 
-### 3a. Get LLVM — option A (fastest): use the prebuilt archive
-
-The Verum project publishes a matching prebuilt LLVM 21.1.8 with
-LLD + MLIR + the right targets / projects under the
-`llvm-prebuilt-llvmorg-21.1.8` GitHub Releases tag. The composite
-action `.github/actions/fetch-llvm` downloads and unpacks it for
-the supported triples (`x86_64-linux-gnu`, `aarch64-linux-gnu`,
-`x86_64-apple-darwin`, `aarch64-apple-darwin`).
-
-For local development you can do the same manually:
-
-```bash
-LLVM_TAG=$(awk -F'"' '/^tag[[:space:]]*=/ { print $2; exit }' llvm/llvm.toml)
-PREBUILT_TAG="llvm-prebuilt-${LLVM_TAG}"
-
-# Pick the triple that matches your machine.
-TRIPLE=x86_64-unknown-linux-gnu      # or aarch64-apple-darwin / etc.
-
-ARCHIVE="verum-llvm-${LLVM_TAG}-${TRIPLE}.tar.zst"
-
-curl -LO "https://github.com/verum-lang/verum/releases/download/${PREBUILT_TAG}/${ARCHIVE}"
-mkdir -p llvm
-tar --zstd -xf "${ARCHIVE}" -C llvm
-test -f llvm/install/bin/llvm-config && echo "LLVM ready"
-```
-
-If the archive isn't published for your `(OS, arch)` pair yet,
-fall through to option B.
-
-### 3b. Get LLVM — option B (slower, fully reproducible): build from source
-
-Run the in-tree build script. It clones the LLVM source matching
-`llvm/llvm.toml`, configures CMake with the exact projects /
-targets / `MinSizeRel` flags Verum requires, and installs into
-`llvm/install/`:
-
-```bash
-cd llvm && ./build.sh
-```
-
-Expect **30–60 minutes** on a 4-core box and ~50 GB of transient
-disk during the build (the source tree + `build/` directory; the
-final `install/` is ~3 GB). The script honours
-`llvm/build.log` for incremental progress.
-
-`./build.sh --clean` wipes `build/` and `install/` for a fresh
-rebuild. `./build.sh llvmorg-21.1.8` overrides the tag from
-`llvm/llvm.toml`.
-
-### 4. Build the Verum compiler
-
-With either option from step 3 producing `llvm/install/bin/llvm-config`,
-the Verum build picks it up automatically. Default build with the
-SMT verification stack (Z3 statically linked in):
+### 3. Build the Verum compiler
 
 ```bash
 cargo build --release -p verum_cli --features verification
 ```
 
-The Z3 build is bundled and takes **5–15 minutes** the first time
-on a 4-core box; subsequent rebuilds reuse the cached object files
-and finish in seconds.
+That single command does everything end-to-end:
 
-LLVM, LLD, and MLIR are linked **statically** into the resulting
-`verum` binary — `crates/llvm/verum_llvm_sys/build.rs` produces a
-single self-contained executable. The verum binary itself
-therefore has **no runtime dependency on LLVM** — installing it on
-another machine doesn't require LLVM there.
+- bundled SMT solvers (Z3, CVC5) compile and link statically;
+- the native LLVM dependency builds and installs in-tree
+  automatically the first time (~30–60 min on a 4-core box, fully
+  silent except for cargo `warning:` lines);
+- every workspace crate compiles.
 
-If you have a non-default LLVM install location, override with
-`VERUM_LLVM_DIR`:
-
-```bash
-VERUM_LLVM_DIR=/path/to/llvm/install \
-  cargo build --release -p verum_cli --features verification
-```
-
-The first Verum build also touches every workspace crate; expect
-**10–25 minutes** end-to-end after LLVM is in place. Incremental
-builds after that are sub-minute.
+Expect **10–25 minutes** for the Rust workspace itself, on top of
+the one-time LLVM build. Incremental builds after that are
+sub-minute.
 
 ### 4. Verify
 
@@ -599,37 +537,50 @@ fails:
   / corporate firewall friction).
 * Try a manual install: `rustup toolchain install nightly`.
 
-### `panic: llvm-config not found at .../llvm/install/bin/llvm-config`
+### Native build fails partway through
 
-The `verum_llvm_sys` build script could not locate the in-tree
-LLVM build. You haven't completed step 3 yet — either:
+The first `cargo build` runs an in-tree LLVM build automatically.
+If it fails it usually points at a missing prerequisite, not at a
+Verum bug. Common failures and what to install:
 
-* download the prebuilt archive (option A in "Build from source"), or
-* run `cd llvm && ./build.sh` (option B, ~30–60 min).
+* `cmake: command not found` — install CMake (3.20+) per the
+  per-platform recipe in step 1.
+* `ninja: command not found` — install Ninja (or use `gmake`
+  / `make`; CMake will fall back).
+* `c++: command not found` / `error: invalid C++ compiler` — install
+  the platform's C++ toolchain (`build-essential` on Debian-likes,
+  `xcode-select --install` on macOS, MSYS2's `mingw-w64-x86_64-gcc`
+  on Windows).
+* `No space left on device` — the LLVM build needs ~50 GB of
+  transient disk; clean `target/` and `llvm/build/` and free space.
+* The build dies during link with the OOM killer — set
+  `CMAKE_BUILD_PARALLEL_LEVEL=2` (or lower) before `cargo build` to
+  cap the parallel link step's memory.
 
-**Do not** `apt install llvm-21-dev` or `brew install llvm@21`:
-the build script ignores system LLVM by design (`llvm-sys`-style
-fallbacks would link against the wrong projects / targets / build
-type and silently break the AOT pipeline). The error message also
-prints the exact command to run.
+If LLVM finished installing but the build still complains:
 
-If your LLVM install lives somewhere else, point the build at it:
+```bash
+ls llvm/install/bin/llvm-config   # should exist
+```
+
+A missing `llvm-config` after the auto-build means the script
+exited early. Inspect `llvm/build.log` for the reason and rerun
+`cargo build` once you've fixed it; the build resumes from where
+it stopped.
+
+### Pointing the build at a prebuilt LLVM
+
+If you already have a Verum-compatible LLVM 21 tree (matching
+`llvm/llvm.toml`'s project / target / `MinSizeRel` configuration),
+skip the auto-build by exporting `VERUM_LLVM_DIR`:
 
 ```bash
 VERUM_LLVM_DIR=/path/to/your/llvm/install \
   cargo build --release -p verum_cli --features verification
 ```
 
-The directory must contain `bin/llvm-config` and have been
-configured with the project list / target list / `MinSizeRel`
-flags described in `llvm/llvm.toml` — the build script verifies
-the major version on startup and refuses anything other than 21+.
-
-### Z3 build fails with `cmake: command not found`
-
-The Z3 submodule builds via CMake. Install it via your package
-manager (`apt install cmake` / `brew install cmake` /
-`dnf install cmake`).
+The directory must contain `bin/llvm-config`; the build verifies
+the major version on startup and refuses anything older than 21.
 
 ### Linux: `GLIBC_2.xx not found`
 
