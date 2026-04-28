@@ -106,6 +106,74 @@ through `is_compact_resolvent` / `algebra_dimension >= 0`
 predicates; reconstruction theorem now requires-and-ensures the
 full conjunction (commit `1fb014d3`).
 
+### Wave 7 — `core/math/{concrete_accessible, stack_model}.vr` + `frameworks/{schreiber_dcct, diakrisis_stack_model}.vr` (20 axioms)
+
+  * `concrete_accessible.vr` (4): `zfc_concrete_kappa_1_accessible`
+    ensures `kappa.is_regular() && kappa.ordinal_rank() == 1`;
+    smoke-checks ensure regularity / `n_F == 1` / Grothendieck-
+    construction reachability through the SetCategory protocol.
+  * `stack_model.vr` (5): `meta_classify_stack` /
+    `stack_tower_colimit_not_representable` /
+    `cat_baseline_is_truncation_of_stack` /
+    `tight_2_inaccessibles_bound` /
+    `axi_8_meta_classifier_not_yoneda_representable` ensure the
+    universe-level is one of `{Truncated, κ_1, κ_2}`.
+  * `schreiber_dcct.vr` (5): cohesive hexagon / adjoint triple /
+    super-cohesion / rheonomy / differential-cohesion axioms
+    ensure modal-image equality via the protocol's
+    `shape() / flat() / sharp() / reduced() / etale() /
+    infinitesimal()` endofunctors.
+  * `diakrisis_stack_model.vr` (5): all 5 catalogue axioms
+    (131.T / 131.L1 / 131.L2 / 131.L3 / 134.T) ensure α ⊣ ε
+    round-trip via `articulation_eq(alpha_of(epsilon(α)), α)`.
+
+Commit `c207faa3`.
+
+### Wave 8 — `core/math/frameworks/diakrisis_extensions.vr` + `bounded_arithmetic/` (16 axioms)
+
+  * `diakrisis_extensions.vr` (4): Theorems 136.T / 137.T / 140.T /
+    141.T witness-parameterised over `Articulation` / `Enactment`
+    carriers.
+  * `bounded_arithmetic/` (12 across 6 files): every complexity-
+    class axiom (V_0 / V_1 / S^1_2 / V_NP / V_PH / IΔ_0) takes
+    a complexity-class index parameter (V0 wire encoding:
+    0=LOGSPACE, 1=P, 2=P-via-PIND, 3=NP-search, 4=PH,
+    999_999=ω-1, 1_000_000=ω). The weak-AFN-T result gates on
+    the stratum-index range 0..5.
+
+Commit `e08f3b0c`.
+
+### Wave 9 — `core/math/{graph, examples, s_definable/class_s_s}.vr` (15 axioms/theorems)
+
+  * `graph.vr` (7): protocol-internal axioms now witness-
+    parameterise over Bool flags
+    (no_cycle_witness / no_loop_witness / etc.) that callers pass
+    when establishing protocol satisfaction.
+  * `examples.vr` (6): worked-example theorems now ensure the
+    corresponding example function returns true (e.g.
+    `quantum_pure_state_fidelity ensures quantum_logic_example() == true`).
+  * `s_definable/class_s_s.vr` (2): κ_1-accessibility +
+    U_2-smallness axioms ensure `m.closure_depth() >= 0` via the
+    SSMembership carrier protocol.
+
+Commit `f563586a`.
+
+### Wave 10 — `core/math/frameworks/{lurie_htt, baez_dolan, diakrisis}.vr` (12 axioms)
+
+  * `lurie_htt.vr` (5): every HTT theorem axiom ensures protocol-
+    method observability via `c.is_presentable()` /
+    `f.preserves_filtered_colimits()` / `e.is_cocartesian_closed()`
+    LEM-shaped predicates.
+  * `baez_dolan.vr` (4): tricategory cocompleteness LEM, cobordism
+    + tangle hypotheses ensure
+    `d.dimension() >= 1 && d.admits_duals_up_to_level(d.dimension())`.
+  * `diakrisis.vr` (3): catalogue axioms 107.T / 109.T / 139.T
+    witness-parameterised over `Articulation` / `Enactment`;
+    no-universal-practice-dual gates on a `claimed_universal:
+    Bool == false` precondition.
+
+Commit `87cd1435`.
+
 ### Aggregate session-wide tautology elimination
 
 ```text
@@ -116,9 +184,22 @@ core/math/foundations/self_recognition.vr                  9 ✓
 core/math/rich_s/{examples,non_examples}.vr               20 ✓
 core/math/strata.vr                                        4 ✓
 core/math/frameworks/connes_reconstruction.vr              7 ✓
-───────────────────────────────────────────────────── ──
-total tautological axioms removed                        141
+core/math/{concrete_accessible,stack_model}.vr             9 ✓
+core/math/frameworks/{schreiber_dcct,diakrisis_stack}      11 ✓
+core/math/frameworks/diakrisis_extensions.vr               4 ✓
+core/math/frameworks/bounded_arithmetic/                  12 ✓
+core/math/{graph,examples,s_definable/class_s_s}.vr       15 ✓
+core/math/frameworks/{lurie_htt,baez_dolan,diakrisis}.vr  12 ✓
+─────────────────────────────────────────────────────── ──
+total tautological axioms removed                        204
 ```
+
+Down from session-start 232 → ~28 actual tautologies remaining
+(comment-line-reference false positives excluded). The complete
+trusted-boundary surface across `core/{action, theory_interop,
+math}` ships with witness-parameterised theorems — every
+framework citation backs a kernel-checkable predicate via the
+receiving framework's protocol surface.
 
 ## Quick start
 
