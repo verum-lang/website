@@ -584,7 +584,7 @@ verum export --to owl2-fs                              # OWL 2 FS emitter (§8)
 `verum audit --epsilon` recognises `ε_classify` as the eighth Actic
 primitive — a function decorated `@enact(epsilon: "ε_classify")` is
 classified as ontology-classification work and surfaces in its own
-bucket of the ε-distribution. See [OC/DC dual stdlib](actic-dual.md#2-the-seven-ε-primitives)
+bucket of the ε-distribution. See [OC/DC dual stdlib](actic-dual.md#2-the-eight-ε-primitives)
 for the full primitive table.
 
 `verum audit --coord` projects every owl2_fs theorem to its MSFS
