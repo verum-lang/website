@@ -175,6 +175,31 @@ three independent layers: Verum's kernel, each target
 prover's kernel, and the human-reviewable axiom
 enumeration.
 
+## Promotion progress: `@axiom` → `@theorem`
+
+A corpus's headline metric is how much of it is *honest @theorem*
+with kernel-rechecked structured proof body, versus how much is still
+`() -> Bool ensures true` placeholder. `verum audit --proof-honesty`
+classifies every public theorem / axiom into one of five kinds and
+emits per-row + by-lineage totals to `audit-reports/proof-honesty.json`.
+
+The promotion pattern that converts a tautological `@axiom` into a
+witness-parameterised `@theorem` is:
+
+1. **Find the natural carrier protocol** the axiom is *about* — the
+   verum-msfs-corpus exercises this on `&LAbsCandidate`,
+   `&DualLAbsCandidate`, `&DiakrisisPrimitive`, `&SSMembership`,
+   `&StrictInclusionWitness`, `&OpenQuestion`.
+2. **Strengthen the axiom signature** to take `(p: &Carrier) -> Bool
+   [requires <prereq>] ensures p.<accessor>()`.
+3. **Promote downstream theorems** to `@theorem` with structured proof
+   bodies: `proof { apply <ax_n>(p); apply <ax_m>(p); }`. The kernel-
+   recheck trail walks every cited axiom at every site.
+
+See **[Proof-honesty audit](./proof-honesty.md)** for the audit walker,
+classification semantics, JSON schema, and the full carrier-protocol
+inventory shipped under `core.math.*`.
+
 ## See also
 
 - **[Trusted kernel](./trusted-kernel.md)** — the LCF
@@ -183,5 +208,8 @@ enumeration.
   `@framework(name, "citation")` surfaces stratification.
 - **[Proof export](./proof-export.md)** — per-target
   certificate formats and round-trip verification.
+- **[Proof-honesty audit](./proof-honesty.md)** — `verum
+  audit --proof-honesty` walker + `core.math.*` carrier-
+  protocol surface for `@axiom` → `@theorem` promotions.
 - **[CLI workflow](./cli-workflow.md)** — `verum audit`,
   `verum verify`, `verum export` command reference.
