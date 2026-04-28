@@ -343,6 +343,33 @@ on Darwin does **not** flush the disk's write cache.
 
 ---
 
+## Permission gating (`#12` / P3.2)
+
+Every raw-syscall intrinsic (`syscall0..=syscall6`,
+`IntrinsicCategory::Syscall`) is registered with the
+`IntrinsicHint::RequiresPermission` marker. Codegen consults
+the marker to insert a
+`__permission_check(scope, target) -> Result<(), PermissionDenied>`
+gate before the intrinsic body so deny-listed contexts
+(sandboxed scripts, capability-attenuated subroutines) get a
+typed refusal instead of silent OS-resource access.
+
+The marker is enforced at the registry level by two pin tests
+in `crates/verum_vbc/src/intrinsics/registry.rs`:
+
+- `test_syscall_intrinsics_require_permission` — every
+  `Syscall`-category intrinsic carries the hint; new ones added
+  without it fail the test loudly.
+- `test_observational_intrinsics_skip_permission` — `Time`,
+  `Platform`, and `Logging` intrinsics that happen to carry
+  `IoEffect` MUST NOT carry `RequiresPermission`. Gating those
+  would force every `print()` and `monotonic_nanos()` through
+  the permission router for no security benefit (no caller-
+  controlled resource targets).
+
+The codegen-side check insertion (with per-(scope, target)
+caching for ≤2 ns warm overhead) is the follow-up phase.
+
 ## Platform-specific modules
 
 ### Linux (`@cfg(target_os = "linux")`)
@@ -350,7 +377,7 @@ on Darwin does **not** flush the disk's write cache.
 ```verum
 mount sys.linux;
 
-// Direct syscalls
+// Direct syscalls (gated — all 7 carry IntrinsicHint::RequiresPermission)
 unsafe fn syscall_raw(num: Int, a0..a5: Int) -> Int
 unsafe fn syscall6(num: Int, a0..a5: Int) -> Int
 

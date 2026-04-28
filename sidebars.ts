@@ -12,6 +12,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/hello-world',
         'getting-started/tour',
         'getting-started/project-structure',
+        'getting-started/script-mode',
       ],
     },
     {
