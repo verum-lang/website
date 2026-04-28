@@ -305,7 +305,7 @@ calculus version.
 - **[Standard Library](/docs/stdlib/overview)** — `List`, `Map`,
   `Text`, `async`, `math`, `term`, `net`, `database`, `crypto`,
   and the rest of `core/`.
-- **[Verification](/category/verification)** — gradual
+- **[Verification](/docs/category/verification)** — gradual
   verification, refinement reflection, contracts, the tactic DSL,
   framework axioms, proof export, program extraction, the trusted
   kernel.
@@ -315,10 +315,10 @@ calculus version.
 - **[Reference](/docs/reference/grammar-ebnf)** — EBNF grammar,
   keyword list, attribute registry, CLI commands, `verum.toml`
   schema, lint rules, glossary.
-- **[Cookbook](/cookbook)** — task-oriented recipes
+- **[Cookbook](/docs/cookbook)** — task-oriented recipes
   (HTTP server, validation, scheduler, calc proofs, FFI binding,
   …).
-- **[Tutorials](/tutorials)** — guided walkthroughs
+- **[Tutorials](/docs/tutorials)** — guided walkthroughs
   building real programs end-to-end.
 
 ## 9. Who Verum is for
