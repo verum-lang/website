@@ -50,6 +50,7 @@ const sidebars: SidebarsConfig = {
         'verification/performance',
         'verification/cli-workflow',
         'verification/proof-corpora',
+        'verification/proof-honesty',
         'verification/networking',
       ],
     },

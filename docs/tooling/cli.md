@@ -65,7 +65,8 @@ verum audit [--details] [--direct-only] [--framework-axioms] \
              [--kernel-rules] [--epsilon] [--coord] [--no-coord] \
              [--hygiene] [--hygiene-strict] [--owl2-classify] \
              [--framework-conflicts] [--accessibility] \
-             [--round-trip] [--coherent] [--format plain|json]
+             [--round-trip] [--coherent] [--proof-honesty] \
+             [--format plain|json]
 verum lint [--fix] [--deny-warnings] [--profile NAME] [--explain RULE] \
             [--list-rules] [--validate-config] [--since GIT_REF] \
             [--severity error|warn|info|hint] \
@@ -107,6 +108,7 @@ each surface gated by an explicit flag.
 | `--accessibility` | enact / EpsilonOf without `@accessibility(λ)` | Diakrisis Axi-4 closure |
 | `--round-trip` | per-theorem 108.T round-trip status (Decidable / SemiDecidable / Undecidable) | corpus acceptance gate |
 | `--coherent` | per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert correspondence status | operational coherence layer |
+| `--proof-honesty` | per-theorem proof-body shape classification (`axiom-placeholder` / `theorem-no-proof-body` / `theorem-trivial-true` / `theorem-axiom-only` / `theorem-multi-step`) plus by-lineage totals | corpus promotion-progress gate; emits `audit-reports/proof-honesty.json` (schema_v=1) |
 
 `--format plain` (default) emits human-readable output. `--format json`
 emits a stable machine-parseable schema suitable for CI dashboards

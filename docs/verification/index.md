@@ -474,6 +474,11 @@ read the subsections in this order:
 13. [CLI workflow](./cli-workflow.md) — end-to-end command use.
 14. [Proof corpora](./proof-corpora.md) — how large-scale
     proof corpora are structured on Verum.
+15. [Proof-honesty audit](./proof-honesty.md) — `verum audit
+    --proof-honesty` walker, classification semantics,
+    `audit-reports/proof-honesty.json` schema, and the
+    `core.math.*` carrier-protocol surface (DiakrisisPrimitive,
+    DualLAbsCandidate, OpenQuestion, StrictInclusionWitness, ...).
 
 If you only have ten minutes, read
 [Gradual verification](./gradual-verification.md) and
