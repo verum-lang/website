@@ -49,6 +49,15 @@ no LLVM dependency.
 - **Use when**: iterating, testing, running `meta fn`, the REPL, the
   Playbook TUI.
 
+The interpreter exposes two constructors with explicit trust
+contracts: `Interpreter::try_new(module)` for in-process-emitted
+bytecode (lenient — skips the validator) and
+`Interpreter::try_new_validated(module)` for any module loaded from
+disk / network / shared archive (strict — runs the per-instruction
+bytecode validator + content/dependency-hash verification before
+constructing). See **[VBC Bytecode → Module-load trust
+boundary](/docs/architecture/vbc-bytecode#module-load-trust-boundary)**.
+
 :::note Interpreter fallback set
 
 By design, the interpreter returns `NotImplemented` for three feature
