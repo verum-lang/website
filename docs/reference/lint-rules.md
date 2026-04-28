@@ -699,7 +699,7 @@ AST-pattern rules are strictly more precise than regex rules — they
 walk the parsed module via `verum_ast::Visitor`, so they will not
 fire on text inside string literals or comments. The full schema is
 documented in
-[`[[lint.custom]]` · AST-pattern rules](/docs/reference/lint-configuration#ast-pattern-rules-phase-d).
+[`[[lint.custom]]` · AST-pattern rules](/docs/reference/lint-configuration#ast-pattern-rules).
 
 ## Cross-file rules
 
