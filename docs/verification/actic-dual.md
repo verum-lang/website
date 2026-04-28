@@ -351,6 +351,14 @@ The example illustrates the three operational layers:
 
 ## 9. Further reading
 
+- [Operational coherence (VVA-6 stdlib preview)](coherence.md) —
+  M4.E `core/verify/coherence.vr`: the `CoherenceCert` carrier
+  protocol that operationalises the AC/OC duality at the
+  `@verify(coherent)` strategy layer. Provides the bidirectional
+  α-cert ⟺ ε-cert witness consumed by `verum audit --coherent`.
+- [Coord-consistency + framework-soundness audits](coord-consistency-audit.md)
+  — M4.A / M4.B audit walkers that cross-check Articulation
+  citations at corpus-audit time.
 - [MSFS coordinate](msfs-coord.md) — `core.theory_interop` and the
   `(Framework, ν, τ)` lattice projection that consumes Articulations.
 - [Articulation Hygiene](articulation-hygiene.md) — the surface

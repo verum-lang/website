@@ -51,6 +51,8 @@ const sidebars: SidebarsConfig = {
         'verification/cli-workflow',
         'verification/proof-corpora',
         'verification/proof-honesty',
+        'verification/coord-consistency-audit',
+        'verification/coherence',
         'verification/networking',
       ],
     },
