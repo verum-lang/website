@@ -385,72 +385,95 @@ type FormatType is Display | Debug | LowerHex | UpperHex | Octal | Binary | Expo
 
 ---
 
-## Regex — `rx#"..."` tagged literal
+## Regex — `core.text.regex`
 
-Regex is compiled at the `rx#` tag — invalid regex is a **compile
-error**, not a runtime failure.
-
-```verum
-let email = rx#"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-if email.matches(&input) { ... }
-```
+Regex values forward to a Verum intrinsic backed by the `regex`
+1.x crate inside the VBC interpreter (and the same engine after
+AOT lowering). Pattern compilation happens **per call** — a
+v2 cached-handle migration is tracked but not yet shipped.
 
 ### API
 
 ```verum
-type Regex;
+type Regex is { pattern: Text };
+type RegexError is { message: Text };
 
-Regex.new(&pattern: &Text) -> Result<Regex, RegexError>   // runtime compile
-Regex.new_unchecked(&pattern) -> Regex                    // panics on error
+Regex.new(pattern: Text) -> Result<Regex, RegexError>   // today: always Ok
+                                                        // (compile is deferred)
 
-r.matches(&text) -> Bool
-r.find(&text) -> Maybe<Match>
-r.find_iter(&text) -> FindIter
-r.captures(&text) -> Maybe<Captures>
-r.captures_iter(&text) -> CapturesIter
-r.replace(&text, &replacement) -> Text
-r.replace_all(&text, &replacement) -> Text
-r.split(&text) -> RegexSplit
+r.is_match(text: Text) -> Bool                    // any match anywhere
+r.find_all(text: Text) -> List<Text>              // every match, in order
+r.replace_all(text: Text, repl: Text) -> Text     // replace every match
+r.split(text: Text) -> List<Text>                 // split on every match
+
+r.find(text: Text) -> Maybe<Text>                 // first match only
+r.replace(text: Text, repl: Text) -> Text         // replace first match only
+r.captures(text: Text) -> Maybe<List<Text>>       // ordered capture groups
+                                                  // of the first match;
+                                                  // index 0 = whole match,
+                                                  // missing groups = ""
+
+r.as_str() -> Text                                // recover the raw pattern
 ```
 
-### Match / Captures
+All seven runtime ops are wired end-to-end through the VBC
+interpreter and the AOT MLIR lowering path:
 
-```verum
-type Match is { start: Int, end: Int, text: Text };
+| Surface | Intrinsic | Sub-opcode |
+|---------|-----------|------------|
+| `is_match` | `regex_is_match` | `TensorSubOpcode 0xE2` |
+| `find_all` | `regex_find_all` | `TensorSubOpcode 0xE0` |
+| `replace_all` | `regex_replace_all` | `TensorSubOpcode 0xE1` |
+| `split` | `regex_split` | `TensorSubOpcode 0xE3` |
+| `find` | `regex_find` | `TensorExtSubOpcode 0x0A` |
+| `replace` | `regex_replace` | `TensorExtSubOpcode 0x0B` |
+| `captures` | `regex_captures` | `TensorExtSubOpcode 0x0C` |
 
-m.start() -> Int    m.end() -> Int    m.as_str() -> &Text    m.range() -> Range<Int>
-
-type Captures is { ... };
-c.get(0) -> Maybe<Match>               // whole match
-c.get(i) -> Maybe<Match>               // i-th capture group
-c.name(&"day") -> Maybe<Match>         // named group (?<day>…)
-c.len() -> Int                         // number of groups + 1
-c[i]                                   // panics; use .get(i) in loops
-```
+The single-match / capture variants live in the ext-extended
+opcode space because the bulk variants pre-empted the
+regex-dedicated `0xE0..=0xE3` slot before they landed.
 
 ### Replacement syntax
 
-```verum
-let normalised = rx#"(\d{4})-(\d{2})-(\d{2})"
-    .replace_all(&text, "$3/$2/$1");
-```
+`replace` / `replace_all` honour the `regex` crate's
+[replacement syntax](https://docs.rs/regex/latest/regex/struct.Regex.html#replacement-string-syntax):
 
 - `$0` — whole match
-- `$1`, `$2`, … — numbered groups
-- `${name}` — named groups
+- `$1`, `$2`, … — numbered capture groups
+- `${name}` — named groups (when the pattern uses `(?<name>…)`)
 - `$$` — literal `$`
 
-### Compile-time validation
+### Capture groups
 
-Bad regex → compile error:
+`captures` returns each `(group)` as a positional entry:
 
+```verum
+let r = Regex.new("(\\d+)-(\\w+)").unwrap();
+match r.captures("id-42-foo extra") {
+    Some(groups) => {
+        // groups[0] = "42-foo" (whole match)
+        // groups[1] = "42"     (first group)
+        // groups[2] = "foo"    (second group)
+    },
+    None => panic("no match"),
+}
 ```
-error[V2501]: invalid regex at rx#"..."
-  --> src/parse.vr:7:17
-   |
- 7 |     let re = rx#"(\d+";
-   |              ^^^^^^^^^ unclosed group (missing ')')
-```
+
+Non-participating groups (e.g. inside an `?` optional clause
+that did not match) appear as empty strings — re-checking
+group membership against the pattern is the caller's
+responsibility for now. A future `Maybe<Text>` per-group
+surface is on the v2 list.
+
+### Pattern errors
+
+`Regex.new` is fallible by signature so a v2 cached-handle
+migration can surface compile errors at construction time. In
+the current build every `Regex.new` returns `Ok` and a
+malformed pattern becomes a runtime fall-through (the bulk
+variants return empty results, the single-match variants return
+`None`). Pre-validate patterns at protocol boundaries that
+need stronger guarantees.
 
 ---
 

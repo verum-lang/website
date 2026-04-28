@@ -1034,7 +1034,12 @@ let back = Uuid.parse(&text)?;
 ```
 
 v7 is time-ordered — lexicographic sort matches chronological
-sort, ideal for DB primary keys (no B-tree fragmentation).
+sort, ideal for DB primary keys (no B-tree fragmentation). The
+48-bit timestamp prefix comes from
+`core.time.system_time.SystemTime.now().timestamp_millis()`
+(wall clock, `clock_gettime(CLOCK_REALTIME)` on Unix); the
+remaining 74 random bits come from the platform CSPRNG via
+`core.sys.common.random_bytes`.
 
 ### `snowflake` — Twitter 64-bit IDs
 
@@ -1048,8 +1053,23 @@ let parts = snowflake.parse(id, DEFAULT_EPOCH_MS);
 ```
 
 Bit layout: `[ 0 | 41-bit unix-ms | 10-bit worker | 12-bit seq ]`.
-Monotonically increasing within a worker; `ClockRegressed`
-error on non-monotone wall clocks (no silent non-monotone IDs).
+Monotonically increasing within a worker; the generator surfaces
+two distinct clock-regression errors so non-monotone wall clocks
+never silently produce non-monotone IDs:
+
+- `ClockRegressed(delta_ms)` — wall clock went backwards relative
+  to this generator's last emitted ID.
+- `ClockBeforeEpoch(delta_ms)` — wall clock is **earlier** than
+  the configured epoch (e.g. embedded systems with an unset RTC
+  reading 1970 against the 2010 Twitter epoch, or tests using a
+  future epoch). Pre-fix, the underlying subtraction underflowed
+  `UInt64` silently and the resulting bit-shifted value produced
+  corrupt non-sortable IDs with no error surfaced.
+
+The wall-clock source is `core.time.system_time.SystemTime.now()
+.timestamp_millis()` — `clock_gettime(CLOCK_REALTIME)` on
+Linux/macOS, `GetSystemTimePreciseAsFileTime` on Windows.
+
 Saturates at 4 M IDs/sec per worker (12-bit sequence wraps each
 ms).
 
