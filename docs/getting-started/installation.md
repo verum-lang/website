@@ -185,19 +185,49 @@ If you already cloned without `--recursive`:
 git submodule update --init --recursive
 ```
 
-### 3. Build the Verum compiler
+### 3. Build & install the Verum compiler
+
+Pick either path — they produce the same binary, just differ in
+whether `cargo` puts it on your `$PATH` for you.
+
+**Option A — `cargo install` (recommended):** drops the binary
+into `~/.cargo/bin` (which `rustup` already adds to your `$PATH`).
 
 ```bash
-cargo build --release -p verum_cli --features verification
+cargo install --path crates/verum_cli --force
 ```
 
-That single command does everything end-to-end:
+`--force` overwrites a previous install with the freshly-built
+binary; drop the flag if this is your first run.
+
+**Option B — `cargo build` + manual install:** keeps the binary
+under `target/release/` and lets you copy it where you want.
+
+```bash
+cargo build --release -p verum_cli
+sudo install -m755 ./target/release/verum /usr/local/bin/verum
+
+# Or, no-sudo variant:
+mkdir -p ~/.local/bin
+install -m755 ./target/release/verum ~/.local/bin/verum
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc
+```
+
+Either path does the same end-to-end work the first time:
 
 - bundled SMT solvers (Z3, CVC5) compile and link statically;
 - the native LLVM dependency builds and installs in-tree
-  automatically the first time (~30–60 min on a 4-core box, fully
-  silent except for cargo `warning:` lines);
-- every workspace crate compiles.
+  automatically (~30–60 min on a 4-core box, fully silent except
+  for cargo `warning:` lines);
+- every workspace crate compiles with the full default feature
+  set (`verification`, `parallel-compilation`, `incremental`,
+  `profiling`, `distributed-cache`, `redis-cache`, `ipfs`).
+
+Every user-visible capability is ON by default — there is no
+`--features verification` opt-in to remember. Disable individual
+features only if you have a specific reason to ship a
+restricted binary (e.g. `--no-default-features --features
+parallel-compilation` for a verification-free build).
 
 Expect **10–25 minutes** for the Rust workspace itself, on top of
 the one-time LLVM build. Incremental builds after that are
@@ -206,43 +236,32 @@ sub-minute.
 ### 4. Verify
 
 ```bash
-./target/release/verum --version
-./target/release/verum info --all
+verum --version
+verum info --all
 ```
 
 You should see version `0.1.0` and the LLVM-linked-21.x line in the
 `verum info --all` output.
 
-### 5. Install on `$PATH`
+### Stripped builds (omit selected features)
+
+The default build ships every user-visible capability. If you have
+a specific reason to drop one (CI containers without SMT solvers,
+embedded toolchains, etc.), pass `--no-default-features` and
+re-enable the subset you actually need:
 
 ```bash
-sudo install -m755 ./target/release/verum /usr/local/bin/verum
-verum --version
+# Verification-free build — drops `verum verify` and refinement
+# checking. `verum run` / `check` / `test` / REPL still work.
+cargo build --release -p verum_cli \
+    --no-default-features \
+    --features parallel-compilation,incremental,profiling
 ```
 
-If you don't have `sudo` access, copy the binary somewhere on your
-own `$PATH` instead — the binary is fully relocatable:
-
-```bash
-mkdir -p ~/.local/bin
-install -m755 ./target/release/verum ~/.local/bin/verum
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc
-```
-
-### Interpreter-only build (faster, no LLVM)
-
-If you only need `verum run` / `verum check` / `verum test` and the
-REPL — skipping native AOT builds — drop the LLVM-heavy backend by
-omitting the `verification` feature:
-
-```bash
-cargo build --release -p verum_cli
-```
-
-This skips LLVM linkage entirely; the binary still runs Verum code
-through the VBC interpreter, formats source, runs tests via the
-interpreter tier, and serves LSP. It cannot produce native ELFs /
-Mach-O / PE files.
+LLVM is always linked in (the codegen backend is not behind a
+feature flag); to skip the LLVM build entirely you currently need
+to point at a prebuilt LLVM via `VERUM_LLVM_DIR` or wait for the
+prebuilt-binary tags.
 
 ## Prebuilt binaries (once `0.1.0` is tagged)
 
@@ -576,7 +595,7 @@ skip the auto-build by exporting `VERUM_LLVM_DIR`:
 
 ```bash
 VERUM_LLVM_DIR=/path/to/your/llvm/install \
-  cargo build --release -p verum_cli --features verification
+  cargo build --release -p verum_cli
 ```
 
 The directory must contain `bin/llvm-config`; the build verifies
