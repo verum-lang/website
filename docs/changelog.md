@@ -661,6 +661,33 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `CacheConfig.distributed_cache` auto-installs the backend (2026-04-29)
+
+Closes the inert-defense pattern around the verification cache's
+distributed-backend gate. `CacheConfig.distributed_cache` was
+exposed via the `with_distributed_cache(config)` builder but no
+code path consulted it during cache construction — so configuring
+a distributed backend in the manifest had zero observable effect.
+Users had to additionally call `with_distributed(...)` with a
+hand-built backend, defeating the documented "configure once"
+contract.
+
+`VerificationCache::with_config` now auto-builds the backend from
+the configured stance via a new `build_distributed_from_config`
+helper. The translation logic between the local `TrustLevel`
+variants and the underlying `distributed_cache` module's variants
+lives there; in particular the local `SignaturesAndExpiry` variant
+downgrades to the module's `Signatures` (the lower bound of the
+requested policy) — the cache's own `ttl` field handles the
+expiry side independently.
+
+On backend-construction failure, the path logs a tracing warning
+and falls back to local-only cache rather than failing the
+constructor — keeps the cache usable on operational issues while
+surfacing the diagnostic. Callers that need to surface the
+failure explicitly can still construct the backend themselves and
+pass it via `with_distributed`.
+
 ### Fixed — Z3Config: 5 inert fields wired into Z3 global params (2026-04-29)
 
 Closes five inert-defense patterns at once in `verum_smt::z3_backend::Z3Config`.
