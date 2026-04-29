@@ -16,6 +16,22 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `LspConfig.verification_show_cost_warnings` + `verification_slow_threshold` reach the LSP response (2026-04-29)
+
+Both fields were forwarded into the validator's internal
+state and the validator owned a `should_emit_cost_warning`
+gate plus a `slow_threshold()` accessor — but no path actually
+consumed them. Setting `verum.lsp.verificationSlowThreshold = 1000`
+in the client config had no observable effect on
+`validateRefinement` responses.
+
+Wired at `result_to_response`: when the elapsed wall-clock
+crosses the configured threshold AND
+`verification_show_cost_warnings` is on, prepend a synthetic
+`W0701`-coded WARNING-severity diagnostic to the response's
+`diagnostics` list. The message names the configured threshold
+so users can identify which manifest knob to tune.
+
 ### Fixed — `CompilerOptions.enable_cbgr_elimination` reaches LLVM lowering (2026-04-29)
 
 The session-level toggle for AOT-side CBGR check elimination
@@ -714,6 +730,27 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — `verum.lsp.validationMode = "complete"` honours configured timeout (2026-04-29)
+
+Closes the inert-defense pattern around the LSP
+`validation_mode` Complete variant. The variant was
+documented as "Unlimited — reserved for CI/CD, not used by
+the LSP server directly", but `apply_config` silently
+normalised it to `Thorough` at the validator boundary —
+clients that set `verum.lsp.validationMode = "complete"` got
+the 1s Thorough timeout instead of the documented
+unlimited-latency behaviour.
+
+Wired via a new `Complete` variant on the validator's own
+`ValidationMode` enum mirroring the LspConfig variant. The
+timeout-derivation match recognises Complete and falls back
+to the configured `cfg.smt_timeout` (typically tens of
+seconds), preserving the documented contract while still
+honouring whatever budget the client did set. The Complete
+variant is intentionally bounded by smt_timeout rather than
+truly unlimited — clients running CI/CD don't want a
+malformed proof to deadlock their pipeline forever.
 
 ### Fixed — `verum update --workspace` includes build-dependencies (2026-04-29)
 
