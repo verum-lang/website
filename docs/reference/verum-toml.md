@@ -217,6 +217,159 @@ Precedence (highest → lowest):
 Human-readable durations: `s`, `m`, `h`, `d` suffixes (or a bare
 integer = seconds).
 
+### `[verify.solver]` — solver tuning
+
+Direct passthroughs to `Z3Config`, `Cvc5Config`, and the
+intermediate verifier configs. Each field is **load-bearing**
+— see [Architecture → SMT integration → Configuration knobs](/docs/architecture/smt-integration#configuration-knobs)
+for the full matrix and which Z3/CVC5 parameter scope each
+setting reaches.
+
+```toml
+[verify.solver]
+# Solver selection
+backend                 = "auto"          # z3 | cvc5 | auto | portfolio | capability_router
+
+# Z3-specific tuning
+[verify.solver.z3]
+enable_proofs           = true
+minimize_cores          = true
+enable_interpolation    = false
+global_timeout_ms       = 30_000          # context-level cap (Config::set_timeout_msec)
+memory_limit_mb         = 8_192           # process-wide (set_global_param)
+enable_mbqi             = true
+enable_patterns         = true
+random_seed             = 42              # reproducibility (smt.random_seed)
+auto_tactics            = true            # auto_config Config param
+
+# CVC5-specific tuning
+[verify.solver.cvc5]
+logic                   = "ALL"           # SMT-LIB logic name
+timeout_ms              = 30_000          # tlimit-per
+incremental             = true
+produce_models          = true
+produce_proofs          = true
+produce_unsat_cores     = true
+preprocessing           = true            # preprocess-only=false
+quantifier_mode         = "auto"          # none | ematching | cegqi | mbqi | auto
+random_seed             = 42
+verbosity               = 0               # 0–5, saturates at 5
+
+# Quantifier elimination
+[verify.solver.qe]
+timeout_ms              = 5_000
+simplify_level          = 2               # 0=skip | 1=simplify | 2=+propagate-values | 3=+ctx-simplify
+use_qe_lite             = true
+use_qe_sat              = true
+use_model_projection    = true
+use_skolemization       = true
+
+# Interpolation
+[verify.solver.interpolation]
+algorithm               = "MBI"           # McMillan | Pudlak | Dual | Symmetric | MBI | PingPong | Pogo
+strength                = "balanced"      # weakest | balanced | strongest
+simplify                = true
+timeout_ms              = 5_000
+quantifier_elimination  = true            # if false, project_onto_shared returns input verbatim
+max_projection_vars     = 100             # MBI bails when elimination set exceeds this
+
+# Static verification (bounds elimination)
+[verify.solver.static]
+timeout_ms              = 30_000          # global
+constraint_timeout_ms   = 100             # per-constraint
+enable_proofs           = true
+enable_unsat_cores      = true
+minimize_cores          = true
+enable_caching          = true
+max_cache_size          = 10_000
+auto_tactics            = true
+memory_limit_mb         = 4_096
+
+# Bisimulation
+[verify.solver.bisimulation]
+max_depth               = 100
+timeout_ms              = 30_000
+generate_counterexamples = true
+infinite_strategy       = "bounded_unfolding"  # coinduction | up_to | bounded_unfolding
+
+# Separation logic
+[verify.solver.sep_logic]
+entailment_timeout_ms   = 5_000
+max_unfolding_depth     = 10
+enable_frame_inference  = true            # set false to skip residual computation (~30% encoder reduction)
+
+# Unsat-core extraction
+[verify.solver.unsat_core]
+minimize                = true
+quick_extraction        = false
+max_iterations          = 100
+timeout_ms              = 10_000
+proof_based             = false
+
+# Optimizer (MaxSAT, Pareto)
+[verify.solver.optimizer]
+incremental             = true            # if false, push/pop are no-ops
+max_solutions           = -1              # -1 = unbounded; positive = Pareto-front cap
+timeout_ms              = 30_000
+enable_cores            = true
+method                  = "lexicographic" # lexicographic | pareto | box | weighted_sum
+
+# Parallel portfolio
+[verify.solver.parallel]
+num_workers             = 8
+timeout_ms              = 30_000
+enable_sharing          = true            # broader gate over enable_lemma_exchange
+enable_lemma_exchange   = true            # effective only when enable_sharing is also true
+race_mode               = true
+lemma_exchange_interval_ms = 500
+max_lemmas_per_exchange = 10
+enable_cube_and_conquer = false
+cubes_per_worker        = 4
+
+# Verification cache (cross-build SMT result reuse)
+[verify.solver.cache]
+max_size                = 2_000           # entries
+max_size_bytes          = "500MB"
+ttl                     = "30d"
+statistics_driven       = true            # cache only expensive queries
+min_decisions_to_cache  = 1_000
+min_conflicts_to_cache  = 100
+min_solve_time_ms       = 100
+```
+
+:::tip Z3 parameter-scope discipline
+Z3 has three parameter scopes that are **not interchangeable**:
+global (`set_global_param`), Config (`Config::set_param_value`),
+and Solver (`Params::set_u32` + `Solver::set_params`). The
+verifier picks the right scope per key empirically — for
+example, `memory_max_size` only works at global scope (Config
+is silently ignored, Solver mis-routes queries). The matrix
+in [Architecture → SMT integration](/docs/architecture/smt-integration#solver-parameter-scope-discipline)
+documents every key the manifest exposes.
+:::
+
+### Recap: how the manifest reaches the solver
+
+The full chain when you set a value in `verum.toml`:
+
+```
+verum.toml [verify.solver.<sub>]
+    ↓ (parsed by VerificationConfig in verum_compiler::verification_config)
+CompilerOptions
+    ↓ (passed at session construction)
+Phase config (e.g. ContractVerificationPhase, StaticVerifier)
+    ↓ (forwarded into the subsystem)
+Subsystem config (e.g. RefinementConfig, QEConfig, InterpolationConfig)
+    ↓ (consulted by the verifier method)
+Backend-specific config (Z3Config / Cvc5Config)
+    ↓ (per-call wiring on each fresh solver)
+Z3 Params / CVC5 options
+```
+
+Every field in this chain has been audited for "set but never
+read" gaps; see the [closure log](/docs/changelog) for the
+full list.
+
 ## `[workspace]`
 
 ```toml

@@ -16,6 +16,205 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — Solver-tuning docs + complete config-knob matrix (2026-04-29)
+
+A new operator's manual at
+[Verification → Solver Tuning](/docs/verification/solver-tuning)
+covers every configurable knob in the verification stack
+exhaustively: 12 config structs (`RefinementConfig`,
+`QEConfig`, `InterpolationConfig`, `StaticVerificationConfig`,
+`Z3Config`, `Cvc5Config`, `SubsumptionConfig`,
+`BisimulationConfig`, `SepLogicConfig`, `UnsatCoreConfig`,
+`ParallelConfig`, `OptimizerConfig`, `CacheConfig`),
+~80 individual fields, defaults, effects, parameter-scope
+discipline (Global vs Config vs Solver — empirically verified
+per Z3 key), copy-paste recipes for latency-sensitive / CI /
+deep-debugging / research workflows, and a "destructive
+`Solver::set_params`" gotcha section. The
+[architecture/smt-integration](/docs/architecture/smt-integration#configuration-knobs)
+page gained a parallel "Configuration knobs" section
+(complete matrix of fields + wiring scope) plus a "Solver
+parameter scope discipline" section that documents which
+of the three Z3 scopes honours each key, based on empirical
+audit results. The
+[verum.toml reference](/docs/reference/verum-toml) gained a
+new `[verify.solver]` schema with sub-tables for every
+backend / phase / cache config, plus a recap diagram of how
+manifest values reach Z3/CVC5 solver params through the
+five-layer chain. Closes the user's "documentation must be
+predельно полной и не требовала от разработчиков искать
+дополнительные ресурсы" requirement.
+
+### Added — `verum doc-render` auto-paper generator (#84) (2026-04-29)
+
+A Verum corpus IS a formal proof AND a paper draft. Pre-this-tool a
+project had to maintain `paper.tex` alongside the `.vr` corpus —
+two sources of truth, manual sync risk. `verum doc-render` makes
+the corpus the single source of truth: walks every public
+`@theorem` / `@lemma` / `@corollary` / `@axiom` declaration,
+projects each into a typed `DocItem`, and emits Markdown / LaTeX /
+HTML directly from the parsed AST + docstrings.
+
+Three subcommands:
+
+- `verum doc-render render [--format md|latex|html] [--out PATH] [--public]`
+- `verum doc-render graph [--format dot|json] [--public]`
+- `verum doc-render check-refs [--format plain|json] [--public]`
+
+Reproducibility envelope: every rendered statement carries an
+optional closure hash (from #79's closure-cache) so readers can
+re-verify via `verum cache-closure decide`.
+
+Trait surface: `verum_verification::doc_render::DocRenderer` +
+`DefaultDocRenderer` + `DocCorpus` (citation graph + cross-ref
+validator). Future per-format adapters plug in via the same trait.
+
+Tests: 22 trait-level + 8 handler + 16 e2e. Full guide:
+**[Tooling → Auto-paper generator](/docs/tooling/auto-paper)**.
+
+### Added — closure-cache wired into `verum verify` pipeline (#88) (2026-04-29)
+
+Plumbs `verum_verification::closure_cache::FilesystemCacheStore`
+through the theorem-proof pipeline. Theorem proofs whose closure
+hash + Ok-verdict are already cached are skipped without invoking
+the SMT/kernel re-check.
+
+CLI flags:
+
+- `verum verify --closure-cache` — opt in.
+- `verum verify --closure-cache-root <PATH>` — override default
+  `<input.parent>/target/.verum_cache/closure-hashes/`.
+
+Verify run summary now includes a cache-hit-ratio line:
+
+```
+Closure cache: 138 hit(s), 4 miss(es), 97.2% hit-ratio
+```
+
+`CompilerOptions` gains `closure_cache_enabled` +
+`closure_cache_root`. `cached_check` orchestration helper added to
+`closure_cache` (typed `CachedCheckOutcome` distinguishes Hit /
+Miss-with-persist-error; persist failures don't poison the
+verdict).
+
+Tests: 5 new trait + 4 e2e.
+
+### Added — closure-hash incremental verification cache (#79) (2026-04-29)
+
+Per-theorem `(fingerprint → verdict)` cache enabling skip-mode
+verification. `ClosureFingerprint` = blake3 over (kernel_version +
+signature + proof body + sorted+deduped @framework citations).
+Kernel-version drift invalidates ALL caches unconditionally — the
+trust boundary has shifted.
+
+Trait surface
+(`verum_verification::closure_cache::IncrementalCacheStore`):
+
+- `MemoryCacheStore` — V0 in-process reference (tests / playbook).
+- `FilesystemCacheStore` — V0 disk-backed reference (one JSON file
+  per theorem under the cache root).
+- `decide(store, name, fp)` — pure decision function returning
+  typed `CacheDecision::Skip` or `CacheDecision::Recheck` with a
+  typed `RecheckReason` (`NoCacheEntry` / `FingerprintMismatch` /
+  `KernelVersionChanged` / `PreviousVerdictFailed`).
+
+Inspector / control surface: `verum cache-closure
+{stat,list,get,clear,decide}` — five subcommands giving IDE / CI
+programmatic access without depending on the Rust API.
+
+Tests: 31 trait + 14 handler + 14 e2e (54 new tests across
+3 levels). Full guide:
+**[Tooling → Incremental cache](/docs/tooling/incremental-cache)**.
+
+### Added — industrial-grade tactic combinator catalogue (#76) (2026-04-29)
+
+Single source of truth for Verum's 15 canonical tactic combinators
+(`skip` / `fail` / `seq` / `orelse` / `repeat` / `repeat_n` / `try`
+/ `solve` / `first_of` / `all_goals` / `index_focus` /
+`named_focus` / `per_goal_split` / `have` / `apply_with`) and their
+12 algebraic laws.
+
+CLI surface:
+
+- `verum tactic list [--category C] [--format plain|json]`
+- `verum tactic explain <name> [--format plain|json]`
+- `verum tactic laws [--format plain|json]`
+
+Every catalogue entry carries a stable `doc_anchor` consumed by the
+auto-paper generator. Five categories (identity / composition /
+control / focus / forward) used for output grouping.
+
+Stdlib extension: `core/proof/tactics/combinators.vr` gains `solve`,
+`case_focus`, `per_goal_split`; new `core/proof/tactics/forward.vr`
+ships `have` / `apply_with` for Lean / SSReflect-style forward
+chaining.
+
+Trait surface
+(`verum_verification::tactic_combinator::TacticCatalog`) matches
+the rest of the integration arc. Composite catalogues (cubical /
+stochastic / MSFS) plug in via `CompositeTacticCatalog`.
+
+Tests: 17 trait + 17 handler + 15 e2e (49 new tests). Full guide:
+**[Tooling → Tactic catalogue](/docs/tooling/tactic-catalogue)**.
+
+### Added — `verum proof-repair` structured repair-suggestions CLI (#87) (2026-04-29)
+
+CLI transport-layer integration for
+`verum_diagnostics::proof_repair::DefaultRepairEngine`. Surfaces
+ranked drop-in code-snippet repairs for nine typed
+`ProofFailureKind` variants (refine-depth / positivity / universe /
+fwax-not-prop / adjunction / type-mismatch / unbound-name /
+apply-mismatch / tactic-open).
+
+```bash
+verum proof-repair --kind <K> [--field key=value]…
+                   [--max <N>] [--format plain|json]
+```
+
+Plain output renders headline + ranked suggestions with rationale +
+applicability + doc-link; JSON output suitable for LSP
+code-action emission.
+
+Tests: 17 handler + 12 e2e. Full guide:
+**[Tooling → Proof repair](/docs/tooling/proof-repair)**.
+
+### Added — `verum proof-draft` ranked tactic-suggestion CLI (#73) (2026-04-29)
+
+CLI transport-layer integration for
+`verum_verification::proof_drafting::DefaultSuggestionEngine`.
+Given a theorem name + focused goal + available lemmas, emits
+ranked next-step tactic suggestions.
+
+```bash
+verum proof-draft --theorem <T> --goal <G>
+                  [--lemma name:::signature[:::lineage]]…
+                  [--max <N>] [--format plain|json]
+```
+
+Drives LSP / REPL hover panels and IDE completion of obligation
+next-steps. Tests: 9 handler + 7 e2e. Full guide:
+**[Tooling → Proof drafting](/docs/tooling/proof-drafting)**.
+
+### Added — `verum verify --ladder` 13-strategy ladder dispatcher (#86) (2026-04-29)
+
+Wires `verum_verification::ladder_dispatch::DefaultLadderDispatcher`
+into the verify command path. Per-theorem `@verify(strategy)`
+annotations route through the typed dispatcher; emits per-theorem
+verdicts (Closed / Open / DispatchPending / Timeout) plus a totals
+summary.
+
+```bash
+verum verify --ladder [--ladder-format plain|json]
+```
+
+DispatchPending is advisory (V0 implements 2 of 13 strategies);
+Open / Timeout produce non-zero exit. ν-monotonicity invariant
+audited at runtime via
+`verum_verification::ladder_dispatch::verify_monotonicity`.
+
+Tests: 11 handler + 10 e2e. Full surface in
+**[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
 ### Fixed — `CodegenConfig.validate` runs the structural validator (2026-04-29)
 
 Closes the inert-defense pattern around the codegen-time VBC
