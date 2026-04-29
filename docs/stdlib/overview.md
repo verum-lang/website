@@ -62,8 +62,8 @@ namespace; users see its children via `mount core.*`.
 | `Set<T>` | `HashSet<T>`, `set<T>` |
 | `BTreeMap<K,V>` | `TreeMap<K,V>`, `std.map` |
 | `Heap<T>` | `Box<T>`, `unique_ptr<T>` |
-| `Shared<T>` | `Arc<T>`, `shared_ptr<T>` |
-| `Rc<T>` | `Rc<T>`, `shared_ptr<T>` (single-threaded) |
+| `Shared<T>` | `Arc<T>`, `Rc<T>`, `shared_ptr<T>` (atomically refcounted; CBGR-tracked) |
+| `Cow<T>` | `Cow<T>` (clone-on-write borrow, owned-on-mutation) |
 | `Maybe<T>` | `Option<T>` |
 | `Result<T, E>` | `Result<T, E>`, `expected<T, E>` |
 | `Deque<T>` | `VecDeque<T>`, `deque<T>` |

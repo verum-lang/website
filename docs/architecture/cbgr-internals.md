@@ -267,6 +267,131 @@ CBGR is designed to be lock-free on the fast path:
 On weakly-ordered architectures (aarch64), an acquire fence on deref
 and a release fence on free provide the necessary ordering.
 
+## Analysis configuration knobs
+
+CBGR ships a uniform configuration surface across every static
+analysis pass. **Every gate listed below is honoured by the
+consumer code** and pinned by a unit test inside the
+corresponding analyser module — the user-facing contract is
+"set the field, observe the difference".
+
+The configs share a uniform shape:
+
+* Each `*Config` carries production-suitable defaults.
+* Where the same config has multiple stances (aggressive vs
+  conservative vs disabled), factory constructors expose them.
+* Where a result struct exists, it mirrors the config booleans
+  through `*()` accessors so diagnostic builders never need to
+  re-read the analyser's internal state.
+* `min_confidence`-style threshold fields filter every warning
+  class identically (one filter pass per detector, applied
+  centrally).
+* `max_*` cap fields with default `0` mean "unlimited"; any
+  positive value bounds the analysis cost at the price of
+  potentially missing entries in the truncated tail (documented
+  inline in the analyser source).
+
+### `LifetimeAnalysisConfig`
+
+| Field                  | Default | What it gates                                          |
+|------------------------|---------|--------------------------------------------------------|
+| `infer_lifetimes`      | `true`  | Phase 1 (lifetime creation per reference). When `false`, the analyzer skips Phase 1 entirely; downstream phases see an empty `ref_lifetimes` map. Used by embedders importing lifetime IDs from an upstream IR. |
+| `check_outlives`       | `true`  | Phase 4 (constraint solving). When `false`, the constraint vector is still surfaced (callers driving their own solver consume it) but `violations` stays empty and `stats.constraints_solved == 0`. |
+| `detailed_diagnostics` | `true`  | Surfaced via `LifetimeAnalysisResult.detailed_diagnostics()`. Diagnostic builders consult it to choose between verbose (span / region / chain detail) and compact (one-line summary) rendering. |
+| `max_iterations`       | `1000`  | Upper bound for the liveness fixed-point loop. Prevents pathological CFGs from running unbounded analysis time. |
+
+### `NllConfig`
+
+| Field                  | Default | What it gates                                          |
+|------------------------|---------|--------------------------------------------------------|
+| `two_phase_borrows`    | `true`  | Surfaced via `NllAnalysisResult.two_phase_borrows_enabled()`. Diagnostic builders consult this when explaining a single-phase borrow rejection — when `false`, the message can suggest enabling two-phase as the fix; when `true`, the rejection is structural. |
+| `polonius_mode`        | `false` | Surfaced via `NllAnalysisResult.polonius_mode()`. Tags the result for downstream Polonius origin-tracking consumption. |
+| `max_iterations`       | `1000`  | Upper bound for both the liveness and constraint-solver fixed-point loops. |
+| `detailed_diagnostics` | `true`  | Surfaced via `NllAnalysisResult.detailed_diagnostics()` for verbose vs compact rendering. |
+
+### `OwnershipAnalysisConfig`
+
+| Field                | Default         | What it gates                                       |
+|----------------------|-----------------|-----------------------------------------------------|
+| `track_stack`        | `false`         | When `false`, `AllocationKind::Stack` allocations are dropped from the analysis (stack lifetime is structural, not heap-style). |
+| `track_temporaries`  | `false`         | Same shape as `track_stack` for `AllocationKind::Temporary` (expression-result allocations). Embedders that need to track them opt in. |
+| `detect_leaks`       | `true`          | Leak-detection pass. When `false`, the leak warning list is empty regardless of analysis state. |
+| `min_confidence`     | `0.5`           | Filters every warning class (double-free, use-after-free, leak) whose `confidence` is below the threshold. |
+| `max_blocks`         | `0` (unlimited) | Caps the CFG block walk in `extract_allocation_sites`. Trade-off: bounded analysis cost at the price of potentially missing allocations in the truncated tail. |
+
+### `PoloniusConfig`
+
+| Field                  | Default | What it gates                                          |
+|------------------------|---------|--------------------------------------------------------|
+| `max_iterations`       | `1000`  | Upper bound for the Datalog-style fixed-point loop in `compute_output_facts`. |
+| `location_sensitive`   | `true`  | Surfaced via `PoloniusAnalysisResult.is_location_sensitive()`. Diagnostic builders consult this when explaining a loan rejection — when `false`, the message can suggest enabling location-sensitive analysis as the fix; when `true`, the rejection is structural. |
+| `check_moves`          | `true`  | Surfaced via `PoloniusAnalysisResult.check_moves_enabled()`. Downstream consumers that wrap the analyser with `MoveTracker` integration check this flag before consulting the tracker — `false` suppresses the move-error class from the diagnostic surface. |
+
+### `EscapeAnalysisConfig`
+
+| Field                    | Default | What it gates                                          |
+|--------------------------|---------|--------------------------------------------------------|
+| `enable_interprocedural` | `true`  | Cross-function escape analysis. Disabling falls back to per-function conservative results. |
+| `max_iterations`         | `100`   | Upper bound for the interprocedural fixed-point loop. |
+
+### `PromotionConfig`
+
+| Field                  | Default | What it gates                                          |
+|------------------------|---------|--------------------------------------------------------|
+| `enable_promotion`     | `true`  | Master switch. When `false`, every reference falls to `KeepManagedConservative` regardless of analysis. |
+| `extra_conservative`   | `false` | Adds the async/await-crossing + exception-path safety checks to the promotion verdict. `aggressive()` clears it; `conservative()` sets it. |
+| `allow_heap_promotion` | `false` | When `false` (default), a reference with `is_stack_allocated == false` falls back to `KeepManagedConservative` even when dominance + escape analysis approves. The safe default — heap-rooted promotions need additional liveness analysis the analyzer hasn't produced for that reference. `PromotionConfig::aggressive()` flips it to `true`. |
+| `confidence_threshold` | `0.95`  | Reserved for the future confidence-tagged decision path. Currently informational. |
+
+Convenience constructors:
+
+```rust
+PromotionConfig::default()       // enable + safe heap default
+PromotionConfig::aggressive()    // enable + allow heap + lower confidence (0.80)
+PromotionConfig::conservative()  // enable + extra_conservative + tight confidence (0.99)
+PromotionConfig::disabled()      // master switch off (every ref managed)
+```
+
+### `ConcurrencyAnalysisConfig`
+
+| Field                | Default         | What it gates                                         |
+|----------------------|-----------------|-------------------------------------------------------|
+| `detect_data_races`  | `true`          | Race-detection pass. `false` returns an empty data-race warning list. |
+| `detect_deadlocks`   | `true`          | Lock-cycle detection. `false` returns an empty deadlock warning list. |
+| `check_thread_safety`| `true`          | Send/Sync surface scan. |
+| `min_confidence`     | `0.5`           | Filters every warning whose `confidence` is below the threshold. |
+| `max_accesses`       | `0` (unlimited) | Caps the analyzer's memory-access list. Once the cap is reached, `extract_accesses` returns early. |
+
+### `DiagnosticsConfig`
+
+| Field                  | Default     | What it gates                                       |
+|------------------------|-------------|-----------------------------------------------------|
+| `file_name`            | `<source>`  | Span source filename used in rendered diagnostics. |
+| `include_tier_reasons` | `true`      | Attach the Tier 0 reason (escape kind, dominance status, etc.) as a note. |
+| `confidence_threshold` | `0.7`       | Suppress warnings whose confidence is below the threshold. |
+| `include_help`         | `true`      | Attach the canonical fix-it suggestion. |
+| `include_doc_urls`     | `true`      | Attach the `verum-lang.org/errors/<code>` URL. |
+
+### Wire-up tests (proof of effect)
+
+Every gate listed above has a corresponding unit test inside
+its analyser module that asserts the field's documented effect:
+
+| Module                 | Wire-up tests                                                    |
+|------------------------|------------------------------------------------------------------|
+| `lifetime_analysis`    | `infer_lifetimes_false_skips_phase_1`, `check_outlives_false_returns_empty_violation_list`, `detailed_diagnostics_flows_to_result` |
+| `nll_analysis`         | `nll_config_flows_to_result` (8-cell truth table over the three booleans) |
+| `ownership_analysis`   | `min_confidence_filters_low_confidence_warnings`, `max_blocks_caps_extraction_walk` |
+| `concurrency_analysis` | `min_confidence_filters_low_confidence_warnings`, `max_accesses_caps_extraction` |
+| `polonius_analysis`    | `polonius_config_flows_to_result` (4-cell truth table over the two booleans) |
+| `promotion_decision`   | `allow_heap_promotion_default_vs_aggressive`                     |
+
+Run the inventory locally with:
+
+```bash
+cargo test -p verum_cbgr --lib analysis
+```
+
 ## See also
 
 - **[Stdlib → mem](/docs/stdlib/mem)** — user-facing API.

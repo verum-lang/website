@@ -112,23 +112,24 @@ Always audit *both directions*: if a `Shared<Parent>` holds a
 `List<Shared<Child>>` and `Shared<Child>` holds a `Shared<Parent>`,
 you have a cycle. One of the two arrows **must** be `Weak`.
 
-### `Rc<T>` — the single-threaded alternative
+### Why no separate single-threaded `Rc<T>`?
 
-`Rc<T>` has the same shape as `Shared<T>` but is `!Send` (no atomics).
-Significantly cheaper:
+Verum exposes one ref-counted handle, `Shared<T>`, with atomic
+counters.  The cost is one atomic-fetch-add on `.clone()` and one
+atomic-fetch-sub on drop — typically 1–2 ns on modern CPUs, and
+uncontended atomics on the same cache line are nearly free relative
+to the surrounding memory traffic.
 
-| Op | `Shared<T>` | `Rc<T>` |
-|---|---|---|
-| `.clone()` | atomic fetch-add | plain increment |
-| `.drop()` | atomic fetch-sub + (maybe) free | plain decrement |
-
-Use `Rc<T>` inside single-threaded code (GUI main thread, WASM,
-parser internal state).
+For the rare case where the atomic cost matters in a tight
+single-threaded loop, prefer the inline alternatives — pass `&T`
+references, hold ownership behind a parent `Heap<T>`, or use
+`Cow<T>::Borrowed`.  The cost model is then explicit at the type
+boundary rather than hidden behind a parallel ref-counted type.
 
 ### See also
 
 - **[base → memory](/docs/stdlib/base#heap-shared-cow-pin)** —
-  `Heap`, `Shared`, `Weak`, `Rc`.
+  `Heap`, `Shared`, `Weak`.
 - **[mem](/docs/stdlib/mem#sharedt--atomically-ref-counted)** —
   implementation details.
 - **[Shared state](/docs/cookbook/shared-state)** — multi-task

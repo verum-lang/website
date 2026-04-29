@@ -302,4 +302,4 @@ compiler to prove every `&T` safe or fail.
 - **[cookbook/arenas](/docs/cookbook/arenas)** — typed arenas, the
   common alternative to DLLs.
 - **[cookbook/shared-ownership](/docs/cookbook/shared-ownership)** —
-  `Shared<T>`, `Rc<T>`, `Weak<T>`.
+  `Shared<T>`, `Weak<T>`.

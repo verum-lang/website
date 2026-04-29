@@ -59,7 +59,7 @@ Looking for longer guided builds? See **[Tutorials](/docs/tutorials)**.
 - **[Sharing state across tasks](/docs/cookbook/shared-state)** —
   `Shared<Mutex<T>>`, avoiding deadlocks, atomic alternatives.
 - **[Shared ownership](/docs/cookbook/shared-ownership)** — `Shared<T>`
-  vs `Rc<T>`, breaking cycles with `Weak<T>`.
+  semantics, breaking cycles with `Weak<T>`.
 
 ## Types that prove things
 

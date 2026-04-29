@@ -128,8 +128,7 @@ let cloned = shared.clone();   // bumps the refcount
 ```
 
 - `Heap<T>` — unique, owned heap allocation.
-- `Shared<T>` — atomically reference-counted.
-- `Rc<T>` — single-threaded reference-counted (lower overhead, `!Send`).
+- `Shared<T>` — atomically reference-counted, CBGR-tracked.
 
 :::note Status (0.1.0)
 
