@@ -207,6 +207,74 @@ load-time wiring acted on it.  The lesson: a public field carrying
 a security-critical value with no code path that ACTS on the value
 is a TODO regardless of how the field is named or documented.
 
+### Encoding-layer defenses
+
+The four-pass validated load above operates on already-decoded
+bytes.  Two further defenses live one layer down — at the byte
+decoder itself:
+
+#### Varint canonicality (10-byte boundary)
+
+A 10-byte unsigned varint encodes a u64.  At byte 9 (shift = 63),
+only **bit 0** of the 7-bit payload is meaningful — bits 1..6 of
+that byte represent positions 64..69 of the conceptual u70, which
+are NOT representable in u64.  A naive
+`result |= ((byte & 0x7F) as u64) << 63` would silently drop those
+bits via the platform's shift-out-of-range semantics, accepting
+adversarial encodings that smuggle invalid u64 values past the
+type boundary.
+
+The decoder **rejects** any 10th-byte value with bits 1..6 set
+(`byte & 0x7E != 0` at `shift == 63`) and returns `VarIntOverflow`.
+The legitimate boundary value `u64::MAX` (encoded as
+`[0xFF×9, 0x01]`) is still accepted — only invalid bit positions
+are rejected.  Both decoder surfaces (slice-based `decode_varint`
+and Reader-based `read_varint`) carry the same defense, and the
+signed-varint path (`decode_signed_varint`) inherits it via
+`decode_varint`.
+
+The same canonicality class is enforced at the language level by
+`core/protobuf/wire.vr::read_varint` (Google reference behaviour);
+the two implementations share the audit recipe: any decoder where
+multiple distinct inputs decode to the same value defeats
+round-trip equality and admits forgery.
+
+#### Hostile-size allocation guards
+
+Several VBC interpreter dispatch handlers (`CbgrAlloc` in
+`ffi_extended.rs`; `GpuAlloc`, `MallocManaged`, `GpuMemAlloc`,
+`Free` in `gpu.rs`) construct an allocation `Layout` from operand
+sizes carried in the bytecode.  Adversarial bytecode can request
+sizes near `isize::MAX`; `Layout::from_size_align` correctly
+returns an error for such sizes, but the surrounding code used to
+either:
+
+- **Panic** the interpreter via `.unwrap()` on a chained fallback
+  (DoS surface), or
+- **Silently downgrade** to a `Layout::new::<u8>()` 1-byte layout
+  while the caller still believed they got `size` bytes — a heap
+  overflow waiting to happen on the first write past byte 0, and
+  on the deallocation path a `dealloc(ptr, 1-byte-layout)` for an
+  `N`-byte allocation = std::alloc UB.
+
+The fundamental fix:
+
+- **Allocation paths** return a null pointer on layout failure
+  (the standard malloc-fail contract; the caller's `Err(e) =>
+  ...` arm fires).
+- **Deallocation path** *leaks* the buffer on layout failure
+  rather than calling `dealloc` with a wrong layout.  The
+  architectural invariant (`allocated_buffers` only contains
+  sizes that successfully constructed an alloc layout) makes the
+  failure branch unreachable in practice; leak is the safe-by-
+  default fallback for the impossible case.
+
+The class lesson: in a trust-boundary handler, `unwrap_or(default)`
+is *especially* dangerous when the default is functionally smaller
+than the requested resource — it lies to callers about the
+resource and produces a worse failure mode than the true error
+case.
+
 ### Implementation surface (Rust)
 
 For compiler / runtime hackers: the trust boundary is exposed as
