@@ -16,6 +16,27 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `VerumFormatConfig.trailing_commas` reaches `format_field_list` (2026-04-29)
+
+The LSP formatter's struct-field emission always wrote `,\n` after
+every field including the last, regardless of the configured
+stance. Setting `trailing_commas = false` in the editor's format
+config had zero observable effect on formatted output — every
+formatted struct produced a trailing comma.
+
+Wired at the field-emission site: collect the field list, track
+the last-field index, and suppress the comma only on the final
+field when the toggle is off. Intermediate fields keep `,\n` so
+the separator semantics are preserved. Default remains `true`
+(the documented house style).
+
+Other inert fields on the same struct (`max_line_width`,
+`align_assignments`, `preserve_blank_lines`) require larger
+refactors (line-wrapping engine, pre-scan alignment, source-
+position blank-line tracking) and stay deferred to dedicated
+commits — wiring them with placeholder logic would silently
+change every formatted source file's output.
+
 ### Fixed — `[llvm].{target_triple, target_cpu, target_features}` reach the AOT pipeline (2026-04-29)
 
 The manifest's `[llvm]` section was parsed into a `LlvmConfig`
