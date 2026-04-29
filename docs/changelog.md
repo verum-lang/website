@@ -499,6 +499,22 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `verum tree --all-features` shows build-dependencies (2026-04-29)
+
+Closes the inert-defense pattern around the `verum tree`
+all-features flag. `TreeOptions.all_features` landed on the
+options struct from the CLI `--all-features` flag but was never
+read — so `verum tree --all-features` looked identical to plain
+`verum tree`, defeating the documented opt-in.
+
+Wired in `tree()` after the dev-dependencies block: when set,
+additionally print a `Build Dependencies:` section using
+`manifest.build_dependencies` (the build-time-only dep group
+currently invisible in the default tree because runtime execution
+doesn't see it). Mirrors `cargo tree --all-features` semantics —
+the flag opts INTO showing every declared dep group, not just the
+runtime + dev defaults.
+
 ### Fixed — `verum bench --no-color` actually suppresses ANSI output (2026-04-29)
 
 Closes the inert-defense pattern around the `verum bench`
