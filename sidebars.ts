@@ -82,6 +82,7 @@ const sidebars: SidebarsConfig = {
         'tooling/foreign-import',
         'tooling/llm-tactic',
         'tooling/proof-repl',
+        'tooling/benchmarking',
       ],
     },
     {
