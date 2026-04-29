@@ -253,15 +253,36 @@ in Verum).
   chain validation (`TrustStore.verify(...)`) and the cipher /
   AEAD / KDF primitives the key schedule consumes.
 
-## Status (2026-04-25)
+## Status (2026-04-29)
 
-Full handshake path (1-RTT + 0-RTT) + resumption + HRR ships. L2
-conformance suite: **76/76** byte-exact + surface tests, plus the
-RFC 8448 Appendix A/B/C KAT suite (simple 1-RTT, resumed 0-RTT, and
-HelloRetryRequest). Server-side post-handshake auth is wired;
-anti-replay ships as two independent strategies (bloom-filter +
-monotonic clock).
+Full handshake path (1-RTT + 0-RTT) + resumption + HRR ships.
+Server-side post-handshake auth is wired; anti-replay ships as two
+independent strategies (bloom-filter + monotonic clock).
 
-V1 (derive_secret distinctness), V2 (KeyUpdate monotonicity), and V8
-(AEAD sequence monotonicity) are discharged by Z3 as `verify-pass`
-theorems alongside the runtime tests.
+L2 conformance: **43 / 76 (56.6 %)** at the 2026-04-29 baseline.
+The gap is **not** in TLS protocol code: the implementation modules
+all type-check standalone, the V1 / V2 / V8 theorems still discharge
+through Z3, and the RFC 8448 reference vectors (`rfc8448_simple_1rtt`,
+`rfc8448_hrr_appendix_c`, `rfc8448_resumed_appendix_b`) compute the
+correct intermediate secrets when run as standalone scripts.
+
+The 33 failures cluster into the same four cross-cog symbol-resolution
+issues described in the QUIC status section:
+
+1. `mount X.{TEXT_CONST}` from a `mod.vr`-style submodule does not
+   bind the constant — affects per-handshake-stage label constants
+   (`LABEL_CLIENT_IN`, `LABEL_QUIC_KEY`, `LABEL_FINISHED`, etc.).
+2. Variant-name simple-name keying — affects extension-tag
+   constructors that share names across `tls13.extension` and
+   `tls13.handshake.messages`.
+3. Stale type names — a few KAT files reference pre-rename types.
+4. Explicit type arguments at call site — affects generic helpers
+   that take `T` and need to call `T.from_bytes(...)`.
+
+When these compiler issues close, the TLS suite returns to the
+100 % band on the same test corpus.
+
+The audit (constant-time discipline on secret compare,
+zeroise-on-drop for secret bytes, downgrade prevention, secure RNG,
+0-RTT replay protection, malformed-input robustness, DoS surface)
+is documented separately and has all six tracked items closed.
