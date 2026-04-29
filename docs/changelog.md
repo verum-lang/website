@@ -715,6 +715,29 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `ParallelConfig.race_mode` controls worker termination (2026-04-29)
+
+Closes the inert-defense pattern around the parallel SMT
+solver's race-mode gate. `ParallelConfig.race_mode` defaulted
+to `true` and was asserted in a test, but no code path
+consulted it — worker termination after first-result was
+unconditional, so embedders running consensus-based portfolios
+(where multiple workers must agree before the result is
+accepted) had to terminate-then-restart instead of letting
+workers complete naturally.
+
+Wired in the executor's post-result termination sequence: when
+the gate is true (default), the existing "first-result wins,
+kill the rest" behaviour is preserved. When false, workers are
+NOT killed, allowing the embedder to drain remaining verdicts
+via a follow-up call.
+
+A future enhancement could thread race_mode into the wait
+loop itself to switch between first-result and all-results
+aggregation; this commit lands the gate at the termination
+site so consensus-style portfolios can drain correctly
+without restructuring the wait loop.
+
 ### Fixed — `TargetConfig.gpu_targets` exposed via accessors (2026-04-29)
 
 Closes the inert-defense pattern around the per-target GPU
