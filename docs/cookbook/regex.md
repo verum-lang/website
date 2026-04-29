@@ -119,7 +119,7 @@ For logic in the replacement:
 
 ```verum
 let censored = rx#"\b\w{8,}\b".replace_all_with(&text, |m| {
-    m.as_str().chars().map(|_| '*').collect::<Text>()
+    m.as_str().chars().map(|_| '*').collect<Text>()
 });
 ```
 

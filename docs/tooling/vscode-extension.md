@@ -87,7 +87,7 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 
 All five `verum/*` JSON-RPC methods backing these commands are live;
 the server routes them through
-`LspService::build(...).custom_method(...)`. Z3 is isolated behind a
+`LspService.build(...).custom_method(...)`. Z3 is isolated behind a
 dedicated `verum-smt-worker` OS thread so the handler futures are
 `Send` — see
 [LSP → Custom `verum/*` JSON-RPC methods — architecture](/docs/tooling/lsp#custom-verum-json-rpc-methods--architecture)

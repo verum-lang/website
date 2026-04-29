@@ -289,7 +289,7 @@ let counter = AtomicInt.new(0);
 counter.fetch_add(1, MemoryOrder.SeqCst);
 ```
 
-`sync::atomic` exposes the standard atomic types with explicit memory
+`sync.atomic` exposes the standard atomic types with explicit memory
 ordering (`Relaxed`, `Acquire`, `Release`, `AcqRel`, `SeqCst`).
 
 ## Mutex / RwLock

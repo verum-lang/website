@@ -399,7 +399,7 @@ sandbox automatically.
 - **Absolute paths rejected.** `/etc/passwd` and similar fail
   the precheck before any filesystem syscall fires.
 - **No `..` traversal.** A path containing `..` returns
-  `MetaError::Other("Path traversal …")`.
+  `MetaError.Other("Path traversal …")`.
 - **No symlinks across the root boundary.** A symlink under the
   project root that resolves outside the root fails the same
   precheck.
@@ -430,7 +430,7 @@ running in `--no-version-stamp` reproducible mode:
 |-----------|--------|----------|
 | version | `version` field of `Verum.toml` | the field itself (cogs MUST declare a version) |
 | git revision | `git rev-parse HEAD` at pipeline start | empty string `""` |
-| build time ms | `SystemTime::now()` at pipeline start | `0` |
+| build time ms | `SystemTime.now()` at pipeline start | `0` |
 
 ### `@project_git_revision()` — bare SHA
 

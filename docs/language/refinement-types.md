@@ -235,7 +235,7 @@ walks this full example with loop invariants and merge.
 ## Relation to the trusted kernel
 
 Refinement types reach the kernel as the `Refine { base, binder,
-predicate }` constructor in `verum_kernel::CoreTerm`. The kernel's
+predicate }` constructor in `verum_kernel.CoreTerm`. The kernel's
 rule is:
 
 > `base` inhabits some `Universe(u)`; `predicate` is well-typed under

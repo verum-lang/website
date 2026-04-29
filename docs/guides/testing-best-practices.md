@@ -58,7 +58,7 @@ my_cog/
 
 `verum test` walks `tests/*.vr` recursively. Each file is parsed and
 compiled independently. The file's basename becomes the module label
-in test output: `tests/arith.vr` → `arith::test_name`.
+in test output: `tests/arith.vr` → `arith.test_name`.
 
 ### Naming tests
 
@@ -148,7 +148,7 @@ fn add_commutes(a: Int, b: Int) {
 @test
 @test_case(0, 0, 0)
 @test_case(1, 2, 3)
-@test_case(i64::MAX, 1, i64::MIN)   // overflow wraps
+@test_case(i64.MAX, 1, i64.MIN)   // overflow wraps
 fn add(a: Int, b: Int, expected: Int) {
     assert_eq(a + b, expected);
 }
@@ -227,12 +227,12 @@ fn char_count(s: Text, expected: Int) {
 Output:
 
 ```text
-test text::char_count[0] ... ok
-test text::char_count[1] ... ok
-test text::char_count[2] ... ok
-test text::char_count[3] ... ok
-test text::char_count[4] ... ok
-test text::char_count[5] ... FAILED  ← composed-char row
+test text.char_count[0] ... ok
+test text.char_count[1] ... ok
+test text.char_count[2] ... ok
+test text.char_count[3] ... ok
+test text.char_count[4] ... ok
+test text.char_count[5] ... FAILED  ← composed-char row
 ```
 
 **Anti-pattern: a `for` loop inside one test:**
@@ -461,7 +461,7 @@ const ITERS: Int = 10_000;       // amortise per-iter overhead
 fn parse_tiny_json() {
     let mut n: Int = 0;
     while n < ITERS {
-        let _ = json.decode::<Int>(&"42").unwrap();
+        let _ = json.decode<Int>(&"42").unwrap();
         n = n + 1;
     }
 }
@@ -597,7 +597,7 @@ above test the helper, not your system.
 - **`--release`-only assertions** belong in `@cfg(debug_assertions)`,
   not in tests. Keep tests fast in dev.
 - **Big fixture data** lives in `tests/fixtures/`, loaded with
-  `fs::read_to_string`. Don't paste a 10K-line JSON literal into a
+  `fs.read_to_string`. Don't paste a 10K-line JSON literal into a
   test file — the parser pays for it on every recompile.
 - **Group related tests** so the file has a small number of imports.
   20 tests sharing one mounted module compile faster than 20 files

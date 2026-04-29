@@ -176,8 +176,8 @@ shutdown on a kill signal.
 
 MNIST classifier using `math.nn` with autodiff.
 
-- **Teaches**: tensors, static shapes, `autodiff::value_and_grad`,
-  `nn::Linear`, `AdamW`, training loop, shape verification via
+- **Teaches**: tensors, static shapes, `autodiff.value_and_grad`,
+  `nn.Linear`, `AdamW`, training loop, shape verification via
   dependent types.
 - **Assumes**: refinement types are helpful but not required.
 - **See also**: [`stdlib/math`](/docs/stdlib/math),

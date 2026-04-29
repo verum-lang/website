@@ -34,7 +34,7 @@ flowchart TB
 | **Graphics** | Kitty, Sixel, iTerm2, and Braille fallback — auto-detected from `TermCapabilities`. |
 | **Diff render** | Double-buffered, row-level fast-path skip, cursor-motion minimisation, synchronized output (Mode 2026). |
 | **Mouse / paste / focus** | SGR extended mouse, bracketed paste (Mode 2004), focus events (Mode 1004). |
-| **Clipboard** | OSC 52 read & write, built into `raw::clipboard`. |
+| **Clipboard** | OSC 52 read & write, built into `raw.clipboard`. |
 | **Accessibility** | OSC 133 semantic zones (Prompt / CommandInput / CommandOutput / CommandEnd / Live regions). |
 
 ## Quick start

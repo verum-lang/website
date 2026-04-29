@@ -399,7 +399,7 @@ verum completions powershell >> $PROFILE
 
 `verum completions` accepts any of `bash`, `zsh`, `fish`,
 `powershell`, `elvish`, `nushell` — the full set supported by
-[`clap_complete::Shell`](https://docs.rs/clap_complete/).
+[`clap_complete.Shell`](https://docs.rs/clap_complete/).
 
 ## Cross-compiling Verum programs
 

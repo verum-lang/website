@@ -117,8 +117,8 @@ type Color is
 type Rgb is { r: UInt8, g: UInt8, b: UInt8 };
 type Hsl is { h: Float, s: Float, l: Float };
 
-Color::from_hex(&"#ff8c00") -> Result<Color, ColorError>
-Rgb::to_hsl() -> Hsl              Hsl::to_rgb() -> Rgb
+Color.from_hex(&"#ff8c00") -> Result<Color, ColorError>
+Rgb.to_hsl() -> Hsl              Hsl.to_rgb() -> Rgb
 adapt_color(desired: Color, profile: ColorProfile) -> Color
 
 type ColorProfile is Mono | Ansi16 | Ansi256 | TrueColor;
@@ -210,8 +210,8 @@ Flex.new(direction)
 type GridLayout is { ... };
 type GridTrack is Fixed(Int) | Fraction(Float) | Auto;
 Grid.new()
-    .columns(&[GridTrack::Fixed(20), GridTrack::Fraction(1.0)])
-    .rows(&[GridTrack::Auto])
+    .columns(&[GridTrack.Fixed(20), GridTrack.Fraction(1.0)])
+    .rows(&[GridTrack.Auto])
     .split(rect) -> GridAreas
 ```
 
@@ -267,7 +267,7 @@ SelectableList.new(&items)
 
 type TableState is { selected: Maybe<Int>, offset: Int };
 Table.new(&rows)
-    .header(Row.new(&[Cell::from("id"), Cell::from("name")]))
+    .header(Row.new(&[Cell.from("id"), Cell.from("name")]))
     .widths(&[Constraint.Length(8), Constraint.Fill])
     .column_spacing(1)
     .highlight_style(Style.new().modifier(Modifier.Bold))
@@ -297,7 +297,7 @@ Tabs.new(&titles)
 
 type ScrollbarState is { content_length: Int, position: Int, viewport_content_length: Int };
 Scrollbar.new(direction: ScrollDirection)
-    .thumb_style(Style.new().fg(Color::DarkGray))
+    .thumb_style(Style.new().fg(Color.DarkGray))
     .render_stateful(f, area, &mut state)
 
 Canvas.new()
@@ -345,8 +345,8 @@ type Model is protocol {
 }
 
 type Command<M> is { ... };
-Command.none()     Command::batch(&cmds)     Command::message(m)
-Command.task(future)     Command::delay(duration, m)
+Command.none()     Command.batch(&cmds)     Command.message(m)
+Command.task(future)     Command.delay(duration, m)
 
 type Subscription<M> is { ... };
 Subscription.events(|event| maybe_map_to_message(event))
@@ -407,8 +407,8 @@ Drop-in for simple scripts:
 
 ```verum
 confirm(&"Proceed?") -> IoResult<Bool>                               
-select::<T: Display>(&"Pick", &items) -> IoResult<T>                  
-multi_select::<T: Display>(&"Pick", &items) -> IoResult<List<T>>      
+select<T: Display>(&"Pick", &items) -> IoResult<T>                  
+multi_select<T: Display>(&"Pick", &items) -> IoResult<List<T>>      
 input(&"Your name") -> IoResult<Text>                                  
 password(&"Password") -> IoResult<Text>                                
 ```
@@ -447,14 +447,14 @@ can consume.
 
 ### Differential rendering
 
-`Terminal::draw(|f| ...)` builds a new `Frame`, diffs it against the
+`Terminal.draw(|f| ...)` builds a new `Frame`, diffs it against the
 previous frame, and emits only the changed cells. Enables smooth
 animations without flicker.
 
 ### Style composition
 
 Styles are additive — `Style.new().fg(Red).add_modifier(Bold)` builds
-incrementally. `Style::reset()` clears everything.
+incrementally. `Style.reset()` clears everything.
 
 ### Responsive layout
 

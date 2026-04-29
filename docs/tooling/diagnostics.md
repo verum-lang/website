@@ -134,7 +134,7 @@ Third-party code that embeds `verum_compiler` / `verum_vbc` can push
 its own breadcrumbs:
 
 ```rust
-let _bc = verum_error::breadcrumb::enter("mytool.stage", file_path);
+let _bc = verum_error.breadcrumb::enter("mytool.stage", file_path);
 // work happens here; breadcrumb is popped automatically on scope exit
 ```
 
@@ -263,20 +263,20 @@ rayon worker wake paths, re-introducing a ~70 % SIGSEGV rate in the
 
 ## Chaining your own panic hook
 
-`crash::install` chains into whatever hook was set before it. If you
+`crash.install` chains into whatever hook was set before it. If you
 need custom panic metrics in addition to the crash report, install
 your hook first:
 
 ```rust
 fn main() {
-    my_metrics::install_panic_hook();
-    verum_error::crash::install(Default::default());
+    my_metrics.install_panic_hook();
+    verum_error.crash::install(Default.default());
     …
 }
 ```
 
 The Verum CLI itself does **not** install the stock `PanicLogger`
-from `verum_error::panic_handler` by default — benchmarking showed
+from `verum_error.panic_handler` by default — benchmarking showed
 the extra hook measurably increased the crash rate on the
 `phase_generate_native` race path (0 / 50 → 11 / 50 release builds).
 The structured report produced by the crash reporter already contains
@@ -304,7 +304,7 @@ correlate the two events.
 ## Configuration
 
 All of the above is controlled by
-`verum_error::crash::CrashReporterConfig`:
+`verum_error.crash::CrashReporterConfig`:
 
 | Field | Default | Notes |
 |-------|---------|-------|

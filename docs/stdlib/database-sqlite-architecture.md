@@ -361,14 +361,22 @@ errors to user-facing `DbError`, holds capability gates
 `execute` / `query_first_row` / `query_all` shortcuts on top of the
 prepare-step-finalize cycle.
 
-**Files.** `core/database/sqlite/native/l7_api/` (2 files, 329 LOC).
+**Files.** `core/database/sqlite/native/l7_api/` (7 files, ~1.9 KLOC).
 
 | File | Purpose |
 |------|---------|
-| `database.vr` | `Database` aggregate; `open_memory_db`, `open_readonly`, `open_readwrite`, `open_admin`; the high-level surface |
+| `database.vr` | `Database` aggregate; `open_memory_db`, `open_readonly`, `open_readwrite`, `open_admin`, `open_path*`; the high-level surface |
+| `transaction.vr` | Affine `Transaction` + `TxKind` + `with_transaction` callback combinator (spec database.md §5.5) |
+| `backup.vr` | Online backup — affine `BackupSession`, `backup_init_to_path` / `_step` / `_finish` / `_to_path_in_one_go` |
+| `hooks.vr` | `set_commit_hook` / `set_rollback_hook` / `set_update_hook` / `set_pre_update_hook` / `set_authorizer` / `set_busy_handler` / `set_progress_handler` / `set_trace_hook` plus `clear_*` / `has_*` |
+| `pragma_api.vr` | Typed `pragma_get` / `pragma_set` over `PragmaValue { PvNull \| PvInt \| PvText \| PvBool }`; shaped wrappers `pragma_get_int` / `_text` / `_bool` |
+| `blob.vr` | Incremental BLOB I/O — `blob_open` / `_bytes` / `_read` / `_write` / `_reopen` / `_close` |
 | `mod.vr` | Public re-exports |
 
-**Upward boundary.**  `Database`, `PreparedStatement`, `DbError`.
+**Upward boundary.**  `Database`, `PreparedStatement`, `Transaction`,
+`BackupSession`, `PragmaValue`, `DbError`, eight hook protocols
+(`CommitHook` / `RollbackHook` / `UpdateHook` / `PreUpdateHook` /
+`AuthorizerHook` / `BusyHandler` / `ProgressHandler` / `TraceHook`).
 Everything an application imports lives here.
 
 ## How an INSERT flows (bottom-up)
@@ -381,7 +389,7 @@ To pin "what does the engine actually do":
    cached, calls `compile(sql)` on **L5**.
 3. **L5.lexer** tokenises `INSERT`, `INTO`, `t`, `VALUES`, `(`, `1`,
    `)`.
-4. **L5.parser** assembles `Stmt::Insert(InsertStmt { … })` into the
+4. **L5.parser** assembles `Stmt.Insert(InsertStmt { … })` into the
    AST.
 5. **L5.resolver** binds `t` to the schema-cached table id, resolves
    column types, applies affinity to literal `1`.
@@ -403,11 +411,11 @@ To pin "what does the engine actually do":
     transaction commits.
 13. **L4** returns `Done` to **L6** which writes back cursor positions
     to the connection.
-14. **L7** maps `Done` to `Result::Ok(())`.
+14. **L7** maps `Done` to `Result.Ok(())`.
 
 If anything fails at L1..L4, the error bubbles up as `ExecError(code,
 msg)`, gets wrapped by L6 as `StmtError`, and L7 surfaces it as
-`DbError::DbStmtError(_)` (or one of the more specific variants if the
+`DbError.DbStmtError(_)` (or one of the more specific variants if the
 code matches a well-known class — `DbConstraint`, `DbBusy`,
 `DbReadonly`).
 

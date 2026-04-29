@@ -31,9 +31,9 @@ Time span with nanosecond resolution.
 
 ```verum
 Duration.new(secs: Int, nanos: Int) -> Duration
-Duration.from_secs(secs)    Duration.from_millis(ms)    Duration::from_micros(us)
-Duration::from_nanos(ns)     Duration.from_secs_f64(f)
-Duration.ZERO              Duration::MAX
+Duration.from_secs(secs)    Duration.from_millis(ms)    Duration.from_micros(us)
+Duration.from_nanos(ns)     Duration.from_secs_f64(f)
+Duration.ZERO              Duration.MAX
 ```
 
 ### Literal sugar (on any integer)
@@ -141,8 +141,8 @@ let unix_ms = now.duration_since(&SystemTime.UNIX_EPOCH)
 ## Sleep
 
 ```verum
-Time::sleep(duration)                            // blocking
-Time::sleep_ms(ms)                               Time::sleep_secs(secs)
+Time.sleep(duration)                            // blocking
+Time.sleep_ms(ms)                               Time.sleep_secs(secs)
 
 sleep(duration).await                            // async (from core.async)
 sleep_until(instant).await
@@ -189,12 +189,12 @@ async fn heartbeat() using [Logger] {
 Convenience static methods:
 
 ```verum
-Time::now() -> Duration                 // monotonic, since epoch
-Time::monotonic() -> Int                 // raw nanoseconds
-Time::system_time() -> SystemTime
-Time::instant() -> Instant
-Time::sleep(duration)
-Time::sleep_ms(ms)                       Time::sleep_secs(secs)
+Time.now() -> Duration                 // monotonic, since epoch
+Time.monotonic() -> Int                 // raw nanoseconds
+Time.system_time() -> SystemTime
+Time.instant() -> Instant
+Time.sleep(duration)
+Time.sleep_ms(ms)                       Time.sleep_secs(secs)
 ```
 
 ---

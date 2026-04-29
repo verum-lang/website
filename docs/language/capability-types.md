@@ -113,12 +113,13 @@ pub fn rates(db: Database.ReadOnly) -> List<Rate> {
     db.query("SELECT ...").rows()
 }
 
-pub fn migrate(db: Database.Full)
+pub fn migrate(db: &mut Database.Full)
     using [MigrationLog]
 {
-    db.begin();
-    db.write("ALTER TABLE ...");
-    db.commit();
+    with_transaction(db, |c| {
+        c.execute(&"ALTER TABLE ...".into())?;
+        Ok(())
+    })?;
 }
 ```
 

@@ -82,7 +82,7 @@ CBGR implementation](/docs/architecture/cbgr-internals).**
 ### 2.3 Dual SMT backend with capability routing
 
 Verum links Z3 and CVC5 simultaneously. The capability router
-(`verum_smt::capability_router`) inspects each obligation's theory
+(`verum_smt.capability_router`) inspects each obligation's theory
 signature — quantifier complexity, datatype use, string operations,
 nonlinear arithmetic — and dispatches to the backend with the best
 fit. `@verify(reliable)` runs **both** backends and demands agreement
@@ -304,7 +304,7 @@ soundness.
 | REPL + Playbook TUI | production |
 
 Outside-of-TCB subsystems are versioned independently of the kernel.
-The kernel constant `verum_kernel::VVA_VERSION` (also surfaced via
+The kernel constant `verum_kernel.VVA_VERSION` (also surfaced via
 `verum --vva-version`) is the single source of truth for the verified
 calculus version.
 

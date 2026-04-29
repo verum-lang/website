@@ -4,7 +4,7 @@ title: util — constant-time ops, zeroise, RNG
 description: Timing-safe comparisons, secret-wipe, and the platform CSPRNG. Small utilities that matter enormously.
 ---
 
-# `core.security::util` — small utilities
+# `core.security.util` — small utilities
 
 Three primitives that every cryptographic program needs, in one
 module. Each is tiny but essential — using the wrong alternative
@@ -17,7 +17,7 @@ real-world crypto deployments get compromised.
 |---|---|---|
 | Compare a secret byte-slice to a user-supplied one | `==` | [`constant_time_eq`](#constant-time-equality) |
 | Clear secret bytes from memory before drop | `= 0` / `memset` | the `verum.mem.zeroise` intrinsic — see [Zeroise](#zeroise--clearing-secrets-from-memory) |
-| Generate cryptographically-random bytes | `rand::random`, `Math.random()` | `verum.rng.fill_secure` intrinsic |
+| Generate cryptographically-random bytes | `rand.random`, `Math.random()` | `verum.rng.fill_secure` intrinsic |
 
 The theme: each alternative looks right, runs in tests, but leaks
 secrets in production when subjected to practical attacks.
@@ -210,10 +210,10 @@ helpers built on top of the intrinsic:
 mount core.security.util.rng;
 
 let mut nonce: [Byte; 12] = [0; 12];
-rng::fill_secure_array(&mut nonce);   // const-N form, no bounds check
+rng.fill_secure_array(&mut nonce);   // const-N form, no bounds check
 
 let mut buf = List<Byte>::with_size(32);
-rng::fill_secure(&mut buf);           // dynamic-size form
+rng.fill_secure(&mut buf);           // dynamic-size form
 ```
 
 Use the `_array` form when the buffer length is known at compile

@@ -203,12 +203,12 @@ they validate the solver's proofs against random inputs.
 
 ```bash
 $ verum test
-   [verify] SortedList::insert      ✓ (formal/z3,  14 ms)
-   [verify] SortedList::remove_at   ✓ (formal/z3,   9 ms)
-   [verify] SortedList::merge       ✓ (formal/z3, 210 ms)
-   test tests::insert_preserves_sort          ... ok
-   test tests::merge_produces_sorted          ... ok
-   test tests::insert_preserves_sort_forall   ... ok (100 cases)
+   [verify] SortedList.insert      ✓ (formal/z3,  14 ms)
+   [verify] SortedList.remove_at   ✓ (formal/z3,   9 ms)
+   [verify] SortedList.merge       ✓ (formal/z3, 210 ms)
+   test tests.insert_preserves_sort          ... ok
+   test tests.merge_produces_sorted          ... ok
+   test tests.insert_preserves_sort_forall   ... ok (100 cases)
    all 3 tests passed
 ```
 

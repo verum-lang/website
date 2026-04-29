@@ -4,7 +4,7 @@ title: secrets — Vault / cloud secret stores
 description: Unified SecretStore protocol with AWS Secrets Manager, GCP Secret Manager, and HashiCorp Vault backends.
 ---
 
-# `core.security::secrets` — secret stores
+# `core.security.secrets` — secret stores
 
 ## Why a secrets module?
 
@@ -454,7 +454,7 @@ memory when no longer needed:
 ```verum
 impl Drop for Secret {
     fn drop(&mut self) {
-        // Best effort — requires util::zeroise (planned P1)
+        // Best effort — requires util.zeroise (planned P1)
         core.security.util.zeroise(&mut self.data);
     }
 }

@@ -64,7 +64,7 @@ overflowing_shl / overflowing_shr
 wrapping_add<T>(a, b) -> T        wrapping_sub / wrapping_mul
 wrapping_neg / wrapping_abs / wrapping_shl / wrapping_shr
 
-// Saturating — clamp at T::MIN / T::MAX
+// Saturating — clamp at T.MIN / T.MAX
 saturating_add<T>(a, b) -> T      saturating_sub / saturating_mul / saturating_div
 saturating_neg / saturating_abs
 
@@ -98,10 +98,10 @@ without panicking.
 | Op | Panics on (signed integer T) | Float behaviour |
 |----|-------------------------------|-----------------|
 | `add` / `sub` / `mul` | overflow / underflow | IEEE 754 — saturates to `±inf` |
-| `div` | `b == 0`; **also** `T::MIN / -1` (mathematical result is unrepresentable) | `x / 0.0 = ±inf`; `0.0 / 0.0 = NaN` |
-| `rem` | `b == 0`; `T::MIN % -1` | IEEE 754 |
-| `neg` / `abs` | `T::MIN` (mathematical result `|T::MIN|` is not representable) | flips sign / `abs(NaN) = NaN`, `abs(±inf) = +inf` |
-| `wrapping_div` / `wrapping_rem` | `b == 0` (the `T::MIN / -1` pair wraps instead of panicking) | n/a |
+| `div` | `b == 0`; **also** `T.MIN / -1` (mathematical result is unrepresentable) | `x / 0.0 = ±inf`; `0.0 / 0.0 = NaN` |
+| `rem` | `b == 0`; `T.MIN % -1` | IEEE 754 |
+| `neg` / `abs` | `T.MIN` (mathematical result `|T.MIN|` is not representable) | flips sign / `abs(NaN) = NaN`, `abs(±inf) = +inf` |
+| `wrapping_div` / `wrapping_rem` | `b == 0` (the `T.MIN / -1` pair wraps instead of panicking) | n/a |
 
 `signum` is total: returns `-1` / `0` / `1` for ints; for float
 NaN it returns NaN. `add` / `sub` / `mul` on unsigned T are the
@@ -416,7 +416,7 @@ simd_reduce_xor<V, T>(v: V) -> T
 
 ## Tensor
 
-Backs the high-level `tensor<Shape>T` literals and `math::tensor` API.
+Backs the high-level `tensor<Shape>T` literals and `math.tensor` API.
 Selected intrinsics:
 
 ```verum
@@ -475,7 +475,7 @@ tensor_fft()      tensor_flash_attention()       tensor_norm()
 
 ## GPU
 
-Orchestration intrinsics used by `math::gpu` and `@gpu.kernel`.
+Orchestration intrinsics used by `math.gpu` and `@gpu.kernel`.
 
 ```verum
 // Device management

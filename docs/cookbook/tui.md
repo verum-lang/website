@@ -163,7 +163,7 @@ Trigger work from `update`:
 Msg.Load(path) => {
     let path = path.clone();
     Command.task(async move {
-        match fs::read_to_string_async(&path).await {
+        match fs.read_to_string_async(&path).await {
             Result.Ok(text) => Msg.Loaded(text),
             Result.Err(e)   => Msg.Error(e.to_string()),
         }

@@ -155,7 +155,7 @@ async fn process_bounded<T, U>(
                 let _permit = sem.acquire().await;
                 let r = f(item).await?;
                 out.lock().await.push(r);
-                Result.Ok::<(), Error>(())
+                Result.Ok<(), Error>(())
             };
         }
     }

@@ -20,7 +20,7 @@ verum lint --format json | jq .   # NDJSON for ad-hoc analysis
 verum lint --explain todo-in-code # one rule's full doc
 verum lint --explain todo-in-code --open  # open the docs page in a browser
 verum lint --list-rules           # every rule the binary knows
-verum lint --list-groups          # verum::strict / nursery / pedantic / ...
+verum lint --list-groups          # verum.strict / nursery / pedantic / ...
 verum lint --watch                # re-lint on save (debounced 300 ms)
 ```
 
@@ -182,7 +182,7 @@ change the result mid-run. Mutually exclusive with `--since`.
   with: { sarif_file: target/lint.sarif }
 ```
 
-`--format github-actions` emits `::error file=…,line=N::msg`
+`--format github-actions` emits `::error file=…,line=N.msg`
 annotations that show up *inline on the PR diff* in the GitHub UI —
 no extra reporter step needed.
 
@@ -280,7 +280,7 @@ verum lint --fix && git diff      # review the result
 
 Today the biggest beneficiary is `deprecated-syntax`:
 
-- `Box::new(x)` → `Heap(x)`
+- `Box.new(x)` → `Heap(x)`
 - `Vec<T>` → `List<T>`
 - `String` → `Text`
 - `::` → `.`
@@ -393,7 +393,7 @@ kind = "unsafe_block"
 ```
 
 AST-pattern rules are strictly more precise than regex rules — they
-walk the parsed module via `verum_ast::Visitor`, so they will not
+walk the parsed module via `verum_ast.Visitor`, so they will not
 fire on text inside string literals or comments. They participate
 in `[lint.severity]`, per-file overrides, and `@allow(...)` exactly
 like built-in rules.

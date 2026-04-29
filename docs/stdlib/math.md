@@ -250,8 +250,8 @@ type Rng is protocol {
 };
 
 type XorShift128 is { ... };          type PCG is { ... };
-XorShift128::seed(key) -> XorShift128
-PCG::seed(key) -> PCG
+XorShift128.seed(key) -> XorShift128
+PCG.seed(key) -> PCG
 
 rng.uniform_01() -> Float                // [0.0, 1.0)
 rng.uniform(lo, hi) -> Int / Float
@@ -276,19 +276,19 @@ Defines `Tensor<T, const S: Shape>` (statically shaped) and `DynTensor<T>`
 
 ```verum
 // Construction
-zeros::<Float, shape[3, 4]>() -> Tensor<Float, shape[3, 4]>
-ones::<Float, shape[3, 4]>()
-full::<Float, shape[2, 2]>(value: 3.14)
-eye::<Float, 5>()                        // identity
+zeros<Float, shape[3, 4]>() -> Tensor<Float, shape[3, 4]>
+ones<Float, shape[3, 4]>()
+full<Float, shape[2, 2]>(value: 3.14)
+eye<Float, 5>()                        // identity
 arange(start, stop, step) -> DynTensor<Float>
 linspace(start, stop, n) -> Tensor<Float, shape[n]>
-rand::<Float, shape[3, 4]>()             // uniform [0, 1)
-randn::<Float, shape[3, 4]>()            // standard normal
+rand<Float, shape[3, 4]>()             // uniform [0, 1)
+randn<Float, shape[3, 4]>()            // standard normal
 
 // Shape & indexing
 t.shape() -> Shape        t.dtype() -> DType
-t.reshape::<shape[...]>() / t.squeeze() / t.unsqueeze(axis)
-t.transpose() / t.permute::<[Int; N]>(axes)
+t.reshape<shape[...]>() / t.squeeze() / t.unsqueeze(axis)
+t.transpose() / t.permute<[Int; N]>(axes)
 t.flatten() / t.slice(...) / t.gather(indices) / t.scatter(indices, values)
 
 // Arithmetic
@@ -321,13 +321,13 @@ type DeviceSelector, DeviceRegistry;
 type MemorySpace, DevicePtr<T>, GPUBuffer<T>, PinnedBuffer<T>;
 type Stream, Event, LaunchConfig, CudaGraph;
 
-GPUBackend::default() -> GPUBackend
-device.allocate::<T>(count) -> GPUBuffer<T>
+GPUBackend.default() -> GPUBackend
+device.allocate<T>(count) -> GPUBuffer<T>
 device.launch(config, kernel, args)
 device.sync()
 ```
 
-See [`simd::gpu`](/docs/stdlib/simd#gpu-simdgpu) and
+See [`simd.gpu`](/docs/stdlib/simd#gpu-simdgpu) and
 [`intrinsics → gpu`](/docs/stdlib/intrinsics#gpu) for device-side
 intrinsics.
 
@@ -338,7 +338,7 @@ intrinsics.
 ```verum
 type DiffMode is ReverseMode | ForwardMode | MixedMode { threshold: Float };
 
-DiffMode::auto(input_dim, output_dim) -> DiffMode
+DiffMode.auto(input_dim, output_dim) -> DiffMode
 // Picks ForwardMode when output_dim / input_dim > 1, else ReverseMode.
 
 type Differentiable is protocol {
@@ -409,8 +409,8 @@ SGD.new(params, lr, momentum, weight_decay)
 AdamW.new(params, lr, betas, weight_decay)
 
 // Schedulers
-LRScheduler::cosine(initial_lr, min_lr, max_steps)
-LRScheduler::step(initial_lr, gamma, step_size)
+LRScheduler.cosine(initial_lr, min_lr, max_steps)
+LRScheduler.step(initial_lr, gamma, step_size)
 
 // Loss
 mse_loss(pred, target) / cross_entropy(pred, target) / bce_loss(pred, target)
@@ -442,7 +442,7 @@ DistributedDataParallel.new(module, process_group)
 FSDP.new(module, sharding_strategy)          // fully-sharded data parallel
 
 ActorMesh.new(layout)                          Supervision(...)
-RDMA::connect(peer)                             // remote direct memory access
+RDMA.connect(peer)                             // remote direct memory access
 ```
 
 ---
@@ -553,8 +553,8 @@ constructions.
 
 ## Cross-references
 
-- **[simd](/docs/stdlib/simd)** — SIMD vectors that `math::tensor` uses under the hood.
+- **[simd](/docs/stdlib/simd)** — SIMD vectors that `math.tensor` uses under the hood.
 - **[intrinsics](/docs/stdlib/intrinsics)** — raw CPU/GPU primitives.
-- **[theory_interop](/docs/stdlib/theory-interop)** — theory registry + translation + coherence audit; consumes `math::infinity_topos` + `math::kan_extension`.
+- **[theory_interop](/docs/stdlib/theory-interop)** — theory registry + translation + coherence audit; consumes `math.infinity_topos` + `math.kan_extension`.
 - **[proof](/docs/stdlib/proof)** — proof certificates that verify math-module obligations.
-- **[Verification → cubical & HoTT](/docs/verification/cubical-hott)** — the path types that `math::hott` encodes.
+- **[Verification → cubical & HoTT](/docs/verification/cubical-hott)** — the path types that `math.hott` encodes.

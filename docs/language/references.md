@@ -160,7 +160,7 @@ if the analysis succeeds.
 *const T        *mut T        *volatile T        *volatile mut T
 ```
 
-Raw pointers are produced via `ptr::addr_of!`, `ptr::addr_of_mut!`, or
+Raw pointers are produced via `ptr.addr_of!`, `ptr.addr_of_mut!`, or
 FFI boundary casts. They do not carry lifetime; dereferencing them is
 `unsafe`.
 

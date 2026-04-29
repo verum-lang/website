@@ -94,8 +94,8 @@ Applied bits:
 - **Packet number bytes:** every byte in the PN field XORs with
   `mask[1 + i]`.
 
-The HP key flavour is encoded as `HpKey::AesEcb128([Byte;16])`,
-`HpKey::AesEcb256([Byte;32])`, or `HpKey::ChaCha20Block([Byte;32])`
+The HP key flavour is encoded as `HpKey.AesEcb128([Byte;16])`,
+`HpKey.AesEcb256([Byte;32])`, or `HpKey.ChaCha20Block([Byte;32])`
 — constructed at key-derivation time based on the AEAD family.
 
 API:

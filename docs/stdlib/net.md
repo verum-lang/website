@@ -36,9 +36,9 @@ Architecture:
 Ipv4Addr.new(a, b, c, d) -> Ipv4Addr
 Ipv4Addr.localhost() -> Ipv4Addr             // 127.0.0.1
 Ipv4Addr.unspecified() -> Ipv4Addr           // 0.0.0.0
-Ipv4Addr::broadcast() -> Ipv4Addr             // 255.255.255.255
-Ipv4Addr::parse(&"127.0.0.1") -> Result<Ipv4Addr, AddrParseError>
-Ipv4Addr::from_u32(bits) -> Ipv4Addr
+Ipv4Addr.broadcast() -> Ipv4Addr             // 255.255.255.255
+Ipv4Addr.parse(&"127.0.0.1") -> Result<Ipv4Addr, AddrParseError>
+Ipv4Addr.from_u32(bits) -> Ipv4Addr
 
 a.octets() -> (Byte, Byte, Byte, Byte)
 a.to_u32() -> Int
@@ -51,9 +51,9 @@ Implements `Eq`, `Ord`, `Hash`, `Clone`, `Copy`, `Debug`, `Display`.
 
 ```verum
 Ipv6Addr.new(a, b, c, d, e, f, g, h) -> Ipv6Addr     // 8× UInt16
-Ipv6Addr::localhost() -> Ipv6Addr                     // ::1
+Ipv6Addr.localhost() -> Ipv6Addr                     // ::1
 Ipv6Addr.unspecified() -> Ipv6Addr                   // ::
-Ipv6Addr::parse(&"::1") -> Result<Ipv6Addr, AddrParseError>
+Ipv6Addr.parse(&"::1") -> Result<Ipv6Addr, AddrParseError>
 
 a.segments() -> (Int, Int, Int, Int, Int, Int, Int, Int)
 a.octets() -> [Byte; 16]
@@ -65,16 +65,16 @@ a.is_loopback() / is_unspecified() / is_multicast() / is_link_local() / is_uniqu
 ```verum
 type IpAddr is V4(Ipv4Addr) | V6(Ipv6Addr);
 
-IpAddr::v4(a, b, c, d)        IpAddr::v6(a..h)
+IpAddr.v4(a, b, c, d)        IpAddr.v6(a..h)
 a.is_ipv4() / is_ipv6() / is_loopback() / is_unspecified() / is_multicast()
 ```
 
 ### `SocketAddr`
 
 ```verum
-SocketAddr::new_v4(Ipv4Addr, port) -> SocketAddr
-SocketAddr::new_v6(Ipv6Addr, port) -> SocketAddr
-SocketAddr::parse(&"127.0.0.1:8080") -> Result<SocketAddr, AddrParseError>
+SocketAddr.new_v4(Ipv4Addr, port) -> SocketAddr
+SocketAddr.new_v6(Ipv6Addr, port) -> SocketAddr
+SocketAddr.parse(&"127.0.0.1:8080") -> Result<SocketAddr, AddrParseError>
 
 s.ip() -> IpAddr      s.port() -> Int
 s.is_ipv4() / s.is_ipv6()
@@ -96,8 +96,8 @@ type ToSocketAddrs is protocol {
 ```
 
 ```verum
-TcpStream::connect("example.com:443").await?;           // uses ToSocketAddrs
-TcpStream::connect(("::1", 8080)).await?;
+TcpStream.connect("example.com:443").await?;           // uses ToSocketAddrs
+TcpStream.connect(("::1", 8080)).await?;
 ```
 
 ### `AddrParseError`
@@ -113,11 +113,11 @@ type AddrParseError is InvalidFormat | InvalidOctet | InvalidPort;
 ### `TcpStream`
 
 ```verum
-TcpStream::connect<A: ToSocketAddrs>(addr) -> IoResult<TcpStream>
-TcpStream::connect_addr(&SocketAddr) -> IoResult<TcpStream>
+TcpStream.connect<A: ToSocketAddrs>(addr) -> IoResult<TcpStream>
+TcpStream.connect_addr(&SocketAddr) -> IoResult<TcpStream>
 
 // Async variants
-TcpStream::connect_async<A: ToSocketAddrs>(addr).await -> IoResult<TcpStream>
+TcpStream.connect_async<A: ToSocketAddrs>(addr).await -> IoResult<TcpStream>
 
 s.peer_addr() -> SocketAddr        s.local_addr() -> SocketAddr
 s.as_raw_fd() -> FileDesc
@@ -226,8 +226,8 @@ async fn echo_server() {
 ## UDP
 
 ```verum
-UdpSocket::bind<A: ToSocketAddrs>(addr) -> IoResult<UdpSocket>
-UdpSocket::bind_addr(&SocketAddr) -> IoResult<UdpSocket>
+UdpSocket.bind<A: ToSocketAddrs>(addr) -> IoResult<UdpSocket>
+UdpSocket.bind_addr(&SocketAddr) -> IoResult<UdpSocket>
 
 s.connect(&SocketAddr) -> IoResult<()>                  // default peer
 
@@ -342,14 +342,14 @@ const DNS_TYPE_ANY:   UInt16 = 255;
 ## HTTP
 
 Types and protocol. Full client implementation lives in a separate
-cog (`http`); `core.net::http` gives you the building blocks.
+cog (`http`); `core.net.http` gives you the building blocks.
 
 ### `Method`
 
 ```verum
 type Method is Get | Head | Post | Put | Delete | Connect | Options | Trace | Patch;
 
-m.as_str() -> Text        Method::from_str(&"GET") -> Maybe<Method>
+m.as_str() -> Text        Method.from_str(&"GET") -> Maybe<Method>
 m.is_safe() -> Bool        m.is_idempotent() -> Bool        m.has_body() -> Bool
 ```
 
@@ -357,9 +357,9 @@ m.is_safe() -> Bool        m.is_idempotent() -> Bool        m.has_body() -> Bool
 
 ```verum
 StatusCode.new(code: Int) -> StatusCode
-StatusCode::ok()           StatusCode.created()      StatusCode::no_content()
-StatusCode::bad_request()  StatusCode::unauthorized() StatusCode::forbidden()
-StatusCode.not_found()    StatusCode::internal_server_error()
+StatusCode.ok()           StatusCode.created()      StatusCode.no_content()
+StatusCode.bad_request()  StatusCode.unauthorized() StatusCode.forbidden()
+StatusCode.not_found()    StatusCode.internal_server_error()
 
 s.code() -> Int             s.reason_phrase() -> Text
 s.is_informational() / is_success() / is_redirection() / is_client_error() / is_server_error()
@@ -804,18 +804,18 @@ v.is_secure() -> Bool           // true iff v in {Tls12, Tls13}
 type KeyType is Rsa | Ec | Ed25519;
 
 type Certificate is { der_data: List<Byte> };
-Certificate::from_der(bytes)
-Certificate::from_pem(&pem) -> Result<Certificate, TlsError>
-Certificate::from_pem_chain(&pem) -> Result<List<Certificate>, TlsError>
+Certificate.from_der(bytes)
+Certificate.from_pem(&pem) -> Result<Certificate, TlsError>
+Certificate.from_pem_chain(&pem) -> Result<List<Certificate>, TlsError>
 cert.der_bytes() -> &[Byte]     cert.size() -> Int
 
 type PrivateKey is { der_data: List<Byte>, key_type: KeyType };
-PrivateKey::from_der(bytes, key_type)
-PrivateKey::from_pem(&pem) -> Result<PrivateKey, TlsError>
+PrivateKey.from_der(bytes, key_type)
+PrivateKey.from_pem(&pem) -> Result<PrivateKey, TlsError>
 key.key_type() -> KeyType
 
 type SystemCerts;
-SystemCerts::load() -> List<Certificate>    // platform-native store
+SystemCerts.load() -> List<Certificate>    // platform-native store
 ```
 
 ### Configuration
@@ -836,7 +836,7 @@ type TlsConfig is {
 };
 
 TlsConfig.client()
-    .with_root_certs(SystemCerts::load())
+    .with_root_certs(SystemCerts.load())
     .with_min_version(TlsVersion.Tls12)
     .with_alpn(&[&"h2", &"http/1.1"])
 
@@ -851,9 +851,9 @@ TlsConfig.server()
 type TlsStream is { inner: TcpStream, session: TlsSession, ... };
 
 // Client
-TlsStream::connect(tcp, &server_name, &config).await -> Result<TlsStream, TlsError>
+TlsStream.connect(tcp, &server_name, &config).await -> Result<TlsStream, TlsError>
 // Server
-TlsStream::accept(tcp, &config).await -> Result<TlsStream, TlsError>
+TlsStream.accept(tcp, &config).await -> Result<TlsStream, TlsError>
 
 // AsyncRead/AsyncWrite protocol methods
 s.poll_read(cx, &mut buf) -> Poll<Result<Int, IoError>>
@@ -949,14 +949,14 @@ async fn fetch_json(url: &Text) -> Result<JsonValue, Error> {
     let host = parsed.host().ok_or(Error.new("no host"))?;
     let port = parsed.port().unwrap_or(443);
 
-    let tcp = TcpStream::connect_async((host, port)).await?;
-    let cfg = TlsConfig.client().with_root_certs(SystemCerts::load());
-    let mut tls = TlsStream::connect(tcp, host, &cfg).await?;
+    let tcp = TcpStream.connect_async((host, port)).await?;
+    let cfg = TlsConfig.client().with_root_certs(SystemCerts.load());
+    let mut tls = TlsStream.connect(tcp, host, &cfg).await?;
 
     let req = f"GET {parsed.path()} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n";
     tls.write_all_async(req.as_bytes()).await?;
 
-    let mut buf = List::<Byte>.new();
+    let mut buf = List<Byte>.new();
     let mut tmp = [0u8; 4096];
     loop {
         let n = tls.read_async(&mut tmp).await?;

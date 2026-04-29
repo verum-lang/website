@@ -139,7 +139,7 @@ async fn handle_create_user(req: Request) -> Result<Response, Error>
     using [Database]
 {
     let body = req.read_body_limited(1024 * 64).await?;
-    let payload: CreateUserRequest = json::parse(&body)?;
+    let payload: CreateUserRequest = json.parse(&body)?;
     let user = Database.create_user(&payload).await?;
     Response.json(user).into_ok()
 }
@@ -270,7 +270,7 @@ Compose by folding the list of middlewares around a core handler:
 let middlewares = vec![with_logging, with_auth];
 let handler = middlewares.iter().rfold(
     route as Next,
-    |inner, mw| Next::from(move |req| mw(req, inner.clone())),
+    |inner, mw| Next.from(move |req| mw(req, inner.clone())),
 );
 ```
 

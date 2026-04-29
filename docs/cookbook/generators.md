@@ -147,12 +147,12 @@ Example: concurrent HTTP fetches with bounded parallelism:
 async fn fetch_all(urls: &List<Url>) -> List<Bytes>
     using [Http]
 {
-    stream::iter(urls.iter())
+    stream.iter(urls.iter())
         .map(|u| Http.get(u.clone()))
         .buffer_unordered(16)                   // 16 concurrent, order undefined
         .filter_map(|r| async { r.ok() })
         .map(|resp| resp.body().await.unwrap())
-        .collect::<List<_>>()
+        .collect<List<_>>()
         .await
 }
 ```
@@ -261,7 +261,7 @@ fn* until_zero(xs: &List<Int>) -> Int {
 
 ### Infinite generators on a `.collect()`
 
-`fibonacci().collect::<List<Int>>()` runs forever. Add a `.take(n)`
+`fibonacci().collect<List<Int>>()` runs forever. Add a `.take(n)`
 before `.collect()` if you want a finite prefix.
 
 ### Cancellation only at `.await` points

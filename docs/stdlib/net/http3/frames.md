@@ -59,7 +59,7 @@ Registered identifiers:
 | ID | Name | Default | RFC |
 |---:|------|--------:|-----|
 | 0x01 | `QPACK_MAX_TABLE_CAPACITY` | 0 | RFC 9204 §5 |
-| 0x06 | `MAX_FIELD_SECTION_SIZE` | u64::MAX | RFC 9114 §7.2.4.1 |
+| 0x06 | `MAX_FIELD_SECTION_SIZE` | u64.MAX | RFC 9114 §7.2.4.1 |
 | 0x07 | `QPACK_BLOCKED_STREAMS` | 0 | RFC 9204 §5 |
 | 0x08 | `ENABLE_CONNECT_PROTOCOL` | 0 (off) | RFC 9220 |
 | 0x33 | `H3_DATAGRAM` | 0 (off) | RFC 9297 |

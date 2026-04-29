@@ -23,7 +23,7 @@ fn increment_bumps_counter() {
 
 #[test]
 fn load_dispatches_async_fetch() {
-    let mut m = DataModel::default();
+    let mut m = DataModel.default();
     let cmd = m.update(Msg.Load);
     match cmd {
         Command.Async(_) => {}       // good — we asked for a task
@@ -70,7 +70,7 @@ terminal:
 
 ```verum
 let mut vt = VirtualTerminal.new(80, 24);
-let mut app = MyModel::new();
+let mut app = MyModel.new();
 
 vt.type_keys("hello\n");
 vt.run_one_frame(&mut app);
@@ -96,8 +96,8 @@ let mut rt = ManualRuntime.new();
 let (done_rx, result) = rt.block_on_with_fake_clock(
     run_async(my_model),
     |events| {
-        events.push(Msg.Tick(Instant::epoch()));
-        events.push(Msg.Tick(Instant::epoch() + Duration::from_secs(1)));
+        events.push(Msg.Tick(Instant.epoch()));
+        events.push(Msg.Tick(Instant.epoch() + Duration.from_secs(1)));
     },
 );
 ```

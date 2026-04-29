@@ -4,7 +4,7 @@ title: labels — information-flow control
 description: Labelled data, the flows-to lattice, and information-flow tracking enforced by the type system.
 ---
 
-# `core.security::labels` — information-flow labels
+# `core.security.labels` — information-flow labels
 
 ## What is information-flow control?
 

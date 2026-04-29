@@ -33,12 +33,12 @@ no allocation).
 let s: Text = "hello";                         // static literal
 let s2 = Text.new();                          // empty
 let s3 = Text.with_capacity(64);              // pre-allocated
-let s4 = Text::from("literal");                // from &str
+let s4 = Text.from("literal");                // from &str
 let s5 = Text.from_utf8(bytes)?;              // Result<Text, Utf8Error>
 let s6 = Text.from_utf8_lossy(bytes);         // replaces invalid bytes
-let s7 = Text::from_chars(iter)                // from Iterator<Char>
-let s8 = Int::to_text(42);                     // from integer
-let s9 = Float::to_text(3.14);
+let s7 = Text.from_chars(iter)                // from Iterator<Char>
+let s8 = Int.to_text(42);                     // from integer
+let s9 = Float.to_text(3.14);
 let s10 = f"x={x}, y={y + 1}";                 // format literal
 ```
 
@@ -148,7 +148,7 @@ s.split_regex(&pattern) -> RegexSplit
 ### Parsing
 
 ```verum
-s.parse::<T>() -> Result<T, ParseError>         // T: FromStr
+s.parse<T>() -> Result<T, ParseError>         // T: FromStr
 s.parse_int() -> Result<Int, ParseError>
 s.parse_float() -> Result<Float, ParseError>
 s.parse_bool() -> Result<Bool, ParseError>
@@ -272,9 +272,9 @@ s.trim_matches(char_any_of(&[' ', '\t', '\n']))
 ### Constants
 
 ```verum
-Char::MIN = '\0'
-Char::MAX = '\u{10FFFF}'
-Char::UNICODE_LIMIT = 0x10FFFF
+Char.MIN = '\0'
+Char.MAX = '\u{10FFFF}'
+Char.UNICODE_LIMIT = 0x10FFFF
 REPLACEMENT_CHARACTER = '\u{FFFD}'
 ```
 
@@ -518,7 +518,7 @@ let s = b.into_text();                // consumes builder
 
 ```verum
 StringBuilder.new()
-StringBuilder::with_capacity(n)
+StringBuilder.with_capacity(n)
 
 b.len()  b.capacity()  b.is_empty()  b.clear()
 b.as_text() -> &Text

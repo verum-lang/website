@@ -24,7 +24,7 @@ drops.
 use core.mem.GenerationalArena;
 
 fn parse_file(source: &Text) -> Result<Ast, ParseError> {
-    let arena = GenerationalArena::<Node>.new(capacity: 4096);
+    let arena = GenerationalArena<Node>.new(capacity: 4096);
     let tree = parse_into(source, &arena)?;
     let stats = compute_statistics(&tree);
     Result.Ok(Ast { stats, /* owned, independent of arena */ })
@@ -39,7 +39,7 @@ stray handle is invalidated atomically.
 ```verum
 type ArenaHandle<T> is { idx: Int, generation: UInt32 };
 
-let arena = GenerationalArena::<Node>.new(capacity: 1024);
+let arena = GenerationalArena<Node>.new(capacity: 1024);
 let h: ArenaHandle<Node> = arena.insert(Node.Leaf { value: 42 });
 let n: Maybe<&Node> = arena.get(h);                 // Some if still valid
 let n: Maybe<&mut Node> = arena.get_mut(h);
@@ -54,7 +54,7 @@ Set the arena as the active allocator for a scope:
 
 ```verum
 fn parse<'a>() -> Ast {
-    let arena = GenerationalArena::<Byte>.new(1 << 20);     // 1 MiB
+    let arena = GenerationalArena<Byte>.new(1 << 20);     // 1 MiB
     provide Allocator = arena in {
         parse_body()                                          // uses arena for all Heap.new
     }

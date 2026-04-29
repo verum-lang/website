@@ -105,7 +105,7 @@ Heap.new(value) -> Heap<T>                      // panics on OOM
 Heap.new_default() -> Heap<T>                   // T: Default
 Heap.new_zeroed() -> Heap<T>
 Heap.try_new(value) -> Result<Heap<T>, AllocError>
-Heap::from_raw(ptr) -> Heap<T>                   // unsafe
+Heap.from_raw(ptr) -> Heap<T>                   // unsafe
 ```
 
 ### Introspection
@@ -138,7 +138,7 @@ s.weak() -> Weak<T>                 // does not bump strong count
 Shared.strong_count(&s) -> Int
 Shared.weak_count(&s) -> Int
 Shared.try_unwrap(s) -> Result<T, Shared<T>>   // succeeds if strong_count == 1
-Shared::get_mut(&mut s) -> Maybe<&mut T>         // Some if unique
+Shared.get_mut(&mut s) -> Maybe<&mut T>         // Some if unique
 ```
 
 `Weak<T>.upgrade() -> Maybe<Shared<T>>` — returns `Some` if the target
@@ -203,7 +203,7 @@ fn is_aligned(x: Int, align: Int) -> Bool
 
 ```verum
 type HazardGuard<T> is { ... };
-HazardGuard::acquire(slot: Int, ptr: *const T) -> HazardGuard<T>
+HazardGuard.acquire(slot: Int, ptr: *const T) -> HazardGuard<T>
 guard.release()                       // explicit drop also works
 ```
 
@@ -218,7 +218,7 @@ freer scans all hazard slots before returning memory to the pool.
 ```verum
 type EpochManager is { ... };
 
-EpochManager::global() -> &EpochManager
+EpochManager.global() -> &EpochManager
 mgr.current() -> UInt32
 mgr.advance()                         // bump epoch (typically timer-driven)
 mgr.register_thread()
@@ -300,7 +300,7 @@ medium / large allocations are bookkept separately.
 ```verum
 type LocalHeap is { ... };
 
-LocalHeap::current() -> &LocalHeap
+LocalHeap.current() -> &LocalHeap
 heap.alloc(layout) -> Result<*mut Byte, AllocError>
 heap.free(ptr, layout)
 heap.stats() -> AllocStats

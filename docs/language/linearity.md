@@ -40,7 +40,7 @@ exactly the question you ask when a value represents a *resource*:
 | Cryptographic nonce | Nonce reuse | `Nonce` is linear — reuse is a type error |
 | Physical capability | Accidental duplication | `AdminToken` used once per operation |
 | GPU buffer | Free-after-unmap | Mapping consumes the buffer, unmapping restores it |
-| One-shot sender | Sending twice | `oneshot::Sender<T>` moves into `.send(v)` and is gone |
+| One-shot sender | Sending twice | `oneshot.Sender<T>` moves into `.send(v)` and is gone |
 
 Verum's answer — inspired by **substructural type theory** (Girard,
 Wadler) and **Linear Haskell** — is a first-class attribute on the

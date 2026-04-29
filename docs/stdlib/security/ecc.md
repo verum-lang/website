@@ -4,7 +4,7 @@ title: ecc — Curve25519 / X25519 ECDH
 description: Elliptic-curve Diffie–Hellman over Curve25519. The classical half of every modern TLS 1.3 / QUIC key exchange and the PQ-hybrid `X25519MLKEM768`.
 ---
 
-# `core.security::ecc` — elliptic-curve cryptography
+# `core.security.ecc` — elliptic-curve cryptography
 
 ## What is ECDH and why do we need it?
 

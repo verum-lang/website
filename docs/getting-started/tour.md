@@ -76,7 +76,7 @@ fn average(x: Percentage, y: Percentage) -> Percentage {
 Refinement predicates are part of the type. They are checked at the
 boundaries where values flow from unconstrained to refined, and erased
 at runtime when the proof succeeds. The SMT capability router
-(`verum_smt::BackendSwitcher`) picks the backend — Z3, CVC5, or a
+(`verum_smt.BackendSwitcher`) picks the backend — Z3, CVC5, or a
 portfolio — based on the theory mix of the predicate.
 
 ## 5. Three-tier references
@@ -192,7 +192,7 @@ fn same_value<T>(x: T) -> Path<T>(x, x) {
 a value), and Path types (`Path<T>(x, y)` — the type of paths from
 `x` to `y`) coexist with refinement types and the rest of the surface
 language. The kernel's HoTT layer (`Transp`, `HComp`, `Glue`) is
-wired to its reduction rules in `verum_smt::cubical_tactic`.
+wired to its reduction rules in `verum_smt.cubical_tactic`.
 
 ## 10. Framework axioms
 

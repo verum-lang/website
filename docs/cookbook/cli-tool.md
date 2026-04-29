@@ -9,7 +9,7 @@ description: Arguments, subcommands, config, error reporting.
 
 ```verum
 fn main() -> Result<(), Error> {
-    let args = env::args();
+    let args = env.args();
     match args.get(1).map(|s| s.as_str()) {
         Maybe.Some("--help") | Maybe.Some("-h") => print_help(),
         Maybe.Some(name)                        => greet(&name),
@@ -61,9 +61,9 @@ fn parse_args(args: &List<Text>) -> Result<Command, Error> {
 }
 
 fn main() {
-    match parse_args(&env::args()).and_then(dispatch) {
+    match parse_args(&env.args()).and_then(dispatch) {
         Result.Ok(()) => (),
-        Result.Err(e) => { eprintln(&f"error: {e}"); env::exit(1); }
+        Result.Err(e) => { eprintln(&f"error: {e}"); env.exit(1); }
     }
 }
 ```
@@ -72,10 +72,10 @@ fn main() {
 
 ```verum
 fn load_config() -> Result<Config, Error> {
-    let path = env::var_opt("MYTOOL_CONFIG")
-        .unwrap_or_else(|| format!("{}/.mytool/config.toml", env::home_dir().unwrap_or(".".to_string())));
+    let path = env.var_opt("MYTOOL_CONFIG")
+        .unwrap_or_else(|| format!("{}/.mytool/config.toml", env.home_dir().unwrap_or(".".to_string())));
 
-    match fs::read_to_string(&Path.from(&path)) {
+    match fs.read_to_string(&Path.from(&path)) {
         Result.Ok(text) => toml_parse(&text).map_err(Error.from),
         Result.Err(e) if e.kind == IoErrorKind.NotFound => Result.Ok(Config.default()),
         Result.Err(e) => Result.Err(Error.from(e)),
@@ -86,7 +86,7 @@ fn load_config() -> Result<Config, Error> {
 ### Coloured error output
 
 ```verum
-use term::style::{Color, Style};
+use term.style::{Color, Style};
 
 fn report_error(e: &Error) {
     let red = Style.new().fg(Color.Red).add_modifier(Modifier.Bold);
@@ -103,10 +103,10 @@ fn report_error(e: &Error) {
 ```verum
 fn main() {
     match run() {
-        Result.Ok(())                                  => env::exit_success(),
-        Result.Err(e) if e.is_user_error()             => { report_error(&e); env::exit(1); }
-        Result.Err(e) if e.is_config_error()           => { report_error(&e); env::exit(78); }  // sysexits EX_CONFIG
-        Result.Err(e)                                  => { report_error(&e); env::exit(1); }
+        Result.Ok(())                                  => env.exit_success(),
+        Result.Err(e) if e.is_user_error()             => { report_error(&e); env.exit(1); }
+        Result.Err(e) if e.is_config_error()           => { report_error(&e); env.exit(78); }  // sysexits EX_CONFIG
+        Result.Err(e)                                  => { report_error(&e); env.exit(1); }
     }
 }
 ```
@@ -114,7 +114,7 @@ fn main() {
 ### Progress bars & spinners
 
 ```verum
-use term::widget::{Spinner, SpinnerFrames};
+use term.widget::{Spinner, SpinnerFrames};
 
 async fn slow_task() {
     let mut spin = Spinner.new().frames(&SpinnerFrames.Dots);

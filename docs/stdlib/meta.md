@@ -807,8 +807,8 @@ const DEFAULT_TIMEOUT_MS:      Int = 30_000;              // 30 s
 ```verum
 @meta_macro
 meta fn derive_debug<T>() -> TokenStream using [TypeInfo, AstAccess, CompileDiag] {
-    let name = TypeInfo.name_of::<T>();
-    let fields = TypeInfo.fields_of::<T>();
+    let name = TypeInfo.name_of<T>();
+    let fields = TypeInfo.fields_of<T>();
     quote {
         implement Debug for ${name} {
             fn fmt_debug(&self, f: &mut Formatter) -> FmtResult {
@@ -833,7 +833,7 @@ that one operates on actual compiler AST nodes; `tactic.vr` is the
 abstract calculus over an opaque `MetaTerm` — useful for *modeling*
 tactic combinators, *reasoning about* meta-language reductions, and
 serving as the user-facing surface for the tactic-meta analysis core
-in `verum_types::tactic_meta`.
+in `verum_types.tactic_meta`.
 
 ### Term shape
 

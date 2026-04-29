@@ -32,7 +32,7 @@ Use this module when you want to:
 | `continuation.vr` | `CcTerm` algebra, smart constructors, predicates, capture-avoiding substitution |
 
 The module is intentionally small. There is no reducer here — Verum's
-compiler research uses [`verum_types::continuation_calculus`] (Rust
+compiler research uses [`verum_types.continuation_calculus`] (Rust
 crate) for the actual reduction engine; the pure-Verum shim is the
 type algebra.
 

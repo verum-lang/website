@@ -120,7 +120,7 @@ let server = recv("Credentials",
 assert(compatible(client, server));
 ```
 
-The compiler uses session types in the `verum_types::session_types`
+The compiler uses session types in the `verum_types.session_types`
 module to typecheck channel usage in `async` code — detecting
 deadlocks, forgotten handshakes, and protocol violations at compile
 time.
@@ -140,7 +140,7 @@ can:
 - **Prove properties** (deadlock-freedom, no channel-use-after-close,
   progress) using the term algebra and standard bisimulation tactics.
 
-The compiler's own `verum_types::session_types` module uses this
+The compiler's own `verum_types.session_types` module uses this
 data to **typecheck channel usage** in `async` code — deadlocks,
 forgotten handshakes, and protocol violations are detected at
 compile time where the programmer declares a channel's protocol.

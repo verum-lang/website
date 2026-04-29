@@ -225,7 +225,7 @@ violation.
 ## Arguments
 
 A script reads command-line arguments via the standard library —
-`core.base.env::args()` returns them as a `List<Text>` with the
+`core.base.env.args()` returns them as a `List<Text>` with the
 program name at index 0:
 
 ```verum
@@ -291,6 +291,156 @@ The cost of script mode for users who don't use it is **zero**.
 A `.vr` file without a shebang compiles exactly as it would
 have before script mode existed, and a script-mode source
 containing only declarations produces no wrapper.
+
+---
+
+## Sandboxing scripts with permissions
+
+A Verum script is a security boundary. The dynamic-language
+default is "the script can do anything the user could do" —
+fine for one-shot work on your own machine, terrifying for
+anything you fetched off the internet or run on someone else's
+data. Verum closes that gap with a declarative permission
+surface that the **same enforcement engine** honours under both
+the interpreter and an AOT-compiled binary.
+
+### Declaring grants
+
+Permissions live in the script's frontmatter, the inline
+metadata block delimited by `// /// script` lines. Frontmatter
+sits immediately after the shebang:
+
+```verum
+#!/usr/bin/env verum
+// /// script
+// permissions = ["fs:read=./data", "net=api.example.com:443"]
+// ///
+mount json;
+
+let body = io.fs.read_text("./data/config.json")?;
+let resp = http.get("https://api.example.com:443/v1/echo")?;
+print(resp.body);
+0
+```
+
+Each grant has a **kind** and an optional **target**:
+
+| Kind         | Meaning                                         | Targetable               |
+|--------------|-------------------------------------------------|--------------------------|
+| `fs:read`    | Read files                                      | Yes (`fs:read=./data`)  |
+| `fs:write`   | Write/create/unlink files                       | Yes                      |
+| `net`        | TCP/UDP/HTTP outbound + listen                  | Yes (`net=host:port`)    |
+| `run`        | Spawn subprocesses, signal, exit non-zero       | Yes (program path)       |
+| `ffi`        | Raw FFI / inline assembly                       | Yes (symbol name)        |
+| `time`       | Wall-clock / monotonic clock reads              | No                       |
+| `random`     | Host CSPRNG seeding                             | No                       |
+| `env`        | Read/write process environment                  | No                       |
+
+A bare kind grants the **wildcard** for that scope:
+`permissions = ["net"]` allows every host:port combination,
+while `permissions = ["net=internal.svc:5432"]` allows only the
+listed target. Multiple targets in one declaration combine
+additively (`["net=a:80", "net=b:80"]` permits both).
+
+### CLI overrides
+
+You can also drive permissions from the command line — useful
+for sandboxing a script you didn't write or relaxing a
+production policy in a one-off debug session:
+
+```bash
+$ verum --allow=fs:read=./logs --deny-all script.vr   # whitelist
+$ verum --allow-all untrusted.vr                       # explicit "I trust this"
+$ verum script.vr                                      # frontmatter wins
+```
+
+CLI flags **augment** frontmatter grants: a frontmatter
+declaring `["net"]` plus `--allow=fs:read=./tmp` ends up with
+both. `--deny-all` is the empty set; `--allow-all` is the
+universal set. Either CLI flag installs a permission policy
+even if the script's frontmatter is silent — opt-in to
+sandboxing without editing the source.
+
+The resolved policy is mixed into the script's persistent VBC
+cache key, so two runs with different policies never collide on
+the same cached binary.
+
+### Enforcement: same gate, both tiers
+
+Verum's defining property is that **the interpreter and the
+AOT-compiled binary enforce the policy identically**. There is
+no "AOT is fast but unsafe" fallback. The mechanism:
+
+* **Interpreter (Tier 0).** A runtime `PermissionRouter` lives
+  inside the dispatch loop. Every gated FFI call (`open`,
+  `connect`, `socket`, `_exit`, `mmap`, …) and every raw
+  syscall intrinsic checks the router on the warm path
+  (≤ 2 ns one-entry cache hit). A denied call panics with
+  `permission denied: <scope>(<target>)` and exits 143
+  (SIGTERM-style, distinct from logic-panic exit 1).
+
+* **AOT (Tier 1).** The CLI hands the resolved policy to the
+  LLVM lowerer, which **bakes the grants into the generated
+  binary at compile time**. Each `PermissionAssert` opcode in
+  the bytecode lowers to one of four shapes — chosen per call
+  site at compile time, not at runtime:
+
+  | Policy state for this scope               | Emitted IR                                       |
+  |-------------------------------------------|--------------------------------------------------|
+  | Unconditionally allowed (wildcard / always-allow) | **No code** (the assert is elided entirely; LLVM sees zero overhead) |
+  | Fully denied (no grants of any shape)     | Unconditional `puts("permission denied …") + _exit(143) + unreachable` (LLVM removes the gated intrinsic body via DCE) |
+  | Specific targets listed                   | `switch i64 %target_id { T1 => ok, T2 => ok, default => panic }` (LLVM compiles the switch to compact branch-on-equal sequences) |
+  | No script-mode policy installed (trusted application path) | **No code** (every gate is elided; matches the interpreter's allow-all default) |
+
+  The panic site is **inlined per call site** rather than
+  routed through a runtime helper. Inlining keeps the policy
+  sealed in the binary — there is no helper symbol an attacker
+  could intercept and no env-var protocol to tamper with — and
+  lets LLVM merge identical denial sites across the module.
+
+* **Sealed at build time.** The AOT cache key includes the
+  resolved policy hash, so a binary cached for one policy is
+  never reused for another. A script's compiled `.bin` always
+  reflects the policy that was active when it was built.
+
+### Wire-format contract
+
+The interpreter and the AOT lowerer agree on a stable
+**scope tag** mapping for the wire-encoded `PermissionAssert`
+opcode (single byte, immediate after the opcode):
+
+| Byte | Scope         |
+|------|---------------|
+| 0    | Syscall       |
+| 1    | FileSystem    |
+| 2    | Network       |
+| 3    | Process       |
+| 4    | Memory        |
+| 5    | Cryptography  |
+| 6    | Time          |
+
+Unknown bytes collapse to **Syscall** — the most-restricted
+scope — so a malformed or future-tagged call site errs on
+stronger gating, never weaker.
+
+### Diagnostics
+
+A denied call surfaces a typed error. The interpreter prints:
+
+```text
+permission denied: Network(0xDEADBEEF)
+```
+
+The AOT binary, if compiled with the standard panic prologue,
+prints:
+
+```text
+permission denied: script lacks `network` grant for this operation
+```
+
+and exits 143. Tooling (test runners, oncall dashboards) can
+distinguish capability violations from logic panics by the exit
+code: 143 = capability, 1 = logic.
 
 ---
 

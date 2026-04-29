@@ -24,12 +24,12 @@ is just a friendlier alias.
 ### Construction
 
 ```verum
-let a: Matrix<2, 3, Float> = Tensor::from_slice::<Float, shape![2, 3]>(&[
+let a: Matrix<2, 3, Float> = Tensor.from_slice<Float, shape![2, 3]>(&[
     1.0, 2.0, 3.0,
     4.0, 5.0, 6.0,
 ]);
 
-let b: Matrix<3, 2, Float> = Tensor::from_slice::<Float, shape![3, 2]>(&[
+let b: Matrix<3, 2, Float> = Tensor.from_slice<Float, shape![3, 2]>(&[
     7.0,  8.0,
     9.0, 10.0,
     11.0, 12.0,
@@ -86,11 +86,11 @@ fn add_broadcast<const M: Int, const N: Int>(
     a: &Matrix<M, N, Float>,
     b: &Tensor<Float, shape![N]>,          // row vector
 ) -> Matrix<M, N, Float> {
-    a + b.broadcast::<shape![M, N]>()
+    a + b.broadcast<shape![M, N]>()
 }
 ```
 
-The `broadcast::<shape![M, N]>()` call tells the compiler the target
+The `broadcast<shape![M, N]>()` call tells the compiler the target
 shape; if the source shape can't broadcast to it, compile error.
 
 ### Concatenation
@@ -122,17 +122,17 @@ fn matmul_dyn(a: &DynTensor<Float>, b: &DynTensor<Float>) -> Result<DynTensor<Fl
 
 Use `DynTensor<T>` when shapes are not known until runtime (e.g.,
 tensors loaded from a file). Mix freely with static tensors —
-`tensor.to_dyn()` and `tensor.try_reshape_static::<Shape>()` convert.
+`tensor.to_dyn()` and `tensor.try_reshape_static<Shape>()` convert.
 
 ### Dependent type in function signature
 
 ```verum
 /// Return a zero vector of length n (n determined at call site).
 fn zeros<const n: Int { self >= 0 }>() -> Tensor<Float, shape![n]> {
-    Tensor::zeros::<Float, shape![n]>()
+    Tensor.zeros<Float, shape![n]>()
 }
 
-let z: Tensor<Float, shape![10]> = zeros::<10>();
+let z: Tensor<Float, shape![10]> = zeros<10>();
 ```
 
 ### Common patterns

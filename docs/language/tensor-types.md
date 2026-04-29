@@ -28,7 +28,7 @@ fn matmul<M, K, N>(a: Tensor<Float32, [M, K]>,
 ```
 
 :::info Status
-Wired end-to-end: `Type::Tensor { element, shape, strides }` in
+Wired end-to-end: `Type.Tensor { element, shape, strides }` in
 `crates/verum_types/src/ty.rs`, shape validation in
 `tensor_shape_checker.rs`, literal-building protocol in
 `tensor_protocol.rs`, 40+ VBC e2e tests under
@@ -74,7 +74,7 @@ Tensor<Float32, [3, 224, 224]>
 tensor<3, 224, 224> Float32
 ```
 
-Both elaborate to the same `Type::Tensor` node. Use the generic
+Both elaborate to the same `Type.Tensor` node. Use the generic
 form in general code; use the explicit form in numerical contexts
 where the resemblance to the literal aids reading.
 
@@ -330,14 +330,14 @@ message.
 
 You're calling a shape-polymorphic function with concrete tensors
 but the compiler can't deduce `A = 3, B = 4`. Add type arguments:
-`f::<3, 4>(t)` — or wait for inference to see both arguments and
+`f<3, 4>(t)` — or wait for inference to see both arguments and
 the return type.
 
 ### "My `reshape` fails even though the products match"
 
 The SMT constraint is `product(OldShape) == product(NewShape)`,
 and nonlinear arithmetic is undecidable in general. Provide a
-hint: `reshape::<[A*B, C]>(t)` or break the reshape into steps
+hint: `reshape<[A*B, C]>(t)` or break the reshape into steps
 with known intermediate shapes.
 
 ### "Broadcasting says 'dimension 2: 7 vs 7' and still fails"
@@ -357,7 +357,7 @@ compile-time constant.
 
 | Feature | Status | Backing |
 |---|---|---|
-| `Type::Tensor` in the type system | **Stable** | `verum_types/src/ty.rs:785-800` |
+| `Type.Tensor` in the type system | **Stable** | `verum_types/src/ty.rs:785-800` |
 | Tensor literal parser / checker | **Stable** | `verum_types/src/infer.rs:18346` |
 | Shape arithmetic in types | **Stable** | `verum_types/src/tensor_shape_checker.rs` |
 | Broadcasting inference | **Maturing** | `tensor_shape_checker.rs` |

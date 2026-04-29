@@ -284,7 +284,7 @@ pub meta fn derive_url_like<T>() -> TokenStream
     quote {
         implement UrlLike for ${name} {
             fn to_url_query(&self) -> Text {
-                let mut $tmp = List::<Text>::new();
+                let mut $tmp = List<Text>::new();
                 $[for f in fields.iter() {
                     $tmp.push(&f"{${lift(f.name.to_text())}}={self.${f.name}.url_encode()}");
                 }]

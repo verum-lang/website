@@ -403,15 +403,15 @@ A typical top-level entry point layers every context once:
 ```verum
 fn main() {
     let app_layer = Layer.new()
-        .with_singleton::<Logger>(ConsoleLogger.new(LogLevel.Info))
-        .with_singleton::<Clock>(SystemClock.new())
-        .with_request::<Database>(|| PostgresDatabase.connect(&db_url))
-        .with_request::<Metrics>(|| Metrics.tagged("req_id"));
+        .with_singleton<Logger>(ConsoleLogger.new(LogLevel.Info))
+        .with_singleton<Clock>(SystemClock.new())
+        .with_request<Database>(|| PostgresDatabase.connect(&db_url))
+        .with_request<Metrics>(|| Metrics.tagged("req_id"));
 
     app_layer.run(async {
         let mut server = HttpServer.bind(&":8080").await?;
         server.serve(|req| handle(req)).await?;
-        Result.Ok::<(), Error>(())
+        Result.Ok<(), Error>(())
     }).await.expect("server");
 }
 

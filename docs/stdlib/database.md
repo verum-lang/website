@@ -121,14 +121,183 @@ implement Database {
     public fn query_first_row(&mut self, sql: &Text) -> Result<List<Register>, DbError>;
     public fn query_all(&mut self, sql: &Text) -> Result<List<List<Register>>, DbError>;
 
-    public fn begin(&mut self) -> Result<(), DbError>;            // deferred
-    public fn begin_immediate(&mut self) -> Result<(), DbError>;  // reserves write lock
-    public fn commit(&mut self) -> Result<(), DbError>;
-    public fn rollback(&mut self) -> Result<(), DbError>;
+    // Affine transaction handle — see Transaction section below.
+    public fn begin_tx(&mut self)           -> Result<Transaction, DbError>;
+    public fn begin_tx_immediate(&mut self) -> Result<Transaction, DbError>;
+    public fn begin_tx_exclusive(&mut self) -> Result<Transaction, DbError>;
+    public fn commit_tx(&mut self, tx: Transaction)   -> Result<(), DbError>;
+    public fn rollback_tx(&mut self, tx: Transaction) -> Result<(), DbError>;
+    public fn with_transaction<R>(
+        &mut self,
+        body: fn(&mut Database) -> Result<R, DbError>,
+    ) -> Result<R, DbError>;
+    public fn with_transaction_immediate<R>(...) -> Result<R, DbError>;
 
     public fn close(self);                                        // affine consume
 }
 ```
+
+### Affine `Transaction`
+
+`Transaction` is `affine` — the type system refuses to drop the
+value out of scope, so forgetting to `commit_tx` / `rollback_tx`
+is a *compile-time error* rather than a production bug.  The most
+common SQL bug ("leaked transaction" — opened BEGIN, never reached
+COMMIT or ROLLBACK because of an early return / panic / forgotten
+branch) becomes lexically impossible.
+
+```verum
+public affine type Transaction is {
+    started_at_depth: Int,    // tx-depth snapshot for sanity check
+    kind: TxKind,             // Deferred / Immediate / Exclusive
+};
+
+public type TxKind is TkDeferred | TkImmediate | TkExclusive;
+```
+
+Defence-in-depth: `commit_tx` checks the connection's tx-depth
+(driven by every server-side `ReadyForQuery` equivalent) and
+refuses to fire if a savepoint was left dangling — surfaces
+`DbMisuse(...)` rather than corrupting tx state.
+
+Recommended idiom — `with_transaction` callback combinator:
+
+```verum
+db.with_transaction(|d| {
+    d.execute(&"INSERT INTO accounts (id, balance) VALUES (1, 100)".into())?;
+    d.execute(&"UPDATE accounts SET balance = balance + 50 WHERE id = 1".into())?;
+    Ok(())
+})?;
+```
+
+The body receives `&mut Database`; on `Ok` the tx auto-commits, on
+`Err` it rolls back.  The user never names a `Transaction` value.
+
+### Online backup
+
+```verum
+mount core.database.sqlite.native.l7_api.{
+    BackupSession,
+    backup_init_to_path, backup_init_into,
+    backup_step, backup_finish, backup_to_path_in_one_go,
+};
+mount core.database.sqlite.native.backup_api.request.{
+    BackupStepRequest, from_n_pages,
+};
+
+// One-shot copy.
+let dst = backup_to_path_in_one_go(&mut db, &"/tmp/snapshot.db".into())?;
+
+// Throttled — caller sleeps between batches.
+let mut sess = backup_init_to_path(&db, &"/tmp/snapshot.db".into())?;
+loop {
+    match backup_step(&mut sess, &mut db, from_n_pages(100)) {
+        BoOk     => { /* sleep_ms(10).await; */ }
+        BoDone   => break,
+        BoFailed { code, reason } => return Err(...),
+    }
+}
+let _dst = backup_finish(sess);
+```
+
+`BackupSession` is `affine` — must be terminated with
+`backup_finish` (or its alias `backup_abandon`).  Concurrent
+writers on the source are tolerated: each `backup_step` re-reads
+the source's total page count, so a source that grows mid-backup
+has its tail picked up on the next step (matches SQLite's
+semantics).
+
+### Connection-level hooks
+
+Eight observation surfaces (`commit` / `rollback` / `update` /
+`pre_update` / `authorizer` / `busy` / `progress` / `trace`) plug
+in via `Database.set_*_hook`.  Last subscriber wins.
+
+```verum
+mount core.database.sqlite.native.ext.hooks.{CommitHook, CommitDecision, CdAllow};
+mount core.database.sqlite.native.l7_api.set_commit_hook;
+
+implement CommitHook for MyAuditLog {
+    fn on_commit(&mut self) -> CommitDecision { /* ... */ CdAllow }
+}
+
+set_commit_hook(&mut db, Heap.new(MyAuditLog.default()));
+```
+
+`commit_hook` fires *before* the connection finalises the COMMIT;
+`CdAbort(msg)` turns it into a forced ROLLBACK.  Update-hook
+fires from the L4 VDBE Insert / Update / Delete opcodes — the
+mutation log is captured per program run and replayed by the L6
+writeback bridge so subscribers see (op, schema, table, rowid)
+tuples for every committed row mutation.
+
+### Typed PRAGMA surface
+
+Raw `db.execute("PRAGMA cache_size = 1000")` works but loses
+type-safety — typo-d names (`cach_size`) silently no-op in SQLite
+C.  The typed surface uses `PragmaKind` enum so misspellings are
+*compile errors*:
+
+```verum
+mount core.database.sqlite.native.l7_api.{pragma_get_int, pragma_set_int};
+mount core.database.sqlite.native.pragmas.registry.{PCacheSize, PJournalMode};
+
+let n = pragma_get_int(&mut db, PCacheSize)?;        // -> Int64
+pragma_set_int(&mut db, PCacheSize, 4000)?;
+```
+
+Generic surface (`pragma_get` / `pragma_set`) returns / accepts
+`PragmaValue { PvNull | PvInt(Int64) | PvText(Text) | PvBool(Bool) }`
+for callers that need to hold the value abstractly (CLI driver,
+REPL, audit-log replay).
+
+### Incremental BLOB I/O
+
+`sqlite3_blob_*`-equivalent surface for reading / writing BLOB
+columns *without* materialising the whole payload:
+
+```verum
+mount core.database.sqlite.native.l7_api.{
+    blob_open, blob_bytes, blob_read, blob_write, blob_reopen, blob_close,
+};
+
+let h = blob_open(&mut db, &"main".into(), &"docs".into(),
+                  &"body".into(), 42 as Int64, /*write_mode=*/ true)?;
+let total = blob_bytes(&db, h)?;
+let chunk = blob_read(&db, h, 0, 4096)?;       // List<Byte>
+blob_write(&mut db, h, 4096, &more_bytes)?;
+blob_close(&mut db, h)?;
+```
+
+Constraints (matching SQLite): writes cannot grow the BLOB beyond
+its open-time size; only `RBlob` / `RText` columns are addressable;
+`RText` becomes `RBlob` on first write.
+
+### Spindle adapter façade
+
+`core.database.sqlite.SqliteConnection` is the cross-vendor
+adapter façade.  It forwards every L7 surface above
+(`begin_tx` / `commit_tx` / `with_transaction` / backup / hooks /
+`pragma_get_int` / blob) to the loom L7 entry points and translates
+the loom `DbError` into the unified `core.database.common.error.
+DbError` so handler code is portable across SQLite / Postgres /
+MySQL.
+
+### Postgres + MySQL parity surface
+
+The same architectural patterns extend to the other backends:
+
+| Capability | SQLite | Postgres | MySQL |
+|---|---|---|---|
+| Affine Transaction | ✓ `Transaction` | ✓ `PgTransaction` | ✓ `MysqlTransaction` |
+| Query cancellation | (sqlite3_interrupt) | ✓ `cancel_running_query` | (KILL — pending) |
+| LISTEN/NOTIFY pubsub | (no equiv) | ✓ `listen` / `notify` / `take_notifications` | (binlog — pending) |
+| COPY bulk ingest | (transaction batch) | ✓ `copy_in_text_lines` / `copy_out_bytes` | (LOAD DATA — pending) |
+| Prepared statements | ✓ `prepare` | ✓ extended-protocol | ✓ `prepare` / `execute_prepared` |
+| Online backup | ✓ `backup_*` | (pg_basebackup — server-side) | (mysqldump — server-side) |
+| Hooks | ✓ commit/rollback/update | (logical replication — server) | (binlog — server) |
+| Typed Pragma | ✓ `pragma_*` | (no equiv) | (no equiv) |
+| BLOB I/O | ✓ `blob_*` | (large objects — pending) | (server BLOB) |
 
 ### `DbError` — SQLSTATE-style tagged sum
 
@@ -352,7 +521,7 @@ stdlib types:
    `Maybe`, `List`, `Map`, `Set`, `Bytes`, `Iterator`, plus the variant
    constructors `Ok`, `Err`, `Some`, `None`.  A `public type Result is
    | RNull | RText` inside a catalogue silently shadows
-   `core::Result<T, E>` for any sibling that imports both, and the
+   `core.Result<T, E>` for any sibling that imports both, and the
    downstream error message is "Unknown variant constructor 'Ok'.
    Available variants: [RNull, RText]" — easy to miss.  Use a
    project-prefixed name such as `JournalSizeResult`,
@@ -364,11 +533,11 @@ stdlib types:
    `wal_frame_layout`) when it mirrors a feature.
 3. **Variants — domain-prefixed.** A `Mode` enum that may co-exist
    with another `Mode` from a sibling module gets prefixed variants:
-   `LmNormal` / `LmExclusive` for `locking_mode_pragma::Mode`,
-   `JmDelete` / `JmWal` for `journal_mode_pragma_api::JournalMode`.
+   `LmNormal` / `LmExclusive` for `locking_mode_pragma.Mode`,
+   `JmDelete` / `JmWal` for `journal_mode_pragma_api.JournalMode`.
 4. **Sub-module name `mod_`** when the natural name (`mod`,
    `module`, `iter`, `next`) collides with a Verum keyword or stdlib
-   protocol — see `concat_ws_fn::fn_`, `format_fn::spec_`.
+   protocol — see `concat_ws_fn.fn_`, `format_fn.spec_`.
 
 A guardrail Rust test (`crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`)
 walks the catalogue tree on every CI run and fails when any reserved
@@ -412,13 +581,28 @@ Two CI guardrails enforce the most load-bearing invariants:
   makes a 4 × 4 KiB round-trip exceed the 30 s test timeout.
   Single-page round-trip (`page_roundtrip.vr`) runs in ~7 s.
 
-* **`PosixVfs`** — scaffolded; production use blocked on
-  `core.sys.locking` + `core.sys.durability` integration.
+* **`PosixVfs`** — production-ready as of commit 919a69d0 (real-DB
+  paths route through `safe_open_raw` to bypass a Tier-0 interpreter
+  recursion in `&[Byte]` parameter coercion).  All 5 critical L0
+  primitives (`random_bytes`, `current_time`, `file_size`,
+  `truncate`, `access`) are wired to real syscalls;
+  `core.sys.locking` and `core.sys.durability` integration shipped
+  in commit 98b91213.  The shm path (`MappedFileShm`) for cross-
+  process WAL-index remains pending.
 
-* **File-format parity with C-SQLite** — the on-disk header offsets
-  (`application_id` at byte 68, `user_version` at byte 60, …) are
-  encoded in the corresponding catalogues but have not yet been
-  validated against a file written by C-SQLite.
+* **File-format parity with C-SQLite** — diagnostic harness in
+  `internal/diag/sqlite-real/` (gitignored) opens real SQLite 3.x
+  files end-to-end via the production VFS path; full
+  `parse_header → schema_walker → SELECT` ladder is the next
+  diagnostic step (DIAG-3..6 in the task queue).
+
+* **VBC interpreter `&[T]` parameter coerce** — Tier-0 interpreter
+  recurses to depth 16384 when passing a slice as function
+  argument.  Workaround: provide a parallel `_raw` entry that takes
+  `&Byte` instead of `&[Byte]`; PosixVfs.open routes through
+  `safe_open_raw` for this reason.  Real fix is in
+  `crates/verum_vbc` slice-argument-pass machinery — pending
+  RUNTIME-3-DEEPER.
 
 * **Stdlib cross-module impl-block methods.** The VBC codegen's
   `compile_module_items_lenient` may silently drop impl-block
@@ -444,6 +628,12 @@ Two CI guardrails enforce the most load-bearing invariants:
   layer-by-layer dissection of the eight-stratum stack from L0 (VFS)
   through L7 (public API), the actual contracts each upward boundary
   carries, and the catalogue surface that sits beside the engine.
+- [`core.database.postgres`](./database-postgres) — pure-Verum
+  PostgreSQL v3 driver: SCRAM-SHA-256, extended protocol, affine
+  `PgTransaction`, query cancellation, LISTEN/NOTIFY, COPY streaming.
+- [`core.database.mysql`](./database-mysql) — pure-Verum MySQL 8.0
+  binary-protocol driver: `caching_sha2_password`, COM_STMT_PREPARE
+  prepared statements, affine `MysqlTransaction`.
 - [`stdlib/encoding`](/docs/stdlib/encoding) — where the varint codec
   lives.
 - [`stdlib/runtime`](/docs/stdlib/runtime) — supervisor-tree primitives

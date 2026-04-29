@@ -75,6 +75,40 @@ const CONTEXT_STACK_DEPTH: Int = 256;
 
 ---
 
+## Cross-platform file & random helpers — `sys.common`
+
+Platform-agnostic syscall wrappers that dispatch to `sys.linux` /
+`sys.darwin` / `sys.windows` under a single signature.  These are
+the shape that pure-Verum stdlib modules (`core.database.sqlite`,
+`core.security.aead`, `core.io.file`) actually call.
+
+```verum
+// File I/O — all positional, do not perturb fd offset
+fn pread(fd: FileDesc, buf: &mut [Byte], offset: Int) -> Result<Int, OSError>
+fn pwrite(fd: FileDesc, buf: &[Byte], offset: Int) -> Result<Int, OSError>
+
+// File metadata
+fn file_size(fd: FileDesc) -> Result<Int, OSError>
+fn truncate(fd: FileDesc, length: Int) -> Result<(), OSError>
+fn access(path: &[Byte], mode: Int) -> Result<Bool, OSError>   // F_OK / R_OK / W_OK / X_OK
+
+// Durability
+fn full_fsync(fd: FileDesc) -> Result<(), OSError>            // F_FULLFSYNC on macOS, fdatasync on Linux
+fn sync_directory(path: &[Byte]) -> Result<(), OSError>
+
+// Byte-range advisory file locks (POSIX fcntl / Win LockFileEx)
+fn try_lock_region(fd: FileDesc, kind: FcntlLockKind, start: Int, len: Int) -> Result<(), OSError>
+fn unlock_region(fd: FileDesc, start: Int, len: Int) -> Result<(), OSError>
+
+// Cryptographic randomness — getrandom / SecRandomCopyBytes / BCryptGenRandom
+fn random_bytes(buf: &mut [Byte]) -> Result<(), OSError>
+```
+
+All wrappers carry `IntrinsicHint.RequiresPermission`; capability
+checking is the caller's responsibility (typically via
+`sys.permissions`).  Errors are **typed `OSError`** with raw errno
+plus localised message.
+
 ## Page alignment
 
 ```verum
@@ -346,8 +380,8 @@ on Darwin does **not** flush the disk's write cache.
 ## Permission gating (`#12` / P3.2)
 
 Every raw-syscall intrinsic (`syscall0..=syscall6`,
-`IntrinsicCategory::Syscall`) is registered with the
-`IntrinsicHint::RequiresPermission` marker. Codegen consults
+`IntrinsicCategory.Syscall`) is registered with the
+`IntrinsicHint.RequiresPermission` marker. Codegen consults
 the marker to insert a
 `__permission_check(scope, target) -> Result<(), PermissionDenied>`
 gate before the intrinsic body so deny-listed contexts
@@ -377,7 +411,7 @@ caching for ≤2 ns warm overhead) is the follow-up phase.
 ```verum
 mount sys.linux;
 
-// Direct syscalls (gated — all 7 carry IntrinsicHint::RequiresPermission)
+// Direct syscalls (gated — all 7 carry IntrinsicHint.RequiresPermission)
 unsafe fn syscall_raw(num: Int, a0..a5: Int) -> Int
 unsafe fn syscall6(num: Int, a0..a5: Int) -> Int
 
@@ -479,7 +513,7 @@ mount sys.no_runtime;
 ## Cross-references
 
 - **[mem](/docs/stdlib/mem)** — `os_alloc` feeds the segment allocator.
-- **[io](/docs/stdlib/io)** — file operations call through `sys::file_ops`.
-- **[net](/docs/stdlib/net)** — TCP/UDP uses `sys::net_ops` and the IO engine.
+- **[io](/docs/stdlib/io)** — file operations call through `sys.file_ops`.
+- **[net](/docs/stdlib/net)** — TCP/UDP uses `sys.net_ops` and the IO engine.
 - **[async](/docs/stdlib/async)** — executor uses the IO engine for readiness.
 - **[intrinsics → runtime](/docs/stdlib/intrinsics)** — low-level time, TLS, syscall intrinsics.

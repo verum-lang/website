@@ -157,7 +157,7 @@ via CPUID at runtime — see [intrinsics → platform](/docs/stdlib/intrinsics#p
 
 ---
 
-## GPU (`simd::gpu`)
+## GPU (`simd.gpu`)
 
 SIMT primitives for `@gpu.kernel` functions and device orchestration.
 
@@ -197,8 +197,8 @@ type Block is { x: Int, y: Int, z: Int };
 ### Grid & Block helpers
 
 ```verum
-Grid.d1(x)  Grid::d2(x, y)  Grid::d3(x, y, z)
-Block.d1(x) Block::d2(x, y) Block::d3(x, y, z)
+Grid.d1(x)  Grid.d2(x, y)  Grid.d3(x, y, z)
+Block.d1(x) Block.d2(x, y) Block.d3(x, y, z)
 block.total_threads() -> Int
 ```
 
@@ -252,7 +252,7 @@ fn main() using [IO, GpuDevice] {
     let cfg = GpuConfig.auto();
     let a = GpuBuffer.from_slice(&[1.0, 2.0, 3.0, 4.0]);
     let b = GpuBuffer.from_slice(&[10.0, 20.0, 30.0, 40.0]);
-    let mut c = GpuBuffer::<Float>.allocate(4);
+    let mut c = GpuBuffer<Float>.allocate(4);
 
     vec_add<<<Grid.d1(1), Block.d1(4)>>>(&a, &b, &mut c, 4);
 
@@ -326,7 +326,7 @@ Use cases:
 | **LLVM backend lowering to `<N x T>` vector ops** | **In progress (compiler-level)** |
 | `@multiversion` runtime CPU-feature dispatch | In progress (compiler-level) |
 | SWAR fallback for non-SIMD targets | Planned |
-| High-level byte-scan helpers (`simd::bytes`) | Complete (declarations) |
+| High-level byte-scan helpers (`simd.bytes`) | Complete (declarations) |
 | Benchmarks vs hand-written C | Planned (after backend) |
 
 ## Cross-references
