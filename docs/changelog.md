@@ -16,6 +16,33 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `CompilerOptions.emit_mode` `Assembly` and `Object` variants short-circuit before linking (2026-04-29)
+
+Companion to the prior wire-up that closed `EmitMode::LlvmIr`
+and `EmitMode::Bitcode`. The terminal variants `Assembly`
+(set by `verum build --emit asm`) and `Object` landed on
+`CompilerOptions` but the pipeline always proceeded through
+runtime-stub compilation and linking, silently producing an
+executable instead of the requested artifact.
+
+The variant set splits into two semantic classes:
+
+  - **Additive** (`LlvmIr`, `Bitcode`) — emit the artifact
+    *alongside* the executable; the build still produces a
+    linked binary. Useful for inspection / diagnostics.
+  - **Terminal** (`Assembly`, `Object`) — emit the artifact
+    *instead of* the executable; the build short-circuits
+    before runtime stubs and linking. Useful for downstream
+    custom-link toolchains and embedded targets.
+
+Wired in `phase_generate_native` immediately after the bitcode
+emit block: `Assembly` calls `target_machine.write_to_file`
+with `FileType::Assembly` to `target/<profile>/<module>.s`
+(or the user-specified `--output`); `Object` copies the
+already-written object file from the build dir to
+`target/<profile>/<module>.o` (or `--output`). Both modes
+return early before any linker invocation.
+
 ### Fixed — `LspConfig.verification_show_cost_warnings` + `verification_slow_threshold` reach the LSP response (2026-04-29)
 
 Both fields were forwarded into the validator's internal
