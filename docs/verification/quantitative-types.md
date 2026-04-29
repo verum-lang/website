@@ -49,22 +49,21 @@ public fn fixed_width(@quantity(0) width: Int, value: Int) -> Vec<Int>;
 public fn read_freely(@quantity(omega) x: Int) -> Int;
 ```
 
-Three surface shapes accepted by `Owl2QuantityAttr::from_attribute`:
+Three surface shapes accepted by the `@quantity` attribute parser:
 
 | Form | Example | Lowering |
 |---|---|---|
-| Integer literal | `@quantity(0)` / `@quantity(1)` | `Quantity::Zero` / `Quantity::One` |
-| Path identifier | `@quantity(omega)`, `@quantity(linear)`, `@quantity(erased)` | parsed via `Quantity::parse` |
-| String literal | `@quantity("omega")` | parsed via `Quantity::parse` |
+| Integer literal | `@quantity(0)` / `@quantity(1)` | `Quantity.Zero` / `Quantity.One` |
+| Path identifier | `@quantity(omega)`, `@quantity(linear)`, `@quantity(erased)` | parsed via `Quantity.parse` |
+| String literal | `@quantity("omega")` | parsed via `Quantity.parse` |
 
-Aliases recognised by `Quantity::parse` (per
-`crates/verum_ast/src/attr/typed.rs`):
+Aliases recognised by `Quantity.parse`:
 
 | Spelling | Resolves to |
 |---|---|
-| `0`, `Zero`, `zero`, `erased` | `Quantity::Zero` |
-| `1`, `One`, `one`, `linear` | `Quantity::One` |
-| `omega`, `ω`, `Many`, `many`, `unrestricted` | `Quantity::Many` |
+| `0`, `Zero`, `zero`, `erased` | `Quantity.Zero` |
+| `1`, `One`, `one`, `linear` | `Quantity.One` |
+| `omega`, `ω`, `Many`, `many`, `unrestricted` | `Quantity.Many` |
 
 Unknown spellings (`@quantity(2)`, `@quantity(affine)`,
 `@quantity(infinity)`) are **rejected** at parse time — silent
@@ -80,7 +79,10 @@ acceptance of a typo would be a soundness hole.
 | `@quantity(0, 1)` | rejected — exactly one argument required |
 | `@inline(0)` | inert — `from_attribute` returns `None` because the attribute name is not `quantity` |
 
-Every rejection path is covered by `crates/verum_ast/tests/attr_tests.rs::quantity_*`.
+Every rejection path above is covered by parser-test fixtures in the
+compiler's attribute-handling test suite, so adding a new alias
+(or accepting a new shape) requires both a code change and a
+companion test.
 
 ---
 
@@ -253,9 +255,10 @@ Verum has *two* linearity-related surfaces, easy to confuse:
 | `affine type Foo { ... }` (or `linear`) | type declaration | per-type | the values of type Foo are at-most-once / exactly-once consumable |
 | `fn f(@quantity(1) x: T)` | per-binder | per-parameter | this specific binding of `x` is exactly-once |
 
-The type-level modifier (`affine` / `linear` in `crates/verum_ast/src/decl.rs::ResourceModifier`) constrains the *type's destruction
-contract* — every value of an affine type carries the same
-"at most once" rule across its lifetime.
+The type-level modifier (`affine type Foo` or `linear type Foo`)
+constrains the *type's destruction contract* — every value of an
+affine type carries the same "at most once" rule across its
+lifetime.
 
 The binder-level quantity (`@quantity(N)` per this page) constrains
 *this specific use site* — different parameters of the same
