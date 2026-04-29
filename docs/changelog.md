@@ -499,6 +499,20 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `verum bench --no-color` actually suppresses ANSI output (2026-04-29)
+
+Closes the inert-defense pattern around the `verum bench`
+no-color flag. The field landed on `BenchOptions` from the CLI
+`--no-color` flag but was never read — so `verum bench --no-color`
+still emitted ANSI escapes, breaking output captured in CI logs
+that didn't strip them.
+
+Wired at the start of `execute`: when the flag is set, call
+`colored::control::set_override(false)` to suppress all ANSI-styled
+output globally for the duration of the bench run. The `colored`
+crate is already a dependency for the existing styled tables, so
+the wiring is a single call (no new dependencies, no API change).
+
 ### Fixed — `verum test --release` and `--verify` reach the test compiler (2026-04-29)
 
 Closes two inert-defense patterns at the `verum test` CLI →
