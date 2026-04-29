@@ -275,6 +275,33 @@ than the requested resource — it lies to callers about the
 resource and produces a worse failure mode than the true error
 case.
 
+#### Archive memory-amplification bounds
+
+A `.vbc` archive on disk is a directory of module entries; the
+header carries `module_count`, and each index entry declares
+`name_len`, `dep_count`, and `data_size`.  Without bounds these
+attacker-controlled sizes turn a 32-byte hostile header into a
+terabyte allocation request — a memory-amplification denial-of-
+service that brings the loader down before the file's actual
+contents are even read.
+
+The deserializer enforces architectural upper bounds **before
+any allocation**:
+
+- **`MAX_MODULES_PER_ARCHIVE = 65 536`** — no real-world Verum
+  archive shipped through `cog publish` approaches this.  An
+  archive claiming `u32::MAX` modules is rejected at the header
+  gate.
+- **`MAX_MODULE_NAME_BYTES   = 16 KB`** — module names are
+  dotted paths; 16 KB is roughly 1 000 segments.
+- **`MAX_DEPS_PER_MODULE     = 4 096`** — a single module
+  depending on more than 4 K others is implausible.
+- **`MAX_MODULE_DATA_BYTES   = 1 GB`** — single-module bytecode
+  beyond 1 GB is structurally suspect and refused.
+
+Each rejection error message names the offending field so triage
+is immediate.
+
 ### Implementation surface (Rust)
 
 For compiler / runtime hackers: the trust boundary is exposed as

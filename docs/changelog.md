@@ -16,6 +16,29 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — memory-amplification defense in VBC archive deserializer (2026-04-29)
+
+`read_archive` in `verum_vbc::archive` previously trusted four
+attacker-controlled size fields from the archive header for
+allocation: `module_count` (u32), `name_len` (u32 per index
+entry), `dep_count` (u32 per entry), and `data_size` (u64 per
+module).  A 32-byte hostile archive header could request
+terabytes of allocations before the deserializer discovered the
+file was too short — a memory-amplification denial-of-service.
+
+Four architectural upper bounds are now enforced before any
+allocation:
+
+- `MAX_MODULES_PER_ARCHIVE = 65 536`
+- `MAX_MODULE_NAME_BYTES   = 16 KB`
+- `MAX_DEPS_PER_MODULE     = 4 096`
+- `MAX_MODULE_DATA_BYTES   = 1 GB`
+
+Each rejection error message names the offending field so triage
+is immediate.  These bounds reflect "no real-world Verum archive
+shipped through `cog publish` ever approaches this" — any input
+that exceeds them is rejected as malformed before any allocation.
+
 ### Fixed — usize-overflow path in length-prefixed decoders (2026-04-29)
 
 `decode_string` and `decode_bytes` in the VBC encoding layer used
