@@ -16,6 +16,38 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — SMT exhaustiveness witness extraction walks the formula (2026-04-29)
+
+Third closure in the SMT exhaustiveness chain, completing the
+end-to-end fix that started with the guard-Expr lift. The
+witness-extraction helper `get_model` (called by
+`extract_uncovered_witnesses` to surface uncovered cases as
+diagnostic hints) only ever asked the Z3 model for a binding named
+literally `"n"`. Any guard mentioning a different identifier
+(`x`, `value`, `count`, …) produced a witness with an empty
+bindings map, which user-facing diagnostics rendered as `_`. A
+guard combining `n` with a second variable returned a phantom
+witness — `n` wasn't even in the formula, but the helper asked
+Z3 about it anyway and surfaced an arbitrary value as if it were
+load-bearing.
+
+The fix walks the formula structurally collecting every
+`Var(name)` reference (across `Bool`/`Int` leaves, `Binary`
+l+r, `Not`/`Neg` inner, `Or` formulas), deduplicates and sorts
+the result for snapshot-stable diagnostics, and asks Z3 for each
+binding's value. `collect_var_names` is the new private helper;
+its contract pins three load-bearing properties: all branches
+walked, pure-literal formulas yield empty, duplicates preserved
+(dedup is the caller's contract).
+
+Combined with the prior two-step fix (`467ed00d` + `53f0be85`),
+SMT-backed exhaustiveness now verifies guards end-to-end without
+any placeholder/hardcoded data. A guard like `n if n > 0` now:
+(1) lifts its `Expr` to `PatternRow.guard`, (2) lifts `"n"` to
+`PatternRow.bindings` so the SMT translator can resolve it,
+(3) yields a witness with the actual `n = -1` value when
+verification reports the case as uncovered.
+
 ### Fixed — Pattern bindings reach SMT-backed exhaustiveness verification (2026-04-29)
 
 Companion to the prior guard-expression lift. Without this, the
