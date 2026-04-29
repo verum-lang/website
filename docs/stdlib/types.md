@@ -210,7 +210,7 @@ satisfies its declared quantity.
 
 - **File handles, sockets, channels** — linear bindings prevent
   use-after-close, double-close, and leak-without-close.
-- **One-shot futures** (`oneshot::Sender`) — the `send` operation
+- **One-shot futures** (`oneshot.Sender`) — the `send` operation
   consumes the sender at quantity `One`.
 - **Capability tokens** — secrets, session-scoped authorisation,
   cryptographic nonces; `Zero` quantity makes the token erasable

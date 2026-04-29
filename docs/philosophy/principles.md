@@ -42,7 +42,7 @@ A type's name describes what it **means**, not how it is laid out.
 
 **Consequence in the type system**: The standard library presents
 *protocols* (`List<T>: Sequence + RandomAccess + MutableSequence`), and
-the concrete layout (`list_impl::PackedBuffer`, `list_impl::Rope`, …)
+the concrete layout (`list_impl.PackedBuffer`, `list_impl.Rope`, …)
 lives behind the protocol. A programmer never writes
 `PackedBuffer<Int>` directly — they write `List<Int>` and let PGO
 pick.

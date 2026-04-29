@@ -49,7 +49,7 @@ depends on the _value_ `n`, not on a type-level numeral.
 ### The three surface forms of Π
 
 Verum lets you write a dependent function in three equivalent ways.
-All three elaborate to the same core `Ty::Pi` node in
+All three elaborate to the same core `Ty.Pi` node in
 `crates/verum_types/src/ty.rs`.
 
 **1. Value-dependent `fn` signature** — the everyday form:
@@ -166,7 +166,7 @@ These are the exact signatures the stdlib ships in
 bound to `CubicalExtended` VBC opcodes by the compiler
 (`verum_vbc/src/codegen/expressions.rs` §4077+), and their return
 types are carried by the surrounding signature through the generic
-opaque-intrinsic rule in `verum_types::infer`.
+opaque-intrinsic rule in `verum_types.infer`.
 
 ## Interval type
 
@@ -258,7 +258,7 @@ let b: B = transport(p, a);
 //   transport(refl, x)        ↦ x
 // — so there is no runtime proxy; the equivalence is computationally
 // eliminated by the cubical reduction rules in
-// verum_smt::cubical_tactic.
+// verum_smt.cubical_tactic.
 ```
 
 ## Proof erasure
@@ -309,9 +309,9 @@ fn attention<
     k: &Tensor<T, [B, H, L, D]>,
     v: &Tensor<T, [B, H, L, D]>,
 ) -> Tensor<T, [B, H, L, D]> {
-    let kt = k.transpose::<[0, 1, 3, 2]>();              // [B, H, D, L]
+    let kt = k.transpose<[0, 1, 3, 2]>();              // [B, H, D, L]
     let scores: Tensor<T, [B, H, L, L]> = matmul(q, &kt);
-    let probs = softmax::<_, _, 3>(&scores);             // softmax on last dim
+    let probs = softmax<_, _, 3>(&scores);             // softmax on last dim
     matmul(&probs, v)
 }
 ```
@@ -320,13 +320,13 @@ Everything load-bearing is *type-checked*:
 
 - `matmul(a: [M, K], b: [K, N]) -> [M, N]` — a dimensions mismatch
   would be a compile error, not a runtime `DimensionError`.
-- `transpose::<Perm>` carries `where meta Perm.is_permutation_of(0..ndim)`.
-- `softmax::<_, _, Dim>` carries `where meta Dim < ndim`.
+- `transpose<Perm>` carries `where meta Perm.is_permutation_of(0..ndim)`.
+- `softmax<_, _, Dim>` carries `where meta Dim < ndim`.
 - `reshape<NewShape>` carries `where meta Shape.product() == NewShape.product()`.
 
 The same `Tensor` type is the code path for CPU SIMD, GPU (MLIR),
 and autodiff (`@differentiable`). Dropping down to runtime shapes is
-explicit — `DynTensor<T>` with a `try_static::<Shape>() ->
+explicit — `DynTensor<T>` with a `try_static<Shape>() ->
 Maybe<Tensor<T, Shape>>` conversion at boundaries.
 
 ## Worked example — a shape-safe matrix API
@@ -340,7 +340,7 @@ fn zeros<const R: Int, const C: Int, T: Numeric>() -> Matrix<R, C, T> {
 }
 
 fn identity<const N: Int, T: Numeric>() -> Matrix<N, N, T> {
-    let mut m = zeros::<N, N, T>();
+    let mut m = zeros<N, N, T>();
     for i in 0..N { m.data[i][i] = T.one(); }
     m
 }
@@ -349,7 +349,7 @@ fn mul<const A: Int, const B: Int, const C: Int, T: Numeric>(
     x: &Matrix<A, B, T>,
     y: &Matrix<B, C, T>,
 ) -> Matrix<A, C, T> {
-    let mut out = zeros::<A, C, T>();
+    let mut out = zeros<A, C, T>();
     for i in 0..A {
         for j in 0..C {
             let mut acc = T.zero();

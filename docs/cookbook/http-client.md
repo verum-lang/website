@@ -30,23 +30,23 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
     let body = json#"""{"name": "${name}", "email": "${email}"}""";
     let resp = Http.post(&"https://api.example.com/users")
         .header(&"Content-Type", &"application/json")
-        .header(&"Authorization", &f"Bearer {env::var(&\"API_TOKEN\")?}")
+        .header(&"Authorization", &f"Bearer {env.var(&\"API_TOKEN\")?}")
         .body(body.to_bytes())
         .send().await?;
 
     match resp.status.code() {
         200..=299 => {
             let text = resp.body_text().await?;
-            json::parse::<User>(&text).map_err(HttpError.from)
+            json.parse<User>(&text).map_err(HttpError.from)
         }
         401 => Result.Err(HttpError.Unauthorized),
         429 => {
             let retry = resp.headers.get_first(&"Retry-After")
                 .and_then(|s| s.parse_int().ok())
                 .unwrap_or(60);
-            Result.Err(HttpError::RateLimited { retry_after: retry.seconds() })
+            Result.Err(HttpError.RateLimited { retry_after: retry.seconds() })
         }
-        code => Result.Err(HttpError::Status(code)),
+        code => Result.Err(HttpError.Status(code)),
     }
 }
 ```
@@ -54,7 +54,7 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
 ### Client configuration
 
 ```verum
-let client = HttpClient::builder()
+let client = HttpClient.builder()
     .timeout(10.seconds())
     .max_redirects(3)
     .user_agent(&"my-tool/1.0")
@@ -76,11 +76,11 @@ provide Http = client in {
 
 ```verum
 let tls = TlsConfig.client()
-    .with_root_certs(SystemCerts::load())
+    .with_root_certs(SystemCerts.load())
     .with_min_version(TlsVersion.Tls12)
     .with_alpn(&[&"h2", &"http/1.1"]);
 
-let client = HttpClient::builder().tls(tls).build();
+let client = HttpClient.builder().tls(tls).build();
 ```
 
 ### Retries with exponential backoff
@@ -135,7 +135,7 @@ implement Http for MockHttp { ... }
 async fn uses_cached_response() {
     let mock = MockHttp {
         responses: map![
-            "https://a" => Response.new(StatusCode::ok()).with_body(b"A".to_vec())
+            "https://a" => Response.new(StatusCode.ok()).with_body(b"A".to_vec())
         ],
     };
     provide Http = mock;

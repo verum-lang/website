@@ -19,7 +19,7 @@ gRPC tokens, and application-level AEAD tokens is the **same code**.
 
 The guiding architectural decision: crypto primitives live once, in
 `core.security`, and are consumed by every protocol. When a QUIC
-packet needs AEAD, it calls the same `aead::chacha20_poly1305` that
+packet needs AEAD, it calls the same `aead.chacha20_poly1305` that
 TLS 1.3's record layer uses, and the same that the application
 itself can use to seal a cookie.
 
@@ -46,7 +46,7 @@ level. Reference implementations use:
   [`cipher`](/docs/stdlib/security/cipher#side-channels));
 - fixed-count iterations;
 - constant-time comparisons via
-  [`util::constant_time_eq`](/docs/stdlib/security/util).
+  [`util.constant_time_eq`](/docs/stdlib/security/util).
 
 For production throughput, every hot path has a
 `@cfg(feature = "crypto-accel")` substitution point that binds to

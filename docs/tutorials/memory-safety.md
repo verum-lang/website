@@ -119,9 +119,9 @@ mid-iteration mutation.
 
 ```bash
 $ verum check --tier-report | head -20
-  src/t0.vr:6   DllT0::new          T0 ref: 0   T1 ref: 0   T2 ref: 0
-  src/t0.vr:10  DllT0::push_front   T0 ref: 2   T1 ref: 0   T2 ref: 0
-  src/t0.vr:22  DllT0::iter         T0 ref: 1   T1 ref: 1   T2 ref: 0
+  src/t0.vr:6   DllT0.new          T0 ref: 0   T1 ref: 0   T2 ref: 0
+  src/t0.vr:10  DllT0.push_front   T0 ref: 2   T1 ref: 0   T2 ref: 0
+  src/t0.vr:22  DllT0.iter         T0 ref: 1   T1 ref: 1   T2 ref: 0
 ```
 
 The `iter` function's `current` binding is automatically
@@ -185,7 +185,7 @@ impl<T> RawDll<T> {
     // SAFETY: `value` must be valid for reading; called in exclusive-access
     //         mode only; no external references to `self.head` exist.
     pub unsafe fn push_front(&mut self, value: T) {
-        let layout = Layout.new::<RawNode<T>>();
+        let layout = Layout.new<RawNode<T>>();
         let new_node: *unsafe mut RawNode<T> = alloc(layout) as *unsafe mut _;
         *new_node = RawNode { value, next: self.head, prev: null_mut() };
 

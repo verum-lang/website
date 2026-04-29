@@ -184,13 +184,13 @@ mount stdlib.fs;
 @test
 fn renders_greeting_matches_golden() {
     let out = render_greeting(&"Alice");
-    let golden = fs::read_to_string("tests/fixtures/greeting.golden").unwrap();
+    let golden = fs.read_to_string("tests/fixtures/greeting.golden").unwrap();
     assert_eq(out, golden);
 }
 ```
 
 Update the golden when the output is intentionally changed:
-`fs::write("tests/fixtures/greeting.golden", &actual)`.
+`fs.write("tests/fixtures/greeting.golden", &actual)`.
 
 ## Locking down a flake
 

@@ -75,7 +75,7 @@ fn parse_args(argv: &List<Text>) -> Result<Args, Text> {
 type Counts is { lines: Int, words: Int, bytes: Int, path: Text };
 
 fn count_one(path: &Path) -> IoResult<Counts> {
-    let text = fs::read_to_string(path)?;
+    let text = fs.read_to_string(path)?;
     let bytes = text.len();
     let lines = text.lines().count();
     let words = text.split_whitespace().count();
@@ -132,7 +132,7 @@ fn print_help() {
 }
 
 fn main() {
-    let argv = env::args();
+    let argv = env.args();
     let args = match parse_args(&argv) {
         Result.Ok(a) => a,
         Result.Err(e) => { eprint(&f"error: {e}"); exit(2); }
@@ -178,12 +178,12 @@ module tests {
 
     @test
     fn counts_simple_file() {
-        let tmp = Path.from(&env::temp_dir()).join(&Path.from("wc_test.txt"));
-        fs::write_text(&tmp, &"hello world\nfoo bar baz").unwrap();
+        let tmp = Path.from(&env.temp_dir()).join(&Path.from("wc_test.txt"));
+        fs.write_text(&tmp, &"hello world\nfoo bar baz").unwrap();
         let c = count_one(&tmp).unwrap();
         assert_eq(c.lines, 2);
         assert_eq(c.words, 5);
-        fs::remove_file(&tmp).ok();
+        fs.remove_file(&tmp).ok();
     }
 
     @test
@@ -198,9 +198,9 @@ module tests {
 ```bash
 $ verum test
    running 3 tests
-   test tests::parses_format_flag      ... ok
-   test tests::counts_simple_file      ... ok
-   test tests::formats_csv_header      ... ok
+   test tests.parses_format_flag      ... ok
+   test tests.counts_simple_file      ... ok
+   test tests.formats_csv_header      ... ok
    all 3 tests passed
 ```
 
@@ -214,10 +214,10 @@ module benches {
 
     @bench
     fn bench_count_1kb(b: &mut Bencher) {
-        let tmp = Path.from(&env::temp_dir()).join(&Path.from("bench.txt"));
-        fs::write_text(&tmp, &"lorem ipsum ".repeat(80)).unwrap();
+        let tmp = Path.from(&env.temp_dir()).join(&Path.from("bench.txt"));
+        fs.write_text(&tmp, &"lorem ipsum ".repeat(80)).unwrap();
         b.iter(|| count_one(&tmp).unwrap());
-        fs::remove_file(&tmp).ok();
+        fs.remove_file(&tmp).ok();
     }
 }
 ```
@@ -240,7 +240,7 @@ $ cp target/release/wordcount ~/bin/
 - Built-ins like `print` used directly in `count_one` and
   `format_counts` — no `using` clause needed for standard output.
 - `@cfg(test)` and `@cfg(bench)` modules co-located with code.
-- `fs::read_to_string`, `text.split_whitespace().count()`,
+- `fs.read_to_string`, `text.split_whitespace().count()`,
   `text.lines().count()`.
 - Format specs in `f"{c.lines:>6}"` for aligned output.
 

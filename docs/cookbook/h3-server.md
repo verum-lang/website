@@ -57,8 +57,8 @@ let router = Router.new()
     .get(f"/health",   |_| async move { H3Response.ok().text(f"ok") })
     .get(f"/users/:id", handle_user_get)
     .post(f"/users",    handle_user_post)
-    .middleware(weft::cors::permissive())
-    .middleware(weft::rate_limit::token_bucket(100, Duration.from_secs(1)));
+    .middleware(weft.cors::permissive())
+    .middleware(weft.rate_limit::token_bucket(100, Duration.from_secs(1)));
 
 server.serve(router.handler()).await?;
 ```

@@ -212,7 +212,7 @@ desugars to:
 xs.iter()
   .filter(|&x| p(x))
   .map(|x| f(x))
-  .collect::<List<_>>()
+  .collect<List<_>>()
 ```
 
 The compiler emits the nested form directly for the non-list

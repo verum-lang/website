@@ -96,11 +96,11 @@ let counter = AtomicU64.new(0);
 counter.fetch_add(1, MemoryOrdering.Relaxed);
 
 // Lazy init via CAS
-let ptr = AtomicPtr.new(null_ptr::<T>());
+let ptr = AtomicPtr.new(null_ptr<T>());
 if ptr.load(MemoryOrdering.Acquire).is_null() {
     let new_ptr = Heap(T.default());
     match ptr.compare_exchange(
-        null_ptr::<T>(), new_ptr,
+        null_ptr<T>(), new_ptr,
         MemoryOrdering.Release, MemoryOrdering.Relaxed
     ) {
         Result.Ok(_) => (),
@@ -246,7 +246,7 @@ cv.notify_all()
 `producer_consumer_pair()` creates a linked `(Mutex, Condvar)` pair:
 
 ```verum
-let (mu, cv) = producer_consumer_pair::<Queue<Msg>>();
+let (mu, cv) = producer_consumer_pair<Queue<Msg>>();
 // Producer
 {
     let mut q = mu.lock().await;

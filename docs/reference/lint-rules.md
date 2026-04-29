@@ -217,8 +217,8 @@ without saying *what was being attempted*. Add `.context("…")` so
 the resulting message is actionable.
 
 ```verum
-let bytes = fs::read("config.json")?;            // fires
-let bytes = fs::read("config.json").context("loading project config")?;
+let bytes = fs.read("config.json")?;            // fires
+let bytes = fs.read("config.json").context("loading project config")?;
 ```
 
 ### `unused-result` — *warn*
@@ -486,7 +486,7 @@ correct replacement:
 
 | Rust-ism | Verum |
 |---------|-------|
-| `Box::new(x)` | `Heap(x)` |
+| `Box.new(x)` | `Heap(x)` |
 | `Vec<T>` | `List<T>` |
 | `String` | `Text` |
 | `struct Name { … }` | `type Name is { … };` |
@@ -696,7 +696,7 @@ error: use `?` or `expect("why")` instead of unwrap() [no-unwrap-in-prod]
 ```
 
 AST-pattern rules are strictly more precise than regex rules — they
-walk the parsed module via `verum_ast::Visitor`, so they will not
+walk the parsed module via `verum_ast.Visitor`, so they will not
 fire on text inside string literals or comments. The full schema is
 documented in
 [`[[lint.custom]]` · AST-pattern rules](/docs/reference/lint-configuration#ast-pattern-rules).
@@ -722,11 +722,11 @@ standard-library re-export.
 // fires — src/a.vr ↔ src/b.vr
 // src/a.vr
 mount b;          // a depends on b
-public fn from_a() { b::from_b(); }
+public fn from_a() { b.from_b(); }
 
 // src/b.vr
 mount a;          // and b depends on a — cycle
-public fn from_b() { a::from_a(); }
+public fn from_b() { a.from_a(); }
 ```
 
 Standard fix: extract the shared types into a third leaf module
@@ -852,7 +852,7 @@ those tokens essentially never appear in safe code.
 | `custom-ast-rule` | style | warn | **AST** (user-authored) |
 | `shadow-binding` | style | info | text-scan |
 
-AST-driven rules (built on `verum_ast::Visitor`) are zero-false-positive
+AST-driven rules (built on `verum_ast.Visitor`) are zero-false-positive
 on their concern — `redundant-refinement` cannot be fooled by a
 `{ true }` inside a string literal or a comment, the way a text-scan
 rule would. The two engines complement each other: AST rules read

@@ -168,16 +168,16 @@ LSP extensions". Their call path is:
 
 1. The client sends `verum/validateRefinement` (or similar) over the
    stdio / TCP / pipe transport.
-2. tower-lsp's router dispatches to the matching `Backend::handle_*`
+2. tower-lsp's router dispatches to the matching `Backend.handle_*`
    async method, registered through the
-   `LspService::build(...).custom_method(...)` chain in
+   `LspService.build(...).custom_method(...)` chain in
    [`crates/verum_cli/src/commands/lsp.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/commands/lsp.rs).
 3. The handler awaits `RefinementValidator::{validate_refinement,
    promote_to_checked, infer_refinement}`, which in turn push SMT work
    onto the `verum-smt-worker` thread via
    [`SmtWorkerHandle`](https://github.com/verum-lang/verum/blob/main/crates/verum_lsp/src/smt_worker.rs).
 4. The worker thread exclusively owns the Z3 context; it returns
-   `SmtCheckResult` through a `tokio::sync::oneshot`. Only `Send`
+   `SmtCheckResult` through a `tokio.sync::oneshot`. Only `Send`
    types cross the await boundary.
 5. `getEscapeAnalysis` and `getProfile` don't touch Z3 — they run in
    the handler's async context directly.
@@ -280,7 +280,7 @@ Beyond standard LSP 3.17, the Verum server routes these JSON-RPC methods:
 | `verum/getProfile`           | live   | Return the cached per-document compilation / CBGR profiling summary used by the dashboard webview.           |
 
 All five methods are registered through tower-lsp's
-`LspService::build(...).custom_method(...)` chain in
+`LspService.build(...).custom_method(...)` chain in
 `crates/verum_cli/src/commands/lsp.rs`. The Z3 session driving the
 refinement methods runs on a dedicated OS thread
 (`verum-smt-worker`) isolated by `crates/verum_lsp/src/smt_worker.rs`, so
@@ -358,7 +358,7 @@ without crashing, even on:
 - **NUL bytes** mid-source.
 
 The server's UTF-8-safe text primitives live in
-`verum_common::text_utf8` and are shared across LSP, REPL,
+`verum_common.text_utf8` and are shared across LSP, REPL,
 diagnostics, and the bytecode disassembler:
 
 - `clamp_to_char_boundary(text, byte_offset)` — round a byte

@@ -94,7 +94,7 @@ $ verum test
      Testing tx v0.1.0 (aot)
 
 running 1 test (tier=aot, parallel=false)
-test reverse::reverse_hello ... ok (210ms)
+test reverse.reverse_hello ... ok (210ms)
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 1 total; finished in 220ms
 ```
@@ -102,13 +102,13 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 1 total; finished in 220ms
 Two things to know:
 
 - The runner found `reverse_hello` because of the `@test` attribute,
-  named it `reverse::reverse_hello` (file::fn).
+  named it `reverse.reverse_hello` (file.fn).
 - `(210ms)` is **wall-clock including AOT compile**. For inner-loop
   iteration use `--interp`:
 
 ```bash
 $ verum test --interp
-test reverse::reverse_hello ... ok (0.21ms)
+test reverse.reverse_hello ... ok (0.21ms)
 ```
 
 Two orders of magnitude faster on a tiny test — keep this in mind
@@ -135,11 +135,11 @@ fn reverse_table(input: Text, expected: Text) {
 Each case becomes its own test name:
 
 ```text
-test reverse::reverse_table[0] ... ok
-test reverse::reverse_table[1] ... ok
-test reverse::reverse_table[2] ... ok
-test reverse::reverse_table[3] ... ok
-test reverse::reverse_table[4] ... ok
+test reverse.reverse_table[0] ... ok
+test reverse.reverse_table[1] ... ok
+test reverse.reverse_table[2] ... ok
+test reverse.reverse_table[3] ... ok
+test reverse.reverse_table[4] ... ok
 ```
 
 If row 3 fails, you see `reverse_table[3] ... FAILED` — you don't
@@ -169,7 +169,7 @@ fn reverse_is_involutive(s: Text) {
 
 ```bash
 $ verum test --interp --filter reverse_is_involutive
-test reverse::reverse_is_involutive ... ok (0.94ms)
+test reverse.reverse_is_involutive ... ok (0.94ms)
 ```
 
 A hundred inputs in under a millisecond. The harness picked random
@@ -210,25 +210,25 @@ Run:
 ```bash
 $ verum test --interp
 running 7 tests (tier=interpret, parallel=false)
-test reverse::reverse_hello                    ... ok
-test reverse::reverse_table[0]                 ... ok
-test reverse::reverse_table[1]                 ... ok
-test reverse::reverse_table[2]                 ... ok
-test reverse::reverse_table[3]                 ... ok
-test reverse::reverse_table[4]                 ... ok
-test reverse::reverse_is_involutive            ... ok
-test props::palindrome_after_reverse           ... ok
-test props::title_case_idempotent              ... FAILED (3ms)
+test reverse.reverse_hello                    ... ok
+test reverse.reverse_table[0]                 ... ok
+test reverse.reverse_table[1]                 ... ok
+test reverse.reverse_table[2]                 ... ok
+test reverse.reverse_table[3]                 ... ok
+test reverse.reverse_table[4]                 ... ok
+test reverse.reverse_is_involutive            ... ok
+test props.palindrome_after_reverse           ... ok
+test props.title_case_idempotent              ... FAILED (3ms)
 
 failures:
 
-  --- props::title_case_idempotent ---
+  --- props.title_case_idempotent ---
   property failed after 7 iterations
     seed: 0xa1b2c3d4e5f6a7b8
     original: ("É̀😀a")           ← random Unicode pulled the bug out
     shrunk: ("É̀")                ← shrunk to two combining-mark codepoints
     error: AssertionFailed { message: "assertion failed", pc: 73 }
-    replay: verum test --filter 'props::title_case_idempotent' \
+    replay: verum test --filter 'props.title_case_idempotent' \
             -Z test.property_seed=0xa1b2c3d4e5f6a7b8
 
 test result: FAILED. 8 passed; 1 failed; 0 ignored; 9 total
@@ -291,7 +291,7 @@ Re-run:
 
 ```bash
 $ verum test --interp --filter title_case
-test props::title_case_idempotent ... ok (1ms)
+test props.title_case_idempotent ... ok (1ms)
 ```
 
 The regression-DB seed was replayed first (still pinned to the buggy
@@ -462,7 +462,7 @@ must hold, so single noisy runs don't fire false alarms.
 The seed printed on every failure makes debugging a one-liner:
 
 ```bash
-verum test --filter 'props::title_case_idempotent' \
+verum test --filter 'props.title_case_idempotent' \
   -Z test.property_seed=0xa1b2c3d4e5f6a7b8
 ```
 

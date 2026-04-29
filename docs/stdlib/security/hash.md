@@ -4,7 +4,7 @@ title: hash — SHA-2 family
 description: SHA-256, SHA-384, SHA-512 — FIPS 180-4 streaming digests.
 ---
 
-# `core.security::hash` — SHA-2 family
+# `core.security.hash` — SHA-2 family
 
 The SHA-2 family of cryptographic hash functions, per **FIPS PUB
 180-4**. Three variants ship:
@@ -146,7 +146,7 @@ Identical compression to SHA-512, differing only in:
 
 The `sha384.vr` implementation therefore consists of ~180 lines —
 most of it stream-boilerplate identical in shape to SHA-512 — and
-reuses `sha512::compress_block` directly.
+reuses `sha512.compress_block` directly.
 
 ## Test vectors
 
@@ -255,7 +255,7 @@ let digest: UInt32 = h.finalize();
 Standard IEEE 802.3 / RFC 1952 (gzip) polynomial 0xEDB88320 with
 reflected input, reflected output, pre-XOR `0xFFFFFFFF`, and final
 XOR `0xFFFFFFFF`. Matches zlib's `crc32`, the `crc32` CLI, Python's
-`binascii.crc32`, and Rust's `crc32fast::hash`. Used internally by
+`binascii.crc32`, and Rust's `crc32fast.hash`. Used internally by
 `core.database.sqlite.native` for WAL frame checksums.
 
 ## `crc32c` — Castagnoli polynomial

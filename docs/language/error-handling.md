@@ -27,9 +27,9 @@ type Result<T, E> is
 
 ```verum
 fn load_config() -> Result<Config, Error> {
-    let bytes = fs::read("config.toml")?;    // on Err, return early
+    let bytes = fs.read("config.toml")?;    // on Err, return early
     let text  = Text.from_utf8(&bytes)?;
-    toml::parse(&text)
+    toml.parse(&text)
 }
 ```
 

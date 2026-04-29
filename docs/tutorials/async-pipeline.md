@@ -59,7 +59,7 @@ load-bearing — a `ValidRecord` at the writer is guaranteed non-empty.
 ```verum
 use core.async.*;
 use core.io.*;
-use .self.types::RawRecord;
+use .self.types.RawRecord;
 
 pub async fn read_from_stdin(tx: Sender<RawRecord>)
     using [IO, Logger]
@@ -187,7 +187,7 @@ pub async fn validate_loop(
 ```verum
 use core.async.*;
 use core.io.*;
-use .self.types::ValidRecord;
+use .self.types.ValidRecord;
 
 pub async fn write_loop(
     mut rx: Receiver<ValidRecord>,
@@ -246,10 +246,10 @@ fn format_record(rec: &ValidRecord) -> Text {
 ```verum
 use core.async.*;
 use core.io.*;
-use .self.reader::read_from_stdin;
-use .self.parser::parse_loop;
-use .self.validator::validate_loop;
-use .self.writer::write_loop;
+use .self.reader.read_from_stdin;
+use .self.parser.parse_loop;
+use .self.validator.validate_loop;
+use .self.writer.write_loop;
 use .self.types::*;
 
 const PARSER_WORKERS: Int = 4;
@@ -257,9 +257,9 @@ const CHANNEL_CAPACITY: Int = 1024;
 
 async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error> {
     // Wire the stages.
-    let (raw_tx,   raw_rx)   = channel::<RawRecord>(CHANNEL_CAPACITY);
-    let (parsed_tx, parsed_rx) = channel::<ParsedRecord>(CHANNEL_CAPACITY);
-    let (valid_tx, valid_rx) = channel::<ValidRecord>(CHANNEL_CAPACITY);
+    let (raw_tx,   raw_rx)   = channel<RawRecord>(CHANNEL_CAPACITY);
+    let (parsed_tx, parsed_rx) = channel<ParsedRecord>(CHANNEL_CAPACITY);
+    let (valid_tx, valid_rx) = channel<ValidRecord>(CHANNEL_CAPACITY);
 
     nursery(on_error: cancel_all) {
         // Stage 1: reader (single)
@@ -281,7 +281,7 @@ async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error
 
         // Signal handler: Ctrl+C triggers a graceful drain.
         spawn async move {
-            wait_for_signal(Signal::Interrupt).await;
+            wait_for_signal(Signal.Interrupt).await;
             Logger.info(&"Ctrl+C received; draining pipeline…");
             // Dropping all senders triggers graceful EOF through each stage.
             drop(raw_tx);
@@ -297,14 +297,14 @@ async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error
 }
 
 fn main() {
-    let args = env::args();
+    let args = env.args();
     let out_path = args.get(1)
         .map(|s| Path.from(s.as_str()))
         .unwrap_or(Path.from(&"ingest.log"));
 
     let rt = Runtime.new(RuntimeConfig.default()
         .worker_threads(PARSER_WORKERS + 4)
-        .io_engine(IoEngineKind::IoUring))
+        .io_engine(IoEngineKind.IoUring))
         .expect("runtime");
 
     rt.block_on(async {
@@ -333,14 +333,14 @@ No memory blows up; no messages are dropped.
 
 ### A parser worker panics
 
-- The panicked task's future returns `Err(JoinError::Panicked)`.
+- The panicked task's future returns `Err(JoinError.Panicked)`.
 - Nursery's `on_error: cancel_all` cancels all sibling tasks.
 - Each stage observes a closed channel and exits cleanly.
 - Nursery's `recover` block runs; we return an error from `run_pipeline`.
 
 ### Ctrl+C
 
-- `wait_for_signal(Signal::Interrupt)` wakes up.
+- `wait_for_signal(Signal.Interrupt)` wakes up.
 - The signal task drops `raw_tx`. Since the reader holds the other
   sender clone, we actually drop both: our local `raw_tx` and after
   the signal task drops its clone, the reader's own sender is still
@@ -353,7 +353,7 @@ Let me correct the shutdown:
 let stopping = Shared.new(AtomicBool.new(false));
 let s_clone = stopping.clone();
 spawn async move {
-    wait_for_signal(Signal::Interrupt).await;
+    wait_for_signal(Signal.Interrupt).await;
     s_clone.store(true, MemoryOrdering.Release);
 };
 
@@ -380,9 +380,9 @@ module tests {
             f"2026-04-15T00:00:{i:02} INFO Message {i}"
         ).collect();
 
-        let (raw_tx, raw_rx) = channel::<RawRecord>(16);
-        let (parsed_tx, parsed_rx) = channel::<ParsedRecord>(16);
-        let (valid_tx, mut valid_rx) = channel::<ValidRecord>(16);
+        let (raw_tx, raw_rx) = channel<RawRecord>(16);
+        let (parsed_tx, parsed_rx) = channel<ParsedRecord>(16);
+        let (valid_tx, mut valid_rx) = channel<ValidRecord>(16);
 
         nursery {
             spawn async move {
@@ -403,7 +403,7 @@ module tests {
     @test
     async fn backpressure_throttles_sender() using [IO, Clock] {
         // Slow consumer: sleep after each recv.
-        let (tx, mut rx) = channel::<Int>(4);
+        let (tx, mut rx) = channel<Int>(4);
 
         let sender_start = Clock.now();
         spawn async move {
@@ -453,7 +453,7 @@ $ cat logs.txt | ./target/release/ingest output.log
 ## Next
 
 - **Distributed pipeline**: replace channels with network protocols
-  (`net::tcp`) and serialise with `@derive(Serialize)`.
+  (`net.tcp`) and serialise with `@derive(Serialize)`.
 - **Exactly-once processing**: add an on-disk journal + idempotent
   writers.
 - **Metrics**: add a `Metrics` context; each stage records

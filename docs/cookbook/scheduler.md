@@ -128,7 +128,7 @@ a thread (`spawn_blocking`).
 ### Timer wheels
 
 If you need thousands of independent deadlines (e.g., TCP
-retransmission timers), see `time::TimerWheel` (lib-level):
+retransmission timers), see `time.TimerWheel` (lib-level):
 O(1) insertion and expiration instead of O(n) per-timer.
 
 ### See also

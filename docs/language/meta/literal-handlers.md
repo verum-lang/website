@@ -64,7 +64,7 @@ pub meta fn sql_literal(content: Text, span: Span) -> TokenStream
     let param_types = parsed.infer_param_types();
 
     quote {
-        SqlQuery::<[${lift(param_types)}]>::from_parsed(
+        SqlQuery<[${lift(param_types)}]>::from_parsed(
             ${lift(parsed.to_canonical())},
             ${lift(param_names)}
         )
@@ -203,7 +203,7 @@ pub meta fn port_literal(v: Literal, span: Span) -> TokenStream
 {
     match v {
         Literal.Int(n, _) if n >= 1 && n <= 65535 => {
-            quote { Port::<{1..=65535}>::unchecked(${lift(n)}) }
+            quote { Port<{1..=65535}>::unchecked(${lift(n)}) }
         }
         Literal.Int(n, _) => {
             CompileDiag.emit_error(
@@ -323,7 +323,7 @@ pub meta fn color(content: Text, span: Span)
         }
     };
     match table.get(&content) {
-        Maybe.Some(rgb) => quote { Color::<{theme}>::new(${lift(rgb)}) },
+        Maybe.Some(rgb) => quote { Color<{theme}>::new(${lift(rgb)}) },
         Maybe.None => {
             CompileDiag.emit_error(&f"no colour named `{content}` in theme", span);
             TokenStream.empty()

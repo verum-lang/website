@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: API reference — widgets
-description: Full signature reference for every widget in `core.term::widget`.
+description: Full signature reference for every widget in `core.term.widget`.
 ---
 
 # API reference — widgets

@@ -5,7 +5,7 @@ description: Read, write, stream, and memory-map files — sync and async.
 
 # File I/O
 
-Every recipe below uses `core.io::fs` and assumes the function is
+Every recipe below uses `core.io.fs` and assumes the function is
 in scope for `using [FileSystem, IO]`. See
 [`stdlib/io`](/docs/stdlib/io) for the full API.
 
@@ -43,13 +43,13 @@ need all of it, prefer the one-shot APIs:
 
 ```verum
 // Bytes:
-let bytes: List<Byte> = fs::read(path)?;
+let bytes: List<Byte> = fs.read(path)?;
 
 // Text (validates UTF-8 — errors if invalid):
-let text: Text = fs::read_to_string(path)?;
+let text: Text = fs.read_to_string(path)?;
 
 // Lines — eagerly materialised:
-let lines: List<Text> = fs::read_to_string(path)?
+let lines: List<Text> = fs.read_to_string(path)?
     .lines()
     .collect();
 ```
@@ -90,7 +90,7 @@ fn write_atomic(path: &Path, contents: &[Byte]) -> IoResult<()>
         w.flush()?;
         w.sync_data()?;                                 // fsync the data
     }
-    fs::rename(&tmp, path)?;                            // atomic
+    fs.rename(&tmp, path)?;                            // atomic
     Result.Ok(())
 }
 ```
@@ -125,29 +125,29 @@ writes, call `.flush()?` explicitly so a failure propagates:
 ## Copy, rename, remove
 
 ```verum
-fs::copy(src, dst)?;                                   // returns bytes copied
-fs::rename(old_path, new_path)?;                       // atomic within fs
-fs::remove_file(path)?;
-fs::remove_dir(path)?;                                 // fails if not empty
-fs::remove_dir_all(path)?;                             // recursive
+fs.copy(src, dst)?;                                   // returns bytes copied
+fs.rename(old_path, new_path)?;                       // atomic within fs
+fs.remove_file(path)?;
+fs.remove_dir(path)?;                                 // fails if not empty
+fs.remove_dir_all(path)?;                             // recursive
 ```
 
 ## List a directory
 
 ```verum
-for entry in fs::read_dir(path)? {
+for entry in fs.read_dir(path)? {
     let entry = entry?;                                 // IoResult<DirEntry>
     print(f"{entry.path}  {entry.metadata()?.len()}B");
 }
 ```
 
 `read_dir` returns a streaming iterator; it does not materialise a
-list. For bulk listings, wrap in `.collect::<List<_>>()`.
+list. For bulk listings, wrap in `.collect<List<_>>()`.
 
 ### Recursive walk
 
 ```verum
-for entry in fs::walk_dir(path)? {
+for entry in fs.walk_dir(path)? {
     let entry = entry?;
     if entry.file_type()?.is_file() {
         process_file(&entry.path).await?;
@@ -158,7 +158,7 @@ for entry in fs::walk_dir(path)? {
 ## File metadata
 
 ```verum
-let md = fs::metadata(path)?;
+let md = fs.metadata(path)?;
 print(f"size={md.len()} modified={md.modified()?} mode={md.permissions()?:o}");
 
 let t = md.file_type();
@@ -170,22 +170,22 @@ if t.is_symlink() { ... }
 ## Symbolic links
 
 ```verum
-fs::symlink(target, link_path)?;                       // create
+fs.symlink(target, link_path)?;                       // create
 
-let metadata = fs::symlink_metadata(path)?;           // does not follow
-let target   = fs::read_link(path)?;                  // → Path
+let metadata = fs.symlink_metadata(path)?;           // does not follow
+let target   = fs.read_link(path)?;                  // → Path
 ```
 
 ## Permissions
 
 ```verum
-let mut perms = fs::metadata(path)?.permissions();
+let mut perms = fs.metadata(path)?.permissions();
 perms.set_mode(0o644);
-fs::set_permissions(path, perms)?;
+fs.set_permissions(path, perms)?;
 
 #[cfg(unix)]
 {
-    fs::set_mode(path, 0o755)?;                        // Unix helper
+    fs.set_mode(path, 0o755)?;                        // Unix helper
 }
 ```
 
@@ -269,7 +269,7 @@ let fs = MemoryFs.new()
     .with_dir("/var/log");
 
 provide FileSystem = fs in {
-    let text = fs::read_to_string(path#"/etc/config.toml")?;
+    let text = fs.read_to_string(path#"/etc/config.toml")?;
     assert_eq(text, "key = 1");
 }
 ```

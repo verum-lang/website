@@ -44,7 +44,7 @@ Note `inc(&self)` — takes a shared reference, not `&mut`. `Cell`'s
 `set` / `get` work through `&self` because the cell is the opt-out.
 
 **`T` must implement `Copy`** for `.get()`. For `Clone`, use `.take()`
-(replaces the cell's value with `Default::default()`) + restore.
+(replaces the cell's value with `Default.default()`) + restore.
 
 ```verum
 let v: Text = cell.take();               // moves out, leaves ""
@@ -99,8 +99,8 @@ static LOG_LEVEL: OnceCell<LogLevel> = OnceCell.new();
 
 fn log_level() -> LogLevel {
     *LOG_LEVEL.get_or_init(|| {
-        env::var("LOG_LEVEL")
-            .and_then(|s| LogLevel::parse(&s).ok())
+        env.var("LOG_LEVEL")
+            .and_then(|s| LogLevel.parse(&s).ok())
             .unwrap_or(LogLevel.Info)
     })
 }
@@ -129,7 +129,7 @@ implement Config {
 }
 ```
 
-Like `OnceCell::get_or_init`, but the initialiser is baked into the
+Like `OnceCell.get_or_init`, but the initialiser is baked into the
 cell. Good for expensive computations you might never need.
 
 ## Thread-safe equivalents (`core.sync`)
@@ -140,7 +140,7 @@ static HITS: AtomicU64 = AtomicU64.new(0);
 HITS.fetch_add(1, MemoryOrdering.Relaxed);
 
 // Single-threaded RefCell<T>  →   multi-threaded Mutex<T>
-let state = Shared.new(Mutex.new(State::default()));
+let state = Shared.new(Mutex.new(State.default()));
 
 // Single-threaded OnceCell<T> →   multi-threaded OnceLock<T>
 static CONFIG: OnceLock<Config> = OnceLock.new();
@@ -157,14 +157,14 @@ single-threaded to multi-threaded by substituting types and
 ## Atomics
 
 Primitive-sized atomic operations go through the `AtomicT` types in
-`core.sync::atomic`:
+`core.sync.atomic`:
 
 ```verum
-type AtomicInt32  is core.sync::atomic::AtomicI32;
-type AtomicInt64  is core.sync::atomic::AtomicI64;
-type AtomicU64    is core.sync::atomic::AtomicU64;
-type AtomicBool   is core.sync::atomic::AtomicBool;
-type AtomicUsize  is core.sync::atomic::AtomicUsize;
+type AtomicInt32  is core.sync.atomic::AtomicI32;
+type AtomicInt64  is core.sync.atomic::AtomicI64;
+type AtomicU64    is core.sync.atomic::AtomicU64;
+type AtomicBool   is core.sync.atomic::AtomicBool;
+type AtomicUsize  is core.sync.atomic::AtomicUsize;
 ```
 
 API:
@@ -205,7 +205,7 @@ whether to recover.
 ## `RwLock<T>` — many readers, one writer
 
 ```verum
-let settings = Shared.new(RwLock.new(Settings::default()));
+let settings = Shared.new(RwLock.new(Settings.default()));
 
 async fn read_setting(key: &Text) -> Maybe<Value>
     using [Settings = Shared<RwLock<Settings>>]
@@ -229,14 +229,14 @@ default scheduling policy.
 For read-heavy, occasionally-replaced state:
 
 ```verum
-let config = AtomicArc.new(Shared.new(Config::default()));
+let config = AtomicArc.new(Shared.new(Config.default()));
 
 // Reader — common case, wait-free:
 let snapshot = config.load();
 process(&snapshot);
 
 // Writer — rare, replaces the whole Arc:
-let new_config = Config::load_from_file();
+let new_config = Config.load_from_file();
 config.store(Shared.new(new_config));
 ```
 

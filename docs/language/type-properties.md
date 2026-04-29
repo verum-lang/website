@@ -118,9 +118,9 @@ usize.max    // 2^64 - 1 on 64-bit platforms
 `T.name` is the canonical path-qualified name:
 
 ```verum
-List<Int>.name                  // "core.collections::List<Int>"
-Map<Text, User>.name            // "core.collections::Map<core.text::Text, User>"
-Point.name                      // "crate::geom::Point" (if defined in crate::geom)
+List<Int>.name                  // "core.collections.List<Int>"
+Map<Text, User>.name            // "core.collections.Map<core.text.Text, User>"
+Point.name                      // "crate::geom::Point" (if defined in crate.geom)
 ```
 
 `T.id` is the FNV-64 hash of the canonical name. It is **stable**
@@ -200,9 +200,9 @@ fn debug_layout<T>() {
 }
 
 fn main() {
-    debug_layout::<Point>();   // Point: 16B aligned 8, stride 16
-    debug_layout::<Int>();     // Int: 8B aligned 8, stride 8
-    debug_layout::<Bool>();    // Bool: 1B aligned 1, stride 1
+    debug_layout<Point>();   // Point: 16B aligned 8, stride 16
+    debug_layout<Int>();     // Int: 8B aligned 8, stride 8
+    debug_layout<Bool>();    // Bool: 1B aligned 1, stride 1
 }
 ```
 
@@ -221,7 +221,7 @@ fn handle<T>(event: &Event)
     match T.id {
         Click.id   => handle_click(event),
         Keypress.id => handle_keypress(event),
-        _ => handle_default::<T>(event),
+        _ => handle_default<T>(event),
     }
 }
 ```

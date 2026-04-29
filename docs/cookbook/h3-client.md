@@ -59,7 +59,7 @@ Defaults (from `ClientOptions.default`):
 | Field | Default |
 |-------|---------|
 | `alpn` | `[b"h3"]` |
-| `max_field_section_size` | `u64::MAX` (no cap) |
+| `max_field_section_size` | `u64.MAX` (no cap) |
 | `idle_timeout` | 30 s |
 | `connect_timeout` | 10 s |
 | `verify_hostname` | true |
@@ -71,7 +71,7 @@ Defaults (from `ClientOptions.default`):
 use core.net.h3.request.{H3Method};
 
 let resp = client.post(&f"/api/v1/upload",
-                       &core.text.content_type::APPLICATION_JSON,
+                       &core.text.content_type.APPLICATION_JSON,
                        body_bytes.as_slice()).await?;
 if resp.status() != 200_u16 {
     return Err(H3ClientError.H3Layer(H3Error.StreamError));

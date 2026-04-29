@@ -75,7 +75,7 @@ fn main() -> IoResult<()> {
 ```verum
 fn init(&self) -> Command<Msg> {
     Command.perform(|| match fs.read_text("counter.txt") {
-        Ok(t) => Msg.Loaded(t.parse::<Int>().unwrap_or(0)),
+        Ok(t) => Msg.Loaded(t.parse<Int>().unwrap_or(0)),
         Err(_) => Msg.Loaded(0),
     })
 }

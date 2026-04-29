@@ -160,7 +160,7 @@ fn eval(expr: &Expr, env: &mut Env) -> Value {
             [op, rest @ ..] if op.as_symbol() == "+" => {
                 rest.iter()
                     .map(|e| eval(&*e, env).as_int())
-                    .sum::<Int>()
+                    .sum<Int>()
                     |> Value.Int
             }
 

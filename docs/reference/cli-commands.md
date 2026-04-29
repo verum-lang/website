@@ -205,8 +205,8 @@ Flags (extending the existing `--fix` / `--deny-warnings`):
 - `--new-only-since <GIT_REF>` — like `--since`, but additionally
   filters out issues that were also present at `<GIT_REF>` —
   surfaces only issues introduced by the current branch.
-- `--list-groups` — list every preset / group (`verum::strict`,
-  `verum::pedantic`, etc.) and the rules each contains.
+- `--list-groups` — list every preset / group (`verum.strict`,
+  `verum.pedantic`, etc.) and the rules each contains.
 
 #### Output ordering with `--format json`
 
@@ -357,7 +357,7 @@ Flags (specific audit modes; pick one):
   / `theorem-axiom-only` / `theorem-multi-step`) plus by-lineage totals.
 - `--framework-soundness` (M4.A) — per-axiom K-FwAx classification
   (`sound` / `trivial-placeholder`). Mirror of kernel-side
-  `SubsingletonRegime::ClosedPropositionOnly` gate at audit time.
+  `SubsingletonRegime.ClosedPropositionOnly` gate at audit time.
 - `--coord-consistency` (M4.B) — per-theorem (Fw, ν, τ) supremum
   invariant (`consistent` / `verify-lift` / `missing-framework`).
   Mirror of V8.1 #232 kernel-side `check_coord_cite` at audit time.

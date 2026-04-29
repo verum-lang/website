@@ -100,7 +100,7 @@ type Registration is {
 ```
 
 Deserialisation + validation happen in one pass when you call
-`parse_json::<Registration>(&raw)`.
+`parse_json<Registration>(&raw)`.
 
 ### Refinements that depend on other fields
 

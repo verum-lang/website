@@ -225,7 +225,7 @@ circuit-breaker and bulkhead patterns.
 | With a time budget                     | `timeout(dur, fut).await?`                |
 | Structured task scope                  | `nursery { spawn f1; spawn f2; }`         |
 | Deferred sync value                    | `ready(value).await`                      |
-| Wait forever                           | `pending::<T>().await`                    |
+| Wait forever                           | `pending<T>().await`                    |
 | Cooperative yield                      | `yield_now().await`                       |
 
 ## Pitfall — `.await` inside a synchronous section
@@ -327,7 +327,7 @@ Use `@test` to mark an async test:
 ```verum
 @test
 async fn test_fetch_timeout() {
-    let result = timeout(100.ms(), pending::<()>()).await;
+    let result = timeout(100.ms(), pending<()>()).await;
     assert(result.is_err());
 }
 ```

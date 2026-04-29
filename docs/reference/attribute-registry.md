@@ -14,8 +14,8 @@ attribute, its valid targets, and a one-line semantics.
 |-----------|---------|-----------|
 | `@derive(Clone)` | type | generate `Clone` impl |
 | `@derive(Copy)` | type | mark as `Copy` (requires all fields `Copy`) |
-| `@derive(Debug)` | type | generate `Debug::debug` |
-| `@derive(Display)` | type | generate `Display::format` |
+| `@derive(Debug)` | type | generate `Debug.debug` |
+| `@derive(Display)` | type | generate `Display.format` |
 | `@derive(Eq, PartialEq)` | type | generate equality |
 | `@derive(Ord, PartialOrd)` | type | generate ordering (lexical) |
 | `@derive(Hash)` | type | generate `Hash` |

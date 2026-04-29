@@ -70,7 +70,7 @@ borrows freely from all of them, and differs in a few opinionated ways.
   you're halfway to TEA already.
 * **From Bubble Tea.** The Elm architecture maps straight across.
   `tea.Cmd` ↔ `Command`; `tea.Sub` ↔ `Subscription`; `tea.Model.Update`
-  ↔ `Model::update`; `tea.Model.View` ↔ `Model::view`. The biggest
+  ↔ `Model.update`; `tea.Model.View` ↔ `Model.view`. The biggest
   difference: Verum commands are typed by `Msg`, not `interface{}`.
 * **From Textual.** Reactive attributes become explicit `Msg` transitions
   in `update`. CSS rules become `Theme` + `Style` at render time. Timer

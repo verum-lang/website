@@ -56,9 +56,9 @@ Running these:
 ```text
 $ verum test --interp
 running 3 tests (tier=interpret, parallel=false)
-test arith::sign_is_preserved_on_doubling ... ok (0.24ms)
-test arith::bytes_round_trip              ... ok (1.83ms)
-test arith::title_case_idempotent         ... ok (0.52ms)
+test arith.sign_is_preserved_on_doubling ... ok (0.24ms)
+test arith.bytes_round_trip              ... ok (1.83ms)
+test arith.title_case_idempotent         ... ok (0.52ms)
 test result: ok. 3 passed; 0 failed; 0 ignored
 ```
 
@@ -249,7 +249,7 @@ fn exhaustive(x: Int) { ... }
 @property
 fn json_round_trip(v: Int) {
     let text = json.encode(v);
-    let decoded = json.decode::<Int>(&text).unwrap();
+    let decoded = json.decode<Int>(&text).unwrap();
     assert_eq(decoded, v);
 }
 ```

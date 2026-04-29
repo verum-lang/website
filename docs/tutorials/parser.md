@@ -415,12 +415,12 @@ module tests {
 
 ```bash
 $ verum test
-   test tests::numbers                 ... ok
-   test tests::precedence               ... ok
-   test tests::whitespace_tolerance     ... ok
-   test tests::parens                   ... ok
-   test tests::rejects_unbalanced       ... ok
-   test tests::round_trip               ... ok (100 cases)
+   test tests.numbers                 ... ok
+   test tests.precedence               ... ok
+   test tests.whitespace_tolerance     ... ok
+   test tests.parens                   ... ok
+   test tests.rejects_unbalanced       ... ok
+   test tests.round_trip               ... ok (100 cases)
    all 6 tests passed
 
 $ verum run

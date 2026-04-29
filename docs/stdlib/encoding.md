@@ -332,7 +332,7 @@ headers pass through). Label-mismatch on begin/end returns
 ```verum
 mount core.encoding.json.{parse, serialize, JsonValue};
 
-fn round_trip() -> Result<(), json::JsonError> {
+fn round_trip() -> Result<(), json.JsonError> {
     let raw = b"{\"id\": 42, \"tags\": [\"a\", \"b\"]}";
     let value = parse(raw)?;
     let mut out = Text.new();

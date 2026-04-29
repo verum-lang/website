@@ -223,7 +223,7 @@ default) + `Reverse` is the idiomatic top-K.
 
 ```verum
 // Preserves order:
-let deduped: List<_> = xs.iter().cloned().collect::<Set<_>>().into_iter().collect();
+let deduped: List<_> = xs.iter().cloned().collect<Set<_>>().into_iter().collect();
 
 // Sorted order:
 xs.sort();
@@ -237,8 +237,8 @@ xs.dedup_by_key(|x| x.id);
 
 ```verum
 xs.windows(3)                         // &[T; 3]... for each of size 3
-  .map(|w| w.iter().sum::<Int>())
-  .collect::<List<_>>()
+  .map(|w| w.iter().sum<Int>())
+  .collect<List<_>>()
 
 xs.chunks(5)                          // &[T]... fixed chunks
   .for_each(|chunk| process(chunk))

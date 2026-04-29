@@ -213,9 +213,9 @@ fresh keys.
 
 ```verum
 mount core.net.weft.service.{Layer};
-mount core.net.proxy.{circuit_breaker::CircuitBreakerLayer,
-                      retry::RetryLayer,
-                      upstream_pool::UpstreamPool};
+mount core.net.proxy.{circuit_breaker.CircuitBreakerLayer,
+                      retry.RetryLayer,
+                      upstream_pool.UpstreamPool};
 
 fn build_proxy(pool: UpstreamPool) -> Service {
     Service.builder()

@@ -452,9 +452,9 @@ let xs = List.new<Int>();
 let n  = identity<Text>("hi");
 ```
 
-Verum has **no Rust-style turbofish (`::<T>`)**: `::` is not a token in
-[`grammar/verum.ebnf`](../reference/grammar-ebnf.md). The grammar
-disambiguates `foo<T>(args)` from `foo < T` by lookahead alone.
+Verum has **no Rust-style turbofish**: the `::<T>` syntax is not a
+token in [`grammar/verum.ebnf`](../reference/grammar-ebnf.md). The
+grammar disambiguates `foo<T>(args)` from `foo < T` by lookahead alone.
 
 ## `using` context clauses
 

@@ -4,7 +4,7 @@ title: capabilities — @cap, declassification, audit
 description: Capability annotations, declassification primitives, and the build-manifest audit trail for security-sensitive operations.
 ---
 
-# `core.security::capabilities` — capability annotations & audit
+# `core.security.capabilities` — capability annotations & audit
 
 ## What is a capability?
 
@@ -198,16 +198,16 @@ unsafe_ffi            1 fn  (core/...)    fn call_openssl (@cap in src)
 ### Per-function query
 
 ```bash
-verum explain fn my_module::charge_card
+verum explain fn my_module.charge_card
 ```
 
 Output:
 
 ```
-fn my_module::charge_card
+fn my_module.charge_card
 ├── @cap(name = "billing.write")
 ├── Called from:
-│   └── handlers::pay_endpoint          @cap("billing.write")
+│   └── handlers.pay_endpoint          @cap("billing.write")
 │       └── fn main                     @cap("billing.write") via verum.toml
 └── Requires: [Database with [Write]]
 ```

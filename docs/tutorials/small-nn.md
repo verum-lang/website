@@ -55,7 +55,7 @@ pub type Dataset is {
 
 /// Load IDX-format MNIST data (classic Yann LeCun format).
 fn load_images(path: &Path) -> IoResult<Tensor<Float32>> {
-    let bytes = fs::read(path)?;
+    let bytes = fs.read(path)?;
     // Magic + header
     let magic = u32_from_be(&bytes[0..4]);
     assert_eq(magic, 0x00000803);
@@ -64,20 +64,20 @@ fn load_images(path: &Path) -> IoResult<Tensor<Float32>> {
     let cols = u32_from_be(&bytes[12..16]) as Int;
 
     let total = n * rows * cols;
-    let mut data = List::<Float32>::with_capacity(total);
+    let mut data = List<Float32>::with_capacity(total);
     for i in 0..total {
         data.push(bytes[16 + i] as Float32 / 255.0);
     }
     // Flatten to [n, 784]
-    Result.Ok(Tensor::from_slice::<Float32, shape![n, 784]>(&data))
+    Result.Ok(Tensor.from_slice<Float32, shape![n, 784]>(&data))
 }
 
 fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> {
-    let bytes = fs::read(path)?;
+    let bytes = fs.read(path)?;
     assert_eq(u32_from_be(&bytes[0..4]), 0x00000801);
     let n = u32_from_be(&bytes[4..8]) as Int;
     let data: List<Int32> = bytes[8..8 + n].iter().map(|b| *b as Int32).collect();
-    Result.Ok(Tensor::from_slice::<Int32, shape![n]>(&data))
+    Result.Ok(Tensor.from_slice<Int32, shape![n]>(&data))
 }
 
 fn u32_from_be(bytes: &[Byte]) -> UInt32 {
@@ -105,8 +105,8 @@ pub type MNISTNet is {
 implement MNISTNet {
     fn new(rng: &mut Rng) -> MNISTNet {
         MNISTNet {
-            fc1: Linear::new_xavier(784, 128, rng),
-            fc2: Linear::new_xavier(128, 10,  rng),
+            fc1: Linear.new_xavier(784, 128, rng),
+            fc2: Linear.new_xavier(128, 10,  rng),
         }
     }
 }
@@ -136,7 +136,7 @@ implement Module for MNISTNet {
 use core.math.nn.*;
 use core.math.tensor.*;
 use core.math.autodiff.*;
-use .self.model::MNISTNet;
+use .self.model.MNISTNet;
 
 fn train_step(
     model: &mut MNISTNet,
@@ -172,10 +172,10 @@ fn accuracy(model: &MNISTNet, images: &Tensor<Float32>, labels: &Tensor<Int32>) 
 ```verum
 use core.io.*;
 use core.math.random::{Rng, PCG};
-use core.math.nn::AdamW;
+use core.math.nn.AdamW;
 use core.math.tensor::*;
 use .self.data::*;
-use .self.model::MNISTNet;
+use .self.model.MNISTNet;
 use .self.train::*;
 
 const BATCH_SIZE: Int = 64;
@@ -193,7 +193,7 @@ fn main() {
     print(&f"train: {train_images.shape().dim(0)} examples");
     print(&f"test:  {test_images.shape().dim(0)} examples");
 
-    let mut rng = PCG::seed(42);
+    let mut rng = PCG.seed(42);
     let mut model = MNISTNet.new(&mut rng);
     let mut optimiser = AdamW.new(model.parameters(), LR, (0.9, 0.999), 0.0001);
 
@@ -231,15 +231,15 @@ fn main() {
 ```verum
 @cfg(test)
 module tests {
-    use .super.model::MNISTNet;
+    use .super.model.MNISTNet;
     use core.math.tensor::*;
-    use core.math.random::PCG;
+    use core.math.random.PCG;
 
     @test
     fn forward_shape() {
-        let mut rng = PCG::seed(0);
+        let mut rng = PCG.seed(0);
         let m = MNISTNet.new(&mut rng);
-        let x = Tensor::zeros::<Float32, shape![16, 784]>();
+        let x = Tensor.zeros<Float32, shape![16, 784]>();
         let out = m.forward(&x);
         assert_eq(out.shape().dim(0), 16);
         assert_eq(out.shape().dim(1), 10);
@@ -247,10 +247,10 @@ module tests {
 
     @test
     fn parameters_have_gradients() {
-        let mut rng = PCG::seed(0);
+        let mut rng = PCG.seed(0);
         let m = MNISTNet.new(&mut rng);
-        let x = Tensor::randn::<Float32, shape![4, 784]>(&mut rng);
-        let y = Tensor::from_slice::<Int32, shape![4]>(&[0, 1, 2, 3]);
+        let x = Tensor.randn<Float32, shape![4, 784]>(&mut rng);
+        let y = Tensor.from_slice<Int32, shape![4]>(&[0, 1, 2, 3]);
 
         let (_loss, grads) = value_and_grad(
             |params| cross_entropy(&m.forward(&x), &y),
@@ -306,7 +306,7 @@ let (loss, grads) = value_and_grad(|params| {
    down through every parameter.
 4. `grads` is a list of tensors, one per parameter, matching shapes.
 
-`AdamW::step(&grads)` then applies AdamW updates in place.
+`AdamW.step(&grads)` then applies AdamW updates in place.
 
 ## Going bigger
 
@@ -314,7 +314,7 @@ let (loss, grads) = value_and_grad(|params| {
   4-layer convnet reaches 99.3% in 5 epochs.
 - **Training on GPU**: add `@device(gpu)` to the forward pass; the
   compiler routes tensor ops through `math.gpu`. See
-  [simd::gpu](/docs/stdlib/simd#gpu-simdgpu).
+  [simd.gpu](/docs/stdlib/simd#gpu-simdgpu).
 - **Mixed precision**: use `Float16` for activations; AdamW carries
   `Float32` master weights.
 - **Save / load**: serialise `Parameter` tensors via

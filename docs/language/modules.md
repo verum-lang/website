@@ -14,11 +14,11 @@ with `mount`.
 ```
 src/
 ├── lib.vr            // module `my_cog` (root)
-├── util.vr           // module `my_cog::util`
+├── util.vr           // module `my_cog.util`
 ├── http/
-│   ├── mod.vr        // module `my_cog::http`
-│   ├── client.vr     // module `my_cog::http::client`
-│   └── server.vr     // module `my_cog::http::server`
+│   ├── mod.vr        // module `my_cog.http`
+│   ├── client.vr     // module `my_cog.http::client`
+│   └── server.vr     // module `my_cog.http::server`
 ```
 
 The root module is `src/lib.vr` (for libraries) or `src/main.vr` (for
@@ -221,7 +221,7 @@ A cog is the unit of distribution. Cogs are described in `verum.toml`;
 see **[Cog Packages](/docs/tooling/cog-packages)** and
 **[verum.toml reference](/docs/reference/verum-toml)**.
 
-Within code, `.crate` refers to the cog's root module. `cog::name`
+Within code, `.crate` refers to the cog's root module. `cog.name`
 refers to a dependency cog.
 
 ## Reserved module names

@@ -20,7 +20,7 @@ variants are provided.
 | `fs.vr` | `Metadata`, `FileType`, `DirEntry`, `ReadDir`, `WalkDir`, filesystem operations |
 | `buffer.vr` | `BufReader<R>`, `BufWriter<W>`, `LineWriter<W>`, `copy`, `read_all`, `DEFAULT_BUF_CAPACITY` |
 | `process.vr` | `Command`, `Child`, `ExitStatus`, `Output`, `Stdio`, `run` |
-| `engine.vr` | adapter to `sys::IOEngine` (io_uring / kqueue / IOCP) |
+| `engine.vr` | adapter to `sys.IOEngine` (io_uring / kqueue / IOCP) |
 
 All public functions in this module require `[IO]` in the context
 unless otherwise noted.
@@ -159,11 +159,11 @@ f.path() -> IoResult<PathBuf>                  // from /proc/self/fd/N on Linux
 ### Full-file helpers
 
 ```verum
-fs::read(&path) -> IoResult<List<Byte>>
-fs::read_to_string(&path) -> IoResult<Text>
-fs::write(&path, bytes: &[Byte]) -> IoResult<()>
-fs::write_text(&path, text: &Text) -> IoResult<()>
-fs::append(&path, bytes: &[Byte]) -> IoResult<()>
+fs.read(&path) -> IoResult<List<Byte>>
+fs.read_to_string(&path) -> IoResult<Text>
+fs.write(&path, bytes: &[Byte]) -> IoResult<()>
+fs.write_text(&path, text: &Text) -> IoResult<()>
+fs.append(&path, bytes: &[Byte]) -> IoResult<()>
 ```
 
 ---
@@ -302,28 +302,28 @@ const MAIN_SEPARATOR: Char = '/';       // or '\\' on Windows
 ## Filesystem operations
 
 ```verum
-fs::metadata(&path) -> IoResult<Metadata>
-fs::symlink_metadata(&path) -> IoResult<Metadata>    // doesn't follow symlinks
-fs::exists(&path) -> Bool
-fs::is_file(&path) / is_dir(&path) / is_symlink(&path) -> Bool
+fs.metadata(&path) -> IoResult<Metadata>
+fs.symlink_metadata(&path) -> IoResult<Metadata>    // doesn't follow symlinks
+fs.exists(&path) -> Bool
+fs.is_file(&path) / is_dir(&path) / is_symlink(&path) -> Bool
 
-fs::create_dir(&path) -> IoResult<()>
-fs::create_dir_all(&path) -> IoResult<()>            // like mkdir -p
-fs::remove_file(&path) -> IoResult<()>
-fs::remove_dir(&path) -> IoResult<()>                // must be empty
-fs::remove_dir_all(&path) -> IoResult<()>            // recursive
-fs::rename(&from, &to) -> IoResult<()>
-fs::copy(&from, &to) -> IoResult<UInt64>             // returns bytes copied
-fs::hard_link(&src, &dst) -> IoResult<()>
-fs::symlink(&src, &dst) -> IoResult<()>
-fs::read_link(&path) -> IoResult<PathBuf>
+fs.create_dir(&path) -> IoResult<()>
+fs.create_dir_all(&path) -> IoResult<()>            // like mkdir -p
+fs.remove_file(&path) -> IoResult<()>
+fs.remove_dir(&path) -> IoResult<()>                // must be empty
+fs.remove_dir_all(&path) -> IoResult<()>            // recursive
+fs.rename(&from, &to) -> IoResult<()>
+fs.copy(&from, &to) -> IoResult<UInt64>             // returns bytes copied
+fs.hard_link(&src, &dst) -> IoResult<()>
+fs.symlink(&src, &dst) -> IoResult<()>
+fs.read_link(&path) -> IoResult<PathBuf>
 
-fs::read_dir(&path) -> IoResult<ReadDir>             // iterator of DirEntry
-fs::walk_dir(&path) -> IoResult<WalkDir>             // recursive
+fs.read_dir(&path) -> IoResult<ReadDir>             // iterator of DirEntry
+fs.walk_dir(&path) -> IoResult<WalkDir>             // recursive
 
-fs::temp_dir() -> PathBuf
-fs::current_dir() -> IoResult<PathBuf>
-fs::set_current_dir(&path) -> IoResult<()>
+fs.temp_dir() -> PathBuf
+fs.current_dir() -> IoResult<PathBuf>
+fs.set_current_dir(&path) -> IoResult<()>
 ```
 
 ### `Metadata` / `FileType`
@@ -353,7 +353,7 @@ entry.file_type() -> IoResult<FileType>
 Recursive directory traversal:
 
 ```verum
-for entry in fs::walk_dir(&root)? {
+for entry in fs.walk_dir(&root)? {
     let entry = entry?;
     if entry.file_type()?.is_file() {
         process(&entry.path()).await?;
@@ -364,7 +364,7 @@ for entry in fs::walk_dir(&root)? {
 Options:
 
 ```verum
-fs::walk_dir(&root).unwrap()
+fs.walk_dir(&root).unwrap()
     .min_depth(1)
     .max_depth(5)
     .follow_links(false)
@@ -460,9 +460,9 @@ LinesIter           // Iterator<IoResult<Text>>
 Most functions have `_async` variants:
 
 ```verum
-fs::read_async(&path).await -> IoResult<List<Byte>>
-fs::read_to_string_async(&path).await -> IoResult<Text>
-fs::write_async(&path, &bytes).await -> IoResult<()>
+fs.read_async(&path).await -> IoResult<List<Byte>>
+fs.read_to_string_async(&path).await -> IoResult<Text>
+fs.write_async(&path, &bytes).await -> IoResult<()>
 
 let f = File.open_async(&path).await?;
 let mut reader = BufReader.new(f);
@@ -482,5 +482,5 @@ The async I/O engine is selected per-platform — `io_uring` on Linux,
 - **[net](/docs/stdlib/net)** — TCP/UDP sockets implement `Read`/`Write`/`AsyncRead`/`AsyncWrite`.
 - **[async](/docs/stdlib/async)** — the executor driving async I/O.
 - **[text](/docs/stdlib/text)** — parsing / formatting text read from files.
-- **[sys](/docs/stdlib/sys)** — V-LLSI syscalls underlying `fs::`.
+- **[sys](/docs/stdlib/sys)** — V-LLSI syscalls underlying `fs.`.
 - **[Language → error handling](/docs/language/error-handling)** — `IoResult` + `?`.

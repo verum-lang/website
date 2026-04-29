@@ -18,7 +18,7 @@ flavours:
 ## MPSC — the workhorse
 
 ```verum
-let (tx, mut rx) = channel::<Event>(capacity: 100);
+let (tx, mut rx) = channel<Event>(capacity: 100);
 
 // Producer:
 spawn async move {
@@ -53,8 +53,8 @@ Semantics:
 Use bounded wherever a producer can outpace a consumer:
 
 ```verum
-let (tx, rx) = channel::<Event>(capacity: 100);       // bounded
-let (tx, rx) = unbounded_channel::<Event>();          // unbounded
+let (tx, rx) = channel<Event>(capacity: 100);       // bounded
+let (tx, rx) = unbounded_channel<Event>();          // unbounded
 ```
 
 Unbounded is only appropriate when queue depth is small by
@@ -68,7 +68,7 @@ right load.
 queue.
 
 ```verum
-let (tx, mut rx) = channel::<Event>(capacity: 100);
+let (tx, mut rx) = channel<Event>(capacity: 100);
 
 for worker_id in 0..N {
     let tx = tx.clone();
@@ -91,7 +91,7 @@ Dropping every sender signals "no more data"; the consumer's
 async fn with_reply<T>(req: Request) -> Result<T, Error>
     using [Worker]
 {
-    let (tx, rx) = oneshot::<Result<T, Error>>();
+    let (tx, rx) = oneshot<Result<T, Error>>();
     Worker.enqueue(Job { req, reply: tx });
     rx.await.map_err(|_| Error.new("worker dropped"))?
 }
@@ -103,7 +103,7 @@ A `oneshot` channel is cheaper than an `MPSC` of capacity 1.
 ## Broadcast — fan-out
 
 ```verum
-let (tx, rx_template) = broadcast_channel::<ConfigChange>(capacity: 64);
+let (tx, rx_template) = broadcast_channel<ConfigChange>(capacity: 64);
 
 // Each subscriber sees every message sent from subscription forward.
 spawn async move {
@@ -167,7 +167,7 @@ async fn process<T>(items: List<T>,
                     workers: Int,
                     mut f: fn(T) -> Future<Output=()>)
 {
-    let (tx, rx) = channel::<T>(capacity: workers * 2);
+    let (tx, rx) = channel<T>(capacity: workers * 2);
 
     nursery {
         // Workers
@@ -199,7 +199,7 @@ type TopicMsg = {
     body:  Bytes,
 };
 
-let (tx, rx_t) = broadcast_channel::<TopicMsg>(capacity: 1024);
+let (tx, rx_t) = broadcast_channel<TopicMsg>(capacity: 1024);
 
 // Subscriber with filter:
 spawn async move {
@@ -220,10 +220,10 @@ Verum's broadcast is for light fan-out within a process.
 ```verum
 type Request = {
     body:  Bytes,
-    reply: oneshot::Sender<Response>,
+    reply: oneshot.Sender<Response>,
 };
 
-let (tx, mut rx) = channel::<Request>(capacity: 100);
+let (tx, mut rx) = channel<Request>(capacity: 100);
 
 // Worker:
 spawn async move {
@@ -235,7 +235,7 @@ spawn async move {
 
 // Caller:
 async fn call(tx: &Sender<Request>, body: Bytes) -> Response {
-    let (reply_tx, reply_rx) = oneshot::<Response>();
+    let (reply_tx, reply_rx) = oneshot<Response>();
     tx.send(Request { body, reply: reply_tx }).await.unwrap();
     reply_rx.await.unwrap()
 }
@@ -249,7 +249,7 @@ scales to large in-flight parallelism.
 ### Dropping every sender without draining the receiver
 
 ```verum
-let (tx, mut rx) = channel::<T>(capacity: 10);
+let (tx, mut rx) = channel<T>(capacity: 10);
 drop(tx);
 // rx.recv().await returns Maybe.None immediately — not an error, just EOF
 ```

@@ -63,6 +63,36 @@ that points back at `verum run`. Full contract, exit-code
 propagation, and roadmap live in **[Getting Started → Script
 mode](/docs/getting-started/script-mode)**.
 
+#### Permission flags
+
+`verum run` and the bare script invocation accept three
+permission CLI flags that augment frontmatter declarations:
+
+```bash
+verum --allow=<scope>[=<target>]   # add a single grant
+verum --allow-all                   # universal grant set
+verum --deny-all                    # empty grant set (drops every grant)
+```
+
+`--allow` is repeatable: `--allow=net=api.example.com:443
+--allow=fs:read=./data` installs both. `--allow-all` and
+`--deny-all` are mutually exclusive and override repeated
+`--allow` flags.
+
+Either flag installs a permission policy even if the script's
+frontmatter is silent — opt-in to sandboxing without editing
+the source. The resolved policy mixes into the script's VBC
+and AOT cache keys, so two runs with different policies never
+share a cached binary. The interpreter and AOT-compiled binary
+**enforce the resolved policy identically**: every gated FFI
+call (`open`, `connect`, `socket`, `_exit`, …) lands in the
+same `(scope, target_id)` decision table whether the script is
+running under Tier 0 or as a native executable. Full mechanism,
+diagnostics, exit-code contract (143 = capability denied,
+1 = logic), and the wire-format scope-tag mapping live in
+**[Getting Started → Script mode → Sandboxing scripts with
+permissions](/docs/getting-started/script-mode#sandboxing-scripts-with-permissions)**.
+
 `verum test` and `verum bench` form the developer-facing testing
 surface — property-based testing with integrated shrinking,
 parametrised tests, deterministic seed replay, CI output formats
@@ -132,7 +162,7 @@ each surface gated by an explicit flag.
 | `--round-trip` | per-theorem 108.T round-trip status (Decidable / SemiDecidable / Undecidable) | corpus acceptance gate |
 | `--coherent` | per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert correspondence status | operational coherence layer |
 | `--proof-honesty` | per-theorem proof-body shape classification (`axiom-placeholder` / `theorem-no-proof-body` / `theorem-trivial-true` / `theorem-axiom-only` / `theorem-multi-step`) plus by-lineage totals | corpus promotion-progress gate; emits `audit-reports/proof-honesty.json` (schema_v=1) |
-| `--framework-soundness` | per-axiom K-FwAx classification (`sound` if proposition has propositional content / `trivial-placeholder` if just `true` literal) | corpus-side mirror of kernel-side `SubsingletonRegime::ClosedPropositionOnly` gate at audit time; emits `audit-reports/framework-soundness.json` (schema_v=1) |
+| `--framework-soundness` | per-axiom K-FwAx classification (`sound` if proposition has propositional content / `trivial-placeholder` if just `true` literal) | corpus-side mirror of kernel-side `SubsingletonRegime.ClosedPropositionOnly` gate at audit time; emits `audit-reports/framework-soundness.json` (schema_v=1) |
 | `--coord-consistency` | per-theorem (Fw, ν, τ) supremum-of-cited-coords gate (`consistent` / `verify-lift` / `missing-framework`); fails CI on any `missing-framework` (theorem has `@verify(...)` but no `@framework(...)` citation) | corpus-side mirror of kernel-side V8.1 #232 `check_coord_cite` at audit time; emits `audit-reports/coord-consistency.json` (schema_v=1); non-zero exit on violation |
 
 `--format plain` (default) emits human-readable output. `--format json`
@@ -186,7 +216,7 @@ recommendations. `--suggest` emits optimisation hints.
 |------|---------|
 | `--sample-rate PERCENT` | Sampling rate for the CBGR profiler, `0.0`–`100.0`. Smaller values reduce overhead; `1.0` is the safe default. |
 | `--functions a,b,c` | Restrict the report to these exact function names. The filter is applied upstream, so every downstream section (hot-spots, breakdown, recommendations) sees the same population. |
-| `--precision us\|ns` | Timer granularity. `us` renders timings in milliseconds (default); `ns` uses the native `Instant::now` resolution and dynamically picks `ns` / `µs` / `ms` per magnitude so sub-microsecond costs stay legible. |
+| `--precision us\|ns` | Timer granularity. `us` renders timings in milliseconds (default); `ns` uses the native `Instant.now` resolution and dynamically picks `ns` / `µs` / `ms` per magnitude so sub-microsecond costs stay legible. |
 
 ## Docs & diagnostics
 

@@ -51,7 +51,7 @@ Never micro-optimise before profiling. In particular:
 
 - **CBGR overhead is often zero** (promoted to `&checked T`).
 - **LLVM inlines aggressively** at `optimize = "aggressive"`.
-- **`Iterator::fold` is generally as fast as a hand-written loop.**
+- **`Iterator.fold` is generally as fast as a hand-written loop.**
 
 ## The top 5 wins
 

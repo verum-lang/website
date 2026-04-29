@@ -214,7 +214,7 @@ the full semantics and **[cookbook → adding verification](/docs/cookbook/addin
 fn parse_port(s: Text) -> Result<Int, Error>
     throws(ParseError)
 {
-    let n = s.parse::<Int>()?;
+    let n = s.parse<Int>()?;
     if n < 0 || n > 65535 {
         throw ParseError.OutOfRange(n);
     }

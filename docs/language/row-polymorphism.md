@@ -27,7 +27,7 @@ get_x(px);   // ok, r = { color: Text }
 
 :::info Status
 Fully wired end-to-end:
-`Type::ExtensibleRecord { fields, row_var }` in
+`Type.ExtensibleRecord { fields, row_var }` in
 `crates/verum_types/src/ty.rs`; parser constructs the extension in
 `verum_fast_parser/src/ty.rs`; unification implemented in
 `crates/verum_types/src/unify.rs`. Lacks-constraints and row-based

@@ -260,7 +260,7 @@ fn read_config(path: &Path) -> IoResult<Config>
     using [FileSystem]
     where throws(IoError)
 {
-    let text = fs::read_to_string(path)?;
+    let text = fs.read_to_string(path)?;
     Config.parse(&text)
 }
 ```

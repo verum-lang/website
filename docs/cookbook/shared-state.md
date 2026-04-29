@@ -60,7 +60,7 @@ futures. If they must, consider an actor.
 ## `Shared<RwLock<T>>` — read-mostly
 
 ```verum
-let cache = Shared.new(RwLock.new(Map::<Text, Value>.new()));
+let cache = Shared.new(RwLock.new(Map<Text, Value>.new()));
 
 async fn get_or_compute(cache: &Shared<RwLock<Map<Text, Value>>>, key: &Text) -> Value {
     // Fast path: reader lock
@@ -95,7 +95,7 @@ spawn async move {
 };
 ```
 
-`MemoryOrdering::Relaxed` for counters without inter-thread ordering
+`MemoryOrdering.Relaxed` for counters without inter-thread ordering
 constraints; `Acquire`/`Release` for handshakes. When in doubt, use
 `SeqCst` — it's correct; only weaken after profiling.
 
@@ -129,7 +129,7 @@ async fn actor_loop(mut rx: Receiver<Req>) {
 
 // Client
 fn make_actor() -> (ActorHandle, JoinHandle<()>) {
-    let (tx, rx) = channel::<Req>(128);
+    let (tx, rx) = channel<Req>(128);
     let h = spawn actor_loop(rx);
     (ActorHandle { tx }, h)
 }
@@ -138,7 +138,7 @@ type ActorHandle is { tx: Sender<Req> };
 
 implement ActorHandle {
     async fn get(&self, key: &Text) -> Maybe<Value> {
-        let (reply, wait) = oneshot::<Maybe<Value>>();
+        let (reply, wait) = oneshot<Maybe<Value>>();
         self.tx.send(Req.Get { key: key.to_string(), reply }).await.unwrap();
         wait.await.unwrap()
     }

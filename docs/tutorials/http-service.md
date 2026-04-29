@@ -221,7 +221,7 @@ pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
         .map_err(|_| Error.new(&"invalid URL"))?;
 
     let seed = Clock.now_ns();
-    let code = codegen::generate(seed, 7);
+    let code = codegen.generate(seed, 7);
 
     let link = Link {
         code:    code.clone(),
@@ -257,7 +257,7 @@ pub async fn handle_redirect(code_str: &Text) -> Result<Response, Error>
 
 pub async fn handle_health() -> Response using [Store] {
     let count = Store.total_count().await.unwrap_or(0);
-    Response.new(StatusCode::ok())
+    Response.new(StatusCode.ok())
         .with_body(f"""{{"count": {count}}}""".to_bytes())
 }
 
@@ -270,7 +270,7 @@ pub async fn route(req: Request) -> Response
             Result.Ok(r) => r,
             Result.Err(e) => {
                 Logger.warn(&f"shorten failed: {e}");
-                Response.new(StatusCode::bad_request())
+                Response.new(StatusCode.bad_request())
                     .with_body(f"""{{"error": "{e}"}}""".to_bytes())
             }
         },
@@ -294,7 +294,7 @@ use core.net.*;
 use core.async.*;
 use core.sync.Semaphore;
 use .self.store_memory.MemoryStore;
-use .self.http::route;
+use .self.http.route;
 
 const MAX_INFLIGHT: Int = 1024;     // upper bound on concurrent tasks
 
@@ -332,7 +332,7 @@ async fn serve_one(mut stream: TcpStream, peer: SocketAddr) -> Result<(), Error>
 fn main() {
     let rt = Runtime.new(RuntimeConfig.default()
         .worker_threads(8)
-        .io_engine(IoEngineKind::IoUring))
+        .io_engine(IoEngineKind.IoUring))
         .expect("runtime");
 
     rt.block_on(async {
@@ -364,19 +364,19 @@ module tests {
     use .super.domain.*;
     use .super.codegen;
     use .super.store::*;
-    use .super.store_memory::MemoryStore;
+    use .super.store_memory.MemoryStore;
     use .super.http::*;
 
     @test
     fn codegen_produces_valid_code() {
-        let c = codegen::generate(12345, 7);
+        let c = codegen.generate(12345, 7);
         assert_eq(c.len(), 7);
         assert(c.matches(rx#"^[a-hj-km-np-z2-9]+$"));
     }
 
     @property
     fn codegen_is_always_valid(seed: UInt64, length: Int { 6 <= self && self <= 10 }) {
-        let c = codegen::generate(seed, length);
+        let c = codegen.generate(seed, length);
         assert_eq(c.len(), length);
         assert(c.matches(rx#"^[a-hj-km-np-z2-9]+$"));
     }
@@ -424,16 +424,16 @@ Run:
 
 ```bash
 $ verum test
-   [verify] codegen::generate  ✓ (formal/z3, 28 ms)
-   test tests::codegen_produces_valid_code          ... ok
-   test tests::codegen_is_always_valid              ... ok (100 cases)
-   test tests::memory_store_round_trip              ... ok
-   test tests::shorten_then_redirect                ... ok
+   [verify] codegen.generate  ✓ (formal/z3, 28 ms)
+   test tests.codegen_produces_valid_code          ... ok
+   test tests.codegen_is_always_valid              ... ok (100 cases)
+   test tests.memory_store_round_trip              ... ok
+   test tests.shorten_then_redirect                ... ok
    all 4 tests passed
 ```
 
 Notice the `[verify]` line: the capability router dispatched to the SMT backend
-and proved `codegen::generate` satisfies its postconditions **at
+and proved `codegen.generate` satisfies its postconditions **at
 compile time**. The property test then sanity-checks with random
 inputs.
 
@@ -464,7 +464,7 @@ $ curl localhost:8080/health
 - **Rate limiting**: add a `RateLimiter` context; the sem-owned
   permit pattern extends naturally.
 - **Observability**: add a `Metrics` context; record request
-  latency with `Instant::elapsed()`.
+  latency with `Instant.elapsed()`.
 
 ## What you learned
 

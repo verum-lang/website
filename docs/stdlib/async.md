@@ -82,7 +82,7 @@ type FutureExt is protocol extends Future {
 
 ```verum
 ready(value) -> ReadyFuture<T>             // immediately completes
-pending::<T>() -> PendingFuture<T>         // never completes
+pending<T>() -> PendingFuture<T>         // never completes
 lazy(|| compute()) -> Lazy<F, T>           // deferred closure
 ```
 
@@ -145,10 +145,10 @@ while let Maybe.Some(res) = set.join_next().await {
 ### MPSC — `Sender<T>` / `Receiver<T>`
 
 ```verum
-channel::<T>() -> (Sender<T>, Receiver<T>)                // unbounded
-bounded::<T>(capacity) -> (Sender<T>, Receiver<T>)
-unbounded_channel::<T>()                                  // alias for channel()
-bounded_channel::<T>(cap)                                 // alias for bounded()
+channel<T>() -> (Sender<T>, Receiver<T>)                // unbounded
+bounded<T>(capacity) -> (Sender<T>, Receiver<T>)
+unbounded_channel<T>()                                  // alias for channel()
+bounded_channel<T>(cap)                                 // alias for bounded()
 
 // Sync API
 tx.send(value)  -> Result<(), SendError<T>>               // blocks (futex) if bounded full
@@ -209,10 +209,10 @@ select {
 }
 ```
 
-### One-shot — `oneshot::<T>()`
+### One-shot — `oneshot<T>()`
 
 ```verum
-let (tx, rx) = oneshot::<Result<Data, Error>>();
+let (tx, rx) = oneshot<Result<Data, Error>>();
 spawn async move { tx.send(compute()); };
 let result = rx.await;
 ```
@@ -220,8 +220,8 @@ let result = rx.await;
 ### Broadcast (MPMC) — `broadcast_channel`
 
 ```verum
-broadcast_channel::<T>(capacity) -> (BroadcastSender<T>, BroadcastReceiver<T>)
-broadcast_channel_with::<T>(capacity, policy) -> (Sender, Receiver)
+broadcast_channel<T>(capacity) -> (BroadcastSender<T>, BroadcastReceiver<T>)
+broadcast_channel_with<T>(capacity, policy) -> (Sender, Receiver)
 
 // Sender
 tx.send(value) -> Result<Int, SendError<T>>               // returns listener count
@@ -277,7 +277,7 @@ type StreamExt is protocol extends Stream { ... };
 iter(iterable) -> Iter<I>                    // any IntoIterator
 once(item) -> StreamOnce<T>
 once_future(fut) -> StreamOnce<Output>
-empty::<T>() -> StreamEmpty
+empty<T>() -> StreamEmpty
 repeat(item) -> StreamRepeat<T>              // infinite (T: Clone)
 repeat_n(item, n) -> StreamRepeatN<T>
 from_fn(|| produce_next()) -> StreamFromFn
@@ -307,7 +307,7 @@ s.try_next() -> Poll<Maybe<Result<T, E>>>
 s.for_each(|x| side_effect(x))
 s.fold(init, |acc, x| ...) -> B
 s.reduce(|a, b| ...) -> Maybe<Item>
-s.collect::<C>() -> C
+s.collect<C>() -> C
 s.find(|x| pred) -> Maybe<Item>
 s.any(|x| pred) / s.all(|x| pred)
 s.count() / s.last() / s.nth(n)
@@ -711,7 +711,7 @@ type RetryConfig is {
     backoff_factor: Float,
     jitter: Bool,
 };
-RetryConfig::fixed(attempts, delay_ms)
+RetryConfig.fixed(attempts, delay_ms)
 RetryConfig.exponential(attempts, initial_ms)
 
 execute_with_retry(|| call_api(), max_attempts = 3, backoff_ms = 100)
@@ -767,8 +767,8 @@ parallel_reduce(items, worker_count, |a, b| combine(a, b)) -> Maybe<T>
 ```verum
 type Executor is { ... };                  // opaque handle
 
-Executor::current() -> Maybe<Executor>
-Executor::in_async_context() -> Bool
+Executor.current() -> Maybe<Executor>
+Executor.in_async_context() -> Bool
 
 spawn_with_env(future) -> JoinHandle<T>
 executor_spawn(&exec, future) -> JoinHandle<T>
@@ -791,7 +791,7 @@ type RawWaker     is { ... };
 type RawWakerVTable is { ... };
 
 noop_waker() -> Waker
-Context::from_waker(&waker) -> Context<'a>
+Context.from_waker(&waker) -> Context<'a>
 
 waker.wake()         // consume, enqueue task
 waker.wake_by_ref()  // enqueue without consuming

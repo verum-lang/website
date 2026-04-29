@@ -24,11 +24,11 @@ Shared.strong_count(&config);     // -> 3
 All clones point to the same heap allocation. The allocation is
 freed when the last `Shared<Config>` is dropped.
 
-### `Shared::get_mut` — safe interior mutation
+### `Shared.get_mut` — safe interior mutation
 
 ```verum
 let mut s: Shared<i32> = Shared.new(42);
-*Shared::get_mut(&mut s).unwrap() += 1;    // Some(&mut) when strong_count == 1
+*Shared.get_mut(&mut s).unwrap() += 1;    // Some(&mut) when strong_count == 1
 ```
 
 Returns `Some(&mut T)` only when no other `Shared` clone exists.
@@ -65,7 +65,7 @@ implement Node {
 
     fn add_child(parent: &Shared<Node>, child: Shared<Node>) {
         // Give child a weak pointer back to parent.
-        let mut child_inner = Shared::get_mut(&mut child.clone()).unwrap();
+        let mut child_inner = Shared.get_mut(&mut child.clone()).unwrap();
         child_inner.parent = Maybe.Some(Shared.downgrade(parent));
         // Parent owns child.
         parent.children.push(child);

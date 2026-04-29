@@ -43,7 +43,7 @@ let xs = List.new<Int>();          // explicit type arg on a generic call
 let n  = size_of<Int>();           // explicit type arg on a free function
 ```
 
-Verum has **no Rust-style turbofish (`::<T>`)**: `::` is not a token in
+Verum has **no Rust-style turbofish (`<T>`)**: `::` is not a token in
 [`grammar/verum.ebnf`](../reference/grammar-ebnf.md). The grammar disambiguates
 `foo<T>(args)` from `foo < T` by lookahead — the parser knows whether the
 identifier names a generic-capable function in scope, and switches arms
@@ -182,7 +182,7 @@ fn identity<const N: Int, T: Numeric>() -> Matrix<N, N, T> {
 }
 
 // Usage:
-let m3: Matrix<3, 3, Float> = identity::<3, Float>();
+let m3: Matrix<3, 3, Float> = identity<3, Float>();
 ```
 
 Const generics can carry **refinements**:
@@ -195,7 +195,7 @@ type RingBuffer<const N: Int { self > 0 }, T> is {
 };
 ```
 
-The refinement `N > 0` is checked at every instantiation; `identity::<0, Float>()`
+The refinement `N > 0` is checked at every instantiation; `identity<0, Float>()`
 is a compile error.
 
 ### Const expressions in generic positions
@@ -324,8 +324,8 @@ fn forward<using C>(msg: Message) using [C, Logger]
 }
 
 // Callers specialise:
-forward::<Kafka>(msg);
-forward::<Redis>(msg);
+forward<Kafka>(msg);
+forward<Redis>(msg);
 ```
 
 Context polymorphism lets you write higher-order combinators that

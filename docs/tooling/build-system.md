@@ -78,9 +78,9 @@ A `build.vr` file at the project root is a pre-build script:
 ```verum
 // build.vr
 fn main() {
-    let schema = fs::read_to_string("schema.sql")?;
+    let schema = fs.read_to_string("schema.sql")?;
     let generated = codegen_bindings(&schema);
-    fs::write("target/generated/bindings.vr", &generated)?;
+    fs.write("target/generated/bindings.vr", &generated)?;
     println("cargo:rerun-if-changed=schema.sql");
 }
 ```

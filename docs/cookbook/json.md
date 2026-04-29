@@ -12,7 +12,7 @@ Verum has three layers of JSON support:
    record.
 2. **`@derive(Serialize, Deserialize)`** on record types — typed
    round-tripping with refinement enforcement.
-3. **`core.base.data::Data`** — dynamic JSON-like value for when
+3. **`core.base.data.Data`** — dynamic JSON-like value for when
    the schema is unknown.
 
 This page covers all three.
@@ -94,8 +94,8 @@ Parse a string:
 fn load_config(path: &Path) -> Result<ServerConfig, Error>
     using [FileSystem]
 {
-    let text = fs::read_to_string(path)?;
-    let cfg: ServerConfig = json::parse(&text)?;
+    let text = fs.read_to_string(path)?;
+    let cfg: ServerConfig = json.parse(&text)?;
     Result.Ok(cfg)
 }
 ```
@@ -157,10 +157,10 @@ Without `tag = "..."`, `Event` is serialised untagged — use the
 ## 3. Dynamic JSON — `Data`
 
 When the schema is unknown at compile time, parse into
-`core.base.data::Data`:
+`core.base.data.Data`:
 
 ```verum
-let raw: Data = json::parse_to_data(&text)?;
+let raw: Data = json.parse_to_data(&text)?;
 
 match raw.get("user").and_then(|u| u.get("name")) {
     Maybe.Some(Data.Text(name)) => print(f"name = {name}"),
@@ -184,7 +184,7 @@ for match in raw.jpath(jpath#"$.users[*].name") {
 ### Type narrowing
 
 ```verum
-let value: Data = json::parse_to_data(&text)?;
+let value: Data = json.parse_to_data(&text)?;
 
 match value {
     Data.Null           => print("null"),
@@ -200,8 +200,8 @@ match value {
 ### Converting from `Data` to a typed record
 
 ```verum
-let user: User = value.try_into::<User>()?;
-// Same validation as json::parse, but against the already-parsed Data.
+let user: User = value.try_into<User>()?;
+// Same validation as json.parse, but against the already-parsed Data.
 ```
 
 ## 4. Serializing out
@@ -212,24 +212,24 @@ type Reply is { status: Int, message: Text };
 
 let reply = Reply { status: 200, message: "ok".to_text() };
 
-let text: Text        = json::to_text(&reply)?;
-let pretty: Text      = json::to_text_pretty(&reply)?;
-let bytes: List<Byte> = json::to_bytes(&reply)?;
+let text: Text        = json.to_text(&reply)?;
+let pretty: Text      = json.to_text_pretty(&reply)?;
+let bytes: List<Byte> = json.to_bytes(&reply)?;
 
 // Stream to a writer:
 let mut f = File.create("out.json")?;
-json::to_writer(&reply, &mut f)?;
+json.to_writer(&reply, &mut f)?;
 ```
 
-`to_text_pretty` emits two-space indent; use `json::to_text_pretty_with(&reply, options)`
+`to_text_pretty` emits two-space indent; use `json.to_text_pretty_with(&reply, options)`
 for custom indent / array/object formatting.
 
 ## 5. Handling errors
 
-`json::parse` returns `Result<T, DataError>`:
+`json.parse` returns `Result<T, DataError>`:
 
 ```verum
-match json::parse::<ServerConfig>(&input) {
+match json.parse<ServerConfig>(&input) {
     Result.Ok(cfg) => process(cfg),
 
     Result.Err(DataError.ParseError { msg, line, col }) =>
@@ -255,7 +255,7 @@ For a file that doesn't fit in memory:
 
 ```verum
 let mut reader = BufReader.new(File.open(path)?);
-let mut parser = json::StreamParser.new(&mut reader);
+let mut parser = json.StreamParser.new(&mut reader);
 
 while let Maybe.Some(event) = parser.next().await? {
     match event {
@@ -273,7 +273,7 @@ For JSON Lines (one object per line):
 ```verum
 let reader = BufReader.new(File.open(path)?);
 for line in reader.lines() {
-    let obj: LogEntry = json::parse(&line?)?;
+    let obj: LogEntry = json.parse(&line?)?;
     process(obj);
 }
 ```
@@ -300,7 +300,7 @@ systems.
 ### Comment handling
 
 `json#` accepts JSON5 comments (`//`, `/* */`) but **strict** JSON
-rejects them. If you ship the raw bytes produced by `json::to_text`
+rejects them. If you ship the raw bytes produced by `json.to_text`
 to a strict consumer, you're fine — Verum emits strict by default.
 
 ### Type-annotated literals are compile-checked

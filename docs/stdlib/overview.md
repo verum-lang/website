@@ -50,6 +50,7 @@ namespace; users see its children via `mount core.*`.
 | [`theory_interop`](/docs/stdlib/theory-interop) | Theory registry, translation, coherence audit, JSON-RPC interchange protocol |
 | [`context`](/docs/stdlib/context) | scope, providers, context layers |
 | [`security`](/docs/stdlib/security) | security labels, regions |
+| [`database`](/docs/stdlib/database) | SQLite ("loom" — pure-Verum reimpl), Postgres, MySQL adapters; affine `Transaction`, online backup, hooks, typed pragmas, BLOB I/O, `LISTEN/NOTIFY`, COPY |
 
 ## Semantic-honest types — the cheat sheet
 
@@ -57,9 +58,9 @@ namespace; users see its children via `mount core.*`.
 |----------|------------------------------|
 | `List<T>` | `Vec<T>`, `vector<T>`, `ArrayList<T>` |
 | `Text` | `String`, `str` |
-| `Map<K,V>` | `HashMap<K,V>`, `dict`, `std::map` |
+| `Map<K,V>` | `HashMap<K,V>`, `dict`, `std.map` |
 | `Set<T>` | `HashSet<T>`, `set<T>` |
-| `BTreeMap<K,V>` | `TreeMap<K,V>`, `std::map` |
+| `BTreeMap<K,V>` | `TreeMap<K,V>`, `std.map` |
 | `Heap<T>` | `Box<T>`, `unique_ptr<T>` |
 | `Shared<T>` | `Arc<T>`, `shared_ptr<T>` |
 | `Rc<T>` | `Rc<T>`, `shared_ptr<T>` (single-threaded) |

@@ -9,7 +9,7 @@ description: Call-by-push-value term algebra — foundations for effects and eva
 Term algebra for **Call-by-Push-Value** (CBPV) — Levy's unifying
 framework that sits between call-by-value and call-by-name. This
 module is the user-facing surface for the CBPV analysis core in
-[`verum_types::cbpv`](/docs/architecture/crate-map); the Rust crate
+[`verum_types.cbpv`](/docs/architecture/crate-map); the Rust crate
 does the reduction, this Verum module gives you the syntactic
 algebra.
 

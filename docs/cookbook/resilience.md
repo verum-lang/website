@@ -215,7 +215,7 @@ async fn resilient_call(url: &Url, b: &CircuitBreaker, limiter: &RateLimiter)
     timeout(10.seconds(),                                // global deadline
         execute_with_retry_config(
             || call_breaker(b, url),                    // retry + breaker
-            RetryConfig::exponential(3, 200.ms())),
+            RetryConfig.exponential(3, 200.ms())),
     ).await?
 }
 ```

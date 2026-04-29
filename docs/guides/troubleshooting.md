@@ -38,7 +38,7 @@ Escape analysis failed to promote a `&T` to `&checked T`. Either:
 Add the missing arms. The compiler prints what's missing:
 
 ```
-note: pattern `Err(ConnectionError::Timeout { .. })` not covered
+note: pattern `Err(ConnectionError.Timeout { .. })` not covered
 ```
 
 ### `[V1001]: `mount` target not found`
@@ -119,11 +119,11 @@ don't propagate.
 ### "nursery task panicked"
 
 ```
-NurseryError::Panic { task_name, info }
+NurseryError.Panic { task_name, info }
 ```
 
 With `on_error: cancel_all`, siblings are cancelled; the nursery
-returns the error. Catch with `recover { NurseryError::Panic(_) => ... }`
+returns the error. Catch with `recover { NurseryError.Panic(_) => ... }`
 if the panic is recoverable; otherwise let it propagate.
 
 ## Performance issues

@@ -30,9 +30,9 @@ error[V3402]: postcondition violated
    |     ^^^^^^^^^^^^^ obligation failed:
    |   self.len() == old(self.len()) + 1
    = counter-example:
-      stack.len() = 2147483647      (UInt32::MAX)
+      stack.len() = 2147483647      (UInt32.MAX)
       x           = 42
-   = help: add `requires self.len() < UInt32::MAX`
+   = help: add `requires self.len() < UInt32.MAX`
 ```
 
 Often the counter-example reveals an edge case you hadn't
@@ -59,10 +59,10 @@ Time each obligation:
 ```bash
 $ verum analyze --refinement
  obligation                          routed      ms   result
- stack::push/postcond#1              z3           8   unsat
- stack::push/postcond#2              z3         340   unsat   ← slow
- stack::merge/postcond#3             cvc5        72   unsat
- stack::balance/postcond#1           portfolio  800   unknown  ← problem
+ stack.push/postcond#1              z3           8   unsat
+ stack.push/postcond#2              z3         340   unsat   ← slow
+ stack.merge/postcond#3             cvc5        72   unsat
+ stack.balance/postcond#1           portfolio  800   unknown  ← problem
 ```
 
 ### Playbook — "solver can't prove a true obligation"

@@ -360,12 +360,12 @@ caret underline at the column the issue points to, and a help line
 when the rule provides a suggestion.
 
 ```text
-error[deprecated-syntax]: Use 'Heap(x)' instead of 'Box::new(x)'
+error[deprecated-syntax]: Use 'Heap(x)' instead of 'Box.new(x)'
   --> src/main.vr:2:13
      |
- 2 |     let x = Box::new(5);
+ 2 |     let x = Box.new(5);
      |             ^^^
-   = help: Use 'Heap(x)' instead of 'Box::new(x)'
+   = help: Use 'Heap(x)' instead of 'Box.new(x)'
 ```
 
 Caret length walks through the identifier-like token starting at
@@ -394,7 +394,7 @@ bumps the version.
   "file": "src/main.vr",
   "line": 4,
   "column": 13,
-  "message": "use `Heap(x)` instead of `Box::new(x)`",
+  "message": "use `Heap(x)` instead of `Box.new(x)`",
   "fixable": true,
   "suggestion": "Heap(x)"
 }
@@ -461,7 +461,7 @@ diagnostic block with the rule, level, file, line, and column.
 ### `--format github-actions`
 
 One workflow-annotation line per issue:
-`::error file=path,line=N,col=M,title=<rule>::<message>`. Newlines
+`::error file=path,line=N,col=M,title=<rule><message>`. Newlines
 in the message are encoded as `%0A` so multi-line messages survive
 GitHub's line-oriented annotation parser.
 
@@ -518,7 +518,7 @@ deprecation to land cleanly.
 
 ## Lint groups
 
-`extends` accepts the four built-in presets *and* `verum::<group>`
+`extends` accepts the four built-in presets *and* `verum<group>`
 handles for opt-in rule families. Use a group when you want a
 named bundle of rules switched on without enumerating each name in
 `[lint.severity]`.
@@ -532,11 +532,11 @@ Available groups:
 
 | Group | Members |
 |-------|---------|
-| `verum::correctness` | every error-level rule. The bare-minimum gate that catches actual bugs. |
-| `verum::strict` | every safety + verification rule, plus every error-level rule. CI-grade. |
-| `verum::pedantic` | every hint-level rule. Refactor-the-codebase mode. |
-| `verum::nursery` | experimental rules (`inconsistent-public-doc`, `unused-public`, `mount-cycle-via-stdlib`). Off by default in every other preset. |
-| `verum::deprecated` | rules slated for removal. Empty today; populated via the deprecation framework as renames land. |
+| `verum.correctness` | every error-level rule. The bare-minimum gate that catches actual bugs. |
+| `verum.strict` | every safety + verification rule, plus every error-level rule. CI-grade. |
+| `verum.pedantic` | every hint-level rule. Refactor-the-codebase mode. |
+| `verum.nursery` | experimental rules (`inconsistent-public-doc`, `unused-public`, `mount-cycle-via-stdlib`). Off by default in every other preset. |
+| `verum.deprecated` | rules slated for removal. Empty today; populated via the deprecation framework as renames land. |
 
 Run `verum lint --list-groups` to print every group with its
 current member rules — the registry is the source of truth, so
@@ -608,7 +608,7 @@ kind = "unsafe_block"
 
 The four `kind` values exhaustively cover the AST shapes most teams
 need — method calls, free calls, attribute checks, and `unsafe`
-blocks. Each rule walks the parsed module via `verum_ast::Visitor`
+blocks. Each rule walks the parsed module via `verum_ast.Visitor`
 and emits diagnostics under its `name`, so the same `[lint.severity]`,
 per-file overrides, `@allow(...)` attributes, and `--severity` filter
 that built-in rules use applies uniformly to user rules.
@@ -669,7 +669,7 @@ The full mapping for the 22 built-in rules:
 | `redundant-refinement` | verification | hint | off | hint | hint | hint |
 | `shadow-binding` | style | info | off | info | info | hint |
 
-Implementation: see `LintPreset::level_for` in
+Implementation: see `LintPreset.level_for` in
 `crates/verum_cli/src/commands/lint.rs`.
 
 ## Precedence stack

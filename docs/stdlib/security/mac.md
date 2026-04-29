@@ -4,7 +4,7 @@ title: mac — HMAC + Poly1305
 description: Keyed message-authentication codes — HMAC-SHA-2 family and Poly1305 one-time authenticator.
 ---
 
-# `core.security::mac` — message authentication
+# `core.security.mac` — message authentication
 
 ## What is a MAC and why do we need one?
 

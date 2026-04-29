@@ -205,16 +205,16 @@ Compose and run:
 
 ```verum
 let app_layer = Layer.new()
-    .with_singleton::<Logger>(ConsoleLogger.new(LogLevel.Info))
-    .with_singleton::<Clock>(SystemClock.new())
-    .with_request::<Database>(|| connect_db())
-    .with_request::<Metrics>(|| Metrics.tagged("req_id"))
-    .with_transient::<Random>(|| Rng.from_os());
+    .with_singleton<Logger>(ConsoleLogger.new(LogLevel.Info))
+    .with_singleton<Clock>(SystemClock.new())
+    .with_request<Database>(|| connect_db())
+    .with_request<Metrics>(|| Metrics.tagged("req_id"))
+    .with_transient<Random>(|| Rng.from_os());
 
 app_layer.run(async {
     let mut server = HttpServer.bind(&":8080").await?;
     server.serve(|req| handle(req)).await?;
-    Result.Ok::<(), Error>(())
+    Result.Ok<(), Error>(())
 }).await.expect("server");
 ```
 
@@ -376,7 +376,7 @@ When a task spawns or suspends, what happens to its context stack?
 | `nursery { spawn ... }` | each child inherits the nursery's stack |
 | `provide X = v in { ... }` | `v` installed for the block, unbound on exit |
 
-Implemented in `runtime::ctx_bridge` via `env_ctx_get`, `env_ctx_set`,
+Implemented in `runtime.ctx_bridge` via `env_ctx_get`, `env_ctx_set`,
 `env_ctx_end`.
 
 ---

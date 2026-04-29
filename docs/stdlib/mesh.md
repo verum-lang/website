@@ -113,7 +113,7 @@ let client = KubeClient.connect(cfg).await?;
 
 let ns = &"istio-system".into();
 let token = CancellationToken.new();
-let mut stream = client.watch::<HTTPRoute>(
+let mut stream = client.watch<HTTPRoute>(
     &"gateway.networking.k8s.io/v1".into(),
     &"httproutes".into(),
     Some(ns),
@@ -137,7 +137,7 @@ loop {
 ### Server-side apply
 
 ```verum
-client.patch::<Gateway>(
+client.patch<Gateway>(
     &"gateway.networking.k8s.io/v1".into(),
     &"gateways".into(),
     Some(ns),

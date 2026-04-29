@@ -235,8 +235,8 @@ Press `F9` to toggle the profiling panel. Sample output for `search(&xs, key)`:
 
 | Function                    | Time    | Share |
 |-----------------------------|---------|-------|
-| `List::binary_search_by`    | 13 ns   | 72%   |
-| `List::len`                 | 1 ns    | 6%    |
+| `List.binary_search_by`    | 13 ns   | 72%   |
+| `List.len`                 | 1 ns    | 6%    |
 
 ## Breakpoints and step-through
 

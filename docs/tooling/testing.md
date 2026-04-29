@@ -36,9 +36,9 @@ verum bench                   # run every @bench with time-budget sampling
 
 | Attribute | What it becomes |
 |-----------|-----------------|
-| `@test fn f() { … }` | one test entry named `modulename::f` |
+| `@test fn f() { … }` | one test entry named `modulename.f` |
 | `@property fn f(args…) { … }` | one **property-based** entry — the harness feeds random inputs and shrinks on failure |
-| `@test_case(args…)` on one function | N entries, `modulename::f[0]`, `modulename::f[1]`, … |
+| `@test_case(args…)` on one function | N entries, `modulename.f[0]`, `modulename.f[1]`, … |
 | `@ignore` / `@ignored` | the entry is present but skipped by default |
 | whole-file test (file has `fn main()` and no `@test`) | one entry named after the file |
 
@@ -110,20 +110,20 @@ the chosen serialisation. Formats ship in two groups:
      Testing my_cog v0.1.0 (interpret)
 
 running 4 tests (tier=interpret, parallel=false)
-test arith::add        ... ok (0.21ms)
-test arith::overflow   ... FAILED (0.35ms)
-test math::commutative ... ok (0.24ms)
-test math::unsupported ... ignored
+test arith.add        ... ok (0.21ms)
+test arith.overflow   ... FAILED (0.35ms)
+test math.commutative ... ok (0.24ms)
+test math.unsupported ... ignored
 
 failures:
 
-  --- arith::overflow ---
+  --- arith.overflow ---
   property failed after 1 iterations
     seed: 0x22e0bfe6f2e1b043
     original: (-6305485829015946)
     shrunk: (0) [1 shrink steps]
     error: AssertionFailed { message: "overflow", pc: 15 }
-    replay: verum test --filter 'arith::overflow' -Z test.property_seed=0x22e0bfe6f2e1b043
+    replay: verum test --filter 'arith.overflow' -Z test.property_seed=0x22e0bfe6f2e1b043
 
 test result: FAILED. 2 passed; 1 failed; 1 ignored; 4 total; finished in 4ms
 ```
@@ -171,7 +171,7 @@ assert_panics(|| { something_bad(); });           // expect panic
 ```
 
 Every assertion panics on failure with a stable message prefix; the
-runner reads the resulting `InterpreterError::Panic` or process exit
+runner reads the resulting `InterpreterError.Panic` or process exit
 code 1 and categorises the test as failed.
 
 ## Property-based testing
@@ -217,10 +217,10 @@ fn add_table(a: Int, b: Int, expected: Int) {
 Discovery emits one entry per invocation:
 
 ```text
-test prop_cases::add_table[0] ... ok (0.21ms)
-test prop_cases::add_table[1] ... ok (0.18ms)
-test prop_cases::add_table[2] ... ok (0.18ms)
-test prop_cases::add_table[3] ... ok (0.16ms)
+test prop_cases.add_table[0] ... ok (0.21ms)
+test prop_cases.add_table[1] ... ok (0.18ms)
+test prop_cases.add_table[2] ... ok (0.18ms)
+test prop_cases.add_table[3] ... ok (0.16ms)
 ```
 
 Attribute args accept `Int`, `Bool`, `Text`, `Float`, and negated
@@ -288,7 +288,7 @@ properties follow:
 Every failure prints a one-line replay command:
 
 ```text
-replay: verum test --filter 'my_mod::prop' -Z test.property_seed=0x…
+replay: verum test --filter 'my_mod.prop' -Z test.property_seed=0x…
 ```
 
 Copy-paste that into a terminal and you reproduce the exact failure,
