@@ -109,6 +109,8 @@ verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthe
                     [--verify-profile NAME] [--smt-proof-preference z3|cvc5] \
                     [--profile] [--profile-obligation] [--budget DURATION] \
                     [--export PATH] [--distributed-cache URL] \
+                    [--closure-cache] [--closure-cache-root PATH] \
+                    [--ladder] [--ladder-format plain|json] \
                     [--dump-smt DIR] [--check-smt-formula FILE] \
                     [--solver-protocol] [--show-cost] [--compare-modes] \
                     [--interactive] [--interactive-tactic] [--lsp-mode]
@@ -188,11 +190,86 @@ dispatch, the dependency audit + per-theorem coord audit run together.
 | `--lsp-mode` | Emit LSP `Diagnostic` JSON on stdout, one per line. Suppresses human output. |
 | `--interactive-tactic` | Ltac2-style tactic REPL — prints the goal, accepts tactics one line at a time. |
 | `--smt-proof-preference BACKEND` | Which backend exports proof traces for `Certified` strategy. Default `cvc5` (ALETHE, more stable). |
+| `--closure-cache` | Opt in to per-theorem closure-hash incremental verification. Theorem proofs whose fingerprint + Ok-verdict are cached are skipped without invoking the SMT/kernel re-check. See **[Tooling → Incremental cache](/docs/tooling/incremental-cache)**. |
+| `--closure-cache-root PATH` | Override the cache root (default `<input.parent>/target/.verum_cache/closure-hashes/`). Implies `--closure-cache`. Standard CI use is to point this at a shared NFS path. |
+| `--ladder` | Route every `@verify(strategy)` annotation through the typed 13-strategy ladder dispatcher. Emits per-theorem verdicts (Closed / Open / DispatchPending / Timeout) plus a totals summary. Non-zero exit on Open / Timeout (real failures); DispatchPending is advisory. See **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**. |
+| `--ladder-format plain\|json` | Output format for `--ladder`. JSON suitable for CI / IDE consumption. |
 
 Manifest equivalents in `[verify]`: `total_budget`, `slow_threshold`,
 `distributed_cache`, `cache_dir`, `cache_max_size`, `cache_ttl`,
 `profile_slow_functions`, `profile_threshold`, `profiles.<name>.*`.
 CLI flags always override the manifest.
+
+## Tactic catalogue
+
+```bash
+verum tactic list    [--category identity|composition|control|focus|forward] [--format plain|json]
+verum tactic explain <name> [--format plain|json]
+verum tactic laws    [--format plain|json]
+```
+
+Surfaces the canonical 15-combinator catalogue + 12 algebraic laws.
+Used by IDE completion, the docs generator, and CI shape-pinning.
+Full guide in **[Tooling → Tactic catalogue](/docs/tooling/tactic-catalogue)**.
+
+## Proof drafting
+
+```bash
+verum proof-draft --theorem <T> --goal <G> \
+                  [--lemma name:::signature[:::lineage]]… \
+                  [--max <N>] [--format plain|json]
+```
+
+Ranked next-step tactic suggestions for a focused proof state.
+Drives LSP / REPL hover panels.
+Full guide in **[Tooling → Proof drafting](/docs/tooling/proof-drafting)**.
+
+## Proof repair
+
+```bash
+verum proof-repair --kind <K> [--field key=value]… \
+                   [--max <N>] [--format plain|json]
+```
+
+Where `<K>` is one of: `refine-depth`, `positivity`, `universe`,
+`fwax-not-prop`, `adjunction`, `type-mismatch`, `unbound-name`,
+`apply-mismatch`, `tactic-open`.
+
+Structured repair-suggestion engine for typed proof / kernel
+failures.  Full guide in **[Tooling → Proof repair](/docs/tooling/proof-repair)**.
+
+## Closure-hash incremental cache
+
+```bash
+verum cache-closure stat   [--root <P>] [--format plain|json]
+verum cache-closure list   [--root <P>] [--format plain|json]
+verum cache-closure get    <theorem> [--root <P>] [--format plain|json]
+verum cache-closure clear  [--root <P>] [--format plain|json]
+verum cache-closure decide <theorem> --signature <s> --body <s> \
+                           [--cite <c>]… [--kernel-version <v>] \
+                           [--root <P>] [--format plain|json]
+```
+
+Inspector / control surface for the per-theorem closure-hash cache
+(`target/.verum_cache/closure-hashes/`).  The `verum verify
+--closure-cache` flag is the production reader/writer; this
+subcommand is for ad-hoc inspection + CI scripts.  Full guide in
+**[Tooling → Incremental cache](/docs/tooling/incremental-cache)**.
+
+## Auto-paper documentation
+
+```bash
+verum doc-render render     [--format md|markdown|tex|latex|html] \
+                            [--out <PATH>] [--public]
+verum doc-render graph      [--format dot|json] [--public]
+verum doc-render check-refs [--format plain|json] [--public]
+```
+
+Walks every public `@theorem` / `@lemma` / `@corollary` / `@axiom`
+declaration and renders Markdown / LaTeX / HTML directly from the
+corpus.  Eliminates the duplicate-source problem (paper.tex +
+verum-corpus): the corpus IS the paper draft.  Full guide in
+**[Tooling → Auto-paper generator](/docs/tooling/auto-paper)**.
 
 ## Profiling
 
