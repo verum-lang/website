@@ -16,6 +16,24 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `FallbackConfig.on_timeout` distinguishes timeout from generic unknown (2026-04-29)
+
+The flag was set in defaults and the manifest parser but no
+code path consulted it. Z3 surfaces timeouts as
+`SolveResult::Unknown` with a reason string, so the existing
+`on_unknown` branch caught timeouts as a side-effect — but
+the two cases are conceptually distinct.
+
+Wire as a more-specific Unknown branch ahead of `on_unknown`:
+when the reason string mentions `timeout` / `canceled` /
+`resource`, consult `on_timeout`. Empty / non-matching
+reasons fall through to the generic branch.
+
+Callers can now opt to fall back on timeouts only (when the
+alternative solver might have a different complexity
+profile) without falling back on genuine unknowns (where
+both solvers are likely to give up).
+
 ### Added — `verum cog-registry` distribution registry surface (#82) (2026-04-29)
 
 Verum's package manager joins the small group of systems with
@@ -660,6 +678,31 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — `GpuPassConfig.enable_tensor_cores` reaches the pipeline (2026-04-29)
+
+Closes the inert-defense pattern around the GPU pipeline's
+NVIDIA tensor-core gate. `GpuPassConfig.enable_tensor_cores`
+defaulted to `true` for CUDA and `false` for ROCm, asserted in
+preset tests, but no production code path consulted it.
+
+Wired via two surfaces:
+
+- `tensor_cores_enabled() -> bool` accessor on `GpuPassPipeline`
+  so kernel-level codegen layers can branch on the stance
+  without re-reading the pipeline config.
+- Structured `tracing::debug!` emission inside the CUDA
+  target-lowering branch: when the flag is on AND the target is
+  CUDA, the pipeline logs that tensor-core utilization is
+  enabled. Lets downstream observers correlate kernel
+  performance with the policy.
+
+Important note: the actual `mma.*` PTX instruction emission
+depends on the kernel being structured for tensor-core use
+(matrix tile sizing, fragment loads, mma.* intrinsics) — that's
+the kernel codegen's responsibility, not this pass pipeline's.
+The wiring documents the configured stance and surfaces it to
+downstream layers.
 
 ### Fixed — `PassConfig.enable_standard_opts` + `debug_ir_printing` are load-bearing (2026-04-29)
 
