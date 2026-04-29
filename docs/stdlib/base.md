@@ -395,6 +395,96 @@ type ToString is protocol { fn to_string(&self) -> Text; }
 | `Atomic` | every primitive integer + `Bool` |
 | `Hasher` | `DefaultHasher` (FxHash-based, `wrapping_mul` core) |
 
+### The Display + Debug + Eq triple — error-type contract
+
+Every public stdlib type whose name ends in `Error` (and every
+state-machine / status / outcome type whose values cross module
+boundaries) implements **all three** of `Display`, `Debug`, and `Eq`.
+The contract is enforced across ~280 stdlib error types covering
+async, base, collections, compress, database/{common,sqlite,mysql,
+postgres}, encoding, intrinsics, io, mem, mesh/{k8s,xds}, meta,
+net/{dns,h3,http,http2,http3,proxy,quic,tls,tls13,url,websocket},
+runtime, security, sys/{common,linux,darwin,windows,signal},
+text, time.
+
+Why all three:
+
+  * **`Display`** — user-facing message routed through `print(...)`,
+    `panic(...)`, error-renderer, log lines, network-protocol error
+    bodies.  Lowercase / sentence-case message; no internal symbol
+    names.  e.g. `"connection refused: 127.0.0.1:5432"`.
+
+  * **`Debug`** — structured-log payload routed through `tracing::*`,
+    `f"{:?}"`, snapshot serialisers, gdb-friendly dumps.
+    Symbol-form repr that round-trips back to the literal source
+    constructor.  e.g. `"DbError.ConnectionRefused { host: \"127.0.0.1\", port: 5432 }"`.
+
+  * **`Eq`** — pattern-test discipline: `assert_eq(err, ExpectedKind)`
+    in tests, `if err == NetworkError.Timeout { … }` in retry logic,
+    `Set<MyError>` in dedup workflows.
+
+Recipe by error-type shape (the four canonical patterns):
+
+```verum
+// Pattern 1 — All-unit variants.  Tag-int helper avoids the
+// path-type confusion that bites pair-form match on single-variant
+// types.
+fn my_err_tag(e: &MyError) -> Int {
+    match e {
+        Foo => 0,
+        Bar => 1,
+        Baz => 2,
+    }
+}
+implement Eq for MyError {
+    fn eq(&self, other: &MyError) -> Bool {
+        my_err_tag(self) == my_err_tag(other)
+    }
+}
+
+// Pattern 2 — Mixed unit + payload variants.  Direct match-pair
+// with field renaming on payload arms; cross-variant fall-through.
+implement Eq for MyError {
+    fn eq(&self, other: &MyError) -> Bool {
+        match (self, other) {
+            (MyError.Timeout, MyError.Timeout) => true,
+            (MyError.Other(a), MyError.Other(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+// Pattern 3 — Single-variant unit type.  Trivial Eq; deliberately
+// avoids `(SoleVariant, SoleVariant) => true` form that the type
+// checker reads as a path-type lookup for the bare variant name.
+implement Eq for MyError {
+    fn eq(&self, _other: &MyError) -> Bool { true }
+}
+
+// Pattern 4 — Record-form error with multiple fields.  Compare
+// every field; structural equality.
+implement Eq for MyError {
+    fn eq(&self, other: &MyError) -> Bool {
+        self.code == other.code
+            && self.message == other.message
+            && self.span    == other.span
+    }
+}
+```
+
+When **not** to add `Eq`:
+
+  * The error wraps a trait object (`Heap<dyn Error>`,
+    `List<Heap<dyn Error>>`).  The `Error` protocol is intentionally
+    not `Eq`-extending — comparing two trait objects via `.message()`
+    text would be an oracle leak masquerading as structural equality.
+    Defer Eq with an inline rationale comment.
+
+  * The error carries a payload of type `Span` (or any other type
+    whose Eq impl is unstable / position-dependent) and structural
+    span-comparison would surface false negatives across re-parses.
+    Compare the meaningful fields only and document the elision.
+
 ---
 
 ## `Iterator` and adapters

@@ -34,10 +34,17 @@ chooses the implementation.
 | `consistent_hash.vr` | `ConsistentHashRing` — Ketama-compatible distribution |
 
 Every core data structure implements `Iterator`, `IntoIterator`,
-`Clone`, `Debug`, `Eq`, `Default`. Caches and sketches carry
-stats counters (hits/misses/evicted) instead of the `Iterator`
-shape since they're lossy or ordered by workload rather than
-enumeration.
+`Clone`, `Debug`, `Display`, `Eq`, `Hash`, `Default`.  Hash is always
+consistent with Eq under the structure's equality semantics — for
+order-independent collections (`Set`, `Map`, `BinaryHeap`) hashing
+is deliberately order-independent (XOR-fold over element hashes for
+`Set`/`Map`, sort-then-fold for `BinaryHeap`) so the
+`a == b → hash(a) == hash(b)` contract holds across distinct internal
+arrangements of the same multiset.
+
+Caches and sketches carry stats counters (hits/misses/evicted)
+instead of the `Iterator` shape since they're lossy or ordered by
+workload rather than enumeration.
 
 ---
 
@@ -333,6 +340,23 @@ let intersect: Set<Int>  = a.intersection(&b).copied().collect(); // {3,4}
 let diff: Set<Int>       = a.difference(&b).copied().collect();   // {1,2}
 ```
 
+### Protocol implementations
+
+```verum
+implement<T: Hash + Eq + Clone>     Clone   for Set<T>;
+implement<T: Hash + Eq>             Default for Set<T>;
+implement<T: Hash + Eq + Debug>     Eq      for Set<T>;  // delegates to inner Map
+implement<T: Hash + Eq>             Hash    for Set<T>;  // order-independent
+implement<T: Hash + Eq + Debug>     Debug   for Set<T>;  // {a, b, c}
+implement<T: Hash + Eq + Display>   Display for Set<T>;  // {a, b, c}
+```
+
+The `Eq` and `Hash` impls are order-independent — two sets with the
+same elements but different insertion order compare equal and hash
+identically.  Implementation delegates to the underlying
+`Map<T, ()>` so set semantics fall out for free from map's
+order-independent invariants.
+
 ---
 
 ## `Deque<T>` — double-ended queue
@@ -400,6 +424,27 @@ h.push(Reverse((3, "three".to_string())));
 h.push(Reverse((1, "one".to_string())));
 let Reverse((k, v)) = h.pop().unwrap();  // (1, "one")
 ```
+
+### Protocol implementations
+
+```verum
+implement<T: Ord>                       IntoIterator for BinaryHeap<T>;
+implement<T: Ord + Eq>                  Eq           for BinaryHeap<T>;  // sorts then compares
+implement<T: Ord + Clone>               Clone        for BinaryHeap<T>;
+implement<T: Ord>                       Default      for BinaryHeap<T>;
+implement<T: Ord + Debug>               Debug        for BinaryHeap<T>;
+implement<T: Ord + Display>             Display      for BinaryHeap<T>;
+implement<T: Ord + Hash + Clone>        Hash         for BinaryHeap<T>;  // sorts then hashes
+implement<T: Ord>                       FromIterator for BinaryHeap<T>;
+implement<T: Ord>                       Extend       for BinaryHeap<T>;
+```
+
+`Eq` and `Hash` both **sort the contents before comparing/hashing**
+so the `a == b → hash(a) == hash(b)` invariant holds across distinct
+internal heap arrangements of the same multiset of elements.  Two
+heaps built from the same input list, even via different push orders,
+are interchangeable as keys in a `Map<BinaryHeap<T>, V>` or as
+elements of a `Set<BinaryHeap<T>>`.
 
 ---
 
