@@ -322,6 +322,45 @@ staying far below the wraparound cliff.
 A typed `TableTooLarge { field, count, max }` error names the
 offending field for triage.
 
+#### Descriptor-level memory-amplification bounds
+
+One layer further down: each type / function / specialization
+descriptor carries varint-encoded counts (`type_params_count`,
+`fields_count`, `variants_count`, `protocols_count`,
+`methods_count`, …) that drive per-descriptor allocations.
+A varint can encode `u64::MAX`, which casts to `usize::MAX` on
+64-bit platforms — `with_capacity(usize::MAX)` aborts the
+process in most Rust allocators.
+
+Tight architectural bounds (per real-world descriptor surface
+seen in the embedded stdlib):
+
+- **`MAX_TYPE_PARAMS_PER_DESCRIPTOR   = 64`** — matches the
+  `ast_to_type` recursion cap that already gates the front-end,
+  so a type the front-end accepted will always fit.
+- **`MAX_FIELDS_PER_DESCRIPTOR        = 4 096`**
+- **`MAX_VARIANTS_PER_DESCRIPTOR      = 4 096`**
+- **`MAX_PROTOCOLS_PER_DESCRIPTOR     = 256`**
+- **`MAX_METHODS_PER_PROTOCOL_IMPL    = 4 096`**
+
+#### Bytecode-section bounds
+
+The bytecode section's compressed branches read
+`uncompressed_size: u32` from the on-wire header and pass it to
+the decompressor, which `Vec::with_capacity`-allocates that many
+bytes before reading any compressed input.  A hostile section
+claiming `u32::MAX` triggered ~4 GB of allocation.  Bound:
+
+- **`MAX_DECOMPRESSED_BYTECODE_BYTES  = 1 GB`** — real Verum
+  modules are kilobytes; the embedded stdlib (every `core/*.vr`
+  compiled) totals ~14 MB.
+
+A separate reliability fix removed an arithmetic underflow
+(`section_size as usize - 1`) that on a `section_size == 0`
+input wrapped to `usize::MAX` and drove a multi-EB slice
+attempt.  The bytecode reader now rejects zero-size sections at
+entry and uses `checked_add` throughout.
+
 ### Implementation surface (Rust)
 
 For compiler / runtime hackers: the trust boundary is exposed as
