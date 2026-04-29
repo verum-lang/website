@@ -306,6 +306,23 @@ full kernel-grade feedback on every step.  Non-zero exit on any
 kernel rejection (CI-friendly).  Full guide in **[Tooling →
 Proof REPL](/docs/tooling/proof-repl)**.
 
+## Continuous benchmarking
+
+```bash
+verum benchmark run     --system <S> --suite-name <N> [--theorem <T>]…
+                        [--format plain|json|markdown|csv]
+verum benchmark compare [--system <S>]… --suite-name <N> [--theorem <T>]…
+                        [--format plain|json|markdown|csv]
+verum benchmark metrics [--format plain|json|markdown|csv]
+```
+
+Head-to-head comparison surface vs Coq / Lean4 / Isabelle / Agda
+across nine canonical metrics (kernel LOC, compilation speed,
+memory peak, cross-format export coverage, tactic-library
+coverage, trust diversification, LLM-tactic acceptance, etc.).
+Markdown output decorates the leader cell per metric with `⭐`.
+Full guide in **[Tooling → Continuous benchmarking](/docs/tooling/benchmarking)**.
+
 ## Auto-paper documentation
 
 ```bash

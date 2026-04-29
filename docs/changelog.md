@@ -16,6 +16,66 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — `verum benchmark` continuous head-to-head comparison surface (#83) (2026-04-29)
+
+Establishes Verum's quantitative leadership claim with
+**reproducible** benchmarks across the proof-assistant landscape
+(Coq / Lean4 / Isabelle / Agda).  Anyone can re-run the suite and
+verify the numbers — no marketing claims, only verifiable
+measurements.
+
+Three subcommands:
+
+- `verum benchmark run --system <S> --suite-name <N> [--theorem T]…
+  [--format plain|json|markdown|csv]` — run the suite against a
+  single system.
+- `verum benchmark compare [--system S]… --suite-name <N> [--theorem T]…
+  [--format ...]` — head-to-head matrix.  Without `--system`, runs
+  all five systems.
+- `verum benchmark metrics [--format ...]` — list every supported
+  metric with its `higher_is_better` direction.
+
+Nine canonical metrics: kernel LOC, lines/sec, theorems/sec,
+peak RSS, elapsed ms, cross-format exports, tactic coverage,
+trust diversification, LLM-tactic acceptance.  Each result carries
+an optional reproducibility envelope (hash of input corpus + tool
+version).  Markdown output decorates the leader cell per metric
+with `⭐` — direct-paste-able into release announcements.
+
+V0 ships mock runners with canned values reflecting the documented
+landscape claims (kernel LOC: Verum 5,000 / Coq 200,000 / Lean
+50,000; LLM acceptance: Verum 65%, others 0%).  V1+ swaps in
+production runners that actually invoke the foreign tools; the
+trait surface and CLI / docs / CI scripts are unchanged.
+
+Full guide:
+**[Tooling → Continuous benchmarking](/docs/tooling/benchmarking)**.
+
+### Fixed — `LspConfig.show_counterexamples` gates extraction (2026-04-29)
+
+Companion closure: `LspConfig.show_counterexamples` was
+forwarded into the validator's `ValidatorConfig` field but the
+Invalid-result branch in `validate_impl` always ran the full
+`extract_counterexample` extraction pipeline regardless of
+policy. When the flag is `false`, return a stub
+`CounterexampleData` whose `violation_reason` names the flag
+for diagnostic clarity. Useful for minimal status-line UIs.
+
+### Fixed — `LspConfig.cache_validation_results` actually gates the cache (2026-04-29)
+
+The flag was forwarded into the validator's
+`ValidatorConfig.cache_enabled` field but no path in
+`validate_refinement` consulted it — the cache lookup at line
+462 and insert at 484 fired regardless of policy.
+
+Wire by reading `cache_enabled` once at the entry of
+`validate_refinement` (single policy snapshot, no
+double-locking) and gating both `self.cache.get` and
+`self.cache.insert` on it. When disabled, every keystroke
+re-runs the full SMT verification pipeline — useful for
+debugging flaky proofs or benchmarking the verifier without
+cache noise.
+
 ### Fixed — `InterpreterConfig.cbgr_enabled` short-circuits validation (2026-04-29)
 
 Closes the inert-defense pattern around the documented opt-out
