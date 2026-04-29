@@ -16,6 +16,28 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — function-descriptor + constant + source-map memory-amp bounds (2026-04-29)
+
+Final pass of the descriptor-level memory-amp campaign — closes
+the last remaining unbounded varint-driven `Vec` / `SmallVec`
+allocations in the VBC deserializer:
+
+- **Function descriptors** — `type_params_count` (≤ 64),
+  `params_count` (≤ 256), `ctx_count` (≤ 32).
+- **`Constant::Array`** — element count bounded at
+  `MAX_CONSTANT_ARRAY_LEN = 1 048 576`.
+- **Specialization entries** — `type_args_count` bounded at
+  `MAX_SPECIALIZATION_TYPE_ARGS = 64` (matches the generic-fn
+  type-param cap).
+- **Source map** — `files_count` bounded at
+  `MAX_SOURCE_MAP_FILES = 65 536`; `entries_count` bounded at
+  `MAX_SOURCE_MAP_ENTRIES = 4 194 304` (4 M, comfortably above
+  any real-module instruction-line count).
+
+Every count consumed by `Vec::with_capacity` in the deserializer
+is now bounded — a hostile `.vbc` artifact has zero paths to
+reach `with_capacity(usize::MAX)` anywhere in the trust boundary.
+
 ### Fixed — inner-descriptor memory-amp bounds (2026-04-29)
 
 Continues the descriptor-level memory-amp campaign at the
