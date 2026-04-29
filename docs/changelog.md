@@ -16,6 +16,19 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `CompilerOptions.enable_cbgr_elimination` reaches LLVM lowering (2026-04-29)
+
+The session-level toggle for AOT-side CBGR check elimination
+(default `true`) was documented but never forwarded to
+`LoweringConfig.cbgr_elimination`. The corresponding
+LoweringConfig field DID gate codegen behaviour, but the
+session-level option was held for show — flipping it had no
+effect on emitted LLVM IR.
+
+Wired via `.with_cbgr_elimination(...)` in the LoweringConfig
+builder chain alongside `with_opt_level` / `with_debug_info` /
+`with_coverage` / `with_permission_policy`.
+
 ### Fixed — `ValidationConfig.{fail_on_mismatch, log_mismatches}` are load-bearing (2026-04-29)
 
 Two `ValidationConfig` fields on the SMT backend switcher
@@ -701,6 +714,31 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — `TargetConfig.gpu_targets` exposed via accessors (2026-04-29)
+
+Closes the inert-defense pattern around the per-target GPU
+selection. `TargetConfig.gpu_targets: Vec<GpuTarget>` was set
+by the `with_gpu(targets)` constructor and asserted in tests,
+but no code path queried the list — only the derived `has_gpu`
+boolean was consulted by routing. Downstream codegen layers
+had to re-derive the preferred target from environment
+variables or hardcode CUDA, defeating the documented
+manifest-driven target selection.
+
+Wired via two accessors on `TargetConfig`:
+
+- `preferred_gpu_target() -> Option<&GpuTarget>` — returns the
+  first entry in `gpu_targets` when GPU compilation is
+  available. Selection policy is **first-declared** (manifest
+  order is authoritative — embedders that need a different
+  priority reorder the list at construction).
+- `supports_target(&GpuTarget) -> bool` — discriminator-only
+  match for "is this GPU class available in the configured
+  target list". SM versions / GFX versions are capability
+  filters consumed at codegen time, not routing-time presence
+  checks; surfacing the discriminator semantic explicitly
+  prevents callers from over-constraining the query.
 
 ### Fixed — `LtoConfig.pic` reaches ThinLtoCodegen (2026-04-29)
 
