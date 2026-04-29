@@ -715,6 +715,28 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `LspConfig.smt_solver` flows into diagnostic tags (2026-04-29)
+
+Closes the inert-defense pattern around the
+`verum.lsp.smtSolver` LSP setting. The choice was parsed from
+the client's `initializationOptions` and surfaced in the
+initialize handler's tracing log line, but never reached the
+validator — clients that set `verum.lsp.smtSolver = "cvc5"`
+saw `smt_solver: Z3` in every `RefinementDiagnostic` regardless
+of their stance.
+
+Wired via a new `smt_solver: SmtSolver` field on
+`ValidatorConfig` populated by `apply_config` from the
+`LspConfig.SmtSolverChoice` enum: Z3→Z3, Cvc5→CVC5,
+Auto→Z3 (validator's preferred default; a future capability-
+router enhancement could route Auto through
+`verum_smt::backend_switcher` for per-goal selection).
+
+`build_diagnostic` now consults the configured stance instead
+of hardcoding Z3, so every diagnostic carries the actual
+backend tag — embedders that display "verified by Z3 in 50ms"
+UI annotations now show the user's actual configured solver.
+
 ### Fixed — `ParallelConfig.race_mode` controls worker termination (2026-04-29)
 
 Closes the inert-defense pattern around the parallel SMT
