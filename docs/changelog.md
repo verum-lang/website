@@ -499,6 +499,30 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `verum test --release` and `--verify` reach the test compiler (2026-04-29)
+
+Closes two inert-defense patterns at the `verum test` CLI →
+test-compiler boundary. Both flags landed on `TestOptions` but
+were dropped before reaching the test compiler — setting
+`--release` or `--verify <mode>` had zero observable effect on
+the test binary.
+
+`--release` (default off) — wired in `run_test_aot` to set
+`CompilerOptions.optimization_level = 3` when true (otherwise 0,
+matching the per-test compilation default). Mirrors the
+`verum build --release` semantics so production-mode tests
+exercise the optimized code path.
+
+`--verify <mode>` — wired through a new
+`TestRunCfg.verify_mode_override: Option<VerifyMode>` field. The
+string-form CLI flag `runtime` / `static` / `proof` (case-
+insensitive) maps to the typed enum at the cfg construction site.
+`static` is accepted as a synonym for `proof` (matches the
+user-facing docs that promise both spellings reach the SMT-backed
+verifier). Unrecognised values fall back to the per-test default
+rather than failing at this layer — keeps CI tolerant of typos in
+invocation strings.
+
 ### Fixed — `ContextConfig.simplify` wired into a public assert path (2026-04-29)
 
 Closes the inert-defense pattern around the `verum_smt::context`
