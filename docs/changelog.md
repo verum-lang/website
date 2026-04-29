@@ -215,6 +215,35 @@ audited at runtime via
 Tests: 11 handler + 10 e2e. Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `MonoPhaseConfig.use_stdlib` + `num_threads` are load-bearing (2026-04-29)
+
+Closes two inert-defense patterns at the monomorphization-phase
+boundary.
+
+`use_stdlib` (default `true`) — documented as gating the stdlib
+precompiled-specialization lookup, but `MonomorphizationPhase::execute`
+always installed the stdlib resolver if one was provided via
+`with_core`. Setting `use_stdlib = false` had no observable effect.
+Wired at the resolver-installation site: false now skips the
+`with_core` call even when a stdlib module is present, letting
+embedders measure the precompiled-cache hit cost or force every
+specialization through the user pipeline (useful for differential
+testing of the specializer against the cache).
+
+`num_threads` (default `0 = auto`) — documented as the parallel
+specialization worker count, but the parallel path always used
+rayon's global default pool. Now a bespoke
+`rayon::ThreadPoolBuilder` is constructed when nonzero and the
+parallel iterator runs inside `pool.install(...)` so worker spawns
+honour the configured count. Zero preserves the global-pool path.
+The bespoke pool is the right knob for CI workers that limit
+cross-build interference, measurement runs that want fixed worker
+counts, and embedders that share rayon with other systems.
+
+A new `MonoPhaseError::ParallelExecution(String)` variant carries
+the rayon error message + configured worker count for triage when
+`ThreadPoolBuilder` construction fails.
+
 ### Fixed — `CodegenConfig.validate` runs the structural validator (2026-04-29)
 
 Closes the inert-defense pattern around the codegen-time VBC
