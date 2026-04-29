@@ -330,6 +330,52 @@ VERUM_LSP_LOG=debug verum lsp   # verbose server logs to stderr
 Or set the editor's `trace` level to `"verbose"`. Logs include
 request timing, cache hit rates, and solver dispatch decisions.
 
+## Robustness against adversarial input
+
+The LSP runs in the editor's process or as a long-lived server
+subprocess; a panic in any request handler kills the language-server
+connection and forces a manual restart.  Verum's LSP holds a hard
+**no-panic-on-any-input** contract: every entry point that ingests
+arbitrary document text and a cursor position must terminate
+without crashing, even on:
+
+- **Multi-byte UTF-8 cursors** — combining accents (`U+0301`),
+  emoji (`🦀`, 4 bytes), CJK identifiers (`测试`, `函数`), Greek
+  / Cyrillic / Hebrew / Arabic letters in identifier or comment
+  position.  The cursor position transported by LSP can land
+  inside a multi-byte sequence (UTF-16 ↔ UTF-8 column rounding);
+  the server clamps to the nearest preceding char boundary
+  rather than panicking on the slice.
+- **Unbalanced delimiters** (e.g. `((((((`, `}}}}}}`,
+  interleaved `({[<({[<({[<`).
+- **Truncated tokens** — every keyword and structural form cut
+  mid-word.
+- **Pathological structural inputs** — 256-deep nested generics,
+  1000-arm `match`, 1000-step method chain, 256-stacked `@inline`
+  attributes, 64 KB single-line, 100K-blank-line documents.
+- **Malformed escape sequences** in string and char literals,
+  including unterminated forms.
+- **NUL bytes** mid-source.
+
+The server's UTF-8-safe text primitives live in
+`verum_common::text_utf8` and are shared across LSP, REPL,
+diagnostics, and the bytecode disassembler:
+
+- `clamp_to_char_boundary(text, byte_offset)` — round a byte
+  offset DOWN to the nearest preceding char boundary.
+- `safe_prefix(text, byte_offset)` — UTF-8-safe `&text[..n]`
+  replacement.
+- `truncate_chars(text, max_chars)` — character-count truncation
+  (for diagnostic preview snippets).
+- `find_word_bounds(text, byte_offset, is_word_char)` — returns
+  word start/end byte bounds at char boundaries; used by
+  `prepare_rename`, `word_at_position`, `complete_at_position`.
+
+Primitives are zero-allocation on the hot path, stdlib-only
+(`is_char_boundary` / `char_indices`), and run in
+`O(prefix-length)` — the same bound as the buggy ad-hoc code
+they replace.
+
 ## See also
 
 - **[CLI](/docs/tooling/cli)** — `verum lsp` subcommand.

@@ -16,6 +16,46 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — varint canonicality at the bytecode trust boundary (2026-04-29)
+
+Tightens the `decode_varint` / `read_varint` decoders in
+`verum_vbc::encoding` to reject adversarial 10-byte encodings whose
+final byte sets bits 1..6.  At shift = 63 only bit 0 of byte[9] is
+representable in `u64`; the previous decoders silently dropped the
+upper bits via the platform's shift-out-of-range semantics, so 64
+distinct invalid inputs collapsed onto `u64::MAX`.  Both decoder
+surfaces now return `VarIntOverflow` for any such encoding.  The
+legitimate boundary `u64::MAX` (byte[9] == 0x01) is still accepted.
+Mirrors the protobuf `read_varint` Google-reference behaviour
+already enforced in `core/protobuf/wire.vr`.
+
+### Fixed — hostile-size allocation in interpreter dispatch (2026-04-29)
+
+VBC interpreter dispatch handlers (`CbgrAlloc` in
+`ffi_extended.rs`; `GpuAlloc`, `MallocManaged`, `GpuMemAlloc`,
+`Free` in `gpu.rs`) used to either panic via `.unwrap()` on a
+chained `Layout::from_size_align` fallback, or silently downgrade
+to a 1-byte layout via `unwrap_or(Layout::new::<u8>())` while the
+caller still believed they got `size` bytes (heap overflow on the
+first write past byte 0; UB on the matching dealloc since
+`std::alloc::dealloc` with a wrong layout is undefined behaviour).
+Allocation paths now return a null pointer on layout failure
+(standard malloc-fail contract); the deallocation path leaks on
+layout failure rather than dealloc with a wrong layout.
+
+### Added — UTF-8-safe text primitives in `verum_common` (2026-04-29)
+
+`verum_common::text_utf8` consolidates six ad-hoc UTF-8 routines
+into one canonical module: `clamp_to_char_boundary`, `safe_prefix`,
+`truncate_chars`, `find_word_bounds`, `char_before_satisfies`,
+`char_at_satisfies`.  All zero-allocation, stdlib-only
+(`is_char_boundary` / `char_indices`), `O(prefix-length)`.  LSP
+(`completion`, `rename`, `quick_fixes`, `diagnostics`,
+`document::word_at_position`, `script::incremental`) and VBC
+(`disassemble`) now delegate to the shared module — eliminates the
+byte-vs-char-index bug class that had produced 13 panic / silent-
+corruption sites across 8 distinct files.
+
 ### Added — VBC module-load trust boundary (2026-04-28)
 
 A two-tier loader API with explicit trust contracts replaces the
