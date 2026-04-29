@@ -59,8 +59,7 @@ does.
 | Priority queue                    | `BinaryHeap<T>` | `PriorityQueue`   |
 | UTF-8 text                        | `Text`          | `String`, `str`   |
 | Owned allocation                  | `Heap<T>`       | `Box`             |
-| Atomically ref-counted allocation | `Shared<T>`     | `Arc`             |
-| Single-threaded ref-counted       | `Rc<T>`         | —                 |
+| Atomically ref-counted allocation | `Shared<T>`     | `Arc`, `Rc`, `shared_ptr` |
 | Optional value                    | `Maybe<T>`      | `Option`, `Optional` |
 | Fallible result                   | `Result<T, E>`  | —                 |
 | Mutable shared cell               | `Cell<T>`       | `RefCell`         |
@@ -73,8 +72,9 @@ A few names in the table above are *still* implementation-flavoured:
 
 - `BTreeMap<K, V>` — the "B-tree" is a concrete data structure.
 - `BinaryHeap<T>` — the "binary heap" is a concrete data structure.
-- `Shared<T>` / `Rc<T>` — Verum ships two flavours to reflect the
-  **cost** (atomic vs. single-threaded), which is semantic.
+- `Shared<T>` — single ref-counted handle; the atomic counter is
+  semantic (Verum's threading story is share-by-default), but the
+  word "Shared" still leaks one implementation choice (refcounting).
 
 The rule is softer than "never mention a data structure". It is:
 *never let the name commit to an implementation detail that could

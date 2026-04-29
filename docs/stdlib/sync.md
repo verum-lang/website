@@ -337,7 +337,6 @@ type Sync is protocol {};      // &T can be shared across threads
 - All primitive types are `Send + Sync`.
 - `Heap<T>: Send + Sync` iff `T: Send + Sync`.
 - `Shared<T>: Send + Sync` iff `T: Send + Sync`.
-- `Rc<T>: !Send, !Sync` (single-threaded only).
 - `Cell<T> / RefCell<T>: !Sync` (interior mutability without locking).
 - `Mutex<T>: Sync` iff `T: Send`.
 - `RwLock<T>: Sync` iff `T: Send + Sync`.
