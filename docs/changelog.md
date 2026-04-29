@@ -661,6 +661,28 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `PassConfig.enable_standard_opts` + `debug_ir_printing` are load-bearing (2026-04-29)
+
+Closes two inert-defense patterns in
+`verum_codegen::mlir::passes::pipeline::PassConfig`. Both fields
+were exposed in default-config presets and asserted in pin tests
+but no code path consulted them.
+
+`enable_standard_opts` (default `true`) — wired as a master
+umbrella over both early AND late MLIR optimization phases. The
+umbrella is the load-bearing single off-switch for "skip all
+standard MLIR optimizations" — Verum-domain passes (CBGR /
+context-mono / refinement) still run if their own flags are on.
+The per-phase `enable_early_opts` / `enable_late_opts` give
+finer-grained control beneath the umbrella.
+
+`debug_ir_printing` (default `false`) — wired in `run_passes` to
+dump the module IR via `tracing::debug!` at four points: before
+any pass runs (pristine input), after early-opts, after late-opts,
+and after llvm-lowering. Lets debuggers / custom pipeline
+harnesses see exactly what each phase produced. Default-off keeps
+the production trace stream quiet.
+
 ### Fixed — `CacheConfig.distributed_cache` auto-installs the backend (2026-04-29)
 
 Closes the inert-defense pattern around the verification cache's
