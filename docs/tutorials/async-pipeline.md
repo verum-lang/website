@@ -57,8 +57,8 @@ load-bearing — a `ValidRecord` at the writer is guaranteed non-empty.
 `src/reader.vr`:
 
 ```verum
-use core.async.*;
-use core.io.*;
+mount core.async.*;
+mount core.io.*;
 use .self.types.RawRecord;
 
 pub async fn read_from_stdin(tx: Sender<RawRecord>)
@@ -96,9 +96,9 @@ pub async fn read_from_stdin(tx: Sender<RawRecord>)
 `src/parser.vr`:
 
 ```verum
-use core.async.*;
-use core.text.*;
-use .self.types::*;
+mount core.async.*;
+mount core.text.*;
+use .self.types.*;
 
 pub async fn parse_loop(
     mut rx: Receiver<RawRecord>,
@@ -154,8 +154,8 @@ fn parse_timestamp(s: &Text) -> Result<Instant, Error> {
 `src/validator.vr`:
 
 ```verum
-use core.async.*;
-use .self.types::*;
+mount core.async.*;
+use .self.types.*;
 
 pub async fn validate_loop(
     mut rx: Receiver<ParsedRecord>,
@@ -185,8 +185,8 @@ pub async fn validate_loop(
 `src/writer.vr`:
 
 ```verum
-use core.async.*;
-use core.io.*;
+mount core.async.*;
+mount core.io.*;
 use .self.types.ValidRecord;
 
 pub async fn write_loop(
@@ -244,13 +244,13 @@ fn format_record(rec: &ValidRecord) -> Text {
 `src/main.vr`:
 
 ```verum
-use core.async.*;
-use core.io.*;
+mount core.async.*;
+mount core.io.*;
 use .self.reader.read_from_stdin;
 use .self.parser.parse_loop;
 use .self.validator.validate_loop;
 use .self.writer.write_loop;
-use .self.types::*;
+use .self.types.*;
 
 const PARSER_WORKERS: Int = 4;
 const CHANNEL_CAPACITY: Int = 1024;

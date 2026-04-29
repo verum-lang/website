@@ -48,7 +48,7 @@ solver_timeout_ms = 5000
 `src/domain.vr`:
 
 ```verum
-use core.text.Text;
+mount core.text.Text;
 
 /// A short code: 6–10 chars of [a-z0-9], no ambiguity (no 0/o/1/l).
 pub type Code is Text {
@@ -81,7 +81,7 @@ forces conversion at the boundary.
 `src/store.vr`:
 
 ```verum
-use core.context.*;
+mount core.context.*;
 use .self.domain.*;
 
 /// Storage for the URL-shortener — abstract so we can swap
@@ -105,7 +105,7 @@ pub type StoreError is
 `src/codegen.vr`:
 
 ```verum
-use core.text.*;
+mount core.text.*;
 use .self.domain.Code;
 
 const ALPHABET: &Text =
@@ -151,7 +151,7 @@ iteration; combined with the exit condition, they imply `result.len()
 `src/store_memory.vr`:
 
 ```verum
-use core.sync.*;
+mount core.sync.*;
 use .self.domain.*;
 use .self.store.*;
 
@@ -202,9 +202,9 @@ implement Store for MemoryStore {
 `src/http.vr`:
 
 ```verum
-use core.net.http.*;
-use core.text.*;
-use core.time.Instant;
+mount core.net.http.*;
+mount core.text.*;
+mount core.time.Instant;
 use .self.domain.*;
 use .self.store.*;
 use .self.codegen;
@@ -290,9 +290,9 @@ pub async fn route(req: Request) -> Response
 `src/main.vr`:
 
 ```verum
-use core.net.*;
-use core.async.*;
-use core.sync.Semaphore;
+mount core.net.*;
+mount core.async.*;
+mount core.sync.Semaphore;
 use .self.store_memory.MemoryStore;
 use .self.http.route;
 
@@ -363,9 +363,9 @@ Three things to notice:
 module tests {
     use .super.domain.*;
     use .super.codegen;
-    use .super.store::*;
+    use .super.store.*;
     use .super.store_memory.MemoryStore;
-    use .super.http::*;
+    use .super.http.*;
 
     @test
     fn codegen_produces_valid_code() {

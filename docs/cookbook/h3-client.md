@@ -68,7 +68,7 @@ Defaults (from `ClientOptions.default`):
 ## POST with body
 
 ```verum
-use core.net.h3.request.{H3Method};
+mount core.net.h3.request.{H3Method};
 
 let resp = client.post(&f"/api/v1/upload",
                        &core.text.content_type.APPLICATION_JSON,
@@ -83,7 +83,7 @@ if resp.status() != 200_u16 {
 For full control over headers, use `H3Request.new` + `client.send`:
 
 ```verum
-use core.net.h3.request.{H3Request, H3Method};
+mount core.net.h3.request.{H3Request, H3Method};
 
 let req = H3Request.new(H3Method.Post, &f"example.com", &f"/api/v2")
     .header(&f"content-type",   &f"application/json")

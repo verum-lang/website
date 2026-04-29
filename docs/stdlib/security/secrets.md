@@ -182,8 +182,8 @@ the renewer, `close` (invoked on Drop) revokes the lease cleanly.
 ### Quick example — fetch a DB password
 
 ```verum
-use core.security.secrets.vault.{VaultConfig, VaultAuth, VaultClient};
-use core.security.secrets.core_protocol.{SecretReference};
+mount core.security.secrets.vault.{VaultConfig, VaultAuth, VaultClient};
+mount core.security.secrets.core_protocol.{SecretReference};
 
 async fn load_db_password() -> Result<Text, Error> {
     let config = VaultConfig.new(
@@ -301,8 +301,8 @@ impl SecretStore for AwsSecretsClient { /* delegates to methods above */ }
 ### Quick example
 
 ```verum
-use core.security.secrets.aws.{AwsRegion, AwsCredentialProvider, AwsSecretsClient};
-use core.security.secrets.core_protocol.{SecretReference, SecretVersion};
+mount core.security.secrets.aws.{AwsRegion, AwsCredentialProvider, AwsSecretsClient};
+mount core.security.secrets.core_protocol.{SecretReference, SecretVersion};
 
 async fn load_prod_credentials() -> Result<Secret, SecretError> {
     let client = AwsSecretsClient.connect(
@@ -378,8 +378,8 @@ impl SecretStore for GcpSecretsClient { /* delegates */ }
 ### Quick example
 
 ```verum
-use core.security.secrets.gcp.{GcpAuth, GcpSecretsClient};
-use core.security.secrets.core_protocol.{SecretReference};
+mount core.security.secrets.gcp.{GcpAuth, GcpSecretsClient};
+mount core.security.secrets.core_protocol.{SecretReference};
 
 async fn load_stripe_key() -> Result<Text, SecretError> {
     let client = GcpSecretsClient.connect(

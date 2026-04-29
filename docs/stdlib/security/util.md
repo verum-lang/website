@@ -138,8 +138,8 @@ Always use `constant_time_eq` (never `==`) when:
 ### Quick example — signing a cookie
 
 ```verum
-use core.security.mac.hmac.{hmac_sha256};
-use core.security.util.constant_time.{constant_time_eq};
+mount core.security.mac.hmac.{hmac_sha256};
+mount core.security.util.constant_time.{constant_time_eq};
 
 fn verify_cookie(key: &[Byte], payload: &[Byte], tag: &[Byte; 32]) -> Bool {
     let expected = hmac_sha256(key, payload);
@@ -212,7 +212,7 @@ mount core.security.util.rng;
 let mut nonce: [Byte; 12] = [0; 12];
 rng.fill_secure_array(&mut nonce);   // const-N form, no bounds check
 
-let mut buf = List<Byte>::with_size(32);
+let mut buf = List<Byte>.with_size(32);
 rng.fill_secure(&mut buf);           // dynamic-size form
 ```
 

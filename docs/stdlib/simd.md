@@ -51,12 +51,12 @@ type Vec16f, Vec8d, Vec16i, Vec8l, Vec64b, Vec32s;
 ### Construction
 
 ```verum
-Vec<T, N>::splat(value: T) -> Vec<T, N>                   // broadcast scalar
-Vec<T, N>::from_array(arr: [T; N]) -> Vec<T, N>
+Vec<T, N>.splat(value: T) -> Vec<T, N>                   // broadcast scalar
+Vec<T, N>.from_array(arr: [T; N]) -> Vec<T, N>
 v.to_array() -> [T; N]
 
-Vec<T, N>::load_aligned(ptr: *const T) -> Vec<T, N>       // aligned
-Vec<T, N>::load_unaligned(ptr: *const T) -> Vec<T, N>
+Vec<T, N>.load_aligned(ptr: *const T) -> Vec<T, N>       // aligned
+Vec<T, N>.load_unaligned(ptr: *const T) -> Vec<T, N>
 v.store_aligned(ptr: *mut T)
 v.store_unaligned(ptr: *mut T)
 ```
@@ -88,7 +88,7 @@ v.cmp_eq(&other)                    v.cmp_ne(&other)
 ### Conditional operations via masks
 
 ```verum
-Vec<T, N>::select(mask: Mask<N>, a: Vec<T, N>, b: Vec<T, N>) -> Vec<T, N>
+Vec<T, N>.select(mask: Mask<N>, a: Vec<T, N>, b: Vec<T, N>) -> Vec<T, N>
 v.masked_load(ptr, mask: Mask<N>) -> Vec<T, N>
 v.masked_store(ptr, mask: Mask<N>)
 ```
@@ -104,9 +104,9 @@ v.rotate_left<const COUNT: USize>() -> Vec<T, N>
 ### Gather / scatter
 
 ```verum
-Vec<T, N>::gather(base: *const T, indices: Vec<Int32, N>) -> Vec<T, N>
+Vec<T, N>.gather(base: *const T, indices: Vec<Int32, N>) -> Vec<T, N>
 v.scatter(base: *mut T, indices: Vec<Int32, N>)
-Vec<T, N>::masked_gather(base, indices, mask: Mask<N>, default) -> Vec<T, N>
+Vec<T, N>.masked_gather(base, indices, mask: Mask<N>, default) -> Vec<T, N>
 v.masked_scatter(base, indices, mask: Mask<N>)
 ```
 
@@ -120,7 +120,7 @@ type Mask<N: meta USize> is (/* opaque — SIMD mask */);
 // Aliases
 type Mask4, Mask8, Mask16;
 
-Mask<N>::all()     Mask<N>::none()
+Mask<N>.all()     Mask<N>.none()
 m.count() -> USize              m.any() -> Bool      m.all_active() -> Bool
 m.and(&other) / m.or(&other) / m.not()
 ```

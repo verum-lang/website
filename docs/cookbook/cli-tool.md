@@ -86,7 +86,7 @@ fn load_config() -> Result<Config, Error> {
 ### Coloured error output
 
 ```verum
-use term.style::{Color, Style};
+mount term.style.{Color, Style};
 
 fn report_error(e: &Error) {
     let red = Style.new().fg(Color.Red).add_modifier(Modifier.Bold);
@@ -114,7 +114,7 @@ fn main() {
 ### Progress bars & spinners
 
 ```verum
-use term.widget::{Spinner, SpinnerFrames};
+mount term.widget.{Spinner, SpinnerFrames};
 
 async fn slow_task() {
     let mut spin = Spinner.new().frames(&SpinnerFrames.Dots);

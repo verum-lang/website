@@ -121,7 +121,7 @@ public fn create_graphics_renderer(
 
 ## Performance knobs
 
-* **Allocations.** `Buffer.new(w, h)` allocates one `Vec<Cell>` of size
+* **Allocations.** `Buffer.new(w, h)` allocates one `List<Cell>` of size
   `w * h`; resizing is rare. Avoid building throwaway `Buffer`s per frame —
   mutate the frame's buffer in place.
 * **Style patch order.** `buf.set_style(rect, style)` patches every cell;

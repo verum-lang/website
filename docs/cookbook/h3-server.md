@@ -51,14 +51,14 @@ H3 frame layer.
 For non-trivial routing, compose on top of `core.net.weft.router`:
 
 ```verum
-use core.net.weft.router.{Router};
+mount core.net.weft.router.{Router};
 
 let router = Router.new()
     .get(f"/health",   |_| async move { H3Response.ok().text(f"ok") })
     .get(f"/users/:id", handle_user_get)
     .post(f"/users",    handle_user_post)
-    .middleware(weft.cors::permissive())
-    .middleware(weft.rate_limit::token_bucket(100, Duration.from_secs(1)));
+    .middleware(weft.cors.permissive())
+    .middleware(weft.rate_limit.token_bucket(100, Duration.from_secs(1)));
 
 server.serve(router.handler()).await?;
 ```
@@ -94,7 +94,7 @@ The push_emitter manages the client's `MAX_PUSH_ID` budget + tracks
 outstanding promises:
 
 ```verum
-use core.net.h3.push.{PushEmitter};
+mount core.net.h3.push.{PushEmitter};
 
 server.serve(|mut req: H3Request| async move {
     if req.path() == f"/" {

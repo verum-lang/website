@@ -138,7 +138,7 @@ public type SpiffeIdError is
 ### Quick example
 
 ```verum
-use core.security.spiffe.id.{SpiffeId};
+mount core.security.spiffe.id.{SpiffeId};
 
 let id = SpiffeId.parse(&"spiffe://prod.example.com/ns/billing/sa/api")?;
 assert_eq!(id.trust_domain(), &"prod.example.com");
@@ -359,7 +359,7 @@ public type WorkloadApiError is
 ### Quick example — fetch an SVID once
 
 ```verum
-use core.security.spiffe.workload_api.{WorkloadApiClient};
+mount core.security.spiffe.workload_api.{WorkloadApiClient};
 
 async fn get_my_identity() -> Result<(), Error> {
     // connect() automatically resolves the SPIFFE_ENDPOINT_SOCKET
@@ -377,8 +377,8 @@ async fn get_my_identity() -> Result<(), Error> {
 ### Quick example — rotate automatically
 
 ```verum
-use core.async.task;
-use core.async.cancellation.{CancellationToken};
+mount core.async.task;
+mount core.async.cancellation.{CancellationToken};
 
 async fn run_with_rotation(mut app_tls_config: TlsConfig) {
     let token = CancellationToken.new();

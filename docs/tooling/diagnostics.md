@@ -134,7 +134,7 @@ Third-party code that embeds `verum_compiler` / `verum_vbc` can push
 its own breadcrumbs:
 
 ```rust
-let _bc = verum_error.breadcrumb::enter("mytool.stage", file_path);
+let _bc = verum_error.breadcrumb.enter("mytool.stage", file_path);
 // work happens here; breadcrumb is popped automatically on scope exit
 ```
 
@@ -270,7 +270,7 @@ your hook first:
 ```rust
 fn main() {
     my_metrics.install_panic_hook();
-    verum_error.crash::install(Default.default());
+    verum_error.crash.install(Default.default());
     …
 }
 ```
@@ -304,7 +304,7 @@ correlate the two events.
 ## Configuration
 
 All of the above is controlled by
-`verum_error.crash::CrashReporterConfig`:
+`verum_error.crash.CrashReporterConfig`:
 
 | Field | Default | Notes |
 |-------|---------|-------|

@@ -12,7 +12,7 @@ the model as a frame.
 ### The whole program
 
 ```verum
-use core.term::*;
+mount core.term.*;
 
 type Counter is { count: Int };
 

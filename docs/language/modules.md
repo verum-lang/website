@@ -17,8 +17,8 @@ src/
 ├── util.vr           // module `my_cog.util`
 ├── http/
 │   ├── mod.vr        // module `my_cog.http`
-│   ├── client.vr     // module `my_cog.http::client`
-│   └── server.vr     // module `my_cog.http::server`
+│   ├── client.vr     // module `my_cog.http.client`
+│   └── server.vr     // module `my_cog.http.server`
 ```
 
 The root module is `src/lib.vr` (for libraries) or `src/main.vr` (for

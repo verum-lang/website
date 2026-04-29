@@ -177,7 +177,7 @@ LSP extensions". Their call path is:
    onto the `verum-smt-worker` thread via
    [`SmtWorkerHandle`](https://github.com/verum-lang/verum/blob/main/crates/verum_lsp/src/smt_worker.rs).
 4. The worker thread exclusively owns the Z3 context; it returns
-   `SmtCheckResult` through a `tokio.sync::oneshot`. Only `Send`
+   `SmtCheckResult` through a `tokio.sync.oneshot`. Only `Send`
    types cross the await boundary.
 5. `getEscapeAnalysis` and `getProfile` don't touch Z3 — they run in
    the handler's async context directly.
