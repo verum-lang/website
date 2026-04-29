@@ -16,6 +16,28 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `ContextConfig` 5-field wiring on `Context::solver` (2026-04-29)
+
+Closes the inert-defense pattern around five
+`ContextConfig` fields that had documented defaults but no
+code path consulted them in `Context::solver()`. Only
+`timeout` was forwarded to fresh solver instances; the
+other knobs (model generation, unsat-core extraction,
+proof generation, memory limit, random seed) were inert at
+this construction site.
+
+Wire all five:
+
+- `unsat_core` / `model` / `proof` → Solver Params keys
+  (folded into a single `Params` value alongside the
+  timeout — required because `Solver::set_params` is
+  destructive).
+- `memory_max_size` and `smt.random_seed` → global Z3
+  params via `set_global_param` (these keys must be set
+  at process scope; Solver/Config scopes silently ignore
+  them per the verifier's empirical scope-discipline
+  audit).
+
 ### Fixed — `PortfolioConfig.enabled` is now a kill-switch (2026-04-29)
 
 Closes the inert-defense pattern around the portfolio toggle.
@@ -274,6 +296,32 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — `ProofGenerationConfig.minimize_unsat_cores` + `extraction_timeout_ms` reach the Z3 Solver (2026-04-29)
+
+Closes two inert-defense patterns at the proof-extraction boundary.
+Both fields were documented Z3 controls but no code path forwarded
+them to the Solver — toggling either had zero observable effect on
+extraction behaviour.
+
+`minimize_unsat_cores` is the `smt.core.minimize` Z3 param —
+Solver-level (not Config-level) so it can't ride on the existing
+`apply_to_z3_config` path. When true, the solver runs additional
+minimization on the unsat core before returning it, producing
+tighter explanations at extra solver cost.
+
+`extraction_timeout_ms` is the `timeout` Z3 param. The "0 = no
+timeout" semantic is preserved by OMITTING the param entirely when
+the field is zero — Z3 interprets `timeout=0` as "fire immediately"
+on some param paths, which would defeat the documented unbounded
+behaviour. Saturating clamp via `min(u32::MAX as u64) as u32`
+prevents silent overflow on hostile / pathological config (~49
+days of milliseconds, well past anything Z3 would honour).
+
+Wired via new `apply_to_z3_solver(&Solver)` method, parallel to
+the existing `apply_to_z3_config(&mut Config)`. Callers running
+proof-extraction work invoke this on the Solver they're about to
+query so the per-call resource budget actually reaches the solver.
 
 ### Fixed — `ValueTrackingConfig` is fully load-bearing (2026-04-29)
 
