@@ -306,6 +306,25 @@ full kernel-grade feedback on every step.  Non-zero exit on any
 kernel rejection (CI-friendly).  Full guide in **[Tooling →
 Proof REPL](/docs/tooling/proof-repl)**.
 
+## SMT certificate replay
+
+```bash
+verum cert-replay replay      --backend <B> [--cert FILE | --format F --theory T --conclusion C --body B]
+                              [--output plain|json|markdown]
+verum cert-replay cross-check [--backend <B>]… [--cert FILE | --format F …]
+                              [--require-consensus] [--output ...]
+verum cert-replay formats     [--output ...]
+verum cert-replay backends    [--output ...]
+```
+
+Multi-backend SMT certificate cross-validation surface.  The
+kernel-only structural check makes solvers external to the trusted
+computing base — a tampered cert is caught regardless of what
+external solvers claim.  Multi-backend `cross-check
+--require-consensus` is the `@verify(certified)` semantics: every
+available backend must accept.  Full guide in **[Tooling → SMT
+certificate replay](/docs/tooling/cert-replay)**.
+
 ## Continuous benchmarking
 
 ```bash
