@@ -256,6 +256,20 @@ Inspector / control surface for the per-theorem closure-hash cache
 subcommand is for ad-hoc inspection + CI scripts.  Full guide in
 **[Tooling → Incremental cache](/docs/tooling/incremental-cache)**.
 
+## Foreign-system theorem import
+
+```bash
+verum foreign-import --from <coq|lean4|mizar|isabelle> <FILE> \
+                     [--out <PATH>] [--format skeleton|json|summary]
+```
+
+Reads a Coq / Lean4 / Mizar / Isabelle source file and emits a
+Verum `.vr` skeleton with one `@axiom`-bodied declaration per
+imported theorem, attributed back to the source via
+`@framework(<system>, "<source>:<line>")`.  The inverse of
+`verum export`.  Full guide in **[Tooling → Foreign-system
+import](/docs/tooling/foreign-import)**.
+
 ## Auto-paper documentation
 
 ```bash

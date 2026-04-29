@@ -81,6 +81,36 @@ five-layer chain. Closes the user's "documentation must be
 predельно полной и не требовала от разработчиков искать
 дополнительные ресурсы" requirement.
 
+### Added — `verum foreign-import` foreign-system theorem import (#85) (2026-04-29)
+
+Inverse of `verum export`: reads a Coq / Lean4 / Mizar / Isabelle
+source file and emits a Verum `.vr` skeleton with one
+`@axiom`-bodied declaration per imported theorem, attributed back
+to the source via `@framework(<system>, "<source>:<line>")`.
+
+```bash
+verum foreign-import --from <coq|lean4|mizar|isabelle> <FILE> \
+                     [--out <PATH>] [--format skeleton|json|summary]
+```
+
+Per-system V0 statement-level extractors recognise the canonical
+keywords: Coq's `Theorem` / `Lemma` / `Corollary` / `Axiom` /
+`Definition`, Lean4's `theorem` / `lemma` / `axiom` / `def`,
+Mizar's `theorem` / `definition`, Isabelle's `theorem` / `lemma` /
+`axiomatization`.  Comments are stripped before extraction.
+
+Three output formats: `skeleton` (default — a copy-paste-able
+`.vr` source), `json` (structured payload for tooling pipelines),
+`summary` (human-readable count + name list).
+
+Bidirectional reproducibility: a theorem proved in Verum can be
+exported to Lean; a theorem proved in Lean can be imported to Verum
+and (re-)proved by Verum's kernel.  Disagreement at any step is a
+bug somewhere in the chain.
+
+Full guide:
+**[Tooling → Foreign-system import](/docs/tooling/foreign-import)**.
+
 ### Added — `verum doc-render` auto-paper generator (#84) (2026-04-29)
 
 A Verum corpus IS a formal proof AND a paper draft. Pre-this-tool a

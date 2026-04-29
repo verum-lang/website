@@ -79,6 +79,7 @@ const sidebars: SidebarsConfig = {
         'tooling/proof-repair',
         'tooling/incremental-cache',
         'tooling/auto-paper',
+        'tooling/foreign-import',
       ],
     },
     {
