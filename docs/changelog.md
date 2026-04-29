@@ -245,6 +245,36 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `ValueTrackingConfig` is fully load-bearing (2026-04-29)
+
+Closes four inert-defense patterns at once — the entire
+`ValueTrackingConfig` struct in `verum_cbgr::value_tracking` was
+documentation-only. `ValuePropagator::new` ignored it; the
+`track_concrete_values` consumer ran with hard-coded behaviour;
+setting any field had zero observable effect.
+
+`ValuePropagator` now owns the config (new `with_config(config)`
+constructor + `config()` accessor) and threads three independent
+per-domain gates through every transfer function:
+
+- `enable_constant_propagation` — gates concrete-value writes in
+  `propagate_constant`, the constant fast-path inside
+  `propagate_binop`, and the merge-into-concrete path in
+  `propagate_phi`.
+- `enable_range_analysis` — gates the range-refinement branch in
+  `propagate_binop`.
+- `enable_symbolic_execution` — gates symbolic-mirror writes in
+  `propagate_constant`, `propagate_binop`, and `propagate_phi`.
+
+Independence is load-bearing: callers can opt out of any single
+domain (e.g. disable symbolic execution to halve memory traffic
+when only constant folding is needed) without losing the others.
+
+`max_iterations` flows through `track_concrete_values_with_config`
+(new entry-point) to cap the worklist walk on pathological CFGs;
+the existing `track_concrete_values()` keeps working unchanged via
+delegation to the configured form with `ValueTrackingConfig::default()`.
+
 ### Fixed — `MonoPhaseConfig.use_stdlib` + `num_threads` are load-bearing (2026-04-29)
 
 Closes two inert-defense patterns at the monomorphization-phase

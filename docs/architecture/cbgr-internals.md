@@ -334,6 +334,19 @@ The configs share a uniform shape:
 | `enable_interprocedural` | `true`  | Cross-function escape analysis. Disabling falls back to per-function conservative results. |
 | `max_iterations`         | `100`   | Upper bound for the interprocedural fixed-point loop. |
 
+### `AbstractionConfig` (path-sensitive predicate abstraction)
+
+| Field                  | Default | What it gates                                          |
+|------------------------|---------|--------------------------------------------------------|
+| `max_abstraction_level`| `4`     | Caps the abstraction level requested by `abstract_predicate`. Higher → more aggressive (less precise). |
+| `path_threshold`       | `50`    | `merge_similar_paths` skips work when path count is below this. |
+| `use_z3_equivalence`   | `true`  | Gates `check_equivalence_z3`. When `false`, the method returns the conservative "not provably equivalent" answer without invoking Z3 (stats counter still increments). Surfaced via `z3_equivalence_enabled()`. |
+| `use_subsumption`      | `true`  | Gates `check_subsumption_z3` symmetrically. Surfaced via `subsumption_enabled()`. |
+| `use_widening`         | `true`  | Master switch over `abstract_level3`. When `false`, level-3 falls back to level-2 (no widening) — preserves precision at the cost of slower convergence on deeply-nested loops. Surfaced via `widening_enabled()`. |
+| `widening_threshold`   | `3`     | When widening is enabled: widen after this many iterations on the same predicate hash. |
+| `max_cache_size`       | `10000` | Caps the abstraction / equivalence / subsumption caches to bound memory growth on long runs. |
+| `incremental_merging`  | `true`  | Surfaced via `incremental_merging_enabled()`. External enumerators that produce path lists consult this to decide whether to fold paths into the merger as they're produced (incremental) or accumulate the full list and merge once at the end. |
+
 ### `PromotionConfig`
 
 | Field                  | Default | What it gates                                          |
@@ -362,6 +375,57 @@ PromotionConfig::disabled()      // master switch off (every ref managed)
 | `min_confidence`     | `0.5`           | Filters every warning whose `confidence` is below the threshold. |
 | `max_accesses`       | `0` (unlimited) | Caps the analyzer's memory-access list. Once the cap is reached, `extract_accesses` returns early. |
 
+### `EnhancedContextConfig` (context-sensitive analysis)
+
+| Field             | Default | What it gates                                       |
+|-------------------|---------|-----------------------------------------------------|
+| `flow_sensitive`  | `false` | Surfaced via `ContextSensitiveAnalyzer.flow_sensitive_enabled()`. Downstream analyses that maintain per-flow state consult this to decide whether to install or skip the flow-state map. |
+| `adaptive_depth`  | `false` | When `true`, `with_config` installs an `AdaptiveDepthPolicy::new(default_depth, max_depth)` so the dependent slot is in play. Surfaced via `adaptive_depth_enabled()`. |
+| `compression`     | `false` | When `true`, `with_config` installs a fresh `ContextCompressor` if none is set; pre-existing custom compressors are preserved. Surfaced via `compression_enabled()`. |
+| `default_depth`   | `3`     | Default analysis depth used when `adaptive_depth == false`. Surfaced via `default_depth()`. |
+| `max_depth`       | `10`    | Hard upper bound on context depth (safety check). Surfaced via `max_depth()`. |
+
+The convenience constructor `EnhancedContextConfig::all_enabled()`
+flips the three booleans to `true` and keeps the depth defaults
+(`3` / `10`). Calling `with_config(EnhancedContextConfig::all_enabled())`
+on a fresh `ContextSensitiveAnalyzer::new()` now produces the
+same effective shape as the bespoke `with_all_enhancements()`
+constructor — depth_policy + compressor are auto-installed.
+
+### `ParallelConfig` (context-sensitive parallel analysis)
+
+| Field            | Default | What it gates                                          |
+|------------------|---------|--------------------------------------------------------|
+| `threshold`      | `10`    | `should_parallelize` returns `true` only when the input size meets this. Below the threshold, `analyze_parallel` runs sequentially. |
+| `max_threads`    | `0` (rayon default) | When `> 0`, `analyze_parallel` installs a bespoke `rayon::ThreadPool` capped to that many workers for the duration of the call. Pool-build failures fall back to the global pool. |
+| `work_stealing`  | `true`  | Documented stance. Rayon's underlying scheduler is always work-stealing; the accessor `work_stealing_enabled()` exists for diagnostics that surface the declared stance. |
+
+### `ValueTrackingConfig` (concrete-value tracking for escape refinement)
+
+| Field                          | Default | What it gates                                      |
+|--------------------------------|---------|----------------------------------------------------|
+| `enable_constant_propagation`  | `true`  | Concrete-value writes in `propagate_constant`, the constant fast-path inside `propagate_binop`, and the merge-into-concrete path in `propagate_phi`. When `false`, no concrete state is recorded; downstream constant folding sees nothing. |
+| `enable_range_analysis`        | `true`  | Range-refinement branch inside `propagate_binop`. When `false`, the range computation is skipped entirely. |
+| `enable_symbolic_execution`    | `true`  | Symbolic-mirror writes in `propagate_constant`, `propagate_binop`, and `propagate_phi`. When `false`, no `SymbolicValue` is constructed. |
+| `max_iterations`               | `100`   | Worklist iteration cap in `track_concrete_values_with_config`. Bounds analysis cost on pathological CFGs; once exceeded, propagation stops with whatever block states have been recorded so far (best-effort partial result). |
+
+The three domain gates are independent — opting out of constant
+tracking keeps symbolic and range tracking active (and vice-versa)
+so callers can build a precise per-analysis cost/precision profile.
+Construction:
+
+```rust
+let config = ValueTrackingConfig {
+    enable_constant_propagation: true,
+    enable_range_analysis: false,           // skip range refinement
+    enable_symbolic_execution: true,
+    max_iterations: 50,                     // cap at 50 worklist iters
+};
+let propagator = ValuePropagator::with_config(config);
+// Driven by EnhancedEscapeAnalyzer:
+let result = analyzer.track_concrete_values_with_config(config);
+```
+
 ### `DiagnosticsConfig`
 
 | Field                  | Default     | What it gates                                       |
@@ -384,6 +448,8 @@ its analyser module that asserts the field's documented effect:
 | `ownership_analysis`   | `min_confidence_filters_low_confidence_warnings`, `max_blocks_caps_extraction_walk` |
 | `concurrency_analysis` | `min_confidence_filters_low_confidence_warnings`, `max_accesses_caps_extraction` |
 | `polonius_analysis`    | `polonius_config_flows_to_result` (4-cell truth table over the two booleans) |
+| `predicate_abstraction`| `config_accessors_mirror_construction_values` (16-cell truth table over the four booleans, in `tests/predicate_abstraction_integration_tests.rs`) |
+| `context_enhancements` | `enhanced_context_config_drives_dependencies`, `parallel_config_max_threads_round_trips_through_accessor` |
 | `promotion_decision`   | `allow_heap_promotion_default_vs_aggressive`                     |
 
 Run the inventory locally with:
