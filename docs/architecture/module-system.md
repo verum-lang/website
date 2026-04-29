@@ -160,30 +160,31 @@ are invisible to importers, matching the explicit exports table.
 | `type not found: Y` when resolving imported `type X { Y }` | Private type leak | Public-only AST walk |
 | Type-checker sees stale module set after lazy load | Registry clone drift | Shared handle dedupe |
 
-## Stdlib public type-name uniqueness — variant-table contract
+## Public type-name uniqueness — variant-table contract
 
-The VBC variant-constructor table is keyed by **simple name**, not
-by qualified path.  Two `public type Foo is …` declarations co-active
-in the same build configuration register both their variants under
-the same `Foo` key; the second registration silently shadows the
-first's variants, surfacing later as runtime "method `Foo.X` not
-found" panics far from the redeclaration site.
+The variant-constructor table that backs every sum-type pattern match
+is keyed by **simple name**, not by qualified path.  Two
+`public type Foo is …` declarations co-active in the same build
+configuration register both their variants under the same `Foo` key;
+the second registration silently shadows the first's variants,
+surfacing later as runtime *"method `Foo.X` not found"* panics far
+from the redeclaration site.
 
-`stdlib_public_type_names_are_unique` (in
-`crates/verum_compiler/tests/stdlib_unique_type_names.rs`) is the
-ratchet that enforces uniqueness across all of `core/`.  The test
-is `@cfg`-aware — types behind mutually-exclusive `@cfg(...)`
-attributes (`target_os`, `target_arch`, `runtime`) do **not**
-collide and may share a simple name.
+A stdlib-wide ratchet enforces uniqueness across all of `core/`.
+The check is `@cfg`-aware — types behind mutually-exclusive
+`@cfg(...)` attributes (`target_os`, `target_arch`, `runtime`) do
+**not** collide and may share a simple name.  When parallel
+implementations across cfg variants are genuinely needed, place each
+behind its own `@cfg(...)` and reuse the same simple name.
 
-Naming discipline used in the catalogue when two implementations
-genuinely need distinct types under the same conceptual name:
+Naming discipline used in `core/` when two implementations need
+distinct types under the same conceptual name:
 
   * **Domain prefix** the implementation that is more local /
     less canonical; the broader-reach implementation keeps the
-    bare name.  Example: `core.database.common.error::DbError`
-    (cross-vendor taxonomy) keeps `DbError`;
-    `sqlite/native/l7_api/database::DbError` becomes
+    bare name.  Example: the cross-vendor `core.database.common.error.DbError`
+    keeps `DbError`; the SQLite-native one in
+    `core.database.sqlite.native.l7_api.database` becomes
     `SqliteApiDbError`.
 
   * **Vendor prefix** for wire protocols: `Pg…` (Postgres),
@@ -205,10 +206,6 @@ genuinely need distinct types under the same conceptual name:
     `Frame` → `core.term.render.frame` (TUI rendering Frame, central
     to the terminal Layer 3); `core.database.postgres.wire.frame`
     becomes `PgFrame`.
-
-When you genuinely need parallel implementations across cfg
-variants, place each behind its own `@cfg(...)` and reuse the
-same simple name.
 
 ## Reserved keywords and parameter names
 
