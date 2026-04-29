@@ -63,9 +63,58 @@ Each derive is a procedural macro under `core.derives`.
 @verify(synthesize)   // synthesise a term from the spec
 ```
 
-The solver (the SMT backend, or portfolio) is picked by the capability
-router, not by you — see
+The strategy controls **what kind of guarantee** you want; the
+solver subsystem picks **which backend** discharges the
+obligation (Z3, CVC5, portfolio) via the capability router.
+
+**Strategy semantics:**
+
+| Strategy | SMT? | Timeout multiplier | Cross-validation | Cert. export | Use when |
+|---|:---:|:---:|:---:|:---:|---|
+| `runtime` | — | n/a | — | — | dev / debug, accept runtime cost. |
+| `static` | — | n/a | — | — | structural / CBGR-only checks. |
+| `formal` | ✓ | 1× | — | — | default for refinement obligations. |
+| `fast` | ✓ | 0.3× | — | — | IDE / on-type, accept partial coverage. |
+| `thorough` | ✓ | 2× | portfolio | — | release builds, no time pressure. |
+| `certified` | ✓ | 3× | portfolio + kernel-replay | ✓ | shipping proofs as artefacts. |
+| `synthesize` | ✓ | 5× | — | — | derive function bodies from specs. |
+
+Solver-side knobs (timeouts, memory caps, quantifier strategy,
+caching, etc.) live in the manifest under `[verify.solver]` and
+in the operator's manual at
+**[verification → solver tuning](/docs/verification/solver-tuning)**.
+
+The capability router (theory-class → backend) is documented in
 **[verification → SMT routing](/docs/verification/smt-routing)**.
+
+**Precedence** (highest → lowest, when multiple sources set a
+verification policy):
+
+1. CLI flag (`verum verify --strategy thorough`).
+2. `[verify.profiles.<name>]` if `--verify-profile <name>` is set.
+3. `[verify.modules."<path>"]` for functions in that module subtree.
+4. `@verify(<strategy>)` attribute on the function.
+5. Top-level `[verify].default_strategy`.
+6. Built-in default (`formal`).
+
+**Per-function override:**
+
+```verum
+@verify(certified)
+@verify(timeout = 60_000)         // override per-strategy timeout multiplier
+fn signature_verify(msg: &Bytes, sig: &Bytes, pk: &PublicKey) -> Bool {
+    // ... formal proof body ...
+}
+```
+
+The phase-level `VerificationConfig.mode` (set in `[verify]`)
+acts as the fallback for **un**annotated functions:
+
+| `[verify].mode` | Effect on `fn` without `@verify` |
+|---|---|
+| `runtime` | skip SMT entirely (mirror of `@verify(runtime)`) |
+| `auto` | proceed with SMT (default `formal`-equivalent) |
+| `proof` | (reserved — future kernel-replay routing) |
 
 ### FFI — `@extern`
 
