@@ -80,6 +80,7 @@ const sidebars: SidebarsConfig = {
         'tooling/incremental-cache',
         'tooling/auto-paper',
         'tooling/foreign-import',
+        'tooling/llm-tactic',
       ],
     },
     {

@@ -270,6 +270,25 @@ imported theorem, attributed back to the source via
 `verum export`.  Full guide in **[Tooling → Foreign-system
 import](/docs/tooling/foreign-import)**.
 
+## LLM tactic protocol
+
+```bash
+verum llm-tactic propose --theorem <T> --goal <G> [--lemma ...]
+                         [--hyp ...] [--history ...] [--model <ID>]
+                         [--hint <TEXT>] [--persist] [--audit <PATH>]
+                         [--format plain|json]
+verum llm-tactic audit-trail [--audit <PATH>] [--format plain|json]
+verum llm-tactic models [--format plain|json]
+```
+
+LCF-style fail-closed LLM proof proposer.  An LLM may propose
+tactic sequences for a focused goal but the kernel re-checks every
+step before committing — any rejection discards the proposal.
+Every invocation is captured in an append-only audit trail keyed
+by model id + prompt hash + completion hash so the proof is
+reproducible from the log.  Full guide in **[Tooling → LLM tactic
+protocol](/docs/tooling/llm-tactic)**.
+
 ## Auto-paper documentation
 
 ```bash
