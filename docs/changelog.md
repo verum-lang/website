@@ -702,6 +702,28 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `LtoConfig.pic` reaches ThinLtoCodegen (2026-04-29)
+
+Closes the inert-defense pattern around the ThinLTO PIC-model
+gate. `LtoConfig.pic` defaulted to `true` and was honoured by
+`FullLtoCodegen` via `set_pic_model`, but `ThinLtoCodegen`'s
+`apply_config` had a comment-only acknowledgment line
+(`let _ = config.pic`) claiming "PIC model is determined by the
+input bitcode modules" — incorrect; LLVM's C API exposes
+`thinlto_codegen_set_pic_model` for per-codegen overrides.
+
+Wired via new `set_pic_model(&self, bool)` method on
+`ThinLtoCodegen` wrapping the C API. `ThinLtoCodegen::apply_config`
+now calls it after the cache settings, replacing the inert
+acknowledgment line.
+
+User-facing impact: ThinLTO builds (the default LTO mode for
+most release configurations) now respect the manifest's `pic`
+stance instead of silently using whatever the input bitcode
+modules were compiled with. For shared-library targets, this
+ensures ThinLTO doesn't accidentally produce position-dependent
+code that breaks ASLR / dlopen.
+
 ### Fixed — `LtoConfig.internalize` reaches the LLVM full-LTO codegen (2026-04-29)
 
 Closes the inert-defense pattern around the LLVM internalize gate.
