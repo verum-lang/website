@@ -16,6 +16,41 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `[llvm].{target_triple, target_cpu, target_features}` reach the AOT pipeline (2026-04-29)
+
+The manifest's `[llvm]` section was parsed into a `LlvmConfig`
+struct on the CLI side but never plumbed downstream. Declaring
+`target_triple = "x86_64-unknown-linux-gnu"`,
+`target_cpu = "znver3"`, or `target_features = "+avx2,+fma"` in
+`verum.toml` had zero observable effect — the AOT pipeline always
+called `TargetMachine::get_host_cpu_name()` /
+`get_host_cpu_features()` for native builds, and `--target` was
+the only working knob for cross-builds. Reproducible-CI workflows
+that pin a fixed microarchitecture / target triple in the
+manifest were silently producing host-tuned binaries.
+
+Wire-up:
+
+  - New `CompilerOptions.target_cpu: Option<Text>` and
+    `target_features: Option<Text>`. Default `None`; the AOT
+    pipeline preserves the previous behaviour (host detection on
+    native, `"generic"` / empty on WASM) when both are `None`.
+  - `cli::commands::build`: precedence is `--target` CLI flag >
+    `[llvm].target_triple` > host default; `[llvm].target_cpu`
+    and `[llvm].target_features` populate the new options when
+    unset. CLI doesn't expose `--target-cpu` / `--target-features`
+    today; the manifest is the user-facing knob.
+  - `pipeline.rs::phase_generate_native`: the host-detection
+    branch now goes via `cpu_override.unwrap_or(host_default)` /
+    `features_override.unwrap_or(host_default)`. WASM still
+    short-circuits to `"generic"` / empty when no override.
+
+Two contract tests pin: (1) `target_cpu` and `target_features`
+default to `None` (load-bearing for the WASM-cross fallback that
+relies on `None` to mean "use the WASM defaults"), (2) the
+field-shape round-trip so a refactor can't drop or rename the
+fields without surfacing in CI.
+
 ### Fixed — `[verify].distributed_cache_trust` reaches `VerifyCommand` end-to-end (2026-04-29)
 
 Closes a chained inert-defense gap that spanned the manifest
