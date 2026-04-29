@@ -16,6 +16,43 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — SMT-backed exhaustiveness no longer false-positives on guarded matches (2026-04-29)
+
+The pattern coverage matrix carried only a `has_guard: bool` flag
+per row; the actual guard expression from
+`PatternKind::Guard { pattern, guard }` was thrown away during
+matrix construction. The SMT-backed exhaustiveness verifier
+(`extract_guarded_patterns`) substituted a placeholder `true`
+literal for every guard, which trivially proved every all-guarded
+match exhaustive. Enabling
+`ExhaustivenessConfig.use_smt_guards = true` therefore produced
+false-positive exhaustiveness verdicts on real guard sets that did
+NOT cover all cases — silently defeating the entire SMT-backed
+verification path.
+
+The fix lifts real guard expressions into the matrix:
+
+  - `PatternRow.guard: Option<Arc<Expr>>` carries the top-level
+    guard expression (`Some` when the pattern's outermost kind is
+    `PatternKind::Guard`).
+  - `build_matrix` peels the guard before recursing; specialization
+    propagates the field through all 10 row-construction sites.
+  - `extract_guarded_patterns` consumes the real expression. Rows
+    whose guard is nested inside an or-pattern (where the
+    expression isn't liftable to row level) are skipped at the SMT
+    boundary; the conservative non-SMT all-guarded verdict still
+    applies to them.
+
+Pin tests cover both directions of the contract: (1) a top-level
+`Guard` pattern lifts its expression structurally into `row.guard`
+(regression re-introduces the false-positive SMT path), (2) a
+non-guarded pattern leaves `row.guard = None` (regression would
+route every match through SMT, exploding compile time).
+
+This closes the explicit implementation TODO that was sitting in
+the `extract_guarded_patterns` body ("A full implementation would
+parse the guard from the AST").
+
 ### Fixed — `VerumFormatConfig.trailing_commas` reaches `format_field_list` (2026-04-29)
 
 The LSP formatter's struct-field emission always wrote `,\n` after
