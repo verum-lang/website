@@ -83,6 +83,7 @@ const sidebars: SidebarsConfig = {
         'tooling/llm-tactic',
         'tooling/proof-repl',
         'tooling/benchmarking',
+        'tooling/cert-replay',
       ],
     },
     {

@@ -16,6 +16,41 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — `verum cert-replay` multi-backend SMT certificate replay (#81) (2026-04-29)
+
+Verum joins the small group of proof assistants where SMT solvers
+are **external to the trusted computing base**.  When a solver
+claims `unsat`, Verum doesn't trust the verdict — instead the
+solver emits a structured certificate that the kernel re-checks
+independently.  Multi-backend `cross-check --require-consensus`
+is the `@verify(certified)` semantics: every available backend
+must accept before commit.
+
+Four subcommands:
+
+- `verum cert-replay replay --backend <B> [--cert FILE | --format
+  F --theory T --conclusion C --body B] [--output ...]` — replay
+  one cert through one backend with kernel-only structural
+  baseline.
+- `verum cert-replay cross-check [--backend B]… [...] [--require-
+  consensus]` — multi-backend agreement gate.
+- `verum cert-replay formats / backends [--output ...]` —
+  discovery.
+
+Six certificate formats (verum_canonical, z3_proof, cvc5_alethe,
+lfsc_pattern, open_smt, mathsat) and six replay backends
+(kernel_only + Z3 / CVC5 / Verit / OpenSmt / Mathsat).
+
+The `kernel_only` backend is the trust anchor: validates
+integrity hash, recognised format, supported SMT-LIB theory,
+non-empty body / conclusion.  Any tampering observable.  V0 ships
+this production-grade plus mock external runners returning
+ToolMissing; V1+ swaps in real per-tool wiring without changing
+the trait surface or any consumer.
+
+Full guide:
+**[Tooling → SMT certificate replay](/docs/tooling/cert-replay)**.
+
 ### Added — `verum benchmark` continuous head-to-head comparison surface (#83) (2026-04-29)
 
 Establishes Verum's quantitative leadership claim with
