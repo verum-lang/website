@@ -16,6 +16,19 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `InterpreterConfig.cbgr_enabled` short-circuits validation (2026-04-29)
+
+Closes the inert-defense pattern around the documented opt-out
+for VBC interpreter CBGR validation. The field defaulted to
+`true` but no code path consulted it — every dereference paid
+the ~15 ns generation-check cost regardless of caller intent.
+
+Wire as an early return at the entry of
+`validate_cbgr_generation`: when `false`, skip the generation
++ epoch-window check entirely. This is the documented
+trade-off for max-throughput builds where the static escape
+analyzer has already proven every reference safe.
+
 ### Added — `verum proof-repl` live proof REPL with stepwise feedback (#75) (2026-04-29)
 
 Non-interactive batch driver for the proof-REPL state machine.
@@ -425,6 +438,27 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — `ContextConfig.simplify` wired into a public assert path (2026-04-29)
+
+Closes the inert-defense pattern around the `verum_smt::context`
+pre-solve simplifier gate. The field defaulted to `true` and was
+documented as "Enable simplification before solving" but no code
+path consulted it — every assertion went straight to the solver
+regardless of the configured stance.
+
+Wired via two new methods on `Context`:
+
+- `simplify_enabled() -> bool` — public read of the configured stance.
+- `assert(&Solver, &Bool)` — opt-in assert path that runs
+  `formula.simplify()` (Z3's per-AST simplifier) when the gate is
+  set, then asserts the simplified form. Default-on means callers
+  routing through this method get pre-solve simplification for free.
+
+The wiring is **opt-in by call site**, not retroactively applied
+to direct `solver.assert(&formula)` callers — flipping every site
+at once would invalidate existing performance baselines. New call
+sites should route through `Context::assert` to inherit the policy.
 
 ### Fixed — CLI strip / static-link flags reach the linker (2026-04-29)
 
