@@ -16,6 +16,53 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — `verum cog-registry` distribution registry surface (#82) (2026-04-29)
+
+Verum's package manager joins the small group of systems with
+**cryptographic proof-integrity**: every published cog ships with
+a per-cog reproducibility hash chain (sources + build env +
+output + canonical chain hash), typed attestations (verified_ci /
+honesty / coord / cross_format / framework_soundness), and
+**immutable releases** (republishing a version with different
+content is a hard failure).
+
+Six subcommands:
+
+- `verum cog-registry publish --manifest FILE [--root DIR]
+  [--registry-id ID] [--output ...]` — publish a cog manifest.
+- `verum cog-registry lookup --name N --version V [...]` — fetch
+  a specific (name, version) pair.
+- `verum cog-registry search [--name SUB] [--paper-doi DOI]
+  [--framework TAG] [--theorem NAME] [--require-attestation KIND]` —
+  multi-criteria search.
+- `verum cog-registry verify --name N --version V [...]` —
+  envelope chain-hash integrity check + attestation inventory.
+- `verum cog-registry consensus --name N --version V --mirror DIR
+  [--mirror DIR]…` — multi-mirror cross-check.  Non-zero exit on
+  any disagreement.
+- `verum cog-registry seed-demo [--output ...]` — populate a demo
+  registry; useful for tutorials and the docs generator.
+
+Three trust invariants enforced at publish time + lookup:
+
+1. **Immutable releases** — `(name, version)` is a permanent
+   binding to a chain hash.
+2. **Envelope integrity** — `chain_hash` MUST match the canonical
+   derivation `blake3(input_hash || build_env_hash || output_hash)`.
+   Tampering observable.
+3. **Multi-mirror consensus** — the trusted answer is the chain
+   hash every mirror agrees on; one disagreement breaks consensus.
+
+V0 ships production-grade `MemoryRegistry` and
+`LocalFilesystemRegistry` (one JSON file per cog version under
+`<root>/<name>/<version>.json`); V1+ adds an HTTP server fronting
+the same trait surface (packages.verum.lang) with Ed25519
+signature verification.  CLI flags and JSON schemas are unchanged
+across V0 → V1.
+
+Full guide:
+**[Tooling → Cog distribution registry](/docs/tooling/cog-registry)**.
+
 ### Added — Tier-0 interpreter networking + Weft framework documentation (2026-04-29)
 
 The VBC interpreter now backs `__tcp_*_raw` and `__udp_*_raw`
@@ -416,9 +463,9 @@ audit results. The
 new `[verify.solver]` schema with sub-tables for every
 backend / phase / cache config, plus a recap diagram of how
 manifest values reach Z3/CVC5 solver params through the
-five-layer chain. Closes the user's "documentation must be
-predельно полной и не требовала от разработчиков искать
-дополнительные ресурсы" requirement.
+five-layer chain. Closes the request that documentation be
+fully self-contained and not require developers to seek
+additional resources outside this site.
 
 ### Added — `verum foreign-import` foreign-system theorem import (#85) (2026-04-29)
 
