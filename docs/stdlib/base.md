@@ -702,6 +702,17 @@ weak.upgrade() -> Maybe<Shared<T>>
 Shared.strong_count(&s) / weak_count
 ```
 
+`Weak<T>` carries identity-based **`Eq`** and **`Hash`** — two
+`Weak<T>` compare equal iff they were produced from the same
+`Shared<T>` allocation (matching `pointer + generation + epoch`).
+This is the only sound equality for weak handles: comparing inner
+values would require upgrade-then-deref, but the upgrade can fail
+mid-comparison if another thread drops the last `Shared`, breaking
+transitivity.  Identity equality lets `Map<Weak<T>, V>` work
+(cycle-breaking caches, weak-keyed observer registries).
+`Debug` on `Weak<T>` renders `Weak { gen: N, epoch: M, alive }` or
+`… dropped }` for post-mortem dumps without leaking raw pointers.
+
 ### `Cow<T>`
 
 ```verum
