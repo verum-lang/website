@@ -16,6 +16,44 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `[verify].distributed_cache_trust` reaches `VerifyCommand` end-to-end (2026-04-29)
+
+Closes a chained inert-defense gap that spanned the manifest
+parser, the CLI profile-config layer, the compiler-side options
+struct, and the verification command itself. Previously,
+`[verify].distributed_cache_trust` in `verum.toml` was parsed by
+the CLI but never plumbed downstream — and even
+`distributed_cache_url` (the URL it gates) only reached
+`CompilerOptions` to die there: `VerifyCommand::new` always
+constructed the cache via `VerificationCache::new()`, so
+configuring a distributed verification cache in `verum.toml` had
+zero observable effect on `verum verify`.
+
+Wire-up (top-down):
+
+  - `[verify]` and `[verify.profiles.<name>]`: new
+    `distributed_cache_trust` field on both with the standard
+    profile-merge precedence (`with_profile` overrides parent).
+  - `ProfileConfig::distributed_cache_trust`: populated from
+    `merge_with_manifest`, forwarded to
+    `CompilerOptions.distributed_cache_trust` alongside the URL.
+  - `CompilerOptions.distributed_cache_trust`: documents the three
+    accepted policy strings (`"all"` / `"signatures"` /
+    `"signatures_and_expiry"`) and the unknown-value fallback.
+  - `VerifyCommand::new`: when `distributed_cache_url` is set,
+    constructs a `CacheConfig::default().with_distributed_cache(...)`
+    carrying the parsed `TrustLevel` and uses
+    `VerificationCache::with_config(cfg)` instead of `::new()`.
+
+The `parse_trust_level` helper is the load-bearing safety
+boundary: ASCII-lowercases + trims the input, accepts the three
+documented values, and explicitly falls back to `Signatures`
+(with a `tracing::warn`) on anything unknown — a typo in
+`verum.toml` MUST NOT silently downgrade trust to `All`.
+Documented unknown-value behaviour: warning emitted, safe baseline
+applied. Three pin tests cover the default-when-missing,
+documented-value, and unknown-fallback-to-signatures cases.
+
 ### Fixed — `CompilerOptions.emit_mode` `Assembly` and `Object` variants short-circuit before linking (2026-04-29)
 
 Companion to the prior wire-up that closed `EmitMode::LlvmIr`
