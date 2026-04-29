@@ -16,6 +16,35 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — SMT exhaustiveness witness extraction matches scrutinee sort (2026-04-29)
+
+Fourth closure in the SMT exhaustiveness chain. Pre-fix
+`get_model` hardcoded `Type::Int` for both the formula
+translation and the var-extraction sort. Bool guards (e.g.
+`if x` where `x` is Bool) had their bindings declared as
+`Int::new_const("x")` — a SEPARATE Z3 var in the WRONG sort
+from the model's actual Bool sort. `model.eval` then returned an
+arbitrary fresh-Int evaluation rather than the solver's actual
+Bool decision, surfacing as garbage witness data in user-facing
+exhaustiveness diagnostics.
+
+The fix dispatches on `scrutinee_ty`:
+
+  - `Bool` → `Bool::new_const` + `value.as_bool()` →
+    `SmtValue::Bool`
+  - Default → existing Int path (preserved for the most-common
+    arithmetic-guard case)
+
+`extract_uncovered_witnesses` forwards `scrutinee_ty` (was
+`_scrutinee_ty`, parameter name documented its non-use). Float /
+Char / Text are deferred — `formula_to_z3` itself can't lower
+them today, so adding extraction arms would silently never fire.
+
+Combined with the prior three fixes
+(`467ed00d` + `53f0be85` + `2a069f04`), SMT-backed exhaustiveness
+now verifies AND extracts witnesses end-to-end without any
+placeholder / hardcoded data, across both supported sorts.
+
 ### Fixed — SMT exhaustiveness witness extraction walks the formula (2026-04-29)
 
 Third closure in the SMT exhaustiveness chain, completing the
