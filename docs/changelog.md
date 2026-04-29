@@ -702,6 +702,27 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `LtoConfig.internalize` reaches the LLVM full-LTO codegen (2026-04-29)
+
+Closes the inert-defense pattern around the LLVM internalize gate.
+`LtoConfig.internalize` defaulted to `true` and was asserted in
+config tests, but `FullLtoCodegen::apply_config` set CPU + debug-
+model + PIC-model and silently ignored the internalize stance,
+so the LLVM default was always used regardless of the manifest.
+
+Wired via new `set_internalize(&self, bool)` method on
+`FullLtoCodegen` wrapping `lto_codegen_set_should_internalize`
+(the canonical LLVM C API for this knob). `apply_config` now
+calls it after the existing CPU / debug / PIC settings, so every
+full-LTO invocation inherits the configured stance.
+
+Internalization converts external linkage to internal linkage
+for symbols that aren't part of the public API — unlocks
+aggressive inlining and dead-code elimination on functions that
+would otherwise be considered linker-visible. Embedders shipping
+shared libraries that need to preserve external linkage opt out
+via `internalize: false` in the manifest.
+
 ### Fixed — 7 LinkConfig fields wired into the LTO link path (2026-04-29)
 
 Closes seven inert-defense patterns at the LTO link boundary.
