@@ -504,7 +504,116 @@ complete bridge inventory, V3 promotion paths, and the
 
 ---
 
-## 11. Further reading
+## 11. Native foundational infrastructure (V0 — 2026-04-29 sweep)
+
+This is Verum's **novel contribution to mechanised mathematics**.
+No mainstream proof assistant ships first-class (∞,n)-categorical
+or Grothendieck-construction reasoning in its kernel.  Coq mathcomp,
+Lean mathlib4, and Agda cubical-stdlib all proxy this content
+through library-level definitions; the kernel admits all
+higher-coherence content as user-level axioms.
+
+Verum's V0 surface (April 2026) ships **four foundational kernel
+modules**:
+
+### 11.1 Native ordinal arithmetic (`verum_kernel::ordinal`)
+
+Native `Ordinal` type covering Cantor-normal-form fragment
+(Finite / Omega / OmegaPlus / OmegaTimes / OmegaTimesPlus /
+OmegaSquared / OmegaSquaredPlus / OmegaPow) plus inaccessible
+cardinals (Kappa) plus countable suprema (Sup).
+
+Decidable operations: `lt` / `le` / `succ` / `is_regular` /
+`is_limit` / `is_inaccessible` / `normalize`.  Render produces
+standard mathematical notation (ω, ω+1, ω·2, ω², κ_1).
+
+Replaces ad-hoc Int placeholders (`999_999 = ω-1` etc.) used
+across `bounded_arithmetic` + `universe_ascent`.
+
+### 11.2 Native (∞,n)-categorical infrastructure (`verum_kernel::infinity_category`)
+
+V0 surface of native ∞-categorical kernel rules:
+
+  - `CellLevel = Object | Morphism | TwoCell | HigherCell(Ordinal)`
+  - `InfinityCategory { name, level, universe }`
+  - `InfinityMorphism { name, source, target, cell }`
+  - `InfinityEquivalence { morphism, level, whitehead_witness }`
+
+Kernel rules:
+
+  - **`identity_is_equivalence(x, level)`** — the fundamental
+    structural fact: `id_X` is an `(∞, n)`-equivalence for *every*
+    `n: Ordinal`. Discharges MSFS Theorem 5.1's id_X-violates-Π_4
+    step constructively in-kernel; **zero bridge admits** at any
+    finite or transfinite level.
+
+  - **`is_equivalence_at(f, level, audit, ctx)`** — V0 decision
+    rule. Identity at any level: decidable. Non-identity at limit-
+    level: admits `BridgeId::CohesiveAdjunctionUnitCounit` (Theorem
+    A.7 stabilisation). Non-identity at κ-level: admits
+    `BridgeId::ConfluenceOfModalRewrite` (Drake-extended reflection).
+
+  - **`compose(f, g)` + `compose_is_associative(f, g, h)`** — strict
+    composition with V0 1-categorical strict associativity.  V1 will
+    introduce explicit associator 2-cells.
+
+### 11.3 HTT 5.1.4 ∞-Grothendieck construction (`verum_kernel::grothendieck`)
+
+The load-bearing technical pivot of MSFS Lemma 3.4:
+
+```rust
+build_grothendieck(diagram: &SIndexedDiagram)
+    -> Option<GrothendieckConstruction>
+```
+
+Algorithmic V0 surface:
+  1. Total objects = pairs `(b, x)` with `b ∈ B, x ∈ D(b)`.
+  2. Cartesian-lift count = `|fibres|²` for finite diagrams.
+  3. Accessibility preserved per AR 1.26.
+
+Pre-this-module the construction was admitted via
+`lurie_htt_5_1_4_syn_is_grothendieck` framework axiom — opaque to
+the kernel.  Post-this-module the kernel produces a concrete
+`GrothendieckConstruction` value, and Lemma 3.4 can route through
+`build_grothendieck(s_indexed_diagram)` rather than citing an
+opaque axiom.
+
+### 11.4 Adámek-Rosický 1.26 (`verum_kernel::accessibility`)
+
+λ-filtered colimit closure of κ-accessible categories:
+
+```rust
+build_filtered_colimit(diagram: &LambdaFilteredDiagram,
+                       target: &KappaAccessibleCategory)
+    -> Option<FilteredColimit>
+```
+
+Preconditions kernel-checked: `λ ≤ κ`, both regular, diagram
+filtered, non-empty.  Output: colimit + accessibility-preservation
+witness.
+
+Discharges MSFS §6 β-part Step 4 (κ_1-accessibility preserved
+under transfinite-tower colimit) constructively.
+
+### 11.5 What this UNBLOCKS in MSFS
+
+| MSFS result | Pre-V0 admit | Post-V0 derivation |
+|---|---|---|
+| Theorem 5.1 id_X-violates-Π_4 | `msfs_id_x_violates_pi_4` axiom | `identity_is_equivalence` kernel rule |
+| Lemma 3.4 S-definability ⟹ S_S | `lurie_htt_5_1_4_syn_is_grothendieck` axiom | `build_grothendieck` algorithm |
+| Theorem 6.1 β-part Step 4 | `msfs_lemma_A_8_adamek_rosicky` axiom | `build_filtered_colimit` algorithm |
+| Theorem 7.4 lateral axis | `msfs_theorem_7_4_lateral_reduction` axiom | `is_equivalence_at` decidable for finite n |
+
+Pre-V0 trusted boundary: ~12 admitted external citations.
+Post-V0 trusted boundary: 5 named Diakrisis bridges + remaining
+HTT/AR mechanisation tracks (V1+).
+
+The trusted boundary monotonically shrinks as the V1+ promotions
+land.
+
+---
+
+## 12. Further reading
 
 - [Gradual verification](./gradual-verification.md) — how the
   Certified strategy consumes the kernel.
