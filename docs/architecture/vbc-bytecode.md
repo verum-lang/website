@@ -343,6 +343,24 @@ seen in the embedded stdlib):
 - **`MAX_PROTOCOLS_PER_DESCRIPTOR     = 256`**
 - **`MAX_METHODS_PER_PROTOCOL_IMPL    = 4 096`**
 
+The same recursion descends into per-type-param / per-variant /
+per-type-ref counts, each of which has a tighter bound:
+
+- **`MAX_BOUNDS_PER_TYPE_PARAM      = 64`** — protocol bounds
+  on a type parameter (`fn f<T: P + Q>`).
+- **`MAX_FIELDS_PER_VARIANT         = 1 024`** — per-variant
+  struct fields (`Some { a, b, c }`).
+- **`MAX_TYPE_REF_INSTANTIATION_ARGS = 64`** — generic
+  instantiation arity (`List<Int, String, …>`).
+- **`MAX_FN_TYPE_REF_PARAMS         = 256`** — function-type
+  signature parameter count.
+- **`MAX_FN_TYPE_REF_CONTEXTS       = 32`** — function-type
+  context list (`using [Logger, Database, …]`).
+
+Together with the outer-descriptor bounds these close every
+varint-driven `Vec` / `SmallVec` allocation in the VBC
+deserializer.
+
 #### Bytecode-section bounds
 
 The bytecode section's compressed branches read
