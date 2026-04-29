@@ -306,6 +306,26 @@ full kernel-grade feedback on every step.  Non-zero exit on any
 kernel rejection (CI-friendly).  Full guide in **[Tooling →
 Proof REPL](/docs/tooling/proof-repl)**.
 
+## Cog distribution registry
+
+```bash
+verum cog-registry publish    --manifest <FILE> [--root <DIR>] [--registry-id <ID>] [--output ...]
+verum cog-registry lookup     --name <N> --version <V> [--root <DIR>] [--registry-id <ID>] [--output ...]
+verum cog-registry search     [--name SUB] [--paper-doi DOI] [--framework TAG] [--theorem NAME]
+                              [--require-attestation KIND] [--root <DIR>] [--registry-id <ID>] [--output ...]
+verum cog-registry verify     --name <N> --version <V> [--root <DIR>] [--registry-id <ID>] [--output ...]
+verum cog-registry consensus  --name <N> --version <V> --mirror <DIR> [--mirror <DIR>]… [--output ...]
+verum cog-registry seed-demo  [--output ...]
+```
+
+Verified-mathematics package distribution.  Per-cog
+reproducibility hash chain (sources + build env + output) plus
+typed attestations (verified_ci / honesty / coord / cross_format /
+framework_soundness).  Immutable releases — republishing a
+version with different content is a hard failure.  Multi-mirror
+consensus check via `cog-registry consensus`.  Full guide in
+**[Tooling → Cog distribution registry](/docs/tooling/cog-registry)**.
+
 ## SMT certificate replay
 
 ```bash

@@ -84,6 +84,7 @@ const sidebars: SidebarsConfig = {
         'tooling/proof-repl',
         'tooling/benchmarking',
         'tooling/cert-replay',
+        'tooling/cog-registry',
       ],
     },
     {
