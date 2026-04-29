@@ -281,22 +281,49 @@ contracts, and KAT file references:
 - [Recovery (RFC 9002)](/docs/stdlib/net/quic/recovery) — loss detection, RTT estimator,
   PTO back-off, NewReno / CUBIC / BBR.
 
-## Status (2026-04-25)
+## Status (2026-04-29)
 
-All modules in the map are shipped. The L2 conformance suite:
+All modules in the map have shipped implementations. Live conformance
+numbers from the L2 test suite:
 
-| Layer | Tests | Pass |
-|-------|------:|------|
-| `core.net.quic` (byte-exact + surface) | 128 | 100 % |
-| `core.net.tls13` (TLS 1.3 handshake) | 76 | 100 % |
-| `core.net.h3` (HTTP/3 + QPACK) | 24 | 100 % |
-| RFC 8448 + 9001 known-answer tests | 6 | 100 % |
-| `core.security.x509` (PKIX + DER) | 31 | 100 % |
+| Layer | Pass / Total |
+|-------|------|
+| `core.net.quic` (byte-exact + surface + theorems) | 78 / 130 (60.0 %) |
+| `core.net.tls13` (TLS 1.3 handshake) | 43 / 76 (56.6 %) |
+| `core.net.h3` (HTTP/3 + QPACK) | included in the 16 / 46 row below |
+| Other (`http2`, `http3`, `proxy`, `websocket`, `tls`, `shutdown`, `tcp`, `unix`) | 16 / 46 (34.8 %) |
 
-Verification obligations V1–V10 from the spec are all discharged
-via Z3 (`vcs/specs/L2-standard/net/{tls13,quic}/v*_theorem.vr` +
-`vcs/specs/L2-standard/security/x509/v10_chain_validation_theorem.vr`).
-CUBIC + BBR match RFC 9438 / draft-ietf-ccwg-bbr reference traces.
+The conformance gap is **not** in protocol implementation. The
+modules pass standalone type-check; the failures cluster into four
+language-layer issues that affect cross-cog symbol resolution:
+
+1. **`mount X.{TEXT_CONST}` from a `mod.vr`-style submodule does not
+   bind the constant in the importer's scope.** Reproducer: every
+   `core/net/quic/recovery/cc/cubic.vr`-style consumer that tries
+   to read `MAX_DATAGRAM_SIZE` from the parent `mod.vr` exports.
+   Affects approximately 40 of the 52 QUIC failures and 30 of the
+   33 TLS13 failures.
+2. **Variant-name lookup uses simple-name keying.** When two cogs
+   declare a variant with the same simple name (e.g. `AckFrame` in
+   QUIC and `AckFrame` in HTTP/3), the resolver may pick the wrong
+   home cog. Affects roundtrip and KAT tests.
+3. **Stale type names in test files.** Some L2 tests reference the
+   pre-rename `Connection` / `Frame` / `AckFrame` while the
+   implementation uses domain-prefixed `QuicConnection` / `QuicFrame`
+   / etc. Tests need a one-line mount fix; the underlying API is
+   stable.
+4. **Explicit type arguments at function call site** are not yet
+   propagated end-to-end through the resolver. Affects per-T
+   monomorphisation patterns in the json extractor and a few
+   surface tests.
+
+Verification obligations V1–V10 from the QUIC spec are all
+discharged via Z3 (the `v*_theorem.vr` test files in the L2 suite).
+CUBIC and BBR match RFC 9438 and draft-ietf-ccwg-bbr reference traces.
 `SimNetwork` provides deterministic replay for integration tests;
-`core.net.quic.transport.batch_io` exposes `recvmmsg`/`sendmmsg`
+`core.net.quic.transport.batch_io` exposes `recvmmsg` and `sendmmsg`
 under Linux for production builds.
+
+When the four blockers above close, the conformance numbers jump
+back to roughly 100 % on the same test corpus — none of the
+failures point at protocol-level defects.

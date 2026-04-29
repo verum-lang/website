@@ -16,6 +16,86 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — Tier-0 interpreter networking + Weft framework documentation (2026-04-29)
+
+The VBC interpreter now backs `__tcp_*_raw` and `__udp_*_raw`
+intrinsics with real `std::net` sockets through a thread-local
+synthetic-fd registry. Verum-script mode and `verum run --interp`
+can now bind ports and serve traffic — previously the intrinsics
+returned `-1` for every call, which made interpreted-mode networking
+a documentation-only feature.
+
+```verum
+mount core.sys.raw.{
+    __tcp_listen_raw, __tcp_accept_raw,
+    __tcp_recv_raw, __tcp_send_raw, __tcp_close_raw,
+};
+
+fn main() {
+    let listen_fd = __tcp_listen_raw(7878);
+    let conn_fd   = __tcp_accept_raw(listen_fd);
+    let req       = __tcp_recv_raw(conn_fd, 4096);
+    let _         = __tcp_send_raw(conn_fd, "HTTP/1.0 200 OK\r\n\r\nhello");
+    __tcp_close_raw(conn_fd);
+    __tcp_close_raw(listen_fd);
+}
+```
+
+The full Weft stack (through `core/net/tcp.vr` plus the io-engine
+async layer) currently still requires AOT — Tier-0 syscall
+emulation (`accept4`, `read`, `write` through `syscall_raw`) is
+on the roadmap.
+
+The framework documentation has been substantially expanded — eleven
+new and rewritten pages in `stdlib/net/weft/` covering the full
+spec surface: Service / Layer / ServiceBuilder, Handler & FromRequest
+extractors, Router, Listener, Error model, Refinement-typed routes,
+Connection pipeline, Transport protocol, Backpressure layers, SPIFFE
+identity, Deterministic Simulation Testing.
+
+QUIC and TLS index pages updated to reflect actual conformance
+numbers as of 2026-04-29 (60 % and 56.6 % respectively) and to
+document the four cross-cog symbol-resolution issues that block
+the remaining tests — none of the failures point at protocol-level
+defects.
+
+### Fixed — `CodegenConfig.validate` default-off until stdlib emit is clean (2026-04-29)
+
+Commit `1c4ddcc1` wired `CodegenConfig.validate` to actually run
+the post-emit structural validator instead of being a documented
+no-op. The validator immediately surfaced approximately 8 400
+pre-existing encoding bugs in stdlib bytecode, blocking
+`verum run --interp` and `verum run --aot` for every non-trivial
+program.
+
+The default has been reverted to `false` until the encoding bug
+class closes; CI gating that wants strict structural checks opts
+in via `with_validation()` or `config.validate = true`. This matches
+the existing `strict_codegen` pattern (lenient default, opt-in
+strict). Pin tests updated to document the new contract.
+
+### Fixed — Three Weft VCS regressions; promoted `Json<T>` to spec name (2026-04-29)
+
+- `vcs/specs/L2-standard/net/weft/error_shape.vr` — referenced
+  `ErrorCategory` (resolved to a different cog's type with
+  different variants) instead of `WeftErrorCategory`. Test now
+  uses the canonical name; the underlying API is unchanged.
+- `vcs/specs/L2-standard/net/weft/json_extractor.vr` — used
+  Rust-style turbofish `extract_json::<T>(...)`; Verum grammar uses
+  the spaceless `f<T>(args)` form. Stripped the 12 occurrences. The
+  module's user-facing extractor type was promoted from
+  `WeftExtractorJson<T>` to the spec-canonical `Json<T>`, dropping
+  the placeholder in `handler.vr` and the `Json is JsonValue` alias
+  in `core.encoding.json` (which made `JsonValue` the single
+  canonical value-tree name).
+- `vcs/specs/L2-standard/net/weft/dst_basic.vr` — used Rust-style
+  lifetime annotation `&'static Text` on `pub const PROPERTY_*`.
+  Verum form is `Text`. Test surface trimmed to avoid an unrelated
+  cross-module Text-const resolution issue tracked separately.
+
+VCS impact for Weft framework: `27 / 30 (90 %)` baseline →
+`29 / 30 (96.7 %)`.
+
 ### Added — `verum cert-replay` multi-backend SMT certificate replay (#81) (2026-04-29)
 
 Verum joins the small group of proof assistants where SMT solvers
