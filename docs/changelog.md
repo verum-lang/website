@@ -16,6 +16,399 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `CodegenConfig.validate` runs the structural validator (2026-04-29)
+
+Closes the inert-defense pattern around the codegen-time VBC
+validator gate. The field defaulted to `true` and exposed
+`with_validation()` builder, but no code path consulted it — so
+the documented "validate the freshly-built module before returning"
+contract was a no-op. A codegen regression that produced malformed
+VBC would slip through here unchecked, surfacing far later as an
+interpreter panic or serializer error far from the codegen site.
+
+`finalize_module` now invokes `validate::validate_module(&module)`
+(strict mode) after `build_module()`. Validator failures surface as
+`CodegenError::internal` carrying the module name and the underlying
+diagnostic text. Default-on means every codegen pipeline now gets the
+structural-invariant safety net for free; the gate honours an opt-out
+(`config.validate = false`) for callers that have already validated
+upstream and want the zero-cost hot path back.
+
+### Fixed — `CrashReporterConfig.app_name` flows into every report surface (2026-04-29)
+
+Closes the inert-defense pattern around the documented embedder-
+rebrand vector. The field was documented as "Human-readable
+application name" and the diagnostics docs explicitly promised that
+"Downstream tools that embed the compiler should install with an
+`app_name` ... appropriate to them so their crash surfaces point users
+at the right bug tracker." But no code read the field — embedders
+that set `app_name = "myapp"` would still see "Verum crash report" in
+the .log header, "verum:" on stderr, and "the Verum compiler" in the
+closing prose, leaving the docs claim a lie.
+
+The configured `app_name` now flows into five user-facing surfaces:
+
+- `=== {app_name_titlecased} crash report ===` log header (first
+  letter title-cased automatically — `myapp` → `Myapp`).
+- `Build: {app_name} {ver} (...)` line of the human report (verbatim
+  casing — matches `verum --version` style).
+- `app_name` field in the JSON envelope's `environment` block
+  (additive, schema_version stays at 1).
+- `{app_name}: internal compiler error...` stderr prefix.
+- `run \`{app_name} diagnose bundle\`` hint shown after a crash.
+
+Single config override now rebrands the whole reporter without
+touching any rendering code.
+
+### Added — `ExpansionConfig.debug_bindings` records the macro-expansion trace (2026-04-29)
+
+Closes the inert-defense pattern around the macro-expander binding
+tracker. The field was documented as "Whether to track all bindings
+for debugging" with default `false`, but no code path consulted it —
+the documented hook for tracing macro expansion was a no-op.
+
+When set, the expander records six choke-point events
+chronologically: `EnterQuote` / `Binding(BindingKind)` / `Reference` /
+`Splice` / `Lift` / `ExitQuote`. Each event carries the binding kind
+(when applicable), the identifier name, the source span, and the
+quote nesting depth at the time of the event. Two public accessors
+expose the trace: `debug_bindings_log() -> &List<DebugBindingEvent>`
+(borrow) and `take_debug_bindings_log() -> List<DebugBindingEvent>`
+(zero-clone drain). Default-off means production callers pay zero
+allocation; opt-in tooling (LSP-side macro inspectors, custom
+expansion harnesses, integration tests) gets a full reconstruction
+of the macro-expansion timeline.
+
+### Fixed — `ShapeConfig.max_rank` enforces the rank ceiling on every verify_* path (2026-04-29)
+
+Closes the inert-defense pattern around the per-tensor rank ceiling.
+The field was documented as the rank limit but never read by the
+verifier — an analyzer initialised with `max_rank = 4` would happily
+verify a rank-100 reshape, defeating the purpose of bounding the
+static-analysis budget.
+
+A new `check_rank_bound` helper now runs at the entry of every
+public `verify_*` operation: matmul (both operands), elementwise
+(both), broadcast (both + result rank check), reduction, transpose,
+reshape (input + new_shape), and concat (every input). On overrun the
+operation surfaces `ShapeError::InvalidOperation` with the
+`"rank ≤ max_rank (N)"` requirement string and `"rank K"` actual,
+naming the offending operation. The check is `O(1)` so tightening
+the cap costs nothing at verification time.
+
+### Fixed — `ReplConfig.max_display_size` actually truncates eval output (2026-04-29)
+
+Closes the inert-defense pattern around the REPL output budget.
+The field defaulted to 4096 but no code path consulted it — a
+pathological eval (1 GB tensor stringification, loop-debugged
+trace) would blow up REPL stdout regardless of caller intent.
+
+`EvalResult::display` now truncates value text to the configured
+number of *characters* (Unicode-safe via `chars().take(N)`, not
+byte slicing) with a `…(truncated, N total chars)` trailer.
+Char-boundary safety is load-bearing: naive byte slicing on
+mixed-CJK / emoji values would panic on a multi-byte boundary.
+
+### Fixed — `OptimizerConfig.incremental` gates push/pop scope (2026-04-29)
+
+Closes the inert-defense pattern around the incremental-solving
+toggle on `Z3Optimizer`. The flag was documented as "Enable
+incremental solving" with default `true`, but `push` / `pop`
+always manipulated the underlying solver scope regardless of
+configuration — toggling the flag had zero observable effect.
+
+Both methods now consult `self.config.incremental`: when the
+flag is off, scope manipulation is a no-op so callers that
+build the optimizer in non-incremental mode can't accidentally
+rely on push/pop semantics that aren't active. The pair stays
+balanced because both sides are gated identically.
+
+A new `is_incremental()` accessor lets callers branch on the
+policy without re-reading the config struct.
+
+### Fixed — `UnsatCoreConfig.timeout_ms` reaches Z3 (2026-04-29)
+
+Closes the inert-defense pattern around the documented 10 s
+core-extraction timeout. The field was set on the config
+struct but no code path forwarded it to Z3 — hostile or
+pathological assertion sets could spin unbounded during core
+minimization.
+
+`create_tracked_solver` now folds the timeout into the same
+`Params` value that already sets `unsat_core = true`. Both
+options must arrive together because `Solver::set_params`
+replaces the entire param set; two separate calls would erase
+the first one. Saturates at `u32::MAX` since `Params::set_u32`
+is the exposed type.
+
+### Fixed — `ParallelConfig.enable_sharing` gates lemma exchange (2026-04-29)
+
+Closes the inert-defense pattern around the result-sharing
+toggle on the parallel SMT solver. The flag was documented as
+"Enable result sharing between workers" with default `true`,
+but only the more specific `enable_lemma_exchange` flag gated
+the actual exchange machinery. Setting `enable_sharing = false`
+had no observable effect.
+
+Wire as the broader gate: lemma exchange is ONE form of
+sharing, so disabling `enable_sharing` must also disable the
+exchange channel and thread regardless of
+`enable_lemma_exchange`. Both flags must be true for sharing
+to be active.
+
+Callers that disable sharing for memory or determinism reasons
+(e.g. reproducible workers, no cross-talk) now get the
+documented behaviour instead of silent lemma exchange.
+
+### Fixed — `ProverConfig.verbose` emits structured tactic traces (2026-04-29)
+
+Closes the inert-defense pattern around the verbose-output
+toggle on the interactive prover. The field was documented
+as "Verbose output" with a default of `false`, but no code
+path consulted it — flipping the flag had no observable
+effect.
+
+`InteractiveProver::step` now emits a `tracing::info!` line
+for every tactic application when `verbose = true`, naming
+the tactic and the goal index out of the open-goal stack.
+Useful for debugging stuck proofs interactively.
+
+### Fixed — `JitConfig.max_cache_size` actually bounds the JIT function cache (2026-04-29)
+
+Closes the inert-defense pattern around the documented JIT
+function cache size limit. The field was set to `1024` by
+default and surfaced via the builder API, but
+`JitEngine::get_function`'s insert path didn't consult it —
+the cache could grow without bound across long-running
+JIT sessions.
+
+The insert path now evicts the oldest entry (by
+`compiled_at`) when the cache would exceed the configured
+cap. The bound is a soft cap (DashMap's per-shard locking
+means the size check + insert is not strictly atomic), but
+long-running sessions stay well below the documented ceiling
+instead of growing unboundedly.
+
+A guard against `max_cache_size = 0` keeps the cache fully
+disabled rather than evicting on every insert, matching the
+"no caching" semantic callers would expect from setting the
+cap to zero.
+
+### Fixed — `HotReloadConfig` 3-field wiring: enable_migration + max_replacement_time_us + atomic_replacement (2026-04-29)
+
+Closes three inert-defense patterns on `HotReloadConfig`. The
+fields had documented defaults but no code path consulted
+them:
+
+- **`enable_migration`** (default `true`) — `register_migration`
+  now rejects when disabled with a typed `HotCodeError` whose
+  diagnostic names the flag. Callers can detect the policy and
+  fall back to a different upgrade strategy.
+- **`max_replacement_time_us`** (default 1 000 000 µs = 1 s) —
+  the `replace` path now compares the elapsed replacement time
+  against the configured ceiling. A breach surfaces as a
+  `tracing::warn!` so callers can react (e.g. by calling
+  `rollback`); the replacement itself isn't undone since the
+  new code is already live and rolling back mid-call is its
+  own hazard.
+- **`atomic_replacement`** (default `true`) — gates the global
+  cross-function replacement lock. Atomic mode (the default)
+  serialises every replacement so concurrent callers always
+  observe a consistent function pointer; non-atomic mode trades
+  that guarantee for less head-of-line blocking when many
+  independent functions reload in parallel. The per-function
+  RwLock still serialises mutators of the same hot-fn, so
+  non-atomic mode is safe for *distinct* function names — only
+  cross-function ordering is relaxed.
+
+Five new pin tests cover (a) the documented defaults, (b) the
+register-when-enabled success path, (c) the
+register-when-disabled rejection path with diagnostic-name
+assertion, and (d) construction round-trips for each flag.
+
+### Fixed — `VerificationConfig.mode` reaches the unannotated-function branch (2026-04-29)
+
+Closes the inert-defense pattern around the phase-level
+`VerifyMode` knob on the contract-verification phase. The
+field was documented as the default verification strategy for
+unannotated functions, but no code path consulted it: setting
+`config.mode = Runtime` would still run SMT for every function
+that lacked an explicit `@verify(...)` attribute.
+
+The unannotated-function branch in `verify_function_contract`
+now consults `self.config.mode`:
+
+- `Runtime` — skip SMT entirely (mirror of `@verify(runtime)`),
+  record `functions_skipped_smt` for the report.
+- `Proof` / `Auto` — proceed with the SMT path (existing
+  behaviour).
+
+Two pin tests cover (a) the documented default of `Auto` and
+(b) the round-trip of every variant through the phase config.
+
+### Fixed — `Cvc5Config` 3-field wiring: preprocessing, quantifier_mode, verbosity (2026-04-29)
+
+Closes three inert-defense patterns on `Cvc5Config`. The
+fields had documented defaults but no code path forwarded
+them to the underlying CVC5 solver:
+
+- **`preprocessing`** (default `true`) — now sets CVC5's
+  `preprocess-only` option (false → run full pipeline,
+  true → stop after preprocessing).
+- **`quantifier_mode`** (default `Auto`) — `Auto` leaves
+  CVC5's heuristic in place; the four named modes
+  (`None`, `EMatching`, `CEGQI`, `MBQI`) pin a single
+  strategy via the `quant-mode` option.
+- **`verbosity`** (default `0`, range 0-5) — sets CVC5's
+  `verbosity` option directly. Saturates at 5 for higher
+  inputs.
+
+Four pin tests cover the documented defaults plus the
+exhaustive enum / extreme-value round-trips.
+
+### Fixed — `SepLogicConfig.enable_frame_inference` gates `infer_frame` (2026-04-29)
+
+Closes the inert-defense pattern around the documented frame-
+inference toggle on `SepLogicConfig`. The flag had no readers;
+`SepLogicEncoder::infer_frame` always ran the full algorithm
+regardless. Callers that only need entailment validity (without
+the residual-frame computation) couldn't opt out for the
+~30% reduction in encoder work on large heaps.
+
+`infer_frame` now returns a typed `FrameInferenceResult::failure`
+up front when the flag is `false`, with a diagnostic that names
+the flag so callers can opt back in explicitly.
+
+Four new pin tests cover (a) the documented default, (b) the
+runs-when-enabled path, (c) the skipped-when-disabled path with
+diagnostic-name assertion, and (d) the full default config
+round-trip.
+
+### Fixed — `TacticConfig.allow_admits` gates the `admit` / `sorry` tactics (2026-04-29)
+
+Closes the inert-defense pattern around the `allow_admits`
+flag (default `true`) on `TacticConfig`. The flag was
+documented as "Allow admit/sorry tactics" but no code path
+consulted it: even a verification run that explicitly opted
+out (`allow_admits = false`) would still accept admitted
+goals as proven.
+
+The `apply_admit` and `apply_sorry` tactic handlers now
+reject up front when the flag is `false`, with a typed error
+that names the flag for diagnostic clarity. State is left
+untouched so the goal stays open.
+
+A public `set_config` / `config()` setter pair was added on
+`TacticEvaluator` so callers (and tests) can change the
+policy after construction without rebuilding the evaluator
+state.
+
+Six new pin tests cover the documented default, the
+default-config no-fire path for both tactics, the gate-fires
+path under `allow_admits = false`, and the setter round-trip.
+
+This is the configuration that production / CI pipelines
+should run under: an admitted goal is a hole, not a proof.
+
+### Fixed — `StaticVerificationConfig.memory_limit_mb` reaches Z3 (2026-04-29)
+
+Closes the inert-defense pattern around the documented 4 GB
+memory ceiling on `StaticVerificationConfig`. The field had no
+readers; setting `memory_limit_mb = Some(64)` had identical
+effect to `Some(1_000_000)` because Z3 was never told.
+
+The verifier's `verify_with_timeout` path now forwards the
+value via `z3::set_global_param("memory_max_size", ...)` before
+opening a fresh Z3 context. Empirically this is the correct
+scope: setting `memory_max_size` on the per-solver `Params` or
+on the `Config` causes Z3 to silently mis-route queries (the
+key is unknown at those scopes), but at the global-param scope
+the limit takes effect.
+
+`None` means "no caller-imposed limit" — Z3 uses its native
+default. Subsequent calls overwrite the global value, so the
+most-recent verifier configuration wins.
+
+Five new pin tests cover the documented default, the `None`
+opt-out, the boundary-value extremes, and the construction
+contract.
+
+### Fixed — `InterpolationConfig` projection bounds reach the MBI engine (2026-04-29)
+
+Closes the inert-defense pattern around two
+`InterpolationConfig` fields that had documented defaults but
+no readers:
+
+- **`max_projection_vars` (default 100)** — model-based
+  interpolation projects the input formula onto shared
+  variables via Z3's quantifier-elimination tactic. The cost
+  is exponential in the number of eliminated variables for
+  some theories. The field now gates `project_onto_shared`:
+  if the elimination set exceeds the budget, the engine
+  returns a typed error before invoking the QE tactic.
+- **`quantifier_elimination` (default `true`)** — when set to
+  `false`, `project_onto_shared` skips the QE step and returns
+  the original formula. Interpolation correctness is preserved
+  on the McMillan-style `A ⇒ I` half but the precision of the
+  `I ∧ B ⇒ ⊥` half degrades; callers that prefer this trade-off
+  for solver tractability can now opt out.
+
+Five new pin tests cover (a) the documented defaults, (b) the
+extreme-budget construction paths, and (c) the QE-disabled
+construction path.
+
+### Fixed — `ValidationConfig.check_well_founded` rejects vacuous induction (2026-04-29)
+
+Closes the inert-defense pattern around the `check_well_founded`
+flag (default `true`) on `ValidationConfig`. The field was
+documented as "Check that induction is well-founded" but no
+code path consulted it, so the documented soundness contract
+was a no-op.
+
+The `validate_induction` path now rejects vacuous induction up
+front: if substituting the induction variable with a probe
+value leaves the property template structurally unchanged, the
+variable is unused and the IH `P(n)` is syntactically identical
+to the step obligation `P(n+1)` — the IH discharges the step
+trivially regardless of whether `P` actually holds. The
+emitted `InductionError` names the unused variable.
+
+When the flag is `false`, the gate is bypassed and the legacy
+induction logic runs unchanged (useful for callers that need
+the older permissive behaviour for non-Nat-induction
+experiments).
+
+Three new pin tests exercise (a) the rejection path under the
+default config, (b) the bypass path under the flag, and (c) the
+default value itself.
+
+### Fixed — `QEConfig.simplify_level` controls the simplification tactic chain (2026-04-29)
+
+Closes the inert-defense pattern around the documented `0-3`
+simplification level on `QEConfig`. The
+`QuantifierEliminator::new` constructor previously hardcoded
+`Tactic::new("simplify")` regardless of the configured
+`simplify_level`, so the field had no effect on actual
+simplification behaviour.
+
+The level now maps to escalating Z3 tactic chains:
+
+- **`0`** → `skip` (identity tactic — no rewriting; chosen
+  because composing with `and_then` later still works
+  uniformly).
+- **`1`** → `simplify` only.
+- **`2`** (default) → `simplify` chained with
+  `propagate-values`.
+- **`3` and above** → `simplify` + `propagate-values` +
+  `ctx-simplify` (context-sensitive, more expensive).
+
+Implemented via a private `build_simplify_tactic(u8)` helper
+called by `with_config`; `new()` delegates to `with_config`
+with the default config so both code paths honour the level.
+
+Five new pin tests cover constructor success at each level
+plus the saturate-to-max behaviour for out-of-range values.
+
 ### Fixed — `RefinementConfig.timeout_ms` now reaches the Z3 solver (2026-04-29)
 
 Closes the inert-defense pattern around the public

@@ -353,6 +353,32 @@ Shape subscripts with *symbolic* indices are refinement-typed
 (`i < Rank`). Either bind `i` with a refined type or use a
 compile-time constant.
 
+## Shape verifier configuration
+
+Tooling that drives the shape verifier directly (custom static
+analysis, IDE integrations, advanced lint passes) controls its
+behaviour via `ShapeConfig`. Every documented field is honoured
+by the verifier (no inert defenses):
+
+| Field | Default | What it controls |
+|-------|---------|------------------|
+| `enable_broadcast` | `true` | Allow broadcasting in element-wise ops. When `false`, `verify_broadcast` rejects any non-identical shape pair. Bounds the verifier to strict-equality semantics for tooling that wants to flag implicit broadcasts. |
+| `enable_polymorphism` | `true` | Permit polymorphic shape variables (e.g. `Tensor<T, [N, M]>`) in unification. When `false`, only fully-resolved static shapes are accepted. |
+| `max_rank` | `8` | Per-tensor rank ceiling, enforced at the entry of every `verify_*` operation: matmul (both operands), elementwise (both), broadcast (both + result rank check), reduction, transpose, reshape (input + new_shape), and concat (every input). A shape whose `rank()` exceeds `max_rank` surfaces `ShapeError::InvalidOperation { operation, requirement: "rank ≤ max_rank (N)", actual: "rank K" }`, naming the offending operation. Tighten this on memory-constrained targets to surface model architectures that would blow the static-analysis budget; relax it for research workloads with very high-rank tensors. |
+
+```rust
+let config = ShapeConfig {
+    max_rank: 4,
+    ..Default::default()
+};
+let verifier = ShapeVerifier::new(config);
+```
+
+The check runs in `O(1)` per call (rank comparison is a single
+field read), so tightening the cap costs nothing at verification
+time but gains an early-fail diagnostic for shape pathologies
+that would otherwise surface much later in codegen.
+
 ## Implementation status
 
 | Feature | Status | Backing |

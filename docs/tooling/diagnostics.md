@@ -306,20 +306,57 @@ correlate the two events.
 All of the above is controlled by
 `verum_error.crash.CrashReporterConfig`:
 
-| Field | Default | Notes |
-|-------|---------|-------|
-| `app_name` | `"verum"` | |
-| `app_version` | `env!("CARGO_PKG_VERSION")` | |
-| `report_dir` | `~/.verum/crashes/` | `$HOME`-relative |
-| `retention` | `50` | older reports rotated off |
-| `capture_backtrace` | `true` | also forces `RUST_BACKTRACE=1` |
-| `install_signal_handlers` | `true` | Unix + Windows |
-| `redact_sensitive_env` | `true` | | 
-| `issue_tracker_url` | `verum-lang/verum` | shown on crash |
+| Field | Default | What it controls |
+|-------|---------|------------------|
+| `app_name` | `"verum"` | Verbatim brand string surfaced in five places: the `=== {Titlecased} crash report ===` log header (first letter title-cased automatically), the `Build: {app_name} {ver} (...)` line of the human report, the `app_name` field of the JSON envelope's `environment` block, the `{app_name}: internal compiler error...` stderr prefix, and the `run \`{app_name} diagnose bundle\`` hint shown after a crash. Embedders override this to rebrand every surface in one place. |
+| `app_version` | `env!("CARGO_PKG_VERSION")` | Mirrored into `EnvSnapshot.verum_version` (kept under that name for schema stability) and rendered in the human report's Build line. |
+| `report_dir` | `~/.verum/crashes/` | `$HOME`-relative; created at install time so the signal handler doesn't have to. |
+| `retention` | `50` | Older reports rotated off after every successful write — the rotator deletes oldest first by mtime. |
+| `capture_backtrace` | `true` | Also forces `RUST_BACKTRACE=1` so the symbolizer captures frames even if the user hasn't set the env var. |
+| `install_signal_handlers` | `true` | Unix: `SIGSEGV` / `SIGBUS` / `SIGILL` / `SIGFPE` / `SIGABRT` on an alternate signal stack via `sigaltstack`. Windows: `SetUnhandledExceptionFilter`. Set to `false` if a host process owns its own handler. |
+| `redact_sensitive_env` | `true` | When true, env vars whose name matches `PASSWORD`/`SECRET`/`TOKEN`/`APIKEY`/`PRIVATE`/`SESSION`/`COOKIE`/`CREDENTIAL`/`AUTH`/`PASSPHRASE` (case-insensitive substring) render as `<redacted>` even when they pass the keep-list. Set to `false` only in dev environments where you need the raw env. |
+| `issue_tracker_url` | `https://github.com/verum-lang/verum/issues/new` | Rendered verbatim under the "Please file an issue at:" line on crash. Embedders point this at their own tracker. |
 
 Downstream tools that embed the compiler should install with an
 `app_name` + `issue_tracker_url` appropriate to them so their crash
-surfaces point users at the right bug tracker.
+surfaces point users at the right bug tracker. The `app_name` flows
+through every user-facing rendering surface — log header, build line,
+JSON envelope, stderr branding, diagnose-bundle hint — so a single
+override rebrands the whole reporter without touching any rendering
+code:
+
+```rust
+let cfg = CrashReporterConfig {
+    app_name: "myapp".into(),
+    issue_tracker_url: "https://example.com/myapp/issues/new".into(),
+    ..Default::default()
+};
+verum_error::crash::install(cfg);
+```
+
+The header titlecases the first letter, so `myapp` renders as
+`Myapp`. The lowercased `app_name` is used verbatim in the stderr
+prefix and the `diagnose bundle` hint, matching the shell convention
+of lowercase tool names.
+
+## Render configuration knobs
+
+Embedders that drive `verum_diagnostics::Renderer` directly
+control output shape via `RenderConfig`. Every documented field
+is honoured by the consumer (no inert defenses):
+
+| Field                | Default | What it gates                                          |
+|----------------------|---------|--------------------------------------------------------|
+| `colors`             | `true`  | ANSI escape codes around severity / spans. |
+| `context_lines`      | `2`     | Lines shown above / below each labeled line. |
+| `show_line_numbers`  | `true`  | When `false`, the gutter pads with spaces of the same width so the pipe alignment stays consistent for downstream parsers. |
+| `max_line_width`     | `120`   | Caps source-line rendering. Lines longer than the cap render with an ellipsis suffix (UTF-8-safe char-count slicing). `0` disables truncation. Bounds the diagnostic size on minified-source workloads. |
+| `show_source`        | `true`  | Master switch on the file-snippet block. |
+| `show_suggestions`   | `true`  | Toggles the inline fix-it suggestions. |
+| `show_doc_urls`      | `true`  | Toggles `verum-lang.org/errors/<code>` URL footers. |
+| `unicode_output`     | `true`  | Box-drawing + arrow glyphs vs ASCII fallback. |
+| `terminal_width`     | `80`    | Read mirror via `Renderer::terminal_width()`. The renderer itself doesn't soft-wrap (terminals do that for free); the value is exposed so external composers (LSP servers framing into JSON-RPC, CI pretty-printers) can consult the configured stance. |
+| `relative_paths`     | `false` | When `true`, the file-snippet header strips the CWD prefix from absolute paths. Falls back to the original path on any failure (CWD lookup error, different filesystem mount, path is not a child of CWD). |
 
 ## See also
 

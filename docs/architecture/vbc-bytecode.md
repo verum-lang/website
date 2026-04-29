@@ -389,6 +389,23 @@ two parallel constructor families on the `verum_vbc` crate
 surfaces as `InterpreterError::ValidationFailed { module_name,
 reason }`; the `reason` carries the rendered defect list.
 
+### Codegen-time validation
+
+Beyond load-time validation, the codegen pipeline runs the same
+structural validator against every freshly-built module before
+returning it to the caller. The gate is `CodegenConfig.validate`,
+defaulting to `true` so production builds always get the safety net:
+
+| Field | Default | What it does |
+|-------|---------|--------------|
+| `validate` | `true` | After `build_module()` constructs the final `VbcModule` from accumulated codegen state, `finalize_module` calls `validate::validate_module(&module)` (strict mode). Validator failures surface as `CodegenError::internal` with the module name and the underlying diagnostic embedded in the message. The check is the codegen counterpart to the deserializer's load-time defenses — when codegen has a bug, the failure surfaces here at the codegen call site instead of as an interpreter panic / serializer error several layers later. |
+
+Toggle off via `config.validate = false` only when the caller has
+already validated upstream (e.g., a hot-path incremental rebuild
+that re-uses a previously-validated state). The validator runs in
+`O(module-size)` and is well within the codegen budget for typical
+modules.
+
 ## Interpreter
 
 The bytecode interpreter (`verum_vbc::interpreter`) dispatches via a
