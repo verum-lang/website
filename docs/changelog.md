@@ -661,6 +661,36 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — Z3Config: 5 inert fields wired into Z3 global params (2026-04-29)
+
+Closes five inert-defense patterns at once in `verum_smt::z3_backend::Z3Config`.
+All five fields landed on the config struct, were exposed in
+default-config presets, and asserted in pin tests, but no code
+path forwarded them to Z3 — toggling any of them had zero
+observable effect on the solver.
+
+- `minimize_cores` (default true) → `smt.core.minimize` Z3
+  global param. Pre-fix the field defaulted to true (claiming
+  default minimization) but Z3 always returned non-minimized
+  cores.
+- `enable_mbqi` (default true) → `smt.mbqi`. Disabling forces
+  the solver onto pattern-based / E-matching strategies only.
+- `enable_patterns` (default true) → `smt.ematching`. Disabling
+  forces the solver onto MBQI-only when quantifiers are present.
+- `num_workers` (default `num_cpus::get().max(4)`) →
+  `parallel.enable` + `parallel.threads.max`. **Zero is
+  treated as "let Z3 decide"** — leaving the parallel-pool
+  params untouched preserves the documented sentinel without
+  poisoning the global state with a bogus zero-worker setting.
+- `enable_interpolation` → exposed via new public
+  `interpolation_enabled()` accessor for the higher-level
+  `verum_smt::interpolation` layer to consult (Z3's built-in
+  interpolation API was removed in modern releases).
+
+Wired in `with_config` so every Solver constructed inside the
+scoped run inherits the policy — mirrors the existing
+`memory_limit_mb` and `random_seed` wiring pattern.
+
 ### Fixed — `verum publish --verify-proofs` blocks on failed proofs (2026-04-29)
 
 Closes the inert-defense pattern around the publish verify-proofs
