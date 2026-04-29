@@ -16,6 +16,45 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — descriptor-level memory-amp + parse_bytecode underflow (2026-04-29)
+
+Closes the third memory-amplification class in VBC module
+deserialization, this time at the per-descriptor layer (inside
+type / function descriptors, not at the module-table level
+above).
+
+Type / function / specialization descriptors carry varint-encoded
+counts (`type_params_count`, `fields_count`, `variants_count`,
+`protocols_count`, `methods_count`, …) that drive
+`SmallVec::with_capacity` / `Vec::with_capacity` allocations.
+Post the varint-canonicality fix below the largest accepted
+varint is `u64::MAX`, which casts to `usize::MAX` on 64-bit —
+most Rust allocators abort on `with_capacity(usize::MAX)`.  Tight
+new bounds (per real-world descriptor surface):
+
+- `MAX_TYPE_PARAMS_PER_DESCRIPTOR   = 64`     (matches the
+  `ast_to_type` recursion cap that already gates the front-end)
+- `MAX_FIELDS_PER_DESCRIPTOR        = 4 096`
+- `MAX_VARIANTS_PER_DESCRIPTOR      = 4 096`
+- `MAX_PROTOCOLS_PER_DESCRIPTOR     = 256`
+- `MAX_METHODS_PER_PROTOCOL_IMPL    = 4 096`
+- `MAX_DECOMPRESSED_BYTECODE_BYTES  = 1 GB`
+
+The decompressed-size bound also closes a previously-trusted
+allocation in the bytecode-section reader: a hostile compressed
+section claiming `uncompressed_size = u32::MAX` would have made
+the decompressor `Vec::with_capacity` ~4 GB before reading a
+byte from the compressed stream.
+
+Plus a real arithmetic-underflow fix: `parse_bytecode`'s
+None-compression branch computed `section_size as usize - 1`
+to subtract the algorithm byte.  For `section_size == 0` this
+underflowed silently in release builds (wrapping to
+`usize::MAX`).  The reader now rejects zero-size sections at
+entry; subtraction afterwards is safe by precondition.  The
+bytecode-section reader's offset arithmetic also moved to
+`usize::checked_add` for portable overflow defense.
+
 ### Fixed — module-table memory-amp defense in VBC deserializer (2026-04-29)
 
 Companion fix to the archive memory-amplification bounds below.
