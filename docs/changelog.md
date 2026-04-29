@@ -16,6 +16,36 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — module-table memory-amp defense in VBC deserializer (2026-04-29)
+
+Companion fix to the archive memory-amplification bounds below.
+The per-module deserializer (`verum_vbc::deserialize`) had the
+same class of bug: four header fields — `type_table_count`,
+`function_table_count`, `constant_pool_count`, and
+`specialization_table_count` — are u32 attacker-controlled
+values, each used to drive a `Vec::with_capacity(count as usize)`
+allocation **before** the deserializer reads a single entry.  A
+64-byte hostile module header could request 500 GB-2 TB of
+allocations across the four tables before the file is even
+consulted past its header.
+
+Four architectural upper bounds enforced before any allocation:
+
+- `MAX_TYPE_TABLE_ENTRIES        = 1 048 576`
+- `MAX_FUNCTION_TABLE_ENTRIES    = 1 048 576`
+- `MAX_CONSTANT_POOL_ENTRIES     = 1 048 576`
+- `MAX_SPECIALIZATION_TABLE_ENTRIES = 1 048 576`
+
+Real-world Verum modules carry at most a few thousand entries
+in any of these tables; 1 M is comfortably above any plausible
+module while staying far below the wraparound cliff.  A new
+typed `TableTooLarge { field, count, max }` error variant names
+the offending field for immediate triage.
+
+Closing the memory-amp class at the per-module boundary too
+means a hostile module loaded directly (not via an archive) can
+no longer amplify memory either.
+
 ### Fixed — memory-amplification defense in VBC archive deserializer (2026-04-29)
 
 `read_archive` in `verum_vbc::archive` previously trusted four

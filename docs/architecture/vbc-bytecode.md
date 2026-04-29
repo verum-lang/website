@@ -302,6 +302,26 @@ any allocation**:
 Each rejection error message names the offending field so triage
 is immediate.
 
+#### Module-table memory-amplification bounds
+
+The per-module deserializer carries the same class of defense
+one layer down: a hostile module header (loaded directly, not
+through an archive) declares four `*_count` fields —
+`type_table_count`, `function_table_count`, `constant_pool_count`,
+`specialization_table_count` — each a u32 used to drive a
+`Vec::with_capacity(count as usize)` allocation **before** the
+deserializer reads a single entry.
+
+A 64-byte hostile module header could request 500 GB-2 TB across
+the four tables.  The deserializer enforces `MAX_*_ENTRIES =
+1 048 576` per table, refused before any allocation.  Real-world
+modules carry at most a few thousand entries in any of these
+tables; 1 M is comfortably above any plausible module while
+staying far below the wraparound cliff.
+
+A typed `TableTooLarge { field, count, max }` error names the
+offending field for triage.
+
 ### Implementation surface (Rust)
 
 For compiler / runtime hackers: the trust boundary is exposed as
