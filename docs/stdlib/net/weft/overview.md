@@ -262,7 +262,7 @@ issues which, once closed, unlock approximately half the suite at once.
 Through 2026-04-29, `verum run --interp` returned `-1` from any TCP
 or UDP intrinsic — interpreted-mode networking was a documentation-only
 feature. Since closure of the Tier-0 networking work, every `__tcp_*_raw`
-and `__udp_*_raw` is backed by `std::net` resources keyed in a thread-local
+and `__udp_*_raw` is backed by real OS sockets keyed in a thread-local
 synthetic-fd registry, so a Verum script can now bind a port and serve
 traffic directly through the interpreter:
 
