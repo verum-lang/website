@@ -174,24 +174,61 @@ Commit `f563586a`.
 
 Commit `87cd1435`.
 
+### Wave 11 — `internal/holon/internal/math-msfs/verum-msfs-corpus/theorems/msfs/` (25 axioms)
+
+Final pass: the MSFS verification corpus's flagship-theorem layer.
+Every active tautological axiom across the 14-stage MSFS corpus
+V3-promoted to witness-parameterised form. Per-stage breakdown:
+
+  * Stage anchors (1/2/3/4): `msfs_stage_m_*_anchor(stage_index: Int)`
+    — ensures `stage_index == k` for the corresponding M.k stage.
+  * Stage 5 (AFN-T α-part): `msfs_theorem_5_1_proof_template(candidate)`
+    preserves L_Abs triple at every citation site.
+  * Stage 6 (AFN-T β-part): Propositions 6.2 / 6.3 / 6.3-corollary
+    parameterised over `LAbsCandidate` + `SSMembership`.
+  * Stage 7 (Five-axis): Definition 7.5 Lawvere-scope over `S: RichS`,
+    ensures `n_S() >= -1`.
+  * Stage 9 (Meta-classification): Definitions 9.1/9.2 over
+    `LAbsCandidate`, Theorem 9.3 same, Theorem 9.4 + Corollary 9.5
+    over `meta_index: Int 0..2`, Theorem 9.6 over `conjunct_index: 0..2`.
+  * Stage 10 (AC/OC duality): Definitions 10.1/10.2/10.3 + Theorem 10.4
+    over `LAbsCandidate` / `SSMembership`.
+  * Stage 11 (No-go subsumption): Theorem 11.1 anchor parameterised
+    over candidate.
+  * Appendix A (categorical preliminaries): 8 external-citation
+    lemmas parameterised over `citation_year: Int`
+    discriminators (Kelly 1982, Lurie HTT 2009, Riehl-Verity 2022,
+    Pronk 1996, Lawvere 1969, Whitehead `dim_n`,
+    Bergner-Lurie 3-source `(2021, 2013, 2017)`,
+    Adámek-Rosický 1994); aggregator @theorem threads year args.
+  * Appendix B (Paraconsistent extension): Definition B.1 + Theorem B.2
+    over `S: RichS` classical-kernel witness.
+
+Commits `59e0750` + `b92b290` in the verum-msfs-corpus repo. The
+MSFS corpus now ships with **zero active tautological axioms** across
+its flagship 14-stage theorem layer; the 5 remaining `weak_axioms_anchor`
+markers carry stage-index discriminators and serve as catalogue
+handles for `verum audit --coord`.
+
 ### Aggregate session-wide tautology elimination
 
 ```text
-core/action/                                              47 ✓
-core/theory_interop/                                      37 ✓
-core/math/frameworks/diakrisis_acts.vr                    17 ✓
-core/math/foundations/self_recognition.vr                  9 ✓
-core/math/rich_s/{examples,non_examples}.vr               20 ✓
-core/math/strata.vr                                        4 ✓
-core/math/frameworks/connes_reconstruction.vr              7 ✓
-core/math/{concrete_accessible,stack_model}.vr             9 ✓
-core/math/frameworks/{schreiber_dcct,diakrisis_stack}      11 ✓
-core/math/frameworks/diakrisis_extensions.vr               4 ✓
-core/math/frameworks/bounded_arithmetic/                  12 ✓
-core/math/{graph,examples,s_definable/class_s_s}.vr       15 ✓
-core/math/frameworks/{lurie_htt,baez_dolan,diakrisis}.vr  12 ✓
-─────────────────────────────────────────────────────── ──
-total tautological axioms removed                        204
+core/action/                                                47 ✓
+core/theory_interop/                                        37 ✓
+core/math/frameworks/diakrisis_acts.vr                      17 ✓
+core/math/foundations/self_recognition.vr                    9 ✓
+core/math/rich_s/{examples,non_examples}.vr                 20 ✓
+core/math/strata.vr                                          4 ✓
+core/math/frameworks/connes_reconstruction.vr                7 ✓
+core/math/{concrete_accessible,stack_model}.vr               9 ✓
+core/math/frameworks/{schreiber_dcct,diakrisis_stack}       11 ✓
+core/math/frameworks/diakrisis_extensions.vr                 4 ✓
+core/math/frameworks/bounded_arithmetic/                    12 ✓
+core/math/{graph,examples,s_definable/class_s_s}.vr         15 ✓
+core/math/frameworks/{lurie_htt,baez_dolan,diakrisis}.vr    12 ✓
+verum-msfs-corpus/theorems/msfs/* (Waves 11)                25 ✓
+───────────────────────────────────────────────────────── ──
+total tautological axioms removed                          229
 ```
 
 Down from session-start 232 → ~28 actual tautologies remaining
