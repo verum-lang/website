@@ -193,7 +193,7 @@ r.unwrap_or_default()      // T: Default
 
 ```verum
 r.map(|t| t + 1)                       // Result<U,E>
-r.map_err(|e| ApiError::wrap(e))       // Result<T,F>
+r.map_err(|e| ApiError.wrap(e))       // Result<T,F>
 r.map_or(default, |t| t + 1)
 r.map_or_else(|e| handle_err(e), |t| t + 1)
 r.and_then(|t| further(t))             // flatmap on Ok
@@ -238,9 +238,9 @@ In a function returning `Result<_, E>`, the `?` operator unwraps an
 
 ```verum
 fn load_config() -> Result<Config, Error> {
-    let bytes = fs::read("config.toml")?;
+    let bytes = fs.read("config.toml")?;
     let text  = Text.from_utf8(&bytes)?;
-    toml::parse(&text)
+    toml.parse(&text)
 }
 ```
 
@@ -414,7 +414,7 @@ Why all three:
     bodies.  Lowercase / sentence-case message; no internal symbol
     names.  e.g. `"connection refused: 127.0.0.1:5432"`.
 
-  * **`Debug`** — structured-log payload routed through `tracing::*`,
+  * **`Debug`** — structured-log payload routed through `core.base.log.{trace,debug,info,warn,error}`,
     `f"{:?}"`, snapshot serialisers, gdb-friendly dumps.
     Symbol-form repr that round-trips back to the literal source
     constructor.  e.g. `"DbError.ConnectionRefused { host: \"127.0.0.1\", port: 5432 }"`.
@@ -505,7 +505,7 @@ type Iterator is protocol {
 .last()                  // -> Maybe<Item>
 .nth(n)                  // -> Maybe<Item>
 .advance_by(n)           // -> Result<(), Int>
-.collect::<C>()          // -> any C: FromIterator<Item>
+.collect<C>()          // -> any C: FromIterator<Item>
 .fold(init, |acc, x| ...)   // -> B
 .reduce(|a, b| max(a,b))    // -> Maybe<Item>
 .try_fold(init, |acc, x| ...)
@@ -661,7 +661,7 @@ Heap.try_new(value) -> Result<Heap<T>, AllocError>
 h.as_ref() / h.as_mut()       // CBGR-checked deref
 h.into_inner() -> T
 h.into_raw() -> &unsafe T     // leaks; pair with from_raw
-Heap::from_raw(p) -> Heap<T>  // unsafe
+Heap.from_raw(p) -> Heap<T>  // unsafe
 h.leak() -> &mut T
 
 h.generation() / h.epoch() / h.is_valid()       // CBGR introspection
@@ -680,7 +680,7 @@ Shared.strong_count(&s) / weak_count
 ### `Cow<T>`
 
 ```verum
-let c: Cow<List<Int>> = Cow::Borrowed(&xs);
+let c: Cow<List<Int>> = Cow.Borrowed(&xs);
 let owned: &mut List<Int> = c.to_mut();   // clones if Borrowed
 ```
 
@@ -689,7 +689,7 @@ let owned: &mut List<Int> = c.to_mut();   // clones if Borrowed
 ```verum
 ptr_read(p)        ptr_write(p, value)         // unsafe
 drop_in_place(p)   forget(value)               // mem leaks
-is_null(p)         null_ptr::<T>()
+is_null(p)         null_ptr<T>()
 ptr_offset(p, n)
 ```
 
@@ -711,7 +711,7 @@ asymmetry between **Display** and **Debug**:
     pointers are conceptually invisible at this layer:
     `print(Heap.new(42))` should produce `42`, not `Heap(42)`.
 
-  * `Debug` is for **structured-log payload** — `tracing::*`,
+  * `Debug` is for **structured-log payload** — `core.base.log.{trace,debug,info,warn,error}`,
     `f"…{x:?}…"`, gdb-style dumps, snapshot serialisers.  Here the
     wrapper IS information: knowing `Heap("hello")` vs the raw
     `"hello"` distinguishes "owned-on-heap" from a stack value
@@ -972,9 +972,9 @@ external cog (e.g. `toml`, `serde_json`-equivalent) drive the format.
 Helper builders:
 
 ```verum
-ListSerializer::serialize_element(&value)
-MapSerializer::serialize_key(&k);  ::serialize_value(&v)
-RecordSerializer::serialize_field(name, &value)
+ListSerializer.serialize_element(&value)
+MapSerializer.serialize_key(&k);  MapSerializer.serialize_value(&v)
+RecordSerializer.serialize_field(name, &value)
 ```
 
 `SerdeError` is the common error: constructors include
@@ -989,8 +989,8 @@ RecordSerializer::serialize_field(name, &value)
 type StackFrame is { function: Text, file: Text, line: Int, column: Int };
 type Backtrace  is { frames: List<StackFrame> };
 
-Backtrace::capture() -> Backtrace          // current stack (best-effort)
-Backtrace::from_frames(frames) -> Backtrace
+Backtrace.capture() -> Backtrace          // current stack (best-effort)
+Backtrace.from_frames(frames) -> Backtrace
 bt.frames() / bt.is_empty() / bt.len()
 ```
 
@@ -1138,7 +1138,7 @@ constants:Char.MIN  Char.MAX  Char.UNICODE_LIMIT
 ```
 is_ascii, is_ascii_digit, is_ascii_alphabetic, is_ascii_whitespace
 to_int, to_char, to_text
-Byte::from_int(n)
+Byte.from_int(n)
 ```
 
 ---
