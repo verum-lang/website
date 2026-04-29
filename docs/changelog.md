@@ -16,6 +16,47 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — Pattern bindings reach SMT-backed exhaustiveness verification (2026-04-29)
+
+Companion to the prior guard-expression lift. Without this, the
+SMT exhaustiveness path was lifting the guard expression
+correctly but then dropping it: with `bound_vars` empty, the
+translator's `bound_vars.contains_key(name)` check returned false
+for every variable reference (e.g. `n` in `n if n > 0`), which
+made the entire guard expression translate to `None` →
+`unknown_guards` → fall back to the conservative non-SMT verdict.
+The earlier fix had moved the SMT path from "always-exhaustive
+false-positive" to "always-skipped" — sound but doing no useful
+work in any guard that mentions a pattern-bound variable (which
+is most real-world cases).
+
+The fix lifts pattern bindings into the matrix:
+
+  - `PatternRow.bindings: List<Text>` carries the row's pattern-
+    bound identifier names. Populated only for guarded rows (the
+    field's only consumer is the SMT path; populating for plain
+    patterns would be wasted work on every match site).
+  - `collect_pattern_bindings(&Pattern)` walks the AST recursively
+    over identifier, tuple, array, slice, record (including
+    punned `{ name }` fields), variant tuple/record, or-arms,
+    and-conjuncts, reference inner, TypeTest binding, and Active
+    bindings.
+  - All 9 specialization sites propagate `bindings` symmetrically
+    with `guard`. The `TypeTest` exact-match arm strips both
+    fields together since the specialized row no longer carries
+    the conditional.
+  - `extract_guarded_patterns` populates `bound_vars` from
+    `row.bindings`, attaching the scrutinee type as a sound
+    placeholder. Per-binding types from type-inference are a
+    future precision pass; the SMT translator's current contract
+    only consults the keys.
+
+Two pin tests cover the binding-extraction contract:
+`n if n > 0` lifts `["n"]`, and `(a, b) if a < b` lifts both
+`"a"` AND `"b"` (regression that walks only the first sub-pattern
+surfaces here as the SMT verifier silently dropping any guard
+that mentions the second binding).
+
 ### Fixed — SMT-backed exhaustiveness no longer false-positives on guarded matches (2026-04-29)
 
 The pattern coverage matrix carried only a `has_guard: bool` flag
