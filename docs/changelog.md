@@ -16,6 +16,37 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `RefinementConfig.timeout_ms` now reaches the Z3 solver (2026-04-29)
+
+Closes the inert-defense pattern around the public
+`RefinementConfig.timeout_ms` knob (default 100 ms per spec).
+Previously the value was held by `SubsumptionChecker` at
+construction and never updated; the documented per-query
+timeout had no effect on the underlying Z3 solver.
+
+The wiring is now end-to-end:
+
+- `SmtBackend` gains a `set_timeout_ms(&mut self, ms: u64)`
+  trait method with a no-op default so legacy backends compile
+  unchanged.
+- `RefinementChecker::check_with_smt` and
+  `verify_refinement_with_assumptions` call
+  `backend.set_timeout_ms(self.config.timeout_ms)` before every
+  query.
+- `RefinementZ3Backend::set_timeout_ms` overrides the trait
+  method and forwards to its inner
+  `SubsumptionChecker::set_smt_timeout_ms`.
+- `SubsumptionChecker::check_smt` configures the Z3 solver's
+  `timeout` parameter via `Params::set_u32` on every fresh
+  solver instance, mirroring the existing pattern in
+  `QESolver::fresh_solver` and friends.
+
+The documented "100 ms default per spec" now actually constrains
+solver work; Z3 returns `Unknown` cleanly on timeout instead of
+running unbounded against the host's wall clock. Five new pin
+tests cover trait-default no-op, override observability, and
+end-to-end timeout propagation through the bare checker.
+
 ### Fixed — function-descriptor + constant + source-map memory-amp bounds (2026-04-29)
 
 Final pass of the descriptor-level memory-amp campaign — closes
