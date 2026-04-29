@@ -289,6 +289,23 @@ by model id + prompt hash + completion hash so the proof is
 reproducible from the log.  Full guide in **[Tooling → LLM tactic
 protocol](/docs/tooling/llm-tactic)**.
 
+## Proof REPL
+
+```bash
+verum proof-repl batch --theorem <T> --goal <G> [--lemma ...]
+                       [--commands <FILE>] [--cmd <LINE>]…
+                       [--format plain|json]
+verum proof-repl tree  --theorem <T> --goal <G> [--lemma ...]
+                       [--apply <STEP>]…
+```
+
+Non-interactive batch driver for the proof REPL state machine.
+Apply tactics, navigate with `undo` / `redo`, request hints, and
+emit the proof tree as Graphviz DOT — all from the shell, with
+full kernel-grade feedback on every step.  Non-zero exit on any
+kernel rejection (CI-friendly).  Full guide in **[Tooling →
+Proof REPL](/docs/tooling/proof-repl)**.
+
 ## Auto-paper documentation
 
 ```bash

@@ -81,6 +81,7 @@ const sidebars: SidebarsConfig = {
         'tooling/auto-paper',
         'tooling/foreign-import',
         'tooling/llm-tactic',
+        'tooling/proof-repl',
       ],
     },
     {

@@ -16,6 +16,39 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — `verum proof-repl` live proof REPL with stepwise feedback (#75) (2026-04-29)
+
+Non-interactive batch driver for the proof-REPL state machine.
+Apply tactics, navigate with `undo` / `redo`, request hints, and
+emit the proof tree as Graphviz DOT — all from the shell, with
+full kernel-grade feedback on every step.
+
+Two subcommands:
+
+- `verum proof-repl batch --theorem T --goal G [--lemma ...]
+  [--commands FILE] [--cmd LINE]… [--format plain|json]` — run a
+  command script.
+- `verum proof-repl tree --theorem T --goal G [--lemma ...]
+  [--apply STEP]…` — apply a sequence of tactics and emit the
+  resulting proof-tree DOT.
+
+Command-script syntax: one command per line; `apply <tactic>` (or
+bare `<tactic>` for ergonomics), `undo` / `redo` / `status` /
+`show-goals` / `show-context` / `visualise` / `hint [N]`; `#` and
+blank lines are skipped.
+
+Every command produces a typed response carrying the snapshot of
+the new state plus the kernel verdict.  Rejected steps do NOT
+mutate the state — the LCF fail-closed contract carries through.
+Non-zero exit on any kernel rejection (CI-friendly).
+
+Interactive TUI is a future extension; the protocol shape ships
+today so IDE / CI / shell consumers can integrate against the
+stable JSON schema.
+
+Full guide:
+**[Tooling → Proof REPL](/docs/tooling/proof-repl)**.
+
 ### Fixed — `InterpreterConfig.timeout_ms` wall-clock budget (2026-04-29)
 
 Closes the inert-defense pattern around the documented VBC
