@@ -601,7 +601,7 @@ c.update(|v| v + 1); // apply function in-place
 ### `RefCell<T>` — runtime-borrow-checked, `!Sync`
 
 ```verum
-let rc = RefCell.new(Vec.new());
+let rc = RefCell.new(List.new());
 {
     let mut w = rc.borrow_mut();   // panics if any borrow active
     w.push(1);
@@ -632,6 +632,31 @@ let value = cfg.get_or_init(|| load_config());
 let computed: LazyCell<HeavyResult> = LazyCell.new(|| compute_once());
 let result = computed.force();   // computes on first call, caches
 ```
+
+### Protocol implementations
+
+| Type | Eq | Ord | Hash | Clone | Default | Debug | Display |
+|---|---|---|---|---|---|---|---|
+| `Cell<T>` | `T: Clone+Eq` | `T: Clone+Ord` | — (interior mutability) | `T: Clone` | `T: Clone+Default` | `T: Clone+Debug` | `T: Clone+Display` |
+| `RefCell<T>` | `T: Eq` | — | — (interior mutability) | `T: Clone` | `T: Default` | `T: Debug` | `T: Display` |
+| `OnceCell<T>` | `T: Clone+Eq` | — | `T: Clone+Hash` | `T: Clone` | yes | `T: Clone+Debug` | `T: Clone+Display` |
+
+`Cell` and `RefCell` deliberately **omit `Hash`** — interior
+mutability would let the contained value (and thus the hash) change
+between insertions and lookups in a `Map<Cell<T>, V>`, breaking the
+map invariant.  Same policy as Rust's `Cell<T>: !Hash` /
+`RefCell<T>: !Hash`.  `OnceCell<T>` is write-once: once `set()`
+succeeds, both `Eq` and `Hash` see the same value forever, so the
+Hash–Eq invariant holds and `Map<OnceCell<T>, V>` is sound.
+
+`Display` for `Cell` / `OnceCell` delegates transparently to the
+inner value's `Display`; the wrapper is invisible to user-facing
+rendering.  `Display` for `RefCell` does the same when no mutable
+borrow is active and falls back to the sentinel `<borrowed>`
+otherwise (because handing out a shared borrow for `fmt`
+concurrently with a mutable borrow would violate the dynamic
+borrow-check; printing the sentinel is preferable to panicking
+inside formatter machinery).
 
 For thread-safe equivalents, see [`sync`](/docs/stdlib/sync) (`AtomicCell`,
 `Mutex`, `RwLock`, `OnceLock`).
