@@ -715,6 +715,26 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `verum update --workspace` includes build-dependencies (2026-04-29)
+
+Closes the inert-defense pattern around the workspace-update
+flag. `UpdateOptions.workspace` landed on the options struct
+from the CLI `--workspace` flag but was never read — so
+`verum update --workspace` looked identical to plain
+`verum update`, defeating the documented opt-in.
+
+Wired in `update_all_cogs` after the dependencies + dev-
+dependencies collection: when set, additionally include
+`manifest.build_dependencies` (the build-time-only dep group
+that's normally invisible to the update walk because runtime
+execution doesn't see it). De-duped against the existing
+collection.
+
+Mirrors the established `verum tree --all-features` semantics
+and matches the `cargo update --workspace` convention:
+workspace-mode opts INTO updating every declared dep group,
+not just runtime + dev defaults.
+
 ### Fixed — `LspConfig.smt_solver` flows into diagnostic tags (2026-04-29)
 
 Closes the inert-defense pattern around the
