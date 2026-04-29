@@ -693,6 +693,37 @@ is_null(p)         null_ptr::<T>()
 ptr_offset(p, n)
 ```
 
+### Protocol implementations — Display is transparent, Debug is wrapped
+
+Smart-pointer types in `core.base.memory` follow a deliberate
+asymmetry between **Display** and **Debug**:
+
+| Type | `Display<T>` | `Debug<T>` |
+|---|---|---|
+| `Heap<T: Display>` | `(**self).fmt(f)` — invisible wrapper | `Heap(<inner>)` |
+| `Shared<T: Display>` | `(**self).fmt(f)` — invisible wrapper | `Shared(<inner>)` |
+| `Cow<T: Clone + Display>` | `self.as_ref().fmt(f)` — invisible | `Borrowed(<inner>)` / `Owned(<inner>)` |
+
+**Rationale**:
+
+  * `Display` is for **user-facing rendering** — `print(x)`,
+    `f"…{x}…"`, network-protocol error bodies, log lines.  Box-style
+    pointers are conceptually invisible at this layer:
+    `print(Heap.new(42))` should produce `42`, not `Heap(42)`.
+
+  * `Debug` is for **structured-log payload** — `tracing::*`,
+    `f"…{x:?}…"`, gdb-style dumps, snapshot serialisers.  Here the
+    wrapper IS information: knowing `Heap("hello")` vs the raw
+    `"hello"` distinguishes "owned-on-heap" from a stack value
+    during incident analysis.
+
+This split mirrors Rust's `Display for Box<T>` / `Debug for Box<T>`
+convention and aligns with the broader
+[Display + Debug + Eq triple contract](#the-display--debug--eq-triple--errortype-contract)
+above — every public stdlib pointer type now provides
+`Display + Debug + Eq + Hash + Clone + Default + Ord` (gated by the
+inner type's bounds).
+
 For full memory primitives see [`mem`](/docs/stdlib/mem).
 
 ---
