@@ -534,6 +534,27 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — `verum publish --verify-proofs` blocks on failed proofs (2026-04-29)
+
+Closes the inert-defense pattern around the publish verify-proofs
+gate. `PublishOptions.verify_proofs` landed on the options struct
+from the CLI `--verify-proofs` flag but no code path consulted it
+— `verum publish --verify-proofs` would happily upload a package
+whose proof bundle contained `ProofStatus::Failed` entries,
+defeating the documented enforcement contract.
+
+Wired via new `check_verify_proofs_gate(enforce, proofs)` helper
+called after metadata generation. When the gate is set AND the
+proof bundle contains any `Failed` entries, the publish is blocked
+with a typed `CliError::Custom` that names every failed function
+so publishers can fix the offending items before retry.
+
+The gate enforces **"no failed proofs"**, NOT **"must have proofs"** —
+a package with zero `@verify` items still publishes cleanly under
+`--verify-proofs`. The stricter "must have proofs" policy would
+deserve its own separate flag rather than silently subsuming under
+this check.
+
 ### Fixed — `verum tree --all-features` shows build-dependencies (2026-04-29)
 
 Closes the inert-defense pattern around the `verum tree`
