@@ -16,6 +16,30 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — inner-descriptor memory-amp bounds (2026-04-29)
+
+Continues the descriptor-level memory-amp campaign at the
+descriptor-recursion layer.  The outer descriptor counts
+(type_params / fields / variants / protocols / methods) were
+bounded earlier; these are the counts the same descriptors
+recurse through:
+
+- **`MAX_BOUNDS_PER_TYPE_PARAM = 64`** — protocol bounds on a
+  type parameter (`fn f<T: P + Q>`).
+- **`MAX_FIELDS_PER_VARIANT = 1 024`** — per-variant struct
+  fields (`Some { a, b, c }`).
+- **`MAX_TYPE_REF_INSTANTIATION_ARGS = 64`** — generic
+  instantiation arity (`List<Int, String, …>`).
+- **`MAX_FN_TYPE_REF_PARAMS = 256`** — function-type signature
+  parameter count.
+- **`MAX_FN_TYPE_REF_CONTEXTS = 32`** — function-type context
+  list (`using [Logger, Database, …]`).
+
+These were the last unbounded varint-driven `Vec` / `SmallVec`
+allocations in the VBC deserializer trust boundary.  A hostile
+descriptor recursion can no longer reach
+`with_capacity(usize::MAX)` through any of these paths.
+
 ### Fixed — descriptor-level memory-amp + parse_bytecode underflow (2026-04-29)
 
 Closes the third memory-amplification class in VBC module
