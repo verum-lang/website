@@ -16,6 +16,32 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `core/database/sqlite/alter` clone preserves validation-error variants (2026-04-29)
+
+The ALTER engine's `clone_failure` collapsed every
+`AefValidation(e)` into `AefExecution(error_kind(e))` with a
+"we can't deeply clone here" placeholder. Two pieces of
+information were lost on every phase clone:
+
+  - Variant identity: validation errors became execution errors
+    downstream; code matching on `EpFailed(AefValidation(_))`
+    never matched after a clone.
+  - Structured payload: `error_kind` reduces a 6-variant sum
+    carrying table/column names to a single discriminant tag
+    string ("no_such_table", "primary_key", …). The
+    `Display for AlterValidationError` impl that produces
+    user-facing messages like
+    `"sqlite ALTER table.col: cannot alter PRIMARY KEY column"`
+    was unreachable for any cloned phase.
+
+Replaced the placeholder with a proper variant-aware deep clone
+(`clone_validation_error`) that mirrors the existing
+`clone_delta` pattern in the same file: explicit pattern match
+on every variant, each Text payload cloned. Adding a new
+`AlterValidationError` variant now surfaces here as a
+non-exhaustive-match build error rather than silently losing
+data.
+
 ### Fixed — SMT exhaustiveness witness extraction matches scrutinee sort (2026-04-29)
 
 Fourth closure in the SMT exhaustiveness chain. Pre-fix
