@@ -16,6 +16,29 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `ValidationConfig.{fail_on_mismatch, log_mismatches}` are load-bearing (2026-04-29)
+
+Two `ValidationConfig` fields on the SMT backend switcher
+were declared, defaulted, and never read. The existing
+cross-validation divergence path hardcoded both "log to
+stderr" and "return Error" regardless of caller policy.
+
+Wire both at the divergence branch:
+
+- `log_mismatches` (default `true`): when `false`, suppress
+  the stderr warning. CI pipelines that capture and report
+  divergences through the routing-stats sink avoid duplicate
+  noise.
+- `fail_on_mismatch` (default `false`): when `false`, return
+  the Z3 result rather than a hard `Error` — the documented
+  "log but don't fail" policy. The Certified strategy sets
+  the flag `true` to surface divergence as a build failure.
+
+Routing-stats divergence-event recording is unconditional
+(machine-readable telemetry is the canonical source); the
+human-readable stderr line and the hard-error return are
+now the gated user-facing surfaces.
+
 ### Fixed — `FallbackConfig.on_timeout` distinguishes timeout from generic unknown (2026-04-29)
 
 The flag was set in defaults and the manifest parser but no
@@ -678,6 +701,36 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — 7 LinkConfig fields wired into the LTO link path (2026-04-29)
+
+Closes seven inert-defense patterns at the LTO link boundary.
+Seven `LinkConfig` fields were consumed by the standard (non-LTO)
+link path but silently dropped in `link_with_lto` — setting any
+of them on a `verum build --release` build (which typically
+enables LTO) had zero observable effect on the linked binary:
+
+- `strip_debug` — full debug-section size in LTO outputs.
+- `entry_point` — manifest's configured entry ignored under
+  release; the linker's default entry was used.
+- `static_link` — static-link manifests under release / LTO
+  produced dynamically-linked outputs.
+- `exports` — exported symbols configured in the manifest were
+  dropped from LTO outputs (broke shared-library surfaces).
+- `rpaths` — runtime library search paths dropped under LTO.
+- `linker_script` — custom linker scripts silently ignored.
+- `extra_args` — raw linker flags fed via the manifest or
+  `-C link-arg=` were dropped under LTO.
+- `verbose` — `--verbose` linker output suppressed under LTO,
+  defeating the diagnostic purpose for users debugging
+  release-build link failures.
+
+Wired symmetrically with the standard link path: every field
+the standard branch consumes now reaches the LTO branch too,
+with the same precedence rules. The standard path remains the
+authoritative reference; new fields added to `LinkConfig` should
+be wired into BOTH branches at the same time to keep them
+convergent.
 
 ### Fixed — `GpuPassConfig.enable_tensor_cores` reaches the pipeline (2026-04-29)
 
