@@ -16,6 +16,73 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — `verum llm-tactic` LCF-style fail-closed LLM tactic protocol (#77) (2026-04-29)
+
+Verum is now the first proof assistant where LLM assistance is
+guaranteed sound *by construction*. An LLM may propose tactic
+sequences for any goal, but the proposal is **always re-checked by
+the kernel** before being committed.  If the kernel rejects any
+step, the proposal is discarded and the audit trail records the
+rejection.
+
+Three subcommands:
+
+- `verum llm-tactic propose --theorem <T> --goal <G> [--lemma ...]
+  [--hyp ...] [--history ...] [--model <ID>] [--hint <TEXT>]
+  [--persist] [--audit <PATH>] [--format plain|json]` — run one
+  protocol round.
+- `verum llm-tactic audit-trail [--audit <PATH>] [--format ...]`
+  — read every recorded event.
+- `verum llm-tactic models [--format ...]` — list available
+  adapters.
+
+Every audit-trail event carries the `model_id` + blake3 prompt
+hash + blake3 completion hash, so the proof is reproducible from
+the log alone.  Four event kinds: `LlmInvoked`, `KernelAccepted`,
+`KernelRejected` (with `failed_step_index` + `reason`),
+`ProtocolError`.
+
+V0 ships two reference adapters: `mock` (deterministic, for tests)
+and `echo` (emits a user-supplied `--hint` verbatim, useful when
+you have a pre-computed sequence and want the kernel re-check loop
+without an actual model in the loop).  Production cloud /
+on-device adapters plug in via the same trait surface without CLI
+changes.
+
+The fail-closed contract: regardless of what the LLM hallucinates,
+the kernel verdict is authoritative.  No proof body is ever
+modified without the kernel accepting every step.
+
+Full guide:
+**[Tooling → LLM tactic protocol](/docs/tooling/llm-tactic)**.
+
+### Fixed — `CommonPipelineConfig.smt_timeout_ms` reaches contract phase (2026-04-29)
+
+Closes the inert-defense pattern around the documented
+session-level SMT budget. `run_common_pipeline` invoked
+`ContractVerificationPhase::new()` which fell back to the
+phase's own 30 000 ms default regardless of caller intent —
+setting `smt_timeout_ms = 5000` in the manifest had no effect
+on Z3.
+
+Wire by constructing a `VerificationConfig` with the forwarded
+timeout and using `with_config(...)` instead of `new()`. Phase
+defaults for the other fields (counterexamples, protocols,
+etc.) are preserved.
+
+### Fixed — `SemanticCacheConfig.enable_cross_project` gates the persistent fallback (2026-04-29)
+
+`enable_cross_project` (default `false`) was documented as
+"Whether to enable cross-project sharing" but no code path
+consulted it. The three `get_*_with_fallback` methods (types,
+functions, verification results) always consulted the
+persistent store when one was attached. Callers wanting strict
+per-project caching had no way to opt out.
+
+Wire as an early return at the entry of each fallback method:
+when disabled, skip the persistent store entirely so the cache
+behaves as a pure per-process LRU.
+
 ### Fixed — `ContextConfig` 5-field wiring on `Context::solver` (2026-04-29)
 
 Closes the inert-defense pattern around five
@@ -296,6 +363,25 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — `ReplConfig.verbose` + `timeout_seconds` are load-bearing (2026-04-29)
+
+Closes two inert-defense patterns at the JIT-REPL session boundary.
+Both fields were documented but no code path consulted them;
+toggling either had zero observable effect.
+
+`verbose` (default `false`) — wired in `ReplSession::eval` to emit
+a structured tracing event on entry naming the session id, eval
+number, and input byte count. Default-off keeps the production
+hot path free of tracing overhead.
+
+`timeout_seconds` (default `0` = no timeout) — wired at the start
+of `eval`: when nonzero and `created_at.elapsed()` exceeds the
+configured budget, `eval` rejects with a typed
+`MlirError::ReplError` whose message names the field, the
+configured budget, and the actual elapsed time so callers can
+attribute the failure correctly. The "0 = no timeout" sentinel
+preserves the existing unbounded behaviour for default sessions.
 
 ### Fixed — Enterprise `AccessControl.require_signature` enforces policy (2026-04-29)
 
