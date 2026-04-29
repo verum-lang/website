@@ -120,7 +120,7 @@ label.
 ### Usage pattern
 
 ```verum
-use core.security.labels.{Label, Labeled, labeled};
+mount core.security.labels.{Label, Labeled, labeled};
 
 @cap(name = "declassify", domain = "Secret")
 pub fn summary_for_audit(data: Labeled<UserData>) -> Text {

@@ -158,8 +158,8 @@ MAX_EXPAND_OUTPUT_512  // 255 * 64 = 16320
 ## Quick start — deriving session keys from a shared secret
 
 ```verum
-use core.security.kdf.hkdf.{hkdf_sha256};
-use core.security.ecc.x25519.{X25519};
+mount core.security.kdf.hkdf.{hkdf_sha256};
+mount core.security.ecc.x25519.{X25519};
 
 fn establish_session(my_sk: &X25519SecretKey, peer_pk: &X25519PublicKey)
     -> Result<SessionKeys, Error>

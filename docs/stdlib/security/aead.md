@@ -172,8 +172,8 @@ write by accident.
 ### Quick example
 
 ```verum
-use core.security.cipher.aes.{AesKey128};
-use core.security.aead.aes_gcm.{Aes128Gcm, GcmError};
+mount core.security.cipher.aes.{AesKey128};
+mount core.security.aead.aes_gcm.{Aes128Gcm, GcmError};
 
 fn round_trip(
     key: &AesKey128,
@@ -201,8 +201,8 @@ fn round_trip(
 ### AES-256-GCM
 
 ```verum
-use core.security.cipher.aes.{AesKey256};
-use core.security.aead.aes_gcm.{Aes256Gcm};
+mount core.security.cipher.aes.{AesKey256};
+mount core.security.aead.aes_gcm.{Aes256Gcm};
 
 let key: AesKey256 = /* 32 bytes */ ;
 let cipher = Aes256Gcm.new(&key);
@@ -338,8 +338,8 @@ also `[Byte; 12]`, so it can be used interchangeably with the
 ### Quick example
 
 ```verum
-use core.security.cipher.chacha20.{ChaChaKey, ChaChaNonce};
-use core.security.aead.chacha20_poly1305.{ChaCha20Poly1305, AeadError};
+mount core.security.cipher.chacha20.{ChaChaKey, ChaChaNonce};
+mount core.security.aead.chacha20_poly1305.{ChaCha20Poly1305, AeadError};
 
 fn round_trip(
     key: &ChaChaKey,

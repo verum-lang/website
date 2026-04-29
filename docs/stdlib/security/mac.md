@@ -111,8 +111,8 @@ public fn hmac_sha512(key: &[Byte], data: &[Byte]) -> [Byte; 64];
 ### Quick start — signing a cookie
 
 ```verum
-use core.security.mac.hmac.{hmac_sha256};
-use core.security.util.constant_time.{constant_time_eq};
+mount core.security.mac.hmac.{hmac_sha256};
+mount core.security.util.constant_time.{constant_time_eq};
 
 const COOKIE_KEY: [Byte; 32] = /* loaded from secrets, NOT hard-coded */ ;
 

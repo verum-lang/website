@@ -13,7 +13,7 @@ field of a record.
 `src/derives.vr`:
 
 ```verum
-use core.meta.*;
+mount core.meta.*;
 
 @meta_macro
 pub meta fn derive_display_all<T>() -> TokenStream

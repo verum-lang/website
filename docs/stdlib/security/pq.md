@@ -182,11 +182,11 @@ an observable error. This protects against chosen-ciphertext oracles.
 ### Quick start — full PQ-KEM round trip
 
 ```verum
-use core.security.pq.ml_kem.{
+mount core.security.pq.ml_kem.{
     MlKemVariant, ml_kem_keygen, ml_kem_encapsulate, ml_kem_decapsulate,
 };
 
-fn example() -> Result<(), Box<dyn Error>> {
+fn example() -> Result<(), Heap<Error>> {
     let v = MlKemVariant.MlKem768;
 
     // 1. Alice generates a keypair.
@@ -215,9 +215,9 @@ fn example() -> Result<(), Box<dyn Error>> {
 The canonical TLS 1.3 / QUIC pattern:
 
 ```verum
-use core.security.ecc.x25519.{X25519};
-use core.security.pq.ml_kem.{MlKemVariant, ml_kem_keygen, ml_kem_encapsulate};
-use core.security.kdf.hkdf.{hkdf_sha256};
+mount core.security.ecc.x25519.{X25519};
+mount core.security.pq.ml_kem.{MlKemVariant, ml_kem_keygen, ml_kem_encapsulate};
+mount core.security.kdf.hkdf.{hkdf_sha256};
 
 // Client advertises BOTH a classical share and a PQ share.
 let ecdh_sk = X25519.generate_secret_key();
@@ -311,9 +311,9 @@ Note `ml_dsa_verify` returns `Result<Bool, PqError>`:
 ### Quick example
 
 ```verum
-use core.security.pq.ml_dsa.{MlDsaVariant, ml_dsa_keygen, ml_dsa_sign, ml_dsa_verify};
+mount core.security.pq.ml_dsa.{MlDsaVariant, ml_dsa_keygen, ml_dsa_sign, ml_dsa_verify};
 
-fn example() -> Result<(), Box<dyn Error>> {
+fn example() -> Result<(), Heap<Error>> {
     let v = MlDsaVariant.MlDsa65;
 
     // Signer

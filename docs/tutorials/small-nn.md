@@ -45,8 +45,8 @@ kind = "full"
 `src/data.vr`:
 
 ```verum
-use core.io.*;
-use core.math.tensor.*;
+mount core.io.*;
+mount core.math.tensor.*;
 
 pub type Dataset is {
     images: Tensor<Float32>,      // [N, 784]
@@ -93,9 +93,9 @@ fn u32_from_be(bytes: &[Byte]) -> UInt32 {
 `src/model.vr`:
 
 ```verum
-use core.math.nn.*;
-use core.math.tensor.*;
-use core.math.random.*;
+mount core.math.nn.*;
+mount core.math.tensor.*;
+mount core.math.random.*;
 
 pub type MNISTNet is {
     fc1: Linear,
@@ -133,9 +133,9 @@ implement Module for MNISTNet {
 `src/train.vr`:
 
 ```verum
-use core.math.nn.*;
-use core.math.tensor.*;
-use core.math.autodiff.*;
+mount core.math.nn.*;
+mount core.math.tensor.*;
+mount core.math.autodiff.*;
 use .self.model.MNISTNet;
 
 fn train_step(
@@ -170,13 +170,13 @@ fn accuracy(model: &MNISTNet, images: &Tensor<Float32>, labels: &Tensor<Int32>) 
 `src/main.vr`:
 
 ```verum
-use core.io.*;
-use core.math.random::{Rng, PCG};
-use core.math.nn.AdamW;
-use core.math.tensor::*;
-use .self.data::*;
+mount core.io.*;
+mount core.math.random.{Rng, PCG};
+mount core.math.nn.AdamW;
+mount core.math.tensor.*;
+use .self.data.*;
 use .self.model.MNISTNet;
-use .self.train::*;
+use .self.train.*;
 
 const BATCH_SIZE: Int = 64;
 const EPOCHS: Int = 10;
@@ -232,7 +232,7 @@ fn main() {
 @cfg(test)
 module tests {
     use .super.model.MNISTNet;
-    use core.math.tensor::*;
+    mount core.math.tensor.*;
     use core.math.random.PCG;
 
     @test

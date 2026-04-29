@@ -12,7 +12,7 @@ without a runtime check.
 ### Static matrix type
 
 ```verum
-use core.math.tensor::*;
+mount core.math.tensor.*;
 
 /// M x N matrix of T, shape known at compile time.
 type Matrix<const M: Int, const N: Int, T> is Tensor<T, shape![M, N]>;

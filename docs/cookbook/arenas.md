@@ -21,7 +21,7 @@ drops.
 ## `GenerationalArena<T>`
 
 ```verum
-use core.mem.GenerationalArena;
+mount core.mem.GenerationalArena;
 
 fn parse_file(source: &Text) -> Result<Ast, ParseError> {
     let arena = GenerationalArena<Node>.new(capacity: 4096);
@@ -71,7 +71,7 @@ through the arena. Outside the block, normal CBGR allocation resumes.
 For borrow-checked region lifetimes without a separate handle type:
 
 ```verum
-use core.security.new_region;
+mount core.security.new_region;
 
 let stats = new_region(|r: Region<'_, ParseNode>| {
     let root = parse_into_region(source, &r);

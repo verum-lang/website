@@ -11,8 +11,8 @@ Periodic work — heartbeats, polling, metrics flushes — is built on
 ### Basic tick loop
 
 ```verum
-use core.async::*;
-use core.time::*;
+mount core.async.*;
+mount core.time.*;
 
 async fn heartbeat() using [Logger] {
     let mut ticker = Interval.new(1.seconds());

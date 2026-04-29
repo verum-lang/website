@@ -119,7 +119,7 @@ will confirm the promotion was possible.
 ### Explicit SIMD via `core.simd`
 
 ```verum
-use core.simd.{Vec8f, Mask8};
+mount core.simd.{Vec8f, Mask8};
 
 @cfg(target_has_feature("avx2"))
 fn dot(a: &[Float32], b: &[Float32]) -> Float32 {

@@ -112,7 +112,7 @@ accidentally pass a public key where a secret was expected
 ### Setting up both ends
 
 ```verum
-use core.security.ecc.x25519.{X25519, X25519Error};
+mount core.security.ecc.x25519.{X25519, X25519Error};
 
 // Alice (locally)
 let alice_sk = X25519.generate_secret_key();
@@ -140,7 +140,7 @@ key. Always run it through HKDF to get uniformly-distributed
 session keys:
 
 ```verum
-use core.security.kdf.hkdf.{hkdf_sha256};
+mount core.security.kdf.hkdf.{hkdf_sha256};
 
 fn session_keys(shared: &X25519SharedSecret) -> Result<SessionKeys, _> {
     let mut aead_key: List<Byte> = List.with_capacity(32);

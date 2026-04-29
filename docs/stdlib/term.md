@@ -272,7 +272,7 @@ Table.new(&rows)
     .column_spacing(1)
     .highlight_style(Style.new().modifier(Modifier.Bold))
 
-type TreeState is { selected: Vec<Int>, opened: Set<Vec<Int>> };
+type TreeState is { selected: List<Int>, opened: Set<List<Int>> };
 Tree.new(&items)
     .render_stateful(f, area, &mut state)
 

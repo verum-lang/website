@@ -142,7 +142,7 @@ millions of times per TLS handshake.
 ### Quick example — encrypt one block
 
 ```verum
-use core.security.cipher.aes.{AesKey128, RoundKeys128, aes128_encrypt_block};
+mount core.security.cipher.aes.{AesKey128, RoundKeys128, aes128_encrypt_block};
 
 fn encrypt_one_block() -> [Byte; 16] {
     // FIPS 197 Appendix C.1 — the canonical AES-128 test vector.
@@ -166,7 +166,7 @@ fn encrypt_one_block() -> [Byte; 16] {
 ### AES-256
 
 ```verum
-use core.security.cipher.aes.{AesKey256, RoundKeys256, aes256_encrypt_block};
+mount core.security.cipher.aes.{AesKey256, RoundKeys256, aes256_encrypt_block};
 
 fn encrypt_one_block_256() -> [Byte; 16] {
     let key: AesKey256 = [
@@ -346,7 +346,7 @@ public fn chacha20_xor(
 ### Quick example — raw keystream
 
 ```verum
-use core.security.cipher.chacha20.{ChaChaKey, ChaChaNonce, chacha20_block};
+mount core.security.cipher.chacha20.{ChaChaKey, ChaChaNonce, chacha20_block};
 
 fn derive_block() -> [Byte; 64] {
     let key: ChaChaKey = [0; 32];
@@ -358,7 +358,7 @@ fn derive_block() -> [Byte; 64] {
 ### Quick example — encrypt a message
 
 ```verum
-use core.security.cipher.chacha20.{ChaChaKey, ChaChaNonce, chacha20_xor};
+mount core.security.cipher.chacha20.{ChaChaKey, ChaChaNonce, chacha20_xor};
 
 fn encrypt(key: &ChaChaKey, nonce: &ChaChaNonce, pt: &[Byte]) -> List<Byte> {
     let mut ct = List.with_capacity(pt.len());

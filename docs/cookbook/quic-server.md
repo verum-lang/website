@@ -89,8 +89,8 @@ protocol — for most production setups this is
 `core.security.x509.sign.FileSigner` or an HSM-backed variant.
 
 ```verum
-use core.security.x509.parse.{parse_cert_chain_pem};
-use core.security.x509.sign.{FileSigner};
+mount core.security.x509.parse.{parse_cert_chain_pem};
+mount core.security.x509.sign.{FileSigner};
 
 let chain = parse_cert_chain_pem(&fs.read_text("/etc/letsencrypt/live/example.com/fullchain.pem").await?)?;
 let signer = FileSigner.from_pem_path("/etc/letsencrypt/live/example.com/privkey.pem").await?;

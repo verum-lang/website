@@ -17,7 +17,7 @@ is sorted. The compiler proves every mutation preserves the invariant.
 `src/sorted_list.vr`:
 
 ```verum
-use core.collections.List;
+mount core.collections.List;
 
 /// A refinement-typed sorted list: every operation preserves
 /// `xs[i] <= xs[i+1]`.

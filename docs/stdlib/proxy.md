@@ -201,7 +201,7 @@ ten tokens from the same bucket.
 ### Keyed limiters
 
 ```verum
-public type KeyedRateLimiter<K> is { /* Map<K, Box<dyn RateLimiter>> */ };
+public type KeyedRateLimiter<K> is { /* Map<K, Heap<RateLimiter>> */ };
 ```
 
 Fan out one limiter per key — per-IP, per-authenticated-user,

@@ -151,7 +151,7 @@ Use a shutdown flag checked on every iteration and a `select` that
 races `accept` against the signal:
 
 ```verum
-use core.os.signal;
+mount core.os.signal;
 
 async fn echo_server_graceful(addr: &Text) -> IoResult<()>
     using [IO, Logger]

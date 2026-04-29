@@ -229,7 +229,7 @@ type CompletionResult is {
     flags: Int,
 };
 
-fn create_io_engine(config: IoEngineConfig) -> Result<Box<dyn IOEngine>, IoError>
+fn create_io_engine(config: IoEngineConfig) -> Result<Heap<IOEngine>, IoError>
 ```
 
 Platform picks:

@@ -158,7 +158,7 @@ a lattice meet.
 ## Quick example — protecting an email through a render pipeline
 
 ```verum
-use core.security.labels.{Label, Labeled, labeled, combine, flows_to};
+mount core.security.labels.{Label, Labeled, labeled, combine, flows_to};
 
 type UserEmail is Labeled<Text>;
 type DisplayName is Labeled<Text>;

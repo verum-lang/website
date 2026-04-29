@@ -138,7 +138,7 @@ public fn check_no_escape(returned: LifetimeType, env: LifetimeEnv) -> EscapeVer
 ## Quick example — modelling a `letregion` escape check
 
 ```verum
-use core.security.regions.{
+mount core.security.regions.{
     region, region_set, region_env, region_type,
     check_no_escape, EscapeVerdict,
 };

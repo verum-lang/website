@@ -222,8 +222,8 @@ Four path roots:
 - *(no prefix)* — path resolved from the current module, then crate.
 
 ```verum
-crate.types::User          // fully-qualified from cog root
-super.shared_helpers::fmt  // from the parent module
+crate.types.User          // fully-qualified from cog root
+super.shared_helpers.fmt  // from the parent module
 .self.submodule             // explicit self-rooted
 ```
 

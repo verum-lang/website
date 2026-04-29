@@ -160,11 +160,11 @@ Primitive-sized atomic operations go through the `AtomicT` types in
 `core.sync.atomic`:
 
 ```verum
-type AtomicInt32  is core.sync.atomic::AtomicI32;
-type AtomicInt64  is core.sync.atomic::AtomicI64;
-type AtomicU64    is core.sync.atomic::AtomicU64;
-type AtomicBool   is core.sync.atomic::AtomicBool;
-type AtomicUsize  is core.sync.atomic::AtomicUsize;
+type AtomicInt32  is core.sync.atomic.AtomicI32;
+type AtomicInt64  is core.sync.atomic.AtomicI64;
+type AtomicU64    is core.sync.atomic.AtomicU64;
+type AtomicBool   is core.sync.atomic.AtomicBool;
+type AtomicUsize  is core.sync.atomic.AtomicUsize;
 ```
 
 API:
