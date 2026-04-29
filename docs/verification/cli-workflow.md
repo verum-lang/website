@@ -153,6 +153,98 @@ summary.
 | `--compare-modes`   | Run Fast/Static/Formal/Thorough side-by-side; report deltas. |
 | `--interactive`     | Enter REPL after first failure; use `help` for commands.     |
 
+### Ladder dispatch (`--ladder`)
+
+Routes every `@verify(strategy)` annotation in the project through
+the typed 13-strategy ladder dispatcher
+(`verum_verification::ladder_dispatch::DefaultLadderDispatcher`).
+
+| Flag | Meaning |
+|---|---|
+| `--ladder` | Short-circuit standard verify and emit per-theorem ladder verdicts. |
+| `--ladder-format plain\|json` | Output format (default `plain`). |
+
+Per-theorem verdicts:
+
+- **Closed** — kernel accepted at the requested strategy.
+- **Open** — kernel rejected; cites a concrete failure reason.
+- **DispatchPending** — strategy is annotated but the V0 dispatcher
+  has no backend yet (advisory; non-fatal exit).
+- **Timeout** — strategy timed out at its budget (hard failure).
+
+Exit code is non-zero only on Open / Timeout — DispatchPending is
+expected for the 11 strategies still in V1 ramp-up (Fast, Formal,
+Proof, Thorough, Reliable, Certified, CoherentStatic,
+CoherentRuntime, Coherent, ComplexityTyped, Synthesize).  V0 only
+implements Runtime + Static end-to-end; the typed-acknowledgement
+contract is what the ladder gives you today.
+
+Plain output:
+
+```
+Ladder dispatch — per-theorem @verify(strategy) verdicts
+
+  Theorem / lemma / corollary       Strategy            Verdict             Detail
+  ─────────────────────────────────  ──────────────────  ──────────────────  ────────────────────
+  ring_add_comm                      formal              dispatch_pending    V1: portfolio SMT (Z3 + CVC5)
+  cbgr_check_runtime                 runtime             closed              runtime-assertion: cbgr_check_runtime (CBGR check fires at call site) (0ms)
+
+  Verdict totals:
+    closed              2
+    open                0
+    dispatch_pending    8
+    timeout             0
+    total              10
+
+  Files: 14 scanned, 14 parsed, 0 skipped
+```
+
+JSON shape:
+
+```json
+{
+  "schema_version": 1,
+  "theorem_count": 10,
+  "totals": { "closed": 2, "open": 0, "dispatch_pending": 8, "timeout": 0 },
+  "files": { "scanned": 14, "parsed": 14, "skipped": 0 },
+  "theorems": [
+    { "kind": "theorem", "name": "ring_add_comm",
+      "file": "src/algebra.vr", "strategy": "formal",
+      "verdict": "dispatch_pending",
+      "detail": "V1: portfolio SMT (Z3 + CVC5) via verum_smt::backend_switcher" }
+  ]
+}
+```
+
+The ν-monotonicity invariant (along the monotone backbone, the
+`Implemented` strategies form a downward-closed initial segment) is
+enforced at audit time via
+`verum_verification::ladder_dispatch::verify_monotonicity`.
+
+### Closure-cache incremental verification (`--closure-cache`)
+
+Per-theorem verdict cache.  Theorem proofs whose closure-hash +
+Ok-verdict are already cached are skipped without invoking the
+SMT/kernel re-check.
+
+| Flag | Meaning |
+|---|---|
+| `--closure-cache` | Opt in to the cache (default off). |
+| `--closure-cache-root PATH` | Override the default `<input.parent>/target/.verum_cache/closure-hashes/`. Implies `--closure-cache`. |
+
+The verify run's summary line includes hit/miss telemetry:
+
+```
+Theorem verification: 142/142 verified, 0 failed, 0 axioms (search: 142 attempts, 142 hits)
+Closure cache: 138 hit(s), 4 miss(es), 97.2% hit-ratio
+```
+
+Cache key includes `verum_kernel::VVA_VERSION` — any kernel-rule
+edit invalidates ALL cached entries unconditionally.  See
+**[Tooling → Incremental cache](/docs/tooling/incremental-cache)**
+for the full reference (storage layout, JSON schema, distributed
+CI patterns, trait surface).
+
 ### Debug flags
 
 | Flag                       | Meaning                                                           |
