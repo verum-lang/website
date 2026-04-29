@@ -16,6 +16,18 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — usize-overflow path in length-prefixed decoders (2026-04-29)
+
+`decode_string` and `decode_bytes` in the VBC encoding layer used
+unchecked `*offset + len` arithmetic for the bounds check.  With a
+hostile varint length near `usize::MAX` and `*offset > 0`, the
+addition wraps in release builds and the wrapped value passes the
+`> data.len()` check, opening a path to read from the wrong
+region.  Both decoders now use `usize::checked_add` and surface
+overflow as `Eof`.  Companion fix to the byte[9]-canonicality
+defense below — together they close the two known integer-class
+defenses at the bytecode-decoder layer.
+
 ### Fixed — varint canonicality at the bytecode trust boundary (2026-04-29)
 
 Tightens the `decode_varint` / `read_varint` decoders in
