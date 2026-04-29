@@ -297,6 +297,33 @@ at audit time.
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
 
+### Fixed — Enterprise `AccessControl.require_signature` enforces policy (2026-04-29)
+
+Closes the inert-defense pattern around the enterprise signature-
+verification gate. The field was documented as "Require signature
+verification", parsed from `enterprise.toml`, and asserted in
+default-construction tests, but no code path consulted it.
+Enterprises that set the flag in their config would still install
+unsigned cogs because `EnterpriseClient::is_cog_allowed` only
+checked the allow / deny lists.
+
+Wired via two new methods on `EnterpriseClient`:
+
+- `requires_signature() -> bool` — public read accessor surfacing
+  the configured stance so install / publish flows can branch on
+  the policy without re-reading `EnterpriseConfig` internals.
+- `is_cog_allowed_with_signature(cog_name, has_valid_signature) ->
+  bool` — combined check that runs the existing name-only check
+  first and then enforces the signature requirement when the
+  policy demands it.
+
+The signature gate is ADDITIVE: it doesn't bypass the deny list,
+and an unsigned cog that fails the name-only check is still
+rejected without consulting signature state. The pre-existing
+`is_cog_allowed(&str)` continues to work for callers that don't
+have signature info yet — they call `requires_signature()` to
+decide whether to look up signature state before proceeding.
+
 ### Fixed — `ProofGenerationConfig.minimize_unsat_cores` + `extraction_timeout_ms` reach the Z3 Solver (2026-04-29)
 
 Closes two inert-defense patterns at the proof-extraction boundary.
