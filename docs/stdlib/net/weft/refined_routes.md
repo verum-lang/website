@@ -143,7 +143,7 @@ runtime check. This is the rare case (legacy interop, external API
 that does not match your invariants).
 
 ```verum
-let user_id: UserId = refinement_cast::<UserId>(raw_int)?;
+let user_id: UserId = refinement_cast<UserId>(raw_int)?;
 ```
 
 `refinement_cast` returns `Result` — the runtime check enforces the
