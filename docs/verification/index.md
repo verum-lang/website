@@ -459,7 +459,11 @@ read the subsections in this order:
 3. [ADT encoding](./adt-encoding.md) — how sum types are axiomatised.
 4. [SMT routing](./smt-routing.md) — how obligations reach a
    solver.
-5. [Proofs](./proofs.md) — the tactic DSL.
+5. [Solver tuning](./solver-tuning.md) — every config knob
+   the solver subsystem exposes, with copy-paste recipes for
+   common workflows (latency-sensitive, CI, debugging,
+   research).
+6. [Proofs](./proofs.md) — the tactic DSL.
 6. [Tactic DSL](./tactic-dsl.md) — authoring custom tactics.
 7. [Trusted kernel](./trusted-kernel.md) — the LCF core.
 8. [Counterexamples](./counterexamples.md) — what the solver
