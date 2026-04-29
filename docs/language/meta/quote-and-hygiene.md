@@ -300,6 +300,55 @@ from inside the macro itself via `CompileDiag.emit_note(...)` —
 the note participates in the standard diagnostic pipeline and its
 source span carries the hygiene context the compiler assigned.
 
+### Programmatic expansion trace
+
+For tooling that drives the expander directly (LSP-side macro
+inspectors, custom expansion harnesses, integration tests), the
+expander records an in-order trace of every binding event when
+opted in via `ExpansionConfig.debug_bindings = true`. Default is
+`false`, keeping production codegen's hot path zero-allocation.
+
+Six choke points are recorded chronologically:
+
+| Event kind | When |
+|------------|------|
+| `EnterQuote` | `enter_quote` increased nesting depth. |
+| `ExitQuote` | `exit_quote` decreased nesting depth. |
+| `Binding(BindingKind)` | A binding was registered via `process_binding`. The variant carries `Variable` / `Parameter` / `Function` / `Type` / `Macro` / `Pattern` / `Label`, so consumers can distinguish a `let` from a parameter from a function/type/macro/pattern/label. |
+| `Reference` | An identifier reference was processed via `process_reference`. |
+| `Splice` | A splice (`$name`) resolved to a binding lookup. |
+| `Lift` | A `lift(expr)` was processed (whether or not an evaluator was configured). |
+
+Each event carries `kind`, `name` (empty for quote enter/exit),
+`span`, and `depth` (post-update for `EnterQuote`, pre-update for
+`ExitQuote`). Two accessors expose the trace:
+
+- `debug_bindings_log() -> &List<DebugBindingEvent>` — borrow the
+  recorded trace without consuming it.
+- `take_debug_bindings_log() -> List<DebugBindingEvent>` — drain
+  the buffer (zero-clone), suitable for streaming consumers that
+  want to flush events between passes.
+
+```rust
+let config = ExpansionConfig {
+    debug_bindings: true,
+    ..Default::default()
+};
+let mut expander = QuoteExpander::new(context, config);
+
+expander.enter_quote(0, span).unwrap();
+expander.process_binding(name.clone(), span, BindingKind::Variable, false);
+expander.process_reference(&name, span);
+expander.exit_quote();
+
+for event in expander.debug_bindings_log() {
+    // Use event.kind, event.name, event.span, event.depth
+}
+```
+
+When `debug_bindings = false` the recording short-circuits before
+any allocation — production callers pay nothing.
+
 ## Worked example — a getter/setter derive with hygiene
 
 ```verum
