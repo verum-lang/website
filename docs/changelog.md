@@ -16,6 +16,35 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — `InterpreterConfig.timeout_ms` wall-clock budget (2026-04-29)
+
+Closes the inert-defense pattern around the documented VBC
+interpreter wall-clock budget. The field was declared,
+defaulted to 0 (no timeout), and never read — adversarial
+bytecode could spin past the configured budget regardless of
+caller intent.
+
+Wire at the entry of `dispatch_loop_table_with_entry_depth`:
+when the field is non-zero, capture the deadline as
+`Instant::now() + Duration::from_millis(timeout_ms)`. Sample
+every 256 instructions (matching the existing cancel-flag
+cadence) to bound the cost of `Instant::now()` calls; on
+breach surface as `InstructionLimitExceeded` with `limit = 0`.
+Reusing the existing error variant keeps caller-side triage
+uniform across both budgets.
+
+### Fixed — `CompilerConfig.{debug_info, optimization_level}` forwarded to VBC codegen (2026-04-29)
+
+Two `CompilerConfig` fields had documented defaults but no
+code path forwarded them to VBC codegen. `compile()` always
+called `VbcCodegen::new()` which used the codegen's own
+defaults (`debug_info: false`, `optimization_level: 0`)
+regardless of caller intent.
+
+Wire by constructing a `CodegenConfig` template with the
+forwarded values and using `VbcCodegen::with_config(...)`
+per-module.
+
 ### Added — `verum llm-tactic` LCF-style fail-closed LLM tactic protocol (#77) (2026-04-29)
 
 Verum is now the first proof assistant where LLM assistance is
@@ -363,6 +392,29 @@ at audit time.
 
 Full surface in
 **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**.
+
+### Fixed — CLI strip / static-link flags reach the linker (2026-04-29)
+
+Closes three inert-defense patterns at the CLI → linker boundary.
+`CompilerOptions.strip_symbols`, `strip_debug`, and `static_link`
+were exposed via builders + landed in the parsed options struct
+but were NEVER propagated to the `LinkingConfig` that the linker
+phase actually consumes. Setting `--strip-symbols`, `--strip-debug`,
+or `--static-link` on the CLI had zero observable effect on the
+linked binary — the linker silently used whatever the manifest
+had configured.
+
+Wired via new `apply_cli_link_overrides` free function called
+immediately after the manifest-loaded `LinkingConfig` is
+constructed (mirrors the existing `--lto` precedence at the same
+site).
+
+The merge is **additive** by design: a CLI flag can opt INTO a
+stricter stance (strip more, link statically) but cannot turn off
+a stance the manifest already enabled. This is load-bearing — the
+manifest is the per-project default and the CLI is per-invocation;
+allowing the CLI to flip a stance OFF would let `verum build`
+accidentally undo a signed manifest's strip / static-link policy.
 
 ### Fixed — `ReplConfig.verbose` + `timeout_seconds` are load-bearing (2026-04-29)
 
