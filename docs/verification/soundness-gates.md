@@ -121,6 +121,24 @@ The Call arm of `is_commutative_pair` returns false unconditionally
 the validator. Registering specific commutative functions is a
 future extension.
 
+### `SkHack { formula, skolemized }` — Skolemization premise shape
+
+Path: `validate_sk_hack`.
+
+Skolemization is the transformation `∃x. P(x) → P(f(free_vars))`.
+The gate requires `formula.kind` to be `ExprKind::Exists { .. }` —
+otherwise SkHack is being applied to a non-existential formula
+and the rule cannot soundly fire. Pre-fix the formula parameter
+was `_`-bound and completely ignored, so a user could Skolemize
+any term (literal `true`, an arithmetic expression, anything) as
+long as `skolemized == expected` matched syntactically.
+
+Full Skolemization soundness — verifying
+`skolemized = body[x := f(free_vars)]` for some fresh `f` —
+requires higher-order substitution and is tracked separately. The
+shape gate covers the most common misuse: applying SkHack to a
+formula that isn't existential at all.
+
 ### `IffOEq { iff_proof, left, right }` — biconditional to oriented equality
 
 Path: `validate_iff_oeq`.
