@@ -121,6 +121,24 @@ The Call arm of `is_commutative_pair` returns false unconditionally
 the validator. Registering specific commutative functions is a
 future extension.
 
+### `QuickExplain { unsat_core, explanation }` — unsat-core conclusion
+
+Path: `validate_quick_explain`.
+
+QuickExplain's semantics: the conjunction of `unsat_core` is
+unsatisfiable, so the rule concludes `False`. The conclusion is
+the literal `false` regardless of core size. Pre-fix only the
+empty-core branch checked `expected == False`; the non-empty
+branch fell through to unconditional accept, so a user could
+supply any unsat-core list and claim arbitrary propositions.
+
+Post-fix the gate is uniform: `expr_eq(make_false(), expected)`
+for both empty and non-empty cores. Mismatch returns a
+diagnostic naming the core size and what the user claimed.
+
+Full unsat-core soundness — re-checking the conjunction with SMT
+to confirm it really is unsatisfiable — is tracked separately.
+
 ### `ApplyDef { def_proof, original, name }` — definition unfolding
 
 Path: `validate_apply_def`.
