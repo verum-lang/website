@@ -27,7 +27,10 @@ Three additional audit surfaces work alongside `--proof-honesty`:
 | `--coord-consistency` | "Does each theorem's coord majorise its dependencies?" |
 
 See [Diakrisis Bridge Roster](diakrisis-bridge-roster.md) for the
-`--bridge-admits` deep-dive.
+`--bridge-admits` deep-dive, and
+[Soundness gates](soundness-gates.md) for the validator-side
+catalogue of explicit verification checks that each proof rule
+must pass before the kernel ever sees it.
 
 ## Recent stdlib promotion (2026-04-28 / 29)
 

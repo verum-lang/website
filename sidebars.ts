@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
         'verification/coord-consistency-audit',
         'verification/coherence',
         'verification/networking',
+        'verification/soundness-gates',
       ],
     },
     {
