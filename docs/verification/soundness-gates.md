@@ -121,6 +121,24 @@ The Call arm of `is_commutative_pair` returns false unconditionally
 the validator. Registering specific commutative functions is a
 future extension.
 
+### `IffOEq { iff_proof, left, right }` — biconditional to oriented equality
+
+Path: `validate_iff_oeq`.
+
+After validating `iff_proof` internally and checking the claim
+shape `(left = right) == expected`, the gate verifies that
+`iff_proof.conclusion()` is structurally `Binary { op: Iff | Eq,
+left: l, right: r }` where `l == left` and `r == right`. Without
+this gate, a user could pair an iff proof of `P <=> Q` with a
+claim `A = B` for unrelated `A`, `B` — pre-fix accepted the
+mismatch since the iff-proof internally validated and `(A = B) ==
+expected` matched.
+
+Symmetry is NOT silently inferred: `B <=> A` does not satisfy a
+claim of `A = B` even though equality is commutative, because the
+gate checks structural shape rather than semantic equivalence —
+explicit symmetry must come from a separate proof step.
+
 ### `Distributivity { formula }` — algebraic equation
 
 Path: `validate_distributivity` → `is_distributivity_shape`.
@@ -301,6 +319,8 @@ post-fix rejects it. The corpus lives under
 - `commutativity_soundness.rs` — commutativity-operator whitelist.
 - `exact_tactic_soundness.rs` — `exact` structural verification.
 - `vcgen_errdefer_normal_path.rs` — errdefer no-op on normal path.
+- `iff_oeq_soundness.rs` — iff_proof-to-claimed-pair link in
+  `IffOEq`.
 
 Across the corpus, every "for now, just trust the user" path
 documented in the source has at least one negative test that
