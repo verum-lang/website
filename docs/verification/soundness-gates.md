@@ -139,6 +139,31 @@ requires higher-order substitution and is tracked separately. The
 shape gate covers the most common misuse: applying SkHack to a
 formula that isn't existential at all.
 
+### `PullQuantifier` / `PushQuantifier` / `ElimUnusedVars` — quantifier rewrites
+
+Path: `validate_pull_quantifier`, `validate_push_quantifier`,
+`validate_elim_unused_vars`.
+
+Each rule has a structural prerequisite on its input formula:
+
+- **Pull**: `(∀x.P) ∧ Q → ∀x.(P ∧ Q)` requires the input to be a
+  `Binary { left, right, .. }` where at least one operand is a
+  quantifier. Otherwise there is nothing to pull out.
+- **Push**: `∀x.(P ∧ Q) → (∀x.P) ∧ (∀x.Q)` requires a quantifier
+  whose body is a `Binary { .. }`. Otherwise there is no inner
+  structure to push the quantifier into.
+- **ElimUnusedVars**: `∀x.P → P` (when x ∉ FV(P)) requires the
+  input to be a quantifier. Non-quantified formulas have nothing
+  to eliminate.
+
+Pre-fix all three validators had their `_formula` parameter bound
+to `_` and ignored it entirely; only `result == expected` was
+checked. A user could apply any of these "rewrites" to a literal
+`true` and the rule passed. Post-fix each rule rejects
+shape-mismatched inputs with a diagnostic naming the formula that
+failed the shape check. Full free-variable / freshness checks are
+tracked separately.
+
 ### `IffOEq { iff_proof, left, right }` — biconditional to oriented equality
 
 Path: `validate_iff_oeq`.
