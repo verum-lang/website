@@ -121,6 +121,24 @@ The Call arm of `is_commutative_pair` returns false unconditionally
 the validator. Registering specific commutative functions is a
 future extension.
 
+### `ApplyDef { def_proof, original, name }` — definition unfolding
+
+Path: `validate_apply_def`.
+
+The rule's semantics is "unfold definition `name` in `original`
+to get `expected`." The gate requires `def_proof.conclusion()` to
+be a `Binary { op: Eq, .. }` — the shape of a definitional
+equality `name == body`. Without this gate, a user could pair
+any proof of `expected` with arbitrary `original`/`name` claims;
+pre-fix `def_proof` could conclude anything as long as it equalled
+`expected`.
+
+Full apply-def soundness — verifying
+`expected = original[name := body]` — requires substitution
+machinery and is tracked separately. The shape gate catches the
+most common misuse: a def_proof that isn't a definitional
+equality at all.
+
 ### `SkHack { formula, skolemized }` — Skolemization premise shape
 
 Path: `validate_sk_hack`.
@@ -364,6 +382,8 @@ post-fix rejects it. The corpus lives under
 - `vcgen_errdefer_normal_path.rs` — errdefer no-op on normal path.
 - `iff_oeq_soundness.rs` — iff_proof-to-claimed-pair link in
   `IffOEq`.
+- `apply_def_soundness.rs` — def_proof-must-conclude-equality gate
+  in `ApplyDef`.
 
 Across the corpus, every "for now, just trust the user" path
 documented in the source has at least one negative test that
