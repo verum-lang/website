@@ -208,6 +208,7 @@ const sidebars: SidebarsConfig = {
         'cookbook/adding-verification',
         'cookbook/logic-functions',
         'cookbook/smt-debug',
+        'cookbook/owl2-reasoning',
         'cookbook/testing-recipes',
         'cookbook/linter-recipes',
       ],

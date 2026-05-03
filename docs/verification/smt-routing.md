@@ -241,10 +241,58 @@ replay; it cannot accept a false theorem. See
 **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
 for the full structural guarantee.
 
+## The `SolverChoice` decision surface
+
+The router's verdict is a typed `SolverChoice` value (defined in
+`verum_smt::capability_router`). Four variants cover every
+dispatch outcome:
+
+```rust
+pub enum SolverChoice {
+    Z3Only    { confidence: f64, reason: String },
+    Cvc5Only  { confidence: f64, reason: String },
+    Portfolio { timeout_ms: u64, tie_breaker: TieBreaker },
+    CrossValidate { strictness: CrossValidationStrictness, ... },
+}
+```
+
+| Variant | When the router picks it |
+|---------|--------------------------|
+| `Z3Only` | the obligation matches a Z3-strong profile (LIA, bitvectors, arrays, MaxSMT) |
+| `Cvc5Only` | strings, FMF, SyGuS, abductive reasoning, nonlinear-arithmetic-with-quantifiers |
+| `Portfolio` | both backends launched in parallel, first `unsat` wins; `tie_breaker` orders simultaneous returns |
+| `CrossValidate` | `@verify(reliable)` and `@verify(certified)` — both backends must independently agree, `strictness` controls how strict |
+
+The `confidence` field on `Z3Only` / `Cvc5Only` is a `[0.0, 1.0]`
+scalar surfaced in `verum smt-stats --explain` so users can see
+why the router made the call. `reason` is a free-form
+human-readable explanation that ships into the audit chronicle.
+
+`TieBreaker` and `CrossValidationStrictness` enums are
+documented in the `verum_smt` rustdoc; the audit gate
+`verum smt-stats --routing-protocol` enumerates dispatch counts
+per `SolverChoice` variant.
+
+## Specialised backends beyond Z3 / CVC5
+
+Three additional backends are registered:
+
+| Backend | Source | Purpose |
+|---------|--------|---------|
+| `dependent_backend` | `verum_smt::dependent_backend` | Π/Σ obligations the SMT layer cannot discharge directly |
+| `exhaustiveness_backend` | `verum_smt::exhaustiveness_backend` | pattern-match exhaustiveness proofs |
+| `refinement_backend` | `verum_smt::refinement_backend` | refinement-type subsumption checks |
+
+The router classifies each obligation into the *narrowest*
+backend that can decide it; the broader Z3/CVC5 backends are
+fallback when the specialised ones reject. This keeps fast
+specialised paths fast and the slow general path slow only when
+needed.
+
 ## See also
 
 - **[Gradual verification](/docs/verification/gradual-verification)**
-  — the 9-strategy surface and the two-layer dispatch architecture.
+  — the 13-strategy surface and the two-layer dispatch architecture.
 - **[Refinement reflection](/docs/verification/refinement-reflection)**
   — how `@logic` functions extend the solver's vocabulary without
   expanding the TCB.

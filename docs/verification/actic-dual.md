@@ -365,6 +365,26 @@ The example illustrates the three operational layers:
   hygiene check that pairs with the OC/DC stdlib at the type level.
 - [Framework axioms](framework-axioms.md) — how `@framework(name,
   citation)` axioms install Articulations into the kernel.
+
+## Implementation surface — kernel modules
+
+The α/ε bidirectional system lives in three kernel modules
+(see [kernel-module-map](./kernel-module-map.md) for the full
+trust layout):
+
+| Module | Role |
+|--------|------|
+| `verum_kernel::eps_mu` | ε-μ-style coherence machinery; ships `check_eps_mu_coherence` and `check_eps_mu_coherence_v3_final` predicates that the `@verify(coherent_*)` strategies invoke. |
+| `verum_kernel::diakrisis_bridge` | Trusted boundary for K-Round-Trip's universal canonicalize. Each `BridgeId` admit names a specific Diakrisis preprint result (paragraph + theorem number) — e.g. `BridgeId::ConfluenceOfModalRewrite` cites Diakrisis Theorem 16.10. When the preprint resolves and the result lands as a structural algorithm, the corresponding admit is removed and call sites are re-checked against the now-derivable lemma. |
+| `verum_kernel::adjoint_functor` | Adjoint pairs L ⊣ R — the categorical infrastructure the α ⊣ ε pair instantiates. |
+
+The `verum audit --bridge-discharge` and
+`verum audit --bridge-admits` gates enumerate every active
+BridgeId admit, surfacing the IOU manifest per release so users
+can track which Diakrisis preprint results are still admitted vs
+discharged. See
+[Audit protocol](../architecture-types/audit-protocol.md).
+
 - the verification spec.
 - Diakrisis Ch 12-actic — the upstream specification this layer
   implements. Key chapters: Ch 02 (the AC primitive and the

@@ -638,7 +638,7 @@ part of the shipping release:
   `Glue` as first-class kernel rules with subterm validation.
 - **Tactic DSL** — block-form combinators, Quote/Unquote/GoalIntro
   meta-programming, cog-level tactic-package registry (Project
-  &gt; ImportedCog &gt; Stdlib shadowing), 51-tactic stdlib across
+  &gt; ImportedCog &gt; Stdlib shadowing), 56-tactic stdlib across
   7 files.
 - **Counterexample lifecycle** — extract → syntactic
   minimization (pure, always-on) → semantic minimization

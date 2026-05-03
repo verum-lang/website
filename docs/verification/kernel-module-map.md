@@ -167,7 +167,7 @@ codegen pass's per-pass invariant.
 | Module | Role |
 |--------|------|
 | `tactic_elaborator` | Tactic-DSL elaborator: `proof { ... }` block → `CoreTerm`. |
-| `tactics_industrial` | Industrial-strength tactic library (the 51-tactic stdlib's kernel-side dispatch). |
+| `tactics_industrial` | Industrial-strength tactic library (the 56-tactic stdlib's kernel-side dispatch). |
 | `proof_tree` | `KernelProofNode` — the inference-tree representation. |
 | `proof_view` | Proof-tree presentation (auditor-facing rendering). |
 | `mechanisation_roadmap` | The HTT / Arnold mechanisation roadmap manifests. |

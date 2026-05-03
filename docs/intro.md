@@ -176,7 +176,7 @@ algorithmic kernels with continuous differential testing.
    Outside TCB                              Inside TCB
    ┌──────────────────────────┐    ┌────────────────────────┐
    │ Elaborator (verum_types) │    │ Layer A: kernel_v0     │
-   │ 51-tactic DSL            │    │   (10 rules, Verum)    │
+   │ 56-tactic DSL            │    │   (10 rules, Verum)    │
    │ Z3/CVC5/dep/exhaust/refn │ ⇄ │ Layer B: proof_checker │
    │ Cubical NbE evaluator    │    │   + proof_checker_nbe  │
    │ Refinement reflection    │    │ Layer C: KernelRuleId  │
@@ -368,7 +368,7 @@ us":
                   Outside TCB                           Inside TCB
    ┌──────────────────────────────────┐    ┌────────────────────────────┐
    │ Elaborator (verum_types)          │    │ Rust + linked deps         │
-   │ 51-tactic DSL, 7 cogs             │ ⇄ │ verum_kernel (3 layers)    │
+   │ 56-tactic DSL, 7 cogs             │ ⇄ │ verum_kernel (3 layers)    │
    │ Z3 / CVC5 / dep / exhaust / refn  │    │   A: kernel_v0 (10 rules)  │
    │ Cubical NbE evaluator             │    │   B: proof_checker (6)     │
    │ Refinement reflection / SMT trans │    │      + proof_checker_nbe   │
@@ -451,7 +451,7 @@ protocol](/docs/architecture-types/audit-protocol).**
 | Trusted kernel — Layer C `KernelRuleId` audit registry (7 rules) | production |
 | **Differential testing + 11-variant mutation fuzz** | **production with synthetic-pin liveness check** |
 | **MSFS-grounded reflection tower (4 stages)** | **production — Theorems 9.6 / 8.2 / 5.1 cited and machine-verified** |
-| Tactic DSL (51 stdlib tactics across 7 cogs) | production |
+| Tactic DSL (56 stdlib tactics across 9 cogs) | production |
 | Separation logic (kernel + Verum mirror + bridge) | production (6-arm minimal kernel, BridgeFidelity classifier) |
 | VBC bytecode + interpreter | production |
 | AOT via LLVM | production |
