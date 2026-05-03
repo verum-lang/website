@@ -288,7 +288,7 @@ public fn translate(internal: InternalMsg) -> ExternalMsg
 The bridge function is itself an architectural artefact and is
 audited as a citation in the `--framework-axioms` inventory.
 
-## 10. The boundary's `[И]` rendering
+## 10. The boundary's `[I]` rendering
 
 Like every other primitive, Boundary surfaces in the audit
 chronicle. A cog's Boundary is rendered as:

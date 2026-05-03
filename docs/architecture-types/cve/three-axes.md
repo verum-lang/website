@@ -1,11 +1,11 @@
 ---
 sidebar_position: 2
-title: "CVE — three axes (К / В / И)"
+title: "CVE — three axes (C / V / E)"
 description: "Constructive / Verifiable / Executable: the three independent dimensions whose combinations produce the CVE seven-symbol taxonomy."
 slug: /architecture-types/cve/three-axes
 ---
 
-# CVE — three axes (К / В / И)
+# CVE — three axes (C / V / E)
 
 The Constructive / Verifiable / Executable frame stands or falls
 on the **independence** of its three axes. If any one axis were
@@ -20,7 +20,7 @@ the full present/partial/absent range, and demonstrates the
 independence by exhibiting artefacts at every meaningful
 combination.
 
-## 1. Axis 1 — Constructive (К)
+## 1. Axis 1 — Constructive (C)
 
 A claim is **constructive** when there is a procedure that produces
 a witness — a value, a proof term, a computational object — the
@@ -46,7 +46,7 @@ distinction has real consequences:
   but offers no way to obtain it.
 
 Verum's `verum extract` + program-extraction pipeline relies on
-constructiveness. A `[Т]` Theorem with classical-only proof
+constructiveness. A `[T]` Theorem with classical-only proof
 content extracts to the meta-theory but not to runnable code.
 
 ### 1.3 Constructiveness vs proof relevance
@@ -59,7 +59,7 @@ than `Set`/`Type`).
 
 Verum carries both distinctions independently:
 
-- Constructiveness lives on the К axis.
+- Constructiveness lives on the C axis.
 - Proof relevance lives in the universe-level discipline (`Type
   vs Prop`).
 
@@ -69,7 +69,7 @@ proofs do not extract at all. Refer to
 [verification → program extraction](../../verification/program-extraction.md)
 for the full extraction matrix.
 
-## 2. Axis 2 — Verifiable (В)
+## 2. Axis 2 — Verifiable (V)
 
 A claim is **verifiable** when there is an effective procedure — a
 type checker, a kernel, an SMT replay, a decision procedure —
@@ -82,7 +82,7 @@ claim.
 |------|---------|---------------|
 | **Present** | Algorithmic check, bounded time. | `Int { self > 0 }` — the SMT backend decides instances. |
 | **Conditional** | Effective only under stated assumptions. | "Halting on terminating inputs" — conditional check. |
-| **External** | Check delegated to a trusted external base. | `[П]` Postulate citing a published theorem. |
+| **External** | Check delegated to a trusted external base. | `[P]` Postulate citing a published theorem. |
 | **Absent** | No check, even partial. | A claim asserted without procedure. |
 
 ### 2.2 Verifiability is the audit substrate
@@ -92,7 +92,7 @@ re-running the verifier. A claim that is constructive but not
 verifiable is *useful* (the witness exists) but *unauditable* —
 no third party can confirm it without re-deriving the witness.
 
-This is why Verum's `[Т]` Theorem status requires both К and В:
+This is why Verum's `[T]` Theorem status requires both C and V:
 the theorem must be constructively provable *and* the proof must
 be re-checkable by a procedure — typically the trusted kernel
 following an SMT cert replay.
@@ -101,23 +101,23 @@ following an SMT cert replay.
 
 Verum's verification ladder (nine semantic strategies, see
 [verification → gradual-verification](../../verification/gradual-verification.md))
-is precisely a hierarchy of В:
+is precisely a hierarchy of V:
 
 - `runtime` — verifiability is "the assertion runs at runtime";
-  weakest В.
+  weakest V.
 - `static` — dataflow-level checks; type-level only.
 - `fast` — bounded SMT.
-- `formal` — portfolio SMT; the typical В for shipped code.
+- `formal` — portfolio SMT; the typical V for shipped code.
 - `proof` — kernel-checked tactic proof.
 - `thorough` / `reliable` / `certified` / `synthesize` —
-  progressively stronger В.
+  progressively stronger V.
 
-A claim's *strongest В* is the strongest strategy that admits it.
-Verum aggressively reports the strongest В for each artefact —
+A claim's *strongest V* is the strongest strategy that admits it.
+Verum aggressively reports the strongest V for each artefact —
 a claim that admits `formal` is recorded as such, not silently
 demoted to `runtime`.
 
-## 3. Axis 3 — Executable (И)
+## 3. Axis 3 — Executable (E)
 
 A claim is **executable** when the constructor reduces to runnable
 machine code — bytecode, native, GPU kernel — without losing the
@@ -136,18 +136,18 @@ property the claim asserts.
 Executability is what makes verification *land in production*. A
 proof certificate that does not reduce to executable code lives
 forever in the proof corpus but never affects the running
-program. Verum aggressively prefers К-and-В-and-И-positive
+program. Verum aggressively prefers C-and-V-and-E-positive
 proofs because those are the ones that ship.
 
 This is also why Verum's [program-extraction
 pipeline](../../verification/program-extraction.md) is a
 first-class subsystem rather than a side feature: the extraction
-*is* the И axis made operational.
+*is* the E axis made operational.
 
 ### 3.3 Executability vs efficiency
 
 Executability is binary (does the program run? yes/no). Efficiency
-is orthogonal — a slow program is still И-positive. Verum tracks
+is orthogonal — a slow program is still E-positive. Verum tracks
 performance as a separate concern via the
 [verification → performance](../../verification/performance.md)
 gates.
@@ -157,14 +157,14 @@ gates.
 The three axes' independence is demonstrable by exhibiting
 artefacts at every interesting combination.
 
-| К | В | И | Glyph | Real-world example |
+| C | V | E | Glyph | Real-world example |
 |---|---|---|-------|--------------------|
-| ✓ | ✓ | ✓ | `[Т]` Theorem | A `@verify(certified)` function with extraction. |
-| ✓ | trivial | ✓ | `[О]` Definition | `type DatabaseUrl is Text { … };`. |
-| cond. | cond. | cond. | `[С]` Conditional | A kernel result that holds only on POSIX hosts. |
-| ✓ | external | ✓ | `[П]` Postulate | Joux 2009 lower bound, cited but not internalised. |
-| partial | absent | absent | `[Г]` Hypothesis | An unproven design idea with a `@plan(...)` attribute. |
-| absent | absent | absent | `[И]` Interpretation | Pure prose stub awaiting realisation. |
+| ✓ | ✓ | ✓ | `[T]` Theorem | A `@verify(certified)` function with extraction. |
+| ✓ | trivial | ✓ | `[D]` Definition | `type DatabaseUrl is Text { … };`. |
+| cond. | cond. | cond. | `[C]` Conditional | A kernel result that holds only on POSIX hosts. |
+| ✓ | external | ✓ | `[P]` Postulate | Joux 2009 lower bound, cited but not internalised. |
+| partial | absent | absent | `[H]` Hypothesis | An unproven design idea with a `@plan(...)` attribute. |
+| absent | absent | absent | `[I]` Interpretation | Pure prose stub awaiting realisation. |
 | ✓ | ✓ | absent | (rare) | Pencil-and-paper proof exposed in the corpus without extraction. |
 | absent | ✓ | ✓ | (rare) | A computable check with no witness — e.g., a runtime assertion. |
 | ✓ | absent | ✓ | (rare) | Code that runs but has no spec — typical "TODO: prove later". |

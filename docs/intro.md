@@ -179,19 +179,19 @@ emitted at build time. **See
 | Framework axioms | implicit / undocumented | every cited axiom carries a structured citation; the trusted boundary is enumerable |
 | Audit surface | per-tool, ad-hoc | every claim mechanically observable; gates aggregate to a single load-bearing verdict |
 
-## 3. Operational lifecycle — the K/V/И status taxonomy
+## 3. Operational lifecycle — the K/V/E status taxonomy
 
 Every Verum artefact carries a canonical *operational status*
 drawn from a finite vocabulary. The status answers three
 engineering questions about every claim:
 
-- *Constructive (К) — is there a witness?* Can someone hand you
+- *Constructive (C) — is there a witness?* Can someone hand you
   an instance of the thing being claimed (a value, a proof term,
   an inhabitant of the type)?
-- *Verifiable (В) — is there a check?* Is there an effective
+- *Verifiable (V) — is there a check?* Is there an effective
   procedure that, given a candidate witness, decides whether it
   satisfies the claim?
-- *Executable (И) — does it run?* Does the witness reduce to
+- *Executable (E) — does it run?* Does the witness reduce to
   runnable code on a target machine?
 
 The triple maps onto seven canonical statuses, each rendered as
@@ -199,16 +199,16 @@ a single glyph:
 
 | Glyph | Status | When to use |
 |-------|--------|-------------|
-| `[Т]` | **Theorem** | Fully proved, kernel-checked, executable. The strongest claim. |
-| `[О]` | **Definition** | A boundary set by fiat — types, capability ontology entries, configuration constants. |
-| `[С]` | **Conditional** | Proved under listed assumptions. Reads as a Theorem inside the conditions. |
-| `[П]` | **Postulate** | Accepted via external citation (an upstream theorem, a kernel-discharge axiom). |
-| `[Г]` | **Hypothesis** | A speculation under active design. Carries a maturation plan. |
-| `[И]` | **Interpretation** | Descriptive only — written down but not realised, checked, or extracted. Transitional. |
+| `[T]` | **Theorem** | Fully proved, kernel-checked, executable. The strongest claim. |
+| `[D]` | **Definition** | A boundary set by fiat — types, capability ontology entries, configuration constants. |
+| `[C]` | **Conditional** | Proved under listed assumptions. Reads as a Theorem inside the conditions. |
+| `[P]` | **Postulate** | Accepted via external citation (an upstream theorem, a kernel-discharge axiom). |
+| `[H]` | **Hypothesis** | A speculation under active design. Carries a maturation plan. |
+| `[I]` | **Interpretation** | Descriptive only — written down but not realised, checked, or extracted. Transitional. |
 | `[✗]` | **Retracted** | Withdrawn. Record preserved as a negative example. |
 
 The status is part of the architectural type and part of the
-audit chronicle. A `[Т]` cog citing a `[Г]` cog is a compile
+audit chronicle. A `[T]` cog citing a `[H]` cog is a compile
 error — mature artefacts cannot rest on speculations. Promoting a
 status is an explicit engineering action with its own audit
 trail. **See [Architecture-as-Types → CVE seven

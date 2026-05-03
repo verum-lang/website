@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: "CVE — Seven canonical symbols"
-description: "The seven-glyph taxonomy that classifies every Verum artefact: [Т] [О] [С] [П] [Г] [И] [✗]."
+description: "The seven-glyph taxonomy that classifies every Verum artefact: [T] [D] [C] [P] [H] [I] [✗]."
 slug: /architecture-types/cve/seven-symbols
 ---
 
@@ -20,14 +20,14 @@ practice (a "verifiable but not constructive" claim is not stable).
 
 ## 1. The taxonomy at a glance
 
-| Glyph | Variant name | К | В | И | One-line summary |
+| Glyph | Variant name | C | V | E | One-line summary |
 |-------|--------------|---|---|---|------------------|
-| `[Т]` | Theorem | ✓ | ✓ | ✓ | Full closure — proven, executable, the strongest claim. |
-| `[О]` | Definition | ✓ | trivial | ✓ | Boundary set by fiat; nothing to prove. |
-| `[С]` | Conditional | cond. | cond. | cond. | Proven under listed hypotheses. |
-| `[П]` | Postulate | ✓ | external | ✓ | Accepted via external citation. |
-| `[Г]` | Hypothesis | partial | absent | absent | Speculative, with a maturation plan. |
-| `[И]` | Interpretation | absent | absent | absent | Descriptive only; transitional status. |
+| `[T]` | Theorem | ✓ | ✓ | ✓ | Full closure — proven, executable, the strongest claim. |
+| `[D]` | Definition | ✓ | trivial | ✓ | Boundary set by fiat; nothing to prove. |
+| `[C]` | Conditional | cond. | cond. | cond. | Proven under listed hypotheses. |
+| `[P]` | Postulate | ✓ | external | ✓ | Accepted via external citation. |
+| `[H]` | Hypothesis | partial | absent | absent | Speculative, with a maturation plan. |
+| `[I]` | Interpretation | absent | absent | absent | Descriptive only; transitional status. |
 | `[✗]` | Retracted | n/a | n/a | n/a | Withdrawn; record retained as negative example. |
 
 A separate eighth status — `Obsolete` (rendered `[O]` in code) —
@@ -44,17 +44,17 @@ anti-pattern uses this order to reject citations that go from a
 high-rank artefact to a strictly-lower-rank cited artefact.
 
 ```text
-  rank 6  [Т] Theorem ─────────────────────────────────────┐
+  rank 6  [T] Theorem ─────────────────────────────────────┐
                                                             │
-  rank 5  [О] Definition ── [С] Conditional ── (peers)     │
+  rank 5  [D] Definition ── [C] Conditional ── (peers)     │
                                                             │
-  rank 4  [П] Postulate                                    │
+  rank 4  [P] Postulate                                    │
                                                             │
   rank 3  Plan (ATS-V legacy — committed but not built)    │
                                                             │
-  rank 2  [Г] Hypothesis                                   │
+  rank 2  [H] Hypothesis                                   │
                                                             │
-  rank 1  [И] Interpretation                               │
+  rank 1  [I] Interpretation                               │
                                                             │
   rank 0  [✗] Retracted ── [O] Obsolete ── (peers)         │
                                                             │
@@ -62,20 +62,20 @@ high-rank artefact to a strictly-lower-rank cited artefact.
    ↓ a high-rank artefact MUST NOT cite a low-rank artefact
 ```
 
-The poset is not a total order — `[О]` and `[С]` are peers
+The poset is not a total order — `[D]` and `[C]` are peers
 (rank 5), and `[✗]` and `[O]` are peers (rank 0). The poset is
 preserved across imports, mounts, and `composes_with` edges. A
-`[Т]` cog citing a `[Г]` cog produces a compile-time
+`[T]` cog citing a `[H]` cog produces a compile-time
 `LifecycleRegression` diagnostic with the citing cog's name, the
 cited cog's name, and the rank difference.
 
 ## 3. Glyph-by-glyph specification
 
-### 3.1 `[Т]` Theorem — full CVE closure
+### 3.1 `[T]` Theorem — full CVE closure
 
 **Variant:** `Lifecycle.Theorem(since)`
 
-**CVE:** К ∧ В ∧ И — all three axes positive.
+**CVE:** C ∧ V ∧ E — all three axes positive.
 
 **Constructor:** explicit, computable, first-class.
 **Check:** algorithmic, bounded, kernel-checkable.
@@ -108,11 +108,11 @@ proof certificate, and re-checks it through the kernel. The
 `Lifecycle.Theorem("v1.0")` annotation pins this fact at the
 architectural layer.
 
-### 3.2 `[О]` Definition — boundary by fiat
+### 3.2 `[D]` Definition — boundary by fiat
 
 **Variant:** `Lifecycle.Definition`
 
-**CVE:** К ∧ trivial ∧ И — constructor present, check trivial
+**CVE:** C ∧ trivial ∧ E — constructor present, check trivial
 (definitions don't have content to verify), executable in the
 trivial sense (definitions reduce to themselves).
 
@@ -133,15 +133,15 @@ public type DatabaseUrl is Text { self.starts_with("postgres://") };
 `DatabaseUrl` defines what it means to be a database URL in this
 codebase. There is no theorem to prove about the definition
 itself; downstream code that produces a `DatabaseUrl` must satisfy
-the refinement, but the definition's CVE status is `[О]`.
+the refinement, but the definition's CVE status is `[D]`.
 
-### 3.3 `[С]` Conditional — proven under hypotheses
+### 3.3 `[C]` Conditional — proven under hypotheses
 
 **Variant:** `Lifecycle.Conditional(conditions: List<Text>)`
 
-**CVE:** К ∧ В ∧ И — *relative to the listed conditions*.
+**CVE:** C ∧ V ∧ E — *relative to the listed conditions*.
 Outside the conditions, the artefact is undefined; inside, it
-reads as a `[Т]` Theorem.
+reads as a `[T]` Theorem.
 
 **When to use:** the proof relies on assumptions that the
 artefact does not itself discharge — typically capability
@@ -169,13 +169,13 @@ public fn canonicalise(path: &Text) -> Result<Text, Error>
 The function's correctness is conditional on `fs.realpath`
 returning a canonical path — a property the surrounding OS owes
 the program. Auditors verify the conditions externally; the
-artefact itself is `[С]`.
+artefact itself is `[C]`.
 
-### 3.4 `[П]` Postulate — accepted via citation
+### 3.4 `[P]` Postulate — accepted via citation
 
 **Variant:** `Lifecycle.Postulate(citation: Text)`
 
-**CVE:** К ∧ external ∧ И — constructor present, check
+**CVE:** C ∧ external ∧ E — constructor present, check
 delegated to an external trusted base, executable.
 
 **When to use:** the artefact is accepted *without* an internal
@@ -197,19 +197,19 @@ module my_app.universe.bridge;
 
 The cog declares that its content rests on the kernel's
 `K-Universe-Ascent` rule, which is itself accepted by the trusted
-base. Audits enumerate every `[П]` and confirm the citation
+base. Audits enumerate every `[P]` and confirm the citation
 exists in the framework-axiom inventory.
 
-### 3.5 `[Г]` Hypothesis — speculative with a plan
+### 3.5 `[H]` Hypothesis — speculative with a plan
 
 **Variant:** `Lifecycle.Hypothesis(confidence: ConfidenceLevel)`
 
-**CVE:** К-partial ∧ В-absent ∧ И-absent — formulation may be
+**CVE:** C-partial ∧ V-absent ∧ E-absent — formulation may be
 present, but no check and no executable form.
 
 **When to use:** the artefact is a *bet* the team is making —
 formulated, confidence-graded (`Low` / `Medium` / `High`), but
-neither proved nor implemented. A `[Г]` artefact MUST carry a
+neither proved nor implemented. A `[H]` artefact MUST carry a
 maturation plan; a hypothesis without a plan is a candidate for
 [`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016).
 
@@ -222,29 +222,29 @@ module my_app.experimental.zk_proof;
 ```
 
 The cog is in active design. Production code MUST NOT cite it;
-calling `[Т]` from `[Г]` is `AP-009 LifecycleRegression`.
+calling `[T]` from `[H]` is `AP-009 LifecycleRegression`.
 
-### 3.6 `[И]` Interpretation — descriptive only
+### 3.6 `[I]` Interpretation — descriptive only
 
 **Variant:** `Lifecycle.Interpretation(reason: Text)`
 
-**CVE:** К-absent ∧ В-absent ∧ И-absent — none of the three axes
+**CVE:** C-absent ∧ V-absent ∧ E-absent — none of the three axes
 are present. The artefact exists *only* as descriptive prose.
 
 **When to use:** *transitional* — the artefact has been written
 down but has not yet been re-articulated in any of the higher
-statuses. Mature corpora MUST contain zero `[И]` entries.
+statuses. Mature corpora MUST contain zero `[I]` entries.
 [`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017)
-flags any `[И]` annotation on a cog declared in `strict: true`
+flags any `[I]` annotation on a cog declared in `strict: true`
 mode; the diagnostic forces the author to either upgrade
-(`[Г]` with a plan, or `[С]` with conditions, or higher) or
+(`[H]` with a plan, or `[C]` with conditions, or higher) or
 remove the annotation.
 
 **Why it exists at all:** during early architectural exploration,
-some artefacts are written down before any of the К/В/И
-machinery is realised. Naming the status `[И]` rather than
+some artefacts are written down before any of the C/V/E
+machinery is realised. Naming the status `[I]` rather than
 "todo" forces the team to either mature it explicitly or retract
-it explicitly — there is no quiet path from `[И]` to "in
+it explicitly — there is no quiet path from `[I]` to "in
 production".
 
 ### 3.7 `[✗]` Retracted — withdrawn
@@ -274,8 +274,8 @@ Two further `Lifecycle` variants exist for backward compatibility:
 
 - **`Plan(target_completion: Text)`** — the ATS-V legacy
   variant for "committed but not yet implemented". Distinct from
-  `[П]` Postulate. New code SHOULD prefer `[Г]` Hypothesis with a
-  `@plan(...)` attribute, or `[О]` Definition with stub
+  `[P]` Postulate. New code SHOULD prefer `[H]` Hypothesis with a
+  `@plan(...)` attribute, or `[D]` Definition with stub
   implementations.
 - **`Obsolete(reason: Text, replacement: Maybe<Text>)`** —
   the legacy variant for "deprecated, scheduled for removal".
@@ -289,20 +289,20 @@ seven over time.
 
 ## 5. Glyph rendering across surfaces
 
-| Surface | Rendering of `[Т]` Theorem |
+| Surface | Rendering of `[T]` Theorem |
 |---------|-----------------------------|
 | Source code (Verum) | `Lifecycle.Theorem("v1.0")` |
-| Diagnostic message | `[Т]` (single Cyrillic Т) |
-| Audit JSON output | `"lifecycle_glyph": "Т", "lifecycle_tag": "theorem"` |
-| LSP hover | `[Т] theorem · since v1.0` |
+| Diagnostic message | `[T]` (single ASCII letter) |
+| Audit JSON output | `"lifecycle_glyph": "T", "lifecycle_tag": "theorem"` |
+| LSP hover | `[T] theorem · since v1.0` |
 | Kernel rule cite | `K-Theorem(v1.0)` |
 | Coq export | `Theorem … : … . Proof. … Qed.` |
 | Lean export | `theorem …` |
 
 Renderings are stable across versions. The glyph itself is a
-load-bearing token — tooling that strips Unicode loses the CVE
-information, so audit pipelines preserve the glyph in JSON output
-verbatim.
+load-bearing token — every catalog entry uses the canonical
+single-letter ASCII form (`T` / `D` / `C` / `P` / `H` / `I` /
+`O` / `✗`), so audit pipelines preserve the glyph verbatim.
 
 ## 6. Programmatic access to a cog's CVE glyph
 
@@ -315,7 +315,7 @@ variant tag.
 ```rust
 let lifecycle = shape.lifecycle.clone();
 println!("status: {} ({})", lifecycle.cve_glyph(), lifecycle.tag());
-// status: Т (theorem)
+// status: T (theorem)
 ```
 
 The Verum-side surface mirror is the

@@ -251,10 +251,10 @@ RAII form), or restructure so every successful path releases.
 **Predicate.** `forall (citing, cited) ∈ citations. citing.lifecycle.rank() ≥ cited.lifecycle.rank()`.
 A more-mature artefact must not cite a less-mature one. The
 ranking is fixed (per `Lifecycle::rank`):
-`[Т] > [О] = [С] > [П] > [Г] > [И] > [✗] > Obsolete`.
+`[T] > [D] = [C] > [P] > [H] > [I] > [✗] > Obsolete`.
 
 **Why it matters.** Citation transports load-bearing strength: a
-Theorem `[Т]` citing a Hypothesis `[Г]` makes the theorem only
+Theorem `[T]` citing a Hypothesis `[H]` makes the theorem only
 as strong as the hypothesis. Documents that purport to be
 mature corpus must not silently weaken themselves through
 backward citation.

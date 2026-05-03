@@ -7,9 +7,8 @@ slug: /architecture-types/cve
 
 # CVE — Constructive / Verifiable / Executable
 
-CVE (also written **КВИ** in the Russian-language design notes —
-**К**онструктивность / **В**ерифицируемость / **И**сполнимость)
-is the universal correctness frame Verum applies to every
+CVE — **C**onstructive / **V**erifiable / **E**xecutable — is
+the universal correctness frame Verum applies to every
 proposition the system can carry. It is not a Verum-specific
 feature; it is a *meta-discipline* the language imports, applies
 to itself recursively, and uses to render the trust boundary of
@@ -54,7 +53,7 @@ observable interface.
 
 ## 2. The three axes in detail
 
-### 2.1 Constructive (К)
+### 2.1 Constructive (C)
 
 A claim is **constructive** when there is a procedure that produces
 an instance — a value, a proof term, a witness — that the system
@@ -71,7 +70,7 @@ Constructiveness is not a binary; it is the claim that you can
 without a witness construction is *less* constructive than one
 proved by exhibiting the witness — even if both are equally true.
 
-### 2.2 Verifiable (В)
+### 2.2 Verifiable (V)
 
 A claim is **verifiable** when there is an effective procedure
 (decision procedure, type checker, kernel re-checker, SMT replay)
@@ -82,14 +81,14 @@ claim.
 |------|---------|---------|
 | **Present** | The system carries an algorithmic check that runs in bounded time. | Refinement type `Int { self > 0 }` — the SMT backend decides instances. |
 | **Conditional** | The check is effective only under stated assumptions. | "Halting on terminating inputs" — checkable only if termination is given. |
-| **Absent** | No check, even partial; the claim is asserted without a procedure. | A `[П]` Postulate cited from an external corpus. |
+| **Absent** | No check, even partial; the claim is asserted without a procedure. | A `[P]` Postulate cited from an external corpus. |
 
 Verifiability is the *audit substrate*. A claim that is constructive
 but not verifiable can still be useful (the witness exists), but
 no third party can confirm it without re-deriving the witness from
 scratch.
 
-### 2.3 Executable (И)
+### 2.3 Executable (E)
 
 A claim is **executable** when the constructor reduces to runnable
 code on a target machine — bytecode, native, GPU kernel — without
@@ -102,7 +101,7 @@ losing the property the claim asserts.
 | **Absent** | Constructor exists in the meta-theory but does not reduce to runnable code. | Many classical-mathematics theorems whose proofs use AC. |
 
 Executability is what makes verification *land* in production.
-Verum aggressively prefers К-and-В-and-И-positive proofs because
+Verum aggressively prefers C-and-V-and-E-positive proofs because
 those are the ones that ship code; classical-only reasoning is
 permitted but marked.
 
@@ -113,14 +112,14 @@ absent across the three is a meaningful status, and the
 [seven canonical CVE symbols](./seven-symbols.md) cover exactly the
 combinations that arise in practice. A few illustrative cells:
 
-| К | В | И | Glyph | Status name |
+| C | V | E | Glyph | Status name |
 |---|---|---|-------|-------------|
-| ✓ | ✓ | ✓ | `[Т]` | **Theorem** — full closure; the strongest claim Verum can make. |
-| ✓ | trivial | ✓ | `[О]` | **Definition** — a boundary set by fiat; nothing to prove. |
-| cond. | cond. | cond. | `[С]` | **Conditional** — proven under listed hypotheses. |
-| ✓ | ext. | ✓ | `[П]` | **Postulate** — accepted via external citation. |
-| partial | absent | absent | `[Г]` | **Hypothesis** — speculative, with a maturation plan. |
-| absent | absent | absent | `[И]` | **Interpretation** — descriptive only; transitional status. |
+| ✓ | ✓ | ✓ | `[T]` | **Theorem** — full closure; the strongest claim Verum can make. |
+| ✓ | trivial | ✓ | `[D]` | **Definition** — a boundary set by fiat; nothing to prove. |
+| cond. | cond. | cond. | `[C]` | **Conditional** — proven under listed hypotheses. |
+| ✓ | ext. | ✓ | `[P]` | **Postulate** — accepted via external citation. |
+| partial | absent | absent | `[H]` | **Hypothesis** — speculative, with a maturation plan. |
+| absent | absent | absent | `[I]` | **Interpretation** — descriptive only; transitional status. |
 | n/a | n/a | n/a | `[✗]` | **Retracted** — withdrawn, kept for record. |
 
 The full table with every cell's interpretation lives in
@@ -153,18 +152,18 @@ when asked at the *object* level versus the *meta* level versus the
 
 | Layer | Subject | Example asker |
 |-------|---------|---------------|
-| **L0** | The object — code, value, theorem statement | "Is `add(2, 3) = 5` К-В-И?" |
-| **L1** | The proof — the proof term or certificate | "Is the proof of `add(2, 3) = 5` К-В-И?" |
-| **L2** | The proof method — the tactic / strategy / SMT call | "Is the *tactic* used К-В-И?" |
-| **L3** | The proof method's foundation — the meta-theory | "Is ZFC + 2-inacc К-В-И?" |
-| **L4** | The architectural shape carrying the proof | "Is the cog's `Shape` К-В-И?" |
-| **L5** | The communication of the proof to a reader | "Is the audit report К-В-И?" |
-| **L6** | The frame itself — CVE applied to CVE | "Is CVE К-В-И?" |
+| **L0** | The object — code, value, theorem statement | "Is `add(2, 3) = 5` C-V-E?" |
+| **L1** | The proof — the proof term or certificate | "Is the proof of `add(2, 3) = 5` C-V-E?" |
+| **L2** | The proof method — the tactic / strategy / SMT call | "Is the *tactic* used C-V-E?" |
+| **L3** | The proof method's foundation — the meta-theory | "Is ZFC + 2-inacc C-V-E?" |
+| **L4** | The architectural shape carrying the proof | "Is the cog's `Shape` C-V-E?" |
+| **L5** | The communication of the proof to a reader | "Is the audit report C-V-E?" |
+| **L6** | The frame itself — CVE applied to CVE | "Is CVE C-V-E?" |
 
 Every audit `verum audit --bundle` runs aggregates verdicts
 *per layer*. A bundle that is "L4-load-bearing" means the L4
 verdict — *the architectural shape carrying the proof is itself
-К-В-И* — is materially checked, not assumed.
+C-V-E* — is materially checked, not assumed.
 
 The full discussion is in [Seven layers](./seven-layers.md). A
 companion discussion of the **L6 register prohibitions** — the
@@ -177,13 +176,13 @@ Suppose you are reviewing a PR. The PR adds a function that calls
 into a module marked `Lifecycle.Hypothesis(High)`. The reviewer
 asks three CVE questions:
 
-- К: does the hypothesis have a constructor? — usually no, that is
+- C: does the hypothesis have a constructor? — usually no, that is
   what makes it a hypothesis.
-- В: is there a check? — usually no.
-- И: does it execute? — usually no.
+- V: is there a check? — usually no.
+- E: does it execute? — usually no.
 
-The PR is therefore citing `[Г]` from a context that the function
-type claims is at least `[С]`. ATS-V's
+The PR is therefore citing `[H]` from a context that the function
+type claims is at least `[C]`. ATS-V's
 [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009)
 recognises this pattern statically and rejects the build. The
 reviewer does not need to *remember* that `Hypothesis` is below
@@ -196,19 +195,19 @@ diagnostic with a single canonical name.
 
 ## 7. CVE is not Verum-specific
 
-The three axes К / В / И are a *meta-discipline*. They apply to:
+The three axes C / V / E are a *meta-discipline*. They apply to:
 
 - **Mathematics** — a constructive proof of a classical theorem
-  is К-positive; a non-constructive existence proof is К-absent.
-- **Software engineering** — a "TODO" comment is К-absent /
-  В-absent / И-absent (canonical `[И]`); a property test that
-  passes 1000 random inputs is К-partial / В-partial / И-positive.
+  is C-positive; a non-constructive existence proof is C-absent.
+- **Software engineering** — a "TODO" comment is C-absent /
+  V-absent / E-absent (canonical `[I]`); a property test that
+  passes 1000 random inputs is C-partial / V-partial / E-positive.
 - **Documentation** — a citation to an external source is
-  K-external / В-external / И-trivial (canonical `[П]`).
-- **Architectural design** — a hand-drawn diagram is К-partial /
-  В-absent / И-absent; an ATS-V `Shape` annotation is К-positive /
-  В-positive (the type checker is the decision procedure) /
-  И-trivial (definitions don't execute).
+  C-external / V-external / E-trivial (canonical `[P]`).
+- **Architectural design** — a hand-drawn diagram is C-partial /
+  V-absent / E-absent; an ATS-V `Shape` annotation is C-positive /
+  V-positive (the type checker is the decision procedure) /
+  E-trivial (definitions don't execute).
 
 Verum's contribution is not the framework — the framework is older
 than Verum — but the *mechanisation* of the framework: every

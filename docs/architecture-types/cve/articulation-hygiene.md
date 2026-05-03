@@ -42,7 +42,7 @@ admits well-known anti-patterns drawn from philosophy of language:
   assertion lives in.
 - **Register collision.** Mixing object-level and meta-level
   vocabulary in a single assertion.
-- **Ungrounded universality.** Asserting "every claim is К-typed"
+- **Ungrounded universality.** Asserting "every claim is C-typed"
   without specifying the layer the universality applies to.
 
 These traps are subtle. They don't surface as obvious errors
@@ -58,12 +58,12 @@ at L6:
 ### 2.1 Prohibition 1 — no self-reference without operator
 
 Every CVE statement in the audit chronicle MUST specify the layer
-it applies to. A statement of the form "this artefact is К-V-И"
+it applies to. A statement of the form "this artefact is C-V-E"
 is admissible only when the layer is explicit:
 
-- ✓ "At CVE-L0, `add(2, 3) = 5` is К-В-И."
-- ✓ "At CVE-L4, the Shape of `payment.checkout` is К-В-И."
-- ✗ "X is К-В-И." (which layer? object? proof? frame?)
+- ✓ "At CVE-L0, `add(2, 3) = 5` is C-V-E."
+- ✓ "At CVE-L4, the Shape of `payment.checkout` is C-V-E."
+- ✗ "X is C-V-E." (which layer? object? proof? frame?)
 
 Statements without layer attribution are flagged as candidates
 for the
@@ -87,7 +87,7 @@ the layer they range over:
 
 - ✓ "Every annotated cog (L4) carries a Lifecycle."
 - ✓ "Every kernel rule (L1/L2) is admissible at the MSFS reflection-tower's BoundedByOneInaccessible stage (L3)."
-- ✗ "Every claim is К-typed." (over what layer? L0 alone? all
+- ✗ "Every claim is C-typed." (over what layer? L0 alone? all
   layers?)
 
 Ungrounded universality is the most subtle of the three: the
@@ -109,13 +109,13 @@ A bundle that triggers any prohibition reports:
 warning[ATS-V-L6-REGISTER-001]: register prohibition triggered
   --> target/audit-reports/bundle.json (field: gates[3].verdict)
    |
-   | "verdict": "every artifact is К-V-И"
+   | "verdict": "every artifact is C-V-E"
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^ ungrounded universality
    |                                     (no layer specified)
 help: specify the layer the universality ranges over.
       Replace with one of:
-        "every L0 artifact is К-V-И"
-        "every L4 cog is К-V-И"
+        "every L0 artifact is C-V-E"
+        "every L4 cog is C-V-E"
         ...
 ```
 
@@ -231,7 +231,7 @@ mechanically verify the claim by re-running the gate.
 ## 9. Cross-references
 
 - [CVE overview](./overview.md) — the universal frame.
-- [Three axes](./three-axes.md) — К / В / И in detail.
+- [Three axes](./three-axes.md) — C / V / E in detail.
 - [Seven layers](./seven-layers.md) — where L6 sits in the
   stratification.
 - [MTAC anti-pattern AP-029 ObserverImpersonation](../anti-patterns/mtac.md#ap-029)

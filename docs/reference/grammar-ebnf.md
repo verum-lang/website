@@ -372,12 +372,12 @@ references.
 public module authentication { ... }
 ```
 
-The ATS-V phase (Phase 6.5 in compiler pipeline, Сезон 1
-deliverable) parses `@arch_module(...)` named-args into a
-canonical `Shape` struct (mirror of `verum_kernel::arch::Shape`),
-runs anti-pattern checks (10 canonical patterns ATS-V-AP-001..010
-in Сезон 1), and emits structured diagnostics with stable RFC
-error codes per spec §32.4 (dual-audience design).
+The ATS-V phase (Phase 6.5 in the compiler pipeline) parses
+`@arch_module(...)` named-args into a canonical `Shape` record
+(mirror of the kernel-side `Shape` type), runs anti-pattern
+checks across the 32-pattern catalog, and emits structured
+diagnostics with stable RFC error codes per spec §32.4
+(dual-audience design).
 
 See `internal/specs/ats-v.md` for the full architectural type
 system specification.

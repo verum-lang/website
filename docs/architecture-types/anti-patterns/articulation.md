@@ -301,9 +301,9 @@ admits all cited axioms.
 direct-citation regression rule (AP-009) lifted to transitive
 chains.
 
-**Why it matters.** A theorem `[Т]` may legitimately cite a
-postulate `[П]`, which legitimately cites another theorem
-`[Т]`, but if the chain ever passes through a hypothesis `[Г]`,
+**Why it matters.** A theorem `[T]` may legitimately cite a
+postulate `[P]`, which legitimately cites another theorem
+`[T]`, but if the chain ever passes through a hypothesis `[H]`,
 the original theorem inherits the hypothesis's strength even
 though no single citation regresses. Transitive walking
 surfaces this.

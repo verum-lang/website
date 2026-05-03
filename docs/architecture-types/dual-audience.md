@@ -57,7 +57,7 @@ LSP shows a one-line summary on hover.
       "variant":     "Theorem",
       "since":       "v3.2",
       "rank":        6,
-      "cve_glyph":   "Т",
+      "cve_glyph":   "T",
       "tag":         "theorem"
     },
     "foundation":     "ZfcTwoInacc",

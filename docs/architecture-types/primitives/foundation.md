@@ -184,11 +184,11 @@ Custom foundations:
 A subtle interaction: the strongest CVE Lifecycle a cog may
 declare is bounded by its Foundation. Specifically:
 
-- A `[Т]` Theorem cog under a canonical foundation is fully
+- A `[T]` Theorem cog under a canonical foundation is fully
   load-bearing.
-- A `[Т]` Theorem cog under a `CustomFoundation` requires the
+- A `[T]` Theorem cog under a `CustomFoundation` requires the
   citation to admit the theorem; otherwise the strongest
-  admissible status is `[П]` Postulate.
+  admissible status is `[P]` Postulate.
 
 This bound is enforced by `verum audit --bundle`'s L4 check:
 a cog whose Lifecycle exceeds the strength its Foundation

@@ -45,13 +45,13 @@ backward compatibility.
 
 | Variant | CVE glyph | Rank | Mature-corpus admissible? |
 |---------|-----------|------|---------------------------|
-| `Theorem(since)` | `[Т]` | 6 | yes |
-| `Definition` | `[О]` | 5 | yes |
-| `Conditional(conditions)` | `[С]` | 5 | yes |
-| `Postulate(citation)` | `[П]` | 4 | yes |
+| `Theorem(since)` | `[T]` | 6 | yes |
+| `Definition` | `[D]` | 5 | yes |
+| `Conditional(conditions)` | `[C]` | 5 | yes |
+| `Postulate(citation)` | `[P]` | 4 | yes |
 | `Plan(target_completion)` | (legacy) | 3 | discouraged |
-| `Hypothesis(confidence)` | `[Г]` | 2 | only with `@plan(...)` |
-| `Interpretation(reason)` | `[И]` | 1 | no — flagged in strict |
+| `Hypothesis(confidence)` | `[H]` | 2 | only with `@plan(...)` |
+| `Interpretation(reason)` | `[I]` | 1 | no — flagged in strict |
 | `Retracted(reason, repl)` | `[✗]` | 0 | no — citing produces error |
 | `Obsolete(reason, repl)` | (legacy) | 0 | no — replace before remove |
 
@@ -91,18 +91,18 @@ anti-pattern enforces a single rule:
 > A cog with Lifecycle of rank R may only cite cogs with
 > Lifecycle of rank ≥ R.
 
-In other words: a `[Т]` Theorem cog may cite `[Т]`, `[О]`, `[С]`,
-`[П]` cogs — but *not* `[Г]`, `[И]`, `[✗]` cogs. The discipline
+In other words: a `[T]` Theorem cog may cite `[T]`, `[D]`, `[C]`,
+`[P]` cogs — but *not* `[H]`, `[I]`, `[✗]` cogs. The discipline
 ensures that "mature artefacts depend on mature artefacts"; a
-`[Т]` cog that cites a `[Г]` Hypothesis is in fact only as
-strong as a `[Г]`, but the developer is asserting it is `[Т]`
+`[T]` cog that cites a `[H]` Hypothesis is in fact only as
+strong as a `[H]`, but the developer is asserting it is `[T]`
 — the type checker rejects the inconsistency.
 
-A common pitfall: *transitive* lifecycle regression. A `[Т]` cog
-imports a `[О]` Definition cog which itself imports a `[Г]`
-Hypothesis cog. The direct relationship is OK (`[Т] → [О]`,
-both rank ≥ 5), but the transitive chain reveals the `[Т]` is
-ultimately resting on a `[Г]`. The
+A common pitfall: *transitive* lifecycle regression. A `[T]` cog
+imports a `[D]` Definition cog which itself imports a `[H]`
+Hypothesis cog. The direct relationship is OK (`[T] → [D]`,
+both rank ≥ 5), but the transitive chain reveals the `[T]` is
+ultimately resting on a `[H]`. The
 [`AP-024 TransitiveLifecycleRegression`](../anti-patterns/articulation.md#ap-024)
 anti-pattern walks the import graph and flags the chain.
 
@@ -111,7 +111,7 @@ anti-pattern walks the import graph and flags the chain.
 Each variant has a recommended discipline for *when to use it*,
 *what additional attributes to add*, and *how to mature it*.
 
-### 4.1 `Theorem(since: Text)` — `[Т]`
+### 4.1 `Theorem(since: Text)` — `[T]`
 
 **When:** the cog is fully proved, every public function carries
 `@verify(certified)` (or stronger), and the proof corpus has been
@@ -120,8 +120,8 @@ re-checked through the trusted kernel.
 **Companion attributes:** `@verify(certified)` on each public
 function; optionally `@framework(...)` markers for cited axioms.
 
-**Maturation path:** none — `[Т]` is the terminal status. To
-*retract* a `[Т]`, transition to `Retracted("reason", Some(replacement))`.
+**Maturation path:** none — `[T]` is the terminal status. To
+*retract* a `[T]`, transition to `Retracted("reason", Some(replacement))`.
 
 **Example:**
 
@@ -135,7 +135,7 @@ public fn mac(key: Key32, msg: &Bytes) -> Tag16
 { … }
 ```
 
-### 4.2 `Definition` — `[О]`
+### 4.2 `Definition` — `[D]`
 
 **When:** the cog establishes a *boundary* — types, capability
 ontology entries, configuration constants. There is no theorem to
@@ -159,7 +159,7 @@ public type Port        is Int { 1 <= self && self <= 65535 };
 public type MaxRetries  is Int { 0 <= self && self <= 100 };
 ```
 
-### 4.3 `Conditional(conditions: List<Text>)` — `[С]`
+### 4.3 `Conditional(conditions: List<Text>)` — `[C]`
 
 **When:** the cog is fully proved *under listed assumptions*.
 Outside the assumptions, the cog is undefined. Useful when the
@@ -169,8 +169,8 @@ behaviours, cryptographic standards).
 **Companion attributes:** `@verify(formal)` is typical; `@condition(...)`
 markers can pin individual conditions to call sites.
 
-**Maturation path:** discharge the conditions (move to `[Т]`) or
-demote to `[Г]` if conditions cannot be satisfied.
+**Maturation path:** discharge the conditions (move to `[T]`) or
+demote to `[H]` if conditions cannot be satisfied.
 
 **Example:**
 
@@ -185,7 +185,7 @@ demote to `[Г]` if conditions cannot be satisfied.
 module my_app.fs.canonical;
 ```
 
-### 4.4 `Postulate(citation: Text)` — `[П]`
+### 4.4 `Postulate(citation: Text)` — `[P]`
 
 **When:** the cog is accepted *without* internal proof, on the
 strength of an external citation: a peer-reviewed paper, a
@@ -196,7 +196,7 @@ published proof corpus, or a kernel discharge axiom.
 
 **Maturation path:** typically terminal. To "internalise" a
 postulate (replace external trust with internal proof), graduate
-to `[С]` or `[Т]` and remove the framework citation.
+to `[C]` or `[T]` and remove the framework citation.
 
 **Example:**
 
@@ -213,7 +213,7 @@ module my_app.crypto.security_arguments;
 ### 4.5 `Plan(target_completion: Text)` — *(legacy)*
 
 **When:** committed work, not yet implemented. Distinct from
-`[П]` Postulate. Retained for backward compatibility with existing
+`[P]` Postulate. Retained for backward compatibility with existing
 codebases.
 
 **Companion attributes:** `@plan(target: "...", milestones: [...])`.
@@ -223,7 +223,7 @@ not-yet-formalised intent and let the `@plan` attribute carry the
 target date. The Plan variant will be folded into Hypothesis in a
 future release.
 
-### 4.6 `Hypothesis(confidence: ConfidenceLevel)` — `[Г]`
+### 4.6 `Hypothesis(confidence: ConfidenceLevel)` — `[H]`
 
 **When:** speculation. The cog is in active design, no
 implementation, no proof, no tests. MUST carry a maturation
@@ -249,11 +249,11 @@ plan; a hypothesis without a `@plan(...)` attribute is
 module my_app.experimental.zk_proof;
 ```
 
-### 4.7 `Interpretation(reason: Text)` — `[И]`
+### 4.7 `Interpretation(reason: Text)` — `[I]`
 
 **When:** the cog has been written down but neither realised, nor
 checked, nor extracted. *Transitional only*. A mature corpus
-contains zero `[И]` entries — every Interpretation must either
+contains zero `[I]` entries — every Interpretation must either
 mature into a higher status or be removed before the corpus
 ships.
 
@@ -261,11 +261,11 @@ In `strict: true` mode, an `Interpretation` annotation is
 [`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017).
 
 **Maturation path:** transition out as soon as the artefact gains
-К, В, or И content.
+C, V, or E content.
 
 **Why it exists at all:** during exploration, some artefacts are
-written down before any of К/В/И is realised. Naming the status
-`[И]` rather than "todo" or "draft" forces explicit transition
+written down before any of C/V/E is realised. Naming the status
+`[I]` rather than "todo" or "draft" forces explicit transition
 rather than silent decay.
 
 ### 4.8 `Retracted(reason: Text, replacement: Maybe<Text>)` — `[✗]`
@@ -314,8 +314,8 @@ checks:
 | Citing cog has lower rank than cited | [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009) | direct citation |
 | Citing chain exposes a low-rank link | [`AP-024 TransitiveLifecycleRegression`](../anti-patterns/articulation.md#ap-024) | transitive walk |
 | Citing a `[✗]` cog | [`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013) | direct citation |
-| `[Г]` Hypothesis without `@plan` | [`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016) | declaration site |
-| `[И]` Interpretation in `strict: true` | [`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017) | declaration site |
+| `[H]` Hypothesis without `@plan` | [`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016) | declaration site |
+| `[I]` Interpretation in `strict: true` | [`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017) | declaration site |
 | Lifecycle missing from `strict: true` cog | `ATS-V-LIFECYCLE-MISSING` (declaration error) | declaration site |
 | `Lifecycle.Theorem` cog whose body lacks `@verify(...)` | `ATS-V-LIFECYCLE-UNDERSPECIFIED` | declaration site |
 
@@ -331,13 +331,13 @@ suitable for archival in audit chronicles:
 $ verum audit --arch-corpus
 
 corpus: 267 annotated cogs
-  [Т] Theorem        : 89   (33%)
-  [О] Definition     : 121  (45%)
-  [С] Conditional    : 31   (11%)
-  [П] Postulate      : 17   (6%)
+  [T] Theorem        : 89   (33%)
+  [D] Definition     : 121  (45%)
+  [C] Conditional    : 31   (11%)
+  [P] Postulate      : 17   (6%)
   Plan (legacy)      : 4    (1%)
-  [Г] Hypothesis     : 4    (1%)
-  [И] Interpretation : 0    (0%)  ✓ mature corpus
+  [H] Hypothesis     : 4    (1%)
+  [I] Interpretation : 0    (0%)  ✓ mature corpus
   [✗] Retracted      : 1    (0%)
   Obsolete (legacy)  : 0    (0%)
 
@@ -347,8 +347,8 @@ retracted citations: 0   (✓ no [✗] cited)
 audit duration: 1.4s
 ```
 
-The "mature corpus" badge appears when `[И]` count is zero. A
-non-zero `[И]` count in `strict` mode is a build failure; in
+The "mature corpus" badge appears when `[I]` count is zero. A
+non-zero `[I]` count in `strict` mode is a build failure; in
 permissive mode it is a hint.
 
 ## 7. Programmatic access
@@ -361,8 +361,8 @@ pipeline and by tooling:
   `"plan"`, `"hypothesis"`, `"interpretation"`, `"retracted"`,
   `"obsolete"`).
 - `lifecycle.cve_glyph()` — returns the canonical glyph as a
-  Unicode string (`"Т"`, `"О"`, `"С"`, `"П"`, `"Plan"`, `"Г"`,
-  `"И"`, `"✗"`, `"O"`).
+  string (`"T"`, `"D"`, `"C"`, `"P"`, `"Plan"`, `"H"`, `"I"`,
+  `"✗"`, `"O"`).
 - `lifecycle.rank()` — returns the integer rank used by
   `LifecycleRegression`.
 

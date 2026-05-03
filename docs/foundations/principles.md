@@ -100,17 +100,17 @@ a B-tree-backed `Map` without source changes. A user who imports
 `core.collections.{List, Map, Text}` writes code that runs on
 any target the standard library supports.
 
-## 3. Three-axis closure — К / В / И
+## 3. Three-axis closure — C / V / E
 
 Every claim worth making is worth asking three questions about:
 
-- **Constructive (К) — is there a witness?** Can someone hand
+- **Constructive (C) — is there a witness?** Can someone hand
   you an instance of the thing being claimed (a value, a proof
   term, an inhabitant of the type)?
-- **Verifiable (В) — is there a check?** Is there an effective
+- **Verifiable (V) — is there a check?** Is there an effective
   procedure that, given a candidate witness, decides whether it
   satisfies the claim?
-- **Executable (И) — does it run?** Does the witness reduce to
+- **Executable (E) — does it run?** Does the witness reduce to
   runnable code on a target machine?
 
 The three axes are *independent*. Different combinations
@@ -126,29 +126,29 @@ This is the **operational lifecycle** of every claim:
 
 ```text
 Hypothesis → Postulate / Conditional → Theorem
-   [Г]          [П]   /   [С]            [Т]
+   [H]          [P]   /   [C]            [T]
 ```
 
-A `[Т]` Theorem cannot rest on a `[Г]` Hypothesis. The compiler
+A `[T]` Theorem cannot rest on a `[H]` Hypothesis. The compiler
 walks the citation graph and rejects regressions. Promoting a
 status is an explicit engineering action.
 
 The three-axis discipline is *not* Verum-specific. It is a
 universal pattern that organises:
 
-- Mathematics (a constructive proof is К-positive; a
-  non-constructive existence proof is К-absent).
-- Software engineering (a TODO comment is К-absent; a property
-  test passing 1000 inputs is К-partial / В-partial /
-  И-positive).
+- Mathematics (a constructive proof is C-positive; a
+  non-constructive existence proof is C-absent).
+- Software engineering (a TODO comment is C-absent; a property
+  test passing 1000 inputs is C-partial / V-partial /
+  E-positive).
 - Documentation (a citation to an external source is
-  К-external / В-external / И-trivial).
-- Architecture (a hand-drawn diagram is К-partial / В-absent /
-  И-absent; a typed `@arch_module(...)` annotation is
-  К-positive / В-positive / И-trivial).
+  C-external / V-external / E-trivial).
+- Architecture (a hand-drawn diagram is C-partial / V-absent /
+  E-absent; a typed `@arch_module(...)` annotation is
+  C-positive / V-positive / E-trivial).
 
 Verum's contribution is the *mechanisation* of the discipline:
-every artefact's К/В/И status is computed by the compiler,
+every artefact's C/V/E status is computed by the compiler,
 surfaced by the tooling, and load-bearing in the audit gates.
 **See [Architecture-as-Types → CVE
 overview](/docs/architecture-types/cve).**
