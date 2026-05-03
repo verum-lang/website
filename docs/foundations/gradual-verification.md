@@ -323,7 +323,7 @@ See [tooling/cli](/docs/tooling/cli) for the full command surface.
 
 ## See also
 
-- **[Design Principles](/docs/philosophy/principles)** — principle 2.
+- **[Design Principles](/docs/foundations/principles)** — principle 2.
 - **[verification/gradual-verification](/docs/verification/gradual-verification)** —
   the mechanics of how strategies compose.
 - **[verification/smt-routing](/docs/verification/smt-routing)** —

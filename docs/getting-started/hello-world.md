@@ -297,5 +297,5 @@ That is the whole shape of day-to-day Verum. Every program:
   `verum.toml`, modules, cog packages, workspace layout.
 - **[Typed CLI tool tutorial](/docs/tutorials/cli-tool)** — build a
   small, real program from scratch (30 min).
-- **[Philosophy](/docs/philosophy/principles)** — the six design
+- **[Philosophy](/docs/foundations/principles)** — the six design
   principles that shape every Verum decision.

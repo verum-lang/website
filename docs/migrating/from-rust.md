@@ -376,7 +376,7 @@ mirrors the test-driven development loop a Rust dev would expect.
 ## See also
 
 - **[Language tour](/docs/getting-started/tour)** — 10-minute crash course.
-- **[Philosophy](/docs/philosophy/principles)** — why Verum made
+- **[Philosophy](/docs/foundations/principles)** — why Verum made
   different design choices.
 - **[Verification spectrum](/docs/verification/gradual-verification)**
   — the feature Rust doesn't have.

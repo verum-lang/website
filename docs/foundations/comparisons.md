@@ -76,7 +76,7 @@ substantially easier to write. The cost: the CBGR runtime check (tier 0).
 
 **Semantic-honest standard library names.** `List`, `Text`, `Map` —
 not `Vec`, `String`, `HashMap`. See
-[Semantic Honesty](/docs/philosophy/semantic-honesty).
+[Semantic Honesty](/docs/foundations/semantic-honesty).
 
 **`@`-prefix macros, no `!` suffix.** `@derive(Clone)` replaces
 `#[derive(Clone)]`. `print("x")` is an ordinary function. `f"{x}"`
@@ -172,7 +172,7 @@ inclinations; type classes (*protocols* in Verum).
 
 - **Purity.** Haskell encodes effects with IO, State, etc. Verum
   uses contexts — an orthogonal but equally expressive mechanism
-  (see [Principle 3](/docs/philosophy/principles)).
+  (see [Principle 3](/docs/foundations/principles)).
 - **Laziness.** Haskell is lazy by default. Verum is strict; lazy
   data structures are opt-in.
 - **Memory model.** Haskell has a GC. Verum has three reference tiers.
@@ -342,11 +342,11 @@ algorithm that is not verified sometimes *is*. Choose accordingly.
 
 ## See also
 
-- **[Design Principles](/docs/philosophy/principles)** — the six
+- **[Design Principles](/docs/foundations/principles)** — the six
   constraints Verum imposes on itself.
-- **[Semantic Honesty](/docs/philosophy/semantic-honesty)** — the
+- **[Semantic Honesty](/docs/foundations/semantic-honesty)** — the
   naming philosophy that shapes the stdlib.
-- **[Gradual Verification](/docs/philosophy/gradual-verification)** —
+- **[Gradual Verification](/docs/foundations/gradual-verification)** —
   the nine-strategy ladder that sets Verum apart from both Rust and
   Coq.
 - **[Migrating from Rust / TypeScript / Go](/docs/migrating/from-rust)**
