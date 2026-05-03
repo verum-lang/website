@@ -143,7 +143,7 @@ vocabulary at the source so `verum export --to owl2-fs` (B5) round-
 trips cleanly to Protégé / HermiT / Pellet:
 
 ```verum
-@owl2_class(semantics = "OpenWorld")
+@owl2_class
 public type Person is { name: Text };
 
 @owl2_subclass_of(Animal)
@@ -169,7 +169,7 @@ public fn ancestor_of(a: Person, b: Person) -> Bool { ... }
 
 | Attribute | Purpose | Reject conditions |
 |---|---|---|
-| `@owl2_class` | Mark a type as an OWL 2 Class (default ClosedWorld) | unknown semantics value |
+| `@owl2_class` | Mark a type as an OWL 2 Class (OWA per W3C §5.6 — no semantics arg admitted) | any argument is rejected |
 | `@owl2_subclass_of(C)` | Subclass relation | wrong arg count |
 | `@owl2_disjoint_with([...])` / `@owl2_disjoint_with(...)` | Disjointness | empty list |
 | `@owl2_characteristic(F)` | One of seven flags | unknown flag (e.g. `Idempotent`) |
@@ -204,31 +204,73 @@ has a fixed target.
 
 ---
 
-## 4. CWA / OWA semantics
+## 4. Open World Assumption — the only semantics
 
-OWL 2 DS uses **Open World Assumption** (OWA): absence of an
-assertion does not imply negation. Verum's typed refinement system
-uses **Closed World Assumption** (CWA): a predicate either holds or
-fails.
+OWL 2 Direct Semantics is **open-world** by definition (W3C OWL 2
+Direct Semantics §5.6): an interpretation `I` is a model iff it
+satisfies every stated axiom; it is *not* required to enforce
+completeness about facts not stated. The earlier draft of this
+section proposed a CWA-default with OWA opt-in via
+`@owl2_class(semantics = ClosedWorld | OpenWorld)`. **That stance
+contradicted the W3C specification and has been withdrawn.**
 
-Direct accommodation of both simultaneously would require every OWL
-2 query to return `Maybe<Bool>` with `Unknown`, breaking composition
-with the rest of Verum's type system. the verification spec chooses a pragmatic
-resolution:
+The current `owl2_fs` framework ships **OWA-only**:
 
-- **Default: CWA.** `@owl2_class` / `@owl2_property` without explicit
-  semantics qualifier compile into standard Verum refinements;
-  queries return `Bool`. This preserves ergonomics and makes ~95% of
-  practical ontologies (medical classification, business rules, type
-  hierarchies) work with zero ceremony.
-- **Opt-in: OWA.** `@owl2_class(semantics = OpenWorld)` flips to OWA
-  semantics locally; queries against that class return `Maybe<Bool>`
-  with `Unknown` when class membership is neither provable nor
-  refutable.
+- `@owl2_class` admits **no** `semantics` argument. The attribute
+  carries only the marker; any `semantics = ...` argument is a
+  parse error.
+- `@owl2_property` likewise carries no semantics flag.
+- The audit JSON (`verum audit --owl2-classify --format json`)
+  emits **no** per-class `"semantics"` field. Schema version 2
+  drops the legacy field.
 
-Mixed-semantics composition is **rejected** by the compiler — `and`-
-composing an OWA class query with a CWA refinement requires explicit
-use of `core.logic.kleene` three-valued connectives.
+### 4.1 Where closed-world reasoning lives instead
+
+Closed-world reasoning over a finite, named domain is a normal
+Verum capability — but it lives at the **refinement-type / value**
+layer, not at the OWL 2 attribute layer:
+
+- **Refinement type with finite witness.** A user can declare
+  `type FinitePerson is List<Person> { is_canonical_universe(self) }`
+  and route OWA queries through that type's refinement. The
+  closure is explicit, witnessed, and audit-checkable.
+- **`count_o` + `assert_finite_domain`.** The
+  `core.math.frameworks.owl2_fs.count` module carries an explicit
+  finite-domain witness (`List<Individual>`) for each cardinality
+  query. The HOL comprehension `|{y : I | P(y)}|` is well-defined
+  iff the witness is supplied; an absent witness raises
+  `E_OWL2_UNBOUNDED_COUNT` rather than silently closing the world.
+
+Both surfaces preserve the OWL 2 OWA stance at the attribute
+layer while admitting closed-domain reasoning where the user
+explicitly claims a finite universe.
+
+### 4.2 Why the change
+
+Three reasons together forced the realignment:
+
+1. **Spec compliance.** A `@verify(certified)` claim requires the
+   theorem's interpretation to match the cited semantic frame. CWA
+   default broke this: a Verum-side proof of `subClassOf(C, D)`
+   admitted under CWA does not transfer to a Pellet/HermiT
+   verdict, because Pellet/HermiT run OWA. Round-trip identity
+   fails.
+2. **Soundness chronicle.** `verum audit --owl2-classify` reports
+   inferences. CWA-default rendering would label inferences as
+   correct that are not transferable to any external OWL 2
+   reasoner — a mechanical lie surfaced through the audit
+   chronicle.
+3. **Architectural redundancy.** The `Owl2Semantics` enum
+   competed with Verum's existing refinement-type machinery for
+   the same closed-domain reasoning. Dropping it eliminated a
+   redundant surface and aligned the layer with its single
+   role: a faithful OWL 2 DS frontend.
+
+Cross-reference: the realignment is documented in the
+`@framework(owl2_fs, ...)` axiom corpus at
+`core/math/frameworks/owl2_fs/types.vr` (count_o spec body) and
+`core/math/frameworks/owl2_fs/count.vr` (E_OWL2_UNBOUNDED_COUNT
+discipline).
 
 ---
 
@@ -264,9 +306,12 @@ match count_o_unbounded(maybe_domain, pred) {
 }
 ```
 
-V2 will replace the `Maybe::None` branch with CVC5 Finite Model
-Finding dispatch when the consuming class carries `@owl2_class(
-semantics = ClosedWorld)`.
+Future work will replace the `Maybe::None` branch with CVC5
+Finite Model Finding dispatch when the surrounding context
+carries an explicit refinement-level finite-cardinality witness
+— a Verum refinement-type-level claim, distinct from any
+OWL-level CWA flag (which the framework no longer admits per
+[§4](#4-open-world-assumption--the-only-semantics)).
 
 ---
 
