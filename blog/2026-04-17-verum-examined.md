@@ -55,19 +55,23 @@ The trade-off is real: refinement types do not come for free in compile time, an
 
 ## 3. Gradual verification — the spectrum
 
-Most verified-language proposals ask the programmer to commit to formal proof up front. Verum does not. The `@verify(...)` attribute names **seven distinct strategies**, which is the main interface to verification:
+Most verified-language proposals ask the programmer to commit to formal proof up front. Verum does not. The `@verify(...)` attribute names a **thirteen-strategy ladder**, which is the main interface to verification:
 
-| Strategy       | Intent                                           | Cost / guarantee            |
-|----------------|--------------------------------------------------|-----------------------------|
-| `runtime`      | Check the predicate at runtime                   | Cheapest, unverified        |
-| `static`       | Type-level static checks only                    | Fast, partial               |
-| `fast`         | Prefer speed over completeness                   | Fastest verify, may skip    |
-| `formal`       | Balanced default                                 | Standard SMT discharge      |
-| `thorough`     | Race multiple techniques in parallel             | Slower, robust              |
-| `certified`    | Independent cross-verification                   | Slowest, strongest          |
-| `synthesize`   | Generate a term satisfying the specification     | Variable                    |
+| Strategy             | Intent                                                       | Cost / guarantee                 |
+|----------------------|--------------------------------------------------------------|----------------------------------|
+| `runtime`            | Check the predicate at runtime                               | Cheapest, unverified             |
+| `static`             | Type-level static checks only                                | Fast, partial                    |
+| `fast`               | Prefer speed over completeness                               | Fastest verify, may skip         |
+| `formal` / `proof`   | Balanced default; standard SMT discharge                     | Per-obligation seconds           |
+| `thorough` / `reliable` | Race multiple techniques in parallel                      | Slower, robust                   |
+| `certified`          | Independent cross-verification across foreign tools          | Slowest, strongest               |
+| `synthesize`         | Generate a term satisfying the specification                 | Variable                         |
+| `complexity_typed`   | Add an honest cost-bound type to the verdict                 | Adds a separate refinement       |
+| `coherent`           | Categorical-coherence check on diagrams                      | Specialised; targets §10/§9 of MSFS |
+| `coherent_static`    | Coherence at compile time only                               | Specialised, no runtime witness  |
+| `coherent_runtime`   | Coherence with runtime witness                               | Specialised, runtime overhead    |
 
-The grammar also accepts two alias spellings — `@verify(proof)` for `formal` and `@verify(reliable)` for `thorough` — so the surface keyword count is nine, but the behaviours collapse to these seven.
+The ladder is **strict ν-monotone**: a strategy succeeding implies every coarser one succeeds. The CI gate `verum audit --ladder-monotonicity` refuses any inversion. `formal`/`proof` and `thorough`/`reliable` are alias spellings — same strategy, two surface keywords — so the grammar admits thirteen tokens but the ladder has eleven distinct rungs.
 
 The same body of code moves up the ladder as trust becomes a requirement. Ship a library at `@verify(runtime)`. When a caller depends on a stronger guarantee, promote to `@verify(formal)` or `@verify(certified)` — no rewrite. If the solver times out, drop a tactic script or fall back to `@verify(runtime)` with a visible apology in the type.
 
@@ -93,11 +97,11 @@ The memory-safety debate has historically offered two choices. Either you get ga
 
 | Tier | Syntax          | Cost      | Guarantee                                  |
 |------|-----------------|-----------|--------------------------------------------|
-| 0    | `&T`, `&mut T`  | ~15 ns*   | Capability-Based Generational References   |
+| 0    | `&T`, `&mut T`  | <1 ns*    | Capability-Based Generational References   |
 | 1    | `&checked T`    | 0 ns      | Compiler-proven safe (escape analysis)     |
 | 2    | `&unsafe T`     | 0 ns      | Caller proves safety; requires `unsafe`    |
 
-\* target overhead per dereference on current hardware; the precise cost is a small number of cycles for a single comparison and a predicted branch.
+\* the original target was an order-of-magnitude headroom (~15 ns); the measured per-dereference cost on current x86_64 / aarch64 (production_targets bench) is **~0.93 ns** — a single load, a single comparison, a predicted branch.
 
 CBGR (Capability-Based Generational References) is the name of the Tier 0 mechanism. The compact reference form — the one you use when the pointee is a sized value — is sixteen bytes: an eight-byte pointer, a four-byte generation counter, and a four-byte word that packs a sixteen-bit epoch next to sixteen bits of capability flags. The extended form, used for slices, trait objects, and interior references, layers an eight-byte metadata word (length for slices, vtable for trait objects), a four-byte offset, and a four-byte reserved field on top of the compact one — thirty-two bytes total. The allocation header carries the current generation; on every dereference the reference's generation is compared against the header's. A free or explicit revoke atomically bumps the header's generation; every subsequent deref through a now-stale reference is rejected before it can touch memory. Capabilities are eight monotonic bits — `CAP_READ`, `CAP_WRITE`, `CAP_EXECUTE`, `CAP_DELEGATE`, `CAP_REVOKE`, `CAP_BORROWED`, `CAP_MUTABLE`, `CAP_NO_ESCAPE` — that can be attenuated, never expanded: an API that hands you a read-only reference cannot itself be used to widen it.
 
@@ -175,12 +179,14 @@ Under this surface sits a work-stealing per-core executor, a platform-native I/O
 
 Most languages treat memory, capabilities, errors, and concurrency as four separate systems that happen to coexist at runtime. The allocator is one library, the dependency-injection framework is another, error handling is structured exceptions, and the scheduler is a third thing entirely. Integration between them is the programmer's problem.
 
-Verum merges all four into a single typed value — the **Execution Environment**, written **θ+** in the sources. Every task, from `fn main()` downwards, carries one. The layout is fixed, the size is 2,560 bytes, and the four pillars are always at known offsets:
+Verum merges all four into a single typed value — the **Execution Environment**, written **θ+** in the sources. Every task, from `fn main()` downwards, carries one. The layout is fixed at 2,560 bytes total (declared verbatim at `core/runtime/env.vr`) — a 64-byte header (task id, parent id, creation timestamp, flags) plus four pillars, all at known offsets:
 
 - **Memory** (128 B) — CBGR safety tier, allocator reference, shared-ownership registry, generation and epoch trackers.
 - **Capabilities** (2,048 B) — a 256-slot inline array of typed contexts (compile-time-assigned slots reach constant-time lookup at ~2 ns), plus a map for dynamic ones at ~20 ns.
 - **Recovery** (192 B) — supervisor reference, eight inline circuit breakers (64 B each), four inline retry policies (32 B each), `defer` stack.
 - **Concurrency** (128 B) — executor handle, I/O driver reference, isolation model, parallelism configuration, task ID.
+
+The arithmetic is `64 + 128 + 2048 + 192 + 128 = 2560`.
 
 Nothing in that list requires a heap allocation on the hot path. An inline circuit breaker is a struct, not a pointer-to-struct. A retry policy is a struct. A context in the fast path is an index into an array. The combined result: task spawn costs ~150 ns; task fork costs ~50–70 ns; a context lookup through a compile-time slot is two nanoseconds.
 
@@ -220,13 +226,15 @@ The zero-FFI path works because VBC opcodes `0xF1` (mmap/munmap), `0xF2` (futex,
 
 On macOS the one exception is `libSystem.B.dylib`, Apple's stable ABI entry point — Apple doesn't guarantee syscall ABI stability, so programs linking directly to syscalls would break across macOS versions. `libSystem` is linked, nothing else. No Rust `std`, no glibc, no `libuv`.
 
+The standard library is also where Verum's **framework-axiom packages** live. The cleanest worked example is `core.math.frameworks.owl2_fs` — a sixty-five-axiom verbatim encoding of the W3C OWL 2 Direct Semantics (the standard backing SNOMED-CT, Gene Ontology, DBpedia, FIBO, and most production knowledge graphs). Every operator the OWL 2 Functional-Style Syntax recognises is a named `@framework(owl2_fs, "Shkotin 2019. ...")` axiom that the audit gate `verum audit --framework-axioms --by-lineage owl2_fs` enumerates exactly. A typed-attribute layer (`@owl2_class`, `@owl2_property(domain, range, characteristic)`, `@owl2_subclass_of`, `@owl2_has_key`, ...) adds the OWL 2 vocabulary to ordinary Verum types; `verum import --from owl2-fs` and `verum export --to owl2-fs` give a byte-deterministic round-trip with Pellet/HermiT-compatible `.ofn` files. The OWL 2 layer also ships a cross-framework bridge to higher-topos theory (`core.theory_interop.bridges.owl2_to_htt`): Class becomes a presheaf, ObjectProperty a functor, SubClassOf a monomorphism, HasKey representability — meaning any OWL 2 ontology automatically gets an `(∞, 1)`-topos interpretation. Verum is the first proof assistant with kernel-checked OWL 2 semantics and an automatic translation of ontologies into a categorical language.
+
 ## 11. Metaprogramming without a second language
 
 Rust's macros have an exclamation mark. Scheme's have `quasiquote`. Scala 3 has `inline` plus `Quotes`. Each tells the reader "you've stepped out of the main language now." Verum keeps you in one language. The compile-time sub-language **is the same language**, run at an earlier stage.
 
 A `meta fn` is a function. A `quote { ... }` block is an expression of type `TokenStream`. An `@-attribute` invokes a meta function at a specific syntactic site. Splicing (`$expr`, `$[for ...]`) pastes a quoted value back. Staging is explicit (stage 0 = runtime, 1 = first meta, etc.).
 
-The reason this matters for the rest of the language is that every attribute in Verum — `@derive`, `@verify`, `@repr`, `@specialize`, `@logic`, `@cfg`, `@intrinsic`, and more than forty others — is uniformly an invocation of something you could write yourself in a `meta fn`. There is no distinction between a language-level compile-time construct and a user-level one. You do not have to petition for a new attribute; you can write one.
+The reason this matters for the rest of the language is that every attribute in Verum — `@derive`, `@verify`, `@repr`, `@specialize`, `@logic`, `@cfg`, `@intrinsic`, `@arch_module` (the architecture-as-types annotation that pins each cog's foundation, stratum, and lifecycle in the type system, used end-to-end across the standard library and the MSFS corpus), `@delegate` (declarative proof-body synthesis), `@framework` (the trusted-boundary citation marker), and more than forty others — is uniformly an invocation of something you could write yourself in a `meta fn`. There is no distinction between a language-level compile-time construct and a user-level one. You do not have to petition for a new attribute; you can write one.
 
 Compare:
 - Rust: proc-macros are a separate crate type with separate compilation rules and restrictions.
@@ -240,7 +248,11 @@ Compare:
 
 A `cog` is Verum's package — not an archive of source, but an archive of VBC bytecode plus optional proof certificates, type metadata, and signatures. When a downstream consumer takes a dependency at `@verify(certified)`, they can validate the included proofs **offline**, without running the compiler over the source.
 
-The precedent here is the Proof-Carrying Code tradition (Necula, Lee, 1996) and WebAssembly's validation step. Java's bytecode verifier checks type safety; WebAssembly's validator checks more. Verum goes further: the verifier can check refinement predicates up to `@verify(certified)`. Proof terms are exportable to Coq, Lean, Dedukti, and Metamath so a paranoid consumer can re-validate against an unrelated tool.
+The precedent here is the Proof-Carrying Code tradition (Necula, Lee, 1996) and WebAssembly's validation step. Java's bytecode verifier checks type safety; WebAssembly's validator checks more. Verum goes further: the verifier can check refinement predicates up to `@verify(certified)`. Proof terms are exportable to **five active foreign systems with automated re-check** (`verum audit --cross-format` driving `coqc`, `lean`, `agda`, `isabelle build`, `dkcheck` — the `ExportFormat` enum at `crates/verum_kernel/src/cross_format_gate.rs`) plus **Metamath as a static-export target** (`.mm` files for offline verification). The five active re-check backends cover three foundational families — calculus of inductive constructions (Coq, Lean 4), Martin-Löf type theory (Agda), classical higher-order logic (Isabelle), and λΠ-modulo (Dedukti) — so a theorem passing all five is robust across the three families simultaneously.
+
+Inside the validator itself, Verum runs **three independent kernel implementations** in parallel — an LCF-style direct rule-matcher (Algorithm A), a normalisation-by-evaluation kernel (Algorithm B), and a manifest-driven kernel registry (Algorithm C). Every certificate is checked by all three, and the differential gate fails the audit the moment any pair disagrees. This is a structural defence against kernel-implementation bugs that single-kernel systems (Coq, Lean, HOL Light, Isabelle, Agda) cannot match — a substitution bug, a binder-capture mistake, a universe off-by-one is invisible to peer review of the rules but visible the instant a second implementation following orthogonal algorithmic choices disagrees.
+
+The single-command verdict is `verum audit --bundle`: it runs every load-bearing gate (bridge-discharge, kernel-discharged-axioms, apply-graph, cross-format-roundtrip, three-kernel differential, framework footprint, signatures, proof-honesty, ladder monotonicity, …), aggregates them into one `bundle.json` with top-level `l4_load_bearing: bool`, and gives a CI a single yes/no answer about whether the cog is ready to ship.
 
 This is not theatre. Supply-chain attacks on code registries are the main way modern software is compromised; the question "does this package do what it says?" is no longer hypothetical. A cog's certificate cannot rule out every attack, but it raises the lower bound of what a consumer knows about the code they just linked against.
 
@@ -257,7 +269,24 @@ The consequence is architectural rather than performance-headline-worthy:
 
 Languages with this property: BEAM (Erlang/Elixir), the JVM, the CLR, LuaJIT. Languages without it: C, C++, Rust (separate rustdoc/test/compile paths with differences), Swift, Go. Verum is firmly in the VBC-first camp, which is unusual for a systems language targeting native.
 
-## 14. The LLM-era angle — why this language matters now
+## 14. The mathematical foundation: MSFS
+
+Most proof assistants make an unspoken architectural choice: pick one foundation — ZFC for Mizar, calculus of inductive constructions for Coq and Lean, Martin-Löf type theory for Agda, classical higher-order logic for Isabelle — and treat that choice as if it were the foundation. The choice is a historical artefact (whichever option the original implementers preferred), and the resulting tool inherits both its strengths and its blind spots. A theorem proved in Coq does not transfer to Lean without manual translation; a result that depends on classical excluded middle does not survive the move to a constructive foundation.
+
+Verum is built on a different mathematical premise. The MSFS preprint (Sereda 2026, *The Moduli Space of Formal Systems*) studies all formal foundations of mathematics simultaneously — as a single classifying 2-stack `𝔐` whose points are Morita-equivalence classes of foundations satisfying conditions R1–R5. The space stratifies into four levels of growing rigidity, the boundary level (an absolute foundation that classifies everything) is provably empty (the Absolute Foundation No-Go Theorem, AFN-T), and the interior is structurally plural: `(∞, 1)`-topos theory, Univalent Foundations, and cohesive ∞-topoi are pairwise non-equivalent partial classifiers. Every classical no-go result — Cantor, Russell, Gödel, Tarski, Lawvere, Ernst — is a specialisation of one structural law, holding uniformly along five orthogonal axes.
+
+This is not background reading. Four load-bearing pieces of the language sit directly on MSFS:
+
+- **The MSFS coordinate `(Framework, ν, τ)`** — every theorem in Verum is automatically projected to its location in `𝔐`: which foundations it depends on, at what meta-classification depth it lives, whether its proof is intensional or extensional. The coordinate is computed at audit time and cross-checked for internal consistency by `verum audit --coord-consistency`. See [MSFS Coordinate](/docs/verification/msfs-coord).
+- **The dual standard library** — MSFS Theorem 10.4 (AC/OC Morita duality) is realised as two parallel layers, `core.math.*` (object-centric: what *exists*) and `core.action.*` (dependency-centric: what *is done*), connected by an explicit α ⊣ ε adjunction whose unit is enforced by the kernel and whose counit is witnessed up to gauge canonicalisation. What a program *knows* and what it *does* are two equivalent descriptions of the same object, and that equivalence is mechanical, not declarative. See [Actic — OC/DC Dual Stdlib](/docs/verification/actic-dual).
+- **The reflection tower as a finite four-stage structure** — Gödel's second incompleteness theorem says no consistent system strong enough for arithmetic can prove its own consistency, which naively suggests an unbounded tower of meta-theories. MSFS Theorems 9.6 (meta-classification stabilises) + 8.2 (reflective tower bounded by one inaccessible cardinal) + 5.1 (AFN-T) collapse that tower into four stages: Base / Stable / Bounded / AbsoluteEmpty. Verum implements the short tower because the long one is provably the same theory. See [Reflection Tower](/docs/verification/reflection-tower).
+- **The trusted base is exactly ZFC + 2 inaccessible cardinals + the Verum kernel** — the same base as MSFS itself. The kernel's seven inference rules (`K-Refine`, `K-Univ`, `K-Pos`, `K-Norm`, `K-FwAx`, `K-Adj-Unit`, `K-Adj-Counit`) decompose into ZFC + 2-inacc; AFN-T proves there is no larger base to aim for; the MSFS self-containment theorem proves the base cannot be made smaller without losing expressiveness. Both directions of the trust boundary are mathematically pinned, not merely engineered. See [Trusted Kernel](/docs/verification/trusted-kernel).
+
+The companion artefact — every theorem of MSFS with a machine-checked proof in Verum, exported and re-checkable in Coq, Lean 4, Agda, Dedukti, and Metamath — lives at [github.com/gst-st/msfs](https://github.com/gst-st/msfs). It is also the largest proof corpus written in Verum, and the one whose architecture the rest of the standard library follows.
+
+The practical consequence is that Verum is not committed to a foundation in the way other proof assistants are. Each `@framework(name, "citation")` marker is a point in `𝔐`; each cross-format export is a translation along an adjunction between points; each cog's trusted base is a sub-region of `𝔐` that the audit makes explicit. A user who needs classical excluded middle invokes `@framework(classical_lem, "...")` and the audit surfaces it; a user who needs univalence invokes `@framework(hott, "...")` and gets a different region; theorems that mention both surfaces force a foreground discussion of compatibility instead of a silent miscompilation. This is what it means for a system's architecture to be subordinate to a proven mathematical law rather than to historical convention.
+
+## 15. The LLM-era angle — why this language matters now
 
 Here is where we return to the question at the top.
 
@@ -275,7 +304,7 @@ This shift changes what a programming language is actually for in three ways, an
 
 None of this is to say Verum "solves the LLM problem." It is to say that the language-design decisions Verum has been making for the last three years — explicit context, refinement types, gradual verification, semantic honesty, a single stable IR, proof-carrying distribution — happen to line up with what the current and next few years of software will need. They would have been defensible features in 2021. They are close to necessary features in 2026.
 
-## 15. Trade-offs Verum actually makes
+## 16. Trade-offs Verum actually makes
 
 A blog post about a language that does not list its costs is a marketing document. These are the real costs.
 
@@ -288,9 +317,9 @@ A blog post about a language that does not list its costs is a marketing documen
 
 None of these are show-stoppers. All of them deserve to be named.
 
-## 16. Closing
+## 17. Closing
 
-The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, gradual verification from SPARK, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, and a standard library that is itself written in Verum with no libc / `pthread` / Rust-std dependency. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
+The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, a thirteen-rung gradual-verification ladder generalising SPARK's gold/silver/bronze, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a three-kernel differential-tested trusted base that no other production proof assistant runs, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, a standard library that is itself written in Verum with no libc / `pthread` / Rust-std dependency, the first proof assistant with kernel-checked OWL 2 Direct Semantics, and a mathematical foundation — the MSFS classification of all formal foundations — that pins both ends of the trusted base to a proven law rather than to historical convention. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
 
 The pitch is not that any one of these ideas is new. They are not. The pitch is that they have never been combined in a production systems language whose surface a Rust or Swift programmer could read comfortably, and that the current moment — where software increasingly travels through a language model before it reaches production — is the moment where having them combined actually pays.
 
