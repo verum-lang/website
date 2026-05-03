@@ -321,6 +321,7 @@ audit walker / CLI driver) dispatch on them at compile time:
 | `@derive(Trait, ...)` | §8.7 | derive macros |
 | `@cfg(...)` | §3.2 | conditional compilation |
 | `@inline` / `@cold` / `@repr(C)` / etc. | misc | code generation hints |
+| `@arch_module(...)` | ATS-V §8 (`internal/specs/ats-v.md`) | `verum_kernel::arch` + ATS-V phase 6.5 |
 
 **2. Meta-system advisory attributes** — parsed via the generic
 `identifier(args)` form; semantic validation happens in
@@ -343,6 +344,43 @@ participate in compile-time dispatch is BETTER expressed via the
 meta-system — zero grammar bloat, user-extensible, single source
 of truth (definition + validation + docstring + spec citation
 all in one `.vr` file).
+
+#### ATS-V `@arch_module(...)` — ATS-V Architectural Type System
+
+The `@arch_module(...)` typed attribute (per ATS-V spec §8) takes
+**named arguments** parsed via the generic `attribute_args =
+named_arg_list` form (no new grammar production). Every field
+reuses canonical Verum syntax: variant constructors for enum-typed
+fields, list literals for collections, identifier paths for
+references.
+
+```verum
+@arch_module(
+    exposes = [Capability::Authenticate, Capability::IssueToken],
+    requires = [Capability::HashPassword, Capability::RandomBytes],
+    preserves = [SessionInvariant::NoTokenLeak],
+    at_tier = Tier::MultiTier([Tier::Aot, Tier::Interp]),
+    foundation = Foundation::ZfcTwoInacc,
+    stratum = MsfsStratum::LFnd,
+    lifecycle = Lifecycle::Theorem("v0.1"),
+    cve_closure_C = synthesize_session_token,    // C — Constructive
+    cve_closure_V_strategy = certified,          // V — @verify ladder
+    cve_closure_E = AuthenticationServer,        // E — Executable entry point
+    composes_with = [Database::transactional, Network::tls_v13],
+    strict = true,
+)
+public module authentication { ... }
+```
+
+The ATS-V phase (Phase 6.5 in compiler pipeline, Сезон 1
+deliverable) parses `@arch_module(...)` named-args into a
+canonical `Shape` struct (mirror of `verum_kernel::arch::Shape`),
+runs anti-pattern checks (10 canonical patterns ATS-V-AP-001..010
+in Сезон 1), and emits structured diagnostics with stable RFC
+error codes per spec §32.4 (dual-audience design).
+
+See `internal/specs/ats-v.md` for the full architectural type
+system specification.
 
 ### 2.3 Modules and imports
 

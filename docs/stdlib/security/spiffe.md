@@ -521,7 +521,7 @@ to start with a clock > 5 min off.
 
 ## Related modules
 
-- [`net.weft.spiffe`](/docs/stdlib/net/weft/overview#spiffe) — HTTP middleware
+- [`net.weft.spiffe`](/docs/stdlib/net/weft/spiffe) — HTTP middleware
   that wraps these types for per-request SPIFFE auth.
 - [`core.net.tls`](/docs/stdlib/net/tls/) — consumes `X509Svid` as
   identity cert + `X509BundleSet` as trust roots.

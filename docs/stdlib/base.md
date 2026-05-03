@@ -755,7 +755,7 @@ asymmetry between **Display** and **Debug**:
 
 This split mirrors Rust's `Display for Box<T>` / `Debug for Box<T>`
 convention and aligns with the broader
-[Display + Debug + Eq triple contract](#the-display--debug--eq-triple--errortype-contract)
+[Display + Debug + Eq triple contract](#the-display--debug--eq-triple--error-type-contract)
 above — every public stdlib pointer type now provides
 `Display + Debug + Eq + Hash + Clone + Default + Ord` (gated by the
 inner type's bounds).

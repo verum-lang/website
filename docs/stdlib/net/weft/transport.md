@@ -125,5 +125,5 @@ write will fail and the connection task can return.
 ## Related documentation
 
 - [Connection — HTTP/1.1 pipeline](./connection)
-- [TLS](./tls)
+- [TLS](../tls/)
 - [Listener](./listener)

@@ -250,6 +250,25 @@ that the kernel's `replay_smt_cert` re-derives into a checkable
 See **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
 for the `Refine` rule and the surrounding trust story.
 
+## Configuration knobs
+
+The `RefinementChecker` exposes four user-facing config fields,
+all of which are honoured by the consumer (no inert defenses):
+
+| Field            | Default | What it gates                                           |
+|------------------|---------|---------------------------------------------------------|
+| `enable_smt`     | `true`  | Master switch for SMT-based subsumption. When `false`, only the syntactic checker fires; SMT-only obligations return `Unknown`. |
+| `timeout_ms`     | `100`   | Per-query SMT timeout, forwarded to the backend through the `SmtBackend::set_timeout_ms(ms)` trait method **before every `check` invocation**. Backends propagate the value to the underlying solver via `set_params({"timeout": ms})`. |
+| `enable_cache`   | `true`  | Verification-condition memoization. Cache key is `hash(predicate, value)`; identical obligations short-circuit. |
+| `max_cache_size` | `10000` | Evicts the lowest-1/10th when the cache reaches this many entries (LRU-style trim). |
+
+Custom backends implement the `SmtBackend` trait and may
+override `set_timeout_ms` to forward the per-query budget.
+Backends that don't override it inherit a no-op default — the
+trait extension is intentionally source-compatible so external
+implementors compile without modification when new gates are
+added.
+
 ## Cross-references
 
 - **[Cookbook → refinement patterns](/docs/cookbook/refinements)** —

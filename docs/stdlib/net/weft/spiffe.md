@@ -184,5 +184,5 @@ already validated the role.
 ## Related documentation
 
 - [Service / Layer / ServiceBuilder](./service)
-- [TLS](./tls)
+- [TLS](../tls/)
 - [Error model](./error)
