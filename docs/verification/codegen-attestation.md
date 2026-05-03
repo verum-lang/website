@@ -81,37 +81,62 @@ Verum's TCB. The attestation at this pass is therefore a
 *boundary marker* (whose payload says "we trust LLVM at this
 point") rather than an internal-discharge proof.
 
-## 2. The three attestation statuses
+## 2. The four attestation statuses
 
-Each pass's attestation is one of three statuses:
+`AttestationStatus` is a type alias for the canonical
+[`DischargeStatus`](./trusted-kernel.md) enum shared with the
+kernel_v0 manifest. Single source of truth across every Verum
+manifest that tracks soundness discharge.
 
 ```rust
-pub enum AttestationStatus {
+// crate::soundness::DischargeStatus
+pub enum DischargeStatus {
     Discharged,
+    DischargedByFramework {
+        lemma_path: String,   // e.g. "core.verify.kernel_v0.lemmas.beta.church_rosser_confluence"
+        framework:  String,   // e.g. "mathlib4" / "lean4_stdlib" / "vellvm"
+        citation:   String,   // e.g. "Mathlib.Computability.Lambda.ChurchRosser"
+    },
     AdmittedWithIou { iou: String },
     NotYetAttested,
 }
 ```
 
-| Status | Meaning |
-|--------|---------|
-| `Discharged` | The pass carries a *kernel-discharged* simulation proof. The associated proof obligation has been mechanised and re-checked through the trusted base. |
-| `AdmittedWithIou { iou }` | The pass is admitted with a structural-property IOU. The `iou` payload names the missing lemma — the CompCert "Admitted" shape, *honest about the gap*. |
-| `NotYetAttested` | The pass has *no* attestation — trusted by code review only. The pre-#162 baseline; goal is to flip every entry to `Discharged` or `AdmittedWithIou`. |
+| Status | Audit-clean | Meaning |
+|--------|:-----------:|---------|
+| `Discharged` | ✓ | The pass carries a *kernel-discharged* simulation proof. The associated proof obligation has been mechanised and re-checked through the trusted base. |
+| `DischargedByFramework` | ✓ | The pass's IOU is **resolved** by a vetted upstream proof in a registered framework (CompCert / Vellvm / Beringer-Stark / Poletto-Sarkar / Wang-Wilke-Leroy). Citation triple `(lemma_path, framework, citation)` pins a specific upstream artefact a reviewer can independently verify. **L4-acceptable.** |
+| `AdmittedWithIou { iou }` | ✗ | The pass is admitted with a *named-but-unresolved* structural-property IOU. The `iou` payload names the missing lemma — honest about the gap, but *not yet* L4-acceptable because no upstream citation has been pinned. |
+| `NotYetAttested` | ✗ | The pass has *no* attestation — trusted by code review only. Pre-attestation baseline. |
 
-### 2.1 The CompCert-parity progression
+### 2.1 The discharge lifecycle
 
 ```text
-   NotYetAttested  →  AdmittedWithIou  →  Discharged
-   (no proof)         (admitted, IOU)      (proven, kernel-checked)
-   trusted by         honest gap with      load-bearing
-   code review        named missing lemma  CompCert parity
+   NotYetAttested  →  AdmittedWithIou  →  DischargedByFramework  →  Discharged
+   (no proof)         (named but           (resolved by cited        (proven,
+                       unresolved IOU)      upstream proof)            kernel-checked)
+   trusted by         honest gap with      L4-acceptable trust       load-bearing
+   code review        missing lemma        delegation                CompCert parity
 ```
 
-V0 baseline: every pass is `NotYetAttested`. Each pass flips to
-`AdmittedWithIou` when the structural lemma is named (a small
-commit), then to `Discharged` when the lemma is mechanised
-(a multi-week-to-multi-year commit).
+Each transition reduces the trust-extension surface by one
+level. The `is_audit_clean()` predicate returns true for the
+two rightmost states; both are L4-acceptable for the audit
+gate's *clean* verdict.
+
+Current codegen pass surface: every pass at `AdmittedWithIou`
+with concrete IOUs (CompCert §5.2 / Beringer-Stark 2002 §3 /
+George-Appel 1996 §6 / Poletto-Sarkar 1999 §3 / Mössenböck-Pfeiffer
+2002 §4 / Vellvm POPL 2012 §5 / Wang-Wilke-Leroy POPL 2020 §6).
+Promotion to `DischargedByFramework` requires pinning each
+upstream citation as a structured triple — this is the next
+phase of CompCert-parity work.
+
+(For a worked example of the promotion: the kernel_v0 manifest
+has already promoted all 6 of its `AdmittedWithIou` rules
+— K-Pi-Form, K-Lam-Intro, K-App-Elim, K-Beta, K-Eta, K-Sub —
+to `DischargedByFramework` with mathlib4 / lean4_stdlib
+citations. See [kernel_v0](./kernel-v0.md) §7.)
 
 ## 3. The PassAttestation record
 

@@ -332,13 +332,34 @@ machine-code emission). Each publishes a *simulation invariant*
 The audit gate `verum audit --codegen-attestation` reports per
 pass:
 
-- `Discharged` — invariant has a published proof internal to Verum.
-- `AdmittedWithIou` — invariant admitted with citation to an
-  external proof (CompCert, Vellvm, ...).
+The audit reports per pass via the **canonical `DischargeStatus`
+enum** (`crate::soundness::DischargeStatus`) shared with the
+kernel_v0 manifest. Four states cover the full discharge
+lifecycle:
+
+- `Discharged` — invariant has a kernel-checked structural proof
+  internal to Verum.
+- `DischargedByFramework { lemma_path, framework, citation }` —
+  invariant resolved via a vetted upstream proof
+  (mathlib4 / lean4_stdlib / CompCert / Vellvm) with a structured
+  citation triple. **L4-acceptable.**
+- `AdmittedWithIou { iou }` — invariant admitted with a named
+  missing structural lemma. Honest about the gap; not yet
+  L4-acceptable.
 - `NotYetAttested` — trusted by code review only.
 
-V0 baseline: every pass is `NotYetAttested`. The discharge work
-is multi-year; entries flip individually as kernel proofs land.
+The audit-clean predicate `is_audit_clean()` returns true for
+the first two states. All 6 codegen passes currently sit at
+`AdmittedWithIou` with concrete CompCert / Vellvm / Beringer-Stark
+/ George-Appel / Poletto-Sarkar / Wang-Wilke-Leroy IOUs;
+mechanisation work flips entries individually as Verum-language
+proofs of the simulation diagrams land.
+
+(For comparison: the kernel_v0 manifest's 6 admitted bootstrap
+rules — K-Pi-Form, K-Lam-Intro, K-App-Elim, K-Beta, K-Eta,
+K-Sub — have already been promoted to `DischargedByFramework`
+with mathlib4 / lean4_stdlib citations, demonstrating the
+audit-clean discipline. See [kernel_v0](./kernel-v0.md) §7.)
 
 ---
 
