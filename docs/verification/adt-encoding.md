@@ -8,7 +8,7 @@ title: Algebraic Data Types
 Verum's verification layer encodes declared variant types
 (`type T is A | B | C;`) with two complementary families of SMT
 axioms: **pairwise disjointness** and **exhaustiveness**. Together
-they give Z3/CVC5 complete information about inhabitants of the
+they give multiple SMT backends complete information about inhabitants of the
 variant sort without introducing a dedicated ADT datatype to the
 solver context — the encoding rides entirely on uninterpreted
 integer constants, keeping every SMT query in a theory combination
@@ -52,7 +52,7 @@ p == Color.Red || p == Color.Green || p == Color.Blue
 
 is added to the obligation's hypothesis set before the goal is
 sent to the solver. Combined with pairwise disjointness, this
-means Z3 knows:
+means the SMT backend knows:
 
 * `p` takes exactly one of the declared constructor values, and
 * those values are mutually distinct.
@@ -133,7 +133,7 @@ each branch.
 
 * Variants with payload arguments — `Some(T)`, `Cons(T, List<T>)`.
   The current encoding can state `None != Some` because the
-  constructor references are distinct Z3 symbols, but it cannot
+  constructor references are distinct the SMT backend symbols, but it cannot
   decompose a `Some(v)` term and reason over `v`.
 * Structural equality modulo constructor arguments — two
   `Cons(1, [2,3])` terms being equal because their components
@@ -143,10 +143,10 @@ each branch.
 
 For those claims use the `@verify(certified)` strategy or a
 `proof by induction` body with explicit case bodies; the
-underlying CVC5 backend has ADT datatype support (activated
+underlying the SMT backend has ADT datatype support (activated
 via the SyGuS path at `@verify(synthesize)`). Verum also
-emits real Z3 datatypes for `Type::Variant` via the type
-translator — each variant becomes a Z3 constructor with
+emits real the SMT backend datatypes for `Type::Variant` via the type
+translator — each variant becomes a the SMT backend constructor with
 payload-typed fields, and structurally identical variant
 types cache to the same sort.
 
@@ -188,23 +188,23 @@ behaviour.
 
 ## Implementation pointers
 
-* `crates/verum_compiler/src/phases/proof_verification.rs`:
+* `proof_verification` module:
   * `variant_disjointness_axioms(module)` — axiom emission.
   * `variant_exhaustiveness_hypotheses(theorem, map)` — per-theorem
     hypothesis elaboration.
-* `crates/verum_smt/src/proof_search.rs`:
+* `proof_search` module:
   * `ProofSearchEngine::register_axiom` — module-level axiom
     channel.
   * `ProofSearchEngine::register_variant_type` — variant registry.
   * `try_smt_discharge` — assertion site.
-* `crates/verum_smt/src/translate.rs`:
+* `translate` module:
   * Field-access arm disambiguates `Type.Variant` (uppercase
     receiver) from record field access, so both sides of
-    `c == Color.Red` denote the same Z3 symbol.
+    `c == Color.Red` denote the same the SMT backend symbol.
 
 ## Further reading
 
-* [SMT routing](smt-routing.md) — how Z3 and CVC5 are dispatched.
+* [SMT routing](smt-routing.md) — how multiple SMT backends are dispatched.
 * [Refinement reflection](refinement-reflection.md) — user function
   unfolding at the solver level.
 * [Proofs](proofs.md) — tactic surface and proof-body forms.

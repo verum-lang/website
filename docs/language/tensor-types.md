@@ -28,11 +28,9 @@ fn matmul<M, K, N>(a: Tensor<Float32, [M, K]>,
 ```
 
 :::info Status
-Wired end-to-end: `Type.Tensor { element, shape, strides }` in
-`crates/verum_types/src/ty.rs`, shape validation in
-`tensor_shape_checker.rs`, literal-building protocol in
-`tensor_protocol.rs`, 40+ VBC e2e tests under
-`vcs/specs/L0-critical/vbc/e2e/`. Compile-time shape arithmetic is
+Wired end-to-end through the type system: `Tensor<Element, [Shape]>`
+parses, type-checks, and validates compile-time shape arithmetic
+across 40+ VBC end-to-end tests. Compile-time shape arithmetic is
 **stable**; broadcasting inference is **maturing**; shape-refined
 indexing (`t[i]` with `i < shape[0]`) is **experimental**.
 :::
@@ -381,14 +379,14 @@ that would otherwise surface much later in codegen.
 
 ## Implementation status
 
-| Feature | Status | Backing |
+| Feature | Status | Notes |
 |---|---|---|
-| `Type.Tensor` in the type system | **Stable** | `verum_types/src/ty.rs:785-800` |
-| Tensor literal parser / checker | **Stable** | `verum_types/src/infer.rs:18346` |
-| Shape arithmetic in types | **Stable** | `verum_types/src/tensor_shape_checker.rs` |
-| Broadcasting inference | **Maturing** | `tensor_shape_checker.rs` |
-| Matmul / batched matmul | **Stable** | shape checker |
-| Element-wise op overloading via protocols | **Experimental** | `tensor_protocol.rs` |
+| `Tensor<E, [Shape]>` type | **Stable** | first-class in the type system |
+| Tensor literal parser / checker | **Stable** | shape inferred from literal structure |
+| Shape arithmetic in types | **Stable** | compile-time `*`, `+`, `Min`, `Max` over dims |
+| Broadcasting inference | **Maturing** | NumPy-style alignment rules |
+| Matmul / batched matmul | **Stable** | shape checker enforces inner-dim equality |
+| Element-wise op overloading via protocols | **Experimental** | unified across CPU / GPU backends |
 | Shape-refined indexing (`t[i]` with `i < shape[0]`) | **Experimental** | refinement integration in progress |
 | Dependent (runtime-valued) dimensions | **Experimental** | pattern established in stdlib |
 | Autodiff typing (`@grad`) | Planned | — |
@@ -428,7 +426,5 @@ in a companion shape tensor.
 - [Dependent types](./dependent-types.md) — dynamic dimensions.
 - [Small neural net tutorial](../tutorials/small-nn.md) — a real
   model built on tensor types.
-- Source: `crates/verum_types/src/ty.rs`,
-  `crates/verum_types/src/tensor_shape_checker.rs`,
-  `crates/verum_types/src/tensor_protocol.rs`. See also the
-  [Grammar reference — Types](../reference/grammar-ebnf.md#27-types).
+- [Grammar reference — Types](../reference/grammar-ebnf.md#27-types) —
+  the formal `Tensor<E, [Shape]>` production.

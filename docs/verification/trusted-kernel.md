@@ -24,8 +24,8 @@ trust delegation:
 | Layer | Where | Rules | Purpose |
 |-------|-------|-------|---------|
 | **kernel_v0** | `core/verify/kernel_v0/` (Verum source) | 10 | Verum-side bootstrap meta-theory; hand-auditable |
-| **proof_checker** | `crates/verum_kernel/src/proof_checker.rs` | 6 | Rust-side minimal CoC checker; the trusted base |
-| **KernelRuleId audit registry** | `crates/verum_kernel/src/zfc_self_recognition.rs` | 7 | Audit-time meta-soundness footprint enumeration |
+| **proof_checker** | `proof_checker` module | 6 | minimal CoC checker; the trusted base |
+| **KernelRuleId audit registry** | `zfc_self_recognition` module | 7 | Audit-time meta-soundness footprint enumeration |
 
 This page covers all three layers, their interfaces, and how the
 [differential testing](./two-kernel-architecture.md) and
@@ -54,14 +54,15 @@ user programs — is reduced to *"did the kernel accept it?"* and
 becomes inspection-only at audit time.
 
 Verum's discipline is *more aggressive* than typical LCF kernels
-on size. The trusted-base proof_checker (Layer B) targets **&lt;
-1000 LOC Rust** — order-of-magnitude smaller than HOL Light
-(~5K SML) or Lean (~5K C++) or Coq's `coqchk` (~10K OCaml). The
-trade-off is deliberate: the checker rejects MOST Verum programs
-(those using refinement / cubical / modal / SMT-axiom features),
-but the programs it accepts have an iron-clad independent verdict.
-The full Verum kernel infrastructure handles the broader surface;
-the proof_checker handles the irreducible core.
+on size. The trusted-base proof_checker (Layer B) targets a
+small footprint that an external auditor can read end-to-end —
+order-of-magnitude smaller than HOL Light, Lean, or Coq's
+`coqchk`. The trade-off is deliberate: the checker rejects MOST
+Verum programs (those using refinement / cubical / modal /
+SMT-axiom features), but the programs it accepts have an
+iron-clad independent verdict. The full Verum kernel
+infrastructure handles the broader surface; the proof_checker
+handles the irreducible core.
 
 ---
 
@@ -94,7 +95,8 @@ The audit gate `verum audit --kernel-v0-roster` walks the
 manifest and confirms every rule has its corresponding `.vr`
 file. Drift between manifest and filesystem is a build failure.
 
-`kernel_v0` is intentionally Verum-source, not Rust. The
+`kernel_v0` is intentionally written in Verum source, not in
+the host implementation language. The
 manifest authored under `core/verify/kernel_v0/` is consumed by
 `KernelV0Kernel` — the third independent slot in the
 [differential-kernel gate](./two-kernel-architecture.md). The
@@ -105,12 +107,11 @@ manifest itself into a self-hosted checker.
 
 ---
 
-## 3. Layer B — `proof_checker.rs` (Rust trusted base, 6 rules)
+## 3. Layer B — `proof_checker` (the trusted base, 6 rules)
 
-The Rust-side trusted base lives in
-`crates/verum_kernel/src/proof_checker.rs` and implements a
-minimal Calculus of Constructions (CoC) fragment. **Six
-inference rules** are exhaustive:
+The trusted base lives in the `proof_checker` module and
+implements a minimal Calculus of Constructions (CoC) fragment.
+**Six inference rules** are exhaustive:
 
 | # | Rule | Signature (informal) |
 |---|------|---------------------|
@@ -124,26 +125,18 @@ inference rules** are exhaustive:
 The Term language carries five variants — exactly what the six
 rules require:
 
-```rust
-pub enum Term {
-    Var(usize),                       // de Bruijn index
-    Universe(u32),                    // Universe(n) lives in Universe(n+1)
-    Pi(Box<Term>, Box<Term>),         // dependent function type Π x:A.B
-    Lam(Box<Term>, Box<Term>),        // type-annotated λ-abstraction
-    App(Box<Term>, Box<Term>),        // application
-}
-```
+| Variant | Carries | Role |
+|---|---|---|
+| `Var(i)` | de-Bruijn index `i` | bound variable lookup |
+| `Universe(n)` | level `n` | a universe; lives in `Universe(n+1)` |
+| `Pi(A, B)` | domain + codomain | dependent function type `Π x:A. B` |
+| `Lam(A, b)` | type-annotated body | typed λ-abstraction |
+| `App(f, x)` | function + argument | application |
 
-The public API is bidirectional:
-
-```rust
-pub fn infer(ctx: &Context, term: &Term) -> Result<Term, CheckError>;
-pub fn check(ctx: &Context, term: &Term, expected: &Term) -> Result<(), CheckError>;
-```
-
-`infer` synthesises a type for a term in a context; `check`
-verifies that a term has a given type. Together they implement
-the full type-checking discipline of the six rules.
+The kernel exposes a bidirectional API: `infer` synthesises a
+type for a term in a context; `check` verifies that a term has
+a given type. Together they implement the full type-checking
+discipline of the six rules.
 
 ### 3.1 What this layer DOES NOT do
 
@@ -166,18 +159,13 @@ broader features to user-side discharge mechanisms.
 ### 3.2 The `Certificate` lifecycle at this layer
 
 A `Certificate` is the structured witness the trusted base
-consumes:
-
-```rust
-pub struct Certificate {
-    pub term:      Term,    // the proof term
-    pub claim_ty:  Term,    // the type the term is claimed to inhabit
-}
-```
+consumes — a pair `(term, claimed_type)` where `term` is the
+proof term and `claimed_type` is the type the term is claimed
+to inhabit.
 
 The audit gate `verum audit --kernel-recheck` runs every
-theorem in the project's corpus through the trusted base via
-`check(ctx, &cert.term, &cert.claim_ty)`. A non-`Ok` result
+theorem in the project's corpus through the trusted base by
+calling `check(ctx, term, claimed_type)`. A non-accept result
 fails the audit.
 
 ---
@@ -186,7 +174,7 @@ fails the audit.
 
 The third layer is *not* a checker — it is an **audit registry**
 for meta-soundness footprint enumeration. Lives in
-`crates/verum_kernel/src/zfc_self_recognition.rs`. Seven canonical
+`zfc_self_recognition` module. Seven canonical
 rules, each carrying an explicit ZFC + inaccessible decomposition:
 
 ```rust
@@ -276,7 +264,7 @@ assistant ships.
 
 The three rule layers + the differential layer + future Verum
 self-hosted kernel cooperate via a **kernel registry**
-(`crates/verum_kernel/src/kernel_registry.rs`). The registry
+(`kernel_registry` module). The registry
 exposes a uniform `KernelImpl` trait that lets the audit pipeline
 query every registered kernel without caring which is which:
 
@@ -328,7 +316,7 @@ the project's complete external trust.
 The kernel's verdicts cover *proofs*. A separate layer covers
 *the compiler that emits the binary*: `codegen-attestation`.
 
-Per `crates/verum_kernel/src/codegen_attestation.rs`, the codegen
+Per `codegen_attestation` module, the codegen
 pipeline has 6+ canonical passes (VBC lowering, SSA construction,
 register allocation, linear-scan reg-alloc, LLVM emission,
 machine-code emission). Each publishes a *simulation invariant*
@@ -373,9 +361,9 @@ audit-clean discipline. See [kernel_v0](./kernel-v0.md) §7.)
 After the trusted base accepts a `(term, expected_type)` pair,
 the only things a reviewer needs to trust are:
 
-1. **`proof_checker.rs`** (~600 LOC, exhaustive pattern-matching,
-   no `unsafe`).
-2. **The Rust compiler's correctness** (or, after self-hosting
+1. **The `proof_checker` module** (small enough to read
+   end-to-end, exhaustive pattern-matching, no unsafe code).
+2. **The host compiler's correctness** (or, after self-hosting
    lands, the Verum-self-hosted kernel that consumes the
    trusted-base output as a verifiable artifact).
 3. **The serialisation format of `.vproof` files** — simple JSON

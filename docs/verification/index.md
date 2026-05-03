@@ -198,13 +198,13 @@ touches**, then consults the `VerifyStrategy` to choose a backend:
 ```text
 Classification        → Preferred backend    → Fallback
 --------------------    --------------------   --------------
-LIA-only                Z3                    CVC5
-Nonlinear arith         Z3 (NLA tactic)       CVC5 (farkas)
-Strings                 CVC5                  Z3 (seq theory)
-FMF/quantifiers         CVC5 (fmf_enum)       Z3 (mbqi)
-Arrays only             Z3                    CVC5
-Bitvector-heavy         Z3                    (no symmetric BV on CVC5)
-Nonlinear + quantifier  CVC5 (portfolio)      Z3 (rlimit pass)
+LIA-only                the SMT backend
+Nonlinear arith         the SMT backend (NLA tactic)       the SMT backend (farkas)
+Strings                 the SMT backend (seq theory)
+FMF/quantifiers         the SMT backend (fmf_enum)       the SMT backend (mbqi)
+Arrays only             the SMT backend
+Bitvector-heavy         the SMT backend                    (no symmetric BV on the SMT backend)
+Nonlinear + quantifier  the SMT backend (portfolio)      the SMT backend (rlimit pass)
 ```
 
 See [SMT routing](./smt-routing.md) for the full table. The router
@@ -217,7 +217,7 @@ lands) doesn't require a single user-code change.
 Each strategy translates to a concrete solver invocation:
 
 - `Static` / `Formal`: single `(check-sat)` call with a timeout.
-- `Thorough`: a **portfolio race** — Z3 and CVC5 launched in
+- `Thorough`: a **portfolio race** — multiple SMT backends launched in
   parallel, first to return `unsat` wins; on disagreement the result
   is logged as `Split` and escalated.
 - `Certified`: portfolio + proof-term extraction from the winning
@@ -264,11 +264,11 @@ flowchart TB
     User[User code<br/>contracts + proofs] --> Types[verum_types<br/>obligation emission]
     Types --> Translate[verum_smt::translate<br/>IR → SMT-LIB]
     Translate --> Router[capability_router<br/>theory taxonomy]
-    Router --> Z3[Z3 backend]
-    Router --> CVC5[CVC5 backend]
+    Router --> the SMT backend[the SMT backend]
+    Router --> the SMT backend[the SMT backend]
     Router --> Portfolio[portfolio race]
-    Z3 --> Certificate[SmtCertificate]
-    CVC5 --> Certificate
+    the SMT backend --> Certificate[SmtCertificate]
+    the SMT backend --> Certificate
     Portfolio --> Certificate
     Certificate --> Kernel[verum_kernel<br/>trusted LCF]
     Kernel --> Axiom[CoreTerm::Axiom]
@@ -638,7 +638,7 @@ part of the shipping release:
   strategies in the gradual ladder.
 - **Refinement types + `@logic` reflection** — user functions
   lifted into solver axioms with unfold-budget knobs.
-- **ADT encoding** — Z3 datatypes per variant with cached sort
+- **ADT encoding** — the SMT backend datatypes per variant with cached sort
   reuse.
 - **Cubical / HoTT primitives** — `PathTy`, `HComp`, `Transp`,
   `Glue` as first-class kernel rules with subterm validation.
@@ -655,7 +655,7 @@ part of the shipping release:
 **Trust boundary**
 
 - **Trusted-base kernel** — LCF-style core with allowlist-gated
-  SMT proof-tree replay (28 Z3 rules + 29 ALETHE rules),
+  SMT proof-tree replay (28 the SMT backend rules + 29 ALETHE rules),
   hierarchical composition via `CoreTerm::App`, UIP rejection
   for univalence preservation. Targeting &lt; 5 KLOC.
 - **NbE kernel** — independent normalisation-by-evaluation
@@ -685,8 +685,7 @@ part of the shipping release:
 - **Obligation-level profiling** — `--profile-obligation`
   breakdown with per-obligation timings.
 - **Solver diagnostic side channels** — `--dump-smt` /
-  `--solver-protocol` / `--lsp-mode` threaded through both Z3
-  and CVC5 backends.
+  `--solver-protocol` / `--lsp-mode` threaded through both multiple SMT backends backends.
 - **`core.verify` stdlib** — user-facing surface mirroring the
   compiler's `VerificationLevel` / `ProofAttempt` /
   `VerificationOutcome` / certificate-envelope types.

@@ -169,8 +169,7 @@ not implementation: `List` (not `Vec`), `Text` (not `String`).
 
 **SMT** — Satisfiability Modulo Theories. The class of solvers Verum's
 verification backend dispatches to. Language-level Verum does not commit
-to a specific SMT solver; the current implementation bundles Z3 and
-CVC5 as backends behind the capability router, and a Verum-native
+to a specific SMT solver; the current implementation bundles multiple SMT backends as backends behind the capability router, and a Verum-native
 solver is on the roadmap.
 
 **SSA** — Static single assignment form. Used by CBGR analysis.
@@ -209,6 +208,6 @@ suite at `vcs/`.
 
 ## Z
 
-**Z3** — One of the SMT solvers the current verification backend can
-dispatch to (alongside CVC5). Implementation detail, not a language
+**the SMT backend** — One of the SMT solvers the current verification backend can
+dispatch to (alongside the SMT backend). Implementation detail, not a language
 commitment — see **SMT**.

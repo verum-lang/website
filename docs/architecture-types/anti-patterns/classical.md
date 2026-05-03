@@ -1,161 +1,97 @@
 ---
 sidebar_position: 2
-title: "Classical anti-patterns (AP-001 .. AP-009)"
-description: "The first nine ATS-V anti-patterns: capability escalation, boundary violation, dependency cycle, tier mixing, foundation drift, register mixing, stratum admissibility, composition associativity, lifecycle regression."
+title: "Capability / composition core (AP-001 .. AP-010)"
+description: "The first ten ATS-V anti-patterns: capability discipline, composition algebra, lifecycle ordering, foundation drift, register mixing, transaction / resource straddling, CVE-closure completeness."
 slug: /architecture-types/anti-patterns/classical
 ---
 
-# Classical anti-patterns (AP-001 .. AP-009)
+# Capability / composition core (AP-001 .. AP-010)
 
-The classical band covers the architectural defects that follow
-directly from the eight [ATS-V primitives](../primitives/overview.md).
-Every classical pattern is an *error by default*, every one fires
-during the **arch-check** phase (before composition is considered),
-and every one has a remediation that does not require redesigning
-the surrounding architecture.
+Band 1 covers the architectural defects that follow directly from
+the eight [ATS-V primitives](../primitives/overview.md) and the
+[CVE-closure](../cve/overview.md) discipline. Every pattern in
+this band fires during the **arch-check** phase (cog-by-cog,
+before composition is considered), and every one has a
+remediation that does not require redesigning the surrounding
+architecture.
 
 This page is the operational reference: each entry has a precise
-predicate, a worked example, the diagnostic the compiler emits, and
-the canonical remediation.
+predicate paraphrased from
+the canonical anti-pattern catalog and its per-pattern predicates, a worked
+example, the diagnostic the compiler emits, and the canonical
+remediation.
 
 For the catalog's overall structure see
 [Anti-pattern overview](./overview.md). For the predicate-level
-formalisation see [verification → soundness gates](../../verification/soundness-gates.md).
+formalisation see
+[verification → soundness gates](../../verification/soundness-gates.md).
 
 ---
 
 ## AP-001 — CapabilityEscalation {#ap-001}
 
-**Severity:** error · **Phase:** arch-check · **Stable since:** v0.1
+**Severity:** error in strict mode, warning in soft · **Phase:** arch-check · **Stable since:** v0.1
 
-**Predicate.** A cog's body exercises capability `c` while the
-cog's `Shape.exposes` does not contain `c` (or a capability that
-subsumes `c`).
+**Predicate.** `forall c ∈ inferred_used_capabilities(cog).
+c ∈ Shape.requires`. The cog's body must not invoke any
+capability that is not declared in `@arch_module(requires: [...])`.
 
-**What it catches.** A function calls `net.tcp.connect(...)` from
-inside a cog whose architectural Shape claims it only reads files.
-
-**Worked example — defect.**
-
-```verum
-@arch_module(
-    exposes: [Capability.Read(ResourceTag.File("./config"))],
-)
-module my_app.config_loader;
-
-public fn fetch_remote_config(url: &Text) -> Result<Config, Error> {
-    let body = net.http.get(url)?;       // <-- AP-001 here
-    parse_config(body)
-}
-```
+**Why it matters.** Capability declarations are the architecture's
+audit trail: a cog that *uses* something it didn't *declare* is
+an unaudited surface. The auditor reading the `@arch_module`
+attribute would conclude the cog is harmless; the runtime would
+disagree.
 
 **Diagnostic.**
-
 ```text
-error[ATS-V-AP-001]: capability escalation
-  --> src/config_loader.vr:7:16
-   |
- 7 |     let body = net.http.get(url)?;
-   |                ^^^^^^^^^^^^^^^^^^ body uses
-   |                Capability.Network(Http, Outbound),
-   |                but cog `my_app.config_loader` does not
-   |                expose this capability.
-   |
-note: cog declares
-        @arch_module(
-          exposes: [Capability.Read(File("./config"))],
-        )
-help: either
-   1. add Capability.Network(Http, Outbound) to `exposes`, or
-   2. move the network call into a child cog whose Shape
-      encapsulates the capability.
+ATS-V-AP-001 [error] in cog `my_app.checkout`:
+  Capability/ies not declared in @arch_module(requires): network, persist
+  Cog uses 2 capability/ies that are not declared in its
+  @arch_module(requires). Add them to the requires list, or remove the usage.
 ```
 
-**Remediation.** Either declare the missing capability in the
-cog's `exposes`, or factor the call into a child cog:
+**Remediation.** Add the inferred capabilities to the `requires`
+list, or remove the usage in the body.
 
 ```verum
-// child cog encapsulates the network capability
-@arch_module(exposes: [Capability.Network(Http, Outbound)])
-module my_app.config_loader.remote_fetch;
+// Before — body uses Database, attribute doesn't declare it.
+@arch_module(requires: [Logger])
+module my_app.checkout;
+fn process() using [Database, Logger] -> Bool { ... }
 
-// parent cog now exposes only File reads
-@arch_module(
-    exposes:       [Capability.Read(ResourceTag.File("./config"))],
-    composes_with: ["my_app.config_loader.remote_fetch"],
-)
-module my_app.config_loader;
+// After — declaration matches inferred surface.
+@arch_module(requires: [Database, Logger])
+module my_app.checkout;
 ```
-
-**Why the asymmetry.** Over-declaration is *always* permitted —
-listing `Network(Http, Outbound)` in `exposes` when the body
-never makes the call is fine; the architectural type system is
-conservative. Under-declaration is the error.
 
 ---
 
-## AP-002 — BoundaryViolation {#ap-002}
+## AP-002 — CapabilityLeak {#ap-002}
 
 **Severity:** error · **Phase:** arch-check · **Stable since:** v0.1
 
-**Predicate.** A message crosses a cog's `Boundary` without
-satisfying every entry in `Boundary.invariants`.
+**Predicate.** `forall c : Linear ∈ uses(cog). c.scope ⊆ cog.scope`.
+Linear / affine capabilities (under `@quantity(1)`) must be
+consumed exactly once within the issuing scope.
 
-**What it catches.** A cog declares
-`BoundaryInvariant.AuthenticatedFirst` on its inbound boundary,
-but a public function processes the first byte of an inbound
-message before the authentication handshake.
-
-**Worked example — defect.**
-
-```verum
-@arch_module(
-    preserves: [BoundaryInvariant.AuthenticatedFirst,
-                BoundaryInvariant.BackpressureHonoured],
-)
-module my_app.api.handler;
-
-public fn handle_request(req: &Request) -> Response {
-    log.info(f"request body: {req.body}");   // <-- reads body
-    let auth = req.headers.get("Authorization");
-    if !validate_auth(auth) {                 // <-- auth check AFTER body read
-        return Response.unauthorised();
-    }
-    process(req)
-}
-```
+**Why it matters.** Linear capabilities encode resources that
+must not duplicate (a one-shot token, a file handle that must
+close, an authorisation that must be exercised). Letting one
+escape its issuing scope breaks the multiplicity contract — the
+caller may inadvertently double-spend.
 
 **Diagnostic.**
-
 ```text
-error[ATS-V-AP-002]: boundary violation
-  --> src/handler.vr:7:5
-   |
- 7 |     log.info(f"request body: {req.body}");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ first byte of inbound
-   |                                          message is consumed
-   |                                          BEFORE validate_auth.
-   |
-note: cog declares preserves [AuthenticatedFirst, ...]
-help: move authentication BEFORE any other access to req.body.
+ATS-V-AP-002 [error] in cog `my_app.payment`:
+  3 linear/affine capability/ies escape their scope
+  A capability marked linear or affine via @quantity(1) was passed beyond
+  its declared scope. Linear capabilities must be consumed exactly once
+  within their issuing scope.
 ```
 
-**Remediation.** Restructure so authentication runs first:
-
-```verum
-public fn handle_request(req: &Request) -> Response {
-    let auth = req.headers.get("Authorization");
-    if !validate_auth(auth) {
-        return Response.unauthorised();
-    }
-    log.info(f"request body: {req.body}");
-    process(req)
-}
-```
-
-The boundary checker walks the function body in order and emits
-the diagnostic at the *first* operation that violates the
-invariant — typically the easiest violation to remediate.
+**Remediation.** Consume the capability within scope, or change
+`@quantity(1)` to `@quantity(omega)` if duplication is
+acceptable.
 
 ---
 
@@ -163,47 +99,33 @@ invariant — typically the easiest violation to remediate.
 
 **Severity:** error · **Phase:** post-arch · **Stable since:** v0.1
 
-**Predicate.** The directed graph induced by `Shape.composes_with`
-across all cogs in a project contains a cycle.
+**Predicate.** `acyclic(composes_with_graph)`. The cog must not
+participate in any cycle of `@arch_module(composes_with: [...])`
+declarations.
 
-**What it catches.** Two cogs that mutually `composes_with` each
-other, or a longer chain `A → B → C → A`.
+**Why it matters.** Architectural composition is a forest, not a
+graph. A cycle means the architecture has no well-founded order
+of construction — the cogs mutually depend without a base case.
+This often indicates a missing protocol boundary that should
+break the cycle.
 
-**Worked example — defect.**
-
-```verum
-@arch_module(composes_with: ["my_app.b"])
-module my_app.a;
-
-@arch_module(composes_with: ["my_app.a"])    // <-- forms a cycle
-module my_app.b;
-```
+**Detection.** Tarjan-style: any cycle involving the cog
+(self-loop, or two-or-more cogs forming a strongly-connected
+component) triggers. Pure reachability to *some* cyclic component
+downstream does **not** trigger — the question is "does this cog
+participate in a cycle?", not "does it observe one downstream?".
 
 **Diagnostic.**
-
 ```text
-error[ATS-V-AP-003]: composition cycle detected
-  cycle: my_app.a → my_app.b → my_app.a
-help: introduce a third cog whose Shape mediates the relationship,
-      or split one of the cogs along the dependency boundary.
+ATS-V-AP-003 [error] in cog `my_app.alpha`:
+  Cog my_app.alpha participates in a dependency cycle
+  Cog my_app.alpha appears in a cycle of @arch_module(composes_with)
+  declarations. Architectural composition graphs must be acyclic.
 ```
 
-**Remediation.** Cycles in architectural composition signal an
-under-specified boundary. Introduce a *mediator* cog:
-
-```verum
-@arch_module(composes_with: ["my_app.shared_state"])
-module my_app.a;
-
-@arch_module(composes_with: ["my_app.shared_state"])
-module my_app.b;
-
-@arch_module(/* no composes_with */)
-module my_app.shared_state;
-```
-
-The mediator carries the shared concern; A and B each compose
-with the mediator instead of each other.
+**Remediation.** Break the cycle by introducing a protocol
+boundary (a `type ... is protocol { ... }` that both cogs use)
+or by extracting the shared concern into a third cog.
 
 ---
 
@@ -211,156 +133,114 @@ with the mediator instead of each other.
 
 **Severity:** error · **Phase:** arch-check · **Stable since:** v0.1
 
-**Predicate.** A cog at `Tier.Aot` directly invokes a function in
-a cog at `Tier.Interp` (or vice versa) without an explicit
-tier-bridge attribute.
+**Predicate.** `forall callee_tier. caller.at_tier.compatible_with(callee_tier)`.
+Tier compatibility (per `Tier::compatible_with`):
 
-**What it catches.** A production AOT-compiled cog accidentally
-calls into a development-time interpretive cog whose code does
-not survive AOT compilation.
+- Same-tier compositions are always compatible.
+- A `MultiTier { allowed }` is compatible with every tier in
+  `allowed`.
+- The `Check` tier is incompatible with every actual-runtime
+  tier (it is type-check-only — nothing runs).
+- Different tiers without a `@arch_tier_bridge` are
+  incompatible.
 
-**Worked example — defect.**
+**Why it matters.** Tier 0 (interpreter), Tier 1 (AOT) and
+Tier 2 (GPU) have distinct execution semantics, calling
+conventions and runtime invariants. Crossing tiers without a
+bridge silently produces undefined behaviour.
 
-```verum
-@arch_module(at_tier: Tier.Aot)
-module my_app.ledger;
-
-@arch_module(at_tier: Tier.Interp)
-module my_app.repl_helpers;
-
-// In ledger.vr:
-mount my_app.repl_helpers;
-fn process(tx: Tx) -> ... {
-    repl_helpers.dump(tx)               // <-- AP-004
-}
-```
-
-**Remediation.** Either remove the cross-tier call, or introduce
-a `@bridge(...)` attribute on the receiving function:
-
-```verum
-@bridge(from: Tier.Aot, to: Tier.Interp)
-public fn dump(tx: Tx) -> ()
-```
-
-A bridge lifts the architectural ban but introduces a runtime
-boundary the bridge author is responsible for documenting.
+**Remediation.** Either change `at_tier` to `MultiTier` with the
+called tiers included, or introduce an explicit
+`@arch_tier_bridge` annotation describing the bridge's
+preservation contract.
 
 ---
 
 ## AP-005 — FoundationDrift {#ap-005}
 
-**Severity:** error · **Phase:** arch-check · **Stable since:** v0.1
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.1
 
-**Predicate.** Two cogs that `composes_with` each other declare
-`Shape.foundation` values from incompatible meta-theoretic
-profiles, and no `@bridge_foundation(...)` mediator is present.
+**Predicate.**
+`forall (A, B) ∈ composes. A.foundation = B.foundation ∨ A.foundation ⊑ B.foundation ∨ B.foundation ⊑ A.foundation`.
+Two cogs may compose only when their foundations are the same,
+or one is *directly subsumed* by the other (canonical inclusions
+only: CIC ⊃ MLTT, Cubical ⊃ HoTT). Cross-paradigm composition
+requires an explicit functor-bridge cited via
+`@framework(bridge_corpus, ...)`.
 
-**What it catches.** A ZFC-grounded production cog imports a
-HoTT-grounded research cog without an explicit functor-bridge
-proving the foundations are reconciled.
+**Why it matters.** Foundations carry meta-theoretic strength
+assumptions. Composing a HoTT cog with a ZFC-only cog mixes
+universe ascent / cumulativity disciplines that are
+demonstrably distinct; without a bridge, theorems proven in one
+foundation cannot be cited in the other.
 
-**Worked example — defect.**
-
-```verum
-@arch_module(foundation: Foundation.ZfcTwoInacc)
-module my_app.production;
-
-@arch_module(foundation: Foundation.Hott)
-module my_app.research;
-
-// In production.vr:
-mount my_app.research;       // <-- AP-005 unless @bridge_foundation
-```
-
-**Compatibility table.** Verum currently recognises the
-following foundation pairs as compatible without a bridge:
-
-- `ZfcTwoInacc ⟷ Cic` (CIC's universe hierarchy is interpretable in ZFC + 2-inacc)
-- `ZfcTwoInacc ⟷ Mltt`
-- `Hott ⟷ Cubical` (HoTT's identity types reduce to Cubical's path types)
-
-All other pairs require an explicit bridge.
-
-**Remediation.**
-
-```verum
-@bridge_foundation(from: Foundation.Hott, to: Foundation.ZfcTwoInacc,
-                   citation: "Voevodsky 2014 · simplicial set model")
-public fn lift_research_to_production(...) -> ...
-```
-
-The bridge function is a load-bearing axiom for the project's
-proof corpus and is enumerated by `verum audit --framework-axioms`.
+**Remediation.** Either align the foundations (move the
+composing cog into the same foundation), or add a functor-bridge
+declaration that translates predicates faithfully.
 
 ---
 
 ## AP-006 — RegisterMixing {#ap-006}
 
-**Severity:** error · **Phase:** post-arch · **Stable since:** v0.1
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A single proof body uses two distinct MSFS
-*registers* (proof modes — α-direct, ε-indirect, classical,
-constructive) without an explicit register-bridge tactic.
+**Predicate.** `forall citation ∈ proof_body(cog). citation.register ∉ Forbidden`.
+Per CVE §6.7 (L6 antiphilosophical invariant), formal theorems
+must not cite authoritative-appeal, phenomenological,
+traditional, interpretive or ontological-declaration sources as
+load-bearing justification. The forbidden register taxonomy is
+[`ForbiddenRegisterKind`](../../reference/glossary).
 
-**What it catches.** A `@verify(formal)` proof that mixes
-α-direct (forward) reasoning with ε-indirect (backward) reasoning
-in a way that breaks the bidirectional coherence the verifier
-relies on.
+**Why it matters.** A formal proof's load-bearing justification
+must be structural / kernel-discharged / formally-cited. An
+appeal to authority ("X said so") is an architectural defect at
+the proof level: it doesn't compose under transitive citation
+discipline.
 
-For the operational meaning of registers see
-[verification → articulation hygiene](../../verification/articulation-hygiene.md);
-the register discipline is part of the [actic-dual](../../verification/actic-dual.md)
-α/ε bidirectional system.
-
-**Remediation.** Use the register-bridge tactic explicitly,
-typically named `bridge_α_to_ε` or `bridge_ε_to_α`. The bridge
-makes the otherwise-implicit register transition load-bearing in
-the proof body.
-
----
-
-## AP-007 — StratumAdmissibility {#ap-007}
-
-**Severity:** error · **Phase:** arch-check · **Stable since:** v0.1
-
-**Predicate.** A cog whose `Shape.stratum` is *not* `MsfsStratum.LAbs`
-mentions `LAbs`-stratum content (typically reflective absolute
-quantification) without an admissibility certificate.
-
-**What it catches.** A `LFnd`-stratum cog accidentally references
-`LAbs`-stratum content, which is *inadmissible* under the AFN-T
-α condition (MSFS Theorem 5.1).
-
-**Why this matters.** `LAbs` content lives in the absolute
-universe; mentioning it from a foundational stratum without an
-admissibility check breaks the MSFS stratification that keeps
-the proof corpus consistent.
-
-**Remediation.** Either move the content into an `LAbs`-stratum
-cog, or add an `@admissibility_certificate(...)` attribute that
-documents the proof of admissibility (typically a
-forcing-extension argument).
+**Remediation.** Replace the forbidden register citation with a
+structural / kernel-discharged / formally-cited reference. The
+auditor's `verum audit --arch-discharges` report carries the
+exact citation location.
 
 ---
 
-## AP-008 — CompositionAssociativityBreak {#ap-008}
+## AP-007 — TxStraddling {#ap-007}
 
-**Severity:** error · **Phase:** post-arch · **Stable since:** v0.1
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A macro-expanded `composes_with` declaration
-produces a non-associative composition graph — i.e., expanding
-`(A ∘ B) ∘ C` differently from `A ∘ (B ∘ C)`.
+**Predicate.** `forall tx : Affine. !crosses_async(tx)`. An
+affine transaction (held under `@quantity(1)`) must not outlive
+its async scope.
 
-**What it catches.** A `@derive` macro that injects synthetic
-dependencies in a way that depends on parenthesisation.
-Architectural composition must be associative; a macro that
-breaks associativity is producing an unsound graph.
+**Why it matters.** A transaction held across an `await` point
+becomes ambiguous — does the suspended task still hold the
+transaction's lock? Different async runtimes answer differently;
+the architectural rule eliminates the ambiguity by structural
+prohibition.
 
-**Remediation.** This is a *macro-author* error rather than an
-end-user error. Macros are responsible for emitting associative
-compositions. The diagnostic identifies the macro and the
-synthetic edges.
+**Remediation.** Either commit / rollback before the await
+point, or restructure the transaction-bearing block inside a
+`nursery { ... }` so structured concurrency enforces scope.
+
+---
+
+## AP-008 — ResourceStraddling {#ap-008}
+
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
+
+**Predicate.** `forall h : LinearResource. !escapes_scope(h)`.
+File handles, database connections, mutexes — every linear
+resource must be released within its issuing scope (either
+explicitly closed or dropped at scope exit).
+
+**Why it matters.** Linear resources have invariants the type
+system tracks: a closed file handle should not be readable, a
+released mutex should not be held twice. Letting a resource
+escape its scope means those invariants leak into a context
+that cannot enforce them.
+
+**Remediation.** Wrap the resource in `using { ... }` (Verum's
+RAII form), or restructure so every successful path releases.
 
 ---
 
@@ -368,88 +248,63 @@ synthetic edges.
 
 **Severity:** error · **Phase:** post-arch · **Stable since:** v0.1
 
-**Predicate.** A cog with Lifecycle of rank R cites (via
-`composes_with`, `mount`, or direct call) a cog with Lifecycle
-of rank strictly less than R.
+**Predicate.** `forall (citing, cited) ∈ citations. citing.lifecycle.rank() ≥ cited.lifecycle.rank()`.
+A more-mature artefact must not cite a less-mature one. The
+ranking is fixed (per `Lifecycle::rank`):
+`[Т] > [О] = [С] > [П] > [Г] > [И] > [✗] > Obsolete`.
 
-**What it catches.** A `Lifecycle.Theorem` cog citing a
-`Lifecycle.Hypothesis` cog. The citing cog claims to be load-
-bearing-mature, but its dependency chain reveals it is in fact
-only as strong as a Hypothesis.
-
-**Worked example — defect.**
-
-```verum
-@arch_module(lifecycle: Lifecycle.Theorem("v1.0"))
-module my_app.production;
-
-@arch_module(lifecycle: Lifecycle.Hypothesis(ConfidenceLevel.Medium))
-module my_app.experimental;
-
-// In production.vr:
-mount my_app.experimental;          // <-- AP-009: rank 6 → rank 2
-```
+**Why it matters.** Citation transports load-bearing strength: a
+Theorem `[Т]` citing a Hypothesis `[Г]` makes the theorem only
+as strong as the hypothesis. Documents that purport to be
+mature corpus must not silently weaken themselves through
+backward citation.
 
 **Diagnostic.**
-
 ```text
-error[ATS-V-AP-009]: lifecycle regression
-  --> src/production.vr:3:7
-   |
- 3 | mount my_app.experimental;
-   |       ^^^^^^^^^^^^^^^^^^^ cog `my_app.production` (Theorem, rank 6)
-   |                          cites cog `my_app.experimental`
-   |                          (Hypothesis, rank 2). A Theorem cog
-   |                          MUST cite cogs of rank ≥ 6.
-   |
-help: either
-   1. mature `my_app.experimental` to Theorem / Definition / Conditional, or
-   2. demote `my_app.production` to a lower lifecycle rank, or
-   3. introduce a Lifecycle.Conditional intermediate that lists
-      "experimental_module is hypothetical" as a stated condition.
+ATS-V-AP-009 [error] in cog `my_app.checkout`:
+  Lifecycle regression: Theorem("v1.0") cites Hypothesis(Medium)
+  cited cog `my_app.experimental.zk_proof` lifecycle is below citing.
+  Maturity rank diff = 4 (Theorem ranks 6, Hypothesis ranks 2).
 ```
 
-**Remediation.** See the help text. The most common remediation
-is option (3) — wrap the regression in an explicit
-`Conditional` cog that names the hypothesis as a stated
-condition. The audit chronicle then records the hypothesis as a
-load-bearing assumption.
-
-**Companion check.** A *transitive* form of this pattern,
-[`AP-026 TransitiveLifecycleRegression`](./coherence.md#ap-026),
-fires when the chain spans more than one hop — e.g., `A → B → C`
-where each direct edge is OK but the end-to-end chain exposes a
-low-rank intermediate.
+**Remediation.** Either mature the cited artefact to at least
+the citing artefact's rank, or downgrade the citing artefact
+explicitly. The audit chronicle records every conscious
+downgrade.
 
 ---
 
-## Pattern interactions
+## AP-010 — CveIncomplete {#ap-010}
 
-The classical band patterns are largely independent — fixing
-one does not introduce another. There are two notable
-interactions:
+**Severity:** error in strict mode, warning in soft · **Phase:** arch-check · **Stable since:** v0.2
 
-- **AP-001 + AP-019 (CapabilityLaundering).** AP-001 catches
-  *direct* capability use without declaration; AP-019 (in the
-  coherence band) catches *indirect* laundering — capability
-  erased by transit through an unmarked boundary.
-- **AP-009 + AP-026 (TransitiveLifecycleRegression).** AP-009 is
-  the direct edge check; AP-026 walks the closure.
+**Predicate.** `Shape.strict ⇒ Shape.cve_closure.is_fully_closed()`.
+A strict-mode cog must declare all three CVE-closure axes:
 
-Each pair has a more-precise variant in a higher band. The
-classical band catches the obvious cases at compile time;
-the coherence band catches the subtle cases at audit time.
+- **C** — Constructive witness (function or constructor path).
+- **V** — Verification strategy (one of the nine `@verify(...)`
+  ladder rungs).
+- **E** — Executable artefact (entry point or audit command).
 
-## Cross-references
+Soft-mode cogs may have missing axes (warning); strict-mode
+cogs must close the triple.
 
-- [Anti-pattern overview](./overview.md) — the four bands.
-- [Articulation anti-patterns](./articulation.md) — AP-010..018.
-- [Coherence anti-patterns](./coherence.md) — AP-019..026.
-- [Modal-temporal anti-patterns](./mtac.md) — AP-027..032.
-- [Capability primitive](../primitives/capability.md) — what
-  AP-001 enforces.
-- [Lifecycle primitive](../primitives/lifecycle.md) — what AP-009
-  enforces.
-- [Three orthogonal axes](../orthogonality.md) — why AP-001
-  catches a different defect class than the property type
-  checker.
+**Why it matters.** CVE-closure is the operational engineering
+contract: every claim has a constructive witness, a verification
+mechanism, and an executable artefact. Missing an axis means the
+claim doesn't compose under the CVE discipline.
+
+**Remediation.** Add the missing axes via
+`@arch_module(cve_closure: { ... })`, or demote `strict: true`
+to `strict: false` for cogs that are intentionally partial.
+
+---
+
+## See also
+
+- [Anti-pattern catalog overview](./overview.md) — the indexing
+  page with the full 32-entry table.
+- [Boundary / lifecycle / capability ontology (AP-011..AP-026)](./articulation.md)
+- [Modal-temporal anti-patterns (AP-027..AP-032)](./mtac.md)
+- [CVE three-axis closure](../cve/overview.md)
+- [ATS-V primitives — capability, foundation, tier, lifecycle](../primitives/overview.md)

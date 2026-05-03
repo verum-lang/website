@@ -11,13 +11,13 @@ both invoked from `commands::lint::lint_file`:
 1. **Text-scan engine** — fast, line-based, cheap. Catches the
    "rust-ism" class (`Box::new`, `Vec`, `String`, …) and any rule
    whose evidence is a regex shape. Implemented inline in
-   `crates/verum_cli/src/commands/lint.rs`.
+   `lint` module.
 2. **AST engine** — parses the file via `verum_lexer` +
    `verum_parser`, walks the resulting `Module` with the production
    `verum_ast::Visitor` trait. Used by every rule that needs
    structural knowledge: refinement predicates, attribute lists,
    `using [...]` clauses, mount paths, type signatures. Implemented
-   in `crates/verum_cli/src/commands/lint_engine.rs`.
+   in `lint_engine` module.
 
 The engines are orthogonal — text-scan rules have no AST, AST rules
 have no string view. Each runs independently per file and merges
@@ -185,7 +185,7 @@ default.
 ## Adding a new rule
 
 1. Add a struct with one `LintPass` impl in
-   `crates/verum_cli/src/commands/lint_engine.rs`.
+   `lint_engine` module.
 2. Add a `LintRule { name, level, description, category }` entry in
    the `LINT_RULES` const in `lint.rs` so `--list-rules`,
    `--explain`, and `--validate-config` see it.
@@ -267,5 +267,5 @@ someone reintroduces O(n²) behaviour.
 
 - **[Reference → Lint rules](/docs/reference/lint-rules)** — every rule the linter currently checks.
 - **[Reference → Lint configuration](/docs/reference/lint-configuration)** — the `[lint]` schema.
-- `crates/verum_cli/src/commands/lint_engine.rs` — the AST-engine source.
-- `crates/verum_cli/src/commands/lint.rs` — text-scan engine + `LintConfig` + presets.
+- `lint_engine` module — the AST-engine source.
+- `lint` module — text-scan engine + `LintConfig` + presets.

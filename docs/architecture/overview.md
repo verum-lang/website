@@ -277,8 +277,8 @@ A stable bytecode gives:
 
 ### Why dual-backend SMT?
 
-Z3 excels at linear arithmetic, arrays, and quantifier-free
-fragments. CVC5 excels at strings, bitvectors with interpretation,
+The SMT backend excels at linear arithmetic, arrays, and quantifier-free
+fragments. the SMT backend excels at strings, bitvectors with interpretation,
 and theory combinations. The capability router classifies each
 obligation's theory and dispatches — better coverage than either
 solver alone.
@@ -311,8 +311,7 @@ implementations.
   layout, capability bits, VBC tier opcodes, MLIR dialect.
 - **[Codegen](/docs/architecture/codegen)** — LLVM (CPU) and MLIR
   (GPU) backends.
-- **[SMT integration](/docs/architecture/smt-integration)** — how Z3
-  and CVC5 are wired in.
+- **[SMT integration](/docs/architecture/smt-integration)** — how multiple SMT backends are wired in.
 - **[Verification pipeline](/docs/architecture/verification-pipeline)**
   — Phase 3a + Phase 4 solver internals.
 - **[Incremental compilation](/docs/architecture/incremental-compilation)**

@@ -130,7 +130,7 @@ and range `i+1` satisfies `prev.smallest = curr.largest + gap + 2`
 carries three varints for ECT(0), ECT(1), and CE counters.
 
 `AckRanges` is a refinement-typed `List<AckRange>` where every sequence
-of `insert_pn` calls is proven by Z3 to preserve non-overlapping +
+of `insert_pn` calls is proven by the SMT backend to preserve non-overlapping +
 strictly-descending + gap ≥ 2 (V3 theorem).
 
 ## CONNECTION_CLOSE

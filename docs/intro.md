@@ -169,11 +169,11 @@ emitted at build time. **See
 | Type-level invariants | macros / runtime checks / external verifier | first-class refinement types `T { P(self) }` checked by SMT, erased at runtime |
 | Dependent types | external (Liquid Haskell, F\*) or unavailable | Σ, Π, identity types, cubical paths, integrated with unification |
 | Architectural typing | diagrams, READMEs, code-review folklore | typed `@arch_module(...)` annotation; capability + boundary + lifecycle + foundation discipline enforced at build time |
-| Trusted base | implicit (whole compiler) | layered kernel — a hand-auditable Verum-source bootstrap, a minimal Rust trusted-base proof checker, an audit registry decomposing every rule's meta-theoretic footprint |
+| Trusted base | implicit (whole compiler) | layered kernel — a hand-auditable Verum-source bootstrap, a minimal trusted-base proof checker, an audit registry decomposing every rule's meta-theoretic footprint |
 | Differential testing | typically none | two independent algorithmic kernels run in parallel + mutation fuzzing; any disagreement fails the audit |
 | Memory safety | borrow checker (no opt-out without `unsafe`) | three tiers: safe by default, compiler-proven-safe where provable, manually-proven-safe at FFI boundary |
 | Effects / contexts | hidden globals + ad-hoc thread-locals | explicit `using [...]` clause — propagates across async, no implicit injection. Same grammar drives runtime DI and compile-time meta-contexts |
-| SMT integration | none / single backend | multi-backend (Z3, CVC5, specialised dependent / exhaustiveness / refinement) with capability routing |
+| SMT integration | none / single backend | multi-backend (the SMT backend, specialised dependent / exhaustiveness / refinement) with capability routing |
 | Proof export | external | Lean / Coq / Dedukti / Metamath / Isabelle export plus program extraction |
 | Stdlib type names | implementation-leaking (`Vec`, `String`, `HashMap`) | semantic-honest (`List`, `Text`, `Map`, `Heap`, `Shared`) |
 | Framework axioms | implicit / undocumented | every cited axiom carries a structured citation; the trusted boundary is enumerable |

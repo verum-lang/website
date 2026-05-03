@@ -104,9 +104,9 @@ PBT deep dive in **[Tooling → Property testing](/docs/tooling/property-testing
 
 ```bash
 verum verify [FILE] --mode <runtime|static|formal|fast|thorough|certified|synthesize> \
-                    --solver <z3|cvc5|auto|portfolio|capability> \
+                    --solver <auto|portfolio|capability> \
                     --timeout 120 [--cache] [--function NAME] [--diff GIT_REF] \
-                    [--verify-profile NAME] [--smt-proof-preference z3|cvc5] \
+                    [--verify-profile NAME] [--smt-proof-preference auto] \
                     [--profile] [--profile-obligation] [--budget DURATION] \
                     [--export PATH] [--distributed-cache URL] \
                     [--closure-cache] [--closure-cache-root PATH] \
@@ -163,7 +163,7 @@ for the workflow see
 | `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem |
 | `--kernel-intrinsics` | Kernel intrinsic registry — every `kernel_*` dispatch entry |
 | `--kernel-discharged-axioms` | Axioms admitted under `@kernel_discharge(...)` markers |
-| `--differential-kernel` | Two-kernel agreement (trusted base vs NbE) |
+| `--differential-kernel` | Three-kernel agreement (trusted base + NbE + kernel_v0 manifest verifier) |
 | `--differential-kernel-fuzz` | 11-variant mutation property fuzz over the kernel registry |
 | `--reflection-tower` | MSFS-grounded 4-stage meta-soundness |
 | `--codegen-attestation` | Per-pass codegen kernel-discharge status |
@@ -234,6 +234,18 @@ for the workflow see
 | `--signatures` | cross-format-roundtrip signatures audit |
 | `--docker` | container-image reproducibility check |
 
+#### Domain-specific dispatcher band
+
+`verum audit` surfaces several focused dispatchers that route
+specific predicate shapes to specialised solvers. Each
+dispatcher reuses the existing capability-router infrastructure
+(no new FFI surface) and produces a structured outcome the
+audit gate maps onto a verdict.
+
+| Flag | Dispatcher | Routes |
+|------|------------|--------|
+| `--count-o-dispatch` | `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → the SMT backend Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
+
 #### Aggregator (1 gate)
 
 | Flag | Verifies |
@@ -262,7 +274,7 @@ run all of them.
 | `--solver-protocol` | Log every solver send/recv on stderr, prefixed `[→]` / `[←]`. |
 | `--lsp-mode` | Emit LSP `Diagnostic` JSON on stdout, one per line. Suppresses human output. |
 | `--interactive-tactic` | Ltac2-style tactic REPL — prints the goal, accepts tactics one line at a time. |
-| `--smt-proof-preference BACKEND` | Which backend exports proof traces for `Certified` strategy. Default `cvc5` (ALETHE, more stable). |
+| `--smt-proof-preference BACKEND` | Which backend exports proof traces for `Certified` strategy. Default `smt-backend` (ALETHE, more stable). |
 | `--closure-cache` | Opt in to per-theorem closure-hash incremental verification. Theorem proofs whose fingerprint + Ok-verdict are cached are skipped without invoking the SMT/kernel re-check. See **[Tooling → Incremental cache](/docs/tooling/incremental-cache)**. |
 | `--closure-cache-root PATH` | Override the cache root (default `<input.parent>/target/.verum_cache/closure-hashes/`). Implies `--closure-cache`. Standard CI use is to point this at a shared NFS path. |
 | `--ladder` | Route every `@verify(strategy)` annotation through the typed 13-strategy ladder dispatcher. Emits per-theorem verdicts (Closed / Open / DispatchPending / Timeout) plus a totals summary. Non-zero exit on Open / Timeout (real failures); DispatchPending is advisory. See **[Verification → CLI workflow → Ladder](/docs/verification/cli-workflow)**. |
@@ -527,6 +539,155 @@ verum workspace add <path>
 verum workspace remove <name>
 verum workspace exec -- <command> [args...]
 ```
+
+## Architectural type system (`verum arch`)
+
+```bash
+verum arch primitives [--format plain|json]
+verum arch catalog    [--format plain|json]
+verum arch rules      [--format plain|json]
+verum arch graph      [--cog NAME] [--format dot|json]
+```
+
+Per `internal/specs/ats-v.md` §32.4 (dual-audience design),
+these commands provide structured machine-readable surfaces for
+coding-agents alongside human-friendly CLI output:
+
+| Subcommand | What it surfaces |
+|---|---|
+| `primitives` | The eight ATS-V primitives (Capability / Boundary / Lifecycle / Foundation / Tier / MsfsStratum / CveClosure / VerifyStrategy) with their canonical variant rosters. |
+| `catalog`    | The 32-pattern anti-pattern catalog. Same data as `verum audit --arch-discharges`, surfaced without running the gate. |
+| `rules`      | The kernel-rule discharge inventory — same data the audit's `--kernel-rules` band reports. |
+| `graph`      | Per-cog `composes_with` graph rendering (Graphviz DOT or JSON). |
+
+For the catalog itself see
+**[Architecture-as-Types → anti-pattern overview](/docs/architecture-types/anti-patterns)**.
+
+## Cubical / HoTT primitives (`verum cubical`)
+
+```bash
+verum cubical primitives  [--format plain|json]
+verum cubical rules       [--format plain|json]
+verum cubical face <formula> [--output ...]
+```
+
+Inventory of the typed cubical / HoTT primitives (Path / Refl /
+J / Transp / Coe / Hcomp / Comp / Glue / Equiv / Univalence + 7
+more), the computation-rule registry, and the face-formula
+validator. Architectural foundation for foundation-neutral
+cubical type theory in Verum. See
+**[Tooling → Cubical](/docs/tooling/cubical)**.
+
+## Knowledge-base import (`verum import`)
+
+```bash
+verum import --from owl2-fs <FILE> [--out PATH]
+```
+
+Inverse of `verum export`. Reads an external knowledge-base
+format and emits a `.vr` file with the corresponding typed
+attributes. Currently supports OWL 2 Functional-Style Syntax;
+round-trips with `verum export --to owl2-fs`.
+
+For Coq / Lean4 / Mizar / Isabelle theorem import see
+`verum foreign-import` above.
+
+## Program extraction (`verum extract`)
+
+```bash
+verum extract [--target verum|ocaml|lean|coq] [--out DIR]
+```
+
+Walks the project for declarations marked with `@extract` /
+`@extract_witness` / `@extract_contract`, dispatches each to the
+program-extraction pipeline at the attribute's `ExtractTarget`,
+and emits per-target files at `<output>/<decl>.{vr,ml,lean,v}`.
+Default output dir is `extracted/`. See
+**[Verification → program extraction](/docs/verification/program-extraction)**.
+
+## Proof-term verification
+
+```bash
+verum check-proof    [--cert FILE]
+verum elaborate-proof <FILE> [--out DIR]
+```
+
+`check-proof` re-verifies a `.vproof` JSON certificate
+(`{ term, claimed_type, metadata }`) via the minimal kernel in
+`verum_kernel::proof_checker`. Exits 0 iff the term has the
+claimed type. The kernel's six rules form the irreducible
+trusted base — every other discharge route reduces to a sequence
+of rule applications this command can re-check.
+
+`elaborate-proof` walks every theorem / lemma / corollary in
+`<FILE>` and emits a `<theorem-name>.vproof` file per declaration
+into `<output-dir>` (default: `<source-dir>/elaborated/`). The
+output is consumable by `check-proof`.
+
+## Script-mode cache (`verum cache`)
+
+```bash
+verum cache path                 # show cache root
+verum cache list                 # entries by hash
+verum cache show <ENTRY>         # entry detail
+verum cache gc [--budget BYTES]  # evict LRU until under budget
+verum cache clear                # wipe everything
+```
+
+The script-mode VBC cache lives at `~/.verum/script-cache/`. It
+is content-addressed by source + compiler version + flags, so a
+hit is always a valid reuse — there is no "stale cache" failure
+mode. `gc` evicts least-recently-accessed entries until under a
+budget; `clear` removes everything.
+
+## Health & diagnostics (`verum doctor`)
+
+```bash
+verum doctor [--json] [--strict]
+```
+
+Health-check survey of the Verum installation. Verifies the home
+directory is writable, surveys the script cache and content
+store, parses any `verum.lock` in the cwd, and probes the
+permission-grammar surface. `--json` emits NDJSON for scripting;
+`--strict` exits non-zero on warnings as well as failures.
+
+For panic / fatal-signal crash reports see the
+[`verum diagnose`](#crash-reports) family above.
+
+## VBC archive inspection (`verum vbc-version`)
+
+```bash
+verum vbc-version <FILE>
+```
+
+Inspect a VBC archive header (magic, version, sections, hashes).
+Used to debug compiler / interpreter version skew between a
+built artefact and the running toolchain.
+
+## Git hooks (`verum hooks`)
+
+```bash
+verum hooks install   [--force]
+verum hooks uninstall
+verum hooks list
+```
+
+Manages git hooks for the current project. The `install`
+subcommand wires
+`verum lint --since HEAD --severity error` + `verum fmt --check`
+into `.git/hooks/pre-commit`. Each generated hook carries a
+header marker so `uninstall` only touches files we wrote.
+
+## Shell completions (`verum completions`)
+
+```bash
+verum completions <bash|zsh|fish|powershell> > <DEST>
+```
+
+Emits a shell-completion script for the named shell. Drop into
+the shell's completion path (e.g. `~/.zsh/completions/_verum`)
+to enable tab completion for every `verum` subcommand and flag.
 
 ## Services
 

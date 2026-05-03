@@ -50,8 +50,8 @@ $ verum verify --emit-smtlib src/stack.vr
 Run the SMT backend interactively on it:
 
 ```bash
-$ z3 -st target/smtlib/push_postcond.smt2
-$ cvc5 --stats target/smtlib/push_postcond.smt2
+$ smt-backend -st target/smtlib/push_postcond.smt2
+$ smt-backend --stats target/smtlib/push_postcond.smt2
 ```
 
 Time each obligation:
@@ -59,9 +59,9 @@ Time each obligation:
 ```bash
 $ verum analyze --refinement
  obligation                          routed      ms   result
- stack.push/postcond#1              z3           8   unsat
- stack.push/postcond#2              z3         340   unsat   ← slow
- stack.merge/postcond#3             cvc5        72   unsat
+ stack.push/postcond#1              smt-backend           8   unsat
+ stack.push/postcond#2              smt-backend         340   unsat   ← slow
+ stack.merge/postcond#3             smt-backend        72   unsat
  stack.balance/postcond#1           portfolio  800   unknown  ← problem
 ```
 
@@ -111,8 +111,8 @@ forall x: Int where 0 <= x && x <= max. P(x)
 
 #### 5. Nonlinear arithmetic
 
-Z3's nonlinear engine is limited; CVC5's is better. The capability
-router already sends nonlinear goals to CVC5, but if that's still
+The SMT backend's nonlinear engine is limited; the SMT backend's is better. The capability
+router already sends nonlinear goals to the SMT backend, but if that's still
 not enough, escalate:
 
 ```verum
@@ -157,8 +157,8 @@ goals are easier.
    @verify(certified)   // thorough + orthogonal cross-validation
    ```
 
-   The capability router already picks CVC5 for nonlinear / string
-   / finite-model-finding goals and Z3 for LIA / bitvectors / arrays,
+   The capability router already picks the SMT backend for nonlinear / string
+   / finite-model-finding goals and the SMT backend for LIA / bitvectors / arrays,
    so you do not need to pin a backend — escalating the strategy is
    the right lever.
 
@@ -201,8 +201,8 @@ conflicting verdicts:
 ```
 warning[V6104]: portfolio solvers disagreed
   obligation: critical_invariant#3
-  z3:   unsat (142 ms)
-  cvc5: sat  (counter-example: x = 17, y = 0)
+  smt-backend:   unsat (142 ms)
+  smt-backend: sat  (counter-example: x = 17, y = 0)
 ```
 
 This is exceedingly rare and indicates a potential solver bug. Action:

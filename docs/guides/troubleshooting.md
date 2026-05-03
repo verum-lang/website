@@ -58,8 +58,8 @@ macOS: `xcode-select --install`.
 
 Default timeout is 5 s per obligation. Causes:
 - Unbounded quantifier: `forall x: Int. P(x)` → bound it — `forall x in 0..n. P(x)`.
-- Heavy nonlinearity: escalate to `@verify(thorough)` — races Z3
-  with CVC5 (whose CAD engine is better at nonlinear arithmetic).
+- Heavy nonlinearity: escalate to `@verify(thorough)` — races the SMT backend
+  with the SMT backend (whose CAD engine is better at nonlinear arithmetic).
 - Cached stale result: `verum clean` and retry.
 
 Increase per-project: `verum.toml [verify] solver_timeout_ms = 30_000`.

@@ -80,8 +80,8 @@ At compile time:
 1. The compiler collects all `@logic` functions reachable from the
    refinements being checked.
 2. Each function is translated to SMT-LIB as a recursive / quantified
-   definition, using the solver's native support (Z3's `define-fun-rec`,
-   CVC5's `define-fun-rec` with fmf for termination).
+   definition, using the solver's native support (the SMT backend's `define-fun-rec`,
+   the SMT backend's `define-fun-rec` with fmf for termination).
 3. The axiom is asserted before the obligation is solved.
 
 The translator lives in `verum_smt::expr_to_smtlib`.
@@ -113,7 +113,7 @@ fn insert(t: RBTree, k: Int) -> RBTree
 
 The SMT solver proves the postcondition using the `@logic` axioms
 directly. No manual proof needed for linear arithmetic cases; for
-nonlinear or string-heavy cases, CVC5 is dispatched (see
+nonlinear or string-heavy cases, the SMT backend is dispatched (see
 **[SMT routing](/docs/verification/smt-routing)**).
 
 ## Inspecting the generated SMT-LIB
@@ -134,8 +134,8 @@ and is reported:
 ```
 warning[V6104]: solvers disagreed on obligation
   obligation:  is_rb(insert(t, k))
-  z3:          proved (230 ms)
-  cvc5:        sat (counter-example: t = Leaf, k = 0)
+  smt-backend:          proved (230 ms)
+  smt-backend:        sat (counter-example: t = Leaf, k = 0)
   action:      downgraded proof to sat=unknown; manual review required
 ```
 
@@ -307,7 +307,7 @@ term, but it cannot accept a false theorem.
 `@verify(certified)` is the stronger discharge — it runs cross-
 validation through an orthogonal technique (second SMT backend,
 tactic-based proof, or proof-carrying-code witness). A `@logic`
-function whose semantics diverge between Z3 and CVC5 is caught at
+function whose semantics diverge between multiple SMT backends is caught at
 this gate rather than silently accepted. See
 **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**.
 

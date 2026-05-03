@@ -87,7 +87,7 @@ max_udp_payload_size         ≥ 1200    (MIN_MAX_UDP_PAYLOAD_SIZE)
 ```
 
 The call site treats a `false` return as fatal
-(`TransportError.ProtocolViolation`). Z3 discharges V9 at compile
+(`TransportError.ProtocolViolation`). the SMT backend discharges V9 at compile
 time ([`v9_transport_params_theorem`](#references)).
 
 ## Wire encoding

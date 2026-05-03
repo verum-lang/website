@@ -670,7 +670,7 @@ The full mapping for the 22 built-in rules:
 | `shadow-binding` | style | info | off | info | info | hint |
 
 Implementation: see `LintPreset.level_for` in
-`crates/verum_cli/src/commands/lint.rs`.
+`lint` module.
 
 ## Precedence stack
 

@@ -109,30 +109,26 @@ longer a separate review pass; it is part of the compiler.
 The check above is the foundation; on top of it ATS-V layers a
 canonical catalog of architectural defects, each registered as a
 refinement-level predicate. As of the current revision the catalog
-has thirty-two entries split into four bands:
+has thirty-two entries split into three bands:
 
-- **Classical (AP-001 .. AP-009)** — capability escalation,
-  boundary violation, dependency cycle, tier mixing, foundation
-  drift, register mixing, lifecycle regression, composition
-  associativity break, identity violation. See
+- **Capability / composition core (AP-001 .. AP-010)** —
+  capability escalation, capability leak, dependency cycle, tier
+  mixing, foundation drift, register mixing, transaction /
+  resource straddling, lifecycle regression, CVE-closure
+  completeness. See
   [classical anti-patterns](./anti-patterns/classical.md).
 
-- **Articulation hygiene (AP-010 .. AP-018)** — circular
-  self-reference, ungrounded assumption, over-quantified scope,
-  retracted-citation use, undisclosed dependency, drift between
-  declaration and body, hypothesis without maturation plan,
-  interpretation in mature corpus, definition shadowing. See
-  [articulation anti-patterns](./anti-patterns/articulation.md).
+- **Boundary / lifecycle / capability ontology (AP-011 .. AP-026)** —
+  stratum admissibility, boundary invariants, wire encoding,
+  authentication, deterministic-test discipline, linear / affine /
+  relevant capability flavours, persistence and time-bound
+  contracts, transitive lifecycle, declaration vs body drift,
+  foundation-content alignment. See
+  [boundary / lifecycle / capability ontology anti-patterns](./anti-patterns/articulation.md).
 
-- **Coherence (AP-019 .. AP-026)** — α/ε bidirectional coherence
-  failure, MSFS-coordinate divergence, framework-axiom collision,
-  proof-export round-trip break, capability-laundering, foundation
-  forgery, transitive lifecycle regression, reflection-tower
-  exhaustion. See [coherence anti-patterns](./anti-patterns/coherence.md).
-
-- **Modal-temporal (AP-027 .. AP-032)** — premature observation,
-  decision-without-context, observer impersonation, modal
-  collision, temporal cycle, counterfactual divergence. See
+- **Modal-temporal (AP-027 .. AP-032)** — temporal inconsistency,
+  counterfactual brittleness, missed adjoint, universal-property
+  violation, phantom evolution, Yoneda-inequivalent refactor. See
   [modal-temporal anti-patterns](./anti-patterns/mtac.md) and the
   full [MTAC primitive set](../verification/msfs-coord.md).
 

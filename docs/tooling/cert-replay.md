@@ -16,7 +16,7 @@ for that contract.
 
 ## Mental model
 
-When Z3 proves `forall x. x >= 0 -> x + 1 >= 1`, it doesn't just
+When the SMT backend proves `forall x. x >= 0 -> x + 1 >= 1`, it doesn't just
 return `unsat`.  It produces a **proof certificate** — a structured
 record of the inference steps used to reach the conclusion.  Verum
 ingests this cert and:
@@ -26,7 +26,7 @@ ingests this cert and:
    recognised, the theory is one of the supported SMT-LIB logics,
    and the body / conclusion are non-empty.
 2. **Per-backend replay** (optional).  Hands the cert to one or
-   more replay backends (Z3, CVC5, veriT, OpenSMT, MathSAT) and
+   more replay backends (the SMT backend, veriT, OpenSMT, MathSAT) and
    collects each verdict.
 3. **Multi-backend consensus** (`@verify(certified)` semantics).
    The cert is committed to the proof corpus only when **every
@@ -58,19 +58,19 @@ Replay one cert through one backend.  The kernel-only check is
 ```bash
 $ verum cert-replay replay \
     --backend kernel_only \
-    --format cvc5_alethe \
+    --format alethe \
     --theory QF_LIA \
     --conclusion "(>= x 0)" \
     --body "(step 1 ...) (qed)"
 Certificate replay
-  format       : cvc5_alethe
+  format       : alethe
   theory       : QF_LIA
   conclusion   : (>= x 0)
   body_hash    : <blake3 hex>
 
 Kernel-only check (always runs):
   ✓ accepted (0ms)
-    detail: structural OK: format=cvc5_alethe, theory=QF_LIA, hash matches
+    detail: structural OK: format=alethe, theory=QF_LIA, hash matches
 ```
 
 When the backend is something other than `kernel_only`, the output
@@ -80,7 +80,7 @@ backend's verdict.
 You can also load a cert from a JSON file:
 
 ```bash
-verum cert-replay replay --backend z3 --cert proofs/foo.cert.json
+verum cert-replay replay --backend smt-backend --cert proofs/foo.cert.json
 ```
 
 ### `cross-check`
@@ -91,20 +91,20 @@ consensus.
 
 ```bash
 $ verum cert-replay cross-check \
-    --backend z3 --backend cvc5 --backend verit \
-    --format z3_proof --theory QF_LIA \
+    --backend smt-backend --backend verit \
+    --format smt_native --theory QF_LIA \
     --conclusion "(>= x 0)" --body "(step 1 ...) (qed)" \
     --output markdown
 # Cross-backend cert verdict
 
-- **format** — `z3_proof`
+- **format** — `smt_native`
 - **conclusion** — `(>= x 0)`
 
 | Backend | Verdict |
 |---|---|
 | `kernel_only` | ✓ accepted (0ms) — structural OK |
-| `z3` | ✓ accepted (0ms) — mock z3 accepted the cert |
-| `cvc5` | ✓ accepted (0ms) — mock cvc5 accepted the cert |
+| `backend-a` | ✓ accepted (0ms) — mock backend accepted the cert |
+| `backend-b` | ✓ accepted (0ms) — mock backend accepted the cert |
 | `verit` | ✓ accepted (0ms) — mock verit accepted the cert |
 
 **Consensus:** ✓ achieved (4 accepted / 0 rejected / 0 missing)
@@ -125,8 +125,8 @@ $ verum cert-replay backends --output markdown
 | Backend | Intrinsic |
 |---|---|
 | `kernel_only` | true |
-| `z3` | false |
-| `cvc5` | false |
+| `smt-backend` | false |
+| `smt-backend` | false |
 | `verit` | false |
 | `open_smt` | false |
 | `mathsat` | false |
@@ -143,14 +143,14 @@ The six supported formats:
 | Format | Description |
 |---|---|
 | `verum_canonical` | Verum's backend-independent canonical format.  Every production backend lowers to this; the kernel re-checker decomposes it into elementary kernel-rule applications. |
-| `z3_proof` | Z3's native `(proof ...)` format. |
-| `cvc5_alethe` | CVC5's ALETHE format — more stable across releases than Z3's native; recommended export target. |
-| `lfsc_pattern` | LFSC pattern format (CVC4 / CVC5 legacy). |
+| `smt_native` | the backend's native `(proof ...)` format. |
+| `alethe` | the backend's ALETHE format — more stable across releases than the backend's native; recommended export target. |
+| `lfsc_pattern` | LFSC pattern format (CVC4 / the SMT backend legacy). |
 | `open_smt` | OpenSMT2 native proof format. |
 | `mathsat` | MathSAT5 native proof format. |
 
-Aliases: `canonical` → `verum_canonical`, `z3` → `z3_proof`,
-`alethe` / `cvc5` → `cvc5_alethe`, `lfsc` → `lfsc_pattern`,
+Aliases: `canonical` → `verum_canonical`, `smt` → `smt_native`,
+`alethe` / `smt` → `alethe`, `lfsc` → `lfsc_pattern`,
 `opensmt` / `opensmt2` → `open_smt`, `mathsat5` → `mathsat`.
 
 ## Replay backends
@@ -161,7 +161,7 @@ The six replay backends:
   available.  Validates: integrity hash, recognised format,
   supported SMT-LIB theory, non-empty body / conclusion.  This is
   the trust anchor.
-- **`z3` / `cvc5` / `verit` / `open_smt` / `mathsat`** — external
+- **`smt-backend` / `verit` / `open_smt` / `mathsat`** — external
   solvers.  V0 ships stubs that return `ToolMissing`; V1+ wires
   production runners that invoke the actual tools.  The trait
   surface is unchanged, so CLI / docs / CI scripts continue to
@@ -174,12 +174,12 @@ Both `--cert FILE` (replay / cross-check) and the JSON output of
 
 ```json
 {
-  "format": "cvc5_alethe",
+  "format": "alethe",
   "theory": "QF_LIA",
   "conclusion": "(>= x 0) -> (>= (+ x 1) 1)",
   "body": "(step 1 ...) (step 2 ...) (qed ...)",
   "body_hash": "<blake3 hex of body>",
-  "source_solver": "z3-4.13.0"
+  "source_solver": "smt-backend-4.13.0"
 }
 ```
 
@@ -218,7 +218,7 @@ V0 ships:
 
 V1+ swaps in production runners that:
 
-- Invoke `z3 -in` / `cvc5 --proof-format=alethe` / `verit
+- Invoke the configured backends (e.g. `backend-a -in` / `backend-b --proof-format=alethe`) / `verit
   --proof=-` / etc.
 - Parse the per-tool output back to `ReplayVerdict::Accepted`
   with elapsed time and version detail.

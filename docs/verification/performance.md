@@ -53,17 +53,17 @@ verum smt-stats --top 10 --by-theory
 
 Under `--solver auto`, the router picks the cheapest backend for
 each theory class. Typical costs (measured on a desktop-class
-machine with Z3 4.12.2 / CVC5 1.0.9):
+machine with the SMT backend 4.12.2 / the SMT backend 1.0.9):
 
 | Theory                     | Typical time per obligation | Backend       | Escalation cost                     |
 |----------------------------|------------------------------|---------------|--------------------------------------|
-| Bool / LIA                 | 1–10 ms                      | Z3            | Rare; if it happens, reflect.        |
-| LRA (linear reals)         | 5–30 ms                      | Z3            | Nonlinear bump.                      |
-| Bitvector (< 64 bits)      | 5–20 ms                      | Z3            | Width blow-up at 256+.               |
-| Arrays + LIA               | 10–50 ms                     | Z3            | Extensionality ~ 200 ms.             |
-| Strings (basic)            | 20–200 ms                    | CVC5          | Quantified strings can hit seconds.  |
-| Nonlinear arith            | 50–5,000 ms                  | Z3 NLA        | Highly dependent on degree.          |
-| FMF quantifiers            | 100–10,000 ms                | CVC5 fmf_enum | Add triggers; often cuts 10×.         |
+| Bool / LIA                 | 1–10 ms                      | the SMT backend            | Rare; if it happens, reflect.        |
+| LRA (linear reals)         | 5–30 ms                      | the SMT backend            | Nonlinear bump.                      |
+| Bitvector (< 64 bits)      | 5–20 ms                      | the SMT backend            | Width blow-up at 256+.               |
+| Arrays + LIA               | 10–50 ms                     | the SMT backend            | Extensionality ~ 200 ms.             |
+| Strings (basic)            | 20–200 ms                    | the SMT backend          | Quantified strings can hit seconds.  |
+| Nonlinear arith            | 50–5,000 ms                  | the SMT backend NLA        | Highly dependent on degree.          |
+| FMF quantifiers            | 100–10,000 ms                | the SMT backend fmf_enum | Add triggers; often cuts 10×.         |
 | Mixed + quantifiers        | 500+ ms                      | Portfolio     | Biggest wins from reflection hints.  |
 
 If your obligation sits in the top two rows, it's already fast.
@@ -107,7 +107,7 @@ reflection model itself.
 ## 4. Quantifier trigger costs
 
 Universal quantifiers (`forall x. P(x)`) are the single biggest
-source of solver runaway. Z3 and CVC5 handle them via
+source of solver runaway. multiple SMT backends handle them via
 *instantiation*: each time the solver finds a term matching the
 trigger pattern, it instantiates the quantifier at that term.
 
@@ -153,8 +153,8 @@ as "trigger will silently fail to fire":
 | Code  | Defect                                        | Fix                                                      |
 |-------|-----------------------------------------------|----------------------------------------------------------|
 | W502  | No bound-var references                       | Trigger mentions no quantifier variable — it never fires. Usually means the syntax is off; the outer-scope term you meant to match isn't the trigger's target. |
-| W503  | Missing bound vars                            | Partial coverage — the listed variables aren't mentioned. Z3 can't instantiate them through this trigger alone. Add them to the pattern or provide a second trigger. |
-| W504  | Interpreted head                              | Trigger's outermost head is `+` / `<=` / `=` / Boolean combinators. Z3 never instantiates on interpreted heads — the trigger is dead code. Wrap the operand in an uninterpreted function or drop the trigger entirely. |
+| W503  | Missing bound vars                            | Partial coverage — the listed variables aren't mentioned. the SMT backend can't instantiate them through this trigger alone. Add them to the pattern or provide a second trigger. |
+| W504  | Interpreted head                              | Trigger's outermost head is `+` / `<=` / `=` / Boolean combinators. the SMT backend never instantiates on interpreted heads — the trigger is dead code. Wrap the operand in an uninterpreted function or drop the trigger entirely. |
 
 The validation runs unconditionally on every extracted
 trigger — a project that emits thousands of triggers sees
@@ -173,7 +173,7 @@ ensures forall x, y: Int. x + y == y + x
 Rewrite:
 
 ```verum
-// Use an auxiliary uninterpreted function so Z3 has
+// Use an auxiliary uninterpreted function so the SMT backend has
 // something to instantiate on.
 @logic
 fn sum(x: Int, y: Int) -> Int { x + y }
@@ -212,8 +212,8 @@ solver version in `verum.toml`:
 
 ```toml
 [verify.solvers]
-z3-version   = "4.12.2"
-cvc5-version = "1.0.9"
+smt-backend-version   = "4.12.2"
+smt-backend-version = "1.0.9"
 ```
 
 ### 5.3 "Reflection unfolds dominate"
@@ -234,8 +234,8 @@ verum verify --mode proof --strategy certified <target> --on-disagreement=log
 
 This logs the disagreement without failing the build, so you can
 inspect whether a solver is buggy or the encoding is ambiguous.
-Common causes: non-linear arithmetic handled differently by Z3
-vs CVC5, or a user-defined function without `@logic` where the
+Common causes: non-linear arithmetic handled differently by the SMT backend
+vs the SMT backend, or a user-defined function without `@logic` where the
 solvers uninterpret the symbol differently.
 
 ### 5.5 "Timeout per obligation"
@@ -350,8 +350,8 @@ the CLI flags or by the user):
 All three are **pay-for-only-what-you-use**: solvers
 short-circuit the diagnostic calls at the env-var check, so
 the CI default (no env vars set) pays no observable
-overhead. Both `verum_smt::z3_backend` and
-`verum_smt::cvc5_backend` thread through the same
+overhead. Both `verum_smt::backend` and
+`verum_smt::backend` thread through the same
 `solver_diagnostics` helpers — a single IDE adapter can
 consume either backend's output without special-casing.
 
@@ -361,9 +361,9 @@ The `--dump-smt` output is directly replayable:
 
 ```bash
 verum verify --dump-smt /tmp/queries src/
-# … queries dumped to /tmp/queries/z3-query-*.smt2 …
+# … queries dumped to /tmp/queries/smt-backend-query-*.smt2 …
 
-verum verify --check-smt-formula /tmp/queries/z3-query-00042.smt2
+verum verify --check-smt-formula /tmp/queries/smt-backend-query-00042.smt2
 # sat
 ```
 

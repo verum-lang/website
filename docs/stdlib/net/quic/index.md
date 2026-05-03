@@ -318,7 +318,7 @@ language-layer issues that affect cross-cog symbol resolution:
    surface tests.
 
 Verification obligations V1–V10 from the QUIC spec are all
-discharged via Z3 (the `v*_theorem.vr` test files in the L2 suite).
+discharged via the SMT backend (the `v*_theorem.vr` test files in the L2 suite).
 CUBIC and BBR match RFC 9438 and draft-ietf-ccwg-bbr reference traces.
 `SimNetwork` provides deterministic replay for integration tests;
 `core.net.quic.transport.batch_io` exposes `recvmmsg` and `sendmmsg`

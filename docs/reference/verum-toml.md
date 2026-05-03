@@ -140,10 +140,10 @@ strictly increasing rigour:
 | `runtime`      | Runtime assertions                                            | Default for the `application` profile. |
 | `static`       | Dataflow + CBGR                                               | Trivially decidable refinements without SMT. |
 | `fast`         | Bounded SMT                                                   | ≤ 100 ms / goal; UNKNOWN-tolerant. |
-| `formal`       | Z3 + CVC5 portfolio                                           | Default `dev` for `research` profile. |
+| `formal`       | multiple SMT backends portfolio                                           | Default `dev` for `research` profile. |
 | `proof`        | User tactic + kernel re-check                                 | Promotes when SMT cannot discharge. |
 | `thorough`     | `formal` + invariants / frame / termination                   | Catches missing specs. |
-| `reliable`     | `thorough` + Z3 ∧ CVC5 cross-check                            | UNKNOWN on disagreement. |
+| `reliable`     | `thorough` + the SMT backend ∧ the SMT backend cross-check                            | UNKNOWN on disagreement. |
 | `certified`    | `reliable` + certificate re-check + cross-format export       | Default `release` for `research` profile. |
 | `synthesize`   | Inverse proof search → strictest non-synth strategy           | Holes filled by search; cost is unbounded. |
 
@@ -219,19 +219,19 @@ integer = seconds).
 
 ### `[verify.solver]` — solver tuning
 
-Direct passthroughs to `Z3Config`, `Cvc5Config`, and the
+Direct passthroughs to `SmtBackendConfig`, `SmtBackendConfig`, and the
 intermediate verifier configs. Each field is **load-bearing**
 — see [Architecture → SMT integration → Configuration knobs](/docs/architecture/smt-integration#configuration-knobs)
-for the full matrix and which Z3/CVC5 parameter scope each
+for the full matrix and which multiple SMT backends parameter scope each
 setting reaches.
 
 ```toml
 [verify.solver]
 # Solver selection
-backend                 = "auto"          # z3 | cvc5 | auto | portfolio | capability_router
+backend                 = "auto"          # auto | auto | portfolio | capability_router
 
-# Z3-specific tuning
-[verify.solver.z3]
+# the SMT backend-specific tuning
+[verify.solver.smt-backend]
 enable_proofs           = true
 minimize_cores          = true
 enable_interpolation    = false
@@ -242,8 +242,8 @@ enable_patterns         = true
 random_seed             = 42              # reproducibility (smt.random_seed)
 auto_tactics            = true            # auto_config Config param
 
-# CVC5-specific tuning
-[verify.solver.cvc5]
+# the SMT backend-specific tuning
+[verify.solver.smt-backend]
 logic                   = "ALL"           # SMT-LIB logic name
 timeout_ms              = 30_000          # tlimit-per
 incremental             = true
@@ -337,8 +337,8 @@ min_conflicts_to_cache  = 100
 min_solve_time_ms       = 100
 ```
 
-:::tip Z3 parameter-scope discipline
-Z3 has three parameter scopes that are **not interchangeable**:
+:::tip the SMT backend parameter-scope discipline
+The SMT backend has three parameter scopes that are **not interchangeable**:
 global (`set_global_param`), Config (`Config::set_param_value`),
 and Solver (`Params::set_u32` + `Solver::set_params`). The
 verifier picks the right scope per key empirically — for
@@ -361,9 +361,9 @@ Phase config (e.g. ContractVerificationPhase, StaticVerifier)
     ↓ (forwarded into the subsystem)
 Subsystem config (e.g. RefinementConfig, QEConfig, InterpolationConfig)
     ↓ (consulted by the verifier method)
-Backend-specific config (Z3Config / Cvc5Config)
+Backend-specific config (SmtBackendConfig / SmtBackendConfig)
     ↓ (per-call wiring on each fresh solver)
-Z3 Params / CVC5 options
+The SMT backend Params / the SMT backend options
 ```
 
 Every field in this chain has been audited for "set but never

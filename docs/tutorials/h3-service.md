@@ -82,7 +82,7 @@ public type TopicName is Text where
         || c == '_');
 ```
 
-The Z3 backend rejects any construction where the predicate fails;
+The SMT backend rejects any construction where the predicate fails;
 unit tests don't need to validate the type's invariant — the type
 system did.
 

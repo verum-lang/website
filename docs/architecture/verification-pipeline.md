@@ -12,7 +12,7 @@ two invocation points in the compilation pipeline:
 
 :::note Solver choice is an implementation detail
 The language layer talks to an abstract SMT backend. The current
-release dispatches to Z3 and CVC5 through the capability router; a
+release dispatches to multiple SMT backends through the capability router; a
 Verum-native solver is on the roadmap. Specific solver names below
 are notes about the current implementation, not part of Verum's
 language contract.
@@ -134,11 +134,11 @@ fn classify(obligation: &Obligation) -> TheorySet {
 
 fn route(theories: TheorySet) -> SolverChoice {
     match theories {
-        ts if ts <= (LIA | BV | Array | Quant)         => Z3,
-        ts if ts.contains(String) || ts.contains(NIA)   => CVC5,
-        ts if ts.contains(FiniteModelFinding)           => CVC5,
-        _ if in_portfolio_mode()                        => Portfolio { z3: true, cvc5: true },
-        _                                                => Z3,    // default bias
+        ts if ts <= (LIA | BV | Array | Quant)         => the SMT backend,
+        ts if ts.contains(String) || ts.contains(NIA)   => the SMT backend,
+        ts if ts.contains(FiniteModelFinding)           => the SMT backend,
+        _ if in_portfolio_mode()                        => Portfolio { primary: true, complementary: true },
+        _                                                => the SMT backend,    // default bias
     }
 }
 ```
@@ -227,11 +227,11 @@ Empirical on a 50 K-LOC mixed project, Apple M3 Max:
 
 | Theory mix | Count | Median (ms) | p95 | Preferred solver |
 |---|---:|---:|---:|---|
-| LIA only | 2,100 | 8 | 35 | Z3 |
-| LIA + bitvector | 940 | 14 | 60 | Z3 |
-| LIA + string | 110 | 45 | 180 | CVC5 |
-| Nonlinear (NIA) | 42 | 320 | 1,800 | CVC5 |
-| Cubical / path | 18 | 120 | 400 | cubical_tactic → Z3 |
+| LIA only | 2,100 | 8 | 35 | SMT backend |
+| LIA + bitvector | 940 | 14 | 60 | SMT backend |
+| LIA + string | 110 | 45 | 180 | SMT backend |
+| Nonlinear (NIA) | 42 | 320 | 1,800 | SMT backend |
+| Cubical / path | 18 | 120 | 400 | cubical_tactic → the SMT backend |
 | **overall** | 3,210 | 12 | 85 | — |
 
 ## Telemetry
@@ -240,9 +240,9 @@ Empirical on a 50 K-LOC mixed project, Apple M3 Max:
 `.verum/telemetry/routing.jsonl`:
 
 ```json
-{"obligation": "search/postcond#3", "theories": ["lia","array"], "routed": "z3", "ms": 8, "result": "unsat"}
-{"obligation": "parse/postcond#1", "theories": ["lia","string"], "routed": "cvc5", "ms": 72, "result": "unsat"}
-{"obligation": "crypto/invariant#7", "theories": ["lia","bv"], "routed": "portfolio", "z3_ms": 20, "cvc5_ms": 35, "agreed": true}
+{"obligation": "search/postcond#3", "theories": ["lia","array"], "routed": "smt-backend", "ms": 8, "result": "unsat"}
+{"obligation": "parse/postcond#1", "theories": ["lia","string"], "routed": "smt-backend", "ms": 72, "result": "unsat"}
+{"obligation": "crypto/invariant#7", "theories": ["lia","bv"], "routed": "portfolio", "primary_ms": 20, "complementary_ms": 35, "agreed": true}
 ```
 
 Used to tune the capability router and to detect regressions across
@@ -289,7 +289,7 @@ After the kernel lands, Verum's TCB is exactly:
 
 ### Consequences
 
-**SMT out of TCB.** Every SMT backend (Z3, CVC5, E, Vampire,
+**SMT out of TCB.** Every SMT backend (the SMT backend, E, Vampire,
 Alt-Ergo, Zipperposition, the forthcoming native solver) produces an
 `SmtCertificate` — a backend-neutral proof trace normalised by
 `verum_smt::proof_extraction`. The kernel's `replay_smt_cert`
@@ -311,7 +311,7 @@ rejected the elaborated term", not "false theorem accepted".
 
 All `CoreTerm` constructors have real typing rules today except
 `SmtProof`, whose checker is the dedicated `replay_smt_cert` path.
-That routine lands per-backend in follow-up commits (Z3 proof format
+That routine lands per-backend in follow-up commits (the SMT backend proof format
 first), completing the "SMT out of TCB" story. Test coverage is
 maintained at 30 / 30 pass in `cargo test -p verum_kernel`.
 

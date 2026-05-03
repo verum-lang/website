@@ -91,17 +91,17 @@ project root.
 | `--strategy fast`             | `Fast`                 | 3 s     | Static encoding only.               |
 | `--strategy static` (default) | `Static`               | 30 s    | Single solver call.                 |
 | `--strategy formal`           | `Formal`               | 60 s    | Full tactic library.                |
-| `--strategy thorough`         | `Thorough`             | 300 s   | Portfolio race (Z3 + CVC5).         |
+| `--strategy thorough`         | `Thorough`             | 300 s   | Portfolio race (multiple SMT backends).         |
 | `--strategy certified`        | `Certified`            | 300 s   | Portfolio + kernel replay + cross-validation. |
-| `--strategy synthesize`       | `Synthesize`           | 600 s   | CVC5 SyGuS body synthesis (requires `synth-fun` in the obligation). |
+| `--strategy synthesize`       | `Synthesize`           | 600 s   | the SMT backend SyGuS body synthesis (requires `synth-fun` in the obligation). |
 
 ### Solver selection
 
 | Flag                | Meaning                                                     |
 |---------------------|-------------------------------------------------------------|
 | `--solver auto`     | Capability-router decides (default).                        |
-| `--solver z3`       | Force Z3 for every obligation.                              |
-| `--solver cvc5`     | Force CVC5 for every obligation.                            |
+| `--solver smt-backend`       | Force the SMT backend for every obligation.                              |
+| `--solver smt-backend`     | Force the SMT backend for every obligation.                            |
 | `--solver portfolio`| Parallel race, first `unsat` wins.                          |
 | `--solver capability`| Explicit capability-router invocation (diagnostic).        |
 
@@ -186,7 +186,7 @@ Ladder dispatch — per-theorem @verify(strategy) verdicts
 
   Theorem / lemma / corollary       Strategy            Verdict             Detail
   ─────────────────────────────────  ──────────────────  ──────────────────  ────────────────────
-  ring_add_comm                      formal              dispatch_pending    V1: portfolio SMT (Z3 + CVC5)
+  ring_add_comm                      formal              dispatch_pending    V1: portfolio SMT (multiple SMT backends)
   cbgr_check_runtime                 runtime             closed              runtime-assertion: cbgr_check_runtime (CBGR check fires at call site) (0ms)
 
   Verdict totals:
@@ -211,7 +211,7 @@ JSON shape:
     { "kind": "theorem", "name": "ring_add_comm",
       "file": "src/algebra.vr", "strategy": "formal",
       "verdict": "dispatch_pending",
-      "detail": "V1: portfolio SMT (Z3 + CVC5) via verum_smt::backend_switcher" }
+      "detail": "V1: portfolio SMT (multiple SMT backends) via verum_smt::backend_switcher" }
   ]
 }
 ```
@@ -257,7 +257,7 @@ CI patterns, trait surface).
 | `--diff GIT_REF`           | Limit verification to `.vr` files changed since `GIT_REF`.        |
 | `--interactive-tactic`     | Drop into a per-goal tactic console instead of the whole-program REPL. |
 | `--verify-profile NAME`    | Apply a `[verify.profiles.<name>]` block from `verum.toml`.       |
-| `--smt-proof-preference`   | `cvc5` | `z3` — backend to prefer for proof export.               |
+| `--smt-proof-preference`   | `smt-backend` — backend to prefer for proof export.               |
 
 The three SMT debug flags speak to env-var side channels
 (`VERUM_DUMP_SMT_DIR`, `VERUM_SOLVER_PROTOCOL`) that the solver
@@ -391,8 +391,8 @@ By theory:
     mixed theories          152   avg 88 ms
 
 By backend:
-    z3         3,945  (82%)   avg 18 ms
-    cvc5         612  (13%)   avg 142 ms
+    smt-backend         3,945  (82%)   avg 18 ms
+    smt-backend         612  (13%)   avg 142 ms
     portfolio    264   (5%)   avg 98 ms
 
 Top 5 slowest:
@@ -512,7 +512,7 @@ verification mode in editor settings without touching
 | Symptom                                      | First thing to try                                    |
 |----------------------------------------------|--------------------------------------------------------|
 | "Solver timeout"                             | `--strategy thorough` or `--timeout 120`               |
-| "Solver returned unknown"                    | `--solver portfolio` (race Z3 + CVC5)                  |
+| "Solver returned unknown"                    | `--solver portfolio` (race multiple SMT backends)                  |
 | "Counterexample not minimal"                 | `--minimize-timeout 60`                                |
 | "Verification is slow"                       | `verum smt-stats` → pick the theory bucket that dominates |
 | "Proof works locally, fails in CI"           | `verum smt-info` both sides; check solver version drift |

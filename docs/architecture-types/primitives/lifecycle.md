@@ -103,7 +103,7 @@ imports a `[О]` Definition cog which itself imports a `[Г]`
 Hypothesis cog. The direct relationship is OK (`[Т] → [О]`,
 both rank ≥ 5), but the transitive chain reveals the `[Т]` is
 ultimately resting on a `[Г]`. The
-[`AP-026 TransitiveLifecycleRegression`](../anti-patterns/coherence.md#ap-026)
+[`AP-024 TransitiveLifecycleRegression`](../anti-patterns/articulation.md#ap-024)
 anti-pattern walks the import graph and flags the chain.
 
 ## 4. Variant-by-variant operational guide
@@ -312,7 +312,7 @@ checks:
 | Check | Anti-pattern | When it fires |
 |-------|--------------|---------------|
 | Citing cog has lower rank than cited | [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009) | direct citation |
-| Citing chain exposes a low-rank link | [`AP-026 TransitiveLifecycleRegression`](../anti-patterns/coherence.md#ap-026) | transitive walk |
+| Citing chain exposes a low-rank link | [`AP-024 TransitiveLifecycleRegression`](../anti-patterns/articulation.md#ap-024) | transitive walk |
 | Citing a `[✗]` cog | [`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013) | direct citation |
 | `[Г]` Hypothesis without `@plan` | [`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016) | declaration site |
 | `[И]` Interpretation in `strict: true` | [`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017) | declaration site |
@@ -383,4 +383,4 @@ over re-deriving the values from the variant tag.
 - [Anti-pattern AP-013 RetractedCitationUse](../anti-patterns/articulation.md#ap-013)
 - [Anti-pattern AP-016 HypothesisWithoutMaturationPlan](../anti-patterns/articulation.md#ap-016)
 - [Anti-pattern AP-017 InterpretationInMatureCorpus](../anti-patterns/articulation.md#ap-017)
-- [Anti-pattern AP-026 TransitiveLifecycleRegression](../anti-patterns/coherence.md#ap-026)
+- [Anti-pattern AP-024 TransitiveLifecycleRegression](../anti-patterns/articulation.md#ap-024)

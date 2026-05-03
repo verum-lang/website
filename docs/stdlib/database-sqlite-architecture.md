@@ -463,6 +463,7 @@ end-to-end run-test that exists, exercising L0+L1 round-trip.
   levels, public API.
 - [`core.database`](./database) — high-level overview of the
   capability surface this engine exposes.
-- [`crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`](#) —
-  the guardrail Rust test that prevents stdlib-name shadowing inside
-  catalogues.
+- The catalogue-naming guardrail — a CI test that walks
+  `core/database/sqlite/native/` on every run and prevents
+  stdlib-name shadowing inside catalogues
+  (`Result`, `Maybe`, `List`, `Map`, `Set`, `Bytes`, …).

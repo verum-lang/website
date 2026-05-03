@@ -151,10 +151,10 @@ Define a function, verify it:
 fn abs : fn(Int) -> Int { self >= 0 }
 
 >>> :verify abs
-obligation abs/postcond          ✓ discharged  (z3, 4 ms)
+obligation abs/postcond          ✓ discharged  (smt-backend, 4 ms)
 
 >>> :verify abs --strategy certified
-obligation abs/postcond          ✓ discharged  (z3, 4 ms)
+obligation abs/postcond          ✓ discharged  (smt-backend, 4 ms)
 cross-validation                ✓ checked      (kernel, 18 ms)
 certificate                     → target/proof-cache/abs.verum-cert
 ```

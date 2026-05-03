@@ -16,6 +16,88 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — `count_o_unbounded` recognizer wires V2 dispatch into `verify_refinement` (2026-05-03)
+
+The V2 `count_o_dispatch` deliverable becomes load-bearing: a
+new pure AST-walking recognizer
+(`verum_smt::count_o_recognizer`) sits as a pre-pass at the top
+of `RefinementVerifier::verify_refinement`, detects the
+canonical conjunctive shape, materialises a `CountOQuery`, and
+routes the verdict through the dispatcher.
+
+  - 4-variant rejection classification (`NotCountOPredicate` /
+    `NoBoundClause` / `UnsupportedClosure` /
+    `UnsupportedPredicateBody`) for telemetry.
+  - Pattern matrix covers `Le` / `Lt` / `Ge` / `Gt` / `Eq`
+    bound clauses, both arg orders, both unqualified and
+    fully-qualified `count_o_unbounded` paths, and nested
+    conjunctions.
+  - Lt/Gt bounds normalise to LessEq(K-1) / GreaterEq(K+1).
+  - `@verify(runtime)` skips the pre-pass.
+  - 12 new recognizer tests + integration into the
+    `RefinementVerifier::verify_refinement` pre-pass.
+
+Distinct from `count_o_dispatch` itself (which shipped earlier
+today): this is the wiring that makes the dispatcher actually
+trigger from user-source refinement predicates.
+
+### Added — the SMT backend Finite Model Finding dispatch for `count_o_unbounded` (2026-05-03)
+
+OWL 2 `count_o_unbounded(Maybe.None, pred)` calls inside a
+refinement type carrying an explicit cardinality bound now
+dispatch to the SMT backend Finite Model Finding instead of always
+returning `Maybe.None`.
+
+  - New `verum_smt::count_o_dispatch` module with a focused
+    pipeline: `CountOQuery` → SMT-LIB assertion → `FmfQuery`
+    over an uninterpreted individual sort with cardinality ≤ K
+    → the SMT backend model enumeration → count extraction from the
+    `pred_o` definition (handles disjunctive bodies, `true` /
+    `false` shorthand, and clamps at the discovered domain
+    size).
+  - Four-variant `CountOResult` orthogonal to the SMT backend's
+    sat/unsat verdict: `Decided` (load-bearing), `BoundExceeded`
+    (promote V1 warning to a hard error), `Unsupported`
+    (the SMT backend not linked → V1 fallback), `Timeout`.
+  - `flag_count_o_dispatch` integrates with the capability
+    router by setting `needs_finite_model_finding=true` on the
+    goal's `ExtendedCharacteristics`; FMF policy already routes
+    to the SMT backend.
+  - Reuses every existing SMT piece — `smt_backend_advanced::FmfQuery`
+    / `find_finite_model` / `SmtAdvancedError::NotAvailable` —
+    no new FFI surface.
+
+Documented at
+[Verification → OWL 2 §5](/docs/verification/owl2#5-the-count_o-quantifier-of-quantity)
+and
+[Verification → SMT routing](/docs/verification/smt-routing#domain-specific-dispatchers).
+
+### Added — Three-kernel differential architecture (2026-05-03)
+
+The differential-kernel gate now aggregates three independent
+algorithmic implementations on every certificate:
+
+  - **Algorithm A** — `proof_checker.rs`: bidirectional
+    type-check with explicit substitution + WHNF (the trusted
+    base).
+  - **Algorithm B** — `proof_checker_nbe.rs`: closure-based
+    NbE with level-indexed quote.
+  - **Algorithm C** (new) — `KernelV0Kernel`: manifest-driven
+    bootstrap verifier anchoring structural type-check, every
+    kernel_v0_manifest rule's audit-clean discharge status, the
+    meta-soundness footprint, and per-rule strict-intrinsic
+    dispatch.
+
+Algorithm C is structurally orthogonal to A and B — it consults
+the bootstrap manifest + meta-soundness registry rather than
+re-walking the certificate's term — so a manifest-discharge
+drift surfaces as a slot-C-only failure even when A and B's
+runtime rules remain unchanged. `KernelRegistry::default()` now
+registers all three; any pairwise disagreement fails the audit.
+
+Documented at
+[Verification → Three-kernel architecture](/docs/verification/two-kernel-architecture).
+
 ### Fixed — `core/database/sqlite/alter` clone preserves validation-error variants (2026-04-29)
 
 The ALTER engine's `clone_failure` collapsed every
@@ -48,7 +130,7 @@ Fourth closure in the SMT exhaustiveness chain. Pre-fix
 `get_model` hardcoded `Type::Int` for both the formula
 translation and the var-extraction sort. Bool guards (e.g.
 `if x` where `x` is Bool) had their bindings declared as
-`Int::new_const("x")` — a SEPARATE Z3 var in the WRONG sort
+`Int::new_const("x")` — a SEPARATE the SMT backend var in the WRONG sort
 from the model's actual Bool sort. `model.eval` then returned an
 arbitrary fresh-Int evaluation rather than the solver's actual
 Bool decision, surfacing as garbage witness data in user-facing
@@ -63,7 +145,7 @@ The fix dispatches on `scrutinee_ty`:
 
 `extract_uncovered_witnesses` forwards `scrutinee_ty` (was
 `_scrutinee_ty`, parameter name documented its non-use). Float /
-Char / Text are deferred — `formula_to_z3` itself can't lower
+Char / Text are deferred — `formula_to_smt` itself can't lower
 them today, so adding extraction arms would silently never fire.
 
 Combined with the prior three fixes
@@ -77,19 +159,19 @@ Third closure in the SMT exhaustiveness chain, completing the
 end-to-end fix that started with the guard-Expr lift. The
 witness-extraction helper `get_model` (called by
 `extract_uncovered_witnesses` to surface uncovered cases as
-diagnostic hints) only ever asked the Z3 model for a binding named
+diagnostic hints) only ever asked the the SMT backend model for a binding named
 literally `"n"`. Any guard mentioning a different identifier
 (`x`, `value`, `count`, …) produced a witness with an empty
 bindings map, which user-facing diagnostics rendered as `_`. A
 guard combining `n` with a second variable returned a phantom
 witness — `n` wasn't even in the formula, but the helper asked
-Z3 about it anyway and surfaced an arbitrary value as if it were
+The SMT backend about it anyway and surfaced an arbitrary value as if it were
 load-bearing.
 
 The fix walks the formula structurally collecting every
 `Var(name)` reference (across `Bool`/`Int` leaves, `Binary`
 l+r, `Not`/`Neg` inner, `Or` formulas), deduplicates and sorts
-the result for snapshot-stable diagnostics, and asks Z3 for each
+the result for snapshot-stable diagnostics, and asks the SMT backend for each
 binding's value. `collect_var_names` is the new private helper;
 its contract pins three load-bearing properties: all branches
 walked, pure-literal formulas yield empty, duplicates preserved
@@ -345,7 +427,7 @@ Wire both at the divergence branch:
   divergences through the routing-stats sink avoid duplicate
   noise.
 - `fail_on_mismatch` (default `false`): when `false`, return
-  the Z3 result rather than a hard `Error` — the documented
+  the the SMT backend result rather than a hard `Error` — the documented
   "log but don't fail" policy. The Certified strategy sets
   the flag `true` to surface divergence as a build failure.
 
@@ -357,7 +439,7 @@ now the gated user-facing surfaces.
 ### Fixed — `FallbackConfig.on_timeout` distinguishes timeout from generic unknown (2026-04-29)
 
 The flag was set in defaults and the manifest parser but no
-code path consulted it. Z3 surfaces timeouts as
+code path consulted it. the SMT backend surfaces timeouts as
 `SolveResult::Unknown` with a reason string, so the existing
 `on_unknown` branch caught timeouts as a side-effect — but
 the two cases are conceptually distinct.
@@ -520,9 +602,9 @@ Four subcommands:
 - `verum cert-replay formats / backends [--output ...]` —
   discovery.
 
-Six certificate formats (verum_canonical, z3_proof, cvc5_alethe,
+Six certificate formats (verum_canonical, smt_native, alethe,
 lfsc_pattern, open_smt, mathsat) and six replay backends
-(kernel_only + Z3 / CVC5 / Verit / OpenSmt / Mathsat).
+(kernel_only + multiple SMT backends / Verit / OpenSmt / Mathsat).
 
 The `kernel_only` backend is the trust anchor: validates
 integrity hash, recognised format, supported SMT-LIB theory,
@@ -716,7 +798,7 @@ session-level SMT budget. `run_common_pipeline` invoked
 `ContractVerificationPhase::new()` which fell back to the
 phase's own 30 000 ms default regardless of caller intent —
 setting `smt_timeout_ms = 5000` in the manifest had no effect
-on Z3.
+on the SMT backend.
 
 Wire by constructing a `VerificationConfig` with the forwarded
 timeout and using `with_config(...)` instead of `new()`. Phase
@@ -752,7 +834,7 @@ Wire all five:
   (folded into a single `Params` value alongside the
   timeout — required because `Solver::set_params` is
   destructive).
-- `memory_max_size` and `smt.random_seed` → global Z3
+- `memory_max_size` and `smt.random_seed` → global the SMT backend
   params via `set_global_param` (these keys must be set
   at process scope; Solver/Config scopes silently ignore
   them per the verifier's empirical scope-discipline
@@ -764,16 +846,16 @@ Closes the inert-defense pattern around the portfolio toggle.
 `BackendChoice::Portfolio` unconditionally invoked
 `solve_portfolio`, so a caller that set `enabled = false`
 while leaving `BackendChoice::Portfolio` in place still
-spawned the multi-thread Z3 + CVC5 race.
+spawned the multi-thread multiple SMT backends race.
 
 Wire as a kill-switch at the entry of `solve_portfolio`: when
 disabled, fall back to `solve_auto` (single-backend
 heuristic-driven routing).
 
-### Fixed — `ProofGenerationConfig.enable_unsat_cores` reaches Z3 (2026-04-29)
+### Fixed — `ProofGenerationConfig.enable_unsat_cores` reaches the SMT backend (2026-04-29)
 
-`apply_to_z3_config` only forwarded `enable_proofs`. Wired
-`unsat_core` Config-level Z3 param too so every solver
+`apply_to_smt_config` only forwarded `enable_proofs`. Wired
+`unsat_core` Config-level the SMT backend param too so every solver
 constructed via `ProofGenerationConfig::with_config`
 inherits the policy without per-query re-application.
 
@@ -786,7 +868,7 @@ code path consulted them in
 - `enable_multi_patterns` (default true): when enabled and
   ≥2 simple patterns are generated, fold them into a single
   multi-pattern via `try_create_multi_pattern`.
-  Multi-patterns are more selective (Z3 instantiates only
+  Multi-patterns are more selective (the SMT backend instantiates only
   when ALL terms appear together), reducing matching work
   for quantifiers with multiple triggers.
 - `track_effectiveness` (default true): when disabled, skip
@@ -801,24 +883,24 @@ A new operator's manual at
 covers every configurable knob in the verification stack
 exhaustively: 12 config structs (`RefinementConfig`,
 `QEConfig`, `InterpolationConfig`, `StaticVerificationConfig`,
-`Z3Config`, `Cvc5Config`, `SubsumptionConfig`,
+`SmtBackendConfig`, `SmtBackendConfig`, `SubsumptionConfig`,
 `BisimulationConfig`, `SepLogicConfig`, `UnsatCoreConfig`,
 `ParallelConfig`, `OptimizerConfig`, `CacheConfig`),
 ~80 individual fields, defaults, effects, parameter-scope
 discipline (Global vs Config vs Solver — empirically verified
-per Z3 key), copy-paste recipes for latency-sensitive / CI /
+per the SMT backend key), copy-paste recipes for latency-sensitive / CI /
 deep-debugging / research workflows, and a "destructive
 `Solver::set_params`" gotcha section. The
 [architecture/smt-integration](/docs/architecture/smt-integration#configuration-knobs)
 page gained a parallel "Configuration knobs" section
 (complete matrix of fields + wiring scope) plus a "Solver
 parameter scope discipline" section that documents which
-of the three Z3 scopes honours each key, based on empirical
+of the three the SMT backend scopes honours each key, based on empirical
 audit results. The
 [verum.toml reference](/docs/reference/verum-toml) gained a
 new `[verify.solver]` schema with sub-tables for every
 backend / phase / cache config, plus a recap diagram of how
-manifest values reach Z3/CVC5 solver params through the
+manifest values reach multiple SMT backends solver params through the
 five-layer chain. Closes the request that documentation be
 fully self-contained and not require developers to seek
 additional resources outside this site.
@@ -1064,20 +1146,20 @@ Closes the inert-defense pattern around the
 `verum.lsp.smtSolver` LSP setting. The choice was parsed from
 the client's `initializationOptions` and surfaced in the
 initialize handler's tracing log line, but never reached the
-validator — clients that set `verum.lsp.smtSolver = "cvc5"`
-saw `smt_solver: Z3` in every `RefinementDiagnostic` regardless
+validator — clients that set `verum.lsp.smtSolver = "smt-backend"`
+saw `smt_solver: the SMT backend` in every `RefinementDiagnostic` regardless
 of their stance.
 
 Wired via a new `smt_solver: SmtSolver` field on
 `ValidatorConfig` populated by `apply_config` from the
-`LspConfig.SmtSolverChoice` enum: Z3→Z3, Cvc5→CVC5,
-Auto→Z3 (validator's preferred default; a future capability-
+`LspConfig.SmtSolverChoice` enum: the SMT backend→the SMT backend, Cvc5→the SMT backend,
+Auto→the SMT backend (validator's preferred default; a future capability-
 router enhancement could route Auto through
 `verum_smt::backend_switcher` for per-goal selection).
 
 `build_diagnostic` now consults the configured stance instead
-of hardcoding Z3, so every diagnostic carries the actual
-backend tag — embedders that display "verified by Z3 in 50ms"
+of hardcoding the SMT backend, so every diagnostic carries the actual
+backend tag — embedders that display "verified by the SMT backend in 50ms"
 UI annotations now show the user's actual configured solver.
 
 ### Fixed — `ParallelConfig.race_mode` controls worker termination (2026-04-29)
@@ -1275,17 +1357,17 @@ surfacing the diagnostic. Callers that need to surface the
 failure explicitly can still construct the backend themselves and
 pass it via `with_distributed`.
 
-### Fixed — Z3Config: 5 inert fields wired into Z3 global params (2026-04-29)
+### Fixed — SmtBackendConfig: 5 inert fields wired into the SMT backend global params (2026-04-29)
 
-Closes five inert-defense patterns at once in `verum_smt::z3_backend::Z3Config`.
+Closes five inert-defense patterns at once in `verum_smt::backend::SmtBackendConfig`.
 All five fields landed on the config struct, were exposed in
 default-config presets, and asserted in pin tests, but no code
-path forwarded them to Z3 — toggling any of them had zero
+path forwarded them to the SMT backend — toggling any of them had zero
 observable effect on the solver.
 
-- `minimize_cores` (default true) → `smt.core.minimize` Z3
+- `minimize_cores` (default true) → `smt.core.minimize` the SMT backend
   global param. Pre-fix the field defaulted to true (claiming
-  default minimization) but Z3 always returned non-minimized
+  default minimization) but the SMT backend always returned non-minimized
   cores.
 - `enable_mbqi` (default true) → `smt.mbqi`. Disabling forces
   the solver onto pattern-based / E-matching strategies only.
@@ -1293,12 +1375,12 @@ observable effect on the solver.
   forces the solver onto MBQI-only when quantifiers are present.
 - `num_workers` (default `num_cpus::get().max(4)`) →
   `parallel.enable` + `parallel.threads.max`. **Zero is
-  treated as "let Z3 decide"** — leaving the parallel-pool
+  treated as "let the SMT backend decide"** — leaving the parallel-pool
   params untouched preserves the documented sentinel without
   poisoning the global state with a bogus zero-worker setting.
 - `enable_interpolation` → exposed via new public
   `interpolation_enabled()` accessor for the higher-level
-  `verum_smt::interpolation` layer to consult (Z3's built-in
+  `verum_smt::interpolation` layer to consult (the SMT backend's built-in
   interpolation API was removed in modern releases).
 
 Wired in `with_config` so every Solver constructed inside the
@@ -1392,7 +1474,7 @@ Wired via two new methods on `Context`:
 
 - `simplify_enabled() -> bool` — public read of the configured stance.
 - `assert(&Solver, &Bool)` — opt-in assert path that runs
-  `formula.simplify()` (Z3's per-AST simplifier) when the gate is
+  `formula.simplify()` (the SMT backend's per-AST simplifier) when the gate is
   set, then asserts the simplified form. Default-on means callers
   routing through this method get pre-solve simplification for free.
 
@@ -1470,29 +1552,29 @@ rejected without consulting signature state. The pre-existing
 have signature info yet — they call `requires_signature()` to
 decide whether to look up signature state before proceeding.
 
-### Fixed — `ProofGenerationConfig.minimize_unsat_cores` + `extraction_timeout_ms` reach the Z3 Solver (2026-04-29)
+### Fixed — `ProofGenerationConfig.minimize_unsat_cores` + `extraction_timeout_ms` reach the the SMT backend Solver (2026-04-29)
 
 Closes two inert-defense patterns at the proof-extraction boundary.
-Both fields were documented Z3 controls but no code path forwarded
+Both fields were documented the SMT backend controls but no code path forwarded
 them to the Solver — toggling either had zero observable effect on
 extraction behaviour.
 
-`minimize_unsat_cores` is the `smt.core.minimize` Z3 param —
+`minimize_unsat_cores` is the `smt.core.minimize` the SMT backend param —
 Solver-level (not Config-level) so it can't ride on the existing
-`apply_to_z3_config` path. When true, the solver runs additional
+`apply_to_smt_config` path. When true, the solver runs additional
 minimization on the unsat core before returning it, producing
 tighter explanations at extra solver cost.
 
-`extraction_timeout_ms` is the `timeout` Z3 param. The "0 = no
+`extraction_timeout_ms` is the `timeout` the SMT backend param. The "0 = no
 timeout" semantic is preserved by OMITTING the param entirely when
-the field is zero — Z3 interprets `timeout=0` as "fire immediately"
+the field is zero — the SMT backend interprets `timeout=0` as "fire immediately"
 on some param paths, which would defeat the documented unbounded
 behaviour. Saturating clamp via `min(u32::MAX as u64) as u32`
 prevents silent overflow on hostile / pathological config (~49
-days of milliseconds, well past anything Z3 would honour).
+days of milliseconds, well past anything the SMT backend would honour).
 
-Wired via new `apply_to_z3_solver(&Solver)` method, parallel to
-the existing `apply_to_z3_config(&mut Config)`. Callers running
+Wired via new `apply_to_smt_solver(&Solver)` method, parallel to
+the existing `apply_to_smt_config(&mut Config)`. Callers running
 proof-extraction work invoke this on the Solver they're about to
 query so the per-call resource budget actually reaches the solver.
 
@@ -1651,7 +1733,7 @@ mixed-CJK / emoji values would panic on a multi-byte boundary.
 ### Fixed — `OptimizerConfig.incremental` gates push/pop scope (2026-04-29)
 
 Closes the inert-defense pattern around the incremental-solving
-toggle on `Z3Optimizer`. The flag was documented as "Enable
+toggle on `SmtOptimizer`. The flag was documented as "Enable
 incremental solving" with default `true`, but `push` / `pop`
 always manipulated the underlying solver scope regardless of
 configuration — toggling the flag had zero observable effect.
@@ -1665,11 +1747,11 @@ balanced because both sides are gated identically.
 A new `is_incremental()` accessor lets callers branch on the
 policy without re-reading the config struct.
 
-### Fixed — `UnsatCoreConfig.timeout_ms` reaches Z3 (2026-04-29)
+### Fixed — `UnsatCoreConfig.timeout_ms` reaches the SMT backend (2026-04-29)
 
 Closes the inert-defense pattern around the documented 10 s
 core-extraction timeout. The field was set on the config
-struct but no code path forwarded it to Z3 — hostile or
+struct but no code path forwarded it to the SMT backend — hostile or
 pathological assertion sets could spin unbounded during core
 minimization.
 
@@ -1785,20 +1867,20 @@ now consults `self.config.mode`:
 Two pin tests cover (a) the documented default of `Auto` and
 (b) the round-trip of every variant through the phase config.
 
-### Fixed — `Cvc5Config` 3-field wiring: preprocessing, quantifier_mode, verbosity (2026-04-29)
+### Fixed — `SmtBackendConfig` 3-field wiring: preprocessing, quantifier_mode, verbosity (2026-04-29)
 
-Closes three inert-defense patterns on `Cvc5Config`. The
+Closes three inert-defense patterns on `SmtBackendConfig`. The
 fields had documented defaults but no code path forwarded
-them to the underlying CVC5 solver:
+them to the underlying the SMT backend solver:
 
-- **`preprocessing`** (default `true`) — now sets CVC5's
+- **`preprocessing`** (default `true`) — now sets the SMT backend's
   `preprocess-only` option (false → run full pipeline,
   true → stop after preprocessing).
 - **`quantifier_mode`** (default `Auto`) — `Auto` leaves
-  CVC5's heuristic in place; the four named modes
+  the SMT backend's heuristic in place; the four named modes
   (`None`, `EMatching`, `CEGQI`, `MBQI`) pin a single
   strategy via the `quant-mode` option.
-- **`verbosity`** (default `0`, range 0-5) — sets CVC5's
+- **`verbosity`** (default `0`, range 0-5) — sets the SMT backend's
   `verbosity` option directly. Saturates at 5 for higher
   inputs.
 
@@ -1849,22 +1931,22 @@ path under `allow_admits = false`, and the setter round-trip.
 This is the configuration that production / CI pipelines
 should run under: an admitted goal is a hole, not a proof.
 
-### Fixed — `StaticVerificationConfig.memory_limit_mb` reaches Z3 (2026-04-29)
+### Fixed — `StaticVerificationConfig.memory_limit_mb` reaches the SMT backend (2026-04-29)
 
 Closes the inert-defense pattern around the documented 4 GB
 memory ceiling on `StaticVerificationConfig`. The field had no
 readers; setting `memory_limit_mb = Some(64)` had identical
-effect to `Some(1_000_000)` because Z3 was never told.
+effect to `Some(1_000_000)` because the SMT backend was never told.
 
 The verifier's `verify_with_timeout` path now forwards the
-value via `z3::set_global_param("memory_max_size", ...)` before
-opening a fresh Z3 context. Empirically this is the correct
+value via `smt-backend::set_global_param("memory_max_size", ...)` before
+opening a fresh the SMT backend context. Empirically this is the correct
 scope: setting `memory_max_size` on the per-solver `Params` or
-on the `Config` causes Z3 to silently mis-route queries (the
+on the `Config` causes the SMT backend to silently mis-route queries (the
 key is unknown at those scopes), but at the global-param scope
 the limit takes effect.
 
-`None` means "no caller-imposed limit" — Z3 uses its native
+`None` means "no caller-imposed limit" — the SMT backend uses its native
 default. Subsequent calls overwrite the global value, so the
 most-recent verifier configuration wins.
 
@@ -1880,7 +1962,7 @@ no readers:
 
 - **`max_projection_vars` (default 100)** — model-based
   interpolation projects the input formula onto shared
-  variables via Z3's quantifier-elimination tactic. The cost
+  variables via the SMT backend's quantifier-elimination tactic. The cost
   is exponential in the number of eliminated variables for
   some theories. The field now gates `project_onto_shared`:
   if the elimination set exceeds the budget, the engine
@@ -1930,7 +2012,7 @@ simplification level on `QEConfig`. The
 `simplify_level`, so the field had no effect on actual
 simplification behaviour.
 
-The level now maps to escalating Z3 tactic chains:
+The level now maps to escalating the SMT backend tactic chains:
 
 - **`0`** → `skip` (identity tactic — no rewriting; chosen
   because composing with `and_then` later still works
@@ -1948,13 +2030,13 @@ with the default config so both code paths honour the level.
 Five new pin tests cover constructor success at each level
 plus the saturate-to-max behaviour for out-of-range values.
 
-### Fixed — `RefinementConfig.timeout_ms` now reaches the Z3 solver (2026-04-29)
+### Fixed — `RefinementConfig.timeout_ms` now reaches the the SMT backend solver (2026-04-29)
 
 Closes the inert-defense pattern around the public
 `RefinementConfig.timeout_ms` knob (default 100 ms per spec).
 Previously the value was held by `SubsumptionChecker` at
 construction and never updated; the documented per-query
-timeout had no effect on the underlying Z3 solver.
+timeout had no effect on the underlying the SMT backend solver.
 
 The wiring is now end-to-end:
 
@@ -1965,16 +2047,16 @@ The wiring is now end-to-end:
   `verify_refinement_with_assumptions` call
   `backend.set_timeout_ms(self.config.timeout_ms)` before every
   query.
-- `RefinementZ3Backend::set_timeout_ms` overrides the trait
+- `RefinementSmtBackend::set_timeout_ms` overrides the trait
   method and forwards to its inner
   `SubsumptionChecker::set_smt_timeout_ms`.
-- `SubsumptionChecker::check_smt` configures the Z3 solver's
+- `SubsumptionChecker::check_smt` configures the the SMT backend solver's
   `timeout` parameter via `Params::set_u32` on every fresh
   solver instance, mirroring the existing pattern in
   `QESolver::fresh_solver` and friends.
 
 The documented "100 ms default per spec" now actually constrains
-solver work; Z3 returns `Unknown` cleanly on timeout instead of
+solver work; the SMT backend returns `Unknown` cleanly on timeout instead of
 running unbounded against the host's wall clock. Five new pin
 tests cover trait-default no-op, override observability, and
 end-to-end timeout propagation through the bare checker.
@@ -2178,7 +2260,7 @@ violating type-table invariants), round-2 §3.1 (assign to read-only
 register), and round-2 §3.2 (mismatched arity calls) of the
 red-team review.
 
-**New strict entry points** in `crates/verum_vbc`:
+**New strict entry points** in `<implementation>`:
 
 - `deserialize::deserialize_module_validated(data)` — structural
   decode → content-hash verification → dependency-hash verification
@@ -2531,7 +2613,7 @@ Two surgical fixes:
 1. **Eager native-target init** — `verum_cli::main` now calls
    `Target::initialize_native` as its first line, before the
    stdlib parse can spawn rayon workers or the verifier can touch
-   Z3. The IR-level pass registry is fully populated on the main
+   the SMT backend. The IR-level pass registry is fully populated on the main
    thread while no other thread is alive, releasing the cxa guards
    before the fault window.
 2. **Real rayon fence before LLVM** —
@@ -2543,7 +2625,7 @@ Two surgical fixes:
 
 100-run stress test: 0 / 100 crashes after the fix. Guarded by
 `tier1_repeated_aot_build_is_stable` in
-`crates/verum_cli/tests/tier_parity_e2e.rs`.
+a `cli` integration test.
 
 ### Fixed — duplicate "Running" line in single-file run
 
@@ -2910,9 +2992,9 @@ the "REPL — Parse-Only" entry from `KNOWN_ISSUES.md`.
 
 ### Fixed — `Shared<T>::new` lowering (closes the last KNOWN_ISSUES item)
 
-`Shared<Int>.new(42)` (and any `Foo<TypeArgs>.method(...)` call on a
-generic type) blew up at codegen with two latent bugs in
-`crates/verum_vbc/src/codegen/expressions.rs`:
+`Shared<Int>.new(42)` (and any `Foo<TypeArgs>.method(...)` call on
+a generic type) blew up at codegen with two latent bugs in the VBC
+expression-codegen path:
 
 1. Field access on an `ExprKind::TypeExpr` had no layout-property
    handler. `SharedInner<T>.size` and `SharedInner<T>.alignment` fell
@@ -2979,29 +3061,29 @@ Fix: selectively run only ctors whose function name starts with
 Verified: `@thread_local static mut COUNTER: Int = 42;` now reads
 back as `42` inside the interpreter (was raw zero / panic before).
 
-### Added — CLI `verify --solver={z3|cvc5|portfolio|auto|capability}`
+### Added — CLI `verify --solver={auto|portfolio|auto|capability}`
 
 The `--solver` flag on `verum verify` was defined with default
-`"z3"` but the value was only used for display — the verification
-path hard-coded Z3. Plumb the selection through to `CompilerOptions`
+`"smt-backend"` but the value was only used for display — the verification
+path hard-coded the SMT backend. Plumb the selection through to `CompilerOptions`
 and log it from `VerifyCommand` so the runtime path can route
 accordingly, and reject typos loudly instead of silently defaulting.
 
 - `CompilerOptions` gains `smt_solver: BackendChoice` (default
-  `BackendChoice::Z3` to preserve historical behaviour).
+  `BackendChoice::the SMT backend` to preserve historical behaviour).
 - `verum_cli::commands::verify::SolverChoice` enum + `parse` so
   validation remains available even when the `verification` feature
   is disabled (that feature gates the `verum_smt` dependency and the
   real `BackendChoice`).
 - Unknown values like `--solver=foo` now error with
-  `"Accepted values: z3, cvc5, auto, portfolio, capability"`.
+  `"Accepted values: auto, auto, portfolio, capability"`.
 - `VerifyCommand::run` emits an info-level log naming the selected
   backend and timeout.
 
-Actual backend routing (CVC5 / portfolio / capability-router) is a
-follow-up; the `cvc5` feature ships in stub mode and transparently
-delegates to Z3 inside `SmtBackendSwitcher`, so `--solver=cvc5`
-produces Z3-equivalent answers in the default build.
+Actual backend routing (the SMT backend / portfolio / capability-router) is a
+follow-up; the `smt-backend` feature ships in stub mode and transparently
+delegates to the SMT backend inside `SmtBackendSwitcher`, so `--solver=smt-backend`
+produces the SMT backend-equivalent answers in the default build.
 
 ### Added — LSP choice-snippet completion for attribute enum values
 
@@ -3020,9 +3102,9 @@ allowed values inline:
 ### Chore — zero rustc warnings in `cargo build --workspace`
 
 Eliminated 25 `dead_code` warnings that accumulated across
-`verum_smt::cvc5_backend` (stub-mode `Cvc5Backend` / `Cvc5Sort` /
-`Cvc5Model` / `Cvc5Result` + `CVC5_KIND_*` constants kept for API
-parity with the `cvc5-ffi` build), `verum_vbc::codegen::
+`verum_smt::backend` (stub-mode `SmtBackend` / `SmtSort` /
+`SmtModel` / `SmtResult` + `SMT_KIND_*` constants kept for API
+parity with the `smt-backend-ffi` build), `verum_vbc::codegen::
 get_current_ffi_platform` (reserved for FFI signature generation),
 and `verum_vbc::interpreter::kernel::MIN_GPU_SIZE` (CPU-vs-GPU
 kernel-selection threshold). Each site is annotated with a narrow
@@ -3071,7 +3153,7 @@ reintroduces a failing build.
   `verum_smt::proof_carrying_code`. Consumers can re-verify
   offline without running the full compiler.
 - **Capability-based SMT router**. Obligations classified by theory
-  use; Z3 handles LIA/bitvector/array; CVC5 handles strings /
+  use; the SMT backend handles LIA/bitvector/array; the SMT backend handles strings /
   nonlinear / SyGuS / FMF. Portfolio mode cross-validates.
 - **θ+ unified execution environment**. Memory + capabilities +
   recovery + concurrency form a single per-task context with
@@ -3120,7 +3202,7 @@ reintroduces a failing build.
 - Generation wraparound race condition — epoch counter now advances
   cooperatively per-thread; hazard pointers protect in-flight reads
   during free.
-- CVC5 1.3.3 integration — brings bug fixes to string operations.
+- The SMT backend 1.3.3 integration — brings bug fixes to string operations.
 - Refinement narrowing across control flow: `if x > 0 { ... }`
   correctly strengthens `x: Int` to `Int { self > 0 }` inside the
   branch.
@@ -3224,7 +3306,7 @@ CBGR optimisation to 11.8–14.5 ns shipped in that session.
 
 ### Added
 
-- CVC5 backend (`cvc5-sys` 1.3.2).
+- The SMT backend (`smt-backend-sys` 1.3.2).
 - Capability-based router in `verum_smt::capability_router`.
 - `@verify(thorough)` attribute.
 
@@ -3251,7 +3333,7 @@ CBGR optimisation to 11.8–14.5 ns shipped in that session.
 ### Added
 
 - Three refinement syntaxes: inline on type, on parameter, on field.
-- Z3 integration via `verum_smt::z3_backend`.
+- The SMT backend integration via `verum_smt::backend`.
 - `@logic fn` reflection.
 - `where requires` / `where ensures` / loop `invariant` / `decreases`.
 

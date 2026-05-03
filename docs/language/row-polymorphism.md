@@ -26,12 +26,10 @@ get_x(px);   // ok, r = { color: Text }
 ```
 
 :::info Status
-Fully wired end-to-end:
-`Type.ExtensibleRecord { fields, row_var }` in
-`crates/verum_types/src/ty.rs`; parser constructs the extension in
-`verum_fast_parser/src/ty.rs`; unification implemented in
-`crates/verum_types/src/unify.rs`. Lacks-constraints and row-based
-dispatch are maturing — see [Implementation status](#implementation-status).
+Fully wired end-to-end through the Verum type system: extensible
+records (`{ fields, .row_var }`) parse, unify, and check.
+Lacks-constraints and row-based dispatch are maturing — see
+[Implementation status](#implementation-status).
 :::
 
 ## Why row polymorphism?
@@ -364,11 +362,11 @@ the signature, there's nothing to instantiate.
 
 ## Implementation status
 
-| Feature | Status | Backing |
+| Feature | Status | Notes |
 |---|---|---|
-| Row syntax parsing | **Stable** | `verum_fast_parser/src/ty.rs` |
-| `ExtensibleRecord` in type AST | **Stable** | `verum_types/src/ty.rs:637-680` |
-| Row unification | **Stable** | `verum_types/src/unify.rs:1587-1632` |
+| Row syntax parsing | **Stable** | `{ field: T \| .row }` and trailing `.row` |
+| Extensible-record type | **Stable** | unifies cleanly with closed records |
+| Row unification | **Stable** | order-insensitive on field labels |
 | Splat `..r` in literals | **Stable** | parser + checker |
 | Lacks predicates (`r # x`) | **Maturing** | inference records them; diagnostics in progress |
 | Row-aware structural subtyping | **Experimental** | unify-based; no separate subtype relation |
@@ -402,6 +400,5 @@ the remainder symbolically.
 - [Types](./types.md) — records and their closed form.
 - [Generics](./generics.md) — type/row parameters side by side.
 - [Destructuring](./destructuring.md) — `let { x | rest } = r` patterns.
-- Source: `crates/verum_types/src/ty.rs`,
-  `crates/verum_types/src/unify.rs`. See also the
-  [Grammar reference — Types](../reference/grammar-ebnf.md#27-types).
+- [Grammar reference — Types](../reference/grammar-ebnf.md#27-types) — the
+  formal record / row-extension productions.

@@ -87,7 +87,7 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 
 All five `verum/*` JSON-RPC methods backing these commands are live;
 the server routes them through
-`LspService.build(...).custom_method(...)`. Z3 is isolated behind a
+`LspService.build(...).custom_method(...)`. the SMT backend is isolated behind a
 dedicated `verum-smt-worker` OS thread so the handler futures are
 `Send` — see
 [LSP → Custom `verum/*` JSON-RPC methods — architecture](/docs/tooling/lsp#custom-verum-json-rpc-methods--architecture)
@@ -110,7 +110,7 @@ recommendations in [CLI](/docs/tooling/cli) and
 | `verum.lsp.showCounterexamples` | `true` | Attach concrete witness values to refinement errors. |
 | `verum.lsp.showInlayHints` | `true` | Inline inferred types and CBGR tiers. |
 | `verum.lsp.diagnosticDelay` | `200` ms | Debounce between keystroke and validation. |
-| `verum.lsp.smtSolver` | `"auto"` | `auto` / `z3` / `cvc5`. `auto` lets the compiler's capability router pick. Override only to reproduce a specific result. |
+| `verum.lsp.smtSolver` | `"auto"` | `auto` / `smt-backend`. `auto` lets the compiler's capability router pick. Override only to reproduce a specific result. |
 | `verum.lsp.smtTimeout` | `50` ms | Per-obligation SMT timeout for live validation (build-time timeout is separate; see `verum.toml [verify] solver_timeout_ms`). |
 | `verum.lsp.cacheValidationResults` | `true` | Cache SMT results keyed by goal hash. |
 | `verum.lsp.cacheTtlSeconds` | `300` | Cache entry TTL. The server hot-swaps capacity/TTL on `workspace/didChangeConfiguration` — no restart. |
@@ -259,10 +259,10 @@ output channel for the actual stderr. Most likely causes:
   and replace `/usr/local/bin/verum`.
 - Corporate VPN rewrites certificates — unrelated; LSP uses stdio.
 
-### `verum.lsp.smtSolver` set to `z3` produces different results from `auto`
+### `verum.lsp.smtSolver` set to `smt-backend` produces different results from `auto`
 
-Expected — `auto` races Z3 and CVC5 according to the goal shape.
-Prefer `auto` for correctness-critical work and `z3` or `cvc5` only
+Expected — `auto` races multiple SMT backends according to the goal shape.
+Prefer `auto` for correctness-critical work and `smt-backend` only
 when reproducing a specific solver's trace. See
 [Verification / SMT routing](/docs/verification/smt-routing).
 

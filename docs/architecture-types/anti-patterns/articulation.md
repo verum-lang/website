@@ -1,306 +1,366 @@
 ---
 sidebar_position: 3
-title: "Articulation anti-patterns (AP-010 .. AP-018)"
-description: "The articulation-hygiene band: circular self-reference, ungrounded assumption, retracted-citation use, hypothesis without plan, definition shadowing."
+title: "Boundary / lifecycle / capability ontology (AP-011 .. AP-026)"
+description: "The middle sixteen ATS-V anti-patterns: stratum admissibility, boundary invariants, wire encoding, authentication, capability flavours, lifecycle transitivity, declaration drift, foundation-content alignment."
 slug: /architecture-types/anti-patterns/articulation
 ---
 
-# Articulation anti-patterns (AP-010 .. AP-018)
+# Boundary / lifecycle / capability ontology (AP-011 .. AP-026)
 
-The articulation band covers defects that arise when an
-artefact's *self-presentation* is internally inconsistent: it
-cites itself without operator, it asserts without grounding, it
-declares without honouring its own discipline. These patterns
-are typically *warnings* by default — they signal hygiene
-issues rather than soundness failures — but a few are errors
-because they would propagate inconsistency into the audit
-chronicle.
+Band 2 covers the architectural defects that touch the
+**capability ontology** (linear / affine / relevant / unrestricted
+flavours), **boundary discipline** (wire encoding, authentication,
+invariants), and **lifecycle / foundation transitivity**
+(transitive citation chains, declaration vs body drift,
+foundation-content mismatch).
 
-For the catalog's overall structure see
-[Anti-pattern overview](./overview.md). For the underlying
-discipline that motivates this band see
-[CVE — articulation hygiene](../cve/articulation-hygiene.md).
+Patterns in this band fire either at **arch-check** (per-cog
+predicates that touch only `Shape` plus the
+[`DiagnosticContext`](../../reference/glossary)) or at
+**post-arch** (transitive predicates that walk the cog graph).
 
----
-
-## AP-010 — CircularSelfReference {#ap-010}
-
-**Severity:** warning · **Phase:** post-arch
-
-**Predicate.** A cog or theorem references itself by name without
-specifying an *operator* — a ranking function, a measure, a
-fixed-point combinator — that grounds the recursion.
-
-**What it catches.** A function whose body calls itself with the
-same arguments without a proof of well-foundedness. Or a theorem
-whose statement mentions itself without a measure.
-
-**Worked example — defect.**
-
-```verum
-@arch_module(lifecycle: Lifecycle.Theorem("v1.0"))
-module algos.recursive_thing;
-
-public fn compute(x: Int) -> Int {
-    compute(x)        // <-- AP-010: self-reference, no measure
-}
-```
-
-**Remediation.** Either provide a measure / ranking function, or
-mark the function as expected-non-terminating (rare):
-
-```verum
-public fn compute(x: Int) -> Int
-    decreases x        // ← measure
-{
-    if x <= 0 { 0 } else { compute(x - 1) + x }
-}
-```
+This page paraphrases each entry's predicate from
+the canonical anti-pattern catalog and its per-pattern predicates. For the
+catalog's overall structure see
+[Anti-pattern overview](./overview.md).
 
 ---
 
-## AP-011 — UngroundedAssumption {#ap-011}
+## AP-011 — AbsoluteBoundaryAttempt {#ap-011}
 
-**Severity:** warning · **Phase:** post-arch
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A claim is asserted without К or В content — no
-constructor, no check, no citation. The claim is purely
-declarative, but the cog's Lifecycle implies higher rank.
+**Predicate.** `Shape.stratum ≠ MsfsStratum::LAbs`. A cog
+declaring `stratum: LAbs` violates AFN-T α (MSFS Theorem 5.1):
+the absolute foundation stratum is uniformly empty by
+construction.
 
-**What it catches.** A function declared `@verify(formal)` that
-relies on an axiom not registered in `@framework(...)`. The
-axiom is "assumed" but the assumption is undocumented.
+**Why it matters.** `LAbs` is the MSFS hierarchy's "outside-the-
+hierarchy" marker; an algorithm that *claims* membership in
+`LAbs` claims something AFN-T α refutes. The check protects the
+[reflection tower](../../verification/reflection-tower) from
+silent stratum corruption.
 
-**Remediation.** Either provide the missing К / В content, or
-register the assumption explicitly:
-
-```verum
-@framework(my_team_axioms, "User-validated email format")
-@axiom
-public theorem email_format_is_well_known: ...
-```
-
-The axiom now appears in `verum audit --framework-axioms`.
+**Remediation.** Change the stratum to one of
+`{LFnd, LCls, LClsTop}` per the cog's actual position in the
+moduli space.
 
 ---
 
-## AP-012 — OverQuantifiedScope {#ap-012}
+## AP-012 — InvariantViolation {#ap-012}
 
-**Severity:** warning · **Phase:** post-arch
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
 
-**Predicate.** A universal quantifier (`forall`) ranges over a
-broader scope than the cog's `Shape` admits — for example,
-quantifying over "all values" in a cog whose stratum admits
-only `LFnd` content.
+**Predicate.** `forall b : Boundary.
+forall i ∈ b.invariants. preserves(traffic(b), i)`. Every
+declared `BoundaryInvariant` (`AllOrNothing`,
+`DeterministicSerialisation`, `AuthenticatedFirst`,
+`BackpressureHonoured`, `Custom { name }`) must be preserved by
+the boundary's actual traffic.
 
-**What it catches.** A theorem that claims to hold "for all X"
-where X includes content the cog's stratum does not admit.
+**Why it matters.** Boundary invariants are the contract two
+sides pin. A boundary that *declares* `AllOrNothing` but admits
+partial-state traffic has unsound transactional semantics —
+downstream consumers rely on the contract being honoured.
 
-**Remediation.** Either narrow the quantifier's range, or raise
-the cog's stratum to admit the broader scope.
-
----
-
-## AP-013 — RetractedCitationUse {#ap-013}
-
-**Severity:** error · **Phase:** post-arch
-
-**Predicate.** A cog cites (via `mount`, `composes_with`, or
-direct call) a cog whose Lifecycle is `Lifecycle.Retracted(...)`.
-
-**What it catches.** A code path that depends on an artefact the
-team has explicitly withdrawn.
-
-**Worked example — defect.**
-
-```verum
-@arch_module(
-    lifecycle: Lifecycle.Retracted(
-        "weak primitive",
-        Some("crypto.aes256_gcm"),
-    ),
-)
-module crypto.des_legacy;
-
-@arch_module(lifecycle: Lifecycle.Theorem("v1.0"))
-module my_app.payment;
-
-mount crypto.des_legacy;          // <-- AP-013
-```
-
-**Diagnostic.**
-
-```text
-error[ATS-V-AP-013]: retracted citation use
-  --> src/payment.vr:3:7
-   |
- 3 | mount crypto.des_legacy;
-   |       ^^^^^^^^^^^^^^^^^ cog `crypto.des_legacy` is Retracted.
-   |                         Reason: "weak primitive"
-   |                         Replacement: crypto.aes256_gcm
-   |
-help: replace `crypto.des_legacy` with `crypto.aes256_gcm`.
-```
-
-**Remediation.** Use the `replacement` cog if one is named, or
-remove the dependency.
+**Remediation.** Either remove the invariant from the boundary
+declaration (admit the relaxed contract), or restructure the
+traffic to honour it (typically by wrapping in a coordinator or
+two-phase commit).
 
 ---
 
-## AP-014 — UndisclosedDependency {#ap-014}
+## AP-013 — DanglingMessageType {#ap-013}
 
-**Severity:** warning · **Phase:** post-arch
+**Severity:** warning · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A proof relies on an axiom or assumption not
-registered in `@framework(...)`.
+**Predicate.** `forall m : MessageType ∈ boundary.messages.
+exists e : WireEncoding ∈ boundary.wire_encoding. e.supports(m)`.
+Every message-type carried across a boundary must have a
+configured wire encoding.
 
-**What it catches.** A `@verify(formal)` proof that internally
-uses LEM (`P ∨ ¬P`) without declaring `@framework(classical_axioms,
-"law of excluded middle")`. The proof is sound under classical
-logic, but the dependency is invisible to `verum audit
---framework-axioms`.
+**Why it matters.** A message-type without an encoding is
+unimplementable: at runtime, the boundary cannot serialise the
+message, and the auditor cannot inspect what crosses.
 
-**Remediation.** Register the assumption explicitly:
-
-```verum
-@framework(classical_axioms, "law of excluded middle")
-@axiom
-public theorem lem<P>: P or not P;
-```
-
-Once registered, the audit inventory enumerates the dependency.
+**Remediation.** Set
+`@arch_module(boundary: { wire_encoding: ProtoBuf { schema_path: "..." } })`
+or one of the other four canonical encodings (`VerumNative`,
+`Json`, `MsgPack`, `RawBytes` — note `RawBytes` is itself an
+anti-pattern unless explicitly justified).
 
 ---
 
-## AP-015 — DeclarationBodyDrift {#ap-015}
+## AP-014 — UnauthenticatedCrossing {#ap-014}
 
-**Severity:** error · **Phase:** arch-check
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A cog's `Shape` claim contradicts a structural
-property of its body. Examples:
+**Predicate.** `boundary.physical_layer = Network ⇒
+BoundaryInvariant::AuthenticatedFirst ∈ boundary.invariants`.
+Every `Network` boundary must declare the
+`AuthenticatedFirst` invariant.
 
-- `cve_closure.executable: Some(...)` but the body has no
-  extractable content.
-- `cve_closure.constructive: Some(...)` but the cog declares
-  `Lifecycle.Interpretation`.
-- `lifecycle: Lifecycle.Theorem(...)` but no public function
-  carries `@verify(...)`.
+**Why it matters.** Network traffic without authenticated-first
+is the canonical anti-pattern from a security-architecture
+perspective: it admits unauthenticated commands and is the root
+cause of most breach categories. The check makes the contract
+visible at the architectural layer.
 
-**Remediation.** Either bring the body up to the Shape's claim,
-or weaken the Shape:
-
-```verum
-@arch_module(
-    lifecycle: Lifecycle.Plan("v0.5"),    // ← was Theorem
-    cve_closure: CveClosure {
-        constructive:        None,
-        verifiable_strategy: None,
-        executable:          None,
-    },
-)
-module my_app.future_feature;
-```
+**Remediation.** Add `BoundaryInvariant::AuthenticatedFirst` to
+the boundary's invariants and wire the corresponding
+authentication mechanism (TLS client cert, OAuth2 bearer token,
+mTLS, etc.).
 
 ---
 
-## AP-016 — HypothesisWithoutMaturationPlan {#ap-016}
+## AP-015 — DeterministicViolation {#ap-015}
 
-**Severity:** error · **Phase:** arch-check
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A cog declares `Lifecycle.Hypothesis(...)` without
-an accompanying `@plan(...)` attribute.
+**Predicate.** `Shape.tag = "dst_test" ⇒ ∀ deps. deterministic(deps)`.
+A deterministic-simulation-test (DST) cog must not depend on
+non-deterministic primitives (system time, random, network
+ordering, file-system enumeration order).
 
-**What it catches.** A `[Г]` Hypothesis cog that is "open-ended"
-— no target completion, no milestones. Hypotheses without
-plans tend to ossify into permanent stubs.
+**Why it matters.** DST tests are reproducibility-critical: their
+verdict must be a function of the seed alone. A test that uses
+`Time::now()` or `Random::default()` produces flaky results that
+the audit chronicle cannot trust.
 
-**Worked example — defect.**
-
-```verum
-@arch_module(lifecycle: Lifecycle.Hypothesis(ConfidenceLevel.Medium))
-module my_app.experimental.zk_proof;
-// AP-016: no @plan(...) attribute
-```
-
-**Remediation.**
-
-```verum
-@arch_module(lifecycle: Lifecycle.Hypothesis(ConfidenceLevel.Medium))
-@plan(
-    target:     "v0.5",
-    milestones: ["spec drafted", "POC built", "verified", "shipped"],
-)
-module my_app.experimental.zk_proof;
-```
-
-The `@plan(...)` attribute makes the maturation path part of the
-audit chronicle. Mature cogs report the milestone completion in
-`verum audit --arch-corpus`.
+**Remediation.** Inject the non-determinism source as a
+[context](../../language/context-system) (`using [Clock, Rng]`)
+and wire a deterministic implementation in the test harness.
 
 ---
 
-## AP-017 — InterpretationInMatureCorpus {#ap-017}
+## AP-016 — CapabilityDuplication {#ap-016}
 
-**Severity:** error · **Phase:** arch-check
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** A cog declares `Lifecycle.Interpretation(...)` in
-a project where `strict: true` is set on the cog or the project
-defaults are strict.
+**Predicate.** `forall c : Linear ∈ Shape.requires.
+multiplicity(c, Shape.exposes ∪ uses(cog)) ≤ 1`. A linear
+capability may be used at most once.
 
-**What it catches.** A `[И]` Interpretation cog reaching a
-mature corpus. By definition, a mature corpus contains zero
-`[И]` entries — every Interpretation must mature into a higher
-status or be removed.
+**Why it matters.** Linearity is multiplicity-1; using a linear
+capability twice violates the substructural-logic discipline that
+backs Verum's safety story.
 
-**Remediation.** Either upgrade to a higher Lifecycle (typical:
-`Hypothesis` with a plan, or `Conditional` with conditions, or
-`Theorem` with verification), or remove the cog.
-
----
-
-## AP-018 — DefinitionShadowing {#ap-018}
-
-**Severity:** error · **Phase:** post-arch
-
-**Predicate.** Two `Lifecycle.Definition` cogs declare the same
-name in scopes that overlap at a call site. The "boundary set
-by fiat" is therefore ambiguous.
-
-**What it catches.** A namespacing collision where two
-definitional cogs both claim to define `UserId` (or any other
-boundary type), and a downstream cog imports both.
-
-**Remediation.** Rename one of the definitions, or refactor to a
-single canonical definition with an explicit re-export from the
-other site.
+**Remediation.** Either consume the capability exactly once, or
+weaken its `@quantity(1)` to `@quantity(omega)` if duplication
+is acceptable for that capability.
 
 ---
 
-## Summary of severities
+## AP-017 — OrphanCapability {#ap-017}
 
-| AP | Severity | Most common cause |
-|----|----------|-------------------|
-| AP-010 | warning | recursion without measure |
-| AP-011 | warning | proof relies on undocumented axiom |
-| AP-012 | warning | quantifier over too-broad scope |
-| AP-013 | error | citing a retracted cog |
-| AP-014 | warning | proof uses LEM/AC without `@framework` |
-| AP-015 | error | Shape claim doesn't match body |
-| AP-016 | error | `[Г]` without `@plan` |
-| AP-017 | error | `[И]` in strict-mode |
-| AP-018 | error | duplicate boundary definitions |
+**Severity:** warning · **Phase:** arch-check · **Stable since:** v0.2
 
-The articulation band's discipline: every architectural
-*assertion* must be either proved, cited, or admitted —
-nothing implicit.
+**Predicate.** `forall c : Relevant ∈ Shape.requires.
+exercised(c, body(cog))`. A relevant capability declared in
+`requires` must actually be exercised somewhere in the cog
+body.
 
-## Cross-references
+**Why it matters.** Relevant capabilities (substructural
+multiplicity ≥ 1) are *required to be used*. An orphan
+relevant capability is either an over-declared surface
+(remove it) or a missing implementation (fix the body). Either
+way, the architecture lies about what the cog does.
 
-- [Anti-pattern overview](./overview.md)
-- [Classical anti-patterns](./classical.md) — AP-001 .. AP-009.
-- [Coherence anti-patterns](./coherence.md) — AP-019 .. AP-026.
-- [MTAC anti-patterns](./mtac.md) — AP-027 .. AP-032.
-- [CVE — articulation hygiene](../cve/articulation-hygiene.md)
-  — the underlying L6 discipline.
-- [Lifecycle primitive](../primitives/lifecycle.md) — the CVE
-  taxonomy AP-013 / AP-016 / AP-017 enforce.
+**Remediation.** Either remove the capability from `requires`
+or add the missing usage in the body.
+
+---
+
+## AP-018 — MissingHandoff {#ap-018}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
+
+**Predicate.** `forall composition c. c.passes_capability ⇒
+c.target ∈ Shape.composes_with`. A cog that hands off a
+capability to another cog must list that cog in
+`composes_with`.
+
+**Why it matters.** Capability handoff is composition with
+side-effects: the receiving cog now holds something the
+auditor cannot trace from the source cog's `composes_with`
+list. The check ensures every handoff is architecturally
+visible.
+
+**Remediation.** Add the receiving cog's identifier to the
+sending cog's `composes_with` list.
+
+---
+
+## AP-019 — FoundationDowngrade {#ap-019}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
+
+**Predicate.** `forall (A → B) ∈ proof_chain.
+A.foundation.strength ≥ B.foundation.strength ∨
+exists bridge(A, B)`. A proof chain must not silently downgrade
+the foundation between steps without an explicit
+functor-bridge.
+
+**Why it matters.** Foundation strength is monotone under proof
+composition: a Cubical proof can be imported into a HoTT
+context, but the reverse needs a bridge that proves the
+preservation contract. Silent downgrade hides the fact that the
+proof is no longer load-bearing in the upstream foundation.
+
+**Remediation.** Add a functor-bridge cited via
+`@framework(bridge_corpus, ...)`, or align the proof chain to
+work in the weaker foundation throughout.
+
+---
+
+## AP-020 — TimeBoundLeakage {#ap-020}
+
+**Severity:** warning · **Phase:** arch-check · **Stable since:** v0.2
+
+**Predicate.** `forall c : TimeBound ∈ Shape.requires.
+exercised_within(c.until, c)`. A time-bound capability must be
+exercised before its declared expiry.
+
+**Why it matters.** A time-bound capability whose deadline can
+elapse before exercise is dead code at the architecture level —
+it consumes auditing budget without protecting any boundary.
+
+**Remediation.** Either tighten the issuing scope so the
+capability is exercised before expiry, or extend the expiry
+policy so it covers the actual usage window.
+
+---
+
+## AP-021 — PersistenceMismatch {#ap-021}
+
+**Severity:** warning · **Phase:** arch-check · **Stable since:** v0.2
+
+**Predicate.** `forall c : Persist ∈ Shape.requires.
+durable(operations_under(c))`. A `Persist` capability must
+guard operations that actually have durable semantics.
+
+**Why it matters.** Declaring `Persist { medium: Disk { path } }`
+for an operation that only writes to a buffer is a category
+error: the audit chronicle records "persisted" but the
+operation evaporates on process exit.
+
+**Remediation.** Either move the operation to a durable medium
+(actual disk write, database commit, distributed-log append)
+or downgrade the capability to a non-persistent flavour.
+
+---
+
+## AP-022 — CapabilityLaundering {#ap-022}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
+
+**Predicate.** `forall (A → B → C) ∈ capability_chain.
+A.privilege ≤ C.privilege ⇒ visible_handoff(A, B) ∧ visible_handoff(B, C)`.
+Multi-hop privilege escalation must trace through visible
+boundaries at every step.
+
+**Why it matters.** Capability laundering is the architectural
+analogue of privilege escalation in a security context: the
+final cog ends up with elevated privilege the auditor cannot
+attribute to a specific source. Every hop must declare what it
+hands off, so the chronicle reconstructs the full chain.
+
+**Remediation.** Make every privilege-elevating handoff explicit
+in the sending cog's `composes_with` list and the receiving
+cog's `requires` list.
+
+---
+
+## AP-023 — FoundationForgery {#ap-023}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
+
+**Predicate.** `Shape.foundation.consistent_with(cited_axioms)`.
+A cog declaring `foundation: Hott` must not cite
+`@framework(corpus, ...)` axioms from a foundation Hott cannot
+interpret.
+
+**Why it matters.** Foundation forgery is one of the most subtle
+architectural defects: the auditor reading the Shape sees
+"this cog uses HoTT" but the body relies on axioms that need
+ZFC + extra inaccessibles. The audit verdict would be
+load-bearing-on-paper but not in fact.
+
+**Remediation.** Either align the cited corpus to the declared
+foundation, or change the declared foundation to one that
+admits all cited axioms.
+
+---
+
+## AP-024 — TransitiveLifecycleRegression {#ap-024}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
+
+**Predicate.** `forall path = (A_1 → ... → A_n) ∈ citation_chain.
+∀ i. A_i.lifecycle.rank() ≥ A_{i+1}.lifecycle.rank()`. The
+direct-citation regression rule (AP-009) lifted to transitive
+chains.
+
+**Why it matters.** A theorem `[Т]` may legitimately cite a
+postulate `[П]`, which legitimately cites another theorem
+`[Т]`, but if the chain ever passes through a hypothesis `[Г]`,
+the original theorem inherits the hypothesis's strength even
+though no single citation regresses. Transitive walking
+surfaces this.
+
+**Remediation.** Mature every link in the chain to at least the
+citing artefact's rank, or insert an explicit downgrade marker
+that breaks the transitive claim.
+
+---
+
+## AP-025 — DeclarationDrift {#ap-025}
+
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.2
+
+**Predicate.** `Shape == infer_shape(body(cog))`. The declared
+`@arch_module(...)` shape must match the inferred shape from
+the cog body.
+
+**Why it matters.** Declaration drift is the catch-all
+architectural defect: anything the body does that the
+declaration doesn't capture (and vice-versa) is a lie at the
+architecture level. Auditors reading attributes must be reading
+truth.
+
+**Remediation.** Either update the declaration to match the
+body (the audit's preferred fix) or remove the body content
+the declaration doesn't admit.
+
+---
+
+## AP-026 — FoundationContentMismatch {#ap-026}
+
+**Severity:** warning · **Phase:** arch-check · **Stable since:** v0.2
+
+**Predicate.** `forall construct ∈ body(cog).
+construct.foundation ⊆ Shape.foundation.admitted_constructs()`.
+The cog's body must not invoke language constructs that belong
+to a different foundation than the declared one.
+
+**Why it matters.** Cubical-only constructs (`Path`, `hcomp`,
+`transp`) inside a ZFC-foundation cog mean either the cog is
+mis-declared or the construct is being used informally. Either
+way, the auditor's foundation-strength reasoning is wrong.
+
+**Remediation.** Either change `Shape.foundation` to one that
+admits the construct, or rewrite the body to avoid the
+foreign-foundation construct.
+
+---
+
+## See also
+
+- [Anti-pattern catalog overview](./overview.md) — the indexing
+  page with the full 32-entry table.
+- [Capability / composition core (AP-001..AP-010)](./classical.md)
+- [Modal-temporal anti-patterns (AP-027..AP-032)](./mtac.md)
+- [Reflection tower](../../verification/reflection-tower) — for
+  the AP-011 `LAbs` claim's MSFS Theorem 5.1 backing.
+- [Three-tier reference model](../../language/memory-model) — for
+  AP-016 `CapabilityDuplication`'s linearity discipline.

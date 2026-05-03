@@ -394,7 +394,7 @@ burden by 100× without adding precision.
 - [Context system](../language/context-system.md) — the runtime DI
   mechanism.
 - [Anti-pattern AP-001 CapabilityEscalation](./anti-patterns/classical.md#ap-001).
-- [Anti-pattern AP-019 CapabilityLaundering](./anti-patterns/coherence.md#ap-019)
+- [Anti-pattern AP-022 CapabilityLaundering](./anti-patterns/articulation.md#ap-022)
   — the same axis abused at the boundary.
 - [Verification → soundness gates](../verification/soundness-gates.md)
   — the audit-level confirmation that the three axes remain

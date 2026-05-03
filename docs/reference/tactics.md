@@ -274,7 +274,7 @@ proof by smt
 Parameterised form:
 
 ```verum
-smt(backend = "z3",      // force backend
+smt(backend = "smt-backend",      // force backend
     logic   = "QF_LIA",  // force SMT-LIB logic
     timeout = 10000)     // milliseconds
 ```

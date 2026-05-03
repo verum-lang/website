@@ -96,7 +96,7 @@ strictly faithful to the ordinal `<` relation up to ε₀:
 `ω·a₁ + b₁ < ω·a₂ + b₂  ⇔  a₁ < a₂ ∨ (a₁ = a₂ ∧ b₁ < b₂)`.
 `ord_max` returns the lex-max; `ord_eq` is structural equality.
 
-The same encoding lives Rust-side in `crates/verum_cli/src/
+The same encoding lives in `<implementation>
 commands/audit.rs::CliOrdinal` so the `.vr` stdlib and the CLI
 agree byte-for-byte on the ν-rendering. The shared encoding is
 the single source of truth.
@@ -350,7 +350,7 @@ section.
 | §10.3 `check_coherence` (Čech descent) | `core/theory_interop/core.vr` |
 | §10.4 `coord_of(α)` per-articulation projection | `core/theory_interop/coord.vr` |
 | §10.4 `theorem_coord` multi-framework upper bound | `core/theory_interop/coord.vr` |
-| `verum audit --coord` plain + JSON output | `crates/verum_cli/src/commands/audit.rs` |
+| `verum audit --coord` plain + JSON output | `audit` module |
 | Structured `Ordinal` type (Cantor normal form) | `core/theory_interop/coord.vr` |
 | `register_framework_coord` API for user-defined frameworks | `core/theory_interop/coord.vr` |
 

@@ -250,4 +250,6 @@ upper bounds.
   machinery.
 - [Audit protocol](../architecture-types/audit-protocol.md) —
   the gate runner.
-- [Anti-pattern AP-025 ReflectionTowerExhaustion](../architecture-types/anti-patterns/coherence.md#ap-025).
+- [Anti-pattern AP-011 AbsoluteBoundaryAttempt](../architecture-types/anti-patterns/articulation.md#ap-011)
+  — the related stratum-admissibility check that prevents claims
+  beyond the reflection tower's `LAbs` boundary.

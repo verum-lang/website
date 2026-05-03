@@ -51,7 +51,7 @@ fn singleton<T: Ord>(x: T) -> SortedList<T>
 ```
 
 The compiler checks both `ensures` clauses. Vacuous quantifiers
-discharge immediately — the first proof takes Z3 ~8 ms.
+discharge immediately — the first proof takes the SMT backend ~8 ms.
 
 ## 3. Insertion
 
@@ -76,7 +76,7 @@ fn insert<T: Ord>(xs: SortedList<T>, x: T) -> SortedList<T>
 
 > ∀ i ∈ 0..out.len() - 1. out[i] ≤ out[i+1]
 
-Z3 gets this from:
+The SMT backend gets this from:
 
 1. `pos` satisfies `∀ j < pos. xs[j] < x` and `∀ j ≥ pos. xs[j] ≥ x`
    (axioms of `partition_point`, reflected from `@logic`).
@@ -203,9 +203,9 @@ they validate the solver's proofs against random inputs.
 
 ```bash
 $ verum test
-   [verify] SortedList.insert      ✓ (formal/z3,  14 ms)
-   [verify] SortedList.remove_at   ✓ (formal/z3,   9 ms)
-   [verify] SortedList.merge       ✓ (formal/z3, 210 ms)
+   [verify] SortedList.insert      ✓ (formal/smt-backend,  14 ms)
+   [verify] SortedList.remove_at   ✓ (formal/smt-backend,   9 ms)
+   [verify] SortedList.merge       ✓ (formal/smt-backend, 210 ms)
    test tests.insert_preserves_sort          ... ok
    test tests.merge_produces_sorted          ... ok
    test tests.insert_preserves_sort_forall   ... ok (100 cases)
@@ -217,7 +217,7 @@ $ verum test
 If `merge` takes > 5 s to verify, try:
 
 - Escalate to `@verify(thorough)` on merge specifically — this races
-  the SMT backend, and tactic-based proof search; CVC5's quantifier
+  the SMT backend, and tactic-based proof search; the SMT backend's quantifier
   reasoning is often faster on nested foralls.
 - Split invariants 4 and 5 into separate helper `@logic` lemmas
   that name the adjacency property.

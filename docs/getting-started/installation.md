@@ -49,17 +49,16 @@ prebuilt archives. Everything else requires a source build.
 This is the toolchain binary you run to compile Verum programs.
 End users running a prebuilt `verum` binary do not install any
 extra toolchain — the binary is self-contained for the target
-platform. **CVC5** is present as a stub; features that name it
-degrade to Z3 via the capability router — see
+platform. **the SMT backend** is present as a stub; features that name it
+degrade to the SMT backend via the capability router — see
 [SMT routing](/docs/verification/smt-routing).
 
 ### What programs compiled by `verum build` link against
 
-Programs you produce with `verum build` are **not** Rust binaries and
-do **not** pull in libc / libm / pthread. The AOT linker
-(`crates/verum_codegen/src/link.rs`) uses a per-platform
-`-nostdlib`-based configuration and goes direct-to-kernel wherever
-the platform allows:
+Programs you produce with `verum build` do **not** pull in
+libc / libm / pthread. The AOT linker uses a per-platform
+`-nostdlib`-based configuration and goes direct-to-kernel
+wherever the platform allows:
 
 | Target | Links against | Entry point |
 |--------|--------------|-------------|
@@ -72,17 +71,16 @@ the platform allows:
 
 Concretely, the LLVM backend emits `syscall` as inline assembly —
 `rax` for the syscall number, `rdi/rsi/rdx/r10/r8/r9` for args —
-rather than calling any C wrapper
-(`crates/verum_codegen/src/llvm/instruction.rs:3473-3519`). A minimal
-Verum `fn main() { print("hi\n"); }` compiled with `verum build --release`
-on Linux produces a fully-static ELF binary that runs without
-glibc, without an interpreter, and without any runtime the user has
-to ship alongside it.
+rather than calling any C wrapper. A minimal Verum
+`fn main() { print("hi\n"); }` compiled with
+`verum build --release` on Linux produces a fully-static ELF
+binary that runs without glibc, without an interpreter, and
+without any runtime the user has to ship alongside it.
 
 ## Build from source
 
 This is the primary install path today. The Verum compiler is
-written in Rust and uses unstable features that require the
+written in the host language and uses unstable features that require the
 **nightly** toolchain. The build is fully self-contained: a single
 `cargo build` clones, configures, and links every native dependency
 the compiler needs.
@@ -171,7 +169,7 @@ pins the right components (`rustfmt`, `clippy`, `rust-src`,
 
 ### 2. Clone with submodules
 
-The repository carries Z3, CVC5, and a few other natives as Git
+The repository carries the SMT backend, and a few other natives as Git
 submodules. Clone with `--recursive` so they come along:
 
 ```bash
@@ -194,7 +192,7 @@ whether `cargo` puts it on your `$PATH` for you.
 into `~/.cargo/bin` (which `rustup` already adds to your `$PATH`).
 
 ```bash
-cargo install --path crates/verum_cli --force
+cargo install --path <implementation> --force
 ```
 
 `--force` overwrites a previous install with the freshly-built
@@ -215,7 +213,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc
 
 Either path does the same end-to-end work the first time:
 
-- bundled SMT solvers (Z3, CVC5) compile and link statically;
+- bundled SMT solvers (the SMT backend) compile and link statically;
 - the native LLVM dependency builds and installs in-tree
   automatically (~30–60 min on a 4-core box, fully silent except
   for cargo `warning:` lines);
@@ -356,7 +354,7 @@ Components:
   Parser:       verum_parser + verum_fast_parser v0.1.0
   Type Checker: verum_types v0.1.0
   Kernel:       verum_kernel v0.1.0   (LCF-style trusted checker)
-  SMT Solver:   Z3 + CVC5 (via verum_smt capability router)
+  SMT Solver:   multiple SMT backends (via verum_smt capability router)
   CBGR Runtime: verum_cbgr v0.1.0
 
 Usage:

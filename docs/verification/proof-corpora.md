@@ -109,7 +109,7 @@ citations.
 | **Dependent Σ / Π**     | Length-indexed arrays (e.g. of Kraus operators); Π-types for tower constructions; Σ-types for spectral-triple data. |
 | **Cubical HoTT**        | Path-valued theorems (`Path<A>(ρ*, φ(ρ*))` is computational, not axiomatic). Hard-problem meta-arguments (Gödel-Lawvere positivity) require path types. |
 | **`@framework(...)`**   | Every citation from Lurie / Schreiber / Connes / Petz / Arnold–Mather / Baez–Dolan is a typed attribute. `verum audit --framework-axioms` enumerates the exact set. |
-| **`verum verify`**      | Discharges refinement + `ensures` obligations via Z3/CVC5 capability router. Counterexamples surface automatically in the diagnostic when a step fails. |
+| **`verum verify`**      | Discharges refinement + `ensures` obligations via multiple SMT backends capability router. Counterexamples surface automatically in the diagnostic when a step fails. |
 | **`verum export`**      | Emits Lean / Coq / Dedukti / Metamath certificates with every framework-axiom marker carried inline as a comment — external reviewers can replay the proof under their own axiomatization. |
 | **`verum audit`**       | The release-gate auditor. Lists the full set of framework axioms used by any theorem reachable from the corpus's public API. |
 

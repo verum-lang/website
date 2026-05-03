@@ -60,7 +60,7 @@ fn clamp(lo: Int, hi: Int { self >= lo }, x: Int) -> Int
 Build:
 
 ```
-[verify] clamp   ✓ (formal/z3, 6 ms)
+[verify] clamp   ✓ (formal/smt-backend, 6 ms)
 ```
 
 Done — the capability router dispatched to the SMT backend and the postcondition
@@ -118,8 +118,8 @@ nonlinearity, or a predicate the solver can't decompose.
 - Move a complex predicate into a named `@logic fn` that the solver
   can reuse.
 - Escalate to `@verify(thorough)` — races the SMT backend, and tactic-based
-  proof search in parallel; CVC5 handles nonlinear arithmetic and
-  strings better than Z3 so this often unblocks hard goals.
+  proof search in parallel; the SMT backend handles nonlinear arithmetic and
+  strings better than the SMT backend so this often unblocks hard goals.
 - Bound quantifiers: `forall x: Int. P(x)` → `forall x in 0..n. P(x)`.
 
 **"Counter-example: …"**: the solver found an input that violates

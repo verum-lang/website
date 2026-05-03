@@ -5,7 +5,7 @@ title: Soundness gates in proof validation
 
 # Soundness gates in proof validation
 
-The proof validator (`crates/verum_verification/src/proof_validator.rs`)
+The proof validator (`proof_validator` module)
 sits between user-supplied proof terms and the kernel. Its job is to
 turn every "trust the user" path into an explicit verification gate
 that either accepts a proof for a real reason or rejects it with a
@@ -267,13 +267,13 @@ remediation hint pointing at `register_axiom` /
 
 Path: `recheck_with_smt`.
 
-Each hypothesis in scope is translated to a Z3 expression via the
+Each hypothesis in scope is translated to a the SMT backend expression via the
 shared translator and asserted on the solver. Hypotheses that
 don't translate cleanly are skipped (sound conservative — operates
 without that assumption rather than asserting vacuous truth).
 Pre-fix the loop bound a fresh `Bool::new_const(name)` and
 asserted **that**, completely discarding the hypothesis's
-proposition. Z3 saw every hypothesis as `h0 := true` regardless of
+proposition. the SMT backend saw every hypothesis as `h0 := true` regardless of
 content; re-checks that should have found counterexamples
 silently passed.
 
@@ -285,9 +285,9 @@ Walks the formula's AST via
 `collect_typed_variables_from_bool` to harvest each variable's
 actual sort (Int, Bool, Real, Bool, …). Bound-variable
 construction uses `Dynamic::fresh_const(name, &sort)` so the
-existential quantifier binds the same Z3 constants that appear
+existential quantifier binds the same the SMT backend constants that appear
 free in the body. Pre-fix all variables were defaulted to Bool,
-which left the QE tactic operating on a vacuous quantifier (Z3
+which left the QE tactic operating on a vacuous quantifier (the SMT backend
 distinguishes constants by name AND sort, so `Bool::new_const("x")`
 does not bind a free `Int::new_const("x")`).
 
@@ -387,7 +387,7 @@ When implementing `validate_<new_rule>`:
 Each gate is locked by a regression test that constructs a proof
 term that pre-fix would have silently passed and asserts the
 post-fix rejects it. The corpus lives under
-`crates/verum_verification/tests/`:
+the `verification` test suite:
 
 - `inference_rule_soundness.rs` — unknown rules + arity + quantifier
   shape gates.

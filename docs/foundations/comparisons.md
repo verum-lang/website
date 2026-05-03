@@ -58,7 +58,7 @@ restrictions (no dependent return types, no refinement interaction).
 **SMT-backed verification as a compiler phase.** Verum integrates an
 SMT backend as a first-class compilation phase; `@verify(formal)` is
 grammar, not an external-tool hook. (The current implementation
-bundles Z3 and CVC5 behind a capability router; a Verum-native solver
+bundles multiple SMT backends behind a capability router; a Verum-native solver
 is on the roadmap.) In Rust, SMT-based verification lives in external
 tools that re-parse source.
 

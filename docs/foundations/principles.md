@@ -279,7 +279,7 @@ auditable**:
   inference rules, organised as one file per rule, plus the
   supporting context, judgment, and soundness scaffolding. A
   reviewer can read it end-to-end without external dependencies.
-- A minimal Rust trusted-base proof checker, performing direct
+- A minimal trusted-base proof checker, performing direct
   rule-matching with explicit substitution. A reviewer can read
   this end-to-end too.
 - An audit registry decomposing each kernel rule's

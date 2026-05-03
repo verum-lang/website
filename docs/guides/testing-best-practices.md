@@ -8,12 +8,12 @@ title: Testing best practices
 A comprehensive guide to writing maintainable, fast, and *trustworthy*
 test suites in Verum. Every recommendation here is calibrated to the
 shipped runner — every example compiles, every flag in every code
-block exists in `crates/verum_cli/src/main.rs` today.
+block exists in `main` module today.
 
 :::tip[Verified against the current `verum` binary]
 All assertion calls, attributes, and CLI flags shown below have been
 checked against the implementation in
-`crates/verum_cli/src/commands/{test.rs,property.rs,bench.rs}` and
+the `test.rs,property.rs,bench.rs` module(s) and
 `core/base/panic.vr`. The DI-mock and snapshot recipes are explicitly
 flagged as Stage-2; copy-pasting those today will *not* compile.
 :::

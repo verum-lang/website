@@ -1,192 +1,189 @@
 ---
 sidebar_position: 5
 title: "Modal-temporal anti-patterns (AP-027 .. AP-032)"
-description: "The MTAC band: premature observation, decision without context, observer impersonation, modal collision, temporal cycle, counterfactual divergence."
+description: "The MTAC band: temporal inconsistency, counterfactual brittleness, missed adjoint, universal-property violation, phantom evolution, Yoneda-inequivalent refactor."
 slug: /architecture-types/anti-patterns/mtac
 ---
 
 # Modal-temporal anti-patterns (AP-027 .. AP-032)
 
-The MTAC band covers defects in the modal-temporal layer:
-*when* an architectural decision was made, *who* made it, and
-*under which modal qualification* it holds. These patterns fire
-at the **bundle** phase because they require the full project
-graph including the audit chronicle as input.
+Band 3 covers architectural defects in the **modal-temporal
+architectural calculus** (per spec §20–§23). Patterns in this
+band require additional inputs beyond the cog `Shape` —
+specifically the [`DiagnosticContext`](../../reference/glossary)
+fields `temporal_samples`, `counterfactual_pairs`,
+`refactorings_without_adjoint`, `claimed_universal_property` /
+`uniqueness_witness`, `declared_evolutions`, and
+`yoneda_observer_diff`.
 
-For the underlying primitives (Decision, Observer, ModalAssertion,
-TimePoint, ArchProposition) see [MTAC](../mtac.md). For the
-five-roster observer set and six modal operators see
-[MTAC § 3-4](../mtac.md#3-the-five-roster-observer-set).
+These patterns therefore fire at the **bundle** phase, when the
+audit gate has access to the full project plus the
+modal-temporal samples the developer / audit harness supplied.
 
----
-
-## AP-027 — PrematureObservation {#ap-027}
-
-**Severity:** warning · **Phase:** bundle
-
-**Predicate.** A `Decision` is observed (logged, audited,
-broadcast) at a `TimePoint` strictly before the decision's own
-`TimePoint`.
-
-**What it catches.** The audit chronicle records that "the
-capability was logged at T1" but the decision granting the
-capability happened at T2 > T1 — the observation predates the
-decision.
-
-**Worked example.** A request is logged before authentication
-completes. The log contains data the authenticator should have
-rejected.
-
-**Remediation.** Reorder the operations: complete the decision
-*before* the observation.
+This page paraphrases each entry's predicate from
+the canonical anti-pattern catalog and its per-pattern predicates. For the
+catalog's overall structure see
+[Anti-pattern overview](./overview.md). For the MTAC primitives
+themselves see [the MTAC architecture page](../mtac.md).
 
 ---
 
-## AP-028 — DecisionWithoutContext {#ap-028}
+## AP-027 — TemporalInconsistency {#ap-027}
 
-**Severity:** warning · **Phase:** bundle
+**Severity:** error · **Phase:** bundle · **Stable since:** v0.2
 
-**Predicate.** A `Decision` is recorded without specifying the
-`by_observer` or `modality` field.
+**Predicate.** `forall (t1, shape1), (t2, shape2) ∈
+DiagnosticContext.temporal_samples.
+shape1.foundation == shape2.foundation`. Across every pair of
+sampled time-points, the cog's foundation must remain stable.
 
-**What it catches.** Decisions that float in the audit chronicle
-without attribution. "We adopt strict mode" — on whose
-authority? for which subset of the codebase?
+**Why it matters.** An MTAC `Always(Φ)` invariant requires `Φ`
+to hold at every future time-point. Foundation stability is the
+canonical instance of this for architecture: a cog that's HoTT
+at t₀ and Cubical at t₁ has effectively two distinct
+architectures, and any theorem cited across the temporal
+boundary loses its meta-theoretic strength.
 
-**Remediation.** Always specify the observer and modality:
-
-```verum
-@mtac(decision: Decision {
-    point:       TimePoint { value: 0 },
-    by_observer: Observer.Architect,
-    proposition: ArchProposition.InvariantHolds("strict_mode"),
-    modality:    ModalAssertion.Necessarily(...),
-})
+**Diagnostic.**
+```text
+ATS-V-AP-027 [error] in cog `my_app.alpha`:
+  Foundation drifts across time samples (detected at Future(1735689600))
+  An MTAC `Always(Φ)` invariant requires the foundation to be stable across
+  all time points. This cog's temporal samples show foundation drift
+  between time points.
 ```
 
----
-
-## AP-029 — ObserverImpersonation {#ap-029}
-
-**Severity:** error · **Phase:** bundle
-
-**Predicate.** Observer A asserts a proposition in observer B's
-canonical register without an explicit promotion certificate.
-
-**What it catches.** A Developer-level cog asserting an
-Architect-level invariant. The five-roster observer set is a
-*narrative* discipline: each role has its canonical register,
-and impersonation undermines the audit chronicle's
-attribution.
-
-The five canonical registers:
-
-| Observer | Register |
-|----------|----------|
-| Architect | top-level architectural decisions, canonical Shape policy |
-| Auditor | sign-off chronicles, verification verdicts |
-| Developer | implementation-level invariants, working-scope refinements |
-| Operator | runtime state observations, deployment configuration |
-| Adversary | threat-model assertions |
-
-**Remediation.** Either move the assertion to a cog whose
-declared observer matches, or add an explicit promotion
-certificate citing the authority for the role transition.
+**Remediation.** Either align the foundation across the
+trajectory (pick one foundation and stay), or add an explicit
+`@arch_corpus(foundation_bridge, ...)` that proves the
+foundation-change is meaning-preserving.
 
 ---
 
-## AP-030 — ModalCollision {#ap-030}
+## AP-028 — CounterfactualBrittleness {#ap-028}
 
-**Severity:** error · **Phase:** bundle
+**Severity:** error · **Phase:** bundle · **Stable since:** v0.2
 
-**Predicate.** Two incompatible modal qualifications are attached
-to the same `ArchProposition`. Examples:
+**Predicate.** `forall pair ∈
+DiagnosticContext.counterfactual_pairs.
+forall inv ∈ pair.stability_invariants. holds(inv, pair.base) ∧
+holds(inv, pair.alternative)`. Every counterfactual pair's
+stability invariants must hold under both the base and the
+alternative decision.
 
-- `Necessarily(P)` and `Possibly(¬P)` — directly contradictory.
-- `Before(t1, P)` and `After(t2, P)` with `t2 < t1` —
-  temporally inconsistent.
-- `Intentionally(P)` and `Counterfactually(¬P)` admitted on the
-  same site — the project is asserting both that P is by-design
-  and that ¬P would still be true counterfactually, which is
-  paradoxical.
+**Why it matters.** Counterfactual brittleness is the
+architectural analogue of "this only works because we chose X" —
+the system passes its tests because of an arbitrary decision,
+and an alternative decision (a different framework choice, a
+different topology) would silently break invariants the audit
+believed were structural.
 
-**Remediation.** Resolve the collision: one modal must be
-weakened or removed.
-
----
-
-## AP-031 — TemporalCycle {#ap-031}
-
-**Severity:** error · **Phase:** bundle
-
-**Predicate.** The decision graph contains a `Before` / `After`
-cycle. A decision asserts it is both before and after another
-decision.
-
-**What it catches.** A self-inconsistent audit chronicle. The
-chronicle's `TimePoint` values are *user-asserted*, not
-machine-clock-derived; a project that mis-orders its own
-chronicle produces a temporal cycle.
-
-**Remediation.** Inspect the chronicle, identify the offending
-edge, fix the user-asserted timeline.
+**Remediation.** Either generalise the cog so the invariants
+hold under both decisions (the architectural fix), or remove
+the invariant from the counterfactual pair's contract (the
+declaration fix — admit the brittleness honestly).
 
 ---
 
-## AP-032 — CounterfactualDivergence {#ap-032}
+## AP-029 — MissedAdjoint {#ap-029}
 
-**Severity:** hint · **Phase:** bundle
+**Severity:** error · **Phase:** bundle · **Stable since:** v0.2
 
-**Predicate.** The counterfactual report (from
-[`verum audit --counterfactual`](../counterfactual.md))
-contradicts a base-scenario invariant — i.e., the engine reports
-`HoldsBaseOnly` for an invariant the project's audit chronicle
-asserts to hold *unconditionally*.
+**Predicate.** `forall refactor ∈
+DiagnosticContext.refactorings_without_adjoint.
+exists adjoint(refactor)`. Every claimed refactoring must have
+its inverse adjoint pair declared (per `AdjunctionWitness` in
+[`arch_mtac`](../mtac.md)).
 
-**What it catches.** A fragile invariant that the project has
-declared as load-bearing. The counterfactual engine reports the
-fragility; the AP-032 pattern surfaces the contradiction
-between the assertion and the reality.
+**Why it matters.** Refactorings are functors `F: Old → New`.
+A refactoring without its right-adjoint `G: New → Old` cannot
+be undone — the architecture loses optionality. Every
+canonical refactoring (Inline ⊣ Extract, Specialise ⊣
+Generalise, Decompose ⊣ Compose, Strengthen ⊣ Weaken) is an
+adjoint pair; declaring only one half is an oversight.
 
-**Remediation.** Either:
-
-1. Weaken the invariant declaration to `Possibly(P)` rather
-   than `Necessarily(P)`.
-2. Document the fragility — list the unchanged primitive as a
-   *condition* in the cog's `Lifecycle.Conditional(...)`.
-3. Strengthen the cog's body so the invariant becomes stable
-   under the counterfactual.
-
-The pattern is informational — it identifies the *gap* between
-declared and actual stability without forcing a specific
-remediation.
+**Remediation.** Add the inverse functor to the refactoring
+declaration. The [`AdjunctionWitness`](../adjunctions) carries
+the `forward_name`, `backward_name`, plus the `preserved` /
+`gained` property lists.
 
 ---
 
-## Summary of severities
+## AP-030 — UniversalPropertyViolation {#ap-030}
 
-| AP | Severity | Phase |
-|----|----------|-------|
-| AP-027 | warning | bundle |
-| AP-028 | warning | bundle |
-| AP-029 | error | bundle |
-| AP-030 | error | bundle |
-| AP-031 | error | bundle |
-| AP-032 | hint | bundle |
+**Severity:** hint · **Phase:** bundle · **Stable since:** v0.2
 
-The MTAC band's discipline: temporal and modal claims must be
-*attributable* (who? when? under what modality?) and must form
-a self-consistent graph in the audit chronicle.
+**Predicate.** `DiagnosticContext.claimed_universal_property.is_some() ⇒
+DiagnosticContext.uniqueness_witness.is_some()`. Every claimed
+universal-property uniqueness must carry a witness.
 
-## Cross-references
+**Why it matters.** Universal-property claims ("this is THE
+unique cog satisfying X") are stronger than existential
+claims; without a uniqueness witness, the claim is a category
+error.
 
-- [Anti-pattern overview](./overview.md)
-- [MTAC primitives](../mtac.md) — TimePoint, Decision, Observer,
-  ModalAssertion, ArchProposition.
-- [Counterfactual reasoning](../counterfactual.md) — the engine
-  AP-032 cooperates with.
-- [Adjunctions](../adjunctions.md) — the analyzer that feeds
-  `Counterfactually(P)`.
-- [CVE — articulation hygiene](../cve/articulation-hygiene.md)
-  — the L6 register-prohibition discipline AP-029 enforces at
-  the architectural layer.
+**Remediation.** Either supply the uniqueness witness (a proof
+term or a structural argument), or weaken the claim to
+existential.
+
+---
+
+## AP-031 — PhantomEvolution {#ap-031}
+
+**Severity:** error · **Phase:** bundle · **Stable since:** v0.2
+
+**Predicate.** `forall e : ArchEvolution ∈
+DiagnosticContext.declared_evolutions.
+satisfiable(e.trigger)`. Every declared evolution path must
+have a satisfiable trigger.
+
+**Why it matters.** A phantom evolution is an evolution path
+the architecture *promises* but cannot trigger. The audit
+chronicle would see the evolution as load-bearing for the
+project's roadmap; in fact the system never reaches the
+trigger, so the evolution is dead code.
+
+**Remediation.** Either remove the phantom evolution from the
+declaration, or modify the trigger so it is satisfiable in some
+realistic state.
+
+---
+
+## AP-032 — YonedaInequivalentRefactor {#ap-032}
+
+**Severity:** hint · **Phase:** bundle · **Stable since:** v0.2
+
+**Predicate.** `forall refactor.
+yoneda_equivalent(refactor.before, refactor.after) ∨
+declared_observer_change(refactor)`. A refactoring claimed
+"Yoneda-equivalent" must actually preserve every observer
+projection (per
+[`yoneda_equivalent`](../../verification/proofs)) — or, if the
+observer-functor genuinely changes, the refactoring must
+declare that change explicitly.
+
+**Why it matters.** Yoneda-inequivalence is the strongest form
+of observable architectural change: the cog *appears different*
+to at least one downstream consumer. A refactoring claimed
+"safe" but Yoneda-inequivalent is a hidden breaking change.
+
+**Remediation.** Either restore Yoneda-equivalence (typically
+by preserving all five canonical observers — `EndUser`,
+`PeerCog`, `Stakeholder`, `Auditor`, `Adversary`), or annotate
+the refactoring as observer-changing and notify downstream
+consumers.
+
+---
+
+## See also
+
+- [Anti-pattern catalog overview](./overview.md) — the indexing
+  page with the full 32-entry table.
+- [Capability / composition core (AP-001..AP-010)](./classical.md)
+- [Boundary / lifecycle / capability ontology (AP-011..AP-026)](./articulation.md)
+- [MTAC architecture page](../mtac.md) — the modal-temporal
+  primitives this band extends.
+- [Adjunctions](../adjunctions.md) — the formal backing for
+  AP-029 `MissedAdjoint`.
+- [Counterfactual reasoning](../counterfactual.md) — the formal
+  backing for AP-028 `CounterfactualBrittleness`.
