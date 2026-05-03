@@ -284,7 +284,7 @@ Concretely, a Verum script gets:
   worth shipping are also what make a 30-line script worth
   keeping.
 - **The same SMT solver.** Add `@verify(formal)` to a function
-  inside a script and the same Z3/CVC5 routing that audits a
+  inside a script and the same multiple SMT backends routing that audits a
   protocol library checks the script's contracts.
 
 The cost of script mode for users who don't use it is **zero**.

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: "Kernel module map — the trusted infrastructure inventory"
-description: "Every module in `crates/verum_kernel/`, what it does, what trust it bears, and how the audit gates consume it."
+description: "Every module in the `kernel` crate, what it does, what trust it bears, and how the audit gates consume it."
 slug: /verification/kernel-module-map
 ---
 
@@ -145,7 +145,7 @@ the [framework-axiom audit](./framework-axioms.md).
 | `framework_citation` | `@framework(name, "...")` → `FrameworkCitation` data layer + manifest collector. |
 | `accessibility` | `@accessibility(λ)` Diakrisis Axi-4 marker enumeration. |
 | `foundation_profile` | Foundation profiles (ZFC / HoTT / Cubical / Cic / MLTT / Eff / Custom). |
-| `foreign_system` | External system citations (Coq, Lean, Isabelle, Z3, CVC5). |
+| `foreign_system` | External system citations (Coq, Lean, Isabelle, the SMT backend). |
 | `diakrisis_bridge` | The α/ε bidirectional bridge primitives (Diakrisis 108.T). |
 | `eps_mu` | ε-μ-style coherence machinery. |
 | `depth` | M-iteration depth witnesses for K-Refine. |

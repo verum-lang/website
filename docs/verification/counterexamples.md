@@ -13,7 +13,7 @@ title: Counterexamples
 Counterexamples are the proof system's equivalent of a test
 failure with a recorded input. Understanding what's in one, how
 it's extracted, and how it's minimized is the difference between
-a quick fix and a morning spent squinting at Z3 model dumps.
+a quick fix and a morning spent squinting at the SMT backend model dumps.
 
 ---
 
@@ -181,7 +181,7 @@ solver-backed:
 **Phase 4a: syntactic minimization** (always applied). Pure
 zero-callback pass that drops every
 assignment whose variable name doesn't appear in the violated
-constraint string. Z3 frequently reports helper-predicate
+constraint string. the SMT backend frequently reports helper-predicate
 constants the user never wrote; the syntactic pass removes
 those so the counterexample mentions only the variables the
 violation actually depends on.
@@ -286,7 +286,7 @@ causes and diagnostics:
 | Cause                              | Mitigation                                                        |
 |------------------------------------|-------------------------------------------------------------------|
 | Timeout                            | `--timeout 120` (or `Thorough` strategy).                         |
-| Nonlinear arithmetic explosion     | Switch to CVC5 via `--solver cvc5`; or decompose manually.        |
+| Nonlinear arithmetic explosion     | Switch to the SMT backend via `--solver smt-backend`; or decompose manually.        |
 | Unbounded quantifier instantiation | Add `@trigger` to help the solver pick patterns.                  |
 | Reflection unfolding loop          | Bound recursion depth with `@logic(depth=N)`.                     |
 | Theory combination at a hard boundary | Use the Certified strategy to race both backends.              |
@@ -340,7 +340,7 @@ Implementation pointer:
 - **Not a proof of `P(x)` for all other `x`.** A counterexample
   proves `¬∀ P`, i.e. there exists one falsifier. It does NOT
   say "almost all inputs falsify."
-- **Not stable across solver versions.** Z3 and CVC5 may pick
+- **Not stable across solver versions.** multiple SMT backends may pick
   different models for the same unsat query; the reported
   counterexample is whichever came first in the portfolio race.
 

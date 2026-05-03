@@ -338,7 +338,7 @@ in their own meta-modules:
 | `@cut_elimination[(bound)]` | Part B §10 | `parse_cut_elimination` |
 
 **Architectural principle (V8.1 META1)**: *typed attributes are
-reserved for compiler-internal dispatch where Rust-side performance
+reserved for compiler-internal dispatch where performance
 or TCB constraints matter*. Every advisory marker that does NOT
 participate in compile-time dispatch is BETTER expressed via the
 meta-system — zero grammar bloat, user-extensible, single source

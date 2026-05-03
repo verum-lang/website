@@ -12,7 +12,7 @@ combinations to reach for under specific workflow goals.
 
 If you only want to set a per-function timeout, use
 `@verify(thorough)` and stop reading. If you need to bound
-memory in CI, configure CVC5's quantifier strategy, or
+memory in CI, configure the SMT backend's quantifier strategy, or
 debug a stuck proof, this page is the one to bookmark.
 
 ---
@@ -27,7 +27,7 @@ verification stack. For each, you see:
   attribute.
 - **Default** — the value you get from `Default::default()`.
 - **Effect** — what changing the value actually does.
-- **Wiring scope** — which Z3 / CVC5 parameter scope (global,
+- **Wiring scope** — which multiple SMT backends parameter scope (global,
   Config, or Solver) the field reaches; see [scope discipline](#parameter-scope-discipline)
   for why this matters.
 
@@ -84,7 +84,7 @@ and `let` bindings.
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `enable_smt` | `true` | When `false`, fall back to syntactic-only subsumption — fast but conservative (rejects valid programs that need SMT). |
-| `timeout_ms` | `100` | Per-query Z3 budget. The spec mandates 10–500 ms for refinement checks; values outside that range trigger a warning at type-check time. |
+| `timeout_ms` | `100` | Per-query the SMT backend budget. The spec mandates 10–500 ms for refinement checks; values outside that range trigger a warning at type-check time. |
 | `enable_cache` | `true` | Memoise verification conditions by their SHA-256 fingerprint. Disabling adds ~30% to total verification time. |
 | `max_cache_size` | `10 000` | LRU bound. Each entry is ~512 B, so 10 k entries ≈ 5 MB. |
 
@@ -115,15 +115,15 @@ computation, refinement projection.
 
 | Field | Default | Effect |
 |-------|--------:|--------|
-| `timeout_ms` | `5 000` | Per-QE-call Z3 budget. |
+| `timeout_ms` | `5 000` | Per-QE-call the SMT backend budget. |
 | `max_iterations` | `10` | Reserved for iterative QE (planned). |
-| `use_qe_lite` | `true` | Try Z3's `qe-light` first — fast for linear arithmetic. |
+| `use_qe_lite` | `true` | Try the SMT backend's `qe-light` first — fast for linear arithmetic. |
 | `use_qe_sat` | `true` | SAT-preprocess Boolean-heavy formulas before QE. |
 | `use_model_projection` | `true` | Model-based projection for non-linear cases. |
 | `use_skolemization` | `true` | Skolem-functions fallback when QE-lite + projection fail. |
 | `simplify_level` | `2` | See chain table below. |
 
-`simplify_level` maps to escalating Z3 tactic chains:
+`simplify_level` maps to escalating the SMT backend tactic chains:
 
 | Level | Chain |
 |-------|-------|
@@ -149,10 +149,10 @@ interpolant as candidate invariant).
 
 | Field | Default | Effect |
 |-------|---------|--------|
-| `algorithm` | `MBI` | Pick: `McMillan` (proof-based, strongest), `Pudlak` (dual, weakest), `Dual` (combines), `Symmetric` (avoids McMillan/Pudlak bias), `MBI` (model-based, Z3-native), `PingPong` / `Pogo` (specialised). |
+| `algorithm` | `MBI` | Pick: `McMillan` (proof-based, strongest), `Pudlak` (dual, weakest), `Dual` (combines), `Symmetric` (avoids McMillan/Pudlak bias), `MBI` (model-based, the SMT backend-native), `PingPong` / `Pogo` (specialised). |
 | `strength` | `Balanced` | Bias toward stronger or weaker interpolant. |
 | `simplify` | `true` | Run `simplify` on the result before returning. |
-| `timeout_ms` | `Some(5 000)` | Per-interpolation Z3 budget; `None` = unbounded (only for offline runs). |
+| `timeout_ms` | `Some(5 000)` | Per-interpolation the SMT backend budget; `None` = unbounded (only for offline runs). |
 | `proof_based` | `false` | Reserved for proof-based fallback. |
 | `model_based` | `true` | Reserved for MBI fallback hint. |
 | `quantifier_elimination` | `true` | When `false`, MBI's `project_onto_shared` skips QE and returns the original formula. McMillan correctness (`A ⇒ I`) is preserved; the `I ∧ B ⇒ ⊥` half degrades. |
@@ -179,30 +179,30 @@ max_projection_vars  = 50         # bail earlier on blowup
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `timeout_ms` | `30 000` | Global wall-clock for the entire verifier pass. |
-| `constraint_timeout_ms` | `100` | Per-constraint Z3 budget — triggers graceful degradation (constraint stays in runtime CFG instead of being eliminated). |
-| `enable_proofs` | `true` | Request Z3 proof generation. |
+| `constraint_timeout_ms` | `100` | Per-constraint the SMT backend budget — triggers graceful degradation (constraint stays in runtime CFG instead of being eliminated). |
+| `enable_proofs` | `true` | Request the SMT backend proof generation. |
 | `enable_unsat_cores` | `true` | Extract minimal unsat cores for diagnostics. |
 | `minimize_cores` | `true` | Iterate to find a *minimal* core (more expensive). |
 | `enable_caching` | `true` | Proof-cache lookups across runs. |
 | `max_cache_size` | `10 000` | LRU bound on the proof cache. |
-| `enable_parallel` | `false` | Reserved — Z3 Context is not Send/Sync in 0.19. |
+| `enable_parallel` | `false` | Reserved — the SMT backend Context is not Send/Sync in 0.19. |
 | `num_workers` | `cpus()` | Reserved. |
-| `auto_tactics` | `true` | Use Z3's tactic auto-selection when constructing solvers. |
+| `auto_tactics` | `true` | Use the SMT backend's tactic auto-selection when constructing solvers. |
 | `memory_limit_mb` | `Some(4096)` | Process-wide memory ceiling — see [parameter-scope discipline](#parameter-scope-discipline) for why this is global, not per-solver. |
 
 ---
 
-## Z3Config — Z3-specific tuning
+## SmtBackendConfig — the SMT backend-specific tuning
 
-**Owner**: `verum_smt::z3_backend::Z3ContextManager`.
+**Owner**: `verum_smt::backend::SmtContextManager`.
 
-**Where set**: `[verify.solver.z3]`.
+**Where set**: `[verify.solver.smt-backend]`.
 
 | Field | Default | Effect | Wiring scope |
 |-------|---------|--------|--------------|
 | `enable_proofs` | `true` | Proof-log generation. | Config |
 | `minimize_cores` | `true` | Pass to `unsat_core` extraction. | Solver Params |
-| `enable_interpolation` | `false` | Enable Z3's MBI tactic when interpolating. | tactic dispatch |
+| `enable_interpolation` | `false` | Enable the SMT backend's MBI tactic when interpolating. | tactic dispatch |
 | `global_timeout_ms` | `Some(30 000)` | Context-level timeout. | Config (`set_timeout_msec`) |
 | `memory_limit_mb` | `Some(8192)` | Process-wide memory ceiling. | **Global** (`memory_max_size`) |
 | `enable_mbqi` | `true` | Model-based quantifier instantiation. | Solver Params (per-query) |
@@ -214,20 +214,20 @@ max_projection_vars  = 50         # bail earlier on blowup
 **Recipe — reproducible CI**:
 
 ```toml
-[verify.solver.z3]
+[verify.solver.smt-backend]
 random_seed   = 42
 auto_tactics  = false   # remove heuristic non-determinism
 ```
 
 ---
 
-## Cvc5Config — CVC5-specific tuning
+## SmtBackendConfig — the SMT backend-specific tuning
 
-**Owner**: `verum_smt::cvc5_backend::Cvc5Backend`.
+**Owner**: `verum_smt::backend::SmtBackend`.
 
-**Where set**: `[verify.solver.cvc5]`.
+**Where set**: `[verify.solver.smt-backend]`.
 
-| Field | Default | CVC5 option | Effect |
+| Field | Default | the SMT backend option | Effect |
 |-------|---------|-------------|--------|
 | `logic` | `ALL` | `:logic` | SMT-LIB logic name. |
 | `timeout_ms` | `Some(30 000)` | `tlimit-per` | Per-query timeout. |
@@ -235,12 +235,12 @@ auto_tactics  = false   # remove heuristic non-determinism
 | `produce_models` | `true` | `produce-models` | SAT result + model. |
 | `produce_proofs` | `true` | `produce-proofs` | UNSAT result + proof log. |
 | `produce_unsat_cores` | `true` | `produce-unsat-cores` | UNSAT + core. |
-| `preprocessing` | `true` | `preprocess-only=false` | When `false`, CVC5 stops after preprocessing — useful for instrumentation, never for production. |
+| `preprocessing` | `true` | `preprocess-only=false` | When `false`, the SMT backend stops after preprocessing — useful for instrumentation, never for production. |
 | `quantifier_mode` | `Auto` | `quant-mode` | `None` / `EMatching` / `CEGQI` / `MBQI` / `Auto`. |
 | `random_seed` | `None` | `seed` | Reproducibility. |
 | `verbosity` | `0` | `verbosity` | 0–5; saturates at 5. |
 
-**Quantifier-mode tuning**: CVC5's `Auto` heuristic picks per
+**Quantifier-mode tuning**: the SMT backend's `Auto` heuristic picks per
 goal. Pin a mode when you have ground truth about goal shape:
 
 | Mode | Best for |
@@ -259,7 +259,7 @@ goal. Pin a mode when you have ground truth about goal shape:
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `cache_size` | `10 000` | LRU bound on result cache. |
-| `smt_timeout_ms` | `100` | Per-query Z3 budget. **Updated dynamically** by `RefinementZ3Backend::set_timeout_ms` so each `RefinementConfig.timeout_ms` change takes effect immediately. |
+| `smt_timeout_ms` | `100` | Per-query the SMT backend budget. **Updated dynamically** by `RefinementSmtBackend::set_timeout_ms` so each `RefinementConfig.timeout_ms` change takes effect immediately. |
 
 This is an internal struct; you don't normally configure it
 directly — `RefinementConfig.timeout_ms` propagates here.
@@ -276,7 +276,7 @@ types, π-calculus processes, lazy data structures.
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `max_depth` | `100` | Hard cap on recursive-destructor unfolding. |
-| `timeout_ms` | `30 000` | Per-query Z3 budget. |
+| `timeout_ms` | `30 000` | Per-query the SMT backend budget. |
 | `generate_counterexamples` | `true` | When `false`, leave the counterexample slot as `None` to save formatting work — useful when you only need the boolean answer. |
 | `infinite_strategy` | `BoundedUnfolding` | `Coinduction` / `UpToBisimulation` / `BoundedUnfolding`. |
 
@@ -291,7 +291,7 @@ graph predicates).
 
 | Field | Default | Effect |
 |-------|--------:|--------|
-| `entailment_timeout_ms` | `5 000` | Per-entailment Z3 budget. |
+| `entailment_timeout_ms` | `5 000` | Per-entailment the SMT backend budget. |
 | `max_unfolding_depth` | `10` | Bound on recursive-predicate unfolding (`ListSeg`, `TreePred`). |
 | `enable_frame_inference` | `true` | Gates `infer_frame`; when `false`, returns typed failure so callers that only need entailment validity skip the residual computation (~30% encoder reduction on large heaps). |
 | `enable_symbolic_execution` | `true` | Reserved — feature not yet enabled by default in encoder. |
@@ -309,10 +309,10 @@ contradict?), proof-search debugging.
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `minimize` | `true` | Iterate to find a *minimal* core. |
-| `quick_extraction` | `false` | Trade minimality for speed — return the first unsat-core Z3 finds. |
+| `quick_extraction` | `false` | Trade minimality for speed — return the first unsat-core the SMT backend finds. |
 | `max_iterations` | `100` | Bound on minimization iteration count. |
-| `timeout_ms` | `Some(10 000)` | Per-extraction Z3 budget — folded into the same `Params` that sets `unsat_core: true`. |
-| `proof_based` | `false` | Use Z3's proof API instead of assumption-tracking — slower but more precise. |
+| `timeout_ms` | `Some(10 000)` | Per-extraction the SMT backend budget — folded into the same `Params` that sets `unsat_core: true`. |
+| `proof_based` | `false` | Use the SMT backend's proof API instead of assumption-tracking — slower but more precise. |
 
 ---
 
@@ -321,12 +321,12 @@ contradict?), proof-search debugging.
 **Owner**: `verum_smt::parallel::ParallelSolver`.
 
 **Used by**: `@verify(thorough)` and `@verify(certified)`
-modes — both Z3 and CVC5 race to discharge the same goal.
+modes — both multiple SMT backends race to discharge the same goal.
 
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `num_workers` | `cpus()` | Worker thread count. |
-| `strategies` | `default_strategies()` | Per-worker strategy list (Z3 logic, tactics, seed). |
+| `strategies` | `default_strategies()` | Per-worker strategy list (the SMT backend logic, tactics, seed). |
 | `timeout_ms` | `Some(30 000)` | Global timeout. |
 | `enable_sharing` | `true` | **Broader gate** — must be true for *any* cross-worker exchange. |
 | `enable_lemma_exchange` | `true` | Per-feature gate; effective only when `enable_sharing` is also true. |
@@ -349,7 +349,7 @@ num_workers     = 1       # single-thread for full reproducibility
 
 ## OptimizerConfig — MaxSAT / Pareto
 
-**Owner**: `verum_smt::optimizer::Z3Optimizer`.
+**Owner**: `verum_smt::optimizer::SmtOptimizer`.
 
 **Used by**: optimization-modulo-theories (best-effort
 refinement, weighted-soft-constraint solving).
@@ -358,7 +358,7 @@ refinement, weighted-soft-constraint solving).
 |-------|---------|--------|
 | `incremental` | `true` | Gates `push` / `pop` scope manipulation. When `false`, push/pop are no-ops (paired so the stack stays balanced). |
 | `max_solutions` | `Some(usize::MAX)` | Cap for Pareto-front enumeration. |
-| `timeout_ms` | `Some(30 000)` | Per-query Z3 budget. |
+| `timeout_ms` | `Some(30 000)` | Per-query the SMT backend budget. |
 | `enable_cores` | `true` | Extract unsat cores for soft-constraint debugging. |
 | `method` | `Lexicographic` | `Lexicographic` / `Pareto` / `Box` / `WeightedSum`. |
 
@@ -375,7 +375,7 @@ refinement, weighted-soft-constraint solving).
 | `max_size` | `2 000` | Entry cap. |
 | `max_size_bytes` | `500 MB` | Memory cap. |
 | `ttl` | `30 days` | Result expiry. |
-| `statistics_driven` | `true` | When `false`, cache everything. When `true`, gate inserts on Z3 stats. |
+| `statistics_driven` | `true` | When `false`, cache everything. When `true`, gate inserts on the SMT backend stats. |
 | `min_decisions_to_cache` | `1 000` | ≥ this many SMT decisions → cache. |
 | `min_conflicts_to_cache` | `100` | ≥ this many conflicts → cache. |
 | `min_solve_time_ms` | `100` | ≥ this elapsed → cache. |
@@ -391,12 +391,12 @@ provide stats.
 
 ## Parameter-scope discipline
 
-Z3 has three distinct parameter scopes that are **not
+The SMT backend has three distinct parameter scopes that are **not
 interchangeable** — even for the same param key:
 
 | Scope | API | Persistence |
 |-------|-----|-------------|
-| Global | `z3::set_global_param(k, v)` | Process-wide; most-recent call wins. |
+| Global | `smt-backend::set_global_param(k, v)` | Process-wide; most-recent call wins. |
 | Config | `Config::set_param_value(k, v)` | Applied at context construction. |
 | Solver | `Params::set_u32 / set_bool` + `Solver::set_params(&p)` | Per-solver. |
 
@@ -410,16 +410,16 @@ The empirically verified rule per key:
 | `proof` | ✅ | ✅ (`set_proof_generation`) | ❌ |
 | `timeout` | partial | ✅ (`set_timeout_msec`) | ✅ (`set_u32`) |
 | `unsat_core` | ❌ | ✅ | ✅ — must fold into the same `Params` value as the timeout |
-| `quant-mode` (CVC5) | n/a | n/a | ✅ via `cvc5_solver_set_option` |
+| `quant-mode` (the SMT backend) | n/a | n/a | ✅ via `smt_solver_set_option` |
 
 :::warning Don't trust your intuition
 A parameter that looks settable at any scope frequently
-isn't. Z3's silent-ignore behaviour means an incorrect
+isn't. the SMT backend's silent-ignore behaviour means an incorrect
 choice produces a "config seems to work" failure mode that
 only shows up under stress (`memory_max_size` is the
 canonical example: setting it on `Config` lets the build
-succeed but Z3 ignores the limit; setting it on `Solver`
-makes Z3 mis-route easy queries).
+succeed but the SMT backend ignores the limit; setting it on `Solver`
+makes the SMT backend mis-route easy queries).
 
 If you're adding a new param to the verifier, **empirically
 verify** at each scope before committing. The verifier's
@@ -477,7 +477,7 @@ ttl              = "7d"
 [verify.solver.refinement]
 timeout_ms       = 5_000
 
-[verify.solver.z3]
+[verify.solver.smt-backend]
 random_seed      = 42        # reproducible failures
 auto_tactics     = false
 memory_limit_mb  = 16_384
@@ -491,8 +491,8 @@ num_workers      = 1
 ### Deep proof debugging
 
 ```toml
-[verify.solver.cvc5]
-verbosity        = 3          # CVC5 trace output
+[verify.solver.smt-backend]
+verbosity        = 3          # the SMT backend trace output
 
 [verify.solver.unsat_core]
 minimize         = true
@@ -513,7 +513,7 @@ fail_on_divergence = true
 [verify.solver.refinement]
 timeout_ms       = 30_000
 
-[verify.solver.z3]
+[verify.solver.smt-backend]
 enable_proofs    = true
 random_seed      = 42
 

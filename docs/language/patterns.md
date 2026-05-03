@@ -240,7 +240,7 @@ match.
 
 ### Guard verification with SMT
 
-Opt in to Z3 verification of boolean/arithmetic guards with
+Opt in to the SMT backend verification of boolean/arithmetic guards with
 `@verify(exhaustiveness)`:
 
 ```verum
@@ -323,7 +323,7 @@ orchestrator routes through.
 | `use_refinement`  | `true`  | Routes refined types (`Int{x: x > 0}` etc.) through the refinement-aware analysis that eliminates impossible cases. |
 | `use_smt_guards`  | `false` | Master switch over the SMT-backed guard verification path. The path also requires `guard_verifier` to be `Some` (callers inject from `verum_smt::exhaustiveness_backend::SmtGuardVerifier`). |
 | `smt_timeout_ms`  | `100`   | Forwarded into `SmtGuardConfig.timeout_ms` when the SMT path runs. |
-| `guard_verifier`  | `None`  | Optional injected `&dyn GuardVerifier`. The trait lives in `verum_types`; concrete Z3/CVC5 implementations live in `verum_smt`. |
+| `guard_verifier`  | `None`  | Optional injected `&dyn GuardVerifier`. The trait lives in `verum_types`; concrete multiple SMT backends implementations live in `verum_smt`. |
 
 #### `CacheConfig`
 
@@ -348,7 +348,7 @@ orchestrator routes through.
 
 | Field                | Default | What it gates                                       |
 |----------------------|---------|-----------------------------------------------------|
-| `timeout_ms`         | `100`   | Per-query timeout forwarded to Z3 / CVC5 via `set_params`. |
+| `timeout_ms`         | `100`   | Per-query timeout forwarded to multiple SMT backends via `set_params`. |
 | `max_guards`         | `10`    | Skips SMT analysis when guard count exceeds this — falls back to the syntactic-only verdict with `skipped: true`. |
 | `extract_witnesses`  | `true`  | Whether SAT counterexamples are surfaced as `SmtWitness` entries. |
 | `detect_redundancy`  | `true`  | Whether the redundancy pass runs alongside coverage. |

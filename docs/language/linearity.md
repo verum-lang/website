@@ -18,10 +18,10 @@ type Point is { x: Int, y: Int };        // ordinary — dup/drop freely
 ```
 
 :::info Status
-Core infrastructure is implemented (`ResourceKind::{Copy, Affine,
-Linear}` in `crates/verum_types/src/affine.rs`, tracked through
-`AffineTracker` in the inference pipeline). Drop-checking across
-conditional branches and loop carriers is still maturing — see
+Core infrastructure is implemented: the three resource kinds
+(`Copy` / `Affine` / `Linear`) parse, type-check, and propagate
+through the inference pipeline. Drop-checking across conditional
+branches and loop carriers is still maturing — see
 [Implementation status](#implementation-status) below.
 :::
 
@@ -524,14 +524,14 @@ provide the method.
 
 ## Implementation status
 
-| Feature | Status | Backing file |
+| Feature | Status | Notes |
 |---|---|---|
-| `linear` / `affine` type_def | **Stable** | `verum_fast_parser/src/decl.rs` |
-| `ResourceKind` tracking | **Stable** | `verum_types/src/affine.rs` |
-| Contagion rule (field-driven kind) | **Stable** | `verum_types/src/affine.rs:type_contains_affine` |
-| Consume-once on linear `self` | **Stable** | `verum_types/src/infer.rs` |
-| Drop-check across `if`/`match` arms | **Maturing** | `affine.rs:check_linear_consumed` |
-| Drop-check across loops | **Experimental** | tests under `vcs/specs/L1-core/linearity/` |
+| `linear` / `affine` type_def | **Stable** | declared at the type level |
+| Resource-kind tracking | **Stable** | three kinds: Copy / Affine / Linear |
+| Contagion rule (field-driven kind) | **Stable** | a record inherits the strictest field's kind |
+| Consume-once on linear `self` | **Stable** | enforced in inference |
+| Drop-check across `if`/`match` arms | **Maturing** | every arm must consume / move equivalently |
+| Drop-check across loops | **Experimental** | covered by linearity test suite |
 | `Linear` / `Affine` kind bounds in generics | **Experimental** | parser understands them, inference partial |
 | Linearity-polymorphic arrows | Planned | — |
 
@@ -572,4 +572,3 @@ pattern match consumes the record.
 - [Memory model](./memory-model.md) — move/copy/drop semantics in Verum.
 - [Typestate cookbook recipe](../cookbook/shape-safe.md) — a complete typestate example.
 - [Context system](./context-system.md) — linearity-friendly dependency injection.
-- Source: `crates/verum_types/src/affine.rs`, `crates/verum_types/src/ty.rs`.

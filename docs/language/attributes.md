@@ -65,7 +65,7 @@ Each derive is a procedural macro under `core.derives`.
 
 The strategy controls **what kind of guarantee** you want; the
 solver subsystem picks **which backend** discharges the
-obligation (Z3, CVC5, portfolio) via the capability router.
+obligation (the SMT backend, portfolio) via the capability router.
 
 **Strategy semantics:**
 

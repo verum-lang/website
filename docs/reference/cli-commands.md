@@ -253,16 +253,18 @@ project, when `FILE` is omitted). See also
 - `--mode <strategy>` / `-m <strategy>` — `runtime | static | formal |
   fast | thorough | certified | synthesize` (aliases: `none → runtime`,
   `proof → formal`). **Default `proof`** (= `formal`).
-- `--solver <z3|cvc5|auto|portfolio|capability>` — default `z3`.
-  Unknown values error with the accepted-values list. CVC5 / portfolio /
-  capability routing ships in stub mode in the default build (transparent
-  Z3 fallback); build with `--features cvc5-ffi` to link real libcvc5.
+- `--solver <auto|portfolio|capability>` — default `auto`.
+  Unknown values error with the accepted-values list. The
+  capability-routed and portfolio paths ship in stub mode in
+  the default build (transparent SMT-backend fallback); build
+  with `--features smt-backend-ffi` to link the real backend
+  library.
 - `--timeout <SECONDS>` — base solver timeout (default `120`).
   Strategy-specific multipliers apply: `fast 0.3×`, `thorough 2×`,
   `certified 3×`, `synthesize 5×`.
 - `--smt-proof-preference <BACKEND>` — backend used when the `Certified`
-  strategy exports a proof certificate. Default `cvc5` (ALETHE proofs
-  are more stable across releases than Z3 native proofs). Only affects
+  strategy exports a proof certificate. Default `smt-backend` (ALETHE proofs
+  are more stable across releases than the SMT backend native proofs). Only affects
   export; does not change which solver closes an obligation.
 
 **Scope**:

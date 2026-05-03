@@ -74,8 +74,8 @@ where it matters.
 ### Which SMT solver does it use?
 
 The language layer is backend-agnostic. The current release bundles
-Z3 and CVC5 as backends behind the capability router (Z3 for LIA /
-bitvectors / arrays; CVC5 for strings, nonlinear arithmetic, SyGuS,
+multiple SMT backends as backends behind the capability router (the SMT backend for LIA /
+bitvectors / arrays; the SMT backend for strings, nonlinear arithmetic, SyGuS,
 finite-model-finding); `@verify(thorough)` cross-validates across
 them. A Verum-native solver is on the roadmap. See
 [SMT routing](/docs/verification/smt-routing).

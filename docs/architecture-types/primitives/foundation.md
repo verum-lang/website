@@ -193,7 +193,7 @@ declare is bounded by its Foundation. Specifically:
 This bound is enforced by `verum audit --bundle`'s L4 check:
 a cog whose Lifecycle exceeds the strength its Foundation
 admits is flagged as
-[`AP-020 FoundationForgery`](../anti-patterns/coherence.md#ap-020).
+[`AP-023 FoundationForgery`](../anti-patterns/articulation.md#ap-023).
 
 ## 9. Worked example — multi-foundation project
 
@@ -241,7 +241,7 @@ bridge is the load-bearing assumption.
   taxonomy that interacts with Foundation.
 - [Shape](./shape.md) — the aggregate carrier.
 - [Anti-pattern AP-005 FoundationDrift](../anti-patterns/classical.md#ap-005).
-- [Anti-pattern AP-020 FoundationForgery](../anti-patterns/coherence.md#ap-020).
+- [Anti-pattern AP-023 FoundationForgery](../anti-patterns/articulation.md#ap-023).
 - [Verification → framework axioms](../../verification/framework-axioms.md)
   — the full inventory machinery.
 - [Verification → reflection tower](../../verification/reflection-tower.md)

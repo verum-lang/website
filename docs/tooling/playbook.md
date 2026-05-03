@@ -195,8 +195,8 @@ Put the cursor on a function and press `F10`. The verification panel shows:
 
 | Obligation                                                       | Time       | Solver  | Result |
 |------------------------------------------------------------------|------------|---------|--------|
-| `requires xs.is_sorted()`                                        | 18 ms      | Z3      | pass   |
-| `ensures result.is_some() => xs[result.unwrap()] == key`         | 42 ms      | Z3      | pass   |
+| `requires xs.is_sorted()`                                        | 18 ms      | the SMT backend      | pass   |
+| `ensures result.is_some() => xs[result.unwrap()] == key`         | 42 ms      | the SMT backend      | pass   |
 | `ensures result.is_none() => forall i in xs. xs[i] != key`       | 500 ms     | —       | **timeout** |
 
 **Total:** 2 / 3 discharged, 1 timed out.

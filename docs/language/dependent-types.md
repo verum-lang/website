@@ -49,8 +49,8 @@ depends on the _value_ `n`, not on a type-level numeral.
 ### The three surface forms of Π
 
 Verum lets you write a dependent function in three equivalent ways.
-All three elaborate to the same core `Ty.Pi` node in
-`crates/verum_types/src/ty.rs`.
+All three elaborate to the same core dependent-function (`Π`) type
+in the kernel.
 
 **1. Value-dependent `fn` signature** — the everyday form:
 
@@ -163,10 +163,9 @@ fn transport<A, B>(p: Path<Type>(A, B), x: A) -> B {
 
 These are the exact signatures the stdlib ships in
 `core/math/hott.vr` — the `@builtin_*` intrinsics on the RHS are
-bound to `CubicalExtended` VBC opcodes by the compiler
-(`verum_vbc/src/codegen/expressions.rs` §4077+), and their return
-types are carried by the surrounding signature through the generic
-opaque-intrinsic rule in `verum_types.infer`.
+bound to the `CubicalExtended` VBC opcode family by the compiler,
+and their return types are carried by the surrounding signature
+through the generic opaque-intrinsic typing rule.
 
 ## Interval type
 

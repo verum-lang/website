@@ -64,12 +64,12 @@ strategy:
 | `formal`            | ω              | Proof    | full SMT verification, capability router picks backend | recommended production default |
 | `proof`             | ω + 1          | Proof    | user-supplied tactic block; kernel rechecks. Dominates SMT and admits induction. | theorems, foundational lemmas |
 | `thorough`          | ω · 2          | Proof    | portfolio race with 2× timeout — first success wins; mandatory `decreases` / `invariant` / `frame` | hard obligations |
-| `reliable`          | ω · 2 + 1      | Proof    | `thorough` + Z3 ∧ CVC5 must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
+| `reliable`          | ω · 2 + 1      | Proof    | `thorough` + the SMT backend ∧ the SMT backend must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
 | `certified`         | ω · 2 + 2      | Proof    | `reliable` + certificate materialisation, kernel re-check, multi-format export | security-critical, external audit, `.verum-cert` export |
 | `coherent_static`   | ω · 2 + 3      | Proof    | α-cert + symbolic ε-claim; polynomial in `|P|·|φ|`; CI ≤ 60 s | weak coherence; production fallback for VFE-6 |
 | `coherent_runtime`  | ω · 2 + 4      | Hybrid   | α-cert + runtime ε-monitor; trace-bounded; CI ≤ 5 min | hybrid coherence; runtime monitoring |
 | `coherent`          | ω · 2 + 5      | Proof    | α/ε bidirectional check via 108.T-bridge; single-exponential; CI ≤ 30 min | critical-safety code requiring full operational coherence |
-| `synthesize`        | ≤ ω · 3 + 1    | Proof    | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (CVC5 SyGuS today) | program synthesis, hole filling, invariant generation |
+| `synthesize`        | ≤ ω · 3 + 1    | Proof    | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (the SMT backend SyGuS today) | program synthesis, hole filling, invariant generation |
 
 **Strict monotonicity.** The ν-ordinals are pinned to make the
 ladder strictly monotone:
@@ -366,7 +366,7 @@ pub fn replay_smt_cert(ctx: &Context, cert: &SmtCertificate)
 
 Two implications flow from this boundary:
 
-1. **SMT is outside the TCB.** Z3 / CVC5 / E / Vampire / Alt-Ergo each
+1. **SMT is outside the TCB.** multiple SMT backends / E / Vampire / Alt-Ergo each
    produce an `SmtCertificate`; the kernel re-derives a checkable
    proof term from the certificate via `replay_smt_cert`. A bug in a
    solver that produced a spurious "proof" fails the replay — it
@@ -380,7 +380,7 @@ Two implications flow from this boundary:
 The explicit trusted computing base after the kernel lands is
 therefore exactly:
 
-- the Rust compiler and its linked dependencies (unavoidable),
+- the host compiler and its linked dependencies (unavoidable),
 - the `verum_kernel::{check, infer, verify_full}` loop and its
   sub-routines (`substitute`, `structural_eq`, universe rules), and
 - the axioms registered via `AxiomRegistry::register` (each one

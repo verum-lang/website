@@ -237,7 +237,7 @@ pipeline now:
 
 100 / 100 AOT builds of the reproducer are stable after the change.
 Regression guard: `tier1_repeated_aot_build_is_stable` in
-`crates/verum_cli/tests/tier_parity_e2e.rs`.
+a `cli` integration test.
 :::
 
 ### Dual-path: GPU via MLIR
@@ -320,7 +320,7 @@ phase 0   (stdlib)              0.20s  (cache hit)
 phase 1   (parse)               0.25s
 phase 2   (meta registry)       0.02s
 phase 3   (expand)              0.14s
-phase 3a  (contracts)           0.09s  (12 obligations, z3)
+phase 3a  (contracts)           0.09s  (12 obligations, smt-backend)
 phase 4   (semantic + cbgr)     0.61s
 phase 4a  (autodiff)            0.04s
 phase 4b  (context/ffi)         0.02s

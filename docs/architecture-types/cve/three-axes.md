@@ -80,7 +80,7 @@ claim.
 
 | Mode | Meaning | Verum surface |
 |------|---------|---------------|
-| **Present** | Algorithmic check, bounded time. | `Int { self > 0 }` — Z3 decides instances. |
+| **Present** | Algorithmic check, bounded time. | `Int { self > 0 }` — the SMT backend decides instances. |
 | **Conditional** | Effective only under stated assumptions. | "Halting on terminating inputs" — conditional check. |
 | **External** | Check delegated to a trusted external base. | `[П]` Postulate citing a published theorem. |
 | **Absent** | No check, even partial. | A claim asserted without procedure. |

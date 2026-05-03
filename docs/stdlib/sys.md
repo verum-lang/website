@@ -388,14 +388,12 @@ gate before the intrinsic body so deny-listed contexts
 (sandboxed scripts, capability-attenuated subroutines) get a
 typed refusal instead of silent OS-resource access.
 
-The marker is enforced at the registry level by two pin tests
-in `crates/verum_vbc/src/intrinsics/registry.rs`:
+The marker is enforced at the intrinsic-registry level by two
+pin checks:
 
-- `test_syscall_intrinsics_require_permission` — every
-  `Syscall`-category intrinsic carries the hint; new ones added
-  without it fail the test loudly.
-- `test_observational_intrinsics_skip_permission` — `Time`,
-  `Platform`, and `Logging` intrinsics that happen to carry
+- Every `Syscall`-category intrinsic carries the hint; new ones
+  added without it fail loudly at registry-build time.
+- `Time`, `Platform`, and `Logging` intrinsics that happen to carry
   `IoEffect` MUST NOT carry `RequiresPermission`. Gating those
   would force every `print()` and `monotonic_nanos()` through
   the permission router for no security benefit (no caller-

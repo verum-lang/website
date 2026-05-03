@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: core.net.tls13 — TLS 1.3
-description: Pure-Verum implementation of RFC 8446 + RFC 8449 + RFC 8879 with typed handshake phases, refinement-proven transcripts, and Z3-checked session invariants.
+description: Pure-Verum implementation of RFC 8446 + RFC 8449 + RFC 8879 with typed handshake phases, refinement-proven transcripts, and the SMT backend-checked session invariants.
 ---
 
 # `core.net.tls13` — TLS 1.3
@@ -262,7 +262,7 @@ independent strategies (bloom-filter + monotonic clock).
 L2 conformance: **43 / 76 (56.6 %)** at the 2026-04-29 baseline.
 The gap is **not** in TLS protocol code: the implementation modules
 all type-check standalone, the V1 / V2 / V8 theorems still discharge
-through Z3, and the RFC 8448 reference vectors (`rfc8448_simple_1rtt`,
+through the SMT backend, and the RFC 8448 reference vectors (`rfc8448_simple_1rtt`,
 `rfc8448_hrr_appendix_c`, `rfc8448_resumed_appendix_b`) compute the
 correct intermediate secrets when run as standalone scripts.
 

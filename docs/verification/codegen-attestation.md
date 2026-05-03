@@ -241,7 +241,7 @@ trust.
 ## 7. The mechanisation roadmap
 
 The full roadmap is tracked under
-`crates/verum_kernel/src/mechanisation_roadmap.rs` and surfaced
+`mechanisation_roadmap` module and surfaced
 by:
 
 - `verum audit --htt-roadmap` — Lurie HTT mechanisation roadmap.

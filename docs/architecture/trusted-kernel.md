@@ -26,7 +26,7 @@ flowchart LR
     SRC[".vr source"] --> EL["Elaborator<br/>(verum_types)"]
     EL --> CT[["CoreTerm"]]
     TAC["Tactics<br/>(verum_verification)"] --> CT
-    SMT["SMT backends<br/>(Z3 / CVC5 / E / Vampire)"] --> CERT[["SmtCertificate"]]
+    SMT["SMT backends<br/>(multiple SMT backends / E / Vampire)"] --> CERT[["SmtCertificate"]]
     CERT --> REPLAY["replay_smt_cert"]
     REPLAY --> CT
     FW["Framework axioms<br/>(core/math/frameworks/*.vr)"] --> REG[["AxiomRegistry"]]
@@ -133,8 +133,8 @@ a sub-check until a richer proof-term format reaches the kernel.
 
 The only constructor that still returns `KernelError::NotImplemented`
 is `SmtProof`, whose dedicated replay path lives in
-`replay_smt_cert` and lands per-backend in follow-up commits (Z3
-proof format first, then CVC5, E, Vampire, Alt-Ergo).
+`replay_smt_cert` and lands per-backend in follow-up commits (the SMT backend
+proof format first, then the SMT backend, E, Vampire, Alt-Ergo).
 
 ## The substitute function
 
@@ -196,7 +196,7 @@ boundary.
 
 ```rust
 pub struct SmtCertificate {
-    pub backend: Text,             // "z3", "cvc5", "e", "vampire", ...
+    pub backend: Text,             // "backend-a", "backend-b", "e", "vampire", ...
     pub backend_version: Text,     // pinned per-cert to the exact solver
     pub trace: List<u8>,           // normalized proof trace
     pub obligation_hash: Text,     // content-addressed obligation ID

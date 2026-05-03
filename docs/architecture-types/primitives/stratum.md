@@ -168,7 +168,11 @@ Lifecycle:
 | Hott | LAbs | Postulate (with admissibility certificate) |
 
 Coordinates outside this table trigger
-[`AP-022 MsfsCoordinateDrift`](../anti-patterns/coherence.md#ap-022).
+[`AP-011 AbsoluteBoundaryAttempt`](../anti-patterns/articulation.md#ap-011)
+when the cog claims `LAbs` membership, or
+[`AP-026 FoundationContentMismatch`](../anti-patterns/articulation.md#ap-026)
+when the body uses constructs from a different foundation than
+the declared one.
 
 ## 6. Stratum and the register-mixing pattern
 
@@ -252,7 +256,8 @@ stratum hierarchy is acceptable but should be deliberate.
   taxonomy bounded by stratum strength.
 - [Anti-pattern AP-006 RegisterMixing](../anti-patterns/classical.md#ap-006).
 - [Anti-pattern AP-007 StratumAdmissibility](../anti-patterns/classical.md#ap-007).
-- [Anti-pattern AP-022 MsfsCoordinateDrift](../anti-patterns/coherence.md#ap-022).
+- [Anti-pattern AP-011 AbsoluteBoundaryAttempt](../anti-patterns/articulation.md#ap-011) — the canonical stratum-admissibility check.
+- [Anti-pattern AP-026 FoundationContentMismatch](../anti-patterns/articulation.md#ap-026) — body-vs-declared foundation alignment.
 - [Verification → MSFS coord](../../verification/msfs-coord.md)
   — the operational MSFS-coordinate machinery.
 - [Verification → reflection tower](../../verification/reflection-tower.md)

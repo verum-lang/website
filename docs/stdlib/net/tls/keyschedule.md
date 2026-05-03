@@ -182,7 +182,7 @@ Used by QUIC to derive QUIC traffic secrets post-handshake
 output bytes with overwhelming probability under the standard HMAC
 assumption. V1 ([`v1_derive_secret_theorem`](#references))
 discharges the label-catalogue distinctness + output-length contract
-through Z3.
+through the SMT backend.
 
 ## References
 

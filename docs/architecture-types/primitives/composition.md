@@ -108,7 +108,7 @@ code so the public surface of A does not let the capability
 escape.
 
 [`AP-001 CapabilityEscalation`](../anti-patterns/classical.md#ap-001)
-and [`AP-019 CapabilityLaundering`](../anti-patterns/coherence.md#ap-019)
+and [`AP-022 CapabilityLaundering`](../anti-patterns/articulation.md#ap-022)
 together check that A's *declared* capabilities accurately
 reflect its effective capabilities.
 

@@ -262,7 +262,7 @@ The compiler reads the function's return type, finds a
 `CapabilityTransfer` to the cog's effective `messages_out`.
 The audit chronicle records every capability handoff.
 
-[`AP-019 CapabilityLaundering`](../anti-patterns/coherence.md#ap-019)
+[`AP-022 CapabilityLaundering`](../anti-patterns/articulation.md#ap-022)
 fires when a capability is *erased* by transit through an
 unmarked boundary — the cog's `messages_out` does not list
 the corresponding `CapabilityTransfer`, but the body returns
@@ -318,6 +318,6 @@ machine-readable.
   compose across cogs.
 - [Shape](./shape.md) — the aggregate carrier.
 - [Anti-pattern AP-002 BoundaryViolation](../anti-patterns/classical.md#ap-002).
-- [Anti-pattern AP-019 CapabilityLaundering](../anti-patterns/coherence.md#ap-019).
+- [Anti-pattern AP-022 CapabilityLaundering](../anti-patterns/articulation.md#ap-022).
 - [Three orthogonal axes](../orthogonality.md) — boundary vs
   property vs context.

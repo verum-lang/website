@@ -424,7 +424,7 @@ Run:
 
 ```bash
 $ verum test
-   [verify] codegen.generate  ✓ (formal/z3, 28 ms)
+   [verify] codegen.generate  ✓ (formal/smt-backend, 28 ms)
    test tests.codegen_produces_valid_code          ... ok
    test tests.codegen_is_always_valid              ... ok (100 cases)
    test tests.memory_store_round_trip              ... ok
@@ -474,7 +474,7 @@ $ curl localhost:8080/health
 - **Context protocols for DI.** One `Store` trait, an in-memory
   implement for tests, swap for production — no mocking framework.
 - **`@verify(formal)` with loop invariants.** The code generator's
-  post-condition is proven by Z3, not tested.
+  post-condition is proven by the SMT backend, not tested.
 - **Structured concurrency with backpressure.** `nursery` bounds
   task lifetimes; `Semaphore` bounds total concurrency.
 

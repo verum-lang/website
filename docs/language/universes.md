@@ -25,14 +25,13 @@ theorem add_comm(a: Int, b: Int) -> (a + b == b + a) : Prop { ... }
 ```
 
 :::info Status
-`UniverseLevel` (Concrete / Variable / Max / Succ), the universe
-solver, and `Prop`/`Type(n)` primitive types are implemented in
-`crates/verum_types/src/ty.rs` and
-`crates/verum_types/src/universe_solver.rs`. User-facing universe
-polymorphism is exposed through the `universe` keyword; proof
-irrelevance for `Prop` is active in the type checker. Kind-inference
-interaction is mature for common patterns; cumulative Prop→Type
-coercion is in the *maturing* column.
+The four universe-level forms (Concrete / Variable / Max / Succ),
+the universe solver, and the `Prop` / `Type(n)` primitive types
+are wired end-to-end. User-facing universe polymorphism is
+exposed through the `universe` keyword; proof irrelevance for
+`Prop` is active in the type checker. Kind-inference interaction
+is mature for common patterns; cumulative Prop→Type coercion is
+in the *maturing* column.
 :::
 
 ## Why universes?
@@ -386,6 +385,5 @@ to accept it. If you need a quick-and-dirty polymorphism, use
 - [Refinement types](./refinement-types.md) — how `Prop`
   underpins erasable refinements.
 - [Proof DSL](./proof-dsl.md) — where propositions actually live.
-- Source: `crates/verum_types/src/ty.rs` (`UniverseLevel`),
-  `crates/verum_types/src/universe_solver.rs` (solver). See also the
-  [Grammar reference — Types](../reference/grammar-ebnf.md#27-types).
+- [Grammar reference — Types](../reference/grammar-ebnf.md#27-types) —
+  the formal universe-level productions.

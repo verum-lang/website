@@ -76,7 +76,7 @@ fn average(x: Percentage, y: Percentage) -> Percentage {
 Refinement predicates are part of the type. They are checked at the
 boundaries where values flow from unconstrained to refined, and erased
 at runtime when the proof succeeds. The SMT capability router
-(`verum_smt.BackendSwitcher`) picks the backend — Z3, CVC5, or a
+(`verum_smt.BackendSwitcher`) picks the backend — the SMT backend, or a
 portfolio — based on the theory mix of the predicate.
 
 ## 5. Three-tier references

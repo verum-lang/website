@@ -340,8 +340,8 @@ The configs share a uniform shape:
 |------------------------|---------|--------------------------------------------------------|
 | `max_abstraction_level`| `4`     | Caps the abstraction level requested by `abstract_predicate`. Higher → more aggressive (less precise). |
 | `path_threshold`       | `50`    | `merge_similar_paths` skips work when path count is below this. |
-| `use_z3_equivalence`   | `true`  | Gates `check_equivalence_z3`. When `false`, the method returns the conservative "not provably equivalent" answer without invoking Z3 (stats counter still increments). Surfaced via `z3_equivalence_enabled()`. |
-| `use_subsumption`      | `true`  | Gates `check_subsumption_z3` symmetrically. Surfaced via `subsumption_enabled()`. |
+| `use_smt_equivalence`   | `true`  | Gates `check_equivalence_smt`. When `false`, the method returns the conservative "not provably equivalent" answer without invoking the SMT backend (stats counter still increments). Surfaced via `smt_equivalence_enabled()`. |
+| `use_subsumption`      | `true`  | Gates `check_subsumption_smt` symmetrically. Surfaced via `subsumption_enabled()`. |
 | `use_widening`         | `true`  | Master switch over `abstract_level3`. When `false`, level-3 falls back to level-2 (no widening) — preserves precision at the cost of slower convergence on deeply-nested loops. Surfaced via `widening_enabled()`. |
 | `widening_threshold`   | `3`     | When widening is enabled: widen after this many iterations on the same predicate hash. |
 | `max_cache_size`       | `10000` | Caps the abstraction / equivalence / subsumption caches to bound memory growth on long runs. |

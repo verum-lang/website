@@ -196,15 +196,15 @@ load-bearing for the rest of the audit.
 
 ## 7. The kernel-side mirror
 
-The Verum-side `core.architecture.types` has a Rust-side
-mirror in `verum_kernel::arch`. The two are kept in sync by the
-kernel test suite — every variant added to the Rust enum has a
-corresponding variant in the Verum type, and vice versa.
+The Verum-side `core.architecture.types` has a kernel-side
+mirror in the `arch` module of the trusted kernel. The two are
+kept in sync by the kernel test suite — every variant added on
+one side has a corresponding variant on the other.
 
-This mirror is itself an architectural artefact. The Rust side
-is the *trusted base* (the kernel that performs the checks);
-the Verum side is the *self-application surface* (the type
-definitions the kernel examines). Drift between the two
+This mirror is itself an architectural artefact. The kernel
+side is the *trusted base* (the kernel that performs the
+checks); the Verum side is the *self-application surface* (the
+type definitions the kernel examines). Drift between the two
 manifests as a test failure in the kernel test suite.
 
 The discipline has shipped without drift through multiple

@@ -148,10 +148,10 @@ Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`,
 `chore`. Example:
 
 ```
-feat(smt): add CVC5 SyGuS integration
+feat(smt): add the SMT backend SyGuS integration
 
-Route synthesis obligations (@verify(synthesize)) to CVC5's
-SyGuS engine. Z3 doesn't support SyGuS; the router now checks
+Route synthesis obligations (@verify(synthesize)) to the SMT backend's
+SyGuS engine. the SMT backend doesn't support SyGuS; the router now checks
 the obligation kind at classification time.
 
 Closes #1234.

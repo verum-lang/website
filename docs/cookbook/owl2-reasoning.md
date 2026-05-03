@@ -147,7 +147,7 @@ help: drop one of the parent declarations or remove the
 ```
 
 The violation is caught by [`AP-023
-FrameworkAxiomCollision`](/docs/architecture-types/anti-patterns/coherence#ap-023);
+FoundationForgery`](/docs/architecture-types/anti-patterns/articulation#ap-023);
 no runtime check is generated.
 
 ## 4. Subsumption query
@@ -162,7 +162,7 @@ public fn is_vegetarian(p: Pizza) -> Bool
 ```
 
 The `@verify(formal)` discharge consults the OWL 2 framework
-axioms (the `subClassOf` / `disjointClasses` Z3 encoding) plus
+axioms (the `subClassOf` / `disjointClasses` the SMT backend encoding) plus
 Verum's value-level type checker. The post-condition `result ==
 true => p is VegetarianPizza` is admitted by the SMT backend
 because `VegetarianPizza ⊏ Pizza` is in the framework axiom
@@ -185,8 +185,16 @@ let veg_count: Int = count_o(pizzas, |p| p is VegetarianPizza);
 The witness (`pizzas`) is required at the call site — OWL 2
 Direct Semantics is open-world per W3C §5.6, so Verum does not
 implicitly close the universe to perform cardinality reasoning.
-For unbounded queries `count_o_unbounded` returns
-`Maybe.None` with `E_OWL2_UNBOUNDED_COUNT` as the diagnostic.
+
+For unbounded queries `count_o_unbounded` returns `Maybe.None`
+with `E_OWL2_UNBOUNDED_COUNT` as the diagnostic — *unless* the
+surrounding refinement type carries an explicit cardinality
+bound (e.g. `{x : Int | x ≤ K ∧ x = count_o(_, P)}`), in which
+case the verifier dispatches to the SMT backend Finite Model Finding and
+recovers the count from the discovered finite model. See
+[Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)
+for the dispatcher contract and the four-variant outcome
+(`Decided` / `BoundExceeded` / `Unsupported` / `Timeout`).
 
 ## 6. Round-trip with Protégé / HermiT / Pellet
 
@@ -219,7 +227,7 @@ agreement; the audit chronicle records the verdict per ontology.
   — the 11-package / 71-axiom inventory `owl2_fs` participates in.
 - **[stdlib → theory interop](/docs/stdlib/theory-interop)** —
   the `bridges/owl2_to_htt.vr` cross-framework translation.
-- **[ATS-V → AP-023 FrameworkAxiomCollision](/docs/architecture-types/anti-patterns/coherence#ap-023)**
+- **[ATS-V → AP-023 FoundationForgery](/docs/architecture-types/anti-patterns/articulation#ap-023)**
   — the consistency violation this recipe demonstrates.
 - **[Cookbook → CLI tool](/docs/cookbook/cli-tool)** — wrapping a
   Verum app in a CLI binary.

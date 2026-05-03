@@ -31,16 +31,30 @@ my-cog-1.2.3.cog
 
 ## Publishing
 
+The publish / search / install surface lives under `verum
+package`:
+
 ```bash
-verum publish                  # default: registry.verum-lang.org
-verum publish --registry myregistry
-verum publish --dry-run        # build the cog, don't upload
+verum package publish [--dry-run] [--allow-dirty]
+verum package search  <query> [--limit 10]
+verum package install <name> [--version X]
 ```
+
+`verum package publish` defaults to
+`registry.verum-lang.org`. `--dry-run` builds the cog locally
+without uploading; `--allow-dirty` permits publishing from a
+working tree with uncommitted changes (default behaviour
+refuses).
+
+For the registry-side surface (signed releases, multi-mirror
+consensus, attestation kinds) see
+[Tooling → Cog distribution registry](/docs/tooling/cog-registry).
 
 Requirements:
 - All declared dependencies available.
-- Passes `verum lint --strict`.
-- Version not already published.
+- Passes `verum lint --severity error`.
+- Version not already published — immutable releases per
+  cog-registry policy.
 - API compatibility with prior minor version (checked via public-API
   diff).
 
@@ -58,7 +72,21 @@ source  = "registry+https://registry.verum-lang.org"
 checksum = "sha256:abc..."
 ```
 
-## Dependency sources
+## Dependency management
+
+Day-to-day dependency operations live under `verum deps`:
+
+```bash
+verum deps add <pkg> [--version X] [--dev] [--build]
+verum deps remove <pkg> [--dev] [--build]
+verum deps update [<pkg>]
+verum deps list [--tree]
+```
+
+The dependency tree alone (read-only) is also exposed via
+`verum tree [--duplicates] [--depth N]`.
+
+Sources accepted in `verum.toml`:
 
 ```toml
 [dependencies]
@@ -119,11 +147,16 @@ trust:
 ## Vulnerability advisories
 
 ```bash
-verum audit             # scan for known advisories
-verum audit --fix       # update to patched versions where possible
+verum proof-draft       # cooperating drafts include security audit of dependencies
+verum audit --bundle    # whole-project audit including framework / cog citation surface
 ```
 
-The advisory database is mirrored to `~/.verum/advisories/`.
+Cog-level vulnerability advisories surface via the registry's
+attestation kinds (`verified_ci`, `honesty`, `coord`,
+`cross_format`, `framework_soundness`) — a cog whose attestation
+chain is broken or whose framework citations conflict surfaces
+through `verum cog-registry verify` and the bundle audit's
+framework-conflict gate.
 
 ## Content-addressed storage
 
@@ -134,14 +167,20 @@ multi-project workstations.
 
 ## Workspace publishing
 
+The `verum workspace` surface manages multi-cog workspaces:
+
 ```bash
-verum workspace publish --all       # publish all members
-verum workspace publish --filter "api-*"
+verum workspace list
+verum workspace add    <path>
+verum workspace remove <name>
+verum workspace exec   -- <command> [args...]
 ```
 
-Workspace members can depend on each other by path at development time
-and by version at publish time — `verum publish` automatically rewrites
-the manifest.
+Workspace members can depend on each other by path at development
+time and by version at publish time —
+`verum workspace exec -- verum package publish` per member
+re-resolves path-deps to versioned-deps in the published
+manifest.
 
 ## See also
 

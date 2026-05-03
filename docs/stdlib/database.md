@@ -539,9 +539,8 @@ stdlib types:
    `module`, `iter`, `next`) collides with a Verum keyword or stdlib
    protocol — see `concat_ws_fn.fn_`, `format_fn.spec_`.
 
-A guardrail Rust test (`crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`)
-walks the catalogue tree on every CI run and fails when any reserved
-name is redefined.
+A guardrail walks the catalogue tree on every CI run and fails
+when any reserved name is redefined.
 
 ## Build & coverage
 
@@ -557,21 +556,19 @@ name is redefined.
 
 Two CI guardrails enforce the most load-bearing invariants:
 
-1. **Naming hygiene.**
-   `crates/verum_compiler/tests/sqlite_native_naming_hygiene.rs`
-   walks `core/database/sqlite/native/` and fails when any catalogue
+1. **Naming hygiene.** A CI guardrail walks
+   `core/database/sqlite/native/` and fails when any catalogue
    defines `public type X is …` for any name in
    `{Result, Maybe, List, Map, Set, Bytes, Iterator, Slot, Ok, Err,
-   Some, None}` — these all live in stdlib and silently shadow when
-   redefined.
+   Some, None}` — these all live in stdlib and silently shadow
+   when redefined.
 
-2. **VBC codegen determinism.**
-   `crates/verum_compiler/tests/vbc_codegen_determinism.rs` spawns
-   two child `vtest` processes on a fixed fixture and asserts
-   byte-identical (exit code, stderr) signatures.  The two-process
-   design is deliberate — each child gets a fresh Rust HashMap seed,
-   so any newly-introduced unsorted iteration in the codegen
-   pipeline trips the test.
+2. **VBC codegen determinism.** A CI guardrail spawns two child
+   `vtest` processes on a fixed fixture and asserts byte-identical
+   (exit code, stderr) signatures. The two-process design is
+   deliberate — each child gets a fresh hash-table seed, so any
+   newly-introduced unsorted iteration in the codegen pipeline
+   trips the test.
 
 ## Known limitations
 
@@ -596,12 +593,12 @@ Two CI guardrails enforce the most load-bearing invariants:
   `parse_header → schema_walker → SELECT` ladder is the next
   diagnostic step (DIAG-3..6 in the task queue).
 
-* **VBC interpreter `&[T]` parameter coerce** — Tier-0 interpreter
-  recurses to depth 16384 when passing a slice as function
-  argument.  Workaround: provide a parallel `_raw` entry that takes
-  `&Byte` instead of `&[Byte]`; PosixVfs.open routes through
-  `safe_open_raw` for this reason.  Real fix is in
-  `crates/verum_vbc` slice-argument-pass machinery — pending
+* **VBC interpreter `&[T]` parameter coerce** — the Tier-0
+  interpreter recurses to depth 16384 when passing a slice as
+  function argument. Workaround: provide a parallel `_raw` entry
+  that takes `&Byte` instead of `&[Byte]`; PosixVfs.open routes
+  through `safe_open_raw` for this reason. The real fix lives in
+  the VBC slice-argument-pass machinery — pending
   RUNTIME-3-DEEPER.
 
 * **Stdlib cross-module impl-block methods.** The VBC codegen's

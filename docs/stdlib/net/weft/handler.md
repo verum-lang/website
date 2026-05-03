@@ -291,7 +291,7 @@ be named functions for traceability.
 | Aspect | Mainstream axum-style | Weft |
 |---|---|---|
 | Extractor mechanism | Trait `FromRequest` with macro magic | Protocol `FromRequest` plus `meta fn` |
-| Refinement-typed params | Runtime newtype | `where`-clause Z3-verified |
+| Refinement-typed params | Runtime newtype | `where`-clause the SMT backend-verified |
 | `Json<T>` typed errors | One variant `JsonRejection` | Seven variants, separate 400 / 413 / 415 / 422 |
 | 422 for refinement violation | Manual | Automatic |
 | Handler signature derives Service | Procedural macro | `meta fn Weft.handler(...)` |

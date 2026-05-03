@@ -103,7 +103,7 @@ public fn encrypt(key: Key32, nonce: Nonce, plaintext: &Bytes)
 ```
 
 The `@verify(certified)` decoration discharges the
-post-condition with both Z3 and CVC5 in agreement, exports a
+post-condition with both multiple SMT backends in agreement, exports a
 proof certificate, and re-checks it through the kernel. The
 `Lifecycle.Theorem("v1.0")` annotation pins this fact at the
 architectural layer.

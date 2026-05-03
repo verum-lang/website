@@ -125,7 +125,7 @@ picks up changes on the fly.
 | `validationMode` | `"quick"` \| `"thorough"` \| `"complete"` | `"quick"` | Per-call SMT latency cap — 100ms / 1s / 600s. |
 | `showCounterexamples` | bool | `true` | Include concrete counter-examples in diagnostics. |
 | `maxCounterexampleTraces` | int | `5` | Cap on execution-trace steps in a counter-example. |
-| `smtSolver` | `"z3"` \| `"cvc5"` \| `"auto"` | `"z3"` | SMT backend selection. |
+| `smtSolver` | `"auto"` | `"smt-backend"` | SMT backend selection. |
 | `smtTimeout` | int (ms) | `50` | Per-query SMT timeout. |
 | `cacheValidationResults` | bool | `true` | Cache SMT queries so unchanged refinements don't re-run. |
 | `cacheTtlSeconds` | int | `300` | Cache entry TTL. |
@@ -149,7 +149,7 @@ allows.
   "verum.lsp.validationMode": "quick",
   "verum.lsp.showCounterexamples": true,
   "verum.lsp.maxCounterexampleTraces": 5,
-  "verum.lsp.smtSolver": "z3",
+  "verum.lsp.smtSolver": "auto",
   "verum.lsp.smtTimeout": 50,
   "verum.lsp.cacheValidationResults": true,
   "verum.lsp.cacheTtlSeconds": 300,
@@ -168,18 +168,16 @@ LSP extensions". Their call path is:
 
 1. The client sends `verum/validateRefinement` (or similar) over the
    stdio / TCP / pipe transport.
-2. tower-lsp's router dispatches to the matching `Backend.handle_*`
-   async method, registered through the
-   `LspService.build(...).custom_method(...)` chain in
-   [`crates/verum_cli/src/commands/lsp.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/commands/lsp.rs).
-3. The handler awaits `RefinementValidator::{validate_refinement,
-   promote_to_checked, infer_refinement}`, which in turn push SMT work
-   onto the `verum-smt-worker` thread via
-   [`SmtWorkerHandle`](https://github.com/verum-lang/verum/blob/main/crates/verum_lsp/src/smt_worker.rs).
-4. The worker thread exclusively owns the Z3 context; it returns
+2. The LSP router dispatches to the matching `handle_*` async
+   method, registered through the standard custom-method chain.
+3. The handler awaits the refinement-validator surface
+   (`validate_refinement` / `promote_to_checked` /
+   `infer_refinement`), which in turn pushes SMT work onto a
+   dedicated `verum-smt-worker` thread.
+4. The worker thread exclusively owns the the SMT backend context; it returns
    `SmtCheckResult` through a `tokio.sync.oneshot`. Only `Send`
    types cross the await boundary.
-5. `getEscapeAnalysis` and `getProfile` don't touch Z3 — they run in
+5. `getEscapeAnalysis` and `getProfile` don't touch the SMT backend — they run in
    the handler's async context directly.
 
 Complementary client-side surfaces:
@@ -279,13 +277,11 @@ Beyond standard LSP 3.17, the Verum server routes these JSON-RPC methods:
 | `verum/getEscapeAnalysis`    | live   | CBGR escape-analysis report for the reference sigil under the cursor; returns `{ markdown, range, sigil, tier, derefCostNs, promotable }`. |
 | `verum/getProfile`           | live   | Return the cached per-document compilation / CBGR profiling summary used by the dashboard webview.           |
 
-All five methods are registered through tower-lsp's
-`LspService.build(...).custom_method(...)` chain in
-`crates/verum_cli/src/commands/lsp.rs`. The Z3 session driving the
-refinement methods runs on a dedicated OS thread
-(`verum-smt-worker`) isolated by `crates/verum_lsp/src/smt_worker.rs`, so
-the futures that cross tower-lsp's `Future: Send` bound never capture
-`Rc` / `NonNull` from the Z3 bindings.
+All five methods are registered through the LSP service's
+custom-method chain. The SMT backend session driving the refinement
+methods runs on a dedicated OS thread (`verum-smt-worker`)
+isolated from the async runtime, so the futures that cross the
+`Send` bound never capture non-`Send` the SMT backend binding types.
 
 ## Performance
 

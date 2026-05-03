@@ -30,7 +30,7 @@ on `AxiomDecl::proposition: Heap<Expr>`):
 | `trivial-placeholder` | proposition is just `Literal::Bool(true)` (or AND-chain of `true` literals) | Documentation-only marker; consider strengthening to witness-parameterised form, promoting to `@theorem`, or accepting as Definition-anchor / external-paper citation / trust-boundary marker |
 
 The walker uses the same machinery as the kernel's
-`crates/verum_kernel/src/axiom.rs::register_with_regime`
+`axiom::register_with_regime`
 `SubsingletonRegime::ClosedPropositionOnly` gate, projected into AST
 form so it runs without kernel registration.
 
@@ -173,4 +173,4 @@ expected to non-zero on any corpus that ships Definition-anchors).
 * **[`verum audit --coherent`](./actic-dual)** — operational
   coherence (α-cert ⟺ ε-cert correspondence).
 * **[Trusted kernel](./trusted-kernel)** — the LCF core +
-  `K-FwAx` admission gate at `crates/verum_kernel/src/axiom.rs`.
+  `K-FwAx` admission gate at `axiom` module.

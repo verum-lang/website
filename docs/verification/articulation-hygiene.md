@@ -291,9 +291,9 @@ surface-syntax legal.
 
 | Surface | Source |
 |---------|--------|
-| Reporter — `verum audit --hygiene` | `crates/verum_cli/src/commands/audit.rs` |
+| Reporter — `verum audit --hygiene` | `audit` module |
 | Surface-form regression suite | `vcs/specs/L1-core/hygiene/articulation_hygiene_classes.vr` |
-| Kernel pass — `verum check --hygiene` | `crates/verum_kernel/src/hygiene/`, `verum_types::hygiene_check` |
+| Kernel pass — `verum check --hygiene` | the `kernel` module, `verum_types::hygiene_check` |
 | `E_HYGIENE_UNFACTORED_SELF` diagnostic | emitted by the kernel pass when no §13.2 factorisation matches |
 | Hygiene-table extension API | Open | for user-defined self-referential constructs |
 

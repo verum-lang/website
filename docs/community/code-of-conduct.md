@@ -104,7 +104,7 @@ enforcement (e.g., to identify repeated patterns).
 ## Guidelines for public discussion
 
 - **Technical disagreement is welcome.** "I think the capability
-  router should prefer CVC5 on string theory" is normal discussion.
+  router should prefer the SMT backend on string theory" is normal discussion.
 - **Make concrete claims.** "This RFC is bad" is less useful than
   "This RFC adds 3 new opcodes when 1 would suffice; here's how."
 - **Quote what you respond to.** Makes threads readable and

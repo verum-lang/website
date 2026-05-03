@@ -36,7 +36,7 @@ fn goal_hash(digest: Text) -> GoalHash
 ```verum
 type ProofCertificate is {
     goal_text: Text,                     // rendered SMT-LIB goal
-    solver: Text,                        // "z3" | "cvc5" | "portfolio" | "manual"
+    solver: Text,                        // "backend-a" | "backend-b" | "portfolio" | "manual"
     proof_object: Text,                  // solver-native proof term (base64)
     duration_ms: Int { >= 0 },
     timestamp: Text,                     // ISO-8601
@@ -93,7 +93,7 @@ let mut bundle = empty_bundle("verum-0.32", "src/main.vr");
 
 let cert = proof_certificate(
     "(assert (not (forall ((x Int)) (=> (> x 0) (> (+ x 1) 0)))))",
-    "z3",
+    "smt-backend",
     BASE64_PROOF_BLOB,
     duration_ms = 3,
     timestamp = "2026-04-15T20:30:00Z",

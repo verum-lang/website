@@ -359,7 +359,7 @@ are independent quality gates.
 - [Boundary](./boundary.md) — what crosses the cog edge.
 - [Shape](./shape.md) — the aggregate carrier.
 - [Anti-pattern AP-001 CapabilityEscalation](../anti-patterns/classical.md#ap-001)
-- [Anti-pattern AP-019 CapabilityLaundering](../anti-patterns/coherence.md#ap-019)
+- [Anti-pattern AP-022 CapabilityLaundering](../anti-patterns/articulation.md#ap-022)
 - [Context system](../../language/context-system.md) — the runtime
   DI mechanism that exposes capabilities as providers.
 - [Type properties](../../language/type-properties.md) — the

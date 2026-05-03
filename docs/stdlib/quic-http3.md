@@ -61,5 +61,5 @@ server examples that use `core.net.quic.api` + `core.net.h3.client` +
 | RFC 8448 + 9001 KATs | 6 | 100 % | — |
 
 All ten refinement-typed verification obligations (V1–V10) are
-discharged by Z3 as `verify-pass` theorems. Build green via
+discharged by the SMT backend as `verify-pass` theorems. Build green via
 `cd vcs && make test-l2` against the full suite.

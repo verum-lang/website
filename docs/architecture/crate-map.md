@@ -32,7 +32,7 @@ release.
 |-------|----:|---------|-----------|
 | `verum_types`        | 221 K | Type inference, refinement, dependent + cubical types, protocol coherence | `infer.rs` (53 K lines), `unify.rs`, `refinement.rs`, `cubical.rs`, `cubical_bridge.rs`, `protocol.rs`, `exhaustiveness/` |
 | `verum_cbgr`         | 103 K | Three-tier reference analysis suite | `tier_analysis.rs`, `escape_analysis.rs`, `ownership_analysis.rs`, `concurrency_analysis.rs`, `lifetime_analysis.rs`, `nll_analysis.rs`, `polonius_analysis.rs`, `smt_alias_verification.rs` |
-| `verum_smt`          | 139 K | SMT integration (the SMT backend) | `z3_backend.rs`, `cvc5_backend.rs`, `capability_router.rs`, `portfolio_executor.rs`, `proof_search.rs`, `cubical_tactic.rs` |
+| `verum_smt`          | 139 K | SMT integration (the SMT backend) | `smt_backend`, `capability_router.rs`, `portfolio_executor.rs`, `proof_search.rs`, `cubical_tactic.rs` |
 | `verum_verification` | 59 K  | Hoare logic, VCGen, dependent verifier, tactics | `hoare_logic.rs`, `vcgen.rs`, `proof_validator.rs`, `tactic_evaluation.rs`, `dependent_verification.rs` |
 | `verum_kernel`       | 1.2 K | **LCF-style trusted checker — sole member of the TCB.** Explicit CoreTerm calculus, AxiomRegistry, SmtCertificate replay surface. Target at completion: &lt; 5 K LOC. | `lib.rs` |
 | `verum_diagnostics`  | 19 K  | Error formatting, spans, labels | `diagnostic.rs` |
@@ -62,13 +62,13 @@ release.
 
 | Crate | Purpose |
 |-------|---------|
-| `cvc5-sys` | CVC5 1.3.3 FFI bindings (statically linked) |
+| `smt-backend-sys` | the SMT backend 1.3.3 FFI bindings (statically linked) |
 | `llvm`     | LLVM 21.x bindings (custom fork) |
 
 ## Totals
 
 - **Internal crates**: 24 (22 `verum_*` + `verum_integration_tests` + `verum_parser` legacy).
-- **External crates**: 2 (`cvc5-sys`, `llvm`).
+- **External crates**: 2 (`smt-backend-sys`, `llvm`).
 - **Workspace LOC**: ~1.36 M Rust lines across the 24 internal crates.
 - **Largest files**:
   - `verum_types/src/infer.rs` — 52 845 lines

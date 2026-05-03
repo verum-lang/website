@@ -343,7 +343,7 @@ The example illustrates the three operational layers:
 |---------|--------|
 | `core.action.*` skeleton — types, constructors, traversal | `core/action/` |
 | Articulation + α ⊣ ε pair (`epsilon`, `alpha_of`) | `core/action/articulation.vr`, `core/action/enactments.vr` |
-| `@enact` attribute and `verum audit --epsilon` | `crates/verum_cli/src/commands/audit.rs` |
+| `@enact` attribute and `verum audit --epsilon` | `audit` module |
 | `core.theory_interop` Yoneda / Kan / descent — see also [MSFS coordinate](msfs-coord.md) | `core/theory_interop/` |
 | Diakrisis-canonical aliases (`enact_then`, `enact_par`, `activate`, `activate_n`, `autopoiesis`) | `core/action/enactments.vr` |
 

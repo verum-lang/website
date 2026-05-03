@@ -7,15 +7,15 @@ slug: /verification/kernel-v0
 
 # `kernel_v0` — Verum's bootstrap meta-theory
 
-`kernel_v0` is the **Verum-language** mirror of the Rust-side
-trusted-base proof-term checker. It lives at
-`core/verify/kernel_v0/` and ships a hand-auditable 10-rule
-minimal kernel that justifies every other inference rule in
-`verum_kernel`.
+`kernel_v0` is the **Verum-language** mirror of the
+host-implementation trusted-base proof-term checker. It lives
+at `core/verify/kernel_v0/` and ships a hand-auditable 10-rule
+minimal kernel that justifies every other inference rule the
+Verum kernel ships.
 
 The architectural role is **self-hosting** — at completion,
 the kernel's logic is *fixed-point compilable by Verum itself*,
-shrinking the Rust trusted base from ~800 LOC to a ~100 LOC
+shrinking the trusted base from ~800 LOC to a ~100 LOC
 bootstrap shim. This is the **Milawa pattern**: kernel(N+1)
 verified by kernel(N), descending to a tiny bootstrap.
 
@@ -43,8 +43,8 @@ algorithmic slot — see
 
    ↓ at fixed point
 
-   verum_kernel::proof_checker (Rust)  — generated from kernel_vN
-   verum_kernel::* dispatcher  (Rust)  — uses kernel_vN's verdict
+   proof_checker (host-implementation)  — generated from kernel_vN
+   kernel dispatcher (host-implementation) — uses kernel_vN's verdict
 ```
 
 The chain descends to `kernel_v0` and stops. `kernel_v0`'s
@@ -78,16 +78,16 @@ file. Drift between manifest and filesystem is a build failure.
 
 ## 3. Trust-base shrinkage roadmap
 
-The end-state goal is a ~100 LOC bootstrap shim that interprets
+The end-state goal is a small bootstrap shim that interprets
 the kernel_v0 Verum source files; all kernel logic is verified
-*in Verum*, not in Rust. The roadmap:
+*in Verum*, not in the host implementation. The roadmap:
 
 | Stage | Trust base | Status |
 |-------|-----------|--------|
-| Pre-#157 | 10K LOC `verum_kernel` Rust + 38 rules with 34 admits | historical |
-| Post-#157 | 796 LOC `proof_checker.rs` Rust + 6 rules | **current** |
+| Pre-#157 | broad host-implementation kernel + 38 rules with 34 admits | historical |
+| Post-#157 | small `proof_checker` module + 6 rules | **current** |
 | Phase 3 (#154) — kernel_v0 self-hosted | ~500 LOC Verum + 10 rules | in-flight |
-| Phase 3 closed — bootstrap chain complete | ~100 LOC bootstrap shim | target |
+| Phase 3 closed — bootstrap chain complete | hand-auditable bootstrap shim | target |
 
 Each stage shrinks the trusted base. The progression follows
 the *Milawa pattern* — a self-verified kernel chain descending
@@ -100,9 +100,9 @@ in `verum audit --differential-kernel`:
 
 | Slot | Implementation | Status |
 |------|----------------|--------|
-| 1 | `proof_checker` (Rust, bidirectional + WHNF) | active |
-| 2 | `proof_checker_nbe` (Rust, NbE) | active |
-| 3 | `kernel_v0` (Verum, self-hosted) | `NotYetSelfHosting` (pending parser blocker) |
+| 1 | `proof_checker` (Algorithm A — bidirectional + WHNF) | active |
+| 2 | `proof_checker_nbe` (Algorithm B — NbE) | active |
+| 3 | `KernelV0Kernel` (Algorithm C — manifest-driven verifier consuming the Verum-source `kernel_v0/` manifest) | active |
 
 The differential gate's invariant strengthens: every certificate
 must be admitted by *all three* kernels, with disagreement on

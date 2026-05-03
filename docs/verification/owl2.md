@@ -137,7 +137,7 @@ The `ensures true` placeholder is intentional. V1 ships the **citation
 discipline** so `verum audit` enumerates the OWL 2 footprint of any
 corpus; V2 will replace each `ensures true` with the verbatim
 HOL-definition body from Shkotin's "HOL-definition body" column so SMT
-dispatch via CVC5 FMF can decide encoded subsumption / classification /
+dispatch via finite-model finding can decide encoded subsumption / classification /
 instance-check obligations.
 
 ### 3.2 Layer 2 — typed attribute family (`Owl2*Attr`)
@@ -200,7 +200,7 @@ Per the verification specnine-strategy `@verify` ladder:
 | Subsumption `C ⊑ D` | `@verify(formal)` | ω | Closed-goal SMT obligation |
 | Instance check `a : C` | `@verify(fast)` runtime / `@verify(formal)` compile | varies | Ordinary refinement check |
 | HasKey with NAMED restriction | `@verify(proof)` | ω + 1 | DL-reasoner case per Shkotin §2.3.5 |
-| Ontology alignment | `@verify(reliable)` | ω·2 + 1 | Z3 ∧ CVC5 agreement required |
+| Ontology alignment | `@verify(reliable)` | ω·2 + 1 | the SMT backend ∧ the SMT backend agreement required |
 | Federation coherence (Noesis) | `@verify(certified)` | ω·2 + 2 | Certificate materialisation + export |
 
 This commits dispatch semantics at the spec level so implementation
@@ -310,12 +310,94 @@ match count_o_unbounded(maybe_domain, pred) {
 }
 ```
 
-Future work will replace the `Maybe::None` branch with CVC5
-Finite Model Finding dispatch when the surrounding context
-carries an explicit refinement-level finite-cardinality witness
-— a Verum refinement-type-level claim, distinct from any
-OWL-level CWA flag (which the framework no longer admits per
-[§4](#4-open-world-assumption--the-only-semantics)).
+### the SMT backend Finite Model Finding dispatch
+
+When `count_o_unbounded` is called with `Maybe.None` *inside a
+refinement type carrying an explicit cardinality bound* — the
+canonical shape is `{ x : Int | x ≤ K ∧ x = count_o(_, P) }` —
+the verifier now dispatches to the SMT backend Finite Model Finding
+instead of always returning `Maybe.None`.
+
+The dispatcher constructs a `CountOQuery` carrying:
+
+| Field | Meaning |
+|---|---|
+| `individual_sort` | uninterpreted-sort name (typically `Individual`) |
+| `predicate_body` | SMT-LIB body of the predicate `pred(y)` |
+| `predicate_var` | parameter variable name (typically `y`) |
+| `bound` | cardinality bound — one of `LessEq` / `Equal` / `GreaterEq` / `Range` |
+| `timeout_ms` | solver timeout |
+
+Then translates it to a Finite-Model-Finding query over an
+uninterpreted `Individual` sort with cardinality ≤ K:
+
+```smtlib
+(declare-sort Individual 0)
+(declare-fun pred_o (Individual) Bool)
+(assert (forall ((y Individual)) (= (pred_o y) <predicate_body>)))
+```
+
+The SMT backend enumerates satisfying interpretations; the dispatcher
+extracts the count from the model's `pred_o` definition (counts
+`(= y @Individual_<n>)` disjuncts; handles `true` / `false`
+shorthand; clamps at the discovered domain size).
+
+The result classifies into four orthogonal outcomes:
+
+| Outcome | Meaning |
+|---------|---------|
+| `Decided { count, model_smtlib, elapsed_ms }` | FMF found a finite interpretation; `count` is load-bearing. |
+| `BoundExceeded { bound, elapsed_ms }` | No model satisfies the cardinality bound — the refinement type's claim is structurally false. **Promotes V1 warning to a hard error.** |
+| `Unsupported { reason }` | the SMT backend not linked at build time, or the predicate is outside FMF's encoding. The caller falls back to the V1 `Maybe.None` semantics. |
+| `Timeout { elapsed_ms }` | FMF exhausted its time budget. |
+
+Capability-router integration: a flag on the goal's
+characteristics signals "finite model finding required", which
+routes the query to the SMT backend under the existing FMF policy.
+
+The dispatcher reuses every existing piece of the SMT
+infrastructure — the FMF query type and `find_finite_model`
+for the actual solver call, the standard "the SMT backend not linked" error
+for the stub-mode fallback, the existing capability-router for
+routing. No new FFI surface; no new top-level module beyond the
+focused translation unit.
+
+### Load-bearing integration (recognizer + verifier pre-pass)
+
+The dispatcher is wired into the refinement-type verifier
+through a pure AST-walking recognizer. Every refinement
+predicate flowing through the verifier is first inspected for
+the canonical conjunctive shape (a cardinality comparison on the
+refinement variable + a `count_o_unbounded(_, |y| pred(y))`
+call). When matched, the recognizer translates the closure body
+through the existing expression-to-SMT-LIB translator and
+constructs a `CountOQuery`; the dispatcher's verdict maps onto
+the verification result:
+
+| Recognizer / dispatcher outcome | `verify_refinement` action |
+|---|---|
+| Pattern matches → `Decided { count, … }` | Returns `Ok(ProofResult)` with `count_o_fmf: count=N` proof note. |
+| Pattern matches → `BoundExceeded` | Returns `Err(SolverError("count_o_fmf: bound K cannot be satisfied — no finite model exists"))`. |
+| Pattern matches → `Unsupported` / `Timeout` | Falls through to the standard the SMT backend path (purely additive — never blocks the existing flow). |
+| Pattern does not match | Falls through to the standard the SMT backend path. |
+
+`@verify(runtime)` skips the pre-pass entirely (preserving the
+"no SMT, runtime checks only" semantics).
+
+The recognizer's pattern matrix is documented in its module
+docstring; rejections classify into `NotCountOPredicate` /
+`NoBoundClause` / `UnsupportedClosure` / `UnsupportedPredicateBody`
+for telemetry. Both unqualified
+(`count_o_unbounded(...)` after `mount`) and fully-qualified
+(`core.math.frameworks.owl2_fs.count.count_o_unbounded(...)`)
+call shapes are recognised; `Lt`/`Gt` bound clauses normalise
+to `LessEq(K-1)`/`GreaterEq(K+1)`.
+
+Distinct from any OWL-level CWA flag (which the framework no
+longer admits per
+[§4](#4-open-world-assumption--the-only-semantics)). The
+finite-cardinality bound is a Verum refinement-type-level
+claim; OWL 2 Direct Semantics remains open-world.
 
 ---
 
@@ -389,10 +471,10 @@ constructs the canonical OWL 2 classification graph, runs four
 graph-theoretic algorithms on it, and exits with a non-zero status
 on any DL-unsatisfiability condition.
 
-The graph type is `crates/verum_cli/src/commands/owl2.rs::Owl2Graph` —
-a single source of truth shared with the OWL 2 Functional-Syntax
-exporter (§8). Both consumers parse the project once and read the
-same canonical graph.
+The graph type is the canonical `Owl2Graph` — a single source of
+truth shared with the OWL 2 Functional-Syntax exporter (§8). Both
+consumers parse the project once and read the same canonical
+graph.
 
 ### 7.1 Graph construction
 

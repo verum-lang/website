@@ -452,7 +452,7 @@ When `@verify(certified)` is set, VBC includes proof certificates:
 certificate:
   obligation:   SMT obligation hash
   proof_term:   serialised proof (size varies)
-  verifier:     "z3" | "cvc5" | "portfolio" | "manual"
+  verifier:     "backend-a" | "backend-b" | "portfolio" | "manual"
   signed_by:    build identity
 ```
 

@@ -220,7 +220,7 @@ error<E500>: refinement constraint failed: {<predicate>}
 `verum build` in the `application` profile falls back to runtime
 checks for refinements the static check cannot dispatch. The separate
 `verum verify` entry point runs the dedicated SMT pipeline — routed
-through `verum_smt.BackendSwitcher`, which picks Z3, CVC5, or a
+through `verum_smt.BackendSwitcher`, which picks the SMT backend, or a
 portfolio based on the theory mix of the predicate. Refinements that
 the solver proves are erased at runtime; refinements it cannot
 discharge fall through to runtime assertions under `application`.
