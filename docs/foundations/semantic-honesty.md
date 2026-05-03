@@ -11,7 +11,7 @@ description: Types name what values mean, not how they are stored.
 
 This single rule, applied consistently, is why Verum reads the way it
 does — and it is the first of the language's
-[design principles](/docs/philosophy/principles). This page explains
+[design principles](/docs/foundations/principles). This page explains
 what it means, what it costs, and what it forbids.
 
 ## The problem with operational names
@@ -223,8 +223,8 @@ language.
 
 ## See also
 
-- **[Design Principles](/docs/philosophy/principles)** — principle 1.
-- **[Comparisons](/docs/philosophy/comparisons)** — how this looks
+- **[Design Principles](/docs/foundations/principles)** — principle 1.
+- **[Comparisons](/docs/foundations/comparisons)** — how this looks
   next to Rust, Swift, Haskell.
 - **[Language Overview](/docs/language/overview)** — where semantic
   honesty fits in the type stack.

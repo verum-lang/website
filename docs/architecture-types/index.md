@@ -382,4 +382,4 @@ architectural checker cannot inject false theorems into the proof
 corpus. The orthogonality is structural, not just stylistic.
 
 For the high-level vision tying all three together see
-[Philosophy → Principles](/docs/philosophy/principles).
+[Philosophy → Principles](/docs/foundations/principles).

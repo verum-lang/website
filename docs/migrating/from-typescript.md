@@ -340,7 +340,7 @@ Walkthrough: **[Tutorials → Testing walkthrough](/docs/tutorials/testing-walkt
 ## See also
 
 - **[Language tour](/docs/getting-started/tour)** — 10 minutes.
-- **[Philosophy → semantic honesty](/docs/philosophy/semantic-honesty)**
+- **[Philosophy → semantic honesty](/docs/foundations/semantic-honesty)**
   — why `List` and `Text`, not `Vec` and `String`.
 - **[Refinement types](/docs/language/refinement-types)** — the
   feature TS has been quietly wishing for.

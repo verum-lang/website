@@ -310,7 +310,7 @@ final size.
 
 ## Memory layout notes
 
-Per [semantic honesty](/docs/philosophy/semantic-honesty):
+Per [semantic honesty](/docs/foundations/semantic-honesty):
 
 - `List<T>` might be a contiguous buffer, a ring buffer, or a rope —
   chosen by profile-guided optimisation. Don't rely on specific

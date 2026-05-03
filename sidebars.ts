@@ -17,13 +17,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Philosophy',
-      link: {type: 'generated-index', slug: '/category/philosophy'},
+      label: 'Foundations',
+      link: {type: 'generated-index', slug: '/category/foundations'},
       items: [
-        'philosophy/principles',
-        'philosophy/semantic-honesty',
-        'philosophy/gradual-verification',
-        'philosophy/comparisons',
+        'foundations/principles',
+        'foundations/semantic-honesty',
+        'foundations/gradual-verification',
+        'foundations/comparisons',
       ],
     },
     {

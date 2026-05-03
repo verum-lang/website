@@ -66,7 +66,7 @@ Most code uses [refinement types](/docs/language/refinement-types) +
 
 ### Do I have to prove everything?
 
-No. Verification is a [spectrum](/docs/philosophy/gradual-verification).
+No. Verification is a [spectrum](/docs/foundations/gradual-verification).
 Default is `@verify(static)` — dataflow, CBGR, and refinement
 checking without SMT. You opt into `@verify(formal)` or stronger only
 where it matters.
@@ -117,7 +117,7 @@ See [refinement patterns](/docs/cookbook/refinements).
 
 ### What's the difference between `List<T>` and `Vec<T>`?
 
-There's no `Vec`. [Semantic honesty](/docs/philosophy/semantic-honesty):
+There's no `Vec`. [Semantic honesty](/docs/foundations/semantic-honesty):
 types describe meaning, not layout. `List<T>` is the ordered-
 collection meaning. Today's default implementation is a contiguous
 growable buffer; tomorrow's might be different — without source
@@ -174,7 +174,7 @@ See [FFI](/docs/language/ffi).
 2. [Hello, World](/docs/getting-started/hello-world) (5 minutes).
 3. [Language tour](/docs/getting-started/tour) (10 minutes).
 4. Pick a [cookbook recipe](/docs/cookbook) that looks like your task.
-5. Read [philosophy](/docs/philosophy/principles) when you want to
+5. Read [philosophy](/docs/foundations/principles) when you want to
    understand *why*.
 
 ### I know Rust / TypeScript / Go. Where's the quick-reference table?
@@ -239,4 +239,4 @@ name we could find.
   go wrong.
 - **[Best practices](/docs/guides/best-practices)** — how experienced
   users structure code.
-- **[Philosophy](/docs/philosophy/principles)** — the design rationale.
+- **[Philosophy](/docs/foundations/principles)** — the design rationale.
