@@ -172,15 +172,15 @@ classification — surfaced as a single-character glyph. The
 Lifecycle primitive carries it; audit reports surface it; the
 LSP shows it on hover.
 
-| Glyph | Variant | Constructive | Verifiable | Executable | Meaning |
-|-------|---------|--------------|------------|------------|---------|
-| `[T]` | `Theorem(since)` | yes | yes | yes | Full closure — the strongest claim |
-| `[D]` | `Definition` | yes | trivial | yes | Boundary set by fiat |
-| `[C]` | `Conditional(conds)` | conditional | conditional | conditional | Proven under listed hypotheses |
-| `[P]` | `Postulate(citation)` | yes | external | yes | Accepted via external citation |
-| `[H]` | `Hypothesis(confidence)` | partial | absent | absent | Speculative, with maturation plan |
-| `[I]` | `Interpretation(reason)` | absent | absent | absent | Descriptive only — transitional |
-| `[✗]` | `Retracted(reason, repl)` | n/a | n/a | n/a | Withdrawn; record retained |
+| Glyph | Variant | C / V / E | Meaning |
+|-------|---------|-----------|---------|
+| `[T]` | `Theorem(since)` | yes / yes / yes | Full closure — the strongest claim |
+| `[D]` | `Definition` | yes / trivial / yes | Boundary set by fiat |
+| `[C]` | `Conditional(conds)` | conditional × 3 | Proven under listed hypotheses |
+| `[P]` | `Postulate(citation)` | yes / external / yes | Accepted via external citation |
+| `[H]` | `Hypothesis(confidence)` | partial / absent / absent | Speculative, with maturation plan |
+| `[I]` | `Interpretation(reason)` | absent × 3 | Descriptive only — transitional |
+| `[✗]` | `Retracted(reason, repl)` | n/a | Withdrawn; record retained |
 
 The seven cover every productive cell of the
 [CVE truth table — seven canonical configurations](/docs/architecture-types/cve/seven-configurations).
@@ -222,11 +222,15 @@ tracks a different aspect, runs at a different phase, costs a
 different amount, and fails for a different reason. Conflating
 them leaves codebases under-specified in subtle ways.
 
-| Axis | Where it lives | Phase | Cost | Tracks | Failure mode |
-|------|----------------|-------|------|--------|--------------|
-| **Capability** | `@arch_module(exposes, requires)` | compile-time architectural | 0 ns | What the cog is *permitted* to do | `AP-001 CapabilityEscalation` |
-| **Property** | `PropertySet` on function types | compile-time function-type | 0 ns | What the function's *body* actually does | property-system mismatch (`{Pure}` calls `{IO}`) |
-| **Context** | `using [Database, Logger]` clause | compile-time DI signature; runtime lookup | ~5–30 ns | Which providers the runtime must inject | `unresolved_provider` at the call site |
+| Axis | Phase | Cost |
+|------|-------|------|
+| **Capability** | compile-time architectural | 0 ns |
+| **Property** | compile-time function-type | 0 ns |
+| **Context** | DI signature + runtime lookup | ~5–30 ns |
+
+- **Capability** lives in `@arch_module(exposes, requires)` and tracks what the cog is *permitted* to do. Failure surfaces as `AP-001 CapabilityEscalation`.
+- **Property** lives on function types via `PropertySet` and tracks what the function's *body* actually does. Failure surfaces as a property-system mismatch (e.g. a `{Pure}` function calling a `{IO}` function).
+- **Context** lives in the `using [Database, Logger]` clause and tracks which providers the runtime must inject. Failure surfaces as `unresolved_provider` at the call site.
 
 Three axes correspond to three different *engineering questions*
 a reviewer asks of a function: *"is this allowed in this part of
@@ -360,11 +364,11 @@ ZFC + 2-inacc, stratum LFnd. The compiler verifies these claims
 against the body, just as it would for any other annotated cog.
 There is no privileged escape hatch.
 
-This is more than aesthetics. Self-application is the *test*
-that ATS-V's primitives are sufficient. A primitive that ATS-V
-itself needs but cannot express in its own surface is, by
-construction, a primitive that does not belong in the canonical
-set. See the [Self-Application — ATS-V annotated by ATS-V](/docs/architecture-types/self-application)
+Self-application is the load-bearing test that ATS-V's primitives
+are sufficient: a primitive that ATS-V itself needs but cannot
+express in its own surface is a primitive missing from the
+canonical set. See the
+[Self-Application — ATS-V annotated by ATS-V](/docs/architecture-types/self-application)
 page.
 
 ## 11. The dual-audience surface
@@ -473,12 +477,12 @@ linters, tests, type systems — all assumed the reader is the
 same kind of agent as the author. The agent might disagree with
 the author, but they share a referential frame.
 
-That assumption is breaking. A growing fraction of production
-code is being produced by language models — current systems and,
-on every plausible roadmap, more capable systems shortly after.
-The model reads the file, generates a change, and the human
-reviews. Sometimes they don't review. Often they don't have to,
-and the tempo of work depends on them not having to.
+That assumption is breaking. A growing fraction of production code
+is being produced by language models — current systems, with more
+capable systems following. The model reads the file, generates a
+change, and the human reviews. Sometimes they don't review. Often
+they don't have to, and the tempo of work depends on them not
+having to.
 
 The shift produces five concrete problems for the architecture
 of long-lived systems. ATS-V is the answer Verum gives to each.
@@ -609,31 +613,26 @@ A short list of claims ATS-V deliberately does *not* make.
 
 ## 14. Closing
 
-The shortest honest description of ATS-V is this. It collapses
-the architectural map into the territory by promoting eight
-primitives into the type system. It catches thirty-two canonical
-defects under stable RFC codes that the compiler refuses to
-let drift. It carries a CVE-glyph taxonomy that makes the
-maturation status of every artefact a single checkable
-character. It tracks three orthogonal effect dimensions
-(capability, property, context) without conflating them. It
-extends into time and observer-roles via MTAC; into
-non-destructive scenario reasoning via the counterfactual
-engine; into refactor-equivalence via the adjunction analyzer.
-It types itself. It lands ~45 audit gates under one bundle
-verdict. None of this is theatre — every line is implemented; every
-primitive lives in the Architecture module of the standard library,
-every kernel intrinsic lives in the Architectural kernel surface, and
-the total surface comes to roughly 9550 LOC of canonical Verum +
-Rust mirror.
+ATS-V promotes eight primitives — Capability, Boundary,
+Composition, Lifecycle, Foundation, Tier, Stratum, Shape — into
+the type system; layers thirty-two canonical defects on top under
+stable RFC codes (`ATS-V-AP-001` … `032`); pins the maturation
+status of every artefact to one of seven CVE glyphs; and keeps
+capability, property, and context as three orthogonal axes
+instead of conflating them. The modal-temporal layer (MTAC), the
+counterfactual reasoning engine, the four canonical adjunctions,
+and the self-application discipline extend the static surface
+into time, observer-roles, scenario reasoning, and refactor
+equivalence. Around forty-five audit gates aggregate to a single
+bundle verdict. The implementation is concrete: ~9 550 LOC across
+the Architecture module of the standard library and the
+Architectural kernel surface on the Rust side.
 
-The pitch is not that any one of these ideas is novel. They are
-not. The pitch is that they have never been combined under a
-single compiler-checked discipline in a production systems
-language whose surface a Rust or Swift programmer could read
-comfortably — and that the moment when much of the code is
-written by language models is the moment where having them
-combined actually pays.
+No single piece of this is novel. The combination is — under one
+compiler-checked discipline, in a production systems language
+whose surface reads naturally to a Rust or Swift programmer, at a
+moment when much of the code is written by language models that
+need the architecture to be machine-readable, not folkloric.
 
 Whether the bet is right will be settled by practice, not by
 essays. The complete reference is the
@@ -644,6 +643,7 @@ of the standard library and the
 [Architectural kernel surface](https://github.com/oldman/verum/tree/main/crates/verum_kernel/src)
 of the trusted kernel; the runnable verdicts are catalogued on the
 [Audit Protocol — running the gates](/docs/architecture-types/audit-protocol)
-page. We built the language expecting to be argued with.
+page. The implementation is open source; counter-examples and
+better designs are welcome.
 
 — The Verum team
