@@ -44,7 +44,7 @@ Every `@verify(strategy)` attribute you write is projected onto
 *both* layers — the coarse gradient controls the pipeline, the fine
 strategy controls the solver.
 
-## The nine strategies
+## The thirteen strategies
 
 The grammar production `verify_strategy` (see the
 [Grammar reference — Functions](../reference/grammar-ebnf.md#25-functions))
@@ -99,7 +99,7 @@ performance budget.
 
 The Diakrisis ν-invariant lives at the level of countable ordinals;
 Verum's `verum_smt::verify_strategy::NuOrdinal` enum encodes the
-nine strata exactly so a CI check can assert distinct ranks per
+thirteen strata exactly so a CI check can assert distinct ranks per
 strategy. See the
 [MSFS coordinate page](msfs-coord.md#2-the-ordinal-type) for the
 full Cantor-normal-form encoding used for theorem-level coords.

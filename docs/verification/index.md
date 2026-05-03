@@ -389,10 +389,13 @@ axiom reachable from a module's public API, with citations. The
 `--format json` output is machine-parseable for CI enforcement
 (e.g., "PR is forbidden if it adds a new framework dependency").
 
-Six framework families ship with the stdlib: `lurie_htt`,
-`connes_ncg`, `petz_quantum`, `arnold_stability`, `baez_dolan_hda`,
-`schreiber_dcct`. See [Framework axioms](./framework-axioms.md) for
-authoring new ones.
+Eleven framework families ship with the stdlib (71 axioms total):
+`lurie_htt`, `schreiber_dcct`, `connes_reconstruction`,
+`petz_classification`, `arnold_catastrophe`, `baez_dolan`,
+`diakrisis`, `diakrisis_acts`, `diakrisis_biadjunction`,
+`diakrisis_extensions`, `diakrisis_stack_model`. See
+[Framework axioms](./framework-axioms.md) for the full inventory
+and for authoring new ones.
 
 ---
 
@@ -502,50 +505,191 @@ the design.
 
 ---
 
+## 11. The two-kernel discipline
+
+A *single* trusted kernel is the standard architecture for
+proof assistants — Coq, Lean, HOL Light, Isabelle all run one.
+Verum's discipline is structurally different: **two
+independent kernel implementations** check every certificate,
+with a differential-testing layer that fails the audit the
+moment they disagree.
+
+The two kernels:
+
+- **Trusted-base kernel** (`verum_kernel::proof_checker`) — an
+  LCF-style implementation performing direct rule-matching with
+  explicit substitution. Targets &lt; 5 KLOC; small enough to read
+  end-to-end.
+- **NbE kernel** (`verum_kernel::proof_checker_nbe`) —
+  normalisation-by-evaluation; compiles terms into a semantic
+  `Value` representation and checks via β-reduction in the value
+  world. Independent algorithmic specification; shares no code
+  with the trusted base beyond the syntax-tree definitions.
+
+Differential testing — `verum audit --differential-kernel` and
+`verum audit --differential-kernel-fuzz` — runs every
+canonical certificate plus an 11-variant mutation grammar
+through both kernels. A single disagreement fails the audit.
+A *synthetic always-accept kernel* registered alongside the
+real two acts as a liveness pin: the audit's invariant requires
+it to *disagree* on rejected certificates, ensuring the
+differential check is non-vacuous.
+
+Verum is the first production proof assistant to ship two
+algorithmic kernels with continuous differential testing. See
+[Two-kernel architecture](./two-kernel-architecture.md) for the
+full mechanics.
+
+---
+
+## 12. Beyond the kernel — meta-soundness layers
+
+The trusted-base + NbE pair is the L0/L1 floor. Verum stacks
+three additional layers atop the kernels:
+
+- **[Reflection tower](./reflection-tower.md)** —
+  MSFS-grounded meta-soundness in four canonical stages
+  (Base / Stable / Bounded / AbsoluteEmpty). MSFS
+  Theorem 9.6 collapses the iterated levels (`k ≥ 1` realises
+  the same theory); MSFS Theorem 8.2 bounds the tower's
+  consistency-strength to one extra inaccessible; MSFS Theorem
+  5.1 (AFN-T α) seals the absolute boundary as empty.
+- **[Separation logic](./separation-logic.md)** — heap-aware
+  spatial reasoning. Kernel-side `HeapPredicate` (6 arms) +
+  Verum-side `SepAssertion` (13 arms) + a kernel↔verifier
+  bridge with `BridgeFidelity` classification (`Faithful` vs
+  `Approximating`).
+- **Codegen attestation** — per-pass kernel-discharge status
+  for the 6 codegen passes (VBC lowering, SSA construction,
+  register allocation, linear-scan, LLVM emission, machine-code
+  emission). `verum audit --codegen-attestation` reports
+  `Discharged` / `AdmittedWithIou` / `NotYetAttested` per pass.
+- **kernel_v0 self-hosted bootstrap** — a Verum-side
+  description of every kernel rule under
+  `core/verify/kernel_v0/`, with `verum audit --kernel-v0-roster`
+  enforcing manifest↔filesystem agreement. The future
+  three-way differential kernel will register the self-hosted
+  Verum kernel as a third slot.
+
+---
+
+## 13. The full audit gate catalog
+
+Every claim Verum makes is mechanically observable. As of the
+current revision, `verum audit` exposes **~45 gates** organised
+into eight bands. The `--bundle` aggregator combines them into a
+single L4 load-bearing verdict.
+
+**Kernel-soundness band** (10 gates): `--kernel-rules` ·
+`--kernel-recheck` · `--kernel-soundness` · `--kernel-v0-roster` ·
+`--kernel-intrinsics` · `--kernel-discharged-axioms` ·
+`--differential-kernel` · `--differential-kernel-fuzz` ·
+`--reflection-tower` · `--codegen-attestation`.
+
+**ATS-V band** (6 gates): `--arch-discharges` · `--arch-coverage` ·
+`--arch-corpus` · `--counterfactual` · `--adjunctions` ·
+`--yoneda`.
+
+**Framework + citation band** (10 gates): `--framework-axioms` ·
+`--framework-conflicts` · `--framework-soundness` ·
+`--foundation-profiles` · `--accessibility` · `--soundness-iou` ·
+`--dependent-theorems &lt;axiom&gt;` · `--apply-graph` ·
+`--bridge-discharge` · `--bridge-admits`.
+
+**Hygiene + coherence band** (8 gates): `--hygiene` ·
+`--hygiene-strict` · `--coord` · `--coord-consistency` ·
+`--no-coord` · `--coherent` · `--epsilon` · `--proof-honesty`.
+
+**Cross-format + export band** (3 gates): `--round-trip` ·
+`--cross-format` · `--owl2-classify`.
+
+**Roadmap + coverage band** (6 gates): `--htt-roadmap` ·
+`--ar-roadmap` · `--manifest-coverage` · `--mls-coverage` ·
+`--verify-ladder` · `--ladder-monotonicity`.
+
+**Tooling band** (3 gates): `--proof-term-library` ·
+`--signatures` · `--docker`.
+
+**Aggregator** (1 gate): `--bundle` — runs every gate above and
+emits a single L4 load-bearing verdict.
+
+See [Soundness gates](./soundness-gates.md) for the
+predicate-level formalisation and
+[ATS-V → audit protocol](../architecture-types/audit-protocol.md)
+for the band-by-band detail and JSON schemas.
+
+---
+
 ## Feature inventory
 
 Every feature described across this verification section is
 part of the shipping release:
 
+**Verification core**
+
 - **Two-layer dispatch** — `VerificationLevel` × `VerifyStrategy`
-  with machine-checked policy table (`evaluate_attempt`).
+  with machine-checked policy table (`evaluate_attempt`). Nine
+  strategies in the gradual ladder.
 - **Refinement types + `@logic` reflection** — user functions
   lifted into solver axioms with unfold-budget knobs.
-- **ADT encoding** — real Z3 datatypes per variant with cached
-  sort reuse.
+- **ADT encoding** — Z3 datatypes per variant with cached sort
+  reuse.
 - **Cubical / HoTT primitives** — `PathTy`, `HComp`, `Transp`,
   `Glue` as first-class kernel rules with subterm validation.
-- **Trusted kernel** — LCF-style 18-rule core with
-  allowlist-gated SMT proof-tree replay (28 Z3 rules + 29
-  ALETHE rules), hierarchical composition via `CoreTerm::App`,
-  UIP rejection for univalence preservation.
-- **Tactic DSL** — block-form combinators with algebraic
-  `normalize` pass, Quote/Unquote/GoalIntro meta-programming,
-  cog-level tactic-package registry (Project > ImportedCog >
-  Stdlib shadowing), 51-tactic stdlib split across 7 files.
+- **Tactic DSL** — block-form combinators, Quote/Unquote/GoalIntro
+  meta-programming, cog-level tactic-package registry (Project
+  &gt; ImportedCog &gt; Stdlib shadowing), 51-tactic stdlib across
+  7 files.
 - **Counterexample lifecycle** — extract → syntactic
   minimization (pure, always-on) → semantic minimization
   (delta-debugging, Thorough/Certified) → fix suggestions.
 - **Trigger diagnostics** — W502 / W503 / W504 structural
   validation of every quantifier trigger.
-- **Proof export** — Lean / Coq / Dedukti / Metamath targets
-  with weekly cross-tool re-check CI matrix.
+
+**Trust boundary**
+
+- **Trusted-base kernel** — LCF-style core with allowlist-gated
+  SMT proof-tree replay (28 Z3 rules + 29 ALETHE rules),
+  hierarchical composition via `CoreTerm::App`, UIP rejection
+  for univalence preservation. Targeting &lt; 5 KLOC.
+- **NbE kernel** — independent normalisation-by-evaluation
+  implementation; differentially tested against the trusted base.
+- **Reflection tower (MSFS-grounded)** — four-stage
+  meta-soundness verification with MSFS Theorems 9.6 / 8.2 /
+  5.1 as cited discharges.
+- **Separation logic** — heap-aware spatial reasoning;
+  6-arm kernel `HeapPredicate` + 13-arm Verum-side
+  `SepAssertion` + audited bridge.
+- **Codegen attestation** — per-pass kernel-discharge tracking
+  across 6 codegen passes.
+- **kernel_v0 self-hosted bootstrap** — Verum-side rule
+  description with manifest audit.
+
+**Outputs**
+
+- **Proof export** — Lean / Coq / Dedukti / Metamath / Isabelle
+  targets with cross-tool re-check CI matrix.
 - **Program extraction** — Curry-Howard lifting of constructive
   proofs into runnable code (Verum / OCaml / Lean / Coq) via
   `@extract` / `@extract_witness` / `@extract_contract` plus the
-  `realize="<fn>"` directive for native-binding wrappers.
+  `realize="&lt;fn&gt;"` directive for native-binding wrappers.
+
+**Observability**
+
 - **Obligation-level profiling** — `--profile-obligation`
-  breakdown table with per-obligation timings.
+  breakdown with per-obligation timings.
 - **Solver diagnostic side channels** — `--dump-smt` /
-  `--solver-protocol` / `--lsp-mode` threaded through both
-  Z3 and CVC5 backends via pay-for-only-what-you-use env
-  vars.
+  `--solver-protocol` / `--lsp-mode` threaded through both Z3
+  and CVC5 backends.
 - **`core.verify` stdlib** — user-facing surface mirroring the
   compiler's `VerificationLevel` / `ProofAttempt` /
   `VerificationOutcome` / certificate-envelope types.
 - **SmtCertificate envelope v1** — `schema_version` gate,
   `verum_version` + `created_at` + free-form `metadata`,
   machine-checked schema validation on replay.
+- **16-gate audit catalog** — every claim mechanically
+  enumerable; bundle aggregator produces L4 load-bearing
+  verdict.
 
 ## See also
 

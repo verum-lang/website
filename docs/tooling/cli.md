@@ -143,35 +143,108 @@ gradual verification](/docs/verification/gradual-verification)**.
 
 ### Audit subcommands
 
-`verum audit` is the project-wide trust-boundary tool. It enumerates
-the framework axioms, kernel-rule footprint, ε-distribution,
-intensional-extensional coordinate, hygiene status, OWL 2
-classification, framework-compatibility matrix, accessibility
-annotations, 108.T round-trip status, and operational coherence —
-each surface gated by an explicit flag.
+`verum audit` is the project-wide trust-boundary tool. As of the
+current revision it exposes **~45 gates** organised in eight bands
+plus the `--bundle` aggregator. Each gate emits both human-readable
+and structured JSON output (under `audit-reports/*.json`); the
+JSON is `schema_version`-pinned for archival use. For the
+predicate-level formalisation see
+[Verification → soundness gates](../verification/soundness-gates.md);
+for the workflow see
+[ATS-V → audit protocol](../architecture-types/audit-protocol.md).
 
-| Flag | Output | Use case |
-|---|---|---|
-| `--framework-axioms` | every `@framework(name, "citation")` marker, grouped | enumerate the trusted boundary |
-| `--kernel-rules` | the 18 primitive inference rules implemented in `verum_kernel` | auditor verifying kernel TCB |
-| `--epsilon` | every `@enact(epsilon = …)` marker grouped by ε-primitive | dual of `--framework-axioms` |
-| `--coord` | per-theorem `(Framework, ν, τ)` MSFS coordinate (default-on; `--no-coord` to skip) | verification-pipeline projection |
-| `--hygiene` | self-referential surface-form classification | factorisation report |
-| `--hygiene-strict` | reject raw `self` in free functions (CI gate) | `E_HYGIENE_UNFACTORED_SELF` |
-| `--owl2-classify` | OWL 2 subclass closure + cycle / disjointness violations | ontology audit |
-| `--framework-conflicts` | known-incompatible framework pairs (uip ⊥ univalence, etc.) | axiom-bundle consistency |
-| `--accessibility` | enact / EpsilonOf without `@accessibility(λ)` | Diakrisis Axi-4 closure |
-| `--round-trip` | per-theorem 108.T round-trip status (Decidable / SemiDecidable / Undecidable) | corpus acceptance gate |
-| `--coherent` | per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert correspondence status | operational coherence layer |
-| `--proof-honesty` | per-theorem proof-body shape classification (`axiom-placeholder` / `theorem-no-proof-body` / `theorem-trivial-true` / `theorem-axiom-only` / `theorem-multi-step`) plus by-lineage totals | corpus promotion-progress gate; emits `audit-reports/proof-honesty.json` (schema_v=1) |
-| `--framework-soundness` | per-axiom K-FwAx classification (`sound` if proposition has propositional content / `trivial-placeholder` if just `true` literal) | corpus-side mirror of kernel-side `SubsingletonRegime.ClosedPropositionOnly` gate at audit time; emits `audit-reports/framework-soundness.json` (schema_v=1) |
-| `--coord-consistency` | per-theorem (Fw, ν, τ) supremum-of-cited-coords gate (`consistent` / `verify-lift` / `missing-framework`); fails CI on any `missing-framework` (theorem has `@verify(...)` but no `@framework(...)` citation) | corpus-side mirror of kernel-side V8.1 #232 `check_coord_cite` at audit time; emits `audit-reports/coord-consistency.json` (schema_v=1); non-zero exit on violation |
+#### Kernel-soundness band (10 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--kernel-rules` | The trusted-base inference rule list (one row per rule with citation) |
+| `--kernel-recheck` | Re-checks every theorem in the project against the trusted base |
+| `--kernel-soundness` | Per-rule discharge inventory + parallel Coq / Lean / Isabelle export |
+| `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem |
+| `--kernel-intrinsics` | Kernel intrinsic registry — every `kernel_*` dispatch entry |
+| `--kernel-discharged-axioms` | Axioms admitted under `@kernel_discharge(...)` markers |
+| `--differential-kernel` | Two-kernel agreement (trusted base vs NbE) |
+| `--differential-kernel-fuzz` | 11-variant mutation property fuzz over the kernel registry |
+| `--reflection-tower` | MSFS-grounded 4-stage meta-soundness |
+| `--codegen-attestation` | Per-pass codegen kernel-discharge status |
+
+#### ATS-V (architectural-types) band (6 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--arch-discharges` | The 32-pattern anti-pattern catalog |
+| `--arch-coverage` | Annotation density + missing-Shape report |
+| `--arch-corpus` | Per-Lifecycle inventory of annotated cogs |
+| `--counterfactual` | Non-destructive scenario battery over Shapes |
+| `--adjunctions` | Architectural adjunction detection (4 canonical pairs) |
+| `--yoneda` | Yoneda-equivalence checker per ATS-V spec §20.7 |
+
+#### Framework + citation band (10 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--framework-axioms` | every `@framework(name, "citation")` marker, grouped |
+| `--framework-conflicts` | known-incompatible framework pairs |
+| `--framework-soundness` | per-axiom K-FwAx classification (`sound` / `trivial-placeholder`) |
+| `--foundation-profiles` | Foundation-by-cog inventory |
+| `--accessibility` | enact / EpsilonOf without `@accessibility(λ)` |
+| `--soundness-iou` | outstanding "admitted" lemmas + IOU manifest |
+| `--dependent-theorems <axiom>` | apply-graph walker for downstream impact |
+| `--apply-graph` | whole-corpus apply-graph |
+| `--bridge-discharge` | Diakrisis-bridge `@effect(...)` marker discharge |
+| `--bridge-admits` | bridge-marker admits + their citation IOUs |
+
+#### Hygiene + coherence band (8 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--hygiene` | self-referential surface-form classification (factorisation report) |
+| `--hygiene-strict` | reject raw `self` in free functions (CI gate) |
+| `--coord` | per-theorem `(Framework, ν, τ)` MSFS coordinate |
+| `--coord-consistency` | per-theorem supremum-of-cited-coords gate |
+| `--no-coord` | cogs missing MSFS-coord declarations |
+| `--coherent` | per-theorem `@verify(coherent*)` α-cert ⟺ ε-cert status |
+| `--epsilon` | every `@enact(epsilon = …)` marker grouped by ε-primitive |
+| `--proof-honesty` | per-theorem proof-body shape classification |
+
+#### Cross-format + export band (3 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--round-trip` | per-theorem 108.T round-trip status (Decidable / SemiDecidable / Undecidable) |
+| `--cross-format` | cross-format coverage matrix (Lean / Coq / Dedukti / Metamath / Isabelle) |
+| `--owl2-classify` | OWL 2 subclass closure + cycle / disjointness violations |
+
+#### Roadmap + coverage band (6 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--htt-roadmap` | Lurie HTT mechanisation roadmap status |
+| `--ar-roadmap` | Arnold-Stability mechanisation roadmap status |
+| `--manifest-coverage` | manifest-vs-filesystem coverage per kernel-component manifest |
+| `--mls-coverage` | MSFS-corpus coverage classification |
+| `--verify-ladder` | per-cog verification-strategy ladder enumeration |
+| `--ladder-monotonicity` | the ν-ordinal monotonicity check on the verify ladder |
+
+#### Tooling band (3 gates)
+
+| Flag | Verifies |
+|------|----------|
+| `--proof-term-library` | inventory of canonical proof-term examples |
+| `--signatures` | cross-format-roundtrip signatures audit |
+| `--docker` | container-image reproducibility check |
+
+#### Aggregator (1 gate)
+
+| Flag | Verifies |
+|------|----------|
+| `--bundle` | runs every gate above and emits a single L4 load-bearing verdict |
 
 `--format plain` (default) emits human-readable output. `--format json`
 emits a stable machine-parseable schema suitable for CI dashboards
 and `audit-reports/*.json` archival. Each subcommand may be passed
-solo (e.g. `verum audit --framework-axioms`) or, for the default
-dispatch, the dependency audit + per-theorem coord audit run together.
+solo (e.g. `verum audit --framework-axioms`) or via `--bundle` to
+run all of them.
 
 ### Verification profiling & budgets
 
