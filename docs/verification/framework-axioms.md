@@ -60,22 +60,29 @@ Two arguments, always in this order:
 1. A **framework identifier** — short, machine-readable, `snake_case`.
    Convention: match the file under `core/math/frameworks/<name>.vr`
    where the framework's full axiom package lives. The stdlib ships
-   six canonical packages today; the right-hand column says how many
-   axioms ship in each:
+   eleven canonical packages today; the right-hand column says how
+   many axioms ship in each:
 
-   | Identifier              | Source                                                    | Stdlib file                                      | Axioms |
-   |-------------------------|-----------------------------------------------------------|--------------------------------------------------|-------:|
-   | `lurie_htt`             | Lurie, *Higher Topos Theory* (2009)                       | `core/math/frameworks/lurie_htt.vr`              | 7      |
-   | `schreiber_dcct`        | Schreiber, *Differential Cohomology in a Cohesive ∞-Topos* (arXiv:1310.7930) | `core/math/frameworks/schreiber_dcct.vr`        | 5      |
-   | `connes_reconstruction` | Connes (2008) + Connes 2013 Theorem 1.1                   | `core/math/frameworks/connes_reconstruction.vr`  | 8      |
-   | `petz_classification`   | Petz, *Monotone metrics on matrix spaces* (1996)          | `core/math/frameworks/petz_classification.vr`    | 4      |
-   | `arnold_catastrophe`    | Arnold (1972) + Arnold–Mather (1974) codim ≤ 4            | `core/math/frameworks/arnold_catastrophe.vr`     | 8      |
-   | `baez_dolan`            | GPS (1995), Baez–Dolan (1995), Lurie (2009)               | `core/math/frameworks/baez_dolan.vr`             | 4      |
+   | Identifier                | Source                                                    | Stdlib file                                          | Axioms |
+   |---------------------------|-----------------------------------------------------------|------------------------------------------------------|-------:|
+   | `lurie_htt`               | Lurie, *Higher Topos Theory* (2009)                       | `core/math/frameworks/lurie_htt.vr`                  | 8      |
+   | `schreiber_dcct`          | Schreiber, *Differential Cohomology in a Cohesive ∞-Topos* (arXiv:1310.7930) | `core/math/frameworks/schreiber_dcct.vr`             | 5      |
+   | `connes_reconstruction`   | Connes (2008) + Connes 2013 Theorem 1.1                   | `core/math/frameworks/connes_reconstruction.vr`      | 8      |
+   | `petz_classification`     | Petz, *Monotone metrics on matrix spaces* (1996)          | `core/math/frameworks/petz_classification.vr`        | 4      |
+   | `arnold_catastrophe`      | Arnold (1972) + Arnold–Mather (1974) codim ≤ 4            | `core/math/frameworks/arnold_catastrophe.vr`         | 8      |
+   | `baez_dolan`              | GPS (1995), Baez–Dolan (1995), Lurie (2009)               | `core/math/frameworks/baez_dolan.vr`                 | 4      |
+   | `diakrisis`               | Diakrisis foundational theorems (108.T α/ε duality core)  | `core/math/frameworks/diakrisis.vr`                  | 6      |
+   | `diakrisis_acts`          | Diakrisis Acts roster (Articulation Calculus actions)     | `core/math/frameworks/diakrisis_acts.vr`             | 16     |
+   | `diakrisis_biadjunction`  | Diakrisis biadjunction theorems                           | `core/math/frameworks/diakrisis_biadjunction.vr`     | 2      |
+   | `diakrisis_extensions`    | Diakrisis foundational extensions                         | `core/math/frameworks/diakrisis_extensions.vr`       | 4      |
+   | `diakrisis_stack_model`   | Diakrisis stack-model theorems                            | `core/math/frameworks/diakrisis_stack_model.vr`      | 6      |
 
-   **36 axioms across 6 frameworks** ship in the stdlib today; adding
-   a new framework is a matter of dropping a new file into
+   **71 framework axioms across 11 frameworks** ship in the stdlib
+   today (verified via `grep -c "@framework(" core/math/frameworks/*.vr`).
+   Adding a new framework is a matter of dropping a new file into
    `core/math/frameworks/` and citing it from proofs. The audit CLI
-   discovers them automatically.
+   discovers them automatically; `verum audit --framework-axioms`
+   enumerates the full inventory.
 
    Each stdlib file follows a common shape:
 

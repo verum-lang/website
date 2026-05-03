@@ -13,9 +13,23 @@ title: Trusted Kernel
 > certificate before admitting a theorem.
 
 This page is the canonical reference for the kernel's design,
-its rule set, the `SmtCertificate` lifecycle, the replay loop, and
-the auditor's checklist. It is the closest thing Verum has to a
-"definition of soundness."
+its **three-layer rule architecture**, the `Certificate` lifecycle,
+the replay loop, and the auditor's checklist. It is the closest
+thing Verum has to a "definition of soundness."
+
+The kernel is **not** monolithic. Three layers cooperate, each
+with its own rule list, its own auditing surface, and its own
+trust delegation:
+
+| Layer | Where | Rules | Purpose |
+|-------|-------|-------|---------|
+| **kernel_v0** | `core/verify/kernel_v0/` (Verum source) | 10 | Verum-side bootstrap meta-theory; hand-auditable |
+| **proof_checker** | `crates/verum_kernel/src/proof_checker.rs` | 6 | Rust-side minimal CoC checker; the trusted base |
+| **KernelRuleId audit registry** | `crates/verum_kernel/src/zfc_self_recognition.rs` | 7 | Audit-time meta-soundness footprint enumeration |
+
+This page covers all three layers, their interfaces, and how the
+[differential testing](./two-kernel-architecture.md) and
+[reflection-tower](./reflection-tower.md) layers consume them.
 
 ---
 
@@ -39,604 +53,331 @@ from its axioms.* Everything else — tactic engines, SMT proofs,
 user programs — is reduced to *"did the kernel accept it?"* and
 becomes inspection-only at audit time.
 
-Verum's kernel lives in `crates/verum_kernel/`. At the time of
-writing it is ~2 000 LOC of Rust, has zero calls into user code,
-and has 39 unit tests specifically targeting its primitive rules.
+Verum's discipline is *more aggressive* than typical LCF kernels
+on size. The trusted-base proof_checker (Layer B) targets **&lt;
+1000 LOC Rust** — order-of-magnitude smaller than HOL Light
+(~5K SML) or Lean (~5K C++) or Coq's `coqchk` (~10K OCaml). The
+trade-off is deliberate: the checker rejects MOST Verum programs
+(those using refinement / cubical / modal / SMT-axiom features),
+but the programs it accepts have an iron-clad independent verdict.
+The full Verum kernel infrastructure handles the broader surface;
+the proof_checker handles the irreducible core.
 
 ---
 
-## 2. What the kernel trusts
+## 2. Layer A — `kernel_v0` (Verum-side bootstrap, 10 rules)
 
-Concretely, the kernel is the **only** piece of Verum code that
-may:
+`kernel_v0` is the **Verum-language** mirror of the trusted-base
+checker. It lives at `core/verify/kernel_v0/` and ships:
 
-- Construct a `CoreTerm::Axiom` from scratch with a framework tag.
-- Replay an `SmtCertificate` and return a theorem witness.
-- Discharge a `CoreTerm::SmtProof` node.
-- Check a kernel term against a `CoreType` under a de Bruijn
-  context.
+- A canonical 10-rule manifest (one `.vr` file per rule).
+- Soundness lemmas under `lemmas/`.
+- Per-rule judgment forms under `judgment.vr`.
+- Context structure under `context.vr`.
 
-Any code path that produces a theorem without going through the
-kernel is — by definition — outside the TCB and can be wrong. The
-tactic engine, the proof-search, and the SMT translator all
-**produce** `CoreTerm` values; the kernel **accepts** or
-**rejects** them.
+The ten rules:
 
-Corollary: *bugs in the type checker or the tactic engine can only
-cause the kernel to reject proofs that would otherwise succeed, or
-(worse) fabricate terms that the kernel still correctly rejects.*
-They cannot silently admit false theorems.
+| File | Rule | What it does |
+|------|------|--------------|
+| `k_var.vr` | `K-Var` | Variable lookup `Γ, x:A ⊢ x : A` |
+| `k_univ.vr` | `K-Univ` | Universe formation `Γ ⊢ Universe(n) : Universe(n+1)` |
+| `k_pi_form.vr` | `K-Pi-Form` | Π-type formation `Γ ⊢ A : U`, `Γ, x:A ⊢ B : U` ⊢ `Π x:A.B : U` |
+| `k_lam_intro.vr` | `K-Lam-Intro` | λ-abstraction introduction |
+| `k_app_elim.vr` | `K-App-Elim` | Application elimination |
+| `k_sub.vr` | `K-Sub` | Substitution lemma |
+| `k_beta.vr` | `K-Beta` | β-conversion `(λx:A. b) a ↝ b[x ↦ a]` |
+| `k_eta.vr` | `K-Eta` | η-equivalence `λx. f x ≡ f` |
+| `k_pos.vr` | `K-Pos` | Strict positivity (Berardi 1998) |
+| `k_fwax.vr` | `K-FwAx` | Framework-axiom admission |
+
+The audit gate `verum audit --kernel-v0-roster` walks the
+manifest and confirms every rule has its corresponding `.vr`
+file. Drift between manifest and filesystem is a build failure.
+
+`kernel_v0` is intentionally Verum-source, not Rust. The aim is
+**self-hosting**: a future revision compiles `kernel_v0` itself
+and uses the resulting Verum binary as a third independent slot
+in the [differential-kernel gate](./two-kernel-architecture.md).
+At V0 the self-hosted slot reports `NotYetSelfHosting`; the
+parser-blocker is tracked separately.
 
 ---
 
-## 3. The core term language
+## 3. Layer B — `proof_checker.rs` (Rust trusted base, 6 rules)
 
-`CoreTerm` is an enum in `verum_kernel::core::term`. Every theorem
-body, tactic output, and SMT certificate collapses to a tree of
-these constructors:
+The Rust-side trusted base lives in
+`crates/verum_kernel/src/proof_checker.rs` and implements a
+minimal Calculus of Constructions (CoC) fragment. **Six
+inference rules** are exhaustive:
+
+| # | Rule | Signature (informal) |
+|---|------|---------------------|
+| 1 | T-Var | `Γ, x:A ⊢ x : A` |
+| 2 | T-Univ | `Γ ⊢ Universe(n) : Universe(n+1)` |
+| 3 | T-Pi-Form | `Γ ⊢ A : U_i`, `Γ, x:A ⊢ B : U_j` ⟹ `Γ ⊢ Π x:A.B : U_max(i,j)` |
+| 4 | T-Lam-Intro | `Γ, x:A ⊢ t : B` ⟹ `Γ ⊢ λx:A.t : Π x:A.B` |
+| 5 | T-App-Elim | `Γ ⊢ f : Π x:A.B`, `Γ ⊢ a : A` ⟹ `Γ ⊢ f a : B[x ↦ a]` |
+| 6 | T-Conv | `Γ ⊢ t : A`, `A ≡_β B` ⟹ `Γ ⊢ t : B` |
+
+The Term language carries five variants — exactly what the six
+rules require:
 
 ```rust
-pub enum CoreTerm {
-    // Variables and bindings (de Bruijn indices)
-    Var(u32),
-    Lam { name: Text, ty: Heap<CoreType>, body: Heap<CoreTerm> },
-    App { func: Heap<CoreTerm>, arg: Heap<CoreTerm> },
-
-    // Dependent product (Π) and sum (Σ)
-    Pi     { name: Text, ty: Heap<CoreType>, body: Heap<CoreType> },
-    Sigma  { name: Text, ty: Heap<CoreType>, body: Heap<CoreType> },
-
-    // Inductive types and their constructors/eliminators
-    Inductive { path: Text, args: List<CoreTerm> },
-    Ctor      { inductive: Text, name: Text, args: List<CoreTerm> },
-    Match     { scrutinee: Heap<CoreTerm>, arms: List<MatchArm> },
-
-    // Propositional equality (Martin-Löf)
-    Eq      { ty: Heap<CoreType>, lhs: Heap<CoreTerm>, rhs: Heap<CoreTerm> },
-    Refl    { ty: Heap<CoreType>, term: Heap<CoreTerm> },
-
-    // Cubical paths (HoTT layer)
-    PathTy  { ty: Heap<CoreType>, lhs: Heap<CoreTerm>, rhs: Heap<CoreTerm> },
-    HComp   { ty: Heap<CoreType>, phi: Heap<CoreTerm>, u: Heap<CoreTerm>, u0: Heap<CoreTerm> },
-    Transp  { ty: Heap<CoreType>, phi: Heap<CoreTerm>, term: Heap<CoreTerm> },
-    Glue    { a: Heap<CoreType>, phi: Heap<CoreTerm>, t: Heap<CoreTerm>, e: Heap<CoreTerm> },
-
-    // Universes
-    Universe(u32),
-
-    // Axioms and SMT proofs
-    Axiom    { name: Text, ty: Heap<CoreType>, framework: FrameworkId },
-    SmtProof { cert: SmtCertificate, claim: Heap<CoreTerm> },
+pub enum Term {
+    Var(usize),                       // de Bruijn index
+    Universe(u32),                    // Universe(n) lives in Universe(n+1)
+    Pi(Box<Term>, Box<Term>),         // dependent function type Π x:A.B
+    Lam(Box<Term>, Box<Term>),        // type-annotated λ-abstraction
+    App(Box<Term>, Box<Term>),        // application
 }
 ```
 
-### Constructor discipline
+The public API is bidirectional:
 
-Only the kernel may construct `Axiom`, `SmtProof`, or the cubical
-primitives (`HComp`, `Transp`, `Glue`). Every other constructor is
-freely constructible by any code path, but the kernel will only
-accept them after type-checking.
+```rust
+pub fn infer(ctx: &Context, term: &Term) -> Result<Term, CheckError>;
+pub fn check(ctx: &Context, term: &Term, expected: &Term) -> Result<(), CheckError>;
+```
 
-The `Heap<T>` wrapper is Verum's semantic equivalent of `Box<T>`
-— a managed heap allocation with a stable address. Its use here is
-for the same reason Lean's `Expr` uses `@[reducible]` pointers:
-structural sharing of common subtrees is critical for proof-term
-size.
+`infer` synthesises a type for a term in a context; `check`
+verifies that a term has a given type. Together they implement
+the full type-checking discipline of the six rules.
+
+### 3.1 What this layer DOES NOT do
+
+A deliberate scope restriction. The trusted base does NOT:
+
+- Type-check refinement types (`Int { p }` requires SMT — handled
+  by the broader infrastructure, not the trusted base).
+- Decide propositional equality up to η beyond α + β.
+- Inspect `@framework`-cited axioms (those are leaves the
+  apply-graph audit handles).
+- Aspire to feature parity with Coq's `coqchk` — it aspires to
+  feature parity with HOL Light's kernel: minimal, exhaustive,
+  hand-readable.
+
+The trade-off is deliberate. A wider kernel admits more programs
+directly; a narrower kernel makes the *surface a reviewer must
+audit* smaller. Verum chooses the narrower kernel and lifts the
+broader features to user-side discharge mechanisms.
+
+### 3.2 The `Certificate` lifecycle at this layer
+
+A `Certificate` is the structured witness the trusted base
+consumes:
+
+```rust
+pub struct Certificate {
+    pub term:      Term,    // the proof term
+    pub claim_ty:  Term,    // the type the term is claimed to inhabit
+}
+```
+
+The audit gate `verum audit --kernel-recheck` runs every
+theorem in the project's corpus through the trusted base via
+`check(ctx, &cert.term, &cert.claim_ty)`. A non-`Ok` result
+fails the audit.
 
 ---
 
-## 4. The kernel rules
+## 4. Layer C — `KernelRuleId` audit registry (7 rules)
 
-The kernel implements **18 primitive inference rules**, grouped
-into five families. Each rule is a Rust function in
-`verum_kernel::rules::*` that takes a `Context`, a `CoreTerm`, and
-(in some cases) a `CoreType`, and returns either a typed term or a
-`KernelError`. Rules are numbered for citation; the numbering is
-stable across versions.
+The third layer is *not* a checker — it is an **audit registry**
+for meta-soundness footprint enumeration. Lives in
+`crates/verum_kernel/src/zfc_self_recognition.rs`. Seven canonical
+rules, each carrying an explicit ZFC + inaccessible decomposition:
 
-### 4.1 Structural rules (`rules::structural`)
+```rust
+pub enum KernelRuleId {
+    Refine,    // K-Refine    — depth-strict comprehension
+    Univ,      // K-Univ      — universe consistency
+    Pos,       // K-Pos       — strict positivity (Berardi 1998)
+    Norm,      // K-Norm      — strong normalisation
+    FwAx,      // K-FwAx      — framework-axiom admission (Prop-only)
+    AdjUnit,   // K-Adj-Unit  — α ⊣ ε unit identity (Diakrisis 108.T)
+    AdjCounit, // K-Adj-Counit — α ⊣ ε counit identity
+}
+```
 
-| # | Rule            | Signature (informal)                                       | Purpose                                                   |
-|---|-----------------|-------------------------------------------------------------|-----------------------------------------------------------|
-| 1 | `Var`           | `Γ, x:A ⊢ x : A`                                            | Variable reference via de Bruijn index.                   |
-| 2 | `Lam`           | `Γ, x:A ⊢ t : B`  ⟹  `Γ ⊢ λx:A. t : Π x:A. B`               | Abstraction.                                              |
-| 3 | `App`           | `Γ ⊢ f : Π x:A.B`, `Γ ⊢ a : A`  ⟹  `Γ ⊢ f a : B[x↦a]`         | Application (with substitution).                          |
-| 4 | `Pi-Form`       | `Γ ⊢ A : U_i`, `Γ, x:A ⊢ B : U_j` ⟹ `Γ ⊢ Π x:A. B : U_max`   | Dependent-product formation at the correct universe level. |
+Each rule's `required_meta_theory()` returns the precise ZFC
+axioms (out of the 9 in `ZfcAxiom::full_list()`) plus the
+inaccessibles (out of `InaccessibleLevel = { Kappa1, Kappa2 }`)
+the rule rests on:
 
-### 4.2 Inductive rules (`rules::inductive`)
+| Rule | ZFC axioms | Inaccessibles | Citation |
+|------|-----------|---------------|----------|
+| K-Refine | Separation, Replacement | — | Comprehension is Separation |
+| K-Univ | Replacement | κ_1 + κ_2 | Type_1 ↪ κ_1, Type_2 ↪ κ_2 |
+| K-Pos | Foundation, Separation | — | Berardi 1998 |
+| K-Norm | Foundation, Replacement | κ_1 | Huber 2019 + transfinite induction |
+| K-FwAx | Pairing, Union, Separation | — | Prop-only side condition |
+| K-Adj-Unit | Replacement | κ_1 | Adjunction lives in (∞,1)-Cat ↪ U_{κ_1} |
+| K-Adj-Counit | Replacement | κ_1 | Same as Unit |
 
-| # | Rule              | Purpose                                                                         |
-|---|-------------------|---------------------------------------------------------------------------------|
-| 5 | `Ind-Form`        | Verify the constructor list is strictly positive, no negative occurrences.      |
-| 6 | `Ind-Intro`       | `Ctor(args)` well-typed iff args match the declared constructor signature.      |
-| 7 | `Ind-Elim`        | Pattern-match exhaustive over constructors; each arm typed uniformly in the motive. |
+Together, the seven rules' union requires the **9 ZFC axioms**
+(Extensionality, Pairing, Union, PowerSet, Infinity, Separation,
+Replacement, Foundation, Choice) plus **2 strongly-inaccessible
+cardinals** (κ_1 and κ_2) — the canonical
+"ZFC + 2-inaccessibles" base.
 
-#### `K-Pos` — strict positivity in detail
+### 4.1 The kernel-meta-soundness predicate
 
-`Ind-Form` is operationalised via the `K-Pos` walker
-(`crates/verum_kernel/src/lib.rs::check_strict_positivity`). The kernel
-runs the walker on **every** constructor's argument types when an
-`InductiveRegistry::register(...)` call is made; the first violation
-rejects the whole declaration with `KernelError::PositivityViolation`.
+`zfc_self_recognition` exposes:
 
-The discipline ():
+```rust
+pub fn kernel_meta_soundness_holds() -> bool;
+```
 
-- `Pi(domain, codomain)` — the type's name MUST NOT appear anywhere in
-  `domain` (the negative position of the arrow); `codomain` itself
-  must be strictly positive in the type's name.
-- `Inductive(name, args)` — every `arg` must itself be strictly
-  positive in the type's name. This catches indirect non-positive
-  recursion via parametrised types (e.g. `BadList = Cons(BadList →
-  A)` where the function smuggles `BadList` into a negative position
-  through its own argument list).
-- `Sigma`, `App`, `Refine`, `Lam`, `PathTy` — descend into both
-  halves; strict positivity is closed under products, applications,
-  refinements, lambdas, and path types.
-- Atoms (`Universe`, `Var`, `Axiom`, `SmtProof`, `Elim`) — vacuously
-  OK.
+…which walks every kernel rule's `required_meta_theory()` and
+confirms each requirement is bounded by ZFC + 2-inaccessibles.
+For the current rule set this holds vacuously — the seven rules'
+union *is* ZFC + 2-inacc.
 
-**Why it matters.** Berardi 1998 establishes that a system with even
-minimal impredicativity admits `False` whenever a non-positive
-inductive is admissible. Concretely the witness:
+This predicate is the **base discharge** for the
+[reflection tower](./reflection-tower.md)'s `REF^0` stage. The
+[MSFS Theorem 9.6 / 8.2 / 5.1](./reflection-tower.md) layer
+extends it to the higher stages.
+
+---
+
+## 5. The two-kernel differential layer
+
+Layer B (`proof_checker`) has a sibling — `proof_checker_nbe`
+— a **second independent algorithmic kernel** using
+Normalisation-by-Evaluation. The two implement the same
+input/output relation via different algorithms; disagreements
+are bugs in either.
+
+The differential layer is documented in detail in
+[Two-kernel architecture](./two-kernel-architecture.md). At a
+glance:
+
+- `verum audit --differential-kernel` — runs every certificate
+  through both kernels.
+- `verum audit --differential-kernel-fuzz` — runs an 11-variant
+  mutation grammar over canonical certificates and verifies
+  unanimous agreement.
+- A *synthetic always-accept* third slot is registered as a
+  liveness pin: the differential is non-vacuous because the
+  synthetic *should* disagree with the real kernels on rejected
+  certificates.
+
+This is a structural property no other production proof
+assistant ships.
+
+---
+
+## 6. The kernel registry pattern
+
+The three rule layers + the differential layer + future Verum
+self-hosted kernel cooperate via a **kernel registry**
+(`crates/verum_kernel/src/kernel_registry.rs`). The registry
+exposes a uniform `KernelImpl` trait that lets the audit pipeline
+query every registered kernel without caring which is which:
+
+```rust
+pub trait KernelImpl {
+    fn name(&self) -> &str;
+    fn check(&self, cert: &Certificate) -> KernelVerdict;
+}
+```
+
+Verdicts are `Accepted` / `Rejected { reason }` /
+`NotYetSelfHosting`. The differential gate iterates the registry,
+collects per-kernel verdicts, and reports `BothAccept` /
+`BothReject` / `Disagreement` per certificate.
+
+Adding a new kernel is therefore additive — the audit pipeline
+need not change when (e.g.) the Verum self-hosted kernel
+becomes exercisable; only the registry registration changes.
+
+---
+
+## 7. The framework-axiom layer
+
+Outside the trusted base but inside the trusted infrastructure:
+**framework-axioms**. A theorem may rest on cited external
+results — Lurie's HTT, Schreiber's DCCT, Connes's NCG, Joux's
+group lower bound. Each citation is registered:
 
 ```verum
-type Bad is Wrap(Bad -> A);    // would derive False if admitted
+@framework("lurie_htt", "HTT 6.2.2.7")
+@axiom
+public theorem some_external_result : ...;
 ```
 
-The diagnostic carries a breadcrumb to the offending site — for
-`Wrap(Bad -> A)` the kernel returns:
+The `verum audit --framework-axioms` gate enumerates every
+citation reachable from a module's public API. The gate's
+output IS the project's external trust boundary — there is no
+implicit framework dependency.
 
-```text
-strict positivity violation in inductive 'Bad': constructor 'Wrap'
-has 'Bad' in constructor 'Wrap' arg #0 → left of an arrow (negative
-position)
-```
-
-so the user can fix the offending constructor without a debugger.
-
-**Closed under nesting.** The walker handles second-order non-
-positivity (e.g. `Bad2 = Wrap((Bad2 → A) → A)`) by treating *every*
-arrow domain as a hard barrier — even when the outer position is a
-positive codomain, an inner negative occurrence still fails the
-check.
-
-**Test coverage.** Thirteen end-to-end tests at
-`crates/verum_kernel/tests/k_pos_strict_positivity.rs` cover:
-
-- accept paths: `Nat = Zero | Succ(Nat)`, `List<A> = Nil | Cons(A,
-  List<A>)`, `Tree<A> = Leaf(A) | Branch(Tree<A>, Tree<A>)`,
-  `Rose<A> = Node(A, List<Rose<A>>)`, `InductiveRegistry::register`
-  admits `Nat`;
-- reject paths: direct `Bad = Wrap(Bad → A)`, second-order
-  `Bad2 = Wrap((Bad2 → A) → A)`, indirect non-positive via
-  `BadList = Cons(BadList → A)`, `InductiveRegistry::register`
-  rejects `Bad`, duplicate-name registration;
-- atom invariants: universe, variable, arrow-codomain occurrence
-  (positive position) all admitted.
-
-### 4.3 Equality rules (`rules::equality`)
-
-| # | Rule              | Purpose                                                                         |
-|---|-------------------|---------------------------------------------------------------------------------|
-| 8 | `Refl`            | `Refl(t) : Eq(A, t, t)` for any `t : A`.                                        |
-| 9 | `Eq-Elim` (J)     | Martin-Löf's J rule: pattern-match on `Eq(A, a, b)` with `Refl(x)` as the only case. |
-| 10 | `UIP-Free`       | Reject uniqueness-of-identity-proofs as an axiom (HoTT-compatibility).          |
-
-### 4.4 Cubical rules (`rules::cubical`)
-
-| # | Rule              | Purpose                                                                         |
-|---|-------------------|---------------------------------------------------------------------------------|
-| 11 | `PathTy-Form`    | `PathTy(A, a, b) : U` for `a, b : A`.                                           |
-| 12 | `HComp`          | Homogeneous composition; constructs a path in `A` from a partial cube of paths. |
-| 13 | `Transp`         | Transport along a path of types; `Transp(A, p, x) : B` when `p : Path(U, A, B)`. |
-| 14 | `Glue`           | Glue types at a face `φ`; the univalence-enabling rule.                         |
-| 15 | `Univalence`     | Derived rule: `ua : Equiv(A, B) → Path(U, A, B)`. Reduces to `Glue`.            |
-
-### 4.5 Axiom and certificate rules (`rules::axiom`, `rules::smt`)
-
-| # | Rule              | Purpose                                                                         |
-|---|-------------------|---------------------------------------------------------------------------------|
-| 16 | `Axiom-Intro`    | Admit a `CoreTerm::Axiom` given its `FrameworkId` is registered.                |
-| 17 | `SmtProof-Replay` | Reconstruct a `CoreTerm::Axiom` witness from an `SmtCertificate` trust-tag trace. |
-| 18 | `Universe-Cumul` | `Γ ⊢ A : U_i` ⟹ `Γ ⊢ A : U_{i+1}` (cumulative hierarchy).                        |
-
-Rule 17 is the bridge from SMT to kernel. Before it, SMT results are
-strings the solver asserts to be unsat; after it, they are kernel-
-admitted theorems with a framework tag identifying the backend and
-rule family.
+[`AP-014 UndisclosedDependency`](../architecture-types/anti-patterns/articulation.md#ap-014)
+fires when a proof uses an axiom not registered via
+`@framework`. The discipline ensures auditors can enumerate
+the project's complete external trust.
 
 ---
 
-## 5. The `SmtCertificate` lifecycle
+## 8. The codegen-attestation layer
 
-When an SMT backend returns `unsat` for an obligation, the
-translator constructs an `SmtCertificate`:
+The kernel's verdicts cover *proofs*. A separate layer covers
+*the compiler that emits the binary*: `codegen-attestation`.
 
-```rust
-pub struct SmtCertificate {
-    pub backend:          Text,   // "z3" | "cvc5" | "portfolio" | "tactic"
-    pub trace:            Vec<u8>, // trust-tag byte sequence
-    pub obligation_hash:  Text,   // blake3 of the SMT-LIB obligation body
-    pub solver_version:   Text,
-    pub duration_ms:      u64,
-    pub schema_version:   u32,
-}
-```
+Per `crates/verum_kernel/src/codegen_attestation.rs`, the codegen
+pipeline has 6+ canonical passes (VBC lowering, SSA construction,
+register allocation, linear-scan reg-alloc, LLVM emission,
+machine-code emission). Each publishes a *simulation invariant*
+(à la CompCert): "this pass preserves observable behaviour".
 
-### 5.1 Trust tags
+The audit gate `verum audit --codegen-attestation` reports per
+pass:
 
-A `trace` is a sequence of bytes where each byte identifies a
-**rule family** the backend used to close the obligation:
+- `Discharged` — invariant has a published proof internal to Verum.
+- `AdmittedWithIou` — invariant admitted with citation to an
+  external proof (CompCert, Vellvm, ...).
+- `NotYetAttested` — trusted by code review only.
 
-| Tag    | Rule family        | Meaning                                                 |
-|--------|--------------------|----------------------------------------------------------|
-| `0x01` | `refl`             | Syntactic `E == E`.                                      |
-| `0x02` | `asserted`         | Matches an asserted hypothesis.                          |
-| `0x03` | `smt_unsat`        | Theory-combination unsat (catch-all for Z3/CVC5 close).  |
-| `0x04` | `quant_instance`   | Quantifier instantiation closed the goal.                |
-| `0x05` | `arith_linear`     | LIA/LRA discharged the goal.                             |
-| `0x06` | `bitvector`        | Bitblast unsat.                                          |
-| `0x07` | `array_extensionality` | Array theory + extensionality closed the goal.       |
-| `0x08` | `string_theory`    | CVC5 string theory closed the goal.                      |
-
-Unknown tags cause the kernel to reject the certificate
-(`KernelError::UnknownRule`). New tag families are added only when
-a corresponding kernel rule is implemented to verify them.
-
-### 5.2 Replay
-
-`replay_smt_cert(ctx, cert) -> Result<CoreTerm, KernelError>`
-(implemented as `rules::smt::replay` in `verum_kernel::rules::smt`):
-
-1. **Backend allow-list check.** If `cert.backend` is not in
-   `{z3, cvc5, portfolio, tactic}`, return `UnknownBackend`.
-2. **Trace non-empty check.** `cert.trace[0]` must exist; else
-   return `EmptyCertificate`.
-3. **Rule tag lookup.** Map the byte to a rule name. Unknown tags
-   return `UnknownRule { backend, tag }`.
-4. **Obligation hash validation.** `cert.obligation_hash` must be
-   non-empty; else return `MissingObligationHash`.
-5. **Framework tagging.** Construct a `FrameworkId { framework:
-   "backend:rule_name", citation: obligation_hash }` to make the
-   kernel-admitted witness traceable.
-6. **Witness construction.** Return a `CoreTerm::Axiom { name:
-   "smt_cert:backend:rule:hash", ty: claimed_type, framework }`.
-7. **Caller-side verification.** The caller must compare the
-   returned witness's obligation hash to the compiler-computed
-   hash for the obligation in question. A lying backend that
-   forges a certificate with a different hash will fail this step.
-
-The replay operates in two layers:
-
-**Trust-tag replay.** The certificate's single-byte tag
-identifies one of three rule families — `refl` / `asserted`
-/ `smt_unsat` — produced by the `Unsat`-means-valid
-protocol. Accepted for obligations the SMT portfolio closes
-via the standard unsat contract.
-
-**Proof-tree replay.** For backends emitting richer proof
-traces (Z3's `(proof …)` format, CVC5's ALETHE format), the
-kernel parses the trace as an S-expression tree, validates
-every rule name against the backend's allowlist, and
-recursively replays each rule to build a `CoreTerm`
-witness. Hierarchical composition: sub-proof children are
-replayed and threaded as `CoreTerm::App` arguments to the
-parent rule's axiom, so a legitimate outer rule wrapping a
-forged inner rule fails the allowlist at any depth.
-
-Allowlist coverage:
-
-| Backend       | Rules | Completeness invariant |
-|---------------|-------|-------------------------|
-| Z3            | 28    | machine-checked by `replay_covers_every_rule_in_allowlist` |
-| CVC5 ALETHE   | 29    | parallel invariant for `replay_aletha_tree` |
-
-### 5.3 What the kernel cannot catch
-
-Even with rule-level replay, there remain residual gaps:
-
-- A **buggy solver** that returns `unsat` for a satisfiable
-  formula, *and* constructs a locally consistent proof tree,
-  produces a kernel-accepted theorem. Mitigation: the
-  `Certified` strategy runs the portfolio with
-  cross-validation — two disagreeing backends required to
-  admit a false theorem.
-- A **semantically wrong proof** whose every rule name is
-  in the allowlist but whose conclusions don't actually
-  follow from its premises. Current replay catches forged
-  *rule names*, but not forged *conclusions*. Rule-specific
-  conclusion-type checking (every rule's conclusion type
-  is computed from its children's conclusion types under
-  the rule's own semantics) is the final soundness tightening
-  and depends on an S-expression-to-`CoreTerm` expression
-  bridge.
+V0 baseline: every pass is `NotYetAttested`. The discharge work
+is multi-year; entries flip individually as kernel proofs land.
 
 ---
 
-## 6. The auditor's checklist
+## 9. The trust delegation summary
 
-If you are reviewing Verum's kernel for soundness, check the
-following in order:
+After the trusted base accepts a `(term, expected_type)` pair,
+the only things a reviewer needs to trust are:
 
-1. **Crate size.** `wc -l crates/verum_kernel/src/**/*.rs` — the
-   kernel grows exactly when rule additions are added. Any PR
-   that grows the crate for reasons unrelated to rules is
-   suspicious.
-2. **Dependency scope.** `cargo tree -p verum_kernel --depth 1` —
-   the kernel should depend only on `verum_common`, `verum_core`,
-   `serde`, and (optionally) `blake3` for hashing. No SMT
-   backends, no type-checker, no parser.
-3. **No `unsafe` blocks.** `grep -rn unsafe crates/verum_kernel/src/`
-   — the kernel is 100% safe Rust.
-4. **No external calls.** `grep -rn 'std::process\|std::os\|std::fs'
-   crates/verum_kernel/src/` — the kernel does no I/O, no process
-   spawning, no environment reads. It is a pure function from
-   terms to terms.
-5. **Rule correspondence.** Every `Coreterm` constructor should be
-   handled by at least one rule module. Run
-   `grep -c 'CoreTerm::' crates/verum_kernel/src/core/term.rs`
-   and `grep -rn 'CoreTerm::' crates/verum_kernel/src/rules/`.
-6. **Test coverage.** `cargo test -p verum_kernel` should pass
-   with ≥ 39 tests at the time of writing; each rule has at least
-   one positive and one negative test.
-7. **Certificate round-trip.** `cargo test -p verum_kernel
-   smt_cert_roundtrip` validates the serialisation / deserialisation /
-   replay loop for every tag in the allow-list.
+1. **`proof_checker.rs`** (~600 LOC, exhaustive pattern-matching,
+   no `unsafe`).
+2. **The Rust compiler's correctness** (or, after self-hosting
+   lands, the Verum-self-hosted kernel that consumes the
+   trusted-base output as a verifiable artifact).
+3. **The serialisation format of `.vproof` files** — simple JSON
+   or s-expression, separately auditable.
+4. **The framework axioms cited** — each `@framework(...)` marker
+   is a load-bearing assumption tracked in the
+   `--framework-axioms` inventory.
+5. **MSFS Theorems 5.1 / 8.2 / 9.6** for the reflection-tower
+   meta-soundness layer (machine-verified in the corpus).
 
-If all seven pass, the kernel is in its expected shape. Any audit
-that finds a discrepancy should file an issue tagged
-`area/kernel` and `severity/critical`.
+The delegation is *enumerable*. There is no implicit trust;
+every assumption is cited and auditable.
 
 ---
 
-## 7. What is NOT in the kernel (and why)
+## 10. Cross-references
 
-- **The type-checker.** `verum_types` is the largest crate in the
-  compiler (~60K LOC) and absolutely cannot be in the TCB. Its
-  job is to produce kernel terms that the kernel can check; bugs
-  in it only cause missed proofs, not admitted false ones.
-- **The tactic engine.** `verum_smt::proof_search` and the
-  `@tactic meta fn` machinery live outside the kernel. Tactics
-  produce `CoreTerm` values that the kernel validates on
-  acceptance.
-- **The SMT backends.** Z3 and CVC5 are linked into
-  `verum_smt`, never into `verum_kernel`. Their output flows
-  through the certificate interface — the kernel never sees a
-  `z3::Solver` handle.
-- **The parser, the LSP, the codegen.** Obviously not in the TCB.
-- **The stdlib, even `core.base`.** User-defined types may
-  participate in proofs (via inductive rules); but their Rust
-  counterparts do not get to define new kernel terms.
-
-This strict separation is why the kernel stays small. Growing it
-is a deliberate design act, not a side effect of feature work.
-
----
-
-## 8. Soundness argument (informal)
-
-Assume:
-
-- The 18 rules are implemented correctly (tested, audited, in the
-  TCB).
-- The Rust type system and the Verum compiler (for the kernel's
-  own Rust code) are correct with respect to memory safety.
-- The serialisation of `SmtCertificate` is collision-free (hash
-  field is blake3 over canonical SMT-LIB).
-- The backend allow-list does not include a known-unsound solver.
-
-Then: any `CoreTerm::Axiom` emitted by the kernel corresponds to
-a valid derivation in the logical system described by the 18
-rules. Consequently, the Verum proof corpus — if it consists
-entirely of kernel-admitted theorems — is as sound as the 18
-rules plus the allow-listed backends.
-
-Caveats (the honest list):
-
-- SMT proof replay currently validates rule *names* (every
-  rule the backend cites must be in the kernel's allowlist)
-  and *structure* (every sub-proof is recursively replayed).
-  Rule-specific conclusion types — checking that each rule's
-  conclusion follows from its premises' conclusions under
-  the rule's semantics — is the final soundness tightening
-  and gates on the S-expression-to-`CoreTerm` expression
-  bridge.
-- Cubical rules (HComp, Transp, Glue) are typed correctly
-  but their normalization behaviour has not yet been
-  validated against the full cubical-type-theory equation
-  set. The type-inference paths are exercised by the kernel
-  test suite; the reduction rules are scheduled as a
-  dedicated cubical-kernel pass.
-
----
-
-## 9. Extending the kernel
-
-When you add a new primitive rule:
-
-1. Write the rule in `rules::<family>::<rule_name>`.
-2. Add a test to `tests::<family>` — at least one positive and
-   one negative case.
-3. Add an entry to the rule table in this document.
-4. Increment `KERNEL_SCHEMA_VERSION` in `verum_kernel::lib`.
-5. Update `SmtCertificate::schema_version` consumers if the trust-
-   tag table changed.
-6. Update `audit::enumerate_rules` so `verum audit --kernel-rules`
-   lists the new rule.
-
-Rule additions are the only reason the kernel grows. Fixes to
-existing rules do not touch the schema version.
-
----
-
-## 10. V2 / V3 K-rule promotions
-
-The April 2026 sweep introduced V2/V3 promotions across five K-rules,
-each routing preprint-blocked claims through explicit Diakrisis
-bridge admits. **Strict-stronger invariant**: every V0/V1-decidable
-pair remains admitted with empty `BridgeAudit`; new accept classes
-strictly require named bridge admits.
-
-| K-rule | V0/V1 → V2/V3 | Bridges introduced | Module |
-|--------|----------------|---------------------|---------|
-| K-Round-Trip | Universal canonicalize with iteration budget | `ConfluenceOfModalRewrite` (16.10) | `verum_kernel::round_trip::check_round_trip_v2` |
-| K-Eps-Mu | V3-incremental → V3-final τ-witness | `EpsMuTauWitness` (A-3) | `verum_kernel::eps_mu::check_eps_mu_coherence_v3_final` |
-| K-Refine | V2 stub → V3 fold (decidable) | — | `verum_kernel::support::fold_refine_of_refine` |
-| K-Universe-Ascent | V0 3-tier → V2 arbitrary κ-tower | `DrakeReflectionExtended` (131.L4) | `verum_kernel::universe_ascent::check_universe_ascent_v2` |
-
-The audit-trail mechanism is uniform: each K-rule's V2/V3 entry point
-returns `Result<BridgeAudit, KernelError>`; `BridgeAudit` collects
-every preprint admit invoked.
-
-### Façade integration
-
-`verum_verification::kernel_recheck::KernelRecheck` exposes:
-
-- `round_trip_v2(lhs, rhs, ctx) -> Result<BridgeAudit>`
-- `eps_mu_v3_final(lhs, rhs, ctx) -> Result<BridgeAudit>`
-- `universe_ascent_v2(source, target, ctx) -> Result<BridgeAudit>`
-- `canonicalize(term, ctx) -> (CoreTerm, BridgeAudit)`
-- `merge_audits(lhs, rhs) -> BridgeAudit`
-
-See [Diakrisis Bridge Roster](./diakrisis-bridge-roster.md) for the
-complete bridge inventory, V3 promotion paths, and the
-`verum audit --bridge-admits` walker.
-
----
-
-## 11. Native foundational infrastructure (V0 — 2026-04-29 sweep)
-
-This is Verum's **novel contribution to mechanised mathematics**.
-No mainstream proof assistant ships first-class (∞,n)-categorical
-or Grothendieck-construction reasoning in its kernel.  Coq mathcomp,
-Lean mathlib4, and Agda cubical-stdlib all proxy this content
-through library-level definitions; the kernel admits all
-higher-coherence content as user-level axioms.
-
-Verum's V0 surface (April 2026) ships **four foundational kernel
-modules**:
-
-### 11.1 Native ordinal arithmetic (`verum_kernel::ordinal`)
-
-Native `Ordinal` type covering Cantor-normal-form fragment
-(Finite / Omega / OmegaPlus / OmegaTimes / OmegaTimesPlus /
-OmegaSquared / OmegaSquaredPlus / OmegaPow) plus inaccessible
-cardinals (Kappa) plus countable suprema (Sup).
-
-Decidable operations: `lt` / `le` / `succ` / `is_regular` /
-`is_limit` / `is_inaccessible` / `normalize`.  Render produces
-standard mathematical notation (ω, ω+1, ω·2, ω², κ_1).
-
-Replaces ad-hoc Int placeholders (`999_999 = ω-1` etc.) used
-across `bounded_arithmetic` + `universe_ascent`.
-
-### 11.2 Native (∞,n)-categorical infrastructure (`verum_kernel::infinity_category`)
-
-V0 surface of native ∞-categorical kernel rules:
-
-  - `CellLevel = Object | Morphism | TwoCell | HigherCell(Ordinal)`
-  - `InfinityCategory { name, level, universe }`
-  - `InfinityMorphism { name, source, target, cell }`
-  - `InfinityEquivalence { morphism, level, whitehead_witness }`
-
-Kernel rules:
-
-  - **`identity_is_equivalence(x, level)`** — the fundamental
-    structural fact: `id_X` is an `(∞, n)`-equivalence for *every*
-    `n: Ordinal`. Discharges MSFS Theorem 5.1's id_X-violates-Π_4
-    step constructively in-kernel; **zero bridge admits** at any
-    finite or transfinite level.
-
-  - **`is_equivalence_at(f, level, audit, ctx)`** — V0 decision
-    rule. Identity at any level: decidable. Non-identity at limit-
-    level: admits `BridgeId::CohesiveAdjunctionUnitCounit` (Theorem
-    A.7 stabilisation). Non-identity at κ-level: admits
-    `BridgeId::ConfluenceOfModalRewrite` (Drake-extended reflection).
-
-  - **`compose(f, g)` + `compose_is_associative(f, g, h)`** — strict
-    composition with V0 1-categorical strict associativity.  V1 will
-    introduce explicit associator 2-cells.
-
-### 11.3 HTT 5.1.4 ∞-Grothendieck construction (`verum_kernel::grothendieck`)
-
-The load-bearing technical pivot of MSFS Lemma 3.4:
-
-```rust
-build_grothendieck(diagram: &SIndexedDiagram)
-    -> Option<GrothendieckConstruction>
-```
-
-Algorithmic V0 surface:
-  1. Total objects = pairs `(b, x)` with `b ∈ B, x ∈ D(b)`.
-  2. Cartesian-lift count = `|fibres|²` for finite diagrams.
-  3. Accessibility preserved per AR 1.26.
-
-Pre-this-module the construction was admitted via
-`lurie_htt_5_1_4_syn_is_grothendieck` framework axiom — opaque to
-the kernel.  Post-this-module the kernel produces a concrete
-`GrothendieckConstruction` value, and Lemma 3.4 can route through
-`build_grothendieck(s_indexed_diagram)` rather than citing an
-opaque axiom.
-
-### 11.4 Adámek-Rosický 1.26 (`verum_kernel::accessibility`)
-
-λ-filtered colimit closure of κ-accessible categories:
-
-```rust
-build_filtered_colimit(diagram: &LambdaFilteredDiagram,
-                       target: &KappaAccessibleCategory)
-    -> Option<FilteredColimit>
-```
-
-Preconditions kernel-checked: `λ ≤ κ`, both regular, diagram
-filtered, non-empty.  Output: colimit + accessibility-preservation
-witness.
-
-Discharges MSFS §6 β-part Step 4 (κ_1-accessibility preserved
-under transfinite-tower colimit) constructively.
-
-### 11.5 What this UNBLOCKS in MSFS
-
-| MSFS result | Pre-V0 admit | Post-V0 derivation |
-|---|---|---|
-| Theorem 5.1 id_X-violates-Π_4 | `msfs_id_x_violates_pi_4` axiom | `identity_is_equivalence` kernel rule |
-| Lemma 3.4 S-definability ⟹ S_S | `lurie_htt_5_1_4_syn_is_grothendieck` axiom | `build_grothendieck` algorithm |
-| Theorem 6.1 β-part Step 4 | `msfs_lemma_A_8_adamek_rosicky` axiom | `build_filtered_colimit` algorithm |
-| Theorem 7.4 lateral axis | `msfs_theorem_7_4_lateral_reduction` axiom | `is_equivalence_at` decidable for finite n |
-
-Pre-V0 trusted boundary: ~12 admitted external citations.
-Post-V0 trusted boundary: 5 named Diakrisis bridges + remaining
-HTT/AR mechanisation tracks (V1+).
-
-The trusted boundary monotonically shrinks as the V1+ promotions
-land.
-
----
-
-## 12. Further reading
-
-- [Gradual verification](./gradual-verification.md) — how the
-  Certified strategy consumes the kernel.
-- [Diakrisis Bridge Roster](./diakrisis-bridge-roster.md) —
-  named admits surfacing preprint-blocked results.
-- [SMT routing](./smt-routing.md) — what the backends do before
-  producing a certificate.
-- [Proofs](./proofs.md) — the tactic DSL that produces
-  `CoreTerm` values.
-- [Proof export](./proof-export.md) — certificate envelope
-  schema and cross-tool targets.
-- [Counterexamples](./counterexamples.md) — what happens when
-  the backend returns `sat` instead.
+- [Two-kernel architecture](./two-kernel-architecture.md) — the
+  differential layer that runs Layer B against `proof_checker_nbe`.
+- [Reflection tower](./reflection-tower.md) — the MSFS-grounded
+  meta-soundness layer above Layer C.
+- [Framework axioms](./framework-axioms.md) — the citation
+  inventory.
+- [Soundness gates](./soundness-gates.md) — the predicate-level
+  formalisation of every audit gate.
+- [Audit protocol](../architecture-types/audit-protocol.md) — the
+  full ~45-gate catalog.
 - [Architecture → trusted kernel](../architecture/trusted-kernel.md)
-  — hardware/ABI perspective on the same component.
-
-Historical background (non-Verum):
-
-- Robin Milner, *A Theory of Type Polymorphism in Programming*
-  (1978) — the original LCF paper.
-- John Harrison, *Handbook of Practical Logic and Automated
-  Reasoning* (2009) — Ch. 4 covers LCF-style implementation in
-  OCaml, the closest analogue to what Verum's kernel does.
-- Christine Paulin-Mohring, *Inductive Definitions in the System
-  Coq* (1993) — the inductive rules we adopt are a simplified
-  version of the CIC rules in this paper.
+  — hardware/ABI perspective on the same kernel.
+- [Architecture → SMT integration](../architecture/smt-integration.md)
+  — integration points for replacing backends.
