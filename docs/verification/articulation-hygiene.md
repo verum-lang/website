@@ -299,16 +299,38 @@ surface-syntax legal.
 
 ---
 
-## 7. Further reading
+## 7. Implementation surface — the kernel-side primitives
 
-- [Trusted kernel](trusted-kernel.md) — the `K-Refine` rule and its
+The articulation-hygiene discipline lives in three kernel
+modules (catalogued in [kernel-module-map](./kernel-module-map.md)):
+
+| Module | Role |
+|--------|------|
+| `verum_kernel::factorisation` | `FactorisationSystem` + `Factorisation` data types, `is_orthogonal` decidable predicate, `factorise` algorithmic builder, `build_epi_mono_factorisation` (HTT 5.2.8.4), `build_n_truncation_factorisation` (HTT 5.2.8.16), `build_localisation_factorisation` (HTT 5.2.7.5), `factorisation_uniqueness`, `closure_under_composition` |
+| `verum_kernel::depth` | `m_depth(term)` for finite M-iteration depth (Diakrisis T-2f*); `m_depth_omega(term) -> OrdinalDepth` for ordinal-valued modal-depth (Theorem 136.T transfinite stratification); `check_refine_omega` kernel-rule entry point gating refinement-type formation on `md^ω(P) < md^ω(A) + 1` |
+| `verum_kernel::truncation` | n-truncation `τ_{≤n}` (Lurie HTT 5.5.6) used in the `(loop_action, ω, base)` HIT path-cell factorisation |
+
+The `(Φ, κ, t)` triple from §1 corresponds directly to:
+- `Φ` ↔ a `FactorisationSystem.left` class generator,
+- `κ` ↔ an `OrdinalDepth` Cantor-normal-form value,
+- `t` ↔ a `truncation::Truncated<n>` terminal object.
+
+The compiler's audit pass walks each annotated declaration,
+extracts the witness via the kernel API, and emits the
+`E_HYGIENE_*` diagnostic family on rejection.
+
+## 8. Further reading
+
+- [Kernel module map](./kernel-module-map.md) — full inventory of
+  the kernel modules used by this discipline.
+- [Trusted kernel](./trusted-kernel.md) — the `K-Refine` rule and its
   metatheory.
-- [Cubical / HoTT primer](cubical-hott.md) — HIT path-cells, the
+- [Cubical / HoTT primer](./cubical-hott.md) — HIT path-cells, the
   source of the `(loop_action, ω, base)` factorisation.
-- [Framework axioms](framework-axioms.md) — how axiom-bound surfaces
+- [Framework axioms](./framework-axioms.md) — how axiom-bound surfaces
   interact with the hygiene check.
-- the verification spec —
-  the normative source for this page.
+- [Reflection tower](./reflection-tower.md) — the MSFS-grounded
+  meta-soundness layer the hygiene discipline lives under.
 - Yanofsky N.S. 2003. *A Universal Approach to Self-Referential
   Paradoxes, Incompleteness and Fixed Points.* Bulletin of Symbolic
   Logic 9(3):362–386. <https://arxiv.org/abs/math/0305282>

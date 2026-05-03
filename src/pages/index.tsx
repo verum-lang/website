@@ -348,7 +348,7 @@ const FEATURES = [
   },
   {
     icon: '⊙',
-    title: '51-tactic stdlib + tactic DSL',
+    title: '56-tactic stdlib + tactic DSL',
     body: 'auto, simp, ring, field, omega, blast, smt, induction, cases, rewrite, unfold, apply, exact, intros, cubical, category_simp, category_law, descent_check + 33 more across 7 cogs. Cog-level tactic-package registry (Project > ImportedCog > Stdlib shadowing). When SMT cannot close, you help.',
   },
   {
