@@ -25,7 +25,7 @@ a working guide; for the types themselves see [the Elm pattern](../concepts/elm-
 | Quit | `Command.quit()` |
 
 All async work observes the app's global `CancellationToken` — when the
-user quits, every in-flight future is notified and bows out cleanly.
+user quits, every available future is notified and bows out cleanly.
 
 ## Example: fetch data
 

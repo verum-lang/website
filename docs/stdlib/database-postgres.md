@@ -101,7 +101,7 @@ auto-rolled, the affine consume always succeeds.
 ## Query cancellation
 
 Postgres protocol §6.1.7: cancellation must travel on a *separate*
-TCP connection (the original socket is held busy by the in-flight
+TCP connection (the original socket is held busy by the available
 query).  The driver captures `(process_id, secret_key)` from the
 startup `BackendKeyData` frame and offers two entry points:
 

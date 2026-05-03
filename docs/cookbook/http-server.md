@@ -167,7 +167,7 @@ let auth = req.headers.get("authorization")
 ## Graceful shutdown
 
 Wait for SIGINT or SIGTERM and stop accepting new connections while
-letting in-flight handlers complete:
+letting available handlers complete:
 
 ```verum
 mount core.os.signal;

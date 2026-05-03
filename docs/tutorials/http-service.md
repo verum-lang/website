@@ -348,7 +348,7 @@ fn main() {
 Three things to notice:
 
 - **`Semaphore.new(MAX_INFLIGHT)`** bounds concurrent connections.
-  Beyond 1024 in-flight, `acquire().await` suspends — backpressure.
+  Beyond 1024 available, `acquire().await` suspends — backpressure.
 - **`nursery`** guarantees that on shutdown every accepted connection
   either completes or is cancelled before `serve()` returns.
 - **`provide X = v in ...`** layers contexts at the entry point.

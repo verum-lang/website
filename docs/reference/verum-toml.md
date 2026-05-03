@@ -151,7 +151,7 @@ strictly increasing rigour:
 `@verify(runtime)` is always accepted (lax → strict). The reverse
 requires re-proof and is rejected by the level-inference pass.
 
-Plus the VFE-6/8 verification extensions (`complexity_typed`,
+Plus the coherent and complexity-typed extensions (`complexity_typed`,
 `coherent_static`, `coherent_runtime`, `coherent`) — see
 [Gradual verification](/docs/verification/gradual-verification)
 for the full ν-coordinate ordering, capability-router dispatch

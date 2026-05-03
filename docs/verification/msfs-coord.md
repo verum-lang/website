@@ -12,11 +12,6 @@ title: MSFS Coordinate (Framework, ν, τ)
 > computed at audit time and projects the theorem into the
 > classifying 2-stack `𝔐` of MSFS.
 
-This page is normative for the verification spec (`core.theory_interop` Yoneda /
-Kan / descent operations) and the §10.4 coord projection. It pairs
-the Object-Centric layer (`core.math.*` framework axioms) with
-Verum's *meta-theoretic locator* — the 2-stack coordinate every
-theorem inhabits.
 
 ---
 
@@ -107,7 +102,7 @@ the single source of truth.
 
 `core.theory_interop.coord::known_ordinal` ships the curated
 `(framework, ν)` lookup for the VVA standard six-pack
-([the verification spec](framework-axioms.md)) plus the neutral Actic
+([the verification surface](framework-axioms.md)) plus the neutral Actic
 articulation:
 
 | Framework | ν | Justification |
@@ -281,7 +276,7 @@ ordinal_finite_offset)` lets dashboards sort
 
 ## 7. The three theory-interop operations
 
-`core.theory_interop.core` ships three operations from the verification spec:
+`core.theory_interop.core` ships three operations from the verification surface:
 
 ```verum
 public fn load_theory(T: TheoryDescriptor) -> Articulation;        // §10.1
@@ -370,7 +365,7 @@ section.
   framework-axiom layer.
 - [Trusted kernel](trusted-kernel.md) — the kernel rules
   (`K-FwAx`, `K-Refine`) that consume framework axioms.
-- the verification spec.
+- 
 - The MSFS specification — defines the moduli 2-stack `𝔐` and the
   `(Fw, ν, τ)` projection that this module's API follows. The
   upstream document (Sereda preprint, MSFS) is the normative

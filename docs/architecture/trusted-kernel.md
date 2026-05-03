@@ -133,7 +133,7 @@ a sub-check until a richer proof-term format reaches the kernel.
 
 The only constructor that still returns `KernelError::NotImplemented`
 is `SmtProof`, whose dedicated replay path lives in
-`replay_smt_cert` and lands per-backend in follow-up commits (the SMT backend
+`replay_smt_cert` and is implemented per-backend (the SMT backend
 proof format first, then the SMT backend, E, Vampire, Alt-Ergo).
 
 ## The substitute function

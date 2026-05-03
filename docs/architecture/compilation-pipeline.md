@@ -143,7 +143,7 @@ discharged before the type checker sees the annotated function.
 - **Bidirectional inference** (`verum_types::infer`).
 - **Refinement types** — narrowed by flow analysis where possible;
   unresolved predicates become SMT obligations at this phase
-  (Phase 4.4 in the internal numbering — the DependentVerifier runs
+  (the corresponding pipeline phase in the internal numbering — the DependentVerifier runs
   here, not in a later phase).
 - **Context clauses** — `using [...]` resolved; capability subtyping
   checked.
@@ -216,7 +216,7 @@ Playbook TUI, and `meta fn` evaluation inside Phases 2–4.
 
 `run_native_compilation` lowers VBC → LLVM IR via
 `verum_codegen::llvm::VbcToLlvmLowering`, runs LLVM's optimisation
-pipeline, emits object files, and hands off to **Phase 7.5 linking**
+pipeline, emits object files, and hands off to **the corresponding pipeline phase linking**
 below. Triggered by `verum build`, `verum run --aot`, or
 `[profile.release] tier = "1"`.
 
@@ -248,7 +248,7 @@ ops exceed a cost threshold) go through
 `verum.tensor` → `linalg` → `gpu` → PTX / HSACO / SPIR-V / Metal.
 **MLIR is only used for GPU** — CPU code always goes through LLVM.
 
-## Phase 7.5 — Final linking (AOT only)
+## the corresponding pipeline phase — Final linking (AOT only)
 
 Static linking via **embedded LLD** — Verum ships its own linker.
 
@@ -291,7 +291,7 @@ flowchart TD
     P5["Phase 5 · VBC codegen<br/><i>per-function</i>"]
     P6["Phase 6 · monomorphization<br/><i>per-specialisation</i>"]
     P7["Phase 7 · execute<br/><i>per-target</i>"]
-    P75["Phase 7.5 · link<br/><i>sequential, whole-program</i>"]
+    P75["the corresponding pipeline phase · link<br/><i>sequential, whole-program</i>"]
 
     P0 --> P1 --> P2 --> P3 --> P3A --> P4
     P4 --> P4A

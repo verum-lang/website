@@ -120,7 +120,7 @@ exempt-fn-attribute = "@complex_ok"
 
 [lint.rules.todo-in-code]
 exempt-tags         = ["TODO(release)"]
-require-issue-link  = true              # require TODO(#1234) form
+require-issue-link  = true              # require TODO form
 
 [lint.rules.unbounded-channel]
 exempt-modules      = ["test.fixtures", "core.runtime.*"]
@@ -558,7 +558,7 @@ comments). A rule provides exactly one of `pattern` or
 [[lint.custom]]
 name        = "no-todo-without-issue"
 pattern     = "\\bTODO(?!\\(#\\d+\\))"
-message     = "TODO must reference an issue: TODO(#1234)"
+message     = "TODO must reference an issue: TODO"
 level       = "error"
 paths       = ["src/**"]
 exclude     = ["src/legacy/**"]

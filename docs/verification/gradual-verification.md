@@ -51,8 +51,8 @@ The grammar production `verify_strategy` (see the
 admits exactly these **thirteen** keywords today. Each has a
 **distinct** operational behaviour (no aliases — `proof` and
 `reliable` are no longer collapsed into `formal` and `thorough` per
-the verification spec). The pre-VFE-6/8 baseline shipped nine; VFE-6 added three
-*coherence* strategies and VFE-8 added one *complexity-typed*
+the verification surface). The baseline shipped nine; a later revision added three
+*coherence* strategies and a later revision added one *complexity-typed*
 strategy:
 
 | Strategy            | ν-ordinal      | Gradient | What it does | When to use |
@@ -66,7 +66,7 @@ strategy:
 | `thorough`          | ω · 2          | Proof    | portfolio race with 2× timeout — first success wins; mandatory `decreases` / `invariant` / `frame` | hard obligations |
 | `reliable`          | ω · 2 + 1      | Proof    | `thorough` + the SMT backend ∧ the SMT backend must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
 | `certified`         | ω · 2 + 2      | Proof    | `reliable` + certificate materialisation, kernel re-check, multi-format export | security-critical, external audit, `.verum-cert` export |
-| `coherent_static`   | ω · 2 + 3      | Proof    | α-cert + symbolic ε-claim; polynomial in `|P|·|φ|`; CI ≤ 60 s | weak coherence; production fallback for VFE-6 |
+| `coherent_static`   | ω · 2 + 3      | Proof    | α-cert + symbolic ε-claim; polynomial in `|P|·|φ|`; CI ≤ 60 s | weak coherence; production fallback |
 | `coherent_runtime`  | ω · 2 + 4      | Hybrid   | α-cert + runtime ε-monitor; trace-bounded; CI ≤ 5 min | hybrid coherence; runtime monitoring |
 | `coherent`          | ω · 2 + 5      | Proof    | α/ε bidirectional check via 108.T-bridge; single-exponential; CI ≤ 30 min | critical-safety code requiring full operational coherence |
 | `synthesize`        | ≤ ω · 3 + 1    | Proof    | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (the SMT backend SyGuS today) | program synthesis, hole filling, invariant generation |
@@ -80,7 +80,7 @@ strategy: runtime < static < fast < complexity_typed < formal < proof < thorough
           reliable < certified < coherent_static < coherent_runtime < coherent < synthesize
 ```
 
-**VFE-6 coherence triplet.** The `coherent_*` family realises Theorem
+**Coherence triplet.** The `coherent_*` family realises Theorem
 18.T1 (operational coherence): for a program `P` with property `φ`,
 the strict `coherent` strategy verifies BOTH the static α-certificate
 AND the runtime ε-monitor for the dual `T_108(φ)` and rejects the
@@ -88,7 +88,7 @@ verdict iff either side fails or they disagree. The polynomial /
 trace-bound variants give practical fallbacks. See VFE foundational-
 extensions.md §6 for full semantics.
 
-**VFE-8 complexity_typed strategy.** Routes the goal through the
+**`complexity_typed` strategy.** Routes the goal through the
 bounded-arithmetic stratum (V_0 / V_1 / S^1_2 / V_NP / V_PH / IΔ_0
 per `core.math.frameworks.bounded_arithmetic`). Verification is
 *polynomial-time* per the system's complexity class, and the

@@ -13,8 +13,7 @@ title: OC / DC Dual Stdlib (Actic)
 > identity enforced by the kernel and the counit identity
 > witnessed up to gauge canonicalisation.
 
-This page is normative for the verification spec
-
+This page is normative for 
 ---
 
 ## 1. The duality, briefly
@@ -50,7 +49,7 @@ duality as stdlib. The DC side enables:
 ## 2. The eight ε-primitives
 
 `core.action.primitives` ships seven canonical Diakrisis primitive
-acts plus the catalogue extension `ε_classify` introduced by the verification spec
+acts plus the catalogue extension `ε_classify` introduced by 
 (OWL 2 V1 ecosystem). All eight are leaves of the Actic dual:
 
 | Primitive | Surface name | Diakrisis intent |
@@ -62,7 +61,7 @@ acts plus the catalogue extension `ε_classify` introduced by the verification s
 | `EpsilonDecide` | `ε_decide` | Branch on a decidable predicate. |
 | `EpsilonTranslate` | `ε_translate` | Cross-framework articulation translation (Kan extension). |
 | `EpsilonConstruct` | `ε_construct` | Constructive existence proof producing a witness. |
-| `EpsilonClassify` | `ε_classify` | Ontology classification / subsumption / instance check (the verification spec extension). |
+| `EpsilonClassify` | `ε_classify` | Ontology classification / subsumption / instance check (the verification surface extension). |
 
 Classifier predicates (`is_observational`, `is_constructive`,
 `is_proof_producing`, `is_decision_point`, `is_translation`,
@@ -144,7 +143,7 @@ Both Diakrisis-canonical names (`enact_then`, `enact_par`,
 (`compose`, `activation`, `activation_iterate`, `is_autopoietic`)
 are public and stable; user code may pick either.
 
-### 4.2 The α ⊣ ε adjunction (the verification spec)
+### 4.2 The α ⊣ ε adjunction 
 
 ```verum
 public fn epsilon(alpha: Articulation) -> Enactment {
@@ -385,7 +384,7 @@ can track which Diakrisis preprint results are still admitted vs
 discharged. See
 [Audit protocol](../architecture-types/audit-protocol.md).
 
-- the verification spec.
+- 
 - Diakrisis Ch 12-actic — the upstream specification this layer
   implements. Key chapters: Ch 02 (the AC primitive and the
   ε-primitive list), Ch 04 (the 108.T duality theorem), Ch 09

@@ -308,12 +308,6 @@ the Verum-self-hosted bootstrap path:
   differential slot and consumes the manifest as load-bearing
   evidence.
 
-Future work continues to push more of the kernel surface into
-Verum-source: re-implementing Algorithms A or B in `.vr` and
-adding them as additional differential slots. The registry
-infrastructure is unbounded; it accepts any number of
-`KernelChecker` impls and aggregates a unanimous-or-disagreement
-verdict.
 
 ## 11. Cross-references
 

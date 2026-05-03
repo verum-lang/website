@@ -129,7 +129,7 @@ server.shutdown(Duration.from_secs(30)).await?;   // GOAWAY + drain
 ```
 
 `shutdown` emits `GOAWAY` on every live connection, stops accepting
-new requests, and waits up to the deadline for in-flight requests
+new requests, and waits up to the deadline for available requests
 to complete before closing.
 
 ## Observability

@@ -261,7 +261,7 @@ sort order with the underlying bytes).
 
 ### Canonicality
 
-Trailing-bits validation per §3.5: unused low bits of the last
+Trailing-bits validation : unused low bits of the last
 quintet MUST be zero (non-zero → `TrailingBits`). On top of
 that, the decoders reject non-canonical pad counts. RFC 4648 §6
 fixes `pad ∈ {0, 1, 3, 4, 6}` (encoding 5 / 4 / 3 / 2 / 1

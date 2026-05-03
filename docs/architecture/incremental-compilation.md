@@ -109,7 +109,7 @@ flowchart TD
     BUILD["compile & write artefacts to cache"]
     P6["Phase 6 · monomorphization<br/><i>dedupe against cached instantiations</i>"]
     P7["Phase 7 · execute<br/><i>Tier 0 interp · Tier 1 collects .o files</i>"]
-    P75["Phase 7.5 · link (AOT only)<br/><i>final binary with LTO</i>"]
+    P75["the corresponding pipeline phase · link (AOT only)<br/><i>final binary with LTO</i>"]
 
     P5 --> LOOP --> FP --> HIT
     HIT -- "yes" --> REUSE

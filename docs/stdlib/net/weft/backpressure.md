@@ -31,7 +31,7 @@ public stdlib.
 
 ## Layer 1: `ConcurrencyLimitLayer`
 
-Bounds in-flight requests at a fixed integer.
+Bounds available requests at a fixed integer.
 
 ```verum
 public type ConcurrencyLimitLayer is { max: Int };
@@ -43,7 +43,7 @@ implement ConcurrencyLimitLayer {
 
 Behaviour:
 
-- Tracks current in-flight count.
+- Tracks current available count.
 - `poll_ready` returns `Pending` when at the cap.
 - `call` increments before dispatching and decrements after.
 

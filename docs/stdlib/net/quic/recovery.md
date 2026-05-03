@@ -11,13 +11,13 @@ congestion-control discipline. It splits into three concerns:
 
 - **Loss detection** — deciding which sent packets are lost.
 - **RTT estimation** — smoothed RTT + variance + min RTT.
-- **Congestion control** — bytes-in-flight budget and pacing.
+- **Congestion control** — bytes-available budget and pacing.
 
 The module structure mirrors the spec:
 
 | File | Spec | Role |
 |------|------|------|
-| `recovery/pn_space.vr` | §2-§3 | Per-space PN state, in-flight set |
+| `recovery/pn_space.vr` | §2-§3 | Per-space PN state, available set |
 | `recovery/rtt.vr` | §5.3 | Exponential weighted RTT estimator |
 | `recovery/loss_detection.vr` | §6 | PTO timer + lost-packet detection |
 | `recovery/cc/mod.vr` | §7 | `CongestionCtrl` protocol |
@@ -123,7 +123,7 @@ public type CongestionCtrl is protocol {
                        rtt: Duration, now: Instant);
     fn on_packets_lost(&mut self, lost_bytes: UInt32, now: Instant);
     fn on_pto(&mut self, now: Instant);
-    fn window(&self) -> UInt32;          // bytes-in-flight budget
+    fn window(&self) -> UInt32;          // bytes-available budget
     fn should_pace(&self) -> Bool;
     fn pacing_rate(&self) -> UInt64;     // bytes/sec
 };

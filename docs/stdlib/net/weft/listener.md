@@ -18,14 +18,14 @@ Source: `core/net/weft/listener.vr` (309 LOC).
 
 ```verum
 public type ListenerConfig is {
-    /// Soft cap on in-flight connections. Sockets accepted while
+    /// Soft cap on available connections. Sockets accepted while
     /// at the cap are refused via the runner's overload hook.
     max_concurrent_connections: Int,
 
     /// Per-connection config handed to `serve_http1`.
     connection: ConnectionConfig,
 
-    /// Maximum milliseconds shutdown() will wait for in-flight
+    /// Maximum milliseconds shutdown() will wait for available
     /// connections to finish before forcibly dropping them.
     /// 30s matches the Kubernetes default.
     drain_grace_ms: Int,
@@ -125,13 +125,13 @@ monomorphisation, no boxed trait objects on the hot path. The loop:
 2. Checks the `draining` flag; breaks if draining was requested.
 3. Calls `listener.accept_cancellable(&token)`. On error other than
    cancellation (`EMFILE` etc.) sleeps 10 ms before retrying.
-4. On success, increments the in-flight counter atomically and:
+4. On success, increments the available counter atomically and:
    - if at or above `max_concurrent_connections`, decrements and
      calls `runner.refuse_overloaded(stream)` synchronously,
    - otherwise spawns the connection on a fresh task that runs
      `runner.run(stream, peer)` then decrements the counter.
 
-After the loop exits, drains: waits for in-flight connections to
+After the loop exits, drains: waits for available connections to
 complete up to `drain_grace_ms` (poll-based, 50 ms tick).
 
 ## `Server<H>` — plain TCP HTTP/1.1 server
@@ -190,7 +190,7 @@ Phase 2 — `shutdown()`:
   metric).
 
 The two phases give operators a choice: a soft drain (no new
-connections, finish in-flight) versus a hard stop (cancel everything
+connections, finish available) versus a hard stop (cancel everything
 with grace).
 
 ## `SO_REUSEPORT` blue/green handoff
@@ -201,7 +201,7 @@ allowing multiple processes to bind the same port. Pattern:
 1. New process starts with `reuseport: true`. Both old and new
    processes accept simultaneously.
 2. New process announces ready, old process begins drain.
-3. After old process drains all in-flight, it exits.
+3. After old process drains all available, it exits.
 4. New process now owns the port.
 
 Zero connections dropped, no listener gap.
@@ -222,10 +222,10 @@ A connection's lifetime is bounded by:
 - protocol-level errors (RST, GOAWAY).
 
 The listener's token is cloned into every spawned connection task.
-When the listener-level token is cancelled, every in-flight
+When the listener-level token is cancelled, every available
 connection sees it on its next `.await` — `read_cancellable`,
 `write_cancellable`, channel receives, timer waits — all check the
-token. There is no "cancellation gap" where an in-flight handler
+token. There is no "cancellation gap" where an available handler
 keeps running after shutdown.
 
 ## Status

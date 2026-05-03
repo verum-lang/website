@@ -372,7 +372,7 @@ references.
 public module authentication { ... }
 ```
 
-The ATS-V phase (Phase 6.5 in the compiler pipeline) parses
+The ATS-V phase (the architectural-type-checking phase in the compiler pipeline) parses
 `@arch_module(...)` named-args into a canonical `Shape` record
 (mirror of the kernel-side `Shape` type), runs anti-pattern
 checks across the 32-pattern catalog, and emits structured

@@ -193,7 +193,7 @@ async fn echo_server_graceful(addr: &Text) -> IoResult<()>
 
 ## Backpressure via `Semaphore`
 
-Bound the number of in-flight connections so a surge cannot exhaust
+Bound the number of available connections so a surge cannot exhaust
 the file-descriptor table:
 
 ```verum

@@ -88,7 +88,7 @@ public fn DynamicTable.set_max_capacity(&mut self, new_cap: UInt64);
 ```
 
 Entries evict from the oldest end when `current_size > max_capacity`.
-`current_size = Σ (len(name) + len(value) + 32)` per §3.2.1.
+`current_size = Σ (len(name) + len(value) + 32)` .1.
 
 See [`qpack_dynamic_table`](#references).
 
