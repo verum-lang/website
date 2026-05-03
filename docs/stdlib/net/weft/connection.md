@@ -161,11 +161,11 @@ cancellation token. The flow:
    task.
 2. `serve_http1` polls the token at the top of every loop iteration.
 3. Inside `read_cancellable`, the runtime registers a cancel
-   handler that cancels the in-flight kernel `recv` syscall.
+   handler that cancels the available kernel `recv` syscall.
 4. The handler's `await` points may also see the same token
    propagated through `provide CancellationToken = ...`.
 
-Result: when shutdown is requested, every in-flight connection
+Result: when shutdown is requested, every available connection
 sees cancellation within `idle_timeout` of the next read or
 sooner if a write is in progress. There is no deadline by which a
 slow client can keep a connection alive past shutdown.

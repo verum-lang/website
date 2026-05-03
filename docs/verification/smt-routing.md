@@ -310,7 +310,7 @@ onto a diagnostic level.
 | Dispatcher | Purpose |
 |---|---|
 | `count_o_dispatch` | OWL 2 `count_o_unbounded` → Finite Model Finding when the surrounding refinement type carries a cardinality bound. See [OWL 2 §5](./owl2.md#5-the-count_o-quantifier-of-quantity). |
-| `count_o_recognizer` | AST-walking pre-pass invoked from `RefinementVerifier::verify_refinement`. Detects the canonical conjunctive `count_o_unbounded` shape, builds a `CountOQuery`, and routes through the dispatcher above — making the V2 deliverable load-bearing rather than standalone. |
+| `count_o_recognizer` | AST-walking pre-pass invoked from `RefinementVerifier::verify_refinement`. Detects the canonical conjunctive `count_o_unbounded` shape, builds a `CountOQuery`, and routes through the dispatcher above — making the extended framework load-bearing rather than standalone. |
 
 The `count_o_dispatch` example is illustrative of the pattern:
 

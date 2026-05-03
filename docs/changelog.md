@@ -454,7 +454,7 @@ alternative solver might have a different complexity
 profile) without falling back on genuine unknowns (where
 both solvers are likely to give up).
 
-### Added — `verum cog-registry` distribution registry surface (#82) (2026-04-29)
+### Added — `verum cog-registry` distribution registry surface  (2026-04-29)
 
 Verum's package manager joins the small group of systems with
 **cryptographic proof-integrity**: every published cog ships with
@@ -581,7 +581,7 @@ strict). Pin tests updated to document the new contract.
 VCS impact for Weft framework: `27 / 30 (90 %)` baseline →
 `29 / 30 (96.7 %)`.
 
-### Added — `verum cert-replay` multi-backend SMT certificate replay (#81) (2026-04-29)
+### Added — `verum cert-replay` multi-backend SMT certificate replay  (2026-04-29)
 
 Verum joins the small group of proof assistants where SMT solvers
 are **external to the trusted computing base**.  When a solver
@@ -616,7 +616,7 @@ the trait surface or any consumer.
 Full guide:
 **[Tooling → SMT certificate replay](/docs/tooling/cert-replay)**.
 
-### Added — `verum benchmark` continuous head-to-head comparison surface (#83) (2026-04-29)
+### Added — `verum benchmark` continuous head-to-head comparison surface  (2026-04-29)
 
 Establishes Verum's quantitative leadership claim with
 **reproducible** benchmarks across the proof-assistant landscape
@@ -689,7 +689,7 @@ Wire as an early return at the entry of
 trade-off for max-throughput builds where the static escape
 analyzer has already proven every reference safe.
 
-### Added — `verum proof-repl` live proof REPL with stepwise feedback (#75) (2026-04-29)
+### Added — `verum proof-repl` live proof REPL with stepwise feedback  (2026-04-29)
 
 Non-interactive batch driver for the proof-REPL state machine.
 Apply tactics, navigate with `undo` / `redo`, request hints, and
@@ -751,7 +751,7 @@ Wire by constructing a `CodegenConfig` template with the
 forwarded values and using `VbcCodegen::with_config(...)`
 per-module.
 
-### Added — `verum llm-tactic` LCF-style fail-closed LLM tactic protocol (#77) (2026-04-29)
+### Added — `verum llm-tactic` LCF-style fail-closed LLM tactic protocol  (2026-04-29)
 
 Verum is now the first proof assistant where LLM assistance is
 guaranteed sound *by construction*. An LLM may propose tactic
@@ -905,7 +905,7 @@ five-layer chain. Closes the request that documentation be
 fully self-contained and not require developers to seek
 additional resources outside this site.
 
-### Added — `verum foreign-import` foreign-system theorem import (#85) (2026-04-29)
+### Added — `verum foreign-import` foreign-system theorem import  (2026-04-29)
 
 Inverse of `verum export`: reads a Coq / Lean4 / Mizar / Isabelle
 source file and emits a Verum `.vr` skeleton with one
@@ -935,7 +935,7 @@ bug somewhere in the chain.
 Full guide:
 **[Tooling → Foreign-system import](/docs/tooling/foreign-import)**.
 
-### Added — `verum doc-render` auto-paper generator (#84) (2026-04-29)
+### Added — `verum doc-render` auto-paper generator  (2026-04-29)
 
 A Verum corpus IS a formal proof AND a paper draft. Pre-this-tool a
 project had to maintain `paper.tex` alongside the `.vr` corpus —
@@ -962,7 +962,7 @@ changing the user-facing CLI.
 Full guide:
 **[Tooling → Auto-paper generator](/docs/tooling/auto-paper)**.
 
-### Added — closure-cache wired into `verum verify` pipeline (#88) (2026-04-29)
+### Added — closure-cache wired into `verum verify` pipeline  (2026-04-29)
 
 The closure-cache is now wired into the theorem-proof pipeline.
 Theorem proofs whose closure hash + Ok-verdict are already cached
@@ -992,7 +992,7 @@ CLI flags always override the manifest. Persist failures don't
 poison the verdict — a cache write error is reported but the
 freshly-computed verdict is still returned authoritatively.
 
-### Added — closure-hash incremental verification cache (#79) (2026-04-29)
+### Added — closure-hash incremental verification cache  (2026-04-29)
 
 Per-theorem `(fingerprint → verdict)` cache enabling skip-mode
 verification. The closure fingerprint is a blake3 hash over
@@ -1016,7 +1016,7 @@ Disk format: one JSON file per theorem under
 Full guide:
 **[Tooling → Incremental cache](/docs/tooling/incremental-cache)**.
 
-### Added — industrial-grade tactic combinator catalogue (#76) (2026-04-29)
+### Added — industrial-grade tactic combinator catalogue  (2026-04-29)
 
 Single source of truth for Verum's 15 canonical tactic combinators
 (`skip` / `fail` / `seq` / `orelse` / `repeat` / `repeat_n` / `try`
@@ -1045,7 +1045,7 @@ in alongside the default catalogue without forking.
 Full guide:
 **[Tooling → Tactic catalogue](/docs/tooling/tactic-catalogue)**.
 
-### Added — `verum proof-repair` structured repair-suggestions CLI (#87) (2026-04-29)
+### Added — `verum proof-repair` structured repair-suggestions CLI  (2026-04-29)
 
 Surfaces ranked drop-in code-snippet repairs for nine typed
 failure kinds (refine-depth / positivity / universe /
@@ -1064,7 +1064,7 @@ code-action emission.
 Full guide:
 **[Tooling → Proof repair](/docs/tooling/proof-repair)**.
 
-### Added — `verum proof-draft` ranked tactic-suggestion CLI (#73) (2026-04-29)
+### Added — `verum proof-draft` ranked tactic-suggestion CLI  (2026-04-29)
 
 Given a theorem name + focused goal + available lemmas, emits
 ranked next-step tactic suggestions.
@@ -1079,7 +1079,7 @@ Drives IDE / REPL hover panels and IDE completion of obligation
 next-steps. Full guide:
 **[Tooling → Proof drafting](/docs/tooling/proof-drafting)**.
 
-### Added — `verum verify --ladder` 13-strategy ladder dispatcher (#86) (2026-04-29)
+### Added — `verum verify --ladder` 13-strategy ladder dispatcher  (2026-04-29)
 
 Per-theorem `@verify(strategy)` annotations route through the
 typed 13-strategy dispatcher; emits per-theorem verdicts (Closed /
@@ -3200,7 +3200,7 @@ reintroduces a failing build.
 ### Fixed
 
 - Generation wraparound race condition — epoch counter now advances
-  cooperatively per-thread; hazard pointers protect in-flight reads
+  cooperatively per-thread; hazard pointers protect available reads
   during free.
 - The SMT backend 1.3.3 integration — brings bug fixes to string operations.
 - Refinement narrowing across control flow: `if x > 0 { ... }`

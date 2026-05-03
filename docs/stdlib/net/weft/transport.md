@@ -22,7 +22,7 @@ public type WeftTransport is protocol {
     /// Cancellable read. Outer Result is the cancellation channel;
     /// inner Result is the normal read outcome. The connection
     /// pipeline drives this so the listener's shutdown token can
-    /// reach in-flight reads in bounded time.
+    /// reach available reads in bounded time.
     async fn read_cancellable(
         &mut self,
         buf: &mut List<Int>,
@@ -40,7 +40,7 @@ public type WeftTransport is protocol {
 ```
 
 Implementors **must** be cancellation-aware on `read_cancellable` —
-this is what lets the listener's shutdown token reach in-flight
+this is what lets the listener's shutdown token reach available
 reads in bounded time.
 
 `write_async` **may** ignore cancellation — responses should always
@@ -105,7 +105,7 @@ The outer `Result<_, CancellationError>` is the cancellation
 channel: when the token cancels, `read_cancellable` returns
 `Err(CancellationError::Cancelled)` rather than blocking
 indefinitely. The runtime registers a cancellation handler that
-cancels the in-flight kernel `recv` syscall.
+cancels the available kernel `recv` syscall.
 
 The inner `Result<Int, IoError>` is the normal read outcome: bytes
 read or an I/O error. `0` means EOF / clean close.

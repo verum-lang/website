@@ -188,7 +188,7 @@ async fn process<T>(items: List<T>,
 }
 ```
 
-The channel's capacity caps in-flight work. The feeder's `tx.send`
+The channel's capacity caps available work. The feeder's `tx.send`
 suspends when workers are slow, producing natural backpressure.
 
 ## Pub/sub — broadcast with topic filters
@@ -242,7 +242,7 @@ async fn call(tx: &Sender<Request>, body: Bytes) -> Response {
 ```
 
 Each request carries its own one-shot reply channel. Ergonomic;
-scales to large in-flight parallelism.
+scales to large available parallelism.
 
 ## Pitfalls
 

@@ -171,7 +171,7 @@ them back.
 |------|---------|
 | `record.vr` | The record header parser/builder; varint-prefixed type codes followed by raw payload bytes |
 | `varint.vr` | SQLite varint codec (1..9 bytes; high-bit continuation).  Round-trip-tested against C-SQLite vectors in `varint_roundtrip.vr` |
-| `affinity.vr` | Type affinity classifier (TEXT / NUMERIC / INTEGER / REAL / BLOB) per §3.1; mirrors catalogue [`affinity_matrix_api`](#) |
+| `affinity.vr` | Type affinity classifier (TEXT / NUMERIC / INTEGER / REAL / BLOB) ; mirrors catalogue [`affinity_matrix_api`](#) |
 | `type_coercion.vr` | Affinity-driven implicit conversion (TEXT→NUMERIC for arithmetic; INTEGER→TEXT for concat); 7-way classifier |
 | `collation.vr` | `Collation` protocol; ships BINARY, NOCASE, RTRIM in-tree |
 | `strict.vr` | STRICT-table column-type enforcement; rejects values that don't match the declared type |

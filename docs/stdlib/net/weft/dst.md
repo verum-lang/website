@@ -95,7 +95,7 @@ public type NetworkEvent is
 ```
 
 Network events are streamed into the simulator. The simulator
-applies them to in-flight bytes in order, deterministically.
+applies them to available bytes in order, deterministically.
 
 ```verum
 public type SimNetworkConfig is {

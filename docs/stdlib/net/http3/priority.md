@@ -72,7 +72,7 @@ Frame Payload {
 ```
 
 The frame types are greased-size varints (≥ 4 bytes on the wire)
-signalling "extension, may be absent" per §7.2.8.
+signalling "extension, may be absent" .8.
 
 ADT:
 

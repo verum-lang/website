@@ -80,7 +80,7 @@ Two corollaries:
    sets `strict: true` *must* declare a Lifecycle. The default
    (when `strict` is omitted or `false`) treats a missing
    Lifecycle as `Lifecycle.Plan("unspecified")` — a permissive
-   default suitable for in-flight development.
+   default suitable for available development.
 
 ## 3. Lifecycle ordering and citation discipline
 

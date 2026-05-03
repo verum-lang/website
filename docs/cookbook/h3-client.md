@@ -160,7 +160,7 @@ nursery.spawn(async {
     let _ = client.get(&f"/slow").await;
 });
 Delay(Duration.from_secs(2)).await;
-nursery.cancel();   // in-flight request is aborted, QUIC closes
+nursery.cancel();   // available request is aborted, QUIC closes
 ```
 
 ## See also

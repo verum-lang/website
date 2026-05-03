@@ -311,7 +311,7 @@ rejected the elaborated term", not "false theorem accepted".
 
 All `CoreTerm` constructors have real typing rules today except
 `SmtProof`, whose checker is the dedicated `replay_smt_cert` path.
-That routine lands per-backend in follow-up commits (the SMT backend proof format
+That routine is implemented per-backend (the SMT backend proof format
 first), completing the "SMT out of TCB" story. Test coverage is
 maintained at 30 / 30 pass in `cargo test -p verum_kernel`.
 

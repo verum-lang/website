@@ -107,7 +107,7 @@ nursery(timeout: 5.seconds()) {
 }
 ```
 
-When the nursery block exceeds the timeout, every in-flight task is
+When the nursery block exceeds the timeout, every available task is
 cancelled and the nursery returns `NurseryError.Timeout`. The
 timeout applies to the **whole block**, not per-task. For per-task
 timeouts, wrap individual spawns:
@@ -130,7 +130,7 @@ nursery(max_tasks: 1000) {
 }
 ```
 
-If more than `max_tasks` are in-flight, `spawn` blocks until a slot
+If more than `max_tasks` are available, `spawn` blocks until a slot
 is free. Use to bound memory when the task rate is unpredictable.
 Often combined with a `Semaphore` for finer-grained backpressure
 (see next section).

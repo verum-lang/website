@@ -76,27 +76,27 @@ The audit gate `verum audit --kernel-v0-roster` walks the
 manifest and confirms every rule has its corresponding `.vr`
 file. Drift between manifest and filesystem is a build failure.
 
-## 3. Trust-base shrinkage roadmap
+## 3. Trust base — what the auditor reads
 
-The end-state goal is a small bootstrap shim that interprets
-the kernel_v0 Verum source files; all kernel logic is verified
-*in Verum*, not in the host implementation. The roadmap:
+The trusted base is small enough for an auditor to read end to
+end:
 
-| Stage | Trust base | Status |
-|-------|-----------|--------|
-| Pre-#157 | broad host-implementation kernel + 38 rules with 34 admits | historical |
-| Post-#157 | small `proof_checker` module + 6 rules | **current** |
-| Phase 3 (#154) — kernel_v0 self-hosted | ~500 LOC Verum + 10 rules | in-flight |
-| Phase 3 closed — bootstrap chain complete | hand-auditable bootstrap shim | target |
+| Component | Trust contribution |
+|---|---|
+| `proof_checker` module | minimal calculus-of-constructions checker — six rules, bidirectional `infer` + `check` |
+| `kernel_v0/` Verum source | hand-auditable 10-rule mirror; one file per rule plus soundness lemmas |
+| Manifest verifier | structural type-check + manifest audit-cleanness + meta-soundness footprint + per-rule strict-intrinsic dispatch |
 
-Each stage shrinks the trusted base. The progression follows
-the *Milawa pattern* — a self-verified kernel chain descending
-to a hand-auditable bootstrap.
+A Verum-side kernel verified *in its own language* is the
+strongest form of trust delegation: a reviewer who reads Verum
+can read the kernel's logic without crossing language
+boundaries. This is the **Milawa pattern** — a self-verified
+kernel chain descending to a hand-auditable bootstrap.
 
 ## 4. The differential-kernel role
 
-Once self-hosting lands, `kernel_v0` becomes the **third slot**
-in `verum audit --differential-kernel`:
+`kernel_v0` is the **third slot** in
+`verum audit --differential-kernel`:
 
 | Slot | Implementation | Status |
 |------|----------------|--------|
@@ -232,8 +232,8 @@ Three reasons:
    differential gate. Disagreements are bugs in either.
 2. **Self-hosting.** A kernel verified *in its own language* is
    the strongest form of trust delegation possible. The
-   Verum-side kernel is what makes Phase 3 (the ~100 LOC
-   bootstrap shim) reachable.
+   Verum-side kernel keeps the trust chain inside the language
+   itself.
 3. **Auditor accessibility.** A Verum-source kernel is readable
    by anyone who reads Verum — no Rust expertise required. The
    audit chronicle's auditors are mathematicians and verifiers,

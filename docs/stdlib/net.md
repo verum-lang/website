@@ -609,7 +609,7 @@ follow-up.
 | `Frame.text/binary/ping/pong/close(...)` | Convenience builders |
 | `encode(&frame, mask_key, &mut out)` | Encode to bytes — `Some(key)` on client side |
 | `decode(buf, expect_masked, max_payload) -> DecodeResult` | Parse one frame; NeedMore / Decoded / Err |
-| `accept_key(client_key)` | Derive `Sec-WebSocket-Accept` per §4.2.2 |
+| `accept_key(client_key)` | Derive `Sec-WebSocket-Accept` .2 |
 | `validate_server_handshake(headers)` | Check Upgrade/Connection/Version/Key |
 
 ### Handshake
@@ -660,8 +660,8 @@ match decode(&buf, expect_masked: true, max_payload: 1 << 20) {
 ## Graceful shutdown — `core.net.shutdown`
 
 Graceful-shutdown primitives for any accept-loop based service.
-Combines a cancellation token (for prompt accept-loop / in-flight stop)
-with an atomic in-flight-request counter and a wait-for-zero drain
+Combines a cancellation token (for prompt accept-loop / available stop)
+with an atomic available-request counter and a wait-for-zero drain
 mechanism.
 
 ### API summary
@@ -1022,7 +1022,7 @@ let body_hdr = encode_unsatisfiable(total_length);
 Three spec forms: `a-b` closed, `a-` prefix, `-N` suffix.
 Invalid-start sub-ranges drop; if every sub-range drops,
 `UnsatisfiableRange` tells the caller to respond 416. Overlapping
-sub-ranges merge per §14.1.4. Whitespace + case-insensitive
+sub-ranges merge .4. Whitespace + case-insensitive
 `bytes=` unit per the ABNF.
 
 ### `link_header` — RFC 8288

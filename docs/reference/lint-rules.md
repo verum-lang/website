@@ -448,7 +448,6 @@ profile is missing or unparseable, the static fallback applies and
 a stderr warning surfaces.
 
 
-
 Managed CBGR reference (`&` / `&mut`, ~15 ns per deref) used in a
 module whose `[lint.cbgr_budgets].max_check_ns` budget is below the
 static per-deref cost. Promote to `&checked` (compiler-proven, 0 ns)
@@ -504,7 +503,7 @@ the arm (let the `_` catch-all handle it) or add a body.
 ### `todo-in-code` — *warn*
 
 A `TODO` / `FIXME` / `HACK` comment in production code (i.e. not in
-`tests/` / `benches/`). The default config requires `TODO(#1234)` to
+`tests/` / `benches/`). The default config requires `TODO` to
 reference an issue — see `[lint.rules.todo-in-code]`.
 
 ### `single-variant-match` — *hint*

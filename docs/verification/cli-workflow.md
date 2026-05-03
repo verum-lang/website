@@ -173,7 +173,7 @@ Per-theorem verdicts:
 - **Timeout** — strategy timed out at its budget (hard failure).
 
 Exit code is non-zero only on Open / Timeout — DispatchPending is
-expected for the 11 strategies still in V1 ramp-up (Fast, Formal,
+expected for the 11 strategies still in the current framework ramp-up (Fast, Formal,
 Proof, Thorough, Reliable, Certified, CoherentStatic,
 CoherentRuntime, Coherent, ComplexityTyped, Synthesize).  V0 only
 implements Runtime + Static end-to-end; the typed-acknowledgement

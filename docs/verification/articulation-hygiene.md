@@ -148,7 +148,7 @@ valid code.
 **Sample output:**
 
 ```text
-Articulation Hygiene factorisations (the verification spec)
+Articulation Hygiene factorisations 
 ──────────────────────────────────────────────────
   Parsed 1 .vr file(s), skipped 0 unparseable file(s).
 

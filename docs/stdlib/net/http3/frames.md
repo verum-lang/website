@@ -39,7 +39,7 @@ types `0x1F × N + 0x21` from RFC 8701 exercise that discipline.
 | 0x05 | `PUSH_PROMISE` | — | ✓ | Server push announce (push_id + headers) |
 | 0x07 | `GOAWAY` | ✓ | — | Graceful shutdown (stream_id or push_id) |
 | 0x0D | `MAX_PUSH_ID` | ✓ | — | Raise push budget (max_push_id) |
-| any | `ReservedFrame` | both | both | Pass-through, ignore per §7.2.8 |
+| any | `ReservedFrame` | both | both | Pass-through, ignore .8 |
 
 ## SETTINGS frame body (§7.2.4)
 

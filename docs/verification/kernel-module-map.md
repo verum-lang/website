@@ -81,7 +81,7 @@ the trusted base from Gödel-2nd-style self-reference.
 |--------|------|
 | `arch` | Eight architectural primitives: Capability / Boundary / Composition / Lifecycle / Foundation / Tier / Stratum / Shape. |
 | `arch_parse` | `@arch_module(...)` named-args → `Shape` parser. |
-| `arch_phase` | Phase 6.5 — the architectural type-checking phase wired into the compiler pipeline. |
+| `arch_phase` | the architectural-type-checking phase — the architectural type-checking phase wired into the compiler pipeline. |
 | `arch_anti_pattern` | The 32-pattern anti-pattern catalog with stable RFC error codes. |
 | `arch_composition` | Composition algebra `Shape ⊗ Shape`. |
 | `arch_corpus` | Cross-cog corpus invariants (cycle detection, transitive lifecycle regression). |

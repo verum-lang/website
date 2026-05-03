@@ -127,7 +127,7 @@ async fn run_frame_loop(
 | `ContinuationFrame` | 0x9 | HEADERS / PUSH_PROMISE tail | stream ≠ 0 |
 
 A frame on the wrong stream id surfaces as a `Http2Error.ConnectionError`
-with `ErrorCode.PROTOCOL_ERROR` — per §5.1.1, `stream 0` is reserved
+with `ErrorCode.PROTOCOL_ERROR` — .1, `stream 0` is reserved
 for connection-scoped frames and cannot carry request/response data.
 
 ## `SettingId` and `Settings`
