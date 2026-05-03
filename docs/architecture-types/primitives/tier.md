@@ -179,8 +179,8 @@ The audit chronicle records every tier bridge for review.
 ## 9. Tier and CVE Lifecycle interaction
 
 A `Tier.TierCheck` cog cannot declare `Lifecycle.Theorem(...)` —
-without code emission, the И axis is absent, and a Theorem
-requires И-positive. Such a cog must be `Lifecycle.Definition`
+without code emission, the E axis is absent, and a Theorem
+requires E-positive. Such a cog must be `Lifecycle.Definition`
 or `Lifecycle.Postulate(...)`.
 
 The `verum audit --bundle` L4 check enforces this:

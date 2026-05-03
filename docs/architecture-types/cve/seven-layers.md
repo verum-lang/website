@@ -24,13 +24,13 @@ which audit gate operates at each layer.
 
 | Layer | Subject of the CVE question | Example asker |
 |-------|----------------------------|---------------|
-| **L0** | The object itself — code, value, theorem statement | "Is `add(2, 3) = 5` К-В-И?" |
-| **L1** | The proof — the proof term or certificate | "Is the *proof* of `add(2, 3) = 5` К-В-И?" |
-| **L2** | The proof method — the tactic / strategy / SMT call | "Is the *tactic* used К-В-И?" |
-| **L3** | The proof method's foundation — the meta-theory | "Is ZFC + 2-inacc К-В-И?" |
-| **L4** | The architectural shape carrying the proof | "Is the cog's `Shape` К-В-И?" |
-| **L5** | The communication of the proof to a reader | "Is the audit report К-В-И?" |
-| **L6** | The frame itself — CVE applied to CVE | "Is CVE К-В-И?" |
+| **L0** | The object itself — code, value, theorem statement | "Is `add(2, 3) = 5` C-V-E?" |
+| **L1** | The proof — the proof term or certificate | "Is the *proof* of `add(2, 3) = 5` C-V-E?" |
+| **L2** | The proof method — the tactic / strategy / SMT call | "Is the *tactic* used C-V-E?" |
+| **L3** | The proof method's foundation — the meta-theory | "Is ZFC + 2-inacc C-V-E?" |
+| **L4** | The architectural shape carrying the proof | "Is the cog's `Shape` C-V-E?" |
+| **L5** | The communication of the proof to a reader | "Is the audit report C-V-E?" |
+| **L6** | The frame itself — CVE applied to CVE | "Is CVE C-V-E?" |
 
 Every audit gate has a layer. Combining a gate's verdict with
 gates at different layers without normalising is a category error.
@@ -41,17 +41,17 @@ gates at different layers without normalising is a category error.
 function body, a value, a theorem statement, a configuration
 constant.
 
-**К question:** does the artefact have a constructor — is there a
+**C question:** does the artefact have a constructor — is there a
 procedure that produces it?
 
-**В question:** does the artefact have a check — is there a
+**V question:** does the artefact have a check — is there a
 procedure that verifies it?
 
-**И question:** does the artefact reduce to runnable code?
+**E question:** does the artefact reduce to runnable code?
 
 **Audit gate at this layer:** `verum check` and `verum verify`
-operate on L0. The type checker confirms К; the SMT discharger
-confirms В; the AOT compiler confirms И.
+operate on L0. The type checker confirms C; the SMT discharger
+confirms V; the AOT compiler confirms E.
 
 **Example:** a `@verify(formal)` function in a payment-processing
 cog. L0 asks: *is this function constructively defined,
@@ -63,11 +63,11 @@ three.
 **Subject:** not the artefact, but its proof — the proof term, the
 SMT certificate, the kernel discharge witness.
 
-**К question:** does the proof have a constructive proof term?
+**C question:** does the proof have a constructive proof term?
 
-**В question:** is the proof term re-checkable?
+**V question:** is the proof term re-checkable?
 
-**И question:** does the proof term reduce to a (typically
+**E question:** does the proof term reduce to a (typically
 no-op) computational artefact?
 
 **Audit gate at this layer:** `verum audit --kernel-recheck`
@@ -76,20 +76,20 @@ trusted base.
 
 **Why this layer is distinct from L0:** a function may be
 correct (L0) without an explicit proof being shipped (L1). A
-function may have a proof (L1 К-positive) that the kernel does
-not re-check (L1 В-absent).
+function may have a proof (L1 C-positive) that the kernel does
+not re-check (L1 V-absent).
 
 ## 4. L2 — the proof method
 
 **Subject:** *how* the proof was produced — the tactic, the
 SMT solver, the synthesis search.
 
-**К question:** is the tactic constructive?
+**C question:** is the tactic constructive?
 
-**В question:** is the tactic re-checkable in the absence of the
+**V question:** is the tactic re-checkable in the absence of the
 specific solver?
 
-**И question:** does the tactic execute (e.g., the SMT solver
+**E question:** does the tactic execute (e.g., the SMT solver
 runs)?
 
 **Audit gate at this layer:** `verum audit --kernel-soundness`
@@ -98,8 +98,8 @@ independent re-checking; `verum smt-stats` enumerates the
 per-theory tactic dispatch.
 
 **Why this layer is distinct from L1:** an SMT certificate
-(L1) may be re-checkable (L1 В-positive) only because the
-specific solver runs (L2 И-positive). If the solver
+(L1) may be re-checkable (L1 V-positive) only because the
+specific solver runs (L2 E-positive). If the solver
 becomes unavailable, the L1 verdict is unaffected but the L2
 verdict changes.
 
@@ -108,13 +108,13 @@ verdict changes.
 **Subject:** the meta-theoretic base under which the proof
 method is sound — ZFC, ZFC + N inaccessibles, HoTT, etc.
 
-**К question:** is the meta-theory itself constructive (e.g.,
+**C question:** is the meta-theory itself constructive (e.g.,
 CIC) or classical (e.g., ZFC + LEM)?
 
-**В question:** is the meta-theory's consistency provable from a
+**V question:** is the meta-theory's consistency provable from a
 stronger system?
 
-**И question:** does the meta-theory admit program extraction?
+**E question:** does the meta-theory admit program extraction?
 
 **Audit gate at this layer:** `verum audit --reflection-tower`
 walks the ordinal-indexed meta-soundness tower and confirms each
@@ -131,12 +131,12 @@ execute?).
 **Subject:** the cog's `@arch_module(...)` Shape — its
 capabilities, lifecycle, foundation, tier, stratum.
 
-**К question:** is the Shape constructively realised?
+**C question:** is the Shape constructively realised?
 
-**В question:** does the architectural type checker admit the
+**V question:** does the architectural type checker admit the
 Shape against the body?
 
-**И question:** does the Shape erase cleanly at compile time
+**E question:** does the Shape erase cleanly at compile time
 without runtime artefacts?
 
 **Audit gate at this layer:** `verum audit --arch-discharges`
@@ -157,12 +157,12 @@ stable. A project's `verum audit --bundle` reports
 **Subject:** how the verdict is communicated to a reader — the
 audit JSON output, the LSP hover text, the diagnostic message.
 
-**К question:** is the report constructively producible?
+**C question:** is the report constructively producible?
 
-**В question:** is the report self-consistent (schema-valid,
+**V question:** is the report self-consistent (schema-valid,
 fields cross-referenced)?
 
-**И question:** does the report execute, in the sense of being
+**E question:** does the report execute, in the sense of being
 parseable by downstream tooling?
 
 **Audit gate at this layer:** the JSON schema validator runs at
@@ -175,15 +175,15 @@ verdicts). L5 catches the *audit's* errors, not the project's.
 
 ## 8. L6 — the frame itself
 
-**Subject:** CVE applied to CVE. *Is the CVE framework К-В-И?*
+**Subject:** CVE applied to CVE. *Is the CVE framework C-V-E?*
 
-**К question:** can the framework be realised in code? (Yes —
+**C question:** can the framework be realised in code? (Yes —
 Verum's `Lifecycle` enum, the audit dispatcher, the gate runner.)
 
-**В question:** does the framework admit re-checking? (Yes —
+**V question:** does the framework admit re-checking? (Yes —
 the manifest of CVE-status-to-glyph is enumerable and audited.)
 
-**И question:** does the framework execute? (Yes — every audit
+**E question:** does the framework execute? (Yes — every audit
 gate is a runnable subcommand.)
 
 **Audit gate at this layer:** `verum audit --bundle` itself,
@@ -258,7 +258,7 @@ in the MTAC band.
 ## 12. Cross-references
 
 - [CVE overview](./overview.md) — the universal frame.
-- [Three axes](./three-axes.md) — К / В / И in detail.
+- [Three axes](./three-axes.md) — C / V / E in detail.
 - [Seven configurations](./seven-configurations.md) — the
   truth-table.
 - [Seven canonical symbols](./seven-symbols.md) — the glyph

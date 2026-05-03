@@ -46,7 +46,7 @@ Eleven fields — seven of the eight ATS-V primitives plus
 | `at_tier` | `Tier` | Execution placement |
 | `foundation` | `Foundation` | Meta-theoretic profile |
 | `stratum` | `MsfsStratum` | MSFS moduli stratum |
-| `cve_closure` | `CveClosure` | К / В / И triple summary |
+| `cve_closure` | `CveClosure` | C / V / E triple summary |
 | `lifecycle` | `Lifecycle` | CVE 7-symbol status |
 | `composes_with` | `List<Text>` | Composition allowlist |
 | `strict` | `Bool` | Whether to apply strict-mode anti-patterns |
@@ -82,7 +82,7 @@ Three fields, each `Maybe`-typed:
   content extracts; `None` if the cog is paper-only.
 
 The CveClosure is *redundant* with the Lifecycle (which already
-encodes the К/В/И state) but provides finer-grained
+encodes the C/V/E state) but provides finer-grained
 information for audit reports. The two must be consistent; a
 mismatch triggers
 [`AP-015 DeclarationBodyDrift`](../anti-patterns/articulation.md#ap-015).

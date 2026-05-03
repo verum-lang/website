@@ -71,7 +71,7 @@ public type Lifecycle is
 // ... the remaining primitives ...
 ```
 
-The cog declares itself as a `[Т]` Theorem, foundation
+The cog declares itself as a `[T]` Theorem, foundation
 ZFC + 2-inacc, stratum LFnd. The compiler verifies these claims
 against the body, just as it would for any other annotated cog.
 
@@ -85,7 +85,7 @@ belonging to its own implementation.
 
 Three concrete consequences:
 
-1. **The cog's `[Т]` Lifecycle requires every public function to
+1. **The cog's `[T]` Lifecycle requires every public function to
    carry `@verify(...)`.** And they do — the type definitions
    are `Definition`-class declarations whose discharge is
    trivial.
@@ -156,17 +156,17 @@ checker is not running in the very Verum code it is checking).
 
 ## 5. The CVE seven-layer perspective
 
-Self-application is a CVE-L6 question: *is the framework К-В-И
+Self-application is a CVE-L6 question: *is the framework C-V-E
 when applied to itself?* See
 [CVE — articulation hygiene](./cve/articulation-hygiene.md)
 for the L6 register-prohibition discipline.
 
 ATS-V's self-application answers L6 affirmatively:
 
-- **К:** the primitives are realised as Verum types — ✓.
-- **В:** the cog is type-checked by the architectural type
+- **C:** the primitives are realised as Verum types — ✓.
+- **V:** the cog is type-checked by the architectural type
   system — ✓.
-- **И:** the type definitions extract trivially — ✓.
+- **E:** the type definitions extract trivially — ✓.
 
 All three at L6. The framework survives self-application.
 

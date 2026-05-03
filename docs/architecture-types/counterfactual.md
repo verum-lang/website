@@ -17,8 +17,8 @@ The engine is part of the audit pipeline (`verum audit
 --counterfactual`) and produces structured reports suitable for
 archival in audit chronicles. The reports drive design
 decisions: *is this invariant fragile? does dropping a Foundation
-constraint break our soundness story? would lifting a `[Г]`
-Hypothesis to `[Т]` Theorem stabilise our import graph?*
+constraint break our soundness story? would lifting a `[H]`
+Hypothesis to `[T]` Theorem stabilise our import graph?*
 
 This page explains the engine's primitives, what kinds of
 counterfactual it handles, and how to read the reports.
@@ -89,7 +89,7 @@ The engine works at two levels:
 `ArchProposition` is the symbolic form of an architectural
 invariant. The canonical battery covers propositions like:
 
-- "every cog with `[Т]` Lifecycle composes only with `[Т]/[О]/[С]`
+- "every cog with `[T]` Lifecycle composes only with `[T]/[D]/[C]`
   cogs" (lifecycle regression).
 - "no cog imports across foundations without a bridge" (foundation
   drift).
@@ -222,7 +222,7 @@ declared in `verum.toml`:
 
 ```toml
 [ats_v.counterfactual.scenarios.demote-research]
-description = "What if research cogs lose [Т] status?"
+description = "What if research cogs lose [T] status?"
 primitives_dropped = []
 primitives_modified = [
     { cog = "research.*", lifecycle = "Lifecycle.Hypothesis(Medium)" }

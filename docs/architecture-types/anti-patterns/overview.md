@@ -74,7 +74,7 @@ adjunctions, observers as Yoneda functors.
 | AP-021 | PersistenceMismatch | ontology | `Persist` capability for an operation that is not actually durable |
 | AP-022 | CapabilityLaundering | ontology | multi-hop privilege escalation through unmarked boundary |
 | AP-023 | FoundationForgery | ontology | declared foundation contradicts the cited axiom corpus |
-| AP-024 | TransitiveLifecycleRegression | ontology | transitive `[Т] → … → [Г]` citation chain |
+| AP-024 | TransitiveLifecycleRegression | ontology | transitive `[T] → … → [H]` citation chain |
 | AP-025 | DeclarationDrift | ontology | declared `@arch_module(...)` shape diverges from inferred shape |
 | AP-026 | FoundationContentMismatch | ontology | code body uses constructs from a foreign foundation |
 | AP-027 | TemporalInconsistency | mtac | invariant fails to hold across two sampled time-points |

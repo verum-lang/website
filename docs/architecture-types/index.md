@@ -154,22 +154,22 @@ canonical taxonomy**:
 
 | Glyph | Variant | Constructive | Verifiable | Executable |
 |-------|---------|--------------|------------|------------|
-| `[Т]` | `Theorem(since)` | yes | yes | yes |
-| `[О]` | `Definition` | yes | trivial | yes |
-| `[С]` | `Conditional(conds)` | conditional | conditional | conditional |
-| `[П]` | `Postulate(citation)` | yes | external | yes |
-| `[Г]` | `Hypothesis(confidence)` | partial | absent | absent |
-| `[И]` | `Interpretation(reason)` | absent | absent | absent |
+| `[T]` | `Theorem(since)` | yes | yes | yes |
+| `[D]` | `Definition` | yes | trivial | yes |
+| `[C]` | `Conditional(conds)` | conditional | conditional | conditional |
+| `[P]` | `Postulate(citation)` | yes | external | yes |
+| `[H]` | `Hypothesis(confidence)` | partial | absent | absent |
+| `[I]` | `Interpretation(reason)` | absent | absent | absent |
 | `[✗]` | `Retracted(reason, repl)` | n/a (withdrawn) | — | — |
 
 CVE is the *universal correctness frame* Verum applies to every
 proposition, not just to architecture. A function body is CVE-typed:
-*does it carry a constructor (К), does it admit a check (В), does it
-reduce to executable code (И)?* A theorem statement is CVE-typed.
+*does it carry a constructor (C), does it admit a check (V), does it
+reduce to executable code (E)?* A theorem statement is CVE-typed.
 An architectural Shape is CVE-typed. The seven symbols are the
 cross-cutting taxonomy that lets the auditor enumerate, by glyph,
-exactly which slots are mature ([Т]/[О]) and which still owe a
-discharge ([Г]/[И]).
+exactly which slots are mature ([T]/[D]) and which still owe a
+discharge ([H]/[I]).
 
 The full CVE framework — three axes, seven configurations, seven
 layers L0..L6 — is documented in:
@@ -269,7 +269,7 @@ engines that operate over the architectural graph:
 - **[Counterfactual reasoning engine](./counterfactual.md)** — a
   non-destructive evaluator that answers *what if?* questions about
   the architectural graph. Drop a primitive, change a Foundation,
-  promote a `[Г]` to `[Т]` — the engine reports which invariants
+  promote a `[H]` to `[T]` — the engine reports which invariants
   hold under both scenarios (`HoldsBoth` — stable), only the base
   (`HoldsBaseOnly` — regression), only the variant (`HoldsVarOnly`
   — improvement), or neither (`HoldsNeither` — fundamentally
@@ -326,7 +326,7 @@ architecture-types/
 │
 ├── cve/
 │   ├── overview.md                  · the universal correctness frame
-│   ├── three-axes.md                · К / В / И dimensions
+│   ├── three-axes.md                · C / V / E dimensions
 │   ├── seven-configurations.md      · truth-table semantics
 │   ├── seven-symbols.md             · canonical glyph taxonomy
 │   ├── seven-layers.md              · L0 .. L6 stratification
