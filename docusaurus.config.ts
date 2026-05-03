@@ -181,7 +181,7 @@ const config: Config = {
             {label: 'Introduction', to: '/docs/intro'},
             {label: 'Installation', to: '/docs/getting-started/installation'},
             {label: 'Language Tour', to: '/docs/getting-started/tour'},
-            {label: 'Foundations', to: '/docs/foundations/principles'},
+            {label: 'Engineering Principles', to: '/docs/foundations/principles'},
           ],
         },
         {

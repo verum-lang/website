@@ -31,8 +31,9 @@ The minimum that must be trusted for soundness:
 
 | Module | LOC | Role |
 |--------|-----|------|
-| `proof_checker` | ~786 | **The trusted base.** Minimal CoC checker (6 rules). Bidirectional `infer` + `check`. |
-| `proof_checker_nbe` | ~713 | **Second algorithmic kernel.** Normalisation-by-Evaluation for [differential testing](./two-kernel-architecture.md). |
+| `proof_checker` | ~786 | **The trusted base (Algorithm A).** Minimal CoC checker (6 rules). Bidirectional `infer` + `check`. |
+| `proof_checker_nbe` | ~713 | **Second algorithmic kernel (Algorithm B).** Normalisation-by-Evaluation for [differential testing](./two-kernel-architecture.md). |
+| `kernel_registry::KernelV0Kernel` | — | **Third algorithmic kernel (Algorithm C).** Manifest-driven bootstrap verifier — anchors structural type-check, manifest audit-cleanness, meta-soundness footprint, per-rule strict-intrinsic dispatch. |
 | `proof_checker_meta` | — | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). |
 | `term` | — | The `CoreTerm` data type — proof-term representation. |
 | `ctx` | — | Type-checking context (de Bruijn-indexed binders). |
@@ -233,7 +234,7 @@ Layer A or consumes its output.
 
 - [Trusted kernel](./trusted-kernel.md) — the three-layer rule
   architecture.
-- [Two-kernel architecture](./two-kernel-architecture.md) — Layer B.
+- [Three-kernel architecture](./two-kernel-architecture.md) — Layer B.
 - [Reflection tower](./reflection-tower.md) — Layer C.
 - [Separation logic](./separation-logic.md) — the
   `separation_logic` module's user surface.

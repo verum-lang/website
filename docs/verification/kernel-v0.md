@@ -19,10 +19,11 @@ shrinking the Rust trusted base from ~800 LOC to a ~100 LOC
 bootstrap shim. This is the **Milawa pattern**: kernel(N+1)
 verified by kernel(N), descending to a tiny bootstrap.
 
-For the layered three-kernel architecture see
-[Trusted kernel](./trusted-kernel.md). For the differential
-testing that runs against `kernel_v0` see
-[Two-kernel architecture](./two-kernel-architecture.md).
+For the layered three-rule-tier architecture see
+[Trusted kernel](./trusted-kernel.md). For the three-kernel
+differential testing — including `kernel_v0` as the third
+algorithmic slot — see
+[Three-kernel architecture](./two-kernel-architecture.md).
 
 ## 1. The architectural picture
 
@@ -242,9 +243,9 @@ Three reasons:
 
 - [Trusted kernel](./trusted-kernel.md) — the three-layer
   rule architecture.
-- [Two-kernel architecture](./two-kernel-architecture.md) — the
-  differential layer that will register `kernel_v0` as a third
-  slot.
+- [Three-kernel architecture](./two-kernel-architecture.md) —
+  the differential layer where `kernel_v0` is registered as the
+  third algorithmic slot (Algorithm C).
 - [Reflection tower](./reflection-tower.md) — the meta-soundness
   layer above the kernels.
 - [Soundness gates](./soundness-gates.md) — the predicate-level

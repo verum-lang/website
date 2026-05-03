@@ -288,7 +288,7 @@ verdict for the project.
 ```bash
 $ verum audit --bundle              # aggregate verdict
 $ verum audit --framework-axioms    # enumerate every cited axiom
-$ verum audit --differential-kernel # two-kernel agreement
+$ verum audit --differential-kernel # three-kernel agreement
 $ verum audit --counterfactual      # non-destructive scenario battery
 $ verum audit --arch-discharges     # architectural anti-pattern catalog
 ```
@@ -345,7 +345,7 @@ mode](/docs/getting-started/script-mode).**
 - **[Verification](/docs/category/verification)** — the gradual
   verification ladder, refinement reflection, contracts, the
   tactic DSL, framework axioms, proof export, program
-  extraction, the trusted kernel, the two-kernel architecture,
+  extraction, the trusted kernel, the three-kernel architecture,
   the reflection tower, separation logic, codegen attestation,
   the kernel module map, the kernel_v0 bootstrap.
 - **[Architecture](/docs/architecture/overview)** — how the

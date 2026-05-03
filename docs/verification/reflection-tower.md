@@ -214,10 +214,10 @@ components:
 
 The kernel side *cites* the corpus side via `MsfsCitation::corpus_path()`.
 The corpus side is independently verified by the trusted-base
-kernel and the NbE kernel (the
-[two-kernel architecture](./two-kernel-architecture.md)). The two
-sides cooperate: corpus proves the theorems, kernel surfaces
-their verdicts at audit time.
+kernel, the NbE kernel, and the kernel_v0 manifest verifier
+(the [three-kernel architecture](./two-kernel-architecture.md)).
+The two sides cooperate: corpus proves the theorems, kernel
+surfaces their verdicts at audit time.
 
 ## 8. Comparing with classical proof-theoretic intuition
 
@@ -241,7 +241,7 @@ upper bounds.
 
 - [Trusted kernel](./trusted-kernel.md) — the LCF-style core
   whose meta-soundness the tower establishes.
-- [Two-kernel architecture](./two-kernel-architecture.md) — the
+- [Three-kernel architecture](./two-kernel-architecture.md) — the
   differential check on the kernel implementations the tower
   rests on.
 - [Framework axioms](./framework-axioms.md) — the citation
