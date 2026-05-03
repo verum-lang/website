@@ -342,26 +342,39 @@ bridge is a load-bearing artefact registered with
 `@framework(...)` markers and audited by
 `verum audit --bridge-discharge`.
 
-### `bridges/owl2_to_htt.vr`
+### `bridges/owl2_to_htt.vr` + `bridges/htt_to_owl2.vr` — Morita pair
 
-The OWL 2 Direct Semantics → Higher Topos Theory canonical
-translation. Maps OWL 2 ontologies (classes / properties /
-individuals + the 65 framework axioms in
-`core.math.frameworks.owl2_fs`) into HTT (∞,1)-topos objects via
-Lurie HTT's classifier-of-monics + nerve constructions.
+The OWL 2 Direct Semantics ↔ Higher Topos Theory **Morita
+equivalent pair**. The forward bridge (`owl2_to_htt.vr`) maps
+every OWL 2 operator to its categorical image in HTT
+(presheaves / monomorphisms / adjoint pairs / functor categories);
+the inverse bridge (`htt_to_owl2.vr`) maps every HTT image back
+to its OWL 2 pre-image. **31 markers in each direction**, paired
+1-to-1.
 
-**Soundness claim.** The translation is faithful — every OWL 2
-DS derivation lifts to a HTT derivation; preserving OWA per W3C
-§5.6 (no closed-world assumption is silently injected at
-translation time). The Morita-equivalence inverse is currently
-asserted as a citation; mechanised round-trip identity is
-tracked as outstanding work.
+**Single registry entry.** The pair is registered in
+`bridges/mod.vr` as `MORITA_PAIR_OWL2_HTT`, consuming the
+unified `MoritaBridgePair` record that captures every bridge
+pair Verum ships. There is no per-bridge `Fidelity` classifier
+or per-bridge round-trip module: the canonical
+`TranslationVerdict` enum from `core.theory_interop.coord`
+classifies every pair uniformly, and a single
+`bridge_round_trip_property` axiom backs every pair's
+soundness claim.
+
+**Soundness claim.** Faithful translation per W3C OWL 2 Direct
+Semantics §5.6 — no closed-world assumption is silently
+injected. Morita equivalence is structurally committed through
+the unified marker pairing and the single
+`bridge_round_trip_property` axiom that backs every registered
+pair.
 
 **Cross-references:**
 
 - [Verification → OWL 2 integration](/docs/verification/owl2)
-  — the full OWL 2 stack including the framework axioms this
-  bridge consumes.
+  — the full OWL 2 stack.
+- [Cookbook → OWL 2 reasoning](/docs/cookbook/owl2-reasoning)
+  — Pizza-style end-to-end demo.
 - [`owl2_fs` framework package](/docs/verification/framework-axioms)
   — the 11-package / 71-axiom inventory.
 

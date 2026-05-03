@@ -52,13 +52,17 @@ the verification spec distinguishes two layers of correspondence claim:
 | Claim | Direction | Where it comes from |
 |---|---|---|
 | **Faithful translation** | every OWL 2 DS derivation ⇒ Verum derivation | automatic from the Shkotin-literal encoding |
-| **Morita-equivalence** | OWL 2 DS ↔ Verum-encoded OWL 2 *both* directions | bridge theorem layered on top of the faithful translation |
+| **Morita-equivalence** | OWL 2 DS ↔ Verum-encoded OWL 2 *both* directions | unified Morita bridge pair `(owl2_to_htt, htt_to_owl2)` |
 
 Faithful translation is what most consumers need — every OWL 2 fact
 proved in Verum is a fact in OWL 2. Morita-equivalence elevates the
 claim to *"Verum's OWL 2 **is** OWL 2 up to categorical equivalence"*
-and is delivered through the cross-framework bridge layer described
-in §8.
+through the unified Morita-pair infrastructure in
+`core.theory_interop.bridges`: the forward bridge
+(`owl2_to_htt.vr`) is paired with the inverse bridge
+(`htt_to_owl2.vr`), 31 markers in each direction, registered as
+`MORITA_PAIR_OWL2_HTT` and audited via the same generic
+`bridge_round_trip_property` axiom every Morita pair shares.
 
 ---
 
@@ -658,10 +662,21 @@ The same bridge pattern extends to the rest of the standard
 foundational six-pack (`baez_dolan`, `schreiber_dcct`,
 `connes_reconstruction`, `petz_classification`) — each new bridge
 contributes its `@framework_translate` axioms and an OWL 2 corpus
-becomes automatically interpretable in the target framework. The
-§21.2 Morita-equivalence theorem (`owl2_morita_bridge`) layers on
-top of this network, lifting "faithful in one direction" to "the
-same theory under either presentation".
+becomes automatically interpretable in the target framework.
+
+**Morita pairing (V0 shipped).** The forward bridge
+`owl2_to_htt.vr` ships paired with `htt_to_owl2.vr` (31 markers in
+each direction). The pair is registered as `MORITA_PAIR_OWL2_HTT`
+in `core.theory_interop.bridges/mod.vr` and is consumed by the
+**single, unified** `bridge_round_trip_property` axiom that backs
+every Morita pair Verum ships. There is no per-bridge `Fidelity`
+classifier or per-bridge round-trip module — the canonical
+`TranslationVerdict` enum from `core.theory_interop.coord`
+(`Morita | Strong | Moderate | Weak | Untranslatable`) classifies
+every bridge pair uniformly. Adding a new Morita pair (the planned
+`owl2_to_baez_dolan` / `owl2_to_schreiber_dcct` / `owl2_to_connes` /
+`owl2_to_petz`) is one entry in `registered_morita_pairs()` plus
+the two directional translation-marker files — no boilerplate.
 
 ---
 
