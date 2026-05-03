@@ -81,9 +81,6 @@ function Hero() {
             <Link className="button button--secondary button--lg" to="/docs/getting-started/tour">
               Language Tour
             </Link>
-            <Link className="button button--link button--lg" to="/docs/foundations/principles">
-              Engineering Principles
-            </Link>
           </div>
         </div>
         <div className={styles.heroVis}>

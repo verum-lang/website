@@ -94,12 +94,14 @@ The audit gate `verum audit --kernel-v0-roster` walks the
 manifest and confirms every rule has its corresponding `.vr`
 file. Drift between manifest and filesystem is a build failure.
 
-`kernel_v0` is intentionally Verum-source, not Rust. The aim is
-**self-hosting**: a future revision compiles `kernel_v0` itself
-and uses the resulting Verum binary as a third independent slot
-in the [differential-kernel gate](./two-kernel-architecture.md).
-At V0 the self-hosted slot reports `NotYetSelfHosting`; the
-parser-blocker is tracked separately.
+`kernel_v0` is intentionally Verum-source, not Rust. The
+manifest authored under `core/verify/kernel_v0/` is consumed by
+`KernelV0Kernel` — the third independent slot in the
+[differential-kernel gate](./two-kernel-architecture.md). The
+slot anchors structural type-check, manifest audit-cleanness,
+the meta-soundness footprint, and per-rule strict-intrinsic
+dispatch; future revisions can additionally compile the Verum
+manifest itself into a self-hosted checker.
 
 ---
 
@@ -240,26 +242,29 @@ extends it to the higher stages.
 
 ---
 
-## 5. The two-kernel differential layer
+## 5. The multi-kernel differential layer
 
-Layer B (`proof_checker`) has a sibling — `proof_checker_nbe`
-— a **second independent algorithmic kernel** using
-Normalisation-by-Evaluation. The two implement the same
-input/output relation via different algorithms; disagreements
-are bugs in either.
+Layer B (`proof_checker`) has two siblings:
+`proof_checker_nbe` — a **second independent algorithmic
+kernel** using Normalisation-by-Evaluation — and
+`KernelV0Kernel` — a **third manifest-driven verifier**
+anchoring structural type-check, manifest audit-cleanness, the
+meta-soundness footprint, and per-rule strict-intrinsic
+dispatch. The three implement the same input/output relation
+via orthogonal strategies; disagreements are bugs in any one.
 
 The differential layer is documented in detail in
-[Two-kernel architecture](./two-kernel-architecture.md). At a
+[Three-kernel architecture](./two-kernel-architecture.md). At a
 glance:
 
 - `verum audit --differential-kernel` — runs every certificate
-  through both kernels.
+  through all three kernels.
 - `verum audit --differential-kernel-fuzz` — runs an 11-variant
   mutation grammar over canonical certificates and verifies
   unanimous agreement.
-- A *synthetic always-accept* third slot is registered as a
-  liveness pin: the differential is non-vacuous because the
-  synthetic *should* disagree with the real kernels on rejected
+- A *synthetic always-accept* slot is registered as a liveness
+  pin: the differential is non-vacuous because the synthetic
+  *should* disagree with the real kernels on rejected
   certificates.
 
 This is a structural property no other production proof
@@ -388,7 +393,7 @@ every assumption is cited and auditable.
 
 ## 10. Cross-references
 
-- [Two-kernel architecture](./two-kernel-architecture.md) — the
+- [Three-kernel architecture](./two-kernel-architecture.md) — the
   differential layer that runs Layer B against `proof_checker_nbe`.
 - [Reflection tower](./reflection-tower.md) — the MSFS-grounded
   meta-soundness layer above Layer C.

@@ -505,47 +505,53 @@ the design.
 
 ---
 
-## 11. The two-kernel discipline
+## 11. The multi-kernel discipline
 
 A *single* trusted kernel is the standard architecture for
 proof assistants — Coq, Lean, HOL Light, Isabelle all run one.
-Verum's discipline is structurally different: **two
+Verum's discipline is structurally different: **three
 independent kernel implementations** check every certificate,
 with a differential-testing layer that fails the audit the
-moment they disagree.
+moment any pair disagrees.
 
-The two kernels:
+The three kernels:
 
 - **Trusted-base kernel** (`verum_kernel::proof_checker`) — an
   LCF-style implementation performing direct rule-matching with
-  explicit substitution. Targets &lt; 5 KLOC; small enough to read
-  end-to-end.
+  explicit substitution. Targets a small enough footprint to be
+  read end-to-end.
 - **NbE kernel** (`verum_kernel::proof_checker_nbe`) —
   normalisation-by-evaluation; compiles terms into a semantic
   `Value` representation and checks via β-reduction in the value
   world. Independent algorithmic specification; shares no code
   with the trusted base beyond the syntax-tree definitions.
+- **kernel_v0 manifest verifier**
+  (`verum_kernel::kernel_registry::KernelV0Kernel`) — a
+  manifest-driven bootstrap kernel that anchors structural
+  type-check, manifest audit-cleanness, the meta-soundness
+  footprint, and per-rule strict-intrinsic dispatch. Orthogonal
+  to the term-level algorithms above.
 
 Differential testing — `verum audit --differential-kernel` and
 `verum audit --differential-kernel-fuzz` — runs every
 canonical certificate plus an 11-variant mutation grammar
-through both kernels. A single disagreement fails the audit.
-A *synthetic always-accept kernel* registered alongside the
-real two acts as a liveness pin: the audit's invariant requires
-it to *disagree* on rejected certificates, ensuring the
-differential check is non-vacuous.
+through all three kernels. A single disagreement fails the
+audit. A *synthetic always-accept kernel* registered alongside
+the real three acts as a liveness pin: the audit's invariant
+requires it to *disagree* on rejected certificates, ensuring
+the differential check is non-vacuous.
 
-Verum is the first production proof assistant to ship two
+Verum is the first production proof assistant to ship multiple
 algorithmic kernels with continuous differential testing. See
-[Two-kernel architecture](./two-kernel-architecture.md) for the
-full mechanics.
+[Three-kernel architecture](./two-kernel-architecture.md) for
+the full mechanics.
 
 ---
 
 ## 12. Beyond the kernel — meta-soundness layers
 
-The trusted-base + NbE pair is the L0/L1 floor. Verum stacks
-three additional layers atop the kernels:
+The trusted-base + NbE + kernel_v0 trio is the L0/L1 floor.
+Verum stacks three additional layers atop the kernels:
 
 - **[Reflection tower](./reflection-tower.md)** —
   MSFS-grounded meta-soundness in four canonical stages

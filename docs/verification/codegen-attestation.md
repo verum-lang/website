@@ -257,7 +257,7 @@ The three roadmap gates together cover Verum's complete
 
 - [Trusted kernel](./trusted-kernel.md) — the kernel discharge
   layer codegen attestation builds on.
-- [Two-kernel architecture](./two-kernel-architecture.md) — the
+- [Three-kernel architecture](./two-kernel-architecture.md) — the
   differential check on the kernel.
 - [Reflection tower](./reflection-tower.md) — the meta-soundness
   layer.

@@ -322,7 +322,7 @@ explicit and audit-checkable.
   primitives.
 - [Refinement reflection](./refinement-reflection.md) — the
   pure-value verifier complementing separation logic.
-- [Two-kernel architecture](./two-kernel-architecture.md) — the
+- [Three-kernel architecture](./two-kernel-architecture.md) — the
   differential check that protects the kernel-side
   `HeapPredicate` implementation.
 - [Three orthogonal axes](../architecture-types/orthogonality.md)
