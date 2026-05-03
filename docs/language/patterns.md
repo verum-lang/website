@@ -302,6 +302,57 @@ warning[W0606]: range patterns `1..=10` and `5..=15` overlap in `5..=10`
 | W0606 | warning  | overlapping range patterns |
 | W0607 | warning  | range fully covered by earlier arms |
 
+### Configuration knobs
+
+The exhaustiveness checker exposes four config surfaces; every
+documented field on each is honoured by the consumer (no inert
+defenses). The user-facing contract is "set the field, observe
+the difference". The main `ExhaustivenessConfig` and the
+dependent-pattern variant share the same emission semantics —
+toggling `warn_all_guarded` or `max_witnesses` produces
+identical observable effects regardless of which checker the
+orchestrator routes through.
+
+#### `ExhaustivenessConfig` (main path)
+
+| Field             | Default | What it gates                                       |
+|-------------------|---------|-----------------------------------------------------|
+| `max_witnesses`   | `3`     | Truncates the uncovered-cases enumeration after the standard / refinement-aware check fills the list. `0` means "unlimited"; any positive value caps the enumeration to bound the diagnostic size on cardinality-exploding scrutinees. |
+| `check_redundancy`| `true`  | Toggles the redundancy pass over the matrix. |
+| `warn_all_guarded`| `true`  | When every pattern in a non-empty match carries a guard, emits the W0603 `AllGuarded` warning into the result's `warnings` list. |
+| `use_refinement`  | `true`  | Routes refined types (`Int{x: x > 0}` etc.) through the refinement-aware analysis that eliminates impossible cases. |
+| `use_smt_guards`  | `false` | Master switch over the SMT-backed guard verification path. The path also requires `guard_verifier` to be `Some` (callers inject from `verum_smt::exhaustiveness_backend::SmtGuardVerifier`). |
+| `smt_timeout_ms`  | `100`   | Forwarded into `SmtGuardConfig.timeout_ms` when the SMT path runs. |
+| `guard_verifier`  | `None`  | Optional injected `&dyn GuardVerifier`. The trait lives in `verum_types`; concrete Z3/CVC5 implementations live in `verum_smt`. |
+
+#### `CacheConfig`
+
+| Field                     | Default        | What it gates                                |
+|---------------------------|----------------|----------------------------------------------|
+| `max_entries`             | `10_000`       | LRU-style eviction trigger.                  |
+| `max_age`                 | `5 min`        | Per-entry expiration before re-computation. |
+| `enable_structural_cache` | `true`         | Master switch. When `false`, `get` is miss-only and `put` is a no-op — useful for correctness pinning or debugging cache invariants. |
+| `track_type_definitions`  | `true`         | Hash type definitions into the cache key so re-defining a type invalidates dependent entries. |
+
+#### `DependentExhaustivenessConfig`
+
+| Field                     | Default | What it gates                                       |
+|---------------------------|---------|-----------------------------------------------------|
+| `max_witnesses`           | `3`     | Caps the number of uncovered cases enumerated. |
+| `check_redundancy`        | `true`  | Toggles the redundancy pass over the matrix.    |
+| `warn_all_guarded`        | `true`  | Emits the W0603 `AllGuarded` diagnostic when every pattern carries a guard. Surfaced via `warn_all_guarded_enabled()`. |
+| `use_smt_for_guards`      | `false` | Surfaced via `use_smt_for_guards_enabled()`. Downstream orchestrators that wrap the checker with an `SmtGuardVerifier` (from `verum_smt`) consult this to decide whether to feed guarded patterns through SMT before declaring the match exhaustive. |
+| `track_index_refinements` | `true`  | Phase 4 (compute per-pattern index refinements). |
+
+#### `SmtGuardConfig` (verum_types interface, verum_smt implementation)
+
+| Field                | Default | What it gates                                       |
+|----------------------|---------|-----------------------------------------------------|
+| `timeout_ms`         | `100`   | Per-query timeout forwarded to Z3 / CVC5 via `set_params`. |
+| `max_guards`         | `10`    | Skips SMT analysis when guard count exceeds this — falls back to the syntactic-only verdict with `skipped: true`. |
+| `extract_witnesses`  | `true`  | Whether SAT counterexamples are surfaced as `SmtWitness` entries. |
+| `detect_redundancy`  | `true`  | Whether the redundancy pass runs alongside coverage. |
+
 ## Witness generation
 
 For every non-exhaustive match, the compiler produces a *concrete*
