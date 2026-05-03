@@ -335,6 +335,105 @@ fn main() {
 
 ---
 
+## Cross-framework bridges (`bridges/`)
+
+Concrete translations between named external frameworks. Each
+bridge is a load-bearing artefact registered with
+`@framework(...)` markers and audited by
+`verum audit --bridge-discharge`.
+
+### `bridges/owl2_to_htt.vr`
+
+The OWL 2 Direct Semantics → Higher Topos Theory canonical
+translation. Maps OWL 2 ontologies (classes / properties /
+individuals + the 65 framework axioms in
+`core.math.frameworks.owl2_fs`) into HTT (∞,1)-topos objects via
+Lurie HTT's classifier-of-monics + nerve constructions.
+
+**Soundness claim.** The translation is faithful — every OWL 2
+DS derivation lifts to a HTT derivation; preserving OWA per W3C
+§5.6 (no closed-world assumption is silently injected at
+translation time). The Morita-equivalence inverse is currently
+asserted as a citation; mechanised round-trip identity is
+tracked as outstanding work.
+
+**Cross-references:**
+
+- [Verification → OWL 2 integration](/docs/verification/owl2)
+  — the full OWL 2 stack including the framework axioms this
+  bridge consumes.
+- [`owl2_fs` framework package](/docs/verification/framework-axioms)
+  — the 11-package / 71-axiom inventory.
+
+### `bridges/oc_dc_bridge.vr`
+
+The Object-Centric ↔ Dependency-Centric bridge — the Diakrisis
+108.T α/ε Morita-duality made operational. Translates between
+the AC-side (`core.math.*` articulations — *what exists*) and the
+DC-side (`core.action.*` enactments — *what is done*) for any
+proposition. Used by the `coherent_*` verification strategies
+([gradual-verification](/docs/verification/gradual-verification))
+to recognise α/ε bidirectional games.
+
+---
+
+## MSFS coordinate (`coord.vr`)
+
+The Modular-Stratified-Foundation coordinate type. Every
+imported theory acquires a position in the MSFS lattice — a
+`(Foundation, ν, τ)` triple where `Foundation` names the
+meta-theoretic profile (ZFC / HoTT / Cubical / CIC / MLTT / Eff /
+custom), `ν` is the verification ladder ν-ordinal (see
+[gradual-verification](/docs/verification/gradual-verification)),
+and `τ` is the intensional / extensional axis.
+
+```verum
+public type Ordinal is { ... };
+
+public fn ord_zero() -> Ordinal;
+public fn ord_finite(n: Int) -> Ordinal;
+public fn ord_omega() -> Ordinal;
+public fn ord_omega_plus(k: Int) -> Ordinal;
+public fn ord_omega_times(n: Int) -> Ordinal;
+public fn ord_omega_times_plus(n: Int, k: Int) -> Ordinal;
+public fn ord_lt(a: Ordinal, b: Ordinal) -> Bool;
+public fn ord_eq(a: Ordinal, b: Ordinal) -> Bool;
+public fn ord_max(a: Ordinal, b: Ordinal) -> Ordinal;
+public fn ord_is_finite(o: Ordinal) -> Bool;
+```
+
+`Ordinal` encodes Cantor-normal-form ordinals below ε_0 — the
+range Verum's verification ladder occupies. Audit gates
+(`--coord`, `--coord-consistency`, `--no-coord`) consume the
+coord values to verify cross-cog and cross-theory consistency.
+
+```verum
+public type TranslationVerdict is
+    | Faithful
+    | Approximating
+    | Refuted;
+
+public fn verdict_of(obstruction: Float) -> TranslationVerdict;
+public fn verdict_admits(v: TranslationVerdict) -> Bool;
+```
+
+`TranslationVerdict` classifies each cross-framework translation
+attempt; the audit chronicle archives the verdict per bridge
+edge.
+
+---
+
+## Congruence closure (`congruence_closure.vr`)
+
+A union-find-based congruence-closure machinery for the equality
+fragment of imported theories. Used by the SMT-replay path when
+the trusted base needs to recognise structural equalities lifted
+from the external prover's proof object. The implementation is
+the standard Nelson-Oppen-style E-graph plus quotient
+representatives.
+
+---
+
 ## See also
 
 - **[math → infinity_topos](/docs/stdlib/math)** — the underlying
@@ -345,3 +444,9 @@ fn main() {
   theorems.
 - **[Verification → proofs](/docs/verification/proofs)** — how
   interop-translated theorems become Verum `theorem` declarations.
+- **[Verification → MSFS coord](/docs/verification/msfs-coord)** —
+  the operational coord-consistency machinery.
+- **[Verification → OWL 2](/docs/verification/owl2)** — the OWL 2
+  side of the `owl2_to_htt` bridge.
+- **[Verification → actic-dual](/docs/verification/actic-dual)** —
+  the AC/OC duality that the `oc_dc_bridge` realises.
