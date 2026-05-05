@@ -345,8 +345,23 @@ architecture-types/
 ├── adjunctions.md                   · canonical architectural adjunctions
 ├── audit-protocol.md                · the corpus-audit workflow
 ├── dual-audience.md                 · developer surface vs auditor surface
-└── self-application.md              · ATS-V annotated by ATS-V
+├── self-application.md              · ATS-V annotated by ATS-V
+├── operationalisation.md            · pure-data helpers & soundness pins
+├── red-team.md                      · five attack vectors and their closures
+└── cross-side-pin.md                · kernel ↔ Verum alignment discipline
 ```
+
+The Verum-side `core/architecture/` library has eleven cog
+files that surface the operational ATS-V layer: `types.vr`,
+`capability_ontology.vr`, `anti_patterns.vr`, `mtac.vr`,
+`counterfactual.vr`, `adjunction.vr`, `yoneda.vr`,
+`composition.vr`, `corpus.vr`, `phase.vr`, and `parse.vr`.
+Each ships its types, helper functions, and `@kernel_discharge(...)`
+axiom-bridges to the kernel-side counterpart in
+`crates/verum_kernel/src/arch*.rs`.  See
+[operationalisation](./operationalisation.md) for the full
+catalog and [cross-side-pin](./cross-side-pin.md) for the
+alignment guarantee that holds both sides in lockstep.
 
 A reader new to architectural typing should follow the path
 **[primitives/overview](./primitives/overview.md) →

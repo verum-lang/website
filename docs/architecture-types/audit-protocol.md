@@ -436,10 +436,50 @@ the pin reporting "synthetic disagrees as expected" is the
 strongest verdict; a green audit *without* the pin's confirmation
 is observational only.
 
-## 9. Cross-references
+## 9. Red-team closure axioms
+
+In addition to the 32-pattern catalog, the audit-bundle aggregator
+walks four kernel-discharge axioms that close known attack vectors
+against the ATS-V declarative surface:
+
+| Axiom                                              | Closes | Explanation |
+|---|---|---|
+| `kernel_arch_capability_ontology_check`            | AT-1   | Every `Capability.Custom { tag, schema }` must have its `tag` registered before passing the ATS-V phase.  Blocks injection of fake high-privilege capabilities. |
+| `kernel_arch_theorem_cve_required`                 | AT-2   | `Lifecycle.Theorem(...)` requires full CVE-closure regardless of the `strict` flag — Theorem-status semantically implies CVE+. |
+| `kernel_arch_yoneda_canonical_roster_complete`     | AT-3   | A Yoneda equivalence verdict is binding only when the `agreements` list spans the full canonical 5-roster.  Blocks single-observer fabrication. |
+| `kernel_arch_consumes_format_check`                | AT-5   | `consumes` field entries must match `<resource>/<positive_int> <unit>`.  Format violations surface as AP-025 DeclarationDrift. |
+
+AT-4 (composition path traversal in `composes_with` resolution)
+is delegated to the module-loader; documented for completeness in
+[the red-team page](./red-team.md).
+
+These axioms surface in the `--bundle` aggregator alongside the
+eight base intrinsics (`kernel_arch_capability_discipline`,
+`kernel_arch_boundary_check`, `kernel_arch_composition_check`,
+`kernel_arch_lifecycle_check`, `kernel_arch_foundation_consistency`,
+`kernel_arch_anti_pattern_check`, `kernel_arch_cve_closure`,
+`kernel_arch_soundness_v0`) and the four operational-engine
+intrinsics (`kernel_arch_composition_engine`,
+`kernel_arch_composition_associative`,
+`kernel_arch_corpus_verify`,
+`kernel_arch_phase_orchestrator`) — sixteen ATS-V discharges in
+the bundle, every one of which has a Verum-side `axiom`
+declaration mirrored to a kernel-side `dispatch_intrinsic` arm.
+The cross-side pin test in
+`crates/verum_kernel/tests/k_arch_v_alignment.rs` asserts both
+sides agree.
+
+## 10. Cross-references
 
 - [Anti-pattern overview](./anti-patterns/overview.md) —
   the 32-pattern catalog the `--arch-discharges` gate consumes.
+- [Red-team closures](./red-team.md) — detailed exposition of
+  AT-1..AT-5 attack vectors and their closures.
+- [Cross-side pin tests](./cross-side-pin.md) — kernel ↔ Verum
+  alignment discipline that prevents drift in the discharge
+  catalog.
+- [Operationalisation surface](./operationalisation.md) — the
+  pure-data helpers the audit reports cite.
 - [Counterfactual reasoning](./counterfactual.md) — the
   underlying engine for the `--counterfactual` gate.
 - [Adjunctions](./adjunctions.md) — the recogniser for the

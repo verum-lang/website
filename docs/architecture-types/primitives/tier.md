@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
 title: "Tier — execution placement"
-description: "The Tier primitive: where a cog's code runs (Interp, Aot, Gpu, TierCheck, MultiTier). Tier mismatches without explicit bridges trigger AP-004."
+description: "The Tier primitive: where a cog's code runs (Interp, Aot, Gpu, Check, MultiTier). Tier mismatches without explicit bridges trigger AP-004."
 slug: /architecture-types/primitives/tier
 ---
 
@@ -17,7 +17,7 @@ public type Tier is
     | Interp
     | Aot
     | Gpu
-    | TierCheck
+    | Check
     | MultiTier(List<Tier>);
 ```
 
@@ -26,13 +26,24 @@ Five variants:
 - **Interp** — Tier 0 interpreter. Instant startup, no compilation.
 - **Aot** — Tier 1 ahead-of-time native binary via LLVM.
 - **Gpu** — GPU-targeted code via MLIR lowering.
-- **TierCheck** — abstract-interpretation only; no code emitted.
+- **Check** — abstract-interpretation only; no code emitted.
 - **MultiTier(...)** — code that targets multiple tiers
   simultaneously.
 
 A cog declares its tier via `@arch_module(at_tier: Tier.Aot)`.
 Mismatches without an explicit bridge trigger
 [`AP-004 TierMixing`](../anti-patterns/classical.md#ap-004).
+
+:::note Rename pin
+Earlier drafts named the type-check-only variant `TierCheck`.
+The canonical name is now `Check` — matching the kernel-side
+`verum_kernel::arch::Tier::Check` and what the parser at
+`arch_parse::parse_tier` accepts.  Existing source declaring
+`Tier.TierCheck` will fail with `UnknownVariant{kind:"Tier",
+value:"TierCheck"}` and must be renamed.  See the
+[cross-side pin test](../cross-side-pin.md) for the alignment
+discipline.
+:::
 
 ## 1. The execution-tier landscape
 
@@ -49,7 +60,7 @@ the same VBC bytecode:
    ┌────┴────┬─────────┬──────────┐
    │         │         │          │
    ▼         ▼         ▼          ▼
- Interp   Aot       Gpu        TierCheck
+ Interp   Aot       Gpu        Check
  (tier 0) (tier 1)  (tier 1g)   (no exec)
 ```
 
@@ -102,9 +113,9 @@ The GPU tier supports a *subset* of VBC opcodes. Cogs declared
 `Tier.Gpu` must use only the supported subset; unsupported
 operations are diagnosed at GPU-lowering time.
 
-## 5. `Tier.TierCheck` — abstract-interpretation only
+## 5. `Tier.Check` — abstract-interpretation only
 
-The TierCheck tier runs the cog through abstract interpretation
+The Check tier runs the cog through abstract interpretation
 without emitting code. Used for:
 
 - Specification cogs whose only role is to document an
@@ -112,7 +123,7 @@ without emitting code. Used for:
 - Stub cogs awaiting implementation.
 - Test scaffolding whose behavior is checked statically.
 
-A `Tier.TierCheck` cog is admissible at audit time but does not
+A `Tier.Check` cog is admissible at audit time but does not
 produce a runtime artefact. Composing it with a `Tier.Aot` cog
 without a bridge triggers `AP-004`.
 
@@ -178,7 +189,7 @@ The audit chronicle records every tier bridge for review.
 
 ## 9. Tier and CVE Lifecycle interaction
 
-A `Tier.TierCheck` cog cannot declare `Lifecycle.Theorem(...)` —
+A `Tier.Check` cog cannot declare `Lifecycle.Theorem(...)` —
 without code emission, the E axis is absent, and a Theorem
 requires E-positive. Such a cog must be `Lifecycle.Definition`
 or `Lifecycle.Postulate(...)`.
@@ -190,12 +201,12 @@ warning[ATS-V-LIFECYCLE-TIER-MISMATCH]: lifecycle exceeds tier strength
   --> src/spec_only.vr:1:1
    |
  1 | @arch_module(
- 2 |     at_tier:  Tier.TierCheck,
+ 2 |     at_tier:  Tier.Check,
  3 |     lifecycle: Lifecycle.Theorem("v1.0"),
  4 | )
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Theorem requires
    |                                          executable code,
-   |                                          but tier is TierCheck.
+   |                                          but tier is Check.
    |
 help: change lifecycle to Definition or Postulate, or
       change tier to Interp / Aot / Gpu.
@@ -210,7 +221,7 @@ combination is admissible:
 |------------|------|-------------|
 | ZfcTwoInacc | Aot | Production code |
 | ZfcTwoInacc | Interp | Development scripts |
-| Hott | TierCheck | Theorem-only research |
+| Hott | Check | Theorem-only research |
 | Cic | Aot | Coq-verified production code |
 | Cubical | Interp | Cubical-evaluator REPL |
 

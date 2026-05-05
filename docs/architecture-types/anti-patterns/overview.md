@@ -285,11 +285,138 @@ A clean default-mode build emits zero warnings; a clean strict-mode
 build also has zero hints. Many codebases adopt strict mode
 incrementally per cog (via `@arch_module(strict: true)`).
 
-## 10. Cross-references
+## 10. Verum-side surface
+
+The 32-pattern catalog is exposed on the Verum side as a
+first-class enum in `core.architecture.anti_patterns`:
+
+```verum
+public type AntiPatternCode is
+    | CapabilityEscalation        // AP-001
+    | CapabilityLeak              // AP-002
+    // ... 30 more variants
+    | YonedaInequivalentRefactor; // AP-032
+
+public fn anti_pattern_code_str(c: AntiPatternCode) -> Text       // "ATS-V-AP-NNN"
+public fn anti_pattern_name(c: AntiPatternCode) -> Text           // "PascalCase"
+public fn anti_pattern_full_roster() -> List<AntiPatternCode>     // all 32
+public fn anti_pattern_roster_size_invariant() -> Bool            // pin: == 32
+```
+
+Verum cogs may iterate `anti_pattern_full_roster()` to build
+runtime walks (e.g. an in-process audit cog that records which
+patterns its codebase has cleared).  The roster size is pinned by
+the cross-side test in
+`crates/verum_kernel/tests/k_arch_v_alignment.rs` —
+adding a 33rd code requires updating both the kernel-side
+`AntiPatternCode::full_list()` and the Verum-side roster in the
+same change-set.
+
+Companion types:
+
+```verum
+public type Severity is | Error | Warning | Hint;
+public fn severity_tag(s: Severity) -> Text;
+
+public type AntiPatternViolation is {
+    code: AntiPatternCode,
+    severity: Severity,
+    summary: Text,
+    human_message: Text,
+    auto_fix_suggestion: Maybe<Text>,
+};
+
+public type DiagnosticContext is {
+    cog_name: Text,
+    parent_module: Maybe<Text>,
+};
+```
+
+`AntiPatternViolation` carries the dual-audience payload — both
+human-readable text and machine-readable RFC code — surfaced by
+the ATS-V phase as a structured compiler diagnostic.
+
+## 11. Implementation status
+
+Every code in the canonical 32-pattern roster has a corresponding
+`check_*` function on the kernel side.  The mapping is:
+
+| AP code | Check function | Lives in |
+|---|---|---|
+| AP-001 | `check_capability_escalation` | `arch_anti_pattern.rs` |
+| AP-002 | `check_capability_leak` | `arch_anti_pattern.rs` |
+| AP-003 | `check_dependency_cycle` | `arch_anti_pattern.rs` |
+| AP-004 | `check_tier_mixing` | `arch_anti_pattern.rs` |
+| AP-005 | `check_foundation_drift` | `arch_anti_pattern.rs` |
+| AP-006 | `check_register_mixing` | `arch_anti_pattern.rs` |
+| AP-007 | `check_tx_straddling` | `arch_anti_pattern.rs` |
+| AP-008 | `check_resource_straddling` | `arch_anti_pattern.rs` |
+| AP-009 | `check_lifecycle_regression` | `arch_anti_pattern.rs` |
+| AP-010 | `check_cve_incomplete` | `arch_anti_pattern.rs` |
+| AP-011 | `check_stratum_admissible` | `arch_anti_pattern.rs` |
+| AP-012 | `check_invariant_violation` | `arch_anti_pattern.rs` |
+| AP-013 | `check_dangling_message_type` | `arch_anti_pattern.rs` |
+| AP-014 | `check_unauthenticated_crossing` | `arch_anti_pattern.rs` |
+| AP-015 | `check_deterministic_violation` | `arch_anti_pattern.rs` |
+| AP-016 | `check_capability_duplication` | `arch_anti_pattern.rs` |
+| AP-017 | `check_orphan_capability` | `arch_anti_pattern.rs` |
+| AP-018 | `check_missing_handoff` | `arch_anti_pattern.rs` |
+| AP-019 | `check_foundation_downgrade` | `arch_anti_pattern.rs` |
+| AP-020 | `check_time_bound_leakage` | `arch_anti_pattern.rs` |
+| AP-021 | `check_persistence_mismatch` | `arch_anti_pattern.rs` |
+| AP-022 | `check_capability_laundering` | `arch_anti_pattern.rs` |
+| AP-023 | `check_foundation_forgery` | `arch_anti_pattern.rs` |
+| AP-024 | `check_transitive_lifecycle_regression` | `arch_anti_pattern.rs` |
+| AP-025 | `check_declaration_drift` | `arch_anti_pattern.rs` |
+| AP-026 | `check_foundation_content_mismatch` | `arch_anti_pattern.rs` |
+| AP-027 | `check_temporal_inconsistency` | `arch_anti_pattern.rs` |
+| AP-028 | `check_counterfactual_brittleness` | `arch_anti_pattern.rs` |
+| AP-029 | `check_missed_adjoint` | `arch_anti_pattern.rs` |
+| AP-030 | `check_universal_property_violation` | `arch_anti_pattern.rs` |
+| AP-031 | `check_phantom_evolution` | `arch_anti_pattern.rs` |
+| AP-032 | `check_yoneda_inequivalent_refactor` | `arch_anti_pattern.rs` |
+
+All 32 functions return `Option<AntiPatternViolation>` — `None`
+means the predicate holds (no violation), `Some(v)` carries the
+structured diagnostic.  `check_all_anti_patterns` walks every
+function and aggregates violations.  The cross-side pin test in
+`crates/verum_kernel/tests/k_arch_v_alignment.rs::pin_all_thirty_two_codes_have_check_function`
+asserts every entry in this table has a matching `pub fn check_*`
+in the source — adding a 33rd code requires updating both the
+enum and the table in lockstep.
+
+## 12. Red-team closure axioms
+
+Beyond the 32 declarative patterns, the Verum-side cog
+`core.architecture.anti_patterns` declares four kernel-discharge
+axioms that close known attack vectors against the declarative
+surface:
+
+- `kernel_arch_capability_ontology_check` (closes AT-1) —
+  registry validation for `Capability.Custom { tag, schema }`.
+- `kernel_arch_theorem_cve_required` (closes AT-2) —
+  `Lifecycle.Theorem(...)` requires CVE-closure regardless of
+  `strict`.
+- `kernel_arch_yoneda_canonical_roster_complete` (closes AT-3) —
+  Yoneda verdicts demand the full canonical 5-roster.
+- `kernel_arch_consumes_format_check` (closes AT-5) — `consumes`
+  field format enforcement.
+
+See the [red-team page](../red-team.md) for full attack-vector
+analysis.
+
+## 13. Cross-references
 
 - [Capability / composition core (AP-001 .. AP-010)](./classical.md)
 - [Boundary / lifecycle / capability ontology (AP-011 .. AP-026)](./articulation.md)
 - [Modal-temporal anti-patterns (AP-027 .. AP-032)](./mtac.md)
 - [Audit protocol](../audit-protocol.md) — running the gates.
+- [Red-team closures](../red-team.md) — five attack vectors and
+  their closure axioms.
+- [Operationalisation surface](../operationalisation.md) — full
+  catalog of pure-data helpers including the anti-pattern
+  enumerable surface.
+- [Cross-side pin tests](../cross-side-pin.md) — kernel ↔ Verum
+  alignment discipline pinning the roster size to 32.
 - [Three orthogonal axes](../orthogonality.md) — why `AP-001`
   catches a different class of defect than the property system.

@@ -78,6 +78,9 @@ const sidebars: SidebarsConfig = {
         'architecture-types/counterfactual',
         'architecture-types/adjunctions',
         'architecture-types/audit-protocol',
+        'architecture-types/operationalisation',
+        'architecture-types/red-team',
+        'architecture-types/cross-side-pin',
       ],
     },
     {

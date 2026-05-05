@@ -127,10 +127,14 @@ hand-written compositions; the law becomes load-bearing for
 might inject synthetic dependencies that depend on
 parenthesisation.
 
-[`AP-008 CompositionAssociativityBreak`](../anti-patterns/classical.md#ap-008)
-catches macro-generated compositions that violate associativity.
-The diagnostic identifies the offending macro and the
-non-associative edges.
+The associativity law is enforced by the kernel-discharge axiom
+[`kernel_arch_composition_associative`](../operationalisation.md)
+declared in `core.architecture.composition`.  The kernel proptest
+harness in `crates/verum_kernel/src/arch_composition.rs` samples
+valid Shape triples and asserts left-fold ≡ right-fold across the
+entire input space.  A violation is not a separate AP-NNN code in
+the canonical 32-pattern catalog — it surfaces directly as a
+soundness-pin failure of the engine.
 
 ## 6. The identity element
 
@@ -193,7 +197,48 @@ consequences:
 The composition algebra is therefore *not* a free monoid — it is
 constrained by the per-axis admissibility rules.
 
-## 10. Cross-references
+## 10. The operational engine — `core.architecture.composition`
+
+The discussion above covers the *declarative* surface — the
+`composes_with` field, the admissibility rules, the conservation
+laws.  ATS-V also ships the *operational* surface as a separate
+Verum-side cog `core.architecture.composition`, which mirrors
+the kernel-side `verum_kernel::arch_composition` module.
+
+The operational surface exposes:
+
+```verum
+public type CompositionResult is
+    | Composed(Shape)
+    | Rejected(List<AntiPatternViolation>);
+
+public fn composition_result_is_composed(r: CompositionResult) -> Bool
+public fn composition_result_tag(r: CompositionResult) -> Text
+public fn composition_result_violation_count(r: CompositionResult) -> Int
+
+@kernel_discharge("kernel_arch_composition_engine")
+public axiom kernel_arch_composition_engine() -> Bool
+@kernel_discharge("kernel_arch_composition_associative")
+public axiom kernel_arch_composition_associative() -> Bool
+```
+
+The engine is invoked at ATS-V phase 6.5 by the cross-module
+walker (`verify_composition_chain` in
+[`core.architecture.phase`](../operationalisation.md#26-corearchitecturephase)).
+For every pair `(A, B)` where the cog graph mounts B from A, the
+engine evaluates the five composition rules — capability flow,
+foundation compatibility, tier compatibility, stratum
+admissibility, no-cycle — and either returns a merged Shape or a
+list of structured violations carrying the canonical 32-pattern
+RFC codes.
+
+The associativity pin `kernel_arch_composition_associative`
+discharges the rule `(A ⊗ B) ⊗ C ≡ A ⊗ (B ⊗ C)` whenever the
+triple is pairwise compatible.  The kernel-side proptest harness
+samples valid Shape triples and asserts left-fold ≡ right-fold
+across the entire input space.
+
+## 11. Cross-references
 
 - [Capability primitive](./capability.md) — what flows through
   composition.
@@ -208,6 +253,11 @@ constrained by the per-axis admissibility rules.
 - [Shape](./shape.md) — the aggregate carrier.
 - [Adjunctions](../adjunctions.md) — the four canonical moves on
   the composition graph.
+- [Operationalisation surface](../operationalisation.md) — full
+  catalog of pure-data helpers and soundness pins.
+- [Cross-side pin tests](../cross-side-pin.md) — alignment
+  discipline.
 - [Anti-pattern AP-003 DependencyCycle](../anti-patterns/classical.md#ap-003).
-- [Anti-pattern AP-008 CompositionAssociativityBreak](../anti-patterns/classical.md#ap-008).
+- [Anti-pattern AP-008 ResourceStraddling](../anti-patterns/classical.md#ap-008).
 - [Anti-pattern AP-009 LifecycleRegression](../anti-patterns/classical.md#ap-009).
+- [Anti-pattern AP-018 MissingHandoff](../anti-patterns/articulation.md).

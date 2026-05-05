@@ -208,10 +208,10 @@ corpus: 267 annotated cogs
     Obsolete       : 0
 
   by tier:
-    Aot       : 213
-    Interp    : 38
-    Gpu       : 12
-    TierCheck : 4
+    Aot    : 213
+    Interp : 38
+    Gpu    : 12
+    Check  : 4
 
   by foundation:
     ZfcTwoInacc       : 256
