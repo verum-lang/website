@@ -130,7 +130,56 @@ A change-set missing any of these steps fails CI: either the pin
 test catches the drift, or the type-checker catches it because
 the Verum side and the kernel side disagree.
 
-## 5. Diagnostic-bundle integration
+## 5. Stdlib-discipline pins
+
+In addition to the kernel ↔ Verum surface alignment, the pin test
+file enforces three discipline-level invariants over the Verum
+stdlib (`core/`):
+
+### `pin_math_cogs_have_arch_module`
+
+Every `.vr` file directly under `core/math/` must carry an
+`@arch_module(foundation, stratum, lifecycle)` self-attestation
+declaration.  This was the closing of an ATS-V annotation gap
+where four files (`distributed.vr`, `guardrails.vr`,
+`examples.vr`, `stack_model.vr`) lacked the attribute despite
+the surrounding 60+ siblings carrying it.  The pin reads each
+`.vr` directly under the directory and asserts presence;
+sub-directories (`frameworks/`, `foundations/`) are checked by
+their own pins.
+
+### `pin_registry_covers_mod_mounts`
+
+Every public `mount core.math.frameworks.X` declaration in
+`frameworks/mod.vr` must have a matching `framework_record_new(...)`
+call somewhere in `frameworks/registry.vr`.  Concretely:
+
+- The 15 mount targets (lurie_htt, schreiber_dcct, …,
+  diakrisis*, msfs, bounded_arithmetic, …) all appear in mod.vr.
+- The 29 registered frameworks (15 Standard tier — 7 citation
+  packages + 6 foundational impls + meta-classifier + special
+  actic.raw — plus 14 VerifiedExtension entries — 4 diakrisis
+  extensions + 4 MSFS catalogues + 6 bounded-arithmetic entries)
+  all appear in registry.vr as `registry_register(r,
+  framework_record_new(...))` invocations.
+- The advertised `expected_full_canonical_count()` returns
+  exactly 29, matching the literal-count audit.
+
+This pin closes the prior docstring drift where registry.vr
+claimed "Standard frameworks: ZFC, HoTT, MLTT, CIC, NCG,
+∞-topos, cohesive" but never registered them.  The Standard
+tier now genuinely contains foundational implementation entries
+for `zfc_two_inacc`, `hott`, `cubical`, `mltt`, `cic`, `eff`,
+each pointing at the matching `core/math/<tag>.vr` cog.
+
+### `pin_no_internal_references_in_arch_vr`
+
+`core/architecture/*.vr` must not contain `internal/specs/...`
+or `internal/holon/...` cross-references — every such reference
+has been replaced with detailed inline exposition during the
+ATS-V hardening sweep.
+
+## 6. Diagnostic-bundle integration
 
 The audit-bundle aggregator (`verum audit --bundle`) walks every
 ATS-V kernel-discharge axiom and summarises per-cog and
@@ -155,7 +204,7 @@ intrinsic table has a matching Verum-side `axiom` declaration,
 preventing kernel-only discharges from leaking past the Verum
 declarations.
 
-## Cross-reference
+## 7. Cross-reference
 
 - [Operationalisation surface](./operationalisation.md)
 - [Red-team — closed attack vectors](./red-team.md)

@@ -330,7 +330,32 @@ canonical 4-roster" / "no bridges declared".  The
 `foundation_bridges` declarations suppress AP-005 FoundationDrift
 for the named pairs.
 
-## 7. Migration note — `Tier::TierCheck` → `Tier::Check`
+## 7. Foundation tag — usage convention
+
+The `Foundation` enum has seven inhabitants but only one
+(`ZfcTwoInacc`) is in active use across the corpus.  This is
+**not an oversight** — the others have a precise role defined by
+the meta-theory.
+
+| Tag | When to use |
+|---|---|
+| `Foundation.ZfcTwoInacc` | **DEFAULT.**  The cog's `.vr` source is implemented in Verum's standard meta-theory (ZFC + 2 strongly-inaccessibles).  Every current `core/` cog uses this tag, including `core/math/hott.vr` and `core/math/cubical.vr` which EXPOSE HoTT/cubical primitives but are themselves implemented in ZFC. |
+| `Foundation.Hott`, `.Cubical`, `.Mltt`, `.Cic`, `.Eff` | **RESERVED.**  For future cogs whose `.vr` source SEMANTICS requires the named foundation to be sound — i.e. cogs that (a) use constructs unique to that foundation (e.g. univalence as definitional equality, not an axiom), and (b) have refinement predicates whose truth values depend on the foundation's own axioms.  No such cog exists in the current corpus; the variants are kept for the subsumption graph (`foundation_directly_subsumed_by`) and for future extensibility. |
+| `Foundation.CustomFoundation(name, framework_corpus)` | For user-defined foundations admitted via the `@framework(corpus, ...)` registration mechanism. |
+
+**Architectural pin (AP-023 FoundationForgery)**: tagging a cog
+with `Foundation.Hott` (or any non-ZfcTwoInacc variant) when the
+`.vr` source is actually implemented in ZFC is itself a defect.
+The architectural type-checker raises AP-023 in that case —
+declared foundation does not match cited axioms.
+
+The `Foundation.ZfcTwoInacc` tag therefore correctly applies to
+`core/math/hott.vr` (and friends) because the implementation is
+ZFC-sound; downstream cogs CITING HoTT axioms via
+`@framework(hott, "...")` annotations do not change that — they
+simply add citation metadata for trusted-boundary audit.
+
+## 8. Migration note — `Tier::TierCheck` → `Tier::Check`
 
 Earlier drafts of `core.architecture.types.Tier` exposed a
 variant named `TierCheck`.  The kernel-side parser in
