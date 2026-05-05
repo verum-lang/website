@@ -7,51 +7,42 @@ slug: /architecture-types/operationalisation
 
 # Operationalisation — pure-data helpers and soundness pins
 
-The Architectural Type System for Verum (ATS-V) lives at two
-levels: the **declarative surface** that cogs use to annotate
-themselves (`@arch_module(...)`, `Capability`, `Lifecycle`, …),
-and the **kernel-discharge layer** that enforces invariants the
-declarative surface cannot decide locally.
+ATS-V lives at three layers:
 
-Between them sits a third layer: **operationalisation**.  Every
-methodological concept that is pure data — that can be computed
-deterministically from the surface types alone — is exposed as a
-`public fn` on the Verum side, not just an axiom.  Verum cogs
-can compute lifecycle ranks, stratum admissibility, foundation
-subsumption, modal classifications, observer rosters, and so on
-without crossing the FFI boundary into the kernel.
+1. **Declarative surface** — `@arch_module(...)`, `Capability`,
+   `Lifecycle`, … the syntax cogs use to annotate themselves.
+2. **Operationalisation** — `public fn` helpers in `.vr` files
+   that compute methodologically meaningful properties from the
+   surface types: `lifecycle_rank`, `tier_compatible_with`,
+   `foundation_directly_subsumed_by`, …
+3. **Kernel-discharge** — `@kernel_discharge(...)` axioms for
+   invariants the declarative surface cannot decide locally
+   (capability-flow inference, body-level analysis, SMT).
 
-This page enumerates the operationalised surface, explains *why*
-each helper is decidable on pure data, and documents the
-**soundness pins** — invariants that catch silent drift between
-the Verum side and the kernel side.
+This page enumerates the layer-2 surface and the **soundness
+pins** — Verum-side functions that catch drift between the
+helpers themselves.
 
 ## 1. Why a third layer
 
-Pure declarations leak responsibility to the kernel.  Every check
-becomes an axiom that says "trust me, the Rust side computes this
-correctly."  That is appropriate when the check genuinely needs
-information the AST cannot see (capability-flow inference from a
-function body, type-system unification, SMT-discharged
-refinements).  It is *inappropriate* for the many concepts that
-are simple folds over the surface types — `lifecycle_rank` is a
-match expression with nine arms, nothing more.
+A property that is decidable from surface types alone — like
+`lifecycle_rank`, a match expression with nine arms — does not
+belong behind a kernel axiom.  Hiding pure-data computations
+behind FFI breaks three things:
 
-When such concepts hide behind axioms, three things rot:
+1. **Discoverability.** LSP cannot complete fields the editor
+   cannot evaluate.  `@arch_module(lifecycle = …)` should let the
+   editor compute the rank inline.
+2. **Verum-side proofs.** Theorems over lifecycle ordering /
+   foundation subsumption / etc. need Verum predicates, not
+   Rust functions.
+3. **Cross-side drift.** Without a Verum-side counterpart there
+   is nothing to compare against — the Rust function silently
+   becomes the source of truth.
 
-1. **Discoverability.** LSP completion has nothing to show.  An
-   author writing `@arch_module(lifecycle = ...)` cannot ask the
-   editor "what rank does this resolve to?"
-2. **Verum-side proofs.** Theorems about lifecycle ordering,
-   foundation subsumption, etc. cannot be expressed in Verum at
-   all if the relevant predicates exist only as Rust functions.
-3. **Cross-side drift.** When the Verum side has no operational
-   counterpart, drift between the Rust and the Verum surface goes
-   undetected until a real cog miscompiles.
-
-The third layer closes all three: helpers live in `.vr` files
-next to the types they operate on; cogs can prove properties about
-them; the cross-side pin test compares both sides.
+The operationalisation layer fixes this: helpers live in `.vr`
+next to their types; cogs prove properties over them; the
+cross-side pin test compares both sides.
 
 ## 2. Helpers exposed by `core.architecture`
 
@@ -228,29 +219,11 @@ public fn agreement_status_disjoint_pin() -> Bool        // Agree / Disagree dis
 
 ## 4. Cross-side alignment guarantee
 
-The Verum-side helpers are not the source of truth — the kernel
-is.  The Rust-side `verum_kernel::arch::*` modules contain
-identical computations for every helper above (e.g.
-`Lifecycle::rank`, `Foundation::directly_subsumed_by`,
-`Tier::compatible_with`).  Any drift between the two sides
-breaks the architectural type checker.
-
-To prevent silent drift, the cross-side pin test in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs` enumerates the
-canonical roster — variant counts, variant tag strings, helper
-function presence by name — and asserts both sides agree.  The
-test:
-
-1. Reads `core/architecture/*.vr` as text and extracts the
-   declared variants and helper signatures.
-2. Compares against a hard-coded canonical roster maintained in
-   the test file itself.
-3. Asserts the kernel side has the same shape via the Rust enum
-   reflection (`tag()`, `code()`, `full_canonical_roster()`).
-
-When a contributor adds a variant on either side without updating
-the other, CI fails with a concrete message naming the missing
-counterpart.
+The Verum-side helpers mirror Rust-side computations in
+`verum_kernel::arch::*`.  Drift breaks the architectural type
+checker, so [`crates/verum_kernel/tests/k_arch_v_alignment.rs`](./cross-side-pin.md)
+pins both sides — variant counts, tag strings, helper presence —
+and fails CI on any divergence.
 
 ## 5. Why the helpers are pure data
 
