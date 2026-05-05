@@ -140,6 +140,39 @@ them; the cross-side pin test compares both sides.
 | `arch_module_canonical_fields()`       | `() → List<Text>`              | The 13 field names the parser recognises. |
 | `arch_module_field_count_invariant()`  | `() → Bool`                    | Pin: roster size is exactly 13. |
 
+### 2.8 `core.architecture.counterfactual`
+
+| Helper | Type | Purpose |
+|---|---|---|
+| `arch_metric_tag(m)`                              | `ArchMetric → Text`           | Stable audit tag (12 arms). |
+| `metric_value_tag(v)`                             | `MetricValue → Text`          | Stable arm tag for serialisation without leaking inner payload. |
+| `invariant_status_tag(s)`                         | `InvariantStatus → Text`      | Stable audit tag (4 arms). |
+| `invariant_status_is_stable(s)`                   | `InvariantStatus → Bool`      | True iff arm is `HoldsBoth` — the unique stable arm. |
+| `report_overall_stable_predicate(r)`              | `&CounterfactualReport → Bool`| Aggregate stability — empty list yields `false` (refusal of stability from absence of evidence). |
+| `report_diverging_metric_count_predicate(r)`      | `&CounterfactualReport → Int` | Counts entries where `diverges == true`. |
+
+### 2.9 `core.architecture.adjunction`
+
+| Helper | Type | Purpose |
+|---|---|---|
+| `canonical_adjunction_tag(a)`            | `CanonicalAdjunction → Text`     | Stable audit tag (5 arms). |
+| `refactoring_direction_tag(d)`           | `RefactoringDirection → Text`    | Stable audit tag. |
+| `adjunction_verdict_tag(v)`              | `AdjunctionVerdict → Text`       | Stable audit tag (4 arms). |
+| `adjunction_verdict_is_accepted(v)`      | `AdjunctionVerdict → Bool`       | True iff `Accepted` arm. |
+| `all_preservation_holds(coverages)`      | `List<PreservedCoverage> → Bool` | True iff every preserved-coverage entry has `held_before ∧ held_after ∧ preserved_actual`. |
+| `all_gain_holds(coverages)`              | `List<GainedCoverage> → Bool`    | True iff every gained-coverage entry has `¬held_before ∧ held_after ∧ gained_actual`. |
+| `chain_acceptance_predicate(c)`          | `&ChainAnalysis → Bool`          | True iff every step accepted AND chain non-empty. |
+
+### 2.10 `core.architecture.yoneda`
+
+| Helper | Type | Purpose |
+|---|---|---|
+| `observation_observer_tag(o)`             | `ShapeObservation → Text`         | Stable observer-kind tag for the Shape projection. |
+| `agreement_status_tag(s)`                 | `AgreementStatus → Text`          | Stable audit tag. |
+| `all_agreements_agree(agreements)`        | `List<ObserverAgreement> → Bool`  | True iff every entry is `Agree`. |
+| `count_disagreements(agreements)`         | `List<ObserverAgreement> → Int`   | Mirror of `YonedaVerdict.disagreement_count`. |
+| `yoneda_verdict_equivalent_predicate(v)`  | `&YonedaVerdict → Bool`           | Verdict.equivalent is sound iff non-empty AND all agreements agree.  AT-3 closure additionally requires full canonical-5 roster. |
+
 ## 3. Soundness pins
 
 A **soundness pin** is a Verum-side function that asserts a
@@ -175,6 +208,22 @@ public fn adjunction_mirror_symmetry() -> Bool
 public fn anti_pattern_roster_size_invariant() -> Bool   // 32
 public fn corpus_invariant_roster_size_invariant() -> Bool  // 4
 public fn arch_module_field_count_invariant() -> Bool    // 13
+```
+
+### 3.4 Pins in `core.architecture.counterfactual` / `adjunction` / `yoneda`
+
+```verum
+// counterfactual.vr
+public fn invariant_status_uniqueness_pin() -> Bool      // HoldsBoth uniquely stable
+public fn empty_invariants_unstable_pin() -> Bool        // empty list ⇒ unstable
+
+// adjunction.vr
+public fn verdict_acceptance_uniqueness_pin() -> Bool    // Accepted unique success
+public fn empty_chain_rejected_pin() -> Bool             // empty chain rejected
+
+// yoneda.vr
+public fn empty_agreements_not_equivalent_pin() -> Bool  // empty ⇒ ¬equivalent
+public fn agreement_status_disjoint_pin() -> Bool        // Agree / Disagree distinct
 ```
 
 ## 4. Cross-side alignment guarantee

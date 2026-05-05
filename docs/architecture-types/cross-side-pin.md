@@ -179,6 +179,49 @@ or `internal/holon/...` cross-references — every such reference
 has been replaced with detailed inline exposition during the
 ATS-V hardening sweep.
 
+### `pin_capability_ontology_aligned`
+
+The kernel-static `arch::canonical_capability_registry()`
+returns the same 7 canonical capability tags (logger / metrics /
+tracing / config_read / config_admin / supervisor_spawn /
+kernel_intrinsic) that the Verum-side
+`core/architecture/capability_ontology.vr::ATS_V_CANONICAL_CAPABILITIES`
+declares.  Adding a new canonical capability requires updating
+both sides AND this pin in the same change-set.
+
+### `pin_phase_inputs_wires_red_team_data`
+
+`run_arch_phase_one_with` (the entry the compiler pipeline
+calls) populates `DiagnosticContext.capability_ontology_registry`
+from the kernel-static canonical roster.  This activates the
+AT-1 closure in real builds — without this wiring, the closure
+only fires in unit tests (silent regression risk).
+
+### `pin_compiler_phase_wires_foreign_foundation_constructs`
+
+The compiler-side `verum_compiler::pipeline::ats_v_phase` calls
+`run_arch_phase_one_with` (not bare `run_arch_phase_one`) and
+constructs `PhaseInputs` with `foreign_foundation_constructs`
+populated from `@framework(corpus, "...")` body annotations.
+This activates the AP-026 FoundationContentMismatch check in
+real builds.
+
+### `pin_verify_cogs_have_arch_module` / `pin_proof_cogs_have_arch_module`
+
+The `@arch_module(...)` annotation discipline that originally
+applied to `core/math/*.vr` now also covers
+`core/verify/*.vr` and `core/proof/*.vr`.  Every cog in the
+verification stack self-attests, completing the architectural
+type-system coverage across the three foundational stdlib
+directories (math / verify / proof).
+
+### `pin_counterfactual_helpers_present` / `pin_adjunction_helpers_present` / `pin_yoneda_helpers_present`
+
+Three operationalisation pins assert each cog ships its full
+helper surface (tag functions, predicate helpers, soundness
+pins).  Adding a new variant or removing a helper requires
+updating the matching pin in lockstep.
+
 ## 6. Diagnostic-bundle integration
 
 The audit-bundle aggregator (`verum audit --bundle`) walks every
