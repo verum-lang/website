@@ -208,12 +208,28 @@ real builds.
 
 ### `pin_verify_cogs_have_arch_module` / `pin_proof_cogs_have_arch_module`
 
-The `@arch_module(...)` annotation discipline that originally
-applied to `core/math/*.vr` now also covers
-`core/verify/*.vr` and `core/proof/*.vr`.  Every cog in the
-verification stack self-attests, completing the architectural
-type-system coverage across the three foundational stdlib
-directories (math / verify / proof).
+The `@arch_module(...)` annotation discipline applies to
+`core/verify/*.vr` and `core/proof/*.vr`.  Each cog in the
+verification stack self-attests.
+
+### `pin_universal_arch_module_coverage_in_core`
+
+**Universal pin.** Every `.vr` file under `core/` (recursive,
+2158 cogs as of writing) must carry `@arch_module(...)`.  This
+is the strongest architectural promise the stdlib makes: ATS-V
+annotation discipline is not opt-in, not directory-scoped — it
+is the universal contract every cog signs.
+
+The pin walks `core/` recursively (excluding `target/` build
+artifacts), counts cogs by their `^module core.X.Y;` declaration,
+and asserts every cog carries the attribute.  A floor of 1500
+cogs is also asserted as a sanity boundary against accidental
+directory deletion.
+
+Adding a new cog requires either annotating it with
+`@arch_module(...)` OR adding an explicit exemption to the pin
+with rationale.  Files without a `module` declaration (auxiliary
+helpers, fixtures) are exempted automatically.
 
 ### `pin_counterfactual_helpers_present` / `pin_adjunction_helpers_present` / `pin_yoneda_helpers_present`
 
