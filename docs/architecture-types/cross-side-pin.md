@@ -14,7 +14,7 @@ ATS-V splits its implementation across two sides:
   variants, helper functions, kernel-discharge axioms.
 - The **kernel side** (`crates/verum_kernel/src/arch*.rs`) is
   the Rust implementation that actually parses
-  `@arch_module(...)`, builds Shapes, runs the 32-pattern
+  `@arch_module(...)`, builds Shapes, runs the 39-pattern
   catalog, and discharges architectural invariants through
   intrinsics.
 

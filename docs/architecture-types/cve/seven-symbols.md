@@ -36,6 +36,28 @@ removal". It is *less* strict than `[✗]` Retracted: the artefact
 still functions but is expected to be replaced. New code should
 prefer `[✗]` for deliberate withdrawals.
 
+## 1.5. The three senses of E (executability)
+
+The CVE-E axis disambiguates three operationally distinct senses
+of "executable", per [cve-architecture spec §2.3.0](#three-senses-spec):
+
+| Sense | Meaning | Canonical for E? |
+|-------|---------|------------------|
+| **Structural readiness** | The artefact admits a working representation deployable in a suitable environment | ✓ — THIS IS the E axis |
+| **Current execution** | The artefact is presently running in production | stronger — characterises L0 maturity, NOT the E axis |
+| **Post-factum chronicle** | Accumulated history of past execution | material for §15 antifragility chronicle, NOT the E axis |
+
+The Verum-side `ExecutabilitySense` enum exposes all three; the
+soundness pin `executability_sense_canonical_unique` enforces that
+exactly one (`StructuralReadiness`) anchors CVE-E. Conflating the
+senses is a register collision and produces silent audit-chronicle
+defects (audit reads "executable" but the artefact is not deployable,
+or vice versa).
+
+The seven-symbol taxonomy treats E in the **structural readiness
+sense**: a `[T]` Theorem requires the artefact to be deployable, not
+merely "running today" or "ran yesterday".
+
 ## 2. The Lifecycle poset
 
 The seven symbols form a partial order under "rank". The
@@ -211,7 +233,7 @@ present, but no check and no executable form.
 formulated, confidence-graded (`Low` / `Medium` / `High`), but
 neither proved nor implemented. A `[H]` artefact MUST carry a
 maturation plan; a hypothesis without a plan is a candidate for
-[`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016).
+[`AP-034 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-034).
 
 **Worked example:**
 
@@ -234,7 +256,7 @@ are present. The artefact exists *only* as descriptive prose.
 **When to use:** *transitional* — the artefact has been written
 down but has not yet been re-articulated in any of the higher
 statuses. Mature corpora MUST contain zero `[I]` entries.
-[`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017)
+[`AP-035 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-035)
 flags any `[I]` annotation on a cog declared in `strict: true`
 mode; the diagnostic forces the author to either upgrade
 (`[H]` with a plan, or `[C]` with conditions, or higher) or
@@ -266,7 +288,7 @@ A `[✗]` annotation MUST carry:
    that supersedes it, if any.
 
 Citing a `[✗]` cog produces a compile-time error
-([`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013)).
+([`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033)).
 
 ## 4. The legacy `Plan` and `Obsolete` variants
 
@@ -338,4 +360,4 @@ attribute contract.
   see [primitives/lifecycle](../primitives/lifecycle.md).
 - For the anti-patterns that consume the lifecycle ordering see
   [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009)
-  and [`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013).
+  and [`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033).

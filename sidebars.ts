@@ -43,6 +43,7 @@ const sidebars: SidebarsConfig = {
             'architecture-types/cve/seven-symbols',
             'architecture-types/cve/seven-layers',
             'architecture-types/cve/articulation-hygiene',
+            'architecture-types/cve/architectural-revisions',
           ],
         },
         {

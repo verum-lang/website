@@ -119,6 +119,25 @@ re-checked through the trusted kernel.
 
 **Companion attributes:** `@verify(certified)` on each public
 function; optionally `@framework(...)` markers for cited axioms.
+In **strict mode**, the cog MUST also declare:
+
+- `declarations.purpose: Some(Purpose { ... })` — declared
+  thresholds bounding the audit
+  ([`AP-037 BoundlessAudit`](../anti-patterns/articulation.md#ap-037)).
+- `declarations.substrate: Some(CognitiveSubstrate.AnalyticDecompositional)` —
+  cognitive substrate disclosure
+  ([`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)).
+- `declarations.anchoring: Some(FormalAnchoring.CurryHowardLawvere)` —
+  required only when `Foundation` is **outside** the CHL domain
+  `{ZfcTwoInacc, Cic, Mltt, Hott, Cubical, Eff}`
+  ([`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)).
+
+**The E axis sense.** A `[T]` Theorem requires E in the
+**`StructuralReadiness`** sense, per
+[cve-architecture spec §2.3.0](../cve/three-axes.md#three-senses).
+"Currently running in production" and "ran in the past" are
+co-located but distinct concepts; conflating them is a register
+collision.
 
 **Maturation path:** none — `[T]` is the terminal status. To
 *retract* a `[T]`, transition to `Retracted("reason", Some(replacement))`.
@@ -126,7 +145,21 @@ function; optionally `@framework(...)` markers for cited axioms.
 **Example:**
 
 ```verum
-@arch_module(lifecycle: Lifecycle.Theorem("v2.1"))
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v2.1"),
+    strict: true,
+    declarations: ShapeDeclarations {
+        purpose: Some(Purpose {
+            role: "AEAD primitive: integrity + confidentiality for the payment cog graph",
+            k_min: CveThresholdK.FullWitness,
+            v_min: CveThresholdV.FullFormalProof,
+            e_min: CveThresholdE.StructurallyReady,
+        }),
+        substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+        anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+        e_sense: Some(ExecutabilitySense.StructuralReadiness),
+    },
+)
 module my_app.crypto.poly1305;
 
 @verify(certified)
@@ -228,7 +261,7 @@ future release.
 **When:** speculation. The cog is in active design, no
 implementation, no proof, no tests. MUST carry a maturation
 plan; a hypothesis without a `@plan(...)` attribute is
-[`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016).
+[`AP-034 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-034).
 
 **Companion attributes:** `@plan(target: ..., milestones: [...])`.
 
@@ -258,7 +291,7 @@ mature into a higher status or be removed before the corpus
 ships.
 
 In `strict: true` mode, an `Interpretation` annotation is
-[`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017).
+[`AP-035 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-035).
 
 **Maturation path:** transition out as soon as the artefact gains
 C, V, or E content.
@@ -275,7 +308,7 @@ deprecated, scope-removed. The record is preserved as a *negative
 example* in the audit chronicle.
 
 Citing a `[✗]` cog produces a compile-time error
-([`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013)).
+([`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033)).
 
 **Companion attributes:** `@retracted_as_of(date: "YYYY-MM-DD")`
 optionally pins the retraction date for audit chronology.
@@ -313,9 +346,9 @@ checks:
 |-------|--------------|---------------|
 | Citing cog has lower rank than cited | [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009) | direct citation |
 | Citing chain exposes a low-rank link | [`AP-024 TransitiveLifecycleRegression`](../anti-patterns/articulation.md#ap-024) | transitive walk |
-| Citing a `[✗]` cog | [`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013) | direct citation |
-| `[H]` Hypothesis without `@plan` | [`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016) | declaration site |
-| `[I]` Interpretation in `strict: true` | [`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017) | declaration site |
+| Citing a `[✗]` cog | [`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033) | direct citation |
+| `[H]` Hypothesis without `@plan` | [`AP-034 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-034) | declaration site |
+| `[I]` Interpretation in `strict: true` | [`AP-035 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-035) | declaration site |
 | Lifecycle missing from `strict: true` cog | `ATS-V-LIFECYCLE-MISSING` (declaration error) | declaration site |
 | `Lifecycle.Theorem` cog whose body lacks `@verify(...)` | `ATS-V-LIFECYCLE-UNDERSPECIFIED` | declaration site |
 
@@ -380,7 +413,7 @@ over re-deriving the values from the variant tag.
 - [Shape](./shape.md) — the aggregate carrier of which Lifecycle
   is one field.
 - [Anti-pattern AP-009 LifecycleRegression](../anti-patterns/classical.md#ap-009)
-- [Anti-pattern AP-013 RetractedCitationUse](../anti-patterns/articulation.md#ap-013)
-- [Anti-pattern AP-016 HypothesisWithoutMaturationPlan](../anti-patterns/articulation.md#ap-016)
-- [Anti-pattern AP-017 InterpretationInMatureCorpus](../anti-patterns/articulation.md#ap-017)
+- [Anti-pattern AP-033 RetractedCitationUse](../anti-patterns/articulation.md#ap-033)
+- [Anti-pattern AP-034 HypothesisWithoutMaturationPlan](../anti-patterns/articulation.md#ap-034)
+- [Anti-pattern AP-035 InterpretationInMatureCorpus](../anti-patterns/articulation.md#ap-035)
 - [Anti-pattern AP-024 TransitiveLifecycleRegression](../anti-patterns/articulation.md#ap-024)

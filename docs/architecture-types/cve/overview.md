@@ -144,6 +144,94 @@ articulation-hygiene** discipline: a frame that cannot articulate
 itself in its own vocabulary is, by construction, weaker than the
 artefacts it claims to classify. CVE survives self-application.
 
+### 4.1 Cognitive substrate disclosure {#substrate-disclosure}
+
+CVE operates under a specific cognitive mode — the
+**analytic-decompositional** substrate. Per
+[cve-architecture spec §1.5](../../../internal/cve/docs/cve-architecture.md),
+operational hygiene requires that the framework knows its own
+mode and does not masquerade as a universal neutral apparatus.
+Alternative substrates exist and are co-equal in their proper
+domains:
+
+| Substrate | Operational mode | When CVE-zone applies |
+|-----------|------------------|-----------------------|
+| **`AnalyticDecompositional`** | The artefact decomposes into K/V/E projections, each evaluated separately, the verdict assembled. | Default for `@arch_module(...)`; the canonical CVE substrate. |
+| **`HolisticRelational`** | The artefact is evaluated as a non-decomposable node in a network of relations. | Living tradition, professional-network maturity, historical ensemble — CVE captures only the *transmissible articulable contour*. |
+| **`ActionCentric`** | The action IS the artefact (craft mastery, performance disciplines). | CVE captures the protocol + measurable markers; non-articulable mastery sits outside the CVE-zone. |
+| **`TraditionTransmitting`** | The artefact's identity is in multi-generational reproduction. | CVE captures the transmission lineage's articulable invariants. |
+
+The Verum-side `CognitiveSubstrate` enum exposes all four. In
+strict-mode `[T]` cogs, omitting an explicit substrate
+declaration triggers
+[`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038):
+operationally indistinguishable from a vacuous claim of universality.
+
+The CVE-zone vs out-of-CVE-zone boundary is made explicit per
+[cve-architecture spec §13.4](../../../internal/cve/docs/cve-architecture.md):
+mature practice **knows what is transmissible** (CVE-zone) and
+what arises only in individual master work (outside CVE-zone),
+and does not conflate the registers.
+
+### 4.2 Formal anchoring boundary {#anchoring-disclosure}
+
+The CVE tri-axis closure has an **eponymous** formal anchoring —
+the **Curry-Howard-Lawvere** triad (logic ↔ types ↔ categories) —
+which is the most-developed of all available anchorings.
+Per [cve-architecture spec §4.5](../../../internal/cve/docs/cve-architecture.md),
+parallel anchorings exist at various stages of formalisation:
+
+| Anchoring | Tri-register | Formalisation stage |
+|-----------|--------------|---------------------|
+| **`CurryHowardLawvere`** | logic ↔ types ↔ categories | Most developed; canonical for math/SE |
+| **`AutomataTheory`** | grammars ↔ automata ↔ languages | Mature, formalisable |
+| **`ControlTheory`** | state equations ↔ transfer functions ↔ realisations | Mature in classical settings |
+| **`DistributedProtocols`** | specifications ↔ execution models ↔ observable traces | Active research |
+| **`FunctionalSystems`** | afferent synthesis ↔ action program ↔ result acceptor | Behavioural biology, cognitive physiology |
+| **`InstitutionalDesign`** | normative structure ↔ decision procedure ↔ stabilised practices | Social institutions |
+| **`CustomAnchoring(name)`** | user-registered | Open catalog |
+
+CHL is the eponym, **not** the only valid anchoring. CVE applies
+in two regimes: **methodological CVE** (before formal anchoring in
+a domain) and **anchored-formal CVE** (after). A `[T]` Theorem cog
+under a non-CHL foundation without a declared `FormalAnchoring`
+triggers [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039):
+the artefact silently inherits CHL semantics it does not satisfy.
+
+### 4.3 Audit termination via declared Purpose {#purpose-disclosure}
+
+A naïve CVE audit has no built-in termination criterion: every
+inspection might reveal a refinement, and the audit drifts into
+infinite polishing. Per
+[cve-architecture spec §14.6](../../../internal/cve/docs/cve-architecture.md),
+the audit closes relative to the **declared purpose** of the
+artefact: the role for which it is built, with explicit thresholds
+on each of the three axes.
+
+The Verum-side `Purpose` type captures this:
+
+```verum
+type Purpose is {
+    role: Text,
+    k_min: CveThresholdK,  // FullWitness | TypedSchema | ReferenceImplBounded
+    v_min: CveThresholdV,  // FullFormalProof | TypecheckPlusTests | NamedCertification
+    e_min: CveThresholdE,  // StructurallyReady | DeployedInOneEnv | FunctorialOnly
+};
+```
+
+When configuration meets thresholds, the audit closes —
+**no further action is taken**, the artefact is sound for its
+declared role. Without a declared purpose,
+[`AP-037 BoundlessAudit`](../anti-patterns/articulation.md#ap-037)
+fires in strict mode: the audit becomes perennial critique rather
+than a terminating procedure.
+
+Termination through declared purpose is not a relaxation of
+rigour — it is the load-bearing distinction between **purposeful
+audit** and **infinite polishing** that, for Turing-complete
+systems, is forbidden by Rice's theorem and, for trained models,
+forbidden by the natural opacity of high-dimensional weights.
+
 ## 5. CVE and the seven layers
 
 CVE is layered. The same three questions yield different answers
@@ -213,6 +301,48 @@ Verum's contribution is not the framework — the framework is older
 than Verum — but the *mechanisation* of the framework: every
 artefact's CVE status is computed by the compiler, surfaced by the
 tooling, and load-bearing in the audit gates.
+
+### 7.1 Lineage boundary {#lineage-boundary}
+
+Verum's CVE inherits five formal lines from the **Western
+mathematico-engineering tradition** of foundations and systems
+design — the line in which CHL (see §4.2 above) is most developed
+and engineering disciplines reach the level of international
+standards with explicit contractual design. This choice is not
+neutral: per
+[cve-architecture spec §19.7](../../../internal/cve/docs/cve-architecture.md),
+the lineage is a constatation of formal readiness, not a
+preference.
+
+Parallel traditions of strict knowledge work exist in other
+cultural-formal contexts and remain open directions:
+
+- **Classical Indian logic (Nyāya)** — formal theory of inference
+  via five-membered syllogistics, systematic typology of
+  reasoning errors, the *pramāṇas* (criteria of valid
+  cognition).
+- **Mediaeval Islamic methodology (kalām, uṣūl al-fiqh)** —
+  systematic foundations work, hierarchy of sources, formalised
+  procedure for reconciling precedents; mature status taxonomy
+  paralleling the seven-symbol scheme.
+- **Chinese codification of law** — Tang/Song/Ming/Qing systemic
+  codes with explicit application procedure, precedential
+  discipline, integrated meta-administrative protocols.
+- **Buddhist conceptual analysis** — Mādhyamika tetralemma as
+  formal refutation procedure, abhidharma dharma taxonomy,
+  Dignāga–Dharmakīrti epistemology.
+- **Ancient and Hellenistic syllogistic** — Peripatetic /
+  Stoic logic transmitted through Arabic and Latin commentators;
+  partially absorbed into the Western line and partially
+  preserved as a parallel lineage.
+
+These traditions are **not** cited as foundational anchorings
+because their formal correspondences with the K/V/E axes
+require independent systematic work not yet completed in this
+documentation. Establishing such correspondences is an open
+research direction; CVE does not claim Western uniqueness, and
+parallel anchorings (per §4.2) are welcome as their formalisation
+matures.
 
 ## 8. How to read a CVE-classified codebase
 

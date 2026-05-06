@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: "Anti-pattern catalog — overview"
-description: "Thirty-two canonical architectural defects ATS-V detects at compile time, organised in three bands matching the canonical anti-pattern catalog."
+description: "Thirty-nine canonical architectural defects ATS-V detects at compile time, organised in four bands matching the canonical anti-pattern catalog."
 slug: /architecture-types/anti-patterns
 ---
 
@@ -11,7 +11,7 @@ The Architectural Type System for Verum maintains a **canonical
 catalog of architectural defects**, each registered as a
 refinement-level predicate the compiler checks. This page indexes
 the catalog and explains its structure. Each anti-pattern has its
-deep entry in one of the three band-specific pages.
+deep entry in one of the four band-specific pages.
 
 The catalog itself — the closed enumeration of canonical
 anti-patterns — is the canonical source. The website mirrors
@@ -25,9 +25,9 @@ hand. The catalog is also *append-only*: a future Verum version
 may add patterns; existing patterns are never renumbered or
 removed.
 
-## 1. The three bands
+## 1. The four bands
 
-The thirty-two patterns split into three bands by *what kind of
+The thirty-nine patterns split into four bands by *what kind of
 architectural concern they address*. The bands are documentary
 categories — they all share the same diagnostic infrastructure,
 the same RFC code format (`ATS-V-AP-NNN`), and the same audit
@@ -38,6 +38,7 @@ pipeline.
 | **Capability / composition core** | AP-001 .. AP-010 | Capability discipline, composition algebra, lifecycle ordering, foundation drift, register mixing, transaction / resource straddling, CVE-closure completeness | [classical](./classical.md) |
 | **Boundary / lifecycle / capability ontology** | AP-011 .. AP-026 | Stratum admissibility, boundary invariants, wire encoding, authentication, deterministic-test discipline, linear / affine / relevant capability flavours, persistence and time-bound contracts, transitive lifecycle, declaration vs body drift, foundation-content alignment | [ontology](./articulation.md) |
 | **Modal-temporal architectural calculus** | AP-027 .. AP-032 | Temporal stability, counterfactual brittleness, refactoring adjunctions, universal-property uniqueness, evolution-trigger satisfiability, Yoneda observer-functor invariance | [mtac](./mtac.md) |
+| **CVE articulation-hygiene** | AP-033 .. AP-039 | Operationalises [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md) primitives: retracted-citation use, hypothesis without maturation plan, interpretation in mature corpus, observer impersonation, boundless audit, implicit substrate, anchoring overextension | [cve-ah](./articulation.md#cve-articulation-hygiene-band-ap-033--ap-039) |
 
 The `classical` and `ontology` bands together cover what the
 ATS-V specification calls *static-architecture defects* —
@@ -45,7 +46,13 @@ violations the compiler can decide without simulating time or
 counterfactuals. The MTAC band handles the modal-temporal
 surface (per spec §20–§23): time as a non-linear lattice,
 counterfactuals as paired decision swaps, refactorings as
-adjunctions, observers as Yoneda functors.
+adjunctions, observers as Yoneda functors. The CVE-AH band
+operationalises the cve-architecture spec's load-bearing
+concepts that the canonical 32-pattern release omitted: the
+three senses of E (§2.3.0), declared purpose for audit
+termination (§14.6), cognitive substrate disclosure (§1.5),
+formal anchoring boundary (§4.5), and the CVE-violator
+discipline of [I] / [H] / [✗] (§3.5).
 
 ## 2. The catalog at a glance
 
@@ -83,6 +90,13 @@ adjunctions, observers as Yoneda functors.
 | AP-030 | UniversalPropertyViolation | mtac | universal-property uniqueness claim with no witness |
 | AP-031 | PhantomEvolution | mtac | declared evolution path passes through an unsatisfiable trigger |
 | AP-032 | YonedaInequivalentRefactor | mtac | refactor changes the observer-functor (Yoneda inequivalent) |
+| AP-033 | RetractedCitationUse | cve-ah | citing a `[✗]` Retracted artefact (cve-architecture spec §3.5) |
+| AP-034 | HypothesisWithoutMaturationPlan | cve-ah | `[H]` Hypothesis without `@plan(...)` (cve-architecture spec §3.5) |
+| AP-035 | InterpretationInMatureCorpus | cve-ah | `[I]` Interpretation in strict-mode / mature corpus (cve-architecture spec §3.4) |
+| AP-036 | ObserverImpersonation | cve-ah | observer role mismatches assertion register (cve-architecture spec §6.7 L6) |
+| AP-037 | BoundlessAudit | cve-ah | strict-mode audit against Shape with no declared `Purpose` (cve-architecture spec §14.6) |
+| AP-038 | ImplicitSubstrate | cve-ah | strict `[T]` cog without declared `CognitiveSubstrate` (cve-architecture spec §1.5) |
+| AP-039 | AnchoringOverextension | cve-ah | `[T]` cog under non-CHL foundation without declared `FormalAnchoring` (cve-architecture spec §4.5) |
 
 ## 3. The anatomy of an anti-pattern
 
@@ -270,7 +284,7 @@ preserved as adapters.
 
 ## 9. Default severity at a glance
 
-A common question: *"how many of the thirty-two are errors by
+A common question: *"how many of the thirty-nine are errors by
 default?"* The default is encoded in each `check_*` function;
 many patterns escalate when `Shape.strict == true`. The summary
 below is the *strict-mode* picture:
@@ -287,7 +301,7 @@ incrementally per cog (via `@arch_module(strict: true)`).
 
 ## 10. Verum-side surface
 
-The 32-pattern catalog is exposed on the Verum side as a
+The 39-pattern catalog is exposed on the Verum side as a
 first-class enum in `core.architecture.anti_patterns`:
 
 ```verum
@@ -338,7 +352,7 @@ the ATS-V phase as a structured compiler diagnostic.
 
 ## 11. Implementation status
 
-Every code in the canonical 32-pattern roster has a corresponding
+Every code in the canonical 39-pattern roster has a corresponding
 `check_*` function on the kernel side.  The mapping is:
 
 | AP code | Check function | Lives in |

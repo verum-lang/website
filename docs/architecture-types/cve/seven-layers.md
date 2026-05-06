@@ -252,7 +252,7 @@ The naming clash is unfortunate; the disambiguation rule is:
 
 Documentation that mixes the two conventions without prefix is
 a candidate for the L6 articulation-hygiene check —
-[`AP-029 ObserverImpersonation`](../anti-patterns/mtac.md#ap-029)
+[`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
 in the MTAC band.
 
 ## 12. Cross-references

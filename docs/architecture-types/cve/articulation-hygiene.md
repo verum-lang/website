@@ -191,17 +191,31 @@ documenting the layer transit:
 The fixes for each trigger are mechanical; the L6 gate's
 diagnostic includes the canonical fix.
 
-## 7. The L6 ↔ MTAC connection
+## 7. The L6 ↔ CVE-AH connection
 
-Articulation hygiene at L6 connects to the MTAC layer through
-the [`AP-029 ObserverImpersonation`](../anti-patterns/mtac.md#ap-029)
-anti-pattern. Both check that *the asserter's role and register
-match the assertion's content*.
+Articulation hygiene at L6 connects to the CVE articulation-hygiene
+band through three load-bearing anti-patterns:
 
-The two patterns are *not* duplicates: AP-029 fires on
-architectural decisions (a Developer asserting in Architect
-register); the L6 gate fires on audit-chronicle prose (an
-ungrounded universal). The two together cover the full surface.
+- [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
+  — observer role mismatches the register of the assertion content.
+  Distinct from MTAC's [`AP-029 MissedAdjoint`](../anti-patterns/mtac.md#ap-029):
+  AP-029 fires on architectural decisions (a refactoring claimed
+  without its inverse adjoint); AP-036 fires on audit-chronicle
+  prose where the observer register and the assertion content
+  disagree.
+- [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
+  — strict-mode `[T]` cog without a declared `CognitiveSubstrate`.
+  Self-disclosure of the substrate is part of L6 hygiene per
+  [cve-architecture spec §1.5](#substrate-spec).
+- [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
+  — `[T]` cog under non-CHL foundation without declared
+  `FormalAnchoring`. Per [cve-architecture spec §4.5](#anchoring-spec),
+  the architectural law extends across domains only when the
+  parallel anchoring is explicitly named.
+
+These patterns and the L6 gate together cover the full hygiene
+surface: the L6 gate catches prose-level register collisions,
+AP-036/038/039 catch type-system-level register collisions.
 
 ## 8. The discipline applied — a real example
 
@@ -234,7 +248,11 @@ mechanically verify the claim by re-running the gate.
 - [Three axes](./three-axes.md) — C / V / E in detail.
 - [Seven layers](./seven-layers.md) — where L6 sits in the
   stratification.
-- [MTAC anti-pattern AP-029 ObserverImpersonation](../anti-patterns/mtac.md#ap-029)
-  — the architectural counterpart.
+- [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
+  — type-system counterpart for observer-role/register collisions.
+- [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
+  — substrate self-disclosure (cve-architecture spec §1.5).
+- [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
+  — formal anchoring boundary (cve-architecture spec §4.5).
 - [Audit protocol](../audit-protocol.md) — the gate runner that
   applies the L6 check.

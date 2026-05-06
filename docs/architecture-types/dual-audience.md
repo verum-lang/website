@@ -269,6 +269,39 @@ The two formats are intentionally distinct *in their stability
 guarantees*. The developer view evolves freely; the auditor view
 evolves only with explicit schema versioning.
 
+## 7.5. The CVE-zone boundary
+
+The dual-audience surface mechanises the **transmissible
+articulable contour** of every artefact. Per
+[cve-architecture spec §13.4](../../internal/cve/docs/cve-architecture.md),
+every knowledge artefact has a part that survives transfer
+between executors without identity loss (the **CVE-zone**) and a
+part that arises only in the work of an individual master and is
+not transmissible by instruction (**outside the CVE-zone**).
+
+| | CVE-zone | Outside CVE-zone |
+|---|----------|------------------|
+| **Substrate** | `AnalyticDecompositional` (default); plus the articulable contour of `HolisticRelational`, `ActionCentric`, `TraditionTransmitting` | The non-articulable surface of those substrates — aesthetic taste, idiosyncratic style, unique decisions in unprecedented situations |
+| **What ATS-V audits** | Capability discipline, lifecycle, CVE-closure, declared purpose, declared substrate, declared anchoring | Nothing — these aspects are legitimate but outside ATS-V's audit by construction |
+| **Transmissibility** | A second executor can reproduce the artefact from the declared `Shape` and the documented procedure | Reproduction requires individual mastery work; not derivable from the artefact alone |
+| **Mature practice's posture** | Knows what is transmissible (CVE-zone) and what is mastery-bound (outside CVE-zone) and does not conflate the registers | — |
+
+A craft cog whose declared lifecycle is `[T]` Theorem must have
+its CVE-zone fully closed (the protocol, the measurable markers,
+the certification surface). Aspects sitting outside the CVE-zone
+(the master's idiosyncratic timing, the unique aesthetic
+calibration) are **legitimate** but not subject to ATS-V audit.
+The dual-audience surface renders only the CVE-zone — the auditor
+view is not deficient when it omits non-articulable mastery; it is
+correctly bounded.
+
+Conflating the two registers — claiming `[T]` while the artefact's
+identity actually resides outside the CVE-zone — triggers
+[`AP-038 ImplicitSubstrate`](./anti-patterns/articulation.md#ap-038)
+(if the substrate is omitted) or
+[`AP-035 InterpretationInMatureCorpus`](./anti-patterns/articulation.md#ap-035)
+(if the artefact is silently `[I]` despite the `[T]` claim).
+
 ## 8. Cross-references
 
 - [Audit protocol](./audit-protocol.md) — the gate runner
@@ -277,3 +310,5 @@ evolves only with explicit schema versioning.
   catalog whose diagnostics are dual-rendered.
 - [Self-application](./self-application.md) — ATS-V's
   self-attestation, also dual-rendered.
+- [CVE overview — cognitive substrate disclosure](./cve/overview.md#substrate-disclosure)
+  — the spec primitive that bounds the CVE-zone.

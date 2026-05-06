@@ -22,6 +22,61 @@ This page documents:
 4. The dual verdict surface (developer-facing summary + auditor-
    facing detail).
 
+## 0. Termination through declared Purpose {#purpose-termination}
+
+A naïve audit has no built-in termination criterion: every
+inspection might reveal a refinement, and the protocol drifts into
+infinite polishing. Per
+[cve-architecture spec §14.6](../../../internal/cve/docs/cve-architecture.md),
+the audit closes relative to the **declared purpose** of each
+artefact: the role for which it is built, with explicit thresholds
+on the K/V/E axes.
+
+The Verum-side `Shape.declarations.purpose: Maybe<Purpose>` carries
+this declaration:
+
+```verum
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v1.0"),
+    declarations: ShapeDeclarations {
+        purpose: Some(Purpose {
+            role: "payment.checkout fan-out router",
+            k_min: CveThresholdK.FullWitness,
+            v_min: CveThresholdV.TypecheckPlusTests,
+            e_min: CveThresholdE.StructurallyReady,
+        }),
+        substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+        anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+        e_sense: Some(ExecutabilitySense.StructuralReadiness),
+    },
+)
+module my_app.payment.checkout;
+```
+
+The audit is **complete** when every artefact's configuration meets
+its declared thresholds. Strict-mode invocation against a Shape
+with no declared `Purpose` is the canonical
+[`AP-037 BoundlessAudit`](anti-patterns/articulation.md#ap-037)
+register collision: the audit has no termination criterion and
+degenerates into perennial critique.
+
+**Four functions of every audit round** (per
+[cve-architecture spec §14.6](../../../internal/cve/docs/cve-architecture.md)):
+
+1. **Differentiating** — determines on which axis the artefact is
+   closed and on which it is not.
+2. **Goal-directing** — compares observed configuration against
+   declared thresholds.
+3. **Translating** — converts observed defects into one of the
+   three actions: replenish (Action A), downgrade (Action B),
+   delete (Action C).
+4. **Terminating** — issues "audit complete" or "another round
+   needed" verdict.
+
+The fourth function is what distinguishes audit from perennial
+critique. Without an explicit terminating function, the first
+three run idle.
+
 ## 1. The catalog of audit gates
 
 `verum audit` exposes the gates as flags. Each flag runs exactly
@@ -47,7 +102,7 @@ the catalog has **~45 gates** organised into eight bands:
 
 | Flag | Verifies | Output |
 |------|----------|--------|
-| `--arch-discharges` | The 32-pattern anti-pattern catalog | `arch-discharges.json` |
+| `--arch-discharges` | The 39-pattern anti-pattern catalog | `arch-discharges.json` |
 | `--arch-coverage` | Annotation density + missing-Shape report | `arch-coverage.json` |
 | `--arch-corpus` | Per-Lifecycle inventory of annotated cogs | `arch-corpus.json` |
 | `--counterfactual` | Non-destructive scenario battery over Shapes | `counterfactual.json` |
@@ -173,7 +228,7 @@ indicates a kernel-implementation bug, not a corpus defect.
 
 ### 3.1 `--arch-discharges` — the catalog gate
 
-Runs every entry in the [32-pattern catalog](./anti-patterns/overview.md)
+Runs every entry in the [39-pattern catalog](./anti-patterns/overview.md)
 against every annotated cog. Verdict per pattern:
 
 - `ok` — no occurrences in the project.
@@ -403,7 +458,7 @@ A bundle with `verdict: load-bearing` makes a precise claim:
 
 > Every architectural primitive declared by every annotated cog
 > in this revision has been checked against the body, against
-> the cross-cog graph, and against the 32-pattern catalog. Every
+> the cross-cog graph, and against the 39-pattern catalog. Every
 > proof admitted in the proof corpus has been re-checked through
 > *both* the trusted-base kernel and the NbE kernel, and they
 > agree. Every framework axiom cited is enumerable in the
@@ -438,7 +493,7 @@ is observational only.
 
 ## 9. Red-team closure axioms
 
-In addition to the 32-pattern catalog, the audit-bundle aggregator
+In addition to the 39-pattern catalog, the audit-bundle aggregator
 walks four kernel-discharge axioms that close known attack vectors
 against the ATS-V declarative surface:
 
@@ -573,7 +628,7 @@ graphs.
 ## 11. Cross-references
 
 - [Anti-pattern overview](./anti-patterns/overview.md) —
-  the 32-pattern catalog the `--arch-discharges` gate consumes.
+  the 39-pattern catalog the `--arch-discharges` gate consumes.
 - [Red-team closures](./red-team.md) — detailed exposition of
   AT-1..AT-5 attack vectors and their closures.
 - [Cross-side pin tests](./cross-side-pin.md) — kernel ↔ Verum

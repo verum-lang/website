@@ -1,7 +1,7 @@
 ---
 sidebar_position: 91
 title: "Red-team — closed attack vectors"
-description: "Five explicit attack vectors against the ATS-V architectural type system, the closure axioms that defeat them, and the threat-modelling discipline behind the catalog."
+description: "Ten explicit attack vectors against the ATS-V architectural type system (5 surface + 5 CVE-AH band), the closure axioms that defeat them, and the threat-modelling discipline behind the catalog."
 slug: /architecture-types/red-team
 ---
 
@@ -11,9 +11,13 @@ A type system that catches honest mistakes is necessary but not
 sufficient.  An adversary writing `@arch_module(...)` declarations
 will probe the boundaries: which checks are decidable on the
 surface alone, which depend on kernel state, which are silently
-absent.  This page documents the five canonical attack vectors
-against ATS-V, the closure axioms that defeat them, and the
-threat-modelling discipline used to enumerate new vectors.
+absent.  This page documents the ten canonical attack vectors
+against ATS-V — five against the canonical surface (AT-1..AT-5)
+and five against the
+[cve-architecture spec](../../internal/cve/docs/cve-architecture.md)
+load-bearing concepts (AT-6..AT-10) — the closure axioms that
+defeat them, and the threat-modelling discipline used to
+enumerate new vectors.
 
 ## Attack vector AT-1 — Capability ontology forgery
 
@@ -188,6 +192,182 @@ match the canonical pattern
 belongs to the closed set `{bytes, ops, ms, ns}`.  Format
 violations surface as AP-025 `DeclarationDrift` at the ATS-V
 phase, before any downstream consumer sees the value.
+
+## Attack vector AT-6 — Retracted-citation laundering
+
+**Setup.** A malicious cog cites `[✗] Retracted` library code:
+
+```verum
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v1.0"),
+    composes_with: ["legacy.crypto.des_v1"],  // declared Retracted with reason "weak primitive"
+)
+module evil.payment;
+```
+
+Per CVE the citing cog is `[T]` Theorem; the cited cog is
+`[✗]` Retracted with explicit reason "weak primitive — deprecated
+by NIST SP 800-131A". A naïve `LifecycleRegression` check might
+pass: `[T]` cites a cog whose lifecycle no longer exists in the
+active rank poset.
+
+**Why it would work without closure.** AP-009 LifecycleRegression
+fires on rank regression generally, but `[✗]` is rank 0 — the
+rank check does fire, but the diagnostic does not specifically
+surface the **retraction reason**, which is the load-bearing
+content. The reviewer sees "rank regression" and may fix by
+demoting the citing cog to `[H]`, propagating the weak primitive
+into a declared hypothesis instead of removing the citation.
+
+**Closure.** [`AP-033 RetractedCitationUse`](./anti-patterns/articulation.md#ap-033)
+fires specifically on `[✗]` citation regardless of citing rank,
+and surfaces the retraction reason verbatim in the diagnostic.
+The kernel-discharge `kernel_arch_retracted_citation_check`
+enumerates every `composes_with` edge and rejects on
+`Lifecycle::Retracted{ .. }` even when the citing cog is itself
+low-rank — the retraction reason is meant to be load-bearing.
+
+## Attack vector AT-7 — Hypothesis as silent CVE-violator
+
+**Setup.** A research cog declares `[H]` without a maturation plan:
+
+```verum
+@arch_module(
+    lifecycle: Lifecycle.Hypothesis(ConfidenceLevel.High),
+    // no @plan(...) attribute
+)
+module my_app.experimental.zk_proof;
+
+public fn prove(...) -> ZkProof { ... }
+```
+
+A downstream cog cites `my_app.experimental.zk_proof`. The
+`LifecycleRegression` check fires (`[T]` from `[H]` is a rank
+regression), but the author "fixes" it by declaring the citing
+cog also `[H]`. The chain of `[H]` cogs propagates without ever
+producing a verifiable artefact.
+
+**Why it would work without closure.** Per
+[cve-architecture spec §3.5](./cve/seven-symbols.md#35-h-hypothesis--speculative-with-a-plan),
+`[H]` Hypothesis carries the **structural commitment** to an
+articulated maturation path. Without `@plan(...)` the cog is
+operationally an `[I]` Interpretation (CVE-violator) but
+syntactically presents as `[H]`. The chain of plan-less `[H]`s
+is silent CVE collapse.
+
+**Closure.** [`AP-034 HypothesisWithoutMaturationPlan`](./anti-patterns/articulation.md#ap-034)
+fires on every `[H]` cog without a `@plan(...)` attribute,
+forcing either an explicit plan or an explicit downgrade to
+`Lifecycle::Interpretation { reason: "..." }`.
+
+## Attack vector AT-8 — Audit infinite-polish
+
+**Setup.** A test cog declares `strict: true` to invoke the audit
+gate but provides no purpose:
+
+```verum
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v1.0"),
+    strict: true,
+    // no declarations / declarations: None
+)
+module my_app.scratch;
+```
+
+Each audit run asks: "is the K axis fully closed?" — every
+inspection reveals a refinement, the audit is repeatedly invoked,
+the team treats audit time as build time, the cog never closes.
+The CI gate marks the build green only because the audit is
+invoked but reports no specific failure (since there's no
+declared termination criterion).
+
+**Why it would work without closure.** Per
+[cve-architecture spec §14.6](./audit-protocol.md#purpose-termination),
+without a declared `Purpose` the audit has no halting criterion.
+The protocol degenerates from auditing into perennial critique.
+
+**Closure.** [`AP-037 BoundlessAudit`](./anti-patterns/articulation.md#ap-037)
+fires in strict mode against any Shape with no declared
+`Purpose`. The remediation forces the cog to declare its role
+and K/V/E thresholds; the audit then closes when configuration
+meets thresholds.
+
+## Attack vector AT-9 — Universal-substrate disguise
+
+**Setup.** A cog claims architectural-law status without disclosing
+which cognitive substrate it operates under:
+
+```verum
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v1.0"),
+    foundation: Foundation.ZfcTwoInacc,
+    strict: true,
+    // no declarations.substrate
+)
+module my_app.universal_law;
+```
+
+The cog's documentation reads "every artefact must satisfy this
+property" — universally quantified prose that, without explicit
+substrate disclosure, claims applicability across the
+analytic-decompositional, holistic-relational, action-centric,
+and tradition-transmitting domains simultaneously. Per
+[cve-architecture spec §1.5](./cve/overview.md#substrate-disclosure),
+this is a register collision: CVE applies to the
+analytic-decompositional substrate; alternative substrates have
+their own evaluation criteria.
+
+**Why it would work without closure.** Without explicit
+substrate disclosure, a reader may apply the universal claim
+inside a holistic-relational domain (network maturity, lived
+tradition) where CVE does not natively operate, producing audit
+artefacts that read as decisive but rest on a register the
+substrate does not validate.
+
+**Closure.** [`AP-038 ImplicitSubstrate`](./anti-patterns/articulation.md#ap-038)
+fires on every strict-mode `[T]` cog whose `Shape.declarations`
+omits the substrate. Alternative substrates require explicit
+declaration; the architectural-law claim is then bounded to the
+declared substrate, and the universality range is auditable.
+
+## Attack vector AT-10 — Anchoring overextension
+
+**Setup.** A cog formalises an institutional protocol as a `[T]`
+Theorem under the default ZFC + 2-inacc foundation:
+
+```verum
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v1.0"),
+    foundation: Foundation.ZfcTwoInacc,  // CHL-domain default
+    // no declarations.anchoring
+)
+module org.governance.voting_protocol;
+```
+
+The cog's body describes a multi-stakeholder voting procedure —
+a domain that
+[cve-architecture spec §4.5](./cve/overview.md#anchoring-disclosure)
+locates in the **InstitutionalDesign** anchoring (normative
+structure ↔ decision procedure ↔ stabilised practices), not in
+the CHL anchoring (logic ↔ types ↔ categories). The default ZFC
+foundation provides "anchored-formal CVE" semantics that the
+voting protocol does not actually inhabit — its `Theorem` claim
+inherits CHL semantics it cannot satisfy.
+
+**Why it would work without closure.** Per spec §4.5, parallel
+anchorings exist on different stages of formalisation;
+methodological CVE applies before formal anchoring is
+established in a domain, anchored-formal CVE after. Without
+explicit `FormalAnchoring`, a non-CHL domain silently inherits
+CHL semantics.
+
+**Closure.** [`AP-039 AnchoringOverextension`](./anti-patterns/articulation.md#ap-039)
+fires on `[T]` cogs whose foundation is outside the CHL domain
+`{ZfcTwoInacc, Cic, Mltt, Hott, Cubical, Eff}` (or whose
+foundation is `CustomFoundation { ... }`) when no `FormalAnchoring`
+is declared. The remediation forces the cog to declare its
+anchoring tradition explicitly, locating the artefact in the
+appropriate methodological-vs-anchored-formal regime.
 
 ## How new vectors get added
 

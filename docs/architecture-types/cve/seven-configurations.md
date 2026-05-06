@@ -112,7 +112,7 @@ A `[H]` Hypothesis has only *partial* C — the artefact is
 Hypothesis MUST carry a maturation plan
 ([`@plan(...)`](../primitives/lifecycle.md#46-hypothesisconfidence-confidencelevel--h))
 or the cog triggers
-[`AP-016 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-016).
+[`AP-034 HypothesisWithoutMaturationPlan`](../anti-patterns/articulation.md#ap-034).
 
 **Worked example:** a research cog `my_app.experimental.zk_proof`
 formulates a future zero-knowledge-proof feature but has no
@@ -129,7 +129,7 @@ prose only — written down, but not realised, checked, or extracted.
 `[I]` Interpretations are **transitional only**. Mature corpora
 contain zero `[I]` entries; in `strict: true` mode, declaring a
 cog `[I]` triggers
-[`AP-017 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-017).
+[`AP-035 InterpretationInMatureCorpus`](../anti-patterns/articulation.md#ap-035).
 
 **Why the status exists at all:** during exploration, some
 artefacts are written down before any of C/V/E is realised.
@@ -147,7 +147,7 @@ The record is preserved as a *negative example* in the audit
 chronicle.
 
 Citing a `[✗]` cog is
-[`AP-013 RetractedCitationUse`](../anti-patterns/articulation.md#ap-013).
+[`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033).
 
 **Worked example:** a cog implementing legacy DES encryption is
 retracted with reason "weak primitive — deprecated by NIST SP

@@ -375,13 +375,212 @@ foreign-foundation construct.
 
 ---
 
+# CVE articulation-hygiene band (AP-033 .. AP-039)
+
+The CVE-AH band operationalises the
+[cve-architecture spec](../../../internal/cve/docs/cve-architecture.md)
+load-bearing concepts that ATS-V was missing on its first
+canonical release: the three senses of the E axis (§2.3.0), the
+[H]/[I]/[✗] articulation discipline (§3.5), the cognitive substrate
+disclosure (§1.5), the formal anchoring boundary (§4.5), the audit
+termination via declared purpose (§14.6), and the L6 register
+prohibitions (§16).
+
+Patterns in this band fire either at **arch-check** (per-cog
+predicates touching `Shape.declarations`) or at **post-arch**
+(transitive predicates that walk the cog graph).
+
+---
+
+## AP-033 — RetractedCitationUse {#ap-033}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.3
+
+**Predicate.** `forall c ∈ Shape.composes_with. ¬ matches(lifecycle(c), Lifecycle::Retracted{..})`
+unless the citing cog is itself `Lifecycle::Retracted`.
+
+**Why it matters.** Distinct from
+[AP-009 LifecycleRegression](./classical.md#ap-009): AP-009 fires
+on rank regression generally; AP-033 fires specifically on `[✗]`
+citation regardless of citing rank. The retraction's `reason`
+field is meant to be load-bearing — silent citation defeats the
+**negative-example** role of the audit chronicle per
+[cve-architecture spec §3.5](../cve/seven-symbols.md#37-retracted--withdrawn).
+
+**Remediation.** Either remove the citation, or migrate to the
+`replacement` artefact declared in the retraction record.
+
+---
+
+## AP-034 — HypothesisWithoutMaturationPlan {#ap-034}
+
+**Severity:** error in strict mode, warning otherwise · **Phase:** arch-check · **Stable since:** v0.3
+
+**Predicate.**
+`matches(Shape.lifecycle, Lifecycle::Hypothesis{..}) ⇒ has_attribute(@plan(...))`.
+
+**Why it matters.** Per
+[cve-architecture spec §3.5](../cve/seven-symbols.md#35-h-hypothesis--speculative-with-a-plan),
+a `[H]` Hypothesis is the structural commitment to an articulated
+maturation path. Without `@plan(...)` the cog degrades to `[I]`
+Interpretation — a hidden CVE-violator — without naming the
+degradation. AP-034 closes this silent-degradation defect.
+
+**Remediation.** Add `@plan(target: "v0.X", milestones: [...])` to
+the cog, or downgrade to `Lifecycle::Interpretation { reason: "..." }`
+explicitly.
+
+---
+
+## AP-035 — InterpretationInMatureCorpus {#ap-035}
+
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.3
+
+**Predicate.**
+`matches(Shape.lifecycle, Lifecycle::Interpretation{..}) ⇒ ¬ Shape.strict ∧ ¬ in_mature_corpus(cog)`.
+
+**Why it matters.** Per
+[cve-architecture spec §3.4 + §6.7 L6](../cve/seven-layers.md#9-l6--the-frame-itself),
+mature corpora must contain ZERO `[I]` entries. The `[I]` status
+is the canonical CVE-violator: all three axes absent and no plan
+to formalise. Mature practice closes every `[I]` by one of three
+transformations: prove → `[T]`/`[C]`, downgrade → `[H]` with
+`@plan(...)`, or remove the cog.
+
+**Remediation.** Apply one of the three transformations above.
+Naming the status `[I]` rather than "todo" or "draft" forces
+the choice rather than allowing silent decay.
+
+---
+
+## AP-036 — ObserverImpersonation {#ap-036}
+
+**Severity:** error · **Phase:** post-arch · **Stable since:** v0.3
+
+**Predicate.** Every observer-tagged emit in the audit chronicle
+must have its assertion register match the observer role.
+
+**Why it matters.** Per
+[cve-architecture spec §6.7 L6 + §16](../cve/articulation-hygiene.md),
+a register collision across observer roles (e.g. an `EndUser`
+assertion attached to an architectural-shape claim that lives in
+the `Architect` register) is a silent defect in the audit
+chronicle. Distinct from
+[AP-029 MissedAdjoint](./mtac.md#ap-029): AP-029 fires on
+architectural decisions; AP-036 fires on audit-chronicle prose.
+
+**Remediation.** Either narrow the observer role to one matching
+the assertion content, or qualify the assertion to specify the
+layer it ranges over. Both Verum's `verum audit --bundle` L6
+self-application gate and the LSP hover surface flag the
+mismatch.
+
+---
+
+## AP-037 — BoundlessAudit {#ap-037}
+
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.3
+
+**Predicate.**
+`Shape.strict ⇒ Shape.declarations.is_some() ∧ Shape.declarations.purpose.is_some()`.
+
+**Why it matters.** Per
+[cve-architecture spec §14.6](../audit-protocol.md#purpose-termination),
+the audit terminates relative to a declared `Purpose`. Without
+one, the protocol has no halting criterion and degenerates into
+infinite polishing — for Turing-complete systems forbidden by
+Rice's theorem, for trained models forbidden by the natural
+opacity of high-dimensional weights.
+
+**Remediation.** Add to `@arch_module(...)`:
+
+```verum
+declarations: ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "...",
+        k_min: CveThresholdK.FullWitness,        // or TypedSchema, ReferenceImplBounded
+        v_min: CveThresholdV.TypecheckPlusTests, // or FullFormalProof, NamedCertification
+        e_min: CveThresholdE.StructurallyReady,  // or DeployedInOneEnv, FunctorialOnly
+    }),
+    ..ShapeDeclarations::empty()
+}
+```
+
+---
+
+## AP-038 — ImplicitSubstrate {#ap-038}
+
+**Severity:** error · **Phase:** arch-check · **Stable since:** v0.3
+
+**Predicate.**
+`(matches(Shape.lifecycle, Lifecycle::Theorem{..}) ∧ Shape.strict) ⇒ Shape.declarations.substrate.is_some()`.
+
+**Why it matters.** Per
+[cve-architecture spec §1.5](../cve/overview.md#substrate-disclosure),
+declaring the cognitive substrate is part of operational hygiene —
+CVE knows its mode and does not masquerade as a universal neutral
+apparatus. A strict-mode `[T]` cog without explicit substrate is
+operationally indistinguishable from a vacuous claim of
+universality.
+
+**Remediation.** Add to `@arch_module(...)`:
+
+```verum
+declarations: ShapeDeclarations {
+    substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+    // ... or HolisticRelational, ActionCentric, TraditionTransmitting
+    //     for cogs in non-default substrate domains
+    ..ShapeDeclarations::empty()
+}
+```
+
+---
+
+## AP-039 — AnchoringOverextension {#ap-039}
+
+**Severity:** error in strict mode, warning otherwise · **Phase:** arch-check · **Stable since:** v0.3
+
+**Predicate.**
+`(matches(Shape.lifecycle, Lifecycle::Theorem{..}) ∧ ¬ in_chl_domain(Shape.foundation))
+⇒ Shape.declarations.anchoring.is_some()`.
+
+The CHL domain is `{ZfcTwoInacc, Cic, Mltt, Hott, Cubical, Eff}`;
+`CustomFoundation { ... }` is **outside** the CHL domain.
+
+**Why it matters.** Per
+[cve-architecture spec §4.5](../cve/overview.md#anchoring-disclosure),
+the CHL anchoring is the most-developed of the seven anchorings;
+extending the CVE law to other domains (automata theory, control
+theory, distributed protocols, functional systems, institutional
+design) requires explicit declaration. Without it, the artefact
+silently inherits CHL semantics it does not satisfy.
+
+**Remediation.** Add to `@arch_module(...)`:
+
+```verum
+declarations: ShapeDeclarations {
+    anchoring: Some(FormalAnchoring.AutomataTheory),
+    // ... or ControlTheory, DistributedProtocols, FunctionalSystems,
+    //     InstitutionalDesign, CustomAnchoring("..."), depending on
+    //     the actual domain of formalisation
+    ..ShapeDeclarations::empty()
+}
+```
+
+---
+
 ## See also
 
 - [Anti-pattern catalog overview](./overview.md) — the indexing
-  page with the full 32-entry table.
+  page with the full 39-entry table.
 - [Capability / composition core (AP-001..AP-010)](./classical.md)
 - [Modal-temporal anti-patterns (AP-027..AP-032)](./mtac.md)
 - [Reflection tower](../../verification/reflection-tower) — for
   the AP-011 `LAbs` claim's MSFS Theorem 5.1 backing.
 - [Three-tier reference model](../../language/memory-model) — for
   AP-016 `CapabilityDuplication`'s linearity discipline.
+- [CVE overview](../cve/overview.md) — the cve-architecture
+  spec primitives that the CVE-AH band (AP-033..039)
+  operationalises.
+- [Audit protocol — termination through Purpose](../audit-protocol.md#purpose-termination)
+  — the CVE-AH band's load-bearing concept for AP-037.

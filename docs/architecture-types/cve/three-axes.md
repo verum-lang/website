@@ -123,6 +123,52 @@ A claim is **executable** when the constructor reduces to runnable
 machine code — bytecode, native, GPU kernel — without losing the
 property the claim asserts.
 
+### 3.0 The three senses of executability {#three-senses}
+
+Per [cve-architecture spec §2.3.0](../../../internal/cve/docs/cve-architecture.md),
+the term "executable" carries three operationally distinct senses
+that audits frequently conflate. Verum's `ExecutabilitySense` enum
+exposes all three; the soundness pin
+`executability_sense_canonical_unique` enforces that exactly one
+of them anchors CVE-E.
+
+| Sense | Operational meaning | Canonical for CVE-E? |
+|-------|---------------------|----------------------|
+| **`StructuralReadiness`** | The artefact admits a working representation deployable in any environment of the declared class. | ✓ — THIS IS the content of the E axis. |
+| **`CurrentExecution`** | The artefact is, at this moment, running in production. | Stronger; characterises L0 maturity (`[T]` in §3.5 spec sense), but is NOT the E axis. |
+| **`PostFactumChronicle`** | Accumulated history of past execution. | Material for the §15 antifragility chronicle, NOT the E axis. |
+
+The canonicality is load-bearing: a `[T]` Theorem requires
+**structural readiness**, not "currently running" or "ran in
+the past". Citing past execution as evidence of E is the
+typical entry-point for the
+[`AP-037 BoundlessAudit`](../anti-patterns/articulation.md#ap-037)
+register collision — an audit that reads "executable" while the
+artefact is not redeployable.
+
+In code:
+
+```rust
+// kernel side
+use verum_kernel::arch::ExecutabilitySense;
+
+assert!(ExecutabilitySense::StructuralReadiness.is_canonical_e());
+assert!(!ExecutabilitySense::CurrentExecution.is_canonical_e());
+assert!(!ExecutabilitySense::PostFactumChronicle.is_canonical_e());
+```
+
+```verum
+// Verum side — declare the sense explicitly when it matters
+@arch_module(
+    lifecycle: Lifecycle.Theorem("v1.0"),
+    declarations: ShapeDeclarations {
+        e_sense: Some(ExecutabilitySense.StructuralReadiness),
+        ..ShapeDeclarations::empty()
+    },
+)
+module my_app.cog;
+```
+
 ### 3.1 Range of executability
 
 | Mode | Meaning | Verum surface |
@@ -180,13 +226,19 @@ admit this, so all three are independent.
 
 ## 5. Cross-references
 
-- [CVE overview](./overview.md) — the universal frame.
+- [CVE overview](./overview.md) — the universal frame, including
+  the cognitive-substrate disclosure (spec §1.5) and the
+  formal-anchoring boundary (spec §4.5).
 - [Seven configurations](./seven-configurations.md) — the
   truth-table semantics.
 - [Seven canonical symbols](./seven-symbols.md) — the glyph
-  reference.
+  reference, including the three-senses-of-E pin in §1.5.
 - [Seven layers](./seven-layers.md) — the layered application.
 - [Articulation hygiene](./articulation-hygiene.md) — CVE-L6
-  self-application.
+  self-application + CVE-AH band anti-patterns.
+- [Architectural revision chronicle](./architectural-revisions.md)
+  — the §20.4 self-application chronicle.
 - [Lifecycle primitive](../primitives/lifecycle.md) — the ATS-V
   primitive that carries the seven glyphs.
+- [Audit protocol](../audit-protocol.md) — termination through
+  declared `Purpose` (spec §14.6).

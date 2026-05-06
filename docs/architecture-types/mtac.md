@@ -25,33 +25,44 @@ canonical observer roles, and how the audit gates consume them.
 
 Three concrete bug classes that pure static typing cannot catch:
 
-### 1.1 Premature observation
+### 1.1 Temporal inconsistency
 
-A capability is logged or recorded *before* the decision to grant
-it has been made. The architectural shape says "the capability is
-exposed" but the temporal order says "the observation happened
-before the grant".
+An architectural invariant fails to hold across two sampled
+time-points. The cog's declared properties are not stable in
+time; what was true at `t₀` no longer holds at `t₁`.
 
-Example: a request is logged before authentication completes —
-the log includes data the authenticator should have rejected.
-This is [`AP-027 PrematureObservation`](./anti-patterns/mtac.md#ap-027).
+Example: a cog's `requires` set at the start of a session
+includes `Read(Session)`, but at end of session the same cog
+reads `Persist(Session)` — the invariant "this cog only reads
+ephemeral state" was true at `t₀`, false at `t₁`.
 
-### 1.2 Decision without context
+This is [`AP-027 TemporalInconsistency`](./anti-patterns/mtac.md#ap-027).
 
-A decision is recorded without specifying which observer made it
-or under which modality it applies. "We will adopt strict mode" —
-on whose authority? for which subset of the codebase?
+### 1.2 Counterfactual brittleness
 
-This is [`AP-028 DecisionWithoutContext`](./anti-patterns/mtac.md#ap-028).
+A verdict is fragile under a counterfactual decision swap. The
+same scenario with one different decision flips the verdict;
+the architecture is not robust to small variations in
+decision-making.
 
-### 1.3 Modal collision
+Example: "the audit passes if we choose AES-256, but fails if
+we choose AES-128 with the same threat model" — the verdict is
+brittle relative to a parameter the threat model treats as
+free.
 
-Two incompatible modal qualifications attached to the same
-proposition. "X must hold ◇ (possibly)" and "X must hold □
-(necessarily)" — the two modal qualifications have different
-strengths; using both is a category error.
+This is [`AP-028 CounterfactualBrittleness`](./anti-patterns/mtac.md#ap-028).
 
-This is [`AP-030 ModalCollision`](./anti-patterns/mtac.md#ap-030).
+### 1.3 Universal-property violation
+
+A universal-property uniqueness claim is made without a
+uniqueness witness. "There exists a unique X satisfying P" —
+without exhibiting the witness, the claim is unverifiable.
+
+Example: a cog claims "the Frobenius adjunction has unique
+unit and counit witnesses for our category" without exhibiting
+the natural transformations.
+
+This is [`AP-030 UniversalPropertyViolation`](./anti-patterns/mtac.md#ap-030).
 
 ## 2. The MTAC primitive set
 
@@ -126,10 +137,15 @@ distinguishable from a decision tagged "by Architect" even when
 they assert the same proposition; the audit chronicle records
 *who* made each call so reviewers can attribute responsibility.
 
-[`AP-029 ObserverImpersonation`](./anti-patterns/mtac.md#ap-029)
-fires when role A asserts in role B's register — for example,
-when a Developer-level decision claims Architect-level authority
-without an explicit promotion.
+Observer-role mismatches are caught by the CVE-AH band's
+[`AP-036 ObserverImpersonation`](./anti-patterns/articulation.md#ap-036),
+which fires when role A asserts in role B's register — for
+example, when a Developer-level decision claims Architect-level
+authority without an explicit promotion. Distinct from
+[`AP-029 MissedAdjoint`](./anti-patterns/mtac.md#ap-029): AP-029
+fires on architectural decisions (refactoring claimed without its
+inverse adjoint), AP-036 on audit-chronicle prose where the
+observer register and the assertion content disagree.
 
 ## 4. The six modal operators
 
@@ -169,12 +185,13 @@ These fields are consumed by the six MTAC anti-pattern checks:
 
 | Anti-pattern | Fields consumed |
 |--------------|-----------------|
-| AP-027 PrematureObservation | `current_observer`, `time_point_*`, `proposition` |
-| AP-028 DecisionWithoutContext | `current_observer`, `modal_assertion` |
-| AP-029 ObserverImpersonation | `current_observer` |
-| AP-030 ModalCollision | `modal_assertion`, `proposition` |
-| AP-031 TemporalCycle | `arch_evolution`, `time_point_*` |
-| AP-032 CounterfactualDivergence | `counterfactual_pair`, `proposition` |
+| AP-027 TemporalInconsistency | `current_observer`, `time_point_*`, `proposition` |
+| AP-028 CounterfactualBrittleness | `counterfactual_pair`, `modal_assertion` |
+| AP-029 MissedAdjoint | `arch_evolution` |
+| AP-030 UniversalPropertyViolation | `modal_assertion`, `proposition` |
+| AP-031 PhantomEvolution | `arch_evolution`, `time_point_*` |
+| AP-032 YonedaInequivalentRefactor | `counterfactual_pair`, `proposition`, `current_observer` |
+| AP-036 ObserverImpersonation (CVE-AH) | `current_observer` |
 
 ## 6. Adjunctions — `Counterfactually` made systematic
 
@@ -208,21 +225,30 @@ chronicle. They cannot fire during incremental compilation.
 
 A summary:
 
-- **AP-027 PrematureObservation** — a decision is observed
-  (logged, audited, broadcast) before the time point at which it
-  was made.
-- **AP-028 DecisionWithoutContext** — a decision lacks a `Decision.by_observer`
-  attribution or `Decision.modality` qualification.
-- **AP-029 ObserverImpersonation** — observer role A asserts in
-  role B's register without an explicit promotion certificate.
-- **AP-030 ModalCollision** — two incompatible modals
-  (`Necessarily(P)` and `Possibly(¬P)`) attached to the same
-  proposition.
-- **AP-031 TemporalCycle** — the decision graph has a `Before` /
-  `After` cycle (a decision claims to be both before and after
-  another).
-- **AP-032 CounterfactualDivergence** — the counterfactual report
-  contradicts a base-scenario invariant.
+- **AP-027 TemporalInconsistency** — an architectural invariant
+  fails to hold across two sampled time-points; the cog's
+  declared properties are not stable in time.
+- **AP-028 CounterfactualBrittleness** — a verdict is fragile
+  under a counterfactual decision swap (the same scenario with
+  one different decision flips the verdict).
+- **AP-029 MissedAdjoint** — a refactoring is claimed without
+  its inverse adjoint pair documented; the move is irreversible.
+- **AP-030 UniversalPropertyViolation** — a universal-property
+  uniqueness claim is made without a uniqueness witness.
+- **AP-031 PhantomEvolution** — the declared evolution path
+  passes through an unsatisfiable trigger (a step depends on
+  conditions that cannot be reached).
+- **AP-032 YonedaInequivalentRefactor** — a refactoring claimed
+  observer-equivalent under Yoneda actually changes the
+  observer-functor; the shapes look the same but observers
+  disagree.
+
+Observer role-register mismatches (Developer asserting in
+Architect register, etc.) are caught by the CVE-AH band's
+[`AP-036 ObserverImpersonation`](./anti-patterns/articulation.md#ap-036),
+not by an MTAC anti-pattern — the distinction matters because
+AP-036 fires on prose-level register collisions while the MTAC
+band fires on architectural decisions.
 
 Each is fully specified in [Modal-temporal anti-patterns](./anti-patterns/mtac.md).
 

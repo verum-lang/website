@@ -60,6 +60,19 @@ cross-side pin test compares both sides.
 | `lifecycle_cve_glyph(lc)`              | `Lifecycle → Text`                   | Single-character CVE glyph (`H`, `P`, `D`, `C`, `T`, `I`, `✗`, `O`, plus legacy `Plan`). |
 | `lifecycle_rank(lc)`                   | `Lifecycle → Int`                    | Rank poset for AP-009 LifecycleRegression. |
 | `lifecycle_is_mature_corpus_forbidden` | `Lifecycle → Bool`                   | True iff lifecycle is `[I]` Interpretation (forbidden in mature corpus). |
+| `executability_sense_tag(s)`           | `ExecutabilitySense → Text`          | Stable tag for §2.3.0 three senses (`structural_readiness` is canonical for E). |
+| `executability_sense_is_canonical_e(s)`| `ExecutabilitySense → Bool`          | True iff sense is the canonical content of CVE-E (only `StructuralReadiness`). |
+| `cognitive_substrate_tag(s)`           | `CognitiveSubstrate → Text`          | Stable tag for §1.5 substrate variants. |
+| `cognitive_substrate_default()`        | `() → CognitiveSubstrate`            | Default for ATS-V annotations: `AnalyticDecompositional`. |
+| `formal_anchoring_tag(a)`              | `FormalAnchoring → Text`             | Stable tag for §4.5 anchoring variants. |
+| `formal_anchoring_default()`           | `() → FormalAnchoring`               | Default for Verum-native artefacts: `CurryHowardLawvere`. |
+| `cve_threshold_k_tag(t)`               | `CveThresholdK → Text`               | Stable tag for the K threshold in declared `Purpose`. |
+| `cve_threshold_v_tag(t)`               | `CveThresholdV → Text`               | Stable tag for the V threshold. |
+| `cve_threshold_e_tag(t)`               | `CveThresholdE → Text`               | Stable tag for the E threshold (in `StructuralReadiness` sense). |
+| `purpose_default()`                    | `() → Purpose`                       | Default unspecified purpose; `[T]` strict-mode cogs SHOULD override. |
+| `defect_kind_tag(k)`                   | `DefectKind → Text`                  | Stable tag for §20.4 architectural-defect kind. |
+| `resolution_tag(r)`                    | `Resolution → Text`                  | Stable tag for §20.4 resolution path. |
+| `shape_declarations_empty()`           | `() → ShapeDeclarations`             | Empty declarations record; defaults filled at audit time. |
 | `cve_closure_degree(cve)`              | `CveClosure → Int`                   | 0..=3 — number of CVE axes present. |
 | `cve_closure_is_fully_closed(cve)`     | `CveClosure → Bool`                  | True iff all three axes present. |
 | `verify_strategy_tag(s)`               | `VerifyStrategy → Text`              | Stable audit tag. |
@@ -179,6 +192,11 @@ public fn lifecycle_rank_strict_order_holds() -> Bool
 public fn stratum_l_abs_unique_inadmissible() -> Bool
 public fn foundation_canonical_inclusions_hold() -> Bool
 public fn tier_check_runs_nothing() -> Bool
+// CVE-architecture spec primitives (AP-033..AP-039 closure)
+public fn executability_sense_canonical_unique() -> Bool   // §2.3.0 — only StructuralReadiness
+public fn cognitive_substrate_default_is_analytic() -> Bool // §1.5 — AnalyticDecompositional
+public fn formal_anchoring_default_is_chl() -> Bool         // §4.5 — CurryHowardLawvere
+public fn purpose_default_is_complete() -> Bool             // §14.6 — all three thresholds set
 ```
 
 Each evaluates to `true` on a correct implementation; the
@@ -196,7 +214,7 @@ public fn adjunction_mirror_symmetry() -> Bool
 ### 3.3 Pins in `core.architecture.anti_patterns` / `corpus` / `parse`
 
 ```verum
-public fn anti_pattern_roster_size_invariant() -> Bool   // 32
+public fn anti_pattern_roster_size_invariant() -> Bool   // 39 (32 base + 7 CVE-AH band)
 public fn corpus_invariant_roster_size_invariant() -> Bool  // 4
 public fn arch_module_field_count_invariant() -> Bool    // 13
 ```
