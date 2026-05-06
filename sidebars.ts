@@ -525,6 +525,7 @@ const sidebars: SidebarsConfig = {
                 'stdlib/security/aead',
                 'stdlib/security/ecc',
                 'stdlib/security/pq',
+                'stdlib/security/zk',
                 'stdlib/security/util',
                 'stdlib/security/auth-primitives',
               ],

@@ -8,10 +8,12 @@ description: The security stdlib — cryptographic primitives, information-flow 
 
 Verum's security stdlib is a consolidated subtree covering:
 
-- **Cryptographic primitives** — hashes (SHA family + non-crypto
-  CRC-32/32C/XXH64/MurmurHash3), MACs, KDFs (HKDF + PBKDF2),
-  symmetric ciphers, AEADs, elliptic-curve / post-quantum public-
-  key crypto, HPKE (RFC 9180).
+- **Cryptographic primitives** — hashes (SHA-2 family + BLAKE3 +
+  non-crypto CRC-32/32C/XXH64/MurmurHash3), MACs, KDFs (HKDF +
+  PBKDF2), symmetric ciphers, AEADs, elliptic-curve crypto
+  (Ed25519, X25519, P-256, ECVRF, BLS12-381 pairing), post-quantum
+  (ML-KEM, ML-DSA, SPHINCS+), HPKE (RFC 9180), zero-knowledge
+  proof systems (Halo2 + KZG10, STARK + FRI).
 - **High-level auth primitives** — JWT (RFC 7519/7515), COSE
   (RFC 9052), TOTP/HOTP (RFC 4226/6238), password hashing with
   PHC modular format, CSPRNG session/CSRF/OTP tokens.
@@ -31,14 +33,15 @@ For the full map and architectural context, start at the
 
 ### Cryptographic primitives
 
-- [`hash`](/docs/stdlib/security/hash) — SHA-256/384/512, CRC-32/32C,
-  XXH64, MurmurHash3 (32 + 128-bit)
+- [`hash`](/docs/stdlib/security/hash) — SHA-256/384/512, BLAKE3,
+  CRC-32/32C, XXH64, MurmurHash3 (32 + 128-bit)
 - [`mac`](/docs/stdlib/security/mac) — HMAC-SHA-family + Poly1305
 - [`kdf`](/docs/stdlib/security/kdf) — HKDF + PBKDF2 (HMAC-SHA256/384/512)
 - [`cipher`](/docs/stdlib/security/cipher) — AES + ChaCha20
 - [`aead`](/docs/stdlib/security/aead) — AES-GCM + ChaCha20-Poly1305
-- [`ecc`](/docs/stdlib/security/ecc) — X25519 ECDH, Ed25519, P-256
-- [`pq`](/docs/stdlib/security/pq) — ML-KEM + ML-DSA post-quantum
+- [`ecc`](/docs/stdlib/security/ecc) — Ed25519, X25519 ECDH, P-256, ECVRF (RFC 9381), BLS12-381 pairing + threshold sigs
+- [`pq`](/docs/stdlib/security/pq) — ML-KEM + ML-DSA + SPHINCS+ post-quantum
+- [`zk`](/docs/stdlib/security/zk) — Halo2 + KZG10 (BLS12-381) + STARK + FRI (PQ-secure)
 - `hpke` — RFC 9180 Hybrid Public Key Encryption (Mode Base:
   DHKEM-X25519 + HKDF-SHA256 + ChaCha20-Poly1305) — the primitive
   behind ECH, MLS, Privacy Pass

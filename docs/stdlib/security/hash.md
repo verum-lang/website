@@ -1,24 +1,34 @@
 ---
 sidebar_position: 2
-title: hash — SHA-2 family
-description: SHA-256, SHA-384, SHA-512 — FIPS 180-4 streaming digests.
+title: hash — SHA-2 + BLAKE3
+description: SHA-256/384/512 (FIPS 180-4) plus BLAKE3 streaming + XOF + keyed + derive_key.
 ---
 
-# `core.security.hash` — SHA-2 family
+# `core.security.hash` — cryptographic hashes
 
-The SHA-2 family of cryptographic hash functions, per **FIPS PUB
-180-4**. Three variants ship:
+Two hash families ship as first-class primitives:
+
+* **SHA-2** (`sha256`, `sha384`, `sha512`) — FIPS PUB 180-4. The
+  TLS 1.3 default, ML-DSA-65 internal hash, and the legacy
+  signature ecosystem's expected hash.
+* **BLAKE3** (`blake3`) — modern fast hash with three modes
+  (keyless / keyed / context-binding KDF) and an extendable-output
+  XOF mode. Default for content addressing, modern Merkle
+  commitment, fast streaming.
 
 | Variant | Block size | Output size | Typical use |
 |---|---|---|---|
 | SHA-256 | 64 B | 32 B | TLS 1.3 HKDF default, most signatures, checksums |
 | SHA-384 | 128 B | 48 B | `TLS_AES_256_GCM_SHA384` suite, ML-DSA-65 |
 | SHA-512 | 128 B | 64 B | Ed25519 internal hash, HKDF-SHA512, wide-output variants |
+| BLAKE3 | 64 B | 32 B (default) / arbitrary (XOF) | content addressing, IPFS CIDv1, sigstore Rekor, Merkle commitment, fast streaming |
 
-All three use the same compression-function core (64-bit words for
-SHA-384/512, 32-bit words for SHA-256), natively constant-time,
-with a `@cfg(feature = "crypto-accel")` substitution point that
-binds to SHA-NI (x86_64) or ARMv8 SHA-2 Crypto Extensions.
+All variants are natively constant-time and route hot-path
+compression through `@intrinsic` so SIMD / hardware-acceleration
+backends activate at link time (`@cfg(feature = "crypto-accel")`
+binds SHA-NI / ARMv8 SHA-2 Crypto Extensions for SHA-2; BLAKE3
+selects between the BLAKE3-team upstream / NEON / AVX2 / AVX-512
+backends per the runtime feature-flag set).
 
 ## API surface
 
@@ -171,6 +181,136 @@ the NIST CAVP short-message KAT.
 
 VCS discharge: `vcs/specs/L1-core/security/sha2_kat.vr` (shape) and
 CAVP-driven runs under `L1-core/security/run/` (byte-exact).
+
+---
+
+## BLAKE3
+
+BLAKE3 (O'Connor / Aumasson / Neves / Wilcox-O'Hearn 2020) is the
+modern fast hash. Three modes from a single primitive, parallelisable
+tree-structured compression, optional XOF for arbitrary output length.
+
+### When to choose BLAKE3 over SHA-2
+
+| Property | BLAKE3 | SHA-2 |
+|---|---|---|
+| Throughput (modern x86 + AVX-512) | 2–4 GiB/s/core | 0.5–1.5 GiB/s/core (with SHA-NI) |
+| Throughput (ARM NEON) | 1–2 GiB/s/core | ~1 GiB/s/core |
+| Tree-structured (parallel) | ✓ | ✗ |
+| Keyed-hash mode (replaces HMAC) | ✓ | needs HMAC wrapper |
+| Context-binding KDF | ✓ (`derive_key`) | needs HKDF wrapper |
+| Extendable output (XOF) | ✓ | ✗ |
+| FIPS 180-4 / NIST | ✗ | ✓ |
+| TLS 1.3 ciphersuite ID | ✗ | ✓ |
+
+Use BLAKE3 for content addressing, modern Merkle commitment, fast
+streaming. Use SHA-2 where FIPS / NIST / TLS 1.3 mandates.
+
+### API surface
+
+```verum
+mount core.security.hash.blake3.{
+    Blake3, blake3, blake3_keyed, blake3_derive_key,
+    BLOCK_SIZE, CHUNK_SIZE, OUTPUT_SIZE, KEY_LEN,
+};
+
+// One-shot keyless hash.
+let h: [Byte; 32] = blake3(b"hello world");
+
+// Keyed-hash (MAC mode) — replaces HMAC-BLAKE2.
+let mac: [Byte; 32] = blake3_keyed(&key32, b"message");
+
+// Context-binding KDF — independent sub-keys per usage tag.
+let subkey: [Byte; 32] = blake3_derive_key(
+    &"my-app 2026-05-06 token-signing".into(),
+    &master_key,
+);
+
+// Streaming.
+let mut s = Blake3.new();
+s.update(chunk_a);
+s.update(chunk_b);
+let h: [Byte; 32] = s.finalize();
+
+// XOF — arbitrary-length output.
+let mut s = Blake3.new();
+s.update(seed);
+let mut output: [Byte; 1024] = [0; 1024];
+s.finalize_xof(&mut output);
+```
+
+### Three modes — domain separation
+
+The three modes share a single compression function and differ only
+in the **flag byte** mixed into the IV:
+
+| Mode | Constructor | Domain flag | Use case |
+|---|---|---|---|
+| keyless hash | `Blake3.new()` | (none) | content addressing, generic digest |
+| keyed hash | `Blake3.new_keyed(&key32)` | `KEYED_HASH` | MAC; replaces HMAC-BLAKE2 |
+| derive_key | `Blake3.new_derive_key(&context_text)` | `DERIVE_KEY_*` | KDF; replaces HKDF for BLAKE3-pinned schemes |
+
+The flag-byte separation guarantees that
+`blake3(x) ≠ blake3_keyed(k, x) ≠ blake3_derive_key(ctx, x)` for any
+input — using the wrong mode for a given key is structurally
+detectable.
+
+### Tree structure
+
+Input is split into 1024-byte **chunks**. Each chunk processes 16
+× 64-byte blocks via the compression function and produces a 32-byte
+chunk-CV (chaining value). Adjacent chunk-CVs merge pairwise via a
+**parent compression** call into a parent-CV; the tree is balanced
+with the Bao-style canonical layout. `finalize` walks the right edge
+producing the 32-byte root digest (or, in XOF mode, an
+indefinitely-long stream).
+
+Trees are *parallelisable*: independent chunks compress in parallel,
+and the merge pass is a logarithmic fold.
+
+### Backend dispatch
+
+Hot loops route through `@intrinsic("verum.crypto.blake3_*")`:
+
+* `verum.crypto.blake3_compress` — single-block compression
+  function. Backend choice (BLAKE3-team upstream / NEON / AVX2 /
+  AVX-512) is selected by the runtime feature-flag set at link time.
+* `verum.crypto.blake3_compress_chunks` — process N consecutive
+  chunks in parallel (uses SIMD lanes for chunk-level parallelism).
+* `verum.crypto.blake3_compress_parents` — same shape for the
+  merge pass.
+* `verum.crypto.blake3_finalize_xof` — extract `n` bytes from XOF
+  state.
+
+When no backend feature flag is selected, a pure-Verum reference
+path (`compress_reference`) provides correctness. Reference
+throughput is ~150–400 MB/s on modern x86-64; sufficient for
+handshakes / per-message hashing but not for bulk hashing.
+Production deployments should always enable an accelerated backend.
+
+### Constants
+
+```verum
+core.security.hash.blake3.BLOCK_SIZE   // 64
+core.security.hash.blake3.CHUNK_SIZE   // 1024
+core.security.hash.blake3.OUTPUT_SIZE  // 32
+core.security.hash.blake3.KEY_LEN      // 32
+```
+
+### Constant-time / side-channels
+
+BLAKE3's compression is by construction free of secret-data-dependent
+branches and memory accesses (all-arithmetic mixing on UInt32). The
+implementation respects this property; pair the *output comparison*
+site with `core.security.util.constant_time_eq` when using BLAKE3 as
+a MAC (`keyed_hash`).
+
+### Reference
+
+* BLAKE3 specification, "BLAKE3: one function, fast everywhere",
+  O'Connor / Aumasson / Neves / Wilcox-O'Hearn, 2020-01-09.
+  [github.com/BLAKE3-team/BLAKE3-specs](https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf)
+* IETF draft-aumasson-blake3-01 (informational).
 
 ## Performance
 

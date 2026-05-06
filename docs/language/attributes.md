@@ -116,6 +116,54 @@ acts as the fallback for **un**annotated functions:
 | `auto` | proceed with SMT (default `formal`-equivalent) |
 | `proof` | (reserved — future kernel-replay routing) |
 
+### Determinism — `@deterministic_fp`
+
+```verum
+@deterministic_fp                 // warn-on-non-determ-callee (default)
+fn cptp_step(rho: &Matrix7x7, h_eff: &Matrix7x7, dt: Float) -> Matrix7x7 { ... }
+
+@deterministic_fp(strict)         // error-on-non-determ-callee
+fn consensus_state_root(state: &State) -> [Byte; 32] { ... }
+```
+
+`@deterministic_fp` is a **load-bearing FP-determinism contract**.
+It locks the function to bit-for-bit reproducible floating-point
+semantics across every conformant implementation:
+
+1. **Round mode** — round-to-nearest-even. The body cannot open a
+   `with_rounding(...)` scope.
+2. **No FMA contraction** — codegen emits separate `mul + add` even
+   on hardware with native FMA. Two roundings, not one.
+3. **libm restriction** — calls into the runtime libm are limited to
+   the canonical [`core.math.ieee754_deterministic`](/docs/stdlib/math)
+   subset (CORE-MATH-derived correctly-rounded transcendentals).
+   System-libm (where glibc and macOS-libm differ in the last bit on
+   `sin/cos/exp/log`) is diagnostics-flagged.
+
+The property *propagates*: a `@deterministic_fp` body that calls a
+non-deterministic-fp function emits a diagnostic at the call site —
+**warning** under default strictness (eases incremental adoption),
+**hard error** under `(strict)` (the consensus / kernel path).
+
+#### Why this exists, not `@pure`
+
+`@pure` (and the first-class `pure fn` keyword form) asserts no
+side effects — the orthogonal Pure property in the
+`verum_types::computational_properties` set. FP-determinism is a
+*different* property: a function can be Pure-but-non-deterministic
+(uses FMA, glibc `sin`) or non-Pure-but-deterministic (logs, but
+only via the deterministic-libm subset). Two attributes, two axes.
+
+#### When to use it
+
+| Path | Recommendation |
+|---|---|
+| Consensus block-hash / state-root computation | `@deterministic_fp(strict)` |
+| CPTP / Lindbladian step on holon density matrices | `@deterministic_fp(strict)` |
+| STARK / Halo2 trace polynomial generation | `@deterministic_fp(strict)` |
+| Reproducible-build numerical kernel | `@deterministic_fp(strict)` |
+| Performance-bound UI rendering, simulation hot loops | leave un-annotated (system libm + FMA welcome) |
+
 ### FFI — `@extern`
 
 ```verum

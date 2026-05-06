@@ -56,6 +56,23 @@ the capability router. The full set admitted by the grammar:
 | `@verify(synthesize)` | fn, type | synthesis mode — generate a term satisfying the spec rather than checking it |
 | `@framework(name, "citation")` | axiom, theorem, lemma | Mark a statement as a trusted axiom borrowed from an external framework. `name` is the framework identifier (identifier syntax); the string is a human-readable citation (paper / URL / section). Surfaced by `verum audit --framework-axioms` for supply-chain review. |
 
+## Safety
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@trusted` | fn | mark function as verified-safe despite unsafe ops (audit-tracked) |
+| `@unsafe_fn` | fn | mark function as requiring an unsafe context |
+| `@must_use` | fn, type, param | warn if return value is unused |
+| `@unreachable` | match arm, expr | document that this code path is unreachable |
+| `@deterministic_fp` | fn | bit-for-bit reproducible floating-point semantics. Locks round-mode to round-to-nearest-even; forbids FMA contraction (codegen emits separate mul+add even on FMA-capable targets); restricts libm calls to `core.math.ieee754_deterministic` (CORE-MATH-derived correctly-rounded transcendentals). Default warn-on-non-determ-callee (eases incremental adoption). |
+| `@deterministic_fp(strict)` | fn | strict mode: any call to a non-deterministic-fp function is a compile-time error rather than a warning. Required for consensus paths, CPTP-step Lindbladian dynamics, STARK trace generation. |
+
+Note: pure-function status uses the **`pure fn`** keyword form in the
+function signature (checked by `verum_types::computational_properties`
+as a 0 ns compile-time property), not an attribute. See
+**[language → attributes](/docs/language/attributes)** for the
+canonical syntax.
+
 ## Program extraction
 
 `@extract*` attributes mark constructive proofs and theorems for

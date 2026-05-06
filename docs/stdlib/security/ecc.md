@@ -1,10 +1,28 @@
 ---
 sidebar_position: 7
-title: ecc — Curve25519 / X25519 ECDH
-description: Elliptic-curve Diffie–Hellman over Curve25519. The classical half of every modern TLS 1.3 / QUIC key exchange and the PQ-hybrid `X25519MLKEM768`.
+title: ecc — elliptic-curve cryptography
+description: Ed25519 signatures, X25519 ECDH, NIST P-256, ECVRF (RFC 9381), BLS12-381 pairing-friendly threshold signatures.
 ---
 
 # `core.security.ecc` — elliptic-curve cryptography
+
+Five primitives ship under one umbrella. All operations are
+constant-time on every CPU; secret-data-dependent branches and
+secret-indexed memory accesses are absent throughout the layer.
+
+| Primitive | Curve | Use case |
+|---|---|---|
+| **`ed25519`** | Edwards25519 | Default modern signature scheme — SSH, Signal, WireGuard, modern TLS 1.3 certs, EdDSA JWTs. Small (32 B pk / 64 B sig), fast, deterministic. |
+| **`x25519`** | Curve25519 (Montgomery) | Default ECDH primitive — TLS 1.3 / QUIC key exchange, X3DH-style triple-DH flows. Pairs with `pq.ml_kem` for the PQ-hybrid `X25519MLKEM768`. |
+| **`p256`** | NIST P-256 (secp256r1) | FIPS-validated deployments, JWS ES256, TLS ECDSA suites. |
+| **`vrf`** | Edwards25519 (ECVRF, RFC 9381) | Verifiable Random Function — leader election, sortition, lottery, NSEC5. Reuses the Ed25519 keypair. |
+| **`bls12_381`** | BLS12-381 (pairing-friendly) | Threshold + multi-sig + aggregate signatures, ZK pairing back-end (Halo2 / KZG10). Adopted by Eth2 PoS, Drand, Filecoin, Zcash Sapling, Algorand compact certs, Chia. |
+
+The X25519 deep-dive that follows historically anchored this page;
+the VRF and BLS12-381 sections at the end document the newer
+primitives.
+
+---
 
 ## What is ECDH and why do we need it?
 
@@ -389,7 +407,11 @@ intrinsic-level unit tests in the runtime crate.
 
 | File | Role |
 |---|---|
-| `core/security/ecc/x25519.vr` | Curve25519 / X25519 — ~215 LOC (surface + intrinsic dispatch) |
+| `core/security/ecc/ed25519.vr`   | Ed25519 signatures — surface + intrinsic dispatch |
+| `core/security/ecc/p256.vr`      | NIST P-256 — surface + intrinsic dispatch |
+| `core/security/ecc/x25519.vr`    | Curve25519 / X25519 — surface + intrinsic dispatch |
+| `core/security/ecc/vrf.vr`       | ECVRF-EDWARDS25519-SHA512-TAI per RFC 9381 |
+| `core/security/ecc/bls12_381.vr` | BLS12-381 group ops + pairing + IETF signatures + threshold |
 
 The actual Montgomery-ladder implementation lives in the runtime
 behind `verum.x25519.scalar_mult`. Future work: ship a pure-Verum
@@ -415,3 +437,186 @@ ref10 port for bootstrap / audit purposes.
 - Bernstein, [Curve25519: new Diffie-Hellman speed records](https://cr.yp.to/ecdh/curve25519-20060209.pdf) (2006)
 - [The fiat-crypto project](https://github.com/mit-plv/fiat-crypto) — formally verified C source used under Verum's `@intrinsic` hook
 - [NIST SP 800-186](https://doi.org/10.6028/NIST.SP.800-186) — Recommendations for Discrete Logarithm-based Cryptography
+
+---
+
+## ECVRF — Verifiable Random Function (RFC 9381)
+
+A VRF is a "verifiable" pseudo-random function: the secret-key
+holder produces a unique output for any input plus a *proof* of
+correctness; anyone with the public key can check the proof. The
+output is unforgeable and pseudo-random even relative to the
+public key.
+
+### Where VRFs are used
+
+* **Fair leader election** — block proposer selected by VRF over
+  a round seed. Leadership is verifiable but unpredictable in
+  advance.
+* **Sortition** in stake-weighted committees (Algorand, drand).
+* **Anti-enumeration in DNS** — NSEC5 uses VRF to hide the existence
+  set of zone records.
+* **Lottery / VRF-NFT distribution** — provably fair on-chain
+  randomness.
+
+### Ciphersuite
+
+`ECVRF-EDWARDS25519-SHA512-TAI` (RFC 9381 §5.5) — Edwards25519
+group + SHA-512 hash + try-and-increment hash-to-curve. Pinned as
+the only suite at v0.1.
+
+### Wire sizes
+
+| Object | Size |
+|--------|------|
+| Secret key (= Ed25519 seed) | 32 B |
+| Public key | 32 B |
+| Proof π (Γ‖c‖s = 32+16+32) | 80 B |
+| Output β (SHA-512 of canonical Γ encoding) | 64 B |
+
+### Key reuse with Ed25519
+
+The 32-byte sk **is** the Ed25519 seed bit-for-bit; the 32-byte
+pk **is** the Ed25519 public key bit-for-bit. Domain separation
+comes from the ECVRF suite tag (`0x03`) prefixed in every internal
+hash, so a single account key serves both protocols without
+cross-protocol forgery (RFC 9381 §3 endorses this dual use).
+
+### API
+
+```verum
+mount core.security.ecc.vrf.{
+    Ecvrf, VrfSecretKey, VrfPublicKey, VrfProof, VrfOutput,
+    VrfProveResult, VrfError,
+};
+
+let sk = Ecvrf.generate_secret_key();
+let pk = Ecvrf.public_key(&sk);
+
+// Prove — deterministic; same (sk, alpha) → same (proof, β).
+let alpha = b"synarc/proposer-election/v1/epoch=42/slot=137";
+let r = Ecvrf.prove(&sk, alpha);
+//  r.proof : VrfProof  (80 B)
+//  r.output: VrfOutput (64 B — pseudo-random)
+
+// Verify — strict-mode reject (s ≥ L, Γ off-curve, low-order pk)
+// surfaces as typed VrfError.
+let beta = Ecvrf.verify(&pk, alpha, &r.proof)?;
+assert_eq(beta, r.output);
+
+// Numeric draw in [0, modulus) — bias-free via rejection.
+let leader_index: UInt64 = Ecvrf.output_to_int_below(&beta, validator_count);
+```
+
+### Determinism
+
+Like Ed25519 signing, ECVRF prove is **fully deterministic**. No
+fresh randomness at prove time. The deterministic nonce is derived
+from `sk` and `alpha` via SHA-512 (RFC 9381 §5.4.2.2).
+
+### References
+
+* [RFC 9381 — Verifiable Random Functions (VRFs)](https://www.rfc-editor.org/rfc/rfc9381.html)
+* IRTF CFRG draft history — `draft-irtf-cfrg-vrf-15` (rolled to RFC 9381 errata-clean).
+
+---
+
+## BLS12-381 — pairing-friendly threshold signatures
+
+BLS12-381 is the pairing-friendly elliptic curve adopted by
+modern protocols that need short signatures plus
+threshold/aggregate composition: Eth2 PoS, Drand, Filecoin,
+Zcash Sapling/Orchard, Algorand compact certificates, Chia.
+
+### Curve summary
+
+* Prime field 𝔽_p with p ≈ 2²⁸¹ (~128-bit classical security).
+* G1: prime-order subgroup of E(𝔽_p) of order r ≈ 2²⁵⁵.
+  Compressed point: **48 B**.
+* G2: prime-order subgroup of E'(𝔽_p²) of same order r.
+  Compressed point: **96 B**.
+* GT: r-th roots of unity in 𝔽_p¹². Pairing target. **576 B** (12 × 48 B).
+* Pairing e: G1 × G2 → GT (optimal-Ate, ~64-bit Miller loop).
+
+### Two ciphersuites
+
+```verum
+public type BlsCipherSuite is
+    | MinPk     // G1 pubkey (48 B), G2 sig (96 B) — Eth2 / Drand default
+    | MinSig;   // G2 pubkey (96 B), G1 sig (48 B) — Filecoin StorageMarket
+```
+
+The IETF draft pins both. `MinPk` is canonical for threshold +
+multi-sig validator BFT (every modern validator-set chain uses it).
+`MinSig` is canonical where individual signatures dominate.
+
+Mixing suites within an aggregate raises `BlsError.AggregateMismatch`
+at runtime — the load-bearing rule that prevents most production
+BLS bugs.
+
+### API surface
+
+```verum
+mount core.security.ecc.bls12_381.{
+    BlsCipherSuite, G1Point, G2Point, GTElement, Scalar,
+    BlsSecretKey, BlsPublicKey, BlsSignature, BlsProofOfPossession,
+    BlsError,
+    pairing, multi_pairing,
+    aggregate_signatures, aggregate_public_keys,
+    aggregate_verify, fast_aggregate_verify,
+    threshold_combine, ThresholdId, ThresholdShare,
+};
+
+// Key generation.
+let sk = BlsSecretKey.generate();                       // CSPRNG
+let pk = sk.public_key(BlsCipherSuite.MinPk);
+
+// Sign + verify.
+let sig = sk.sign(BlsCipherSuite.MinPk, b"message");
+sig.verify(&pk, b"message")?;
+
+// Multi-sig (everyone signs the same m). PoP required first.
+let pop  = sk.prove_possession(BlsCipherSuite.MinPk);
+pk.verify_possession(&pop)?;
+let agg_sig = aggregate_signatures(&[sig1, sig2, sig3])?;
+let agg_pk  = aggregate_public_keys(&[pk1, pk2, pk3])?;
+fast_aggregate_verify(&[pk1, pk2, pk3], b"message", &agg_sig)?;
+
+// Aggregate-verify (each signer has their own message).
+aggregate_verify(&public_keys, &messages, &agg_sig)?;
+```
+
+### Threshold (t-of-n Shamir)
+
+```verum
+let share_sig = ThresholdShare.sign(
+    &my_share_scalar,
+    BlsCipherSuite.MinPk,
+    ThresholdId { value: 7 },
+    b"epoch-boundary-block-hash",
+);
+
+// Combine ≥ t shares into a full signature under the group public key.
+// Lagrange interpolation in 𝔽_r over distinct share IDs.
+let group_sig = threshold_combine(&shares, threshold)?;
+```
+
+### Hash-to-curve
+
+`G1Point.hash_to_curve(msg, dst)` and `G2Point.hash_to_curve(msg, dst)`
+implement RFC 9380 §8.8.{1,2}: SSWU + XMD:SHA-256. The DST tags are
+pinned by `BlsCipherSuite.dst()` per IETF draft §4.2.3.
+
+### Backend
+
+Heavy operations route through `@intrinsic("verum.crypto.bls12_381_*")`
+to the audited Supranational `blst` library — the same implementation
+lineage that powers Eth2 consensus clients.
+
+### References
+
+* [draft-irtf-cfrg-bls-signature-05](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/) — IETF BLS Signatures
+* [draft-irtf-cfrg-pairing-friendly-curves-11](https://datatracker.ietf.org/doc/draft-irtf-cfrg-pairing-friendly-curves/) — BLS12-381 parameter pinning
+* [RFC 9380](https://www.rfc-editor.org/rfc/rfc9380.html) — Hashing to Elliptic Curves
+* Bowe, "[BLS12-381: New zk-SNARK Elliptic Curve Construction](https://electriccoin.co/blog/new-snark-curve/)" (2017)
+* Boneh, Drijvers, Neven, "[Compact Multi-Signatures for Smaller Blockchains](https://eprint.iacr.org/2018/483)" (2018) — anti-rogue-key trick

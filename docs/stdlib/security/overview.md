@@ -63,12 +63,19 @@ header and matches its published test vectors bit-exact:
 - FIPS 180-4 (SHA-2 family)
 - FIPS 197 (AES)
 - NIST SP 800-38D (AES-GCM)
-- NIST FIPS 203 / 204 (ML-KEM / ML-DSA post-quantum)
+- NIST FIPS 203 / 204 / 205 (ML-KEM / ML-DSA / SLH-DSA post-quantum)
 - RFC 2104 (HMAC), 4231 (HMAC test vectors)
 - RFC 5869 (HKDF)
 - RFC 7748 (Curve25519 / X25519)
+- RFC 8032 (Ed25519)
 - RFC 8439 (ChaCha20-Poly1305)
 - RFC 8446 (TLS 1.3), 9001 (QUIC), 9113 (HTTP/2)
+- RFC 9381 (ECVRF — Verifiable Random Function)
+- IETF draft-irtf-cfrg-bls-signature (BLS12-381 signatures + threshold aggregation)
+- IETF draft-irtf-cfrg-pairing-friendly-curves (BLS12-381 parameter pinning)
+- BLAKE3 specification (O'Connor / Aumasson / Neves / Wilcox-O'Hearn 2020)
+- Halo2 specification (Zcash Foundation, builds on Bowe / Grigg / Hopwood 2019)
+- Ben-Sasson et al. STARK + FRI (2018)
 
 ## Module map
 
@@ -80,7 +87,8 @@ core/security/
 ├── hash/
 │   ├── sha256.vr       — SHA-256 (FIPS 180-4 §6.2)
 │   ├── sha384.vr       — SHA-384 (FIPS 180-4 §6.5)
-│   └── sha512.vr       — SHA-512 (FIPS 180-4 §6.4)
+│   ├── sha512.vr       — SHA-512 (FIPS 180-4 §6.4)
+│   └── blake3.vr       — BLAKE3 streaming + XOF + keyed_hash + derive_key
 ├── mac/
 │   ├── hmac.vr         — HMAC-SHA-{256, 384, 512}
 │   └── poly1305.vr     — Poly1305 one-time MAC
@@ -93,10 +101,25 @@ core/security/
 │   ├── aes_gcm.vr      — AES-128-GCM / AES-256-GCM AEAD
 │   └── chacha20_poly1305.vr — ChaCha20-Poly1305 AEAD
 ├── ecc/
-│   └── x25519.vr       — Curve25519 ECDH
+│   ├── ed25519.vr      — Ed25519 signatures (RFC 8032)
+│   ├── p256.vr         — NIST P-256 (FIPS 186-4)
+│   ├── x25519.vr       — Curve25519 ECDH (RFC 7748)
+│   ├── vrf.vr          — ECVRF-EDWARDS25519-SHA512-TAI (RFC 9381)
+│   └── bls12_381.vr    — BLS12-381 pairing curve, threshold + aggregate sigs
 ├── pq/
 │   ├── ml_kem.vr       — ML-KEM-512/768/1024 (FIPS 203)
-│   └── ml_dsa.vr       — ML-DSA (FIPS 204)
+│   ├── ml_dsa.vr       — ML-DSA (FIPS 204)
+│   └── sphincs_plus.vr — SLH-DSA / SPHINCS+ (FIPS 205) — 12 parameter sets
+├── zk/
+│   ├── halo2/          — Halo2 + KZG10 (Plonk-style over BLS12-381)
+│   │   ├── circuit.vr  —   circuit DSL (Column / Selector / Gate / Lookup)
+│   │   ├── srs.vr      —   universal SRS + ceremony
+│   │   ├── prover.vr   —   precompute + prove + prove_with_aux
+│   │   └── verifier.vr —   verify + verify_batch
+│   └── stark/          — STARK + FRI (PQ-secure, transparent setup)
+│       ├── air.vr      —   AIR DSL (Expr / TransitionConstraint / BoundaryConstraint)
+│       ├── prover.vr   —   prove
+│       └── verifier.vr —   AirVk + verify + verify_batch
 ├── util/
 │   └── constant_time.vr — constant-time compare, zeroise
 ├── spiffe/
@@ -116,13 +139,14 @@ core/security/
 
 ### Cryptographic primitives
 
-- [**`hash`**](/docs/stdlib/security/hash) — SHA-256, SHA-384, SHA-512
+- [**`hash`**](/docs/stdlib/security/hash) — SHA-256/384/512 + BLAKE3 (streaming, XOF, keyed, derive_key)
 - [**`mac`**](/docs/stdlib/security/mac) — HMAC-SHA-family + Poly1305
 - [**`kdf`**](/docs/stdlib/security/kdf) — HKDF (Extract/Expand)
 - [**`cipher`**](/docs/stdlib/security/cipher) — AES, ChaCha20
 - [**`aead`**](/docs/stdlib/security/aead) — AES-GCM, ChaCha20-Poly1305
-- [**`ecc`**](/docs/stdlib/security/ecc) — X25519 ECDH
-- [**`pq`**](/docs/stdlib/security/pq) — ML-KEM, ML-DSA post-quantum
+- [**`ecc`**](/docs/stdlib/security/ecc) — Ed25519, P-256, X25519, ECVRF (RFC 9381), BLS12-381 (pairing + threshold sigs)
+- [**`pq`**](/docs/stdlib/security/pq) — ML-KEM, ML-DSA, SPHINCS+ post-quantum
+- [**`zk`**](/docs/stdlib/security/zk) — Halo2 + KZG10 (BLS12-381) and STARK + FRI (PQ-secure)
 - [**`util`**](/docs/stdlib/security/util) — constant-time ops, zeroise, RNG
 
 ### Identity, secrets, policy

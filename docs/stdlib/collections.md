@@ -16,6 +16,7 @@ chooses the implementation.
 | `list.vr` | `List<T>` + adapters (`ListIter`, `Drain`, `Chunks`, `Windows`, …) |
 | `map.vr` | `Map<K,V>` + `MapEntry<K,V>`, `OccupiedEntry`, `VacantEntry`, `MapIter`, `Keys`, `Values`, `Drain` |
 | `set.vr` | `Set<T>` + `SetIter`, `SetDrain` |
+| `multiset.vr` | `Multiset<T>` (hash bag with strictly-positive multiplicities) + `MultisetIter`, `MultisetDistinctIter` |
 | `deque.vr` | `Deque<T>` + `DequeIter`, `DequeDrain` |
 | `heap.vr` | `BinaryHeap<T>`, `MinHeap<T>`, `HeapDrainSorted`, `Reverse<T>` |
 | `btree.vr` | `BTreeMap<K,V>`, `BTreeSet<T>`, `BTreeEntry`, range iterators |
@@ -356,6 +357,111 @@ same elements but different insertion order compare equal and hash
 identically.  Implementation delegates to the underlying
 `Map<T, ()>` so set semantics fall out for free from map's
 order-independent invariants.
+
+---
+
+## `Multiset<T>` — hash bag with multiplicities
+
+`T: Hash + Eq`. Generalisation of `Set<T>`: every element carries
+an integer **multiplicity** ≥ 1. Insert a value already present →
+multiplicity increments; remove → decrement; reaching zero evicts
+the entry.
+
+Backed by `Map<T, Int>` exactly the way `Set<T>` is backed by
+`Map<T, ()>` — same Robin-Hood hashing, same amortised O(1) per-
+element ops.
+
+### Two distinct sizes
+
+Multisets have two natural "size" notions, both exposed:
+
+| Method | Returns | Cost |
+|---|---|---|
+| `distinct_len()` | number of unique elements (= \|support\|) | O(1) |
+| `cardinality()` | sum of multiplicities (Σ counts) | O(1) — cached |
+
+The deprecated `len()` is **not** provided to force the choice —
+`Set.len()` has one answer, `Multiset.len()` would have two; making
+the caller pick prevents silent wrong-size bugs.
+
+### Construction
+
+```verum
+Multiset.new()      Multiset.with_capacity(cap)
+let m = Multiset.from([1, 2, 2, 3, 3, 3]);
+let m = Multiset.from_counts([(1, 1), (2, 2), (3, 3)]);  // (element, multiplicity)
+```
+
+### Access
+
+```verum
+m.distinct_len() -> Int        // |support|
+m.cardinality()  -> Int        // Σ multiplicities
+m.is_empty()                   // cardinality == 0
+m.count(&v) -> Int             // multiplicity of v (0 if absent)
+m.contains(&v) -> Bool         // count(v) > 0
+```
+
+### Mutation
+
+```verum
+m.insert(value)            -> Int      // returns new multiplicity
+m.insert_n(value, n)       -> Int      // increment by n; n ≤ 0 is a no-op
+m.remove(&value)           -> Int      // decrement by 1; saturates at 0
+m.remove_n(&value, n)      -> Int      // decrement by n; saturates
+m.remove_all(&value)       -> Int      // evict entirely; returns evicted count
+m.clear()
+m.retain(|v, count| pred(v, count))    // keeps `cardinality` consistent
+```
+
+Fallible counterparts (`try_insert`, `try_insert_n`, `try_reserve`)
+return `Result<_, AllocError>` instead of panicking on growth.
+
+### Algebraic operations
+
+Standard multiset algebra (Knuth TAOCP §4.6.3) over (ℕ, +, max, min):
+
+| Op | Per-element semantics | Notation |
+|---|---|---|
+| `union(&other)` | max(count_a, count_b) | A ∪ B |
+| `intersection(&other)` | min(count_a, count_b) | A ∩ B |
+| `sum(&other)` | count_a + count_b | A ⊎ B (multiset disjoint sum) |
+| `difference(&other)` | max(0, count_a − count_b) | A − B |
+
+`is_subset / is_superset / is_disjoint` follow the multiset definitions
+(every-element multiplicity ≤, ≥, share-no-support respectively).
+
+### Iteration
+
+```verum
+m.iter()                       // Iterator<(&T, Int)>           — distinct + multiplicity
+m.distinct_iter()              // Iterator<&T>                  — distinct only
+m.to_list()       -> List<T>   // expand by multiplicity (cardinality entries)
+m.to_count_list() -> List<(T, Int)>   // (element, count) without expansion
+```
+
+### Statistics
+
+```verum
+m.mode() -> Maybe<&T>          // element with largest multiplicity (ties broken arbitrarily)
+```
+
+### When to choose Multiset vs Set
+
+* **Set** — identity / membership only; "is x present?".
+* **Multiset** — frequency counting; "how many times has x occurred?". Statistical aggregations, deduplication-with-counts, MVCC bag semantics, simplicial-multiset structures, fractal-holon sub-holon multisets.
+
+### Protocol implementations
+
+```verum
+implement<T: Hash + Eq + Clone> Clone for Multiset<T>;
+implement<T: Hash + Eq>         Eq    for Multiset<T>;   // every element same multiplicity
+implement<T: Hash + Eq + Debug> Debug for Multiset<T>;   // Multiset {a×2, b×3}
+```
+
+Multiset equality is structural — same support, same per-element
+multiplicity. Two multisets with the same elements but different
+insertion order compare equal.
 
 ---
 

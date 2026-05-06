@@ -1,7 +1,7 @@
 ---
 sidebar_position: 8
-title: pq — post-quantum (ML-KEM, ML-DSA)
-description: NIST FIPS 203 (ML-KEM / Kyber) and FIPS 204 (ML-DSA / Dilithium) — post-quantum key encapsulation and signatures.
+title: pq — post-quantum (ML-KEM, ML-DSA, SPHINCS+)
+description: NIST FIPS 203 (ML-KEM / Kyber), FIPS 204 (ML-DSA / Dilithium), FIPS 205 (SLH-DSA / SPHINCS+) — post-quantum KEM and signatures.
 ---
 
 # `core.security.pq` — post-quantum cryptography
@@ -24,15 +24,13 @@ exists today, but:
   - Cloudflare — ~36% of HTTPS traffic as of early 2026.
   - Apple iMessage — PQ3 rollout 2024.
 
-Verum ships both relevant NIST standards:
+Verum ships all three NIST PQ standards finalised in August 2024:
 
 | Standard | Purpose | Role |
 |---|---|---|
 | **FIPS 203 — ML-KEM** (Module-Lattice KEM, né Kyber) | Key Encapsulation Mechanism | Classical ECDH replacement / hybrid |
 | **FIPS 204 — ML-DSA** (Module-Lattice DSA, né Dilithium) | Digital Signature | Classical RSA / ECDSA replacement |
-
-**FIPS 205 (SLH-DSA / SPHINCS+)** — a stateless hash-based
-signature backup is not yet in Verum's stdlib; planned P2.
+| **FIPS 205 — SLH-DSA** (Stateless Hash-based DSA, né SPHINCS+) | Digital Signature | Hedge against algebraic-structure breaks of ML-DSA — security rests on hash collision-resistance only |
 
 ## When do I need PQ crypto?
 
@@ -62,6 +60,7 @@ implementations** wrapped in constant-time discipline:
 
 - `verum.pq.ml_kem_{keygen,encapsulate,decapsulate}`
 - `verum.pq.ml_dsa_{keygen,sign,verify}`
+- `verum.pq.slh_dsa_{keygen,sign,verify}`
 
 The intrinsic indirection lets the runtime swap in accelerated
 implementations (AVX-512 IFMA or ARMv9 SVE) without any change to
@@ -339,6 +338,102 @@ security properties of both modes.
 
 ---
 
+## SPHINCS+ — `core.security.pq.sphincs_plus`
+
+### What is SPHINCS+
+
+A *stateless hash-based* digital-signature scheme. Security rests
+on **collision-resistance + second-preimage-resistance** of the
+underlying hash function — and nothing else. No algebraic
+structure, no lattice assumptions, no number-theoretic problems.
+
+This makes SPHINCS+ the most conservative PQ option available:
+known quantum algorithms (Grover and Brassard's variant) bound the
+attack to a generic O(2^(n/2)) work factor, which is the same
+floor every hash-based primitive faces. If lattice cryptanalysis
+advances faster than expected and ML-DSA falls, SPHINCS+ is the
+fallback that does not share the failure mode.
+
+### Trade-offs vs ML-DSA
+
+| Property | SPHINCS+ | ML-DSA |
+|---|---|---|
+| Public key | 32–64 B | 1.3–2.6 KB |
+| Secret key | 64–128 B | 2.5–4.9 KB |
+| Signature | 7.8–49.9 KB | 2.4–4.6 KB |
+| Sign throughput | slow (~3–100 ms) | fast (~0.5–2 ms) |
+| Verify throughput | fast (~30–200 µs) | fast (~50–200 µs) |
+| Security assumption | hash collision-resistance only | lattice (M-LWE / M-SIS) |
+
+Most production deployments use ML-DSA as the primary signature
+and SPHINCS+ as a hedge — for example, X.509 hybrid certificates
+that cross-sign with both schemes. The application is allowed to
+trust the union; an attacker has to break both.
+
+### Twelve parameter sets
+
+Twelve standardised parameter sets (FIPS 205 §10.1 Table 2):
+
+* **Hash family** — SHA-2 or SHAKE.
+* **Security level** — 128 / 192 / 256 bits PQ.
+* **Variant** — `s` (small signature, slower sign) or `f` (fast sign, larger signature).
+
+```verum
+public type SphincsPlusVariant is
+    | SlhDsaSha2_128s | SlhDsaSha2_128f
+    | SlhDsaSha2_192s | SlhDsaSha2_192f
+    | SlhDsaSha2_256s | SlhDsaSha2_256f
+    | SlhDsaShake_128s | SlhDsaShake_128f
+    | SlhDsaShake_192s | SlhDsaShake_192f
+    | SlhDsaShake_256s | SlhDsaShake_256f;
+```
+
+Per-variant size accessors mirror ML-DSA:
+
+```verum
+impl SphincsPlusVariant {
+    public fn public_key_len(&self) -> Int;
+    public fn secret_key_len(&self) -> Int;
+    public fn signature_len(&self) -> Int;
+    public fn nist_category(&self) -> Int;     // 1, 3, or 5
+    public fn is_fast(&self) -> Bool;          // true for `f` variants
+}
+```
+
+### API
+
+```verum
+mount core.security.pq.sphincs_plus.{
+    SphincsPlusVariant, SphincsPlusKeyPair, SphincsPlusSignature,
+    slh_dsa_keygen, slh_dsa_sign, slh_dsa_verify,
+};
+
+let kp = slh_dsa_keygen(SphincsPlusVariant.SlhDsaSha2_128s)?;
+let sig = slh_dsa_sign(kp.variant, &kp.secret_key, b"message")?;
+let ok = slh_dsa_verify(sig.variant, &kp.public_key, b"message", &sig.bytes)?;
+assert(ok);
+```
+
+### Hedged signing (default)
+
+`slh_dsa_sign` is hedged: per-signature randomness is drawn from
+the runtime CSPRNG and XOR'd with a deterministic nonce derived
+from the secret key + message (FIPS 205 §10.2 strict). If the
+runtime CSPRNG fails, the function falls back to deterministic
+signing — the signature stays valid; the only loss is fault-
+injection resistance.
+
+### When to choose which variant
+
+| Scenario | Recommended |
+|---|---|
+| Tiny on-chain pubkey budget; sign-once | `SlhDsaSha2_128s` |
+| Fast signing for high-throughput log-streaming | `SlhDsaSha2_128f` |
+| Top-tier 256-bit PQ floor; sign-once-verify-many | `SlhDsaSha2_256s` |
+| All-SHAKE crypto stack | corresponding `SlhDsaShake_*` |
+
+---
+
 ## Security considerations
 
 ### Implicit rejection in ML-KEM
@@ -440,9 +535,10 @@ updates.
 
 | File | Role |
 |---|---|
-| `core/security/pq/ml_kem.vr` | ML-KEM-512/768/1024 — ~130 LOC |
-| `core/security/pq/ml_dsa.vr` | ML-DSA-44/65/87 — ~120 LOC |
-| `core/security/pq/mod.vr` | Public re-exports |
+| `core/security/pq/ml_kem.vr`       | ML-KEM-512/768/1024 — ~130 LOC |
+| `core/security/pq/ml_dsa.vr`       | ML-DSA-44/65/87 — ~120 LOC |
+| `core/security/pq/sphincs_plus.vr` | SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} — 12 parameter sets |
+| `core/security/pq/mod.vr`          | Public re-exports |
 
 ## Related modules
 
@@ -457,7 +553,7 @@ updates.
 
 - [NIST FIPS 203 — ML-KEM](https://doi.org/10.6028/NIST.FIPS.203)
 - [NIST FIPS 204 — ML-DSA](https://doi.org/10.6028/NIST.FIPS.204)
-- [NIST FIPS 205 — SLH-DSA](https://doi.org/10.6028/NIST.FIPS.205) (not yet in stdlib)
+- [NIST FIPS 205 — SLH-DSA](https://doi.org/10.6028/NIST.FIPS.205)
 - [IETF draft-ietf-tls-hybrid-design](https://datatracker.ietf.org/doc/draft-ietf-tls-hybrid-design/) — TLS hybrid design
 - [Cloudflare: The state of PQ in TLS](https://blog.cloudflare.com/pq-2024)
 - Bernstein, Lange, "Post-quantum cryptography" (2017), *Nature*
