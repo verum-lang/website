@@ -177,7 +177,7 @@ Commit `f563586a`.
 
 Commit `87cd1435`.
 
-### Wave 11 — `internal/holon/internal/math-msfs/verum-msfs-corpus/theorems/msfs/` (25 axioms)
+### Wave 11 — MSFS theorem corpus (25 axioms)
 
 Final pass: the MSFS verification corpus's flagship-theorem layer.
 Every active tautological axiom across the 14-stage MSFS corpus

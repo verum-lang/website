@@ -321,7 +321,7 @@ audit walker / CLI driver) dispatch on them at compile time:
 | `@derive(Trait, ...)` | §8.7 | derive macros |
 | `@cfg(...)` | §3.2 | conditional compilation |
 | `@inline` / `@cold` / `@repr(C)` / etc. | misc | code generation hints |
-| `@arch_module(...)` | ATS-V §8 (`internal/specs/ats-v.md`) | `verum_kernel::arch` + ATS-V phase 6.5 |
+| `@arch_module(...)` | [ATS-V](../architecture-types/index.md) | `verum_kernel::arch` + ATS-V phase 6.5 |
 
 **2. Meta-system advisory attributes** — parsed via the generic
 `identifier(args)` form; semantic validation happens in
@@ -372,15 +372,18 @@ references.
 public module authentication { ... }
 ```
 
-The ATS-V phase (the architectural-type-checking phase in the compiler pipeline) parses
-`@arch_module(...)` named-args into a canonical `Shape` record
-(mirror of the kernel-side `Shape` type), runs anti-pattern
-checks across the 32-pattern catalog, and emits structured
-diagnostics with stable RFC error codes per spec §32.4
-(dual-audience design).
+The ATS-V phase (the architectural-type-checking phase in the
+compiler pipeline) parses `@arch_module(...)` named-args into a
+canonical `Shape` record (mirror of the kernel-side `Shape`
+type), runs anti-pattern checks across the 32-pattern catalog,
+and emits structured diagnostics with stable RFC error codes
+under a dual-audience design (machine-readable + human-readable
+in the same surface).
 
-See `internal/specs/ats-v.md` for the full architectural type
-system specification.
+See [Architecture-as-Types](../architecture-types/index.md) for
+the full architectural type system surface and
+[anti-pattern catalog](../architecture-types/anti-patterns/overview.md)
+for the 32-pattern reference.
 
 ### 2.3 Modules and imports
 

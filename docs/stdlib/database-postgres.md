@@ -200,6 +200,116 @@ Frame builders + parsers live under `core.database.postgres.wire`:
 All decoded `&arena` references live in connection-arena;
 `recv_buf` / `last_formats` reset at connection drop.
 
+## Binary type codecs
+
+`core.database.postgres.codec` carries the wire-level binary
+codec for every PostgreSQL built-in scalar plus arrays plus
+composites.  The codec splits the encode and decode paths so
+parameter binding (Verum value → PG bytes) and row decoding
+(PG bytes → Verum value) can evolve independently per type.
+
+The dispatch table `supports_binary` returns `true` for every
+type the binary path can carry; types not in the table fall
+back to the textual `FmtText` representation so the connection
+never gets stuck on an exotic OID.
+
+### Coverage matrix
+
+| PG type            | Decode | Encode | Notes |
+|--------------------|--------|--------|-------|
+| `BOOL` / `BYTEA`   | ✓      | ✓      | Pass-through. |
+| `INT2` / `INT4` / `INT8` | ✓ | ✓ | Network-byte-order. |
+| `FLOAT4` / `FLOAT8`| ✓      | ✓      | IEEE 754. |
+| `TEXT` / `VARCHAR` | ✓      | ✓      | UTF-8. |
+| `UUID`             | ✓      | ✓      | 16 bytes. |
+| `DATE` / `TIME` / `TIMESTAMP[TZ]` | ✓ | ✓ | µs-precision Postgres epoch. |
+| `INTERVAL`         | ✓      | ✓      | (months, days, µs) triple. |
+| `JSON` / `JSONB`   | ✓      | ✓      | JSONB version byte preserved. |
+| `INET` / `CIDR`    | ✓      | ✓      | Family-byte + prefix. |
+| `MACADDR` / `MACADDR8` | ✓  | ✓      | 6 / 8 bytes. |
+| `BIT` / `VARBIT`   | ✓      | ✓      | Length-prefixed. |
+| **`NUMERIC`**      | ✓      | ✓ V0/V1| V0 integer fast-path; V1 text → binary via `Decimal`. |
+| **`tsvector`**     | ✓      | —      | Decode-only V0; encode via `to_tsvector` server-side. |
+| **`composite` / `record`** | ✓ | ✓  | `(type_oid, ArenaSlice)` per field; auto-encode from Verum record values is V1. |
+| **`array<T>`** for every `T` above | ✓ | ✓ | Header + per-element dispatch. |
+| `range<T>`         | ✓      | ✓      | `(lower, upper, flags)`. |
+
+The `NUMERIC`, `tsvector`, and `composite` codecs landed in the
+2026-05-04 batch (changelog entries
+[NUMERIC](/docs/changelog#added--postgres-wire-codec--numeric-tsvector-composite-2026-05-04)).
+With them every PG built-in scalar plus array plus composite
+has a wire codec; parameter binding no longer hits `FmtText`
+for any built-in type.
+
+### `NUMERIC` parameter binding
+
+Three encoders cover the full surface:
+
+```verum
+// Integer fast-path — no Decimal allocation.
+public fn encode_numeric_from_int(
+    buf:   &mut WireBuf,
+    arena: &Arena,
+    n:     Int,
+) -> Bool;
+
+// V1 — non-integer NUMERIC values.
+public fn encode_numeric_from_decimal(
+    buf:   &mut WireBuf,
+    arena: &Arena,
+    d:     &Decimal,
+) -> Bool;
+
+// Convenience: Text → Decimal → encode.
+public fn encode_numeric_from_text(
+    buf:   &mut WireBuf,
+    arena: &Arena,
+    s:     &Text,
+) -> Bool;
+```
+
+The decimal path bridges through
+[`core.text.numeric.decimal`](./decimal.md), so non-integer
+binding is full-fidelity (no rounding) for any value within the
+V0 i64-coefficient range.
+
+### `tsvector` decode
+
+```verum
+public type PgTsVector  is { lexemes: List<PgTsLexeme> };
+public type PgTsLexeme  is { word: Text, positions: List<PgTsPosition> };
+public type PgTsPosition is { position: Int, weight: Int };
+
+public fn decode_tsvector(slice: &ArenaSlice) -> Result<PgTsVector, DbError>;
+```
+
+Constants `PG_TS_WEIGHT_{D,C,B,A}` (0=D, 1=C, 2=B, 3=A) match
+the PG source.  Encode is a V1 follow-up — most callers ship
+`Text` and let PG run `to_tsvector` server-side.
+
+### `composite` codec
+
+```verum
+public type PgComposite      is { fields: List<PgCompositeField> };
+public type PgCompositeField is { type_oid: Int, value: Maybe<ArenaSlice> };
+
+public fn decode_composite(
+    slice:    &ArenaSlice,
+) -> Result<PgComposite, DbError>;
+
+public fn encode_composite(
+    buf:    &mut WireBuf,
+    arena:  &Arena,
+    fields: &List<PgCompositeField>,
+) -> Bool;
+```
+
+Decoded fields surface as `(type_oid, ArenaSlice)` so callers
+dispatch via the existing per-OID decoder table sql# uses for
+top-level columns.  Auto-encoding from a Verum record value
+(deriving `type_oid` and per-field encoder) is V1 and depends on
+the row-resolver.
+
 ## Error model
 
 Every wire-decode failure becomes `BackendDecodeError`; every
@@ -219,5 +329,7 @@ high-level operation surfaces a unified
 * Connection-pool resilience patterns (auto-reconnect + retry).
 * `pgvector` typed codec.
 
-See [`internal/specs/database.md`](https://github.com/...) for the
-full normative specification.
+See also: [stdlib → database](./database.md) for the
+cross-vendor surface, and
+[stdlib → database (mysql)](./database-mysql.md) for the
+sister implementation.

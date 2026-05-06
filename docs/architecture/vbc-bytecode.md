@@ -80,6 +80,37 @@ Several primary opcodes are prefixes into second-byte tables:
   cleanly without breaking older interpreters. Carved out of the
   reserved `IntArith1F` slot during the #167 opcode-space audit.
 
+#### Extended-operand length prefix
+
+Nine of the per-family extended opcodes (`ArithExtended`,
+`FfiExtended`, `MathExtended`, `SimdExtended`, `CharExtended`,
+`CbgrExtended`, `TextExtended`, `MemExtended`, `LogExtended`)
+carry their operands behind a varint length prefix so a
+sequential decoder can skip an unknown sub-op without parsing
+the inside:
+
+```text
+[opcode:u8] [sub_op:u8] [varint(len)] [bytes:len]
+```
+
+The encoder writes the operand byte-count as a varint
+immediately after `sub_op`; the decoder reads the length and
+consumes exactly that many bytes via the
+`decode_extended_operands` helper.  Interpreter
+`handle_*_extended` dispatchers skip the varint after the
+`read_u8(sub_op)` step and proceed with the structural decode
+they did before.
+
+`TensorExtended`, `GpuExtended`, and the general-purpose
+`Extended` carrier do **not** carry the prefix — they have
+structural per-`sub_op` decoders that already know how far the
+operand block extends, so the prefix would be redundant.
+
+The prefix is what lets the linker, disassembler, and validator
+walk a bytecode stream without an exhaustive sub-op table.
+Adding a new extended sub-op no longer requires touching every
+sequential decoder.
+
 ### Slice opcodes (`CbgrExtended` 0x00–0x0A)
 
 Slices in VBC are `FatRef` values that carry `(ptr, len, elem_size)`

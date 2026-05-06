@@ -207,5 +207,7 @@ CLIENT_MULTI_RESULTS`.
   routing for read-preference workloads.  Spec §6.3.5.
 * GTID tracking for resume-from-offset replication.
 
-See [`internal/specs/database.md`](https://github.com/...) §6.3
-for the full normative specification.
+See also: [stdlib → database](./database.md) for the
+cross-vendor surface, and
+[stdlib → database (postgres)](./database-postgres.md) for the
+sister implementation.

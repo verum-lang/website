@@ -21,8 +21,8 @@ typed command DSLs (`git`, `docker`, `kubectl`), built-ins (`cp`, `which`,
 indicators (`Progress`, `Spinner`), and the refinement-typed config helpers
 into scope.
 
-For the design rationale and full API reference, see
-[`internal/specs/shell-scripting.md`](https://github.com/verum-lang/verum/blob/main/internal/specs/shell-scripting.md).
+For the full API reference see
+[stdlib → shell](../stdlib/shell.md).
 
 ## Tagged-literal dispatch with auto-escape
 
@@ -281,6 +281,6 @@ async fn deploy_runs_kubectl_in_order() {
 
 ## See also
 
-- [Spec](https://github.com/verum-lang/verum/blob/main/internal/specs/shell-scripting.md) — full API reference, design rationale
+- [stdlib → shell](../stdlib/shell.md) — full API reference
 - [`core/shell/`](https://github.com/verum-lang/verum/tree/main/core/shell) — implementation
 - [`vcs/specs/L2-standard/shell/`](https://github.com/verum-lang/verum/tree/main/vcs/specs/L2-standard/shell) — type-check coverage

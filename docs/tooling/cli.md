@@ -549,9 +549,9 @@ verum arch rules      [--format plain|json]
 verum arch graph      [--cog NAME] [--format dot|json]
 ```
 
-Per `internal/specs/ats-v.md` §32.4 (dual-audience design),
-these commands provide structured machine-readable surfaces for
-coding-agents alongside human-friendly CLI output:
+These commands provide structured machine-readable surfaces for
+coding-agents alongside human-friendly CLI output (dual-audience
+design):
 
 | Subcommand | What it surfaces |
 |---|---|
