@@ -57,6 +57,39 @@ on bytecode coming from disk, network, or a shared cog archive.
 See **[VBC Bytecode → Module-load trust
 boundary](/docs/architecture/vbc-bytecode#module-load-trust-boundary)**.
 
+#### Native intercept layer
+
+The interpreter resolves certain stdlib calls natively before
+running their bytecode bodies.  Two surface classes flow
+through this layer:
+
+  - *Syscall-shaped surfaces* — file I/O, env-var ops, stdin /
+    stdout, shell-process spawn, networking.  The interpreter
+    services these calls directly against the kernel facilities
+    of the host OS, bypassing libSystem / libffi.
+  - *Canonical stdlib factories* — well-known constructors
+    whose contract is fixed (`Path.new`, `Text.new`,
+    `Text.with_capacity`, `Text.from_str`, `Text.from_char`,
+    …).  The interpreter returns the canonical value without
+    re-walking the stdlib body.
+
+Surfaces currently covered by the native layer:
+
+| Surface           | Examples                                               |
+|-------------------|--------------------------------------------------------|
+| Shell             | `sh#"..."`, `sh_check`, `sh`                           |
+| File system       | `core.io.fs.*` free functions                          |
+| Environment       | `core.env.var`, `set_var`, `remove_var`                |
+| Stdin             | `read_line`, `read_int`, `read_to_end`                 |
+| Path / PathBuf    | `Path.new`, `PathBuf.from`, inherent path methods      |
+| Text factories    | `Text.new`, `Text.with_capacity`, `Text.from_str`,  …  |
+| Process           | `Process.spawn`, `Command.*`                           |
+
+The native layer is observable only as a performance and
+correctness optimisation — every call returns the value that
+the bytecode body would have returned, on every observable
+boundary.
+
 :::note Interpreter fallback set
 
 By design, the interpreter returns `NotImplemented` for three feature

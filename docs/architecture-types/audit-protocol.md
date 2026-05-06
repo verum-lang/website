@@ -478,84 +478,52 @@ declared shape against its own body.  Two checks operate at the
 `composes_with` graph, but the walks behave differently from
 the local checks in two ways:
 
-1. **The graph is built incrementally.**
-   `Session.arch_shape_registry` accumulates a
-   `BTreeMap<String, Shape>` as each cog finishes parsing.
-   Order-dependence is acknowledged: a peer not yet registered
-   when the resolver runs is silently skipped (no false
-   positive).  The single-pass architecture is preserved.
+1. **The graph is built incrementally.**  Each cog's parsed
+   `@arch_module(...)` shape is registered as it is compiled,
+   building a session-scoped peer registry.  A peer not yet
+   registered when the resolver runs is silently skipped (no
+   false positive).  The single-pass architecture is preserved.
 2. **The walk is depth-aware.**  Direct one-hop drift is
-   already caught by the standard
-   `peer_resolution`-time check.  The transitive layer walks
-   *deeper* — depth `≥ 2` only — so it produces a strictly
-   different diagnostic class.
+   already caught by the standard peer-resolution check.  The
+   transitive layer walks *deeper* — depth `≥ 2` only — so it
+   produces a strictly different diagnostic class.
 
-### 10.1 The kernel walker
+### 10.1 The transitive walker
 
-The walker lives in `verum_kernel::arch_transitive`.
+A depth-first walker iterates the peer graph from a starting
+cog, visiting every reachable cog with cycle prevention and a
+depth fuse of **32** hops (sufficient for every observed
+real-world graph).  Each visit carries the `path` traversed,
+the visited cog's `shape`, and the current `depth`; callers
+filter by `depth ≥ 2` to isolate the transitive class.
 
-```rust
-pub const MAX_TRANSITIVE_DEPTH: usize = 32;
+Two policy adapters use the walker:
 
-pub struct PeerVisit<'a> {
-    pub path:     &'a [String],
-    pub shape:    &'a Shape,
-    pub depth:    usize,
-}
+- `resolve_transitive_lifecycle_regressions` — reports any
+  reachable peer whose `Lifecycle.rank()` exceeds the starting
+  cog's, surfacing the `(intermediate, terminal,
+  regressed_lifecycle)` tuple.
+- `resolve_transitive_foundation_downgrades` — reports any
+  reachable peer whose `foundation` is not subsumed by the
+  starting cog's foundation, surfacing the `(peer,
+  peer_foundation, self_foundation)` tuple.
 
-pub fn for_each_transitive_peer<F>(
-    start:    &str,
-    registry: &BTreeMap<String, Shape>,
-    visit:    &mut F,
-) -> ControlFlow<()>
-where
-    F: FnMut(&PeerVisit<'_>) -> ControlFlow<()>,
-{ /* DFS with visited-set + depth bound */ }
-```
+Both adapters are *pure functions* over the peer registry
+snapshot — re-runnable, deterministic, idempotent.
 
-The walker is *pure infrastructure* — it knows nothing about
-lifecycles or foundations.  Policy adapters compose against it:
+### 10.2 Wiring into the audit pipeline
 
-- `resolve_transitive_lifecycle_regressions(start, self_rank,
-  registry)` returns
-  `Vec<(intermediate, terminal, regressed_lifecycle)>` for any
-  reachable peer with `lifecycle.rank() > self_rank` whose
-  visit `depth ≥ 2`.
-- `resolve_transitive_foundation_downgrades(start,
-  self_foundation, registry)` returns
-  `Vec<(peer, peer_foundation, self_foundation)>` for any
-  reachable peer whose `foundation` is not subsumed by
-  `self_foundation` at `depth ≥ 2`.
+Each cog's ATS-V phase calls the two adapters against the
+session peer registry, populating two new diagnostic-context
+fields.  The regular AP-019 and AP-024 emitters then consume
+these alongside the direct-edge findings, so a single cog's
+audit report contains both immediate and transitive
+violations.
 
-Cycle prevention is built-in: a visited-set elides repeat
-traversals.  `MAX_TRANSITIVE_DEPTH = 32` is a hard fuse against
-pathological graphs — every real-world graph observed in the
-corpus is well below this floor.
-
-### 10.2 The compiler bridge
-
-The compiler-side `Session` exposes two helpers:
-
-- `resolve_transitive_lifecycle_regressions(module_name,
-  self_lifecycle_rank)`
-- `resolve_foundation_downgrades(module_name,
-  self_foundation)`
-
-Both clone a snapshot of `Session.arch_shape_registry` and
-dispatch into the kernel resolvers.  The
-`run_arch_phase_for_attrs_registry_aware` entry-point in
-`verum_compiler::pipeline::ats_v_phase` calls both helpers and
-populates two new `PhaseInputs` fields
-(`transitive_lifecycle_regressions`, `foundation_downgrades`).
-`run_arch_phase_one_with` propagates the fields into
-`DiagnosticContext`, where the regular AP-019 and AP-024
-emitters consume them alongside the direct-edge findings.
-
-Per-attribute fast path (`run_arch_phase_for_attrs`) leaves the
-fields empty: the per-attribute path runs without registry
-context and would otherwise produce false negatives that depend
-on which order the cogs finished parsing.  Registry-aware
-resolution is the supported path for cross-cog claims.
+The per-attribute fast path (used when no peer registry is
+available) leaves these fields empty: cross-cog claims are only
+supported in the registry-aware entry point that snapshots the
+peer graph before resolving.
 
 ### 10.3 Verifying the layer
 
@@ -586,22 +554,21 @@ chain even when no individual edge regresses.
 ### 10.4 Reusing the walker
 
 Future cross-cog anti-patterns that need depth-aware traversal
-should compose against `for_each_transitive_peer` rather than
-re-implementing DFS.  Concretely:
+share the same walker, so that cycle prevention and depth
+bounds stay consistent across the audit catalog:
 
-- AP-018 `CompositionPathDeception` — currently surfaces only on
-  direct edges; the transitive variant ("a cog launders a
+- AP-018 `CompositionPathDeception` — currently surfaces only
+  on direct edges; the transitive variant ("a cog launders a
   capability through two intermediate cogs neither of which
-  individually advertises the handoff") would compose against
-  the walker.
+  individually advertises the handoff") will share the
+  transitive infrastructure.
 - AP-022 `CapabilityLaundering` — already a multi-hop check on
-  the privilege chain, but currently uses a bespoke walker that
-  predates `arch_transitive`; consolidating onto the shared
-  infrastructure removes duplicated cycle-prevention logic.
+  the privilege chain; a future consolidation onto the shared
+  walker eliminates duplicated cycle-prevention logic.
 
-The walker's `ControlFlow<()>` callback supports early exit, so
-adapters that only care about the *first* violation can break
-out without paying for a full traversal.
+Adapters that only need the *first* violation can short-circuit
+the traversal — a useful optimisation for high-fanout peer
+graphs.
 
 ## 11. Cross-references
 

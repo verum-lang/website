@@ -16,6 +16,54 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — static-method dispatch for stdlib types (2026-05-06)
+
+`Type.static_method(...)` calls against stdlib types
+(`Text.with_capacity(64)`, `Text.new()`, `Text.from_str("...")`,
+…) now type-check and execute end-to-end.  Pre-fix every such
+call failed type-check with `no method named X found for type Y`,
+or — for the small surface that did pass type-check via the
+AST-driven path — returned `Unit` at runtime and crashed the
+downstream method chain with `method not found on receiver of
+runtime kind ()`.
+
+The closure spans both layers:
+
+  - **Type-check** — the metadata-driven inherent-method
+    registration now registers static methods (no `self`
+    receiver) under both the instance-dispatch key and the
+    static-dispatch key.  Closes ~134 of 158 Text statics plus
+    every static surface on `List`, `Map`, `Heap`, `Shared`,
+    `Path`, `TextBuilder`, `WireBuf`, `Deque`, `BinaryHeap`,
+    etc.  The archive name-harvester also walks function bodies
+    + impl items + const / static initialisers (previously
+    `mount`-only), so a file with `mount core.*` glob no longer
+    bypasses the archive load.
+  - **Runtime** — the canonical `Text.*` static factories
+    (`Text.new`, `Text.with_capacity`, `Text.try_with_capacity`,
+    `Text.from_static`, `Text.from_str`, `Text.from_utf8`,
+    `Text.from_utf8_lossy`, `Text.from_utf8_unchecked`,
+    `Text.from_char`) now flow through the
+    [native intercept layer](/docs/architecture/runtime-tiers#native-intercept-layer)
+    and return their canonical values without depending on
+    archive-side bytecode bodies.
+
+Verification:
+
+  - `Text.with_capacity(64).len()` → `0` (was: runtime crash).
+  - `Text.new()` returns an empty `Text` (was: returned `Unit`).
+  - `"abc".to_uppercase()` → `"ABC"` (was: type-check error).
+
+Out of scope for this batch: `List`, `Map`, `Heap`, `Shared`
+static factories that aren't intercepted still type-check but
+return `Unit` at runtime until either their native intercepts
+land or the deeper archive-injection fix closes the generic
+case.
+
+Documented at
+[Standard library → Text](/docs/stdlib/text) and
+[Architecture → Runtime tiers § Native intercept layer](/docs/architecture/runtime-tiers#native-intercept-layer).
+
 ### Added — ATS-V transitive multi-hop closure for AP-019 + AP-024 (2026-05-06)
 
 The cross-cog peer-graph dimension of architectural typing now
