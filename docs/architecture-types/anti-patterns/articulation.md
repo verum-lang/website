@@ -195,17 +195,29 @@ sending cog's `composes_with` list.
 
 **Severity:** error · **Phase:** post-arch · **Stable since:** v0.2
 
-**Predicate.** `forall (A → B) ∈ proof_chain.
+**Predicate.** `forall (A → ... → B) ∈ proof_chain.
 A.foundation.strength ≥ B.foundation.strength ∨
-exists bridge(A, B)`. A proof chain must not silently downgrade
-the foundation between steps without an explicit
-functor-bridge.
+exists bridge(A, B)`. A proof chain — direct or transitive —
+must not silently downgrade the foundation between steps
+without an explicit functor-bridge.
 
 **Why it matters.** Foundation strength is monotone under proof
 composition: a Cubical proof can be imported into a HoTT
 context, but the reverse needs a bridge that proves the
 preservation contract. Silent downgrade hides the fact that the
-proof is no longer load-bearing in the upstream foundation.
+proof is no longer load-bearing in the upstream foundation. The
+*transitive* case is subtler: a chain `Cubical → HoTT → ZFC`
+can pass each adjacent edge under a local bridge claim while
+the end-to-end composition still drops two strata.
+
+**Implementation.** As of 2026-05-06 the check runs on two
+layers — the direct one-hop edge surface (already present in
+the `peer_resolution` band) plus the transitive layer composed
+against `verum_kernel::arch_transitive::for_each_transitive_peer`.
+Indirect violations surface in `PhaseInputs.foundation_downgrades`
+with `depth ≥ 2`; the regular AP-019 emitter consumes both
+sources.  See
+[Audit protocol → Transitive peer-resolution layer](../audit-protocol#10-the-transitive-peer-resolution-layer).
 
 **Remediation.** Add a functor-bridge cited via
 `@framework(bridge_corpus, ...)`, or align the proof chain to
@@ -307,6 +319,15 @@ postulate `[P]`, which legitimately cites another theorem
 the original theorem inherits the hypothesis's strength even
 though no single citation regresses. Transitive walking
 surfaces this.
+
+**Implementation.** As of 2026-05-06 the predicate is checked
+through `verum_kernel::arch_transitive::resolve_transitive_lifecycle_regressions`
+— a depth-first walker over `Session.arch_shape_registry` with
+built-in cycle prevention and `MAX_TRANSITIVE_DEPTH = 32`.  The
+filter is `depth ≥ 2`: depth-1 (direct) regressions are caught
+by AP-009.  Violations surface in
+`PhaseInputs.transitive_lifecycle_regressions` with the full
+intermediate-cog path so audit output preserves the chain.
 
 **Remediation.** Mature every link in the chain to at least the
 citing artefact's rank, or insert an explicit downgrade marker

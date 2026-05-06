@@ -16,6 +16,219 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — ATS-V transitive multi-hop closure for AP-019 + AP-024 (2026-05-06)
+
+The cross-cog peer-graph dimension of architectural typing now
+walks the full `composes_with` graph, not just direct one-hop
+peers.  Indirect chains where lifecycle or foundation drifts at
+depth ≥ 2 (e.g. `theorem T → axiom A → hypothesis H` where every
+adjacent edge is locally legal but the transitive composition
+silently inherits hypothesis-strength) no longer slip through.
+
+Previously `Session.arch_shape_registry` already snapshotted
+every cog's parsed shape, but the resolvers only inspected
+direct edges.  This release introduces the kernel-side DFS
+walker that policy adapters can compose against.
+
+  - **Walker** — `verum_kernel::arch_transitive` (new module).
+    `for_each_transitive_peer<F>(start, registry, &mut F)` does a
+    depth-first walk with built-in cycle prevention via a
+    visited-set, bounded by `MAX_TRANSITIVE_DEPTH = 32`.  Visits
+    surface as `PeerVisit { path, shape, depth, intermediate(),
+    terminal() }` with a `ControlFlow<()>` return so callers can
+    short-circuit.
+  - **Policy adapters** —
+    `resolve_transitive_lifecycle_regressions` (closes AP-024)
+    and `resolve_transitive_foundation_downgrades` (closes
+    AP-019) filter visits by `depth ≥ 2`, leaving the direct
+    one-hop dimension untouched.
+  - **Pipeline wiring** — `PhaseInputs` gained two new fields
+    (`transitive_lifecycle_regressions`, `foundation_downgrades`)
+    that propagate into `DiagnosticContext` through
+    `run_arch_phase_one_with`.  Two new `Session` helpers
+    (`resolve_transitive_lifecycle_regressions`,
+    `resolve_foundation_downgrades`) snapshot the registry and
+    dispatch into the kernel resolvers.
+    `run_arch_phase_for_attrs_registry_aware` populates both
+    fields from the parsed shape.
+  - **Pin tests** — four new entries in
+    `crates/verum_kernel/tests/k_arch_v_alignment.rs` raise the
+    cross-side pin total from 39 → 43:
+    `pin_transitive_walker_present`,
+    `pin_phase_inputs_transitive_fields_present`,
+    `pin_session_transitive_resolvers_present`,
+    `pin_transitive_resolver_correctness`.
+
+The walker is reusable: future cross-cog anti-patterns (AP-018
+`CompositionPathDeception`, AP-022 `CapabilityLaundering`, …)
+that need depth-aware traversal compose against
+`for_each_transitive_peer` instead of re-implementing DFS.
+
+Documented at
+[Architecture-as-Types → Audit protocol §10](/docs/architecture-types/audit-protocol#10-the-transitive-peer-resolution-layer),
+[ATS-V → Anti-patterns AP-019/AP-024](/docs/architecture-types/anti-patterns/articulation#ap-019),
+[ATS-V → Cross-side pin tests §7](/docs/architecture-types/cross-side-pin#7-transitive-peer-walker-pins).
+
+### Added — VBCA Layer E protocol-method type-param scope (2026-05-06)
+
+Generic protocol methods that project associated types
+(`Self.Item`-shaped paths) through variant payloads now flow
+through a method-local generic-parameter scope, eliminating the
+fallback path where `Self.Item` rendered as the Type::Concrete
+PTR sentinel.  Three coupled fixes:
+
+  - The combined `generic_param_map` at the protocol-variant
+    emit site routes `resolve_field_type_ref` with proto-level
+    + method-local + synthetic-Self IDs.  `Self` lives at
+    `0x4000+N`; associated-type paths hash into `0xC000..0xFFFF`.
+  - `resolve_field_type_ref` extended to handle
+    `TypeKind::Function`, `TypeKind::AssociatedType`, and
+    `TypeKind::Qualified` — the fast-parser produces `Qualified`
+    for `Self.Item`, not `AssociatedType`.
+  - `PathSegment::SelfValue` recognition was load-bearing — the
+    naïve `PathSegment::Name` filter returned the empty string,
+    breaking synthetic-Self lookup.  Fixed.
+
+After Layer E, `parse_descriptor_type_string` cleanly converts
+`__generic_N` placeholders to fresh `Type::Var` instances; the
+prior coarse safety guard (registering wrong-arity-name fallbacks
+at `register_standard_protocols` time) was removed.
+
+L1/generics 18/20.  `bounds.vr` and `higher_kinded.vr` both pass.
+Unit tests 1011/1011.
+
+### Added — VBC bytecode encode/decode symmetry (2026-05-06)
+
+Three classes of asymmetry between encoder and decoder broke
+sequential bytecode decoding (linker, disassembler, validator):
+
+  1. **`Rank2Function` decode arm** — encoder wrote discriminant
+     `0x08` for rank-2 polymorphic function types
+     (Transducer-shaped); the decoder hit `InvalidTypeRef`.
+  2. **Extended-opcode length prefix** — 9 extended opcode
+     families (`Arith`/`Ffi`/`Math`/`Simd`/`Char`/`Cbgr`/`Text`/
+     `Mem`/`Log`) encoded `opcode + sub_op + raw_operand_bytes`
+     with no length information; the decoder returned empty
+     operands and corrupted the stream pointer.  Fix: encoder now
+     writes `varint(len) + bytes` after `sub_op`; decoder reads
+     the length and consumes bytes via the new
+     `decode_extended_operands` helper.  9 interpreter
+     `handle_*_extended` paths skip the varint after
+     `read_u8(sub_op)`.
+  3. **Missing decoder arms** — `TlsGet`, `TlsSet`,
+     `GetVariantData`, `GetVariantDataRef` were encoded but had
+     no decoder arms; sequential decoders fell through to the
+     wildcard `Raw` and corrupted `*offset`.  Added.
+
+`TensorExtended`/`GpuExtended`/the `Extended` carrier remain on
+their structural per-`sub_op` decoders (they were already
+length-symmetric).
+
+Tests: `verum_types` 1011/1011, `verum_vbc` 1100/1100,
+`build-paper.vr` typecheck clean.  `linker_round_trip_through_embedded_archive`
+remains failing on a separate ~95-decoder gap (Concat,
+MakeVariant, Push/Pop, …) — same architectural class, tracked
+incrementally.
+
+### Added — `core.text.numeric.decimal` foundational arithmetic (2026-05-04)
+
+A new foundational stdlib module landed:
+`core.text.numeric.decimal`.  Pure-stdlib implementation, zero
+new AST nodes or compiler intrinsics.
+
+  - `Decimal { coefficient: Int, scale: Int }` with full
+    parse / render / `add` / `sub` / `mul` / `div` / `compare`.
+  - `RoundingMode` enum: `HalfEven` (IEEE 754 banker's
+    rounding, the default eliminating +0.5 bias), `HalfUp`,
+    `HalfDown`, `Truncate`.
+  - `DivByZero` error variant; `div(&self, &other, precision,
+    mode)` plus convenience `div_round` (HalfEven default) and
+    `div_trunc` (precision = 0, Truncate).
+  - Scale-aligning arithmetic via a 19-entry `POW10` const
+    table; full overflow detection (`checked_add` / `checked_sub`
+    / `checked_mul` including `i64::MIN` sentinel handling).
+  - Sign-aware long division on `i64` coefficients with a
+    sticky-bit tracker for round-half tie semantics: `(-7) / 2`
+    HalfEven yields `-3.5`.
+
+V0 boundary: `i64`-cap on coefficient (~18 significant digits),
+`MAX_SCALE = 18`, no BigInt, no scientific-notation parsing.
+Division, banker's rounding, and the full V0 surface now ship.
+
+This unblocks PG `NUMERIC` text → binary encode (V1, also
+landed; see below), money types, and anywhere financial
+precision was previously gated on a lossless decimal type.
+
+Documented at
+[Standard library → Decimal](/docs/stdlib/decimal).
+
+### Added — Postgres wire codec — NUMERIC, tsvector, composite (2026-05-04)
+
+The remaining three deferred types in `core.db.postgres.codec`
+all received V0 binary codecs, closing the deferred list:
+
+  - **NUMERIC** (`PgNumeric`) — full-fidelity decode plus
+    integer encode (`encode_numeric_from_int`).  V1 text → binary
+    encode (`encode_numeric_from_decimal`) bridges through the
+    new Decimal library, so non-integer parameter binding no
+    longer falls back to `FmtText`.  Five sign-code constants
+    (`PG_NUMERIC_{POS,NEG,NAN,PINF,NINF}`).
+  - **tsvector** (`PgTsVector`, `PgTsLexeme`, `PgTsPosition`) —
+    decode-only V0 (header reader + per-lexeme NUL-scanner +
+    position-array decoder).  Encode is V1 — most callers ship
+    `Text` and let PG run `to_tsvector` server-side.  Constants
+    `PG_TS_WEIGHT_{D,C,B,A}`.
+  - **composite / record** (`PgComposite`, `PgCompositeField`)
+    — full bidirectional codec.  Decoded fields surface as
+    `(type_oid, ArenaSlice)` pairs; callers dispatch via the
+    existing per-OID decoder table sql# uses for top-level
+    columns.  Auto-encode from a Verum record value (deriving
+    `type_oid` plus per-field encoder) is V1 — depends on the
+    row-resolver.
+
+All three types are wired into `supports_binary`.  Every PG
+built-in scalar plus composite plus array now has a wire codec.
+
+Test fixtures at
+`vcs/specs/L2-standard/db/postgres_numeric_codec.vr` exercise
+all three plus the Decimal-backed NUMERIC encode path.
+
+### Added — AOT no-libc f64 / strtol formatting trio complete (2026-05-04)
+
+`P-AOT-NO-LIBC-F64-FMT-V0` closes the third and final piece of
+`T-DEFER-AOT-NO-LIBC`.  The AOT-emitted formatting / parsing
+surface is now fully libc-free across all three pieces:
+
+  - **i64 → decimal** — `verum_internal_i64_to_decimal`
+    (already shipped at 3a111f8e).
+  - **strtod** — pure-IR strtod (3bbd867c).
+  - **f64 → decimal** —
+    `verum_internal_f64_to_decimal` LLVM IR helper (this
+    release).  Bit-pattern NaN / Inf / zero special-cases,
+    `fptosi` integer part composed with the i64 helper, frac
+    handling via `fptosi(frac × 1e6)` plus 6-digit zero-pad
+    div / rem loop with trailing-zero strip.
+    `emit_verum_float_to_text` swaps `snprintf("%g")` for the
+    new helper through the runtime bridge
+    `get_or_declare_internal_f64_to_decimal`.
+
+V0 boundary: no scientific notation, `|v| > i64::MAX` saturates,
+no round-half-to-even.
+
+Companion sweep at 45cd3904 — `runtime.rs::get_or_declare_strtol`
+was forward-declaring `verum_internal_strtol` bodyless and
+relying on a separate emit path to fill it.  Programs hitting
+`verum_text_parse_int` without also tripping the VBC
+instruction-lowering path linked against an empty
+`mov w0, #0; ret` stub — silent zero from every parse_int call.
+Fixed by routing through `instruction.rs::get_or_declare_internal_strtol`
+with the adopt-and-emit pattern (mirror of strlen).  Dropped
+`get_or_declare_snprintf` and `get_or_declare_strtod` — both
+were libc-symbol emitters with zero remaining callers.
+
+Documented at
+[Architecture → No-libc invariant](/docs/architecture/no-libc-architecture).
+
 ### Added — `count_o_unbounded` recognizer wires V2 dispatch into `verify_refinement` (2026-05-03)
 
 The V2 `count_o_dispatch` deliverable becomes load-bearing: a

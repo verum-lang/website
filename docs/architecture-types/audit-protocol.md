@@ -469,7 +469,141 @@ The cross-side pin test in
 `crates/verum_kernel/tests/k_arch_v_alignment.rs` asserts both
 sides agree.
 
-## 10. Cross-references
+## 10. The transitive peer-resolution layer
+
+Most ATS-V checks are *local* — they inspect a single cog's
+declared shape against its own body.  Two checks operate at the
+*cross-cog* level: AP-019 `FoundationDowngrade` and AP-024
+`TransitiveLifecycleRegression`.  Both walk the
+`composes_with` graph, but the walks behave differently from
+the local checks in two ways:
+
+1. **The graph is built incrementally.**
+   `Session.arch_shape_registry` accumulates a
+   `BTreeMap<String, Shape>` as each cog finishes parsing.
+   Order-dependence is acknowledged: a peer not yet registered
+   when the resolver runs is silently skipped (no false
+   positive).  The single-pass architecture is preserved.
+2. **The walk is depth-aware.**  Direct one-hop drift is
+   already caught by the standard
+   `peer_resolution`-time check.  The transitive layer walks
+   *deeper* — depth `≥ 2` only — so it produces a strictly
+   different diagnostic class.
+
+### 10.1 The kernel walker
+
+The walker lives in `verum_kernel::arch_transitive`.
+
+```rust
+pub const MAX_TRANSITIVE_DEPTH: usize = 32;
+
+pub struct PeerVisit<'a> {
+    pub path:     &'a [String],
+    pub shape:    &'a Shape,
+    pub depth:    usize,
+}
+
+pub fn for_each_transitive_peer<F>(
+    start:    &str,
+    registry: &BTreeMap<String, Shape>,
+    visit:    &mut F,
+) -> ControlFlow<()>
+where
+    F: FnMut(&PeerVisit<'_>) -> ControlFlow<()>,
+{ /* DFS with visited-set + depth bound */ }
+```
+
+The walker is *pure infrastructure* — it knows nothing about
+lifecycles or foundations.  Policy adapters compose against it:
+
+- `resolve_transitive_lifecycle_regressions(start, self_rank,
+  registry)` returns
+  `Vec<(intermediate, terminal, regressed_lifecycle)>` for any
+  reachable peer with `lifecycle.rank() > self_rank` whose
+  visit `depth ≥ 2`.
+- `resolve_transitive_foundation_downgrades(start,
+  self_foundation, registry)` returns
+  `Vec<(peer, peer_foundation, self_foundation)>` for any
+  reachable peer whose `foundation` is not subsumed by
+  `self_foundation` at `depth ≥ 2`.
+
+Cycle prevention is built-in: a visited-set elides repeat
+traversals.  `MAX_TRANSITIVE_DEPTH = 32` is a hard fuse against
+pathological graphs — every real-world graph observed in the
+corpus is well below this floor.
+
+### 10.2 The compiler bridge
+
+The compiler-side `Session` exposes two helpers:
+
+- `resolve_transitive_lifecycle_regressions(module_name,
+  self_lifecycle_rank)`
+- `resolve_foundation_downgrades(module_name,
+  self_foundation)`
+
+Both clone a snapshot of `Session.arch_shape_registry` and
+dispatch into the kernel resolvers.  The
+`run_arch_phase_for_attrs_registry_aware` entry-point in
+`verum_compiler::pipeline::ats_v_phase` calls both helpers and
+populates two new `PhaseInputs` fields
+(`transitive_lifecycle_regressions`, `foundation_downgrades`).
+`run_arch_phase_one_with` propagates the fields into
+`DiagnosticContext`, where the regular AP-019 and AP-024
+emitters consume them alongside the direct-edge findings.
+
+Per-attribute fast path (`run_arch_phase_for_attrs`) leaves the
+fields empty: the per-attribute path runs without registry
+context and would otherwise produce false negatives that depend
+on which order the cogs finished parsing.  Registry-aware
+resolution is the supported path for cross-cog claims.
+
+### 10.3 Verifying the layer
+
+The cross-side pin band has four entries dedicated to this
+layer (raising the alignment count from **39 → 43**); see
+[Cross-side pin tests §7](./cross-side-pin#7-transitive-peer-walker-pins)
+for the full contract.
+
+The bundle gate `--arch-discharges` walks every reported
+violation.  Transitive entries surface in the JSON with an
+explicit `via` chain so auditors can read the path:
+
+```json
+{
+  "ap": "AP-024",
+  "kind": "TransitiveLifecycleRegression",
+  "module": "core.prove.zfc.choice",
+  "via":    ["core.prove.zfc.lemma_a", "core.prove.zfc.hypothesis_b"],
+  "regressed_to": "Hypothesis { confidence: Low }",
+  "depth": 2
+}
+```
+
+This makes the multi-hop reasoning *machine-readable*: a CI
+diff can flag a PR that introduces a new transitive regression
+chain even when no individual edge regresses.
+
+### 10.4 Reusing the walker
+
+Future cross-cog anti-patterns that need depth-aware traversal
+should compose against `for_each_transitive_peer` rather than
+re-implementing DFS.  Concretely:
+
+- AP-018 `CompositionPathDeception` — currently surfaces only on
+  direct edges; the transitive variant ("a cog launders a
+  capability through two intermediate cogs neither of which
+  individually advertises the handoff") would compose against
+  the walker.
+- AP-022 `CapabilityLaundering` — already a multi-hop check on
+  the privilege chain, but currently uses a bespoke walker that
+  predates `arch_transitive`; consolidating onto the shared
+  infrastructure removes duplicated cycle-prevention logic.
+
+The walker's `ControlFlow<()>` callback supports early exit, so
+adapters that only care about the *first* violation can break
+out without paying for a full traversal.
+
+## 11. Cross-references
 
 - [Anti-pattern overview](./anti-patterns/overview.md) —
   the 32-pattern catalog the `--arch-discharges` gate consumes.

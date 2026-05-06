@@ -238,7 +238,86 @@ helper surface (tag functions, predicate helpers, soundness
 pins).  Adding a new variant or removing a helper requires
 updating the matching pin in lockstep.
 
-## 6. Diagnostic-bundle integration
+## 7. Transitive peer-walker pins
+
+The transitive-multi-hop closure (AP-019 + AP-024) introduces
+its own pin band — four additional pins that lock in the kernel
+↔ compiler boundary for cross-cog DFS traversal.
+
+The walker itself lives in `crates/verum_kernel/src/arch_transitive.rs`.
+Two policy adapters
+(`resolve_transitive_lifecycle_regressions`,
+`resolve_transitive_foundation_downgrades`) compose against
+`for_each_transitive_peer` and filter visits by `depth ≥ 2` —
+the direct one-hop band is already covered by the standard
+peer-resolution surface.  The compiler-side `Session` exposes
+two helpers
+(`resolve_transitive_lifecycle_regressions`,
+`resolve_foundation_downgrades`) that snapshot the
+`arch_shape_registry` and dispatch into the kernel.
+`PhaseInputs` gained two corresponding fields
+(`transitive_lifecycle_regressions`, `foundation_downgrades`)
+that propagate into `DiagnosticContext`.
+
+### `pin_transitive_walker_present`
+
+Asserts that `crates/verum_kernel/src/arch_transitive.rs` ships
+the canonical surface:
+
+- `pub fn for_each_transitive_peer`
+- `pub fn resolve_transitive_lifecycle_regressions`
+- `pub fn resolve_transitive_foundation_downgrades`
+- `pub const MAX_TRANSITIVE_DEPTH`
+- `pub struct PeerVisit`
+
+Renaming the walker, dropping the depth bound, or removing the
+public adapters fails the pin.  `MAX_TRANSITIVE_DEPTH = 32` is
+the default cycle-prevention floor — sufficient for every
+real-world graph observed in the corpus.
+
+### `pin_phase_inputs_transitive_fields_present`
+
+Asserts both that `PhaseInputs` exposes the two new fields
+(`transitive_lifecycle_regressions`, `foundation_downgrades`)
+and that `run_arch_phase_one_with` propagates them into
+`DiagnosticContext`.  Without this propagation the resolvers
+populate the inputs but the diagnostic emitters never see them,
+so the violations would surface only in unit tests.
+
+### `pin_session_transitive_resolvers_present`
+
+Asserts that the compiler crate exposes the two `Session`
+helpers and that `verum_compiler/src/pipeline/ats_v_phase.rs`
+calls them.  This closes the "wired in unit tests but not in
+real builds" failure mode.  The pin reads
+`crates/verum_compiler/src/session.rs` for
+`resolve_transitive_lifecycle_regressions` /
+`resolve_foundation_downgrades` declarations and
+`ats_v_phase.rs` for matching call sites plus the populated
+field references.
+
+### `pin_transitive_resolver_correctness`
+
+A small functional pin that constructs a three-cog registry
+(theorem `start` → theorem `A` → hypothesis `B`), invokes
+`resolve_transitive_lifecycle_regressions`, and asserts exactly
+one regression chain is reported with `intermediate = "A"` and
+`terminal = "B"`.  The direct edge `start → A` does not regress
+(both are theorems); only the depth-2 chain through `A` to `B`
+violates.
+
+This pin is the *liveness pin* for the resolver: it would fail
+if the depth-`≥2` filter were inverted, the cycle prevention
+were over-eager, or the recursion bottomed out incorrectly.
+
+The four pins together raise the cross-side alignment count from
+**39 → 43**.  Adding a new resolver in the same band (e.g. the
+future AP-018 `CompositionPathDeception` adapter, which will
+also need depth-`≥2` semantics) requires composing against
+`for_each_transitive_peer` — re-implementing DFS in a separate
+file fails review.
+
+## 8. Diagnostic-bundle integration
 
 The audit-bundle aggregator (`verum audit --bundle`) walks every
 ATS-V kernel-discharge axiom and summarises per-cog and
@@ -263,7 +342,7 @@ intrinsic table has a matching Verum-side `axiom` declaration,
 preventing kernel-only discharges from leaking past the Verum
 declarations.
 
-## 7. Cross-reference
+## 9. Cross-reference
 
 - [Operationalisation surface](./operationalisation.md)
 - [Red-team — closed attack vectors](./red-team.md)

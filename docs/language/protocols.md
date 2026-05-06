@@ -117,6 +117,67 @@ The compiler checks **specialisation coherence**: the specialised
 instance must satisfy the same contracts as the generic one (a
 metatheorem discharged at compile time).
 
+## Associated-type projections — `Self.Item`
+
+When a protocol declares an associated type, you can project
+through it from inside any signature on the same protocol or
+implementation:
+
+```verum
+type IntoIter is protocol {
+    type Item;
+    type Iter;
+    fn into_iter(self) -> Self.Iter;
+};
+
+type Iterator is protocol {
+    type Item;
+    fn next(&mut self) -> Maybe<Self.Item>;
+    fn map<U, F: fn(Self.Item) -> U>(self, f: F) -> Map<Self, F>;
+    fn collect<C: FromIter<Self.Item>>(self) -> C;
+};
+```
+
+The projection `Self.Item` is resolved lazily against the
+*implementing* type, not against the protocol declaration.  The
+implementer chooses the concrete type:
+
+```verum
+implement Iterator for Range<Int> {
+    type Item = Int;            // Self.Item = Int for Range<Int>
+    fn next(&mut self) -> Maybe<Int> { ... }
+}
+```
+
+### Method-local generics under projection
+
+A protocol method may introduce its own generics, which
+compose with the protocol's associated types in the same
+signature:
+
+```verum
+type Iterator is protocol {
+    type Item;
+    fn fold<U>(self, init: U, f: fn(U, Self.Item) -> U) -> U;
+}
+```
+
+Inside `fold`, `U` is method-local (each call site picks one)
+while `Self.Item` is implementation-fixed.  The compiler keeps
+the two scopes distinct: a default-method body can mention both
+without ambiguity, and downstream call sites get the proper
+substitution chain (`Self.Item` → implementer's choice; `U` →
+caller's choice).
+
+### Default-method bodies
+
+Default-method bodies are checked against the projection
+surface they declare, not the implementer's later refinement.
+A default body that returns `Maybe<Self.Item>` is type-checked
+once at protocol-declaration time and re-instantiated per
+implementation; the body cannot depend on a specific
+implementer's `Item` choice.
+
 ## Generic associated types (GATs)
 
 ```verum
