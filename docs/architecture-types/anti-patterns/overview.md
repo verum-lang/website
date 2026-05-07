@@ -38,7 +38,7 @@ pipeline.
 | **Capability / composition core** | AP-001 .. AP-010 | Capability discipline, composition algebra, lifecycle ordering, foundation drift, register mixing, transaction / resource straddling, CVE-closure completeness | [classical](./classical.md) |
 | **Boundary / lifecycle / capability ontology** | AP-011 .. AP-026 | Stratum admissibility, boundary invariants, wire encoding, authentication, deterministic-test discipline, linear / affine / relevant capability flavours, persistence and time-bound contracts, transitive lifecycle, declaration vs body drift, foundation-content alignment | [ontology](./articulation.md) |
 | **Modal-temporal architectural calculus** | AP-027 .. AP-032 | Temporal stability, counterfactual brittleness, refactoring adjunctions, universal-property uniqueness, evolution-trigger satisfiability, Yoneda observer-functor invariance | [mtac](./mtac.md) |
-| **CVE articulation-hygiene** | AP-033 .. AP-040 | Operationalises [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md) primitives: retracted-citation use, hypothesis without maturation plan, interpretation in mature corpus, observer impersonation, boundless audit, implicit substrate, anchoring overextension, self-reference without operator+fixed-point | [cve-ah](./articulation.md#cve-articulation-hygiene-band-ap-033--ap-040) |
+| **CVE articulation-hygiene** | AP-033 .. AP-040 | Operationalises [CVE-architecture](../cve/overview.md) primitives: retracted-citation use, hypothesis without maturation plan, interpretation in mature corpus, observer impersonation, boundless audit, implicit substrate, anchoring overextension, self-reference without operator+fixed-point | [cve-ah](./articulation.md#cve-articulation-hygiene-band-ap-033--ap-040) |
 
 The `classical` and `ontology` bands together cover what the
 ATS-V specification calls *static-architecture defects* —
@@ -400,7 +400,7 @@ asserts every entry in this table has a matching `pub fn check_*`
 in the source — adding a 33rd code requires updating both the
 enum and the table in lockstep.
 
-## 12. Red-team closure axioms
+## 12. Adversarial-closure axioms
 
 Beyond the 32 declarative patterns, the Verum-side cog
 `core.architecture.anti_patterns` declares four kernel-discharge
@@ -417,8 +417,8 @@ surface:
 - `kernel_arch_consumes_format_check` (closes AT-5) — `consumes`
   field format enforcement.
 
-See the [red-team page](../red-team.md) for full attack-vector
-analysis.
+See [adversarial threat modelling](../red-team.md) for full
+attack-vector analysis.
 
 ## 13. Cross-references
 
@@ -426,8 +426,8 @@ analysis.
 - [Boundary / lifecycle / capability ontology (AP-011 .. AP-026)](./articulation.md)
 - [Modal-temporal anti-patterns (AP-027 .. AP-032)](./mtac.md)
 - [Audit protocol](../audit-protocol.md) — running the gates.
-- [Red-team closures](../red-team.md) — five attack vectors and
-  their closure axioms.
+- [Adversarial threat modelling](../red-team.md) — ten attack
+  vectors and their closure axioms.
 - [Operationalisation surface](../operationalisation.md) — full
   catalog of pure-data helpers including the anti-pattern
   enumerable surface.

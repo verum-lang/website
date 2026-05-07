@@ -7,6 +7,34 @@ slug: /architecture-types/cve/articulation-hygiene
 
 # CVE — articulation hygiene (L6)
 
+## Document CVE self-application {#document-cve-declarations}
+
+```verum
+ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "CVE-L6 articulation-hygiene discipline — register prohibitions + self-reference operator",
+        k_min: CveThresholdK.FullWitness,
+        v_min: CveThresholdV.NamedCertification,
+        e_min: CveThresholdE.StructurallyReady,
+    }),
+    substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+    anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+    e_sense:   Some(ExecutabilitySense.StructuralReadiness),
+    self_reference: Some(SelfReferenceWitness {
+        operator:       "the CVE-L6 hygiene check applied to this very page",
+        fixed_point:    "this page surviving its own three register prohibitions",
+        fixpoint_class: fixpoint_class_custom_fixpoint(
+            "CVE §6.10 self-application — the framework survives its own articulation hygiene"
+        ),
+    }),
+}
+```
+
+`Lifecycle`: `[T]` Theorem of L6 self-survival (the framework
+applied to itself satisfies the three register prohibitions —
+see §4 below). The `self_reference` field is non-`None`
+because the page documents the very check that audits it.
+
 The CVE framework is recursively self-applicable: it asks the
 same three questions of *itself* that it asks of every other
 artefact. The recursive application is what gives the framework
@@ -205,18 +233,18 @@ band through four load-bearing anti-patterns:
   disagree.
 - [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
   — strict-mode `[T]` cog without a declared `CognitiveSubstrate`.
-  Self-disclosure of the substrate is part of L6 hygiene per
-  [cve-architecture spec §1.5](#substrate-spec).
+  Self-disclosure of the substrate is part of L6 hygiene; see
+  [overview §4.1 substrate disclosure](./overview.md#substrate-disclosure).
 - [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
   — `[T]` cog under non-CHL foundation without declared
-  `FormalAnchoring`. Per [cve-architecture spec §4.5](#anchoring-spec),
-  the architectural law extends across domains only when the
-  parallel anchoring is explicitly named.
+  `FormalAnchoring`. The architectural law extends across
+  domains only when the parallel anchoring is explicitly named;
+  see [overview §4.2 formal anchoring boundary](./overview.md#anchoring-disclosure).
 - [`AP-040 SelfReferenceWithoutOperator`](../anti-patterns/articulation.md#ap-040)
   — self-referential `Shape` pattern without declared
-  `SelfReferenceWitness`. Operationalises
-  [cve-architecture spec §16](#self-reference-spec) («никогда
-  «само-X», всегда «оператор + неподвижная точка»). Closes the
+  `SelfReferenceWitness`. Operationalises the
+  [self-reference discipline](#self-reference-spec) below
+  ("never self-X, always operator + fixed point"). Closes the
   architectural-revision open invariant **R4**.
 
 These patterns and the L6 gate together cover the full hygiene
@@ -226,38 +254,161 @@ self-referential constructions.
 
 ## 8. Self-reference: operator + fixed point as type-level discipline {#self-reference-spec}
 
-[Cve-architecture spec §16](../../../internal/cve/docs/cve-architecture.md)
-formalises one of the most subtle hygiene principles:
+> **Section declarations.**
+> `FormalAnchoring`: `CurryHowardLawvere` — Banach / Tarski / Adamek
+> all live within the CHL anchoring (categorical fixed-point
+> theorems). `Substrate`: `AnalyticDecompositional`. `Lifecycle`:
+> `[T]` Theorem of the architectural law (operationalised via
+> [`AP-040`](../anti-patterns/articulation.md#ap-040)).
 
-> Никогда «само-X», всегда «оператор `T_X` + неподвижная точка
-> `Fix(T_X)`».
+The articulation-hygiene principle is a specialisation of CVE
+closure to **self-referential constructs**, stated at CVE-L4
+(architectural law) and operationalised at CVE-L0 through
+[`AP-040 SelfReferenceWithoutOperator`](../anti-patterns/articulation.md#ap-040):
 
-The operational reading: **a self-referential claim is admissible
-only when it is re-articulated as the fixed point of an
-explicitly-named operator under a cited fixpoint-class theorem.**
-The bare assertion «X is X» (or its operational analogues — a cog
-that cites itself in `composes_with`, a capability targeting the
-cog's own holon, a constitution that ratifies its own
-amendment process) is operationally indistinguishable from a
-Russell-paradox construction.
+> **Principle (CVE-L4).** For every self-referential construct
+> $X$ admitted at CVE-L0, the construct's identity is not the
+> bare assertion "$X$ is $X$" but the fixed point
+> $\mathrm{Fix}(\mathcal{T}_X)$ of an explicitly named operator
+> $\mathcal{T}_X$ under a CVE-L4-cited fixed-point theorem.
+
+The CVE decomposition:
+
+| Axis | Realisation |
+|------|-------------|
+| **C** | the operator $\mathcal{T}_X$ is given **constructively** — an explicit transformation rule on the argument |
+| **V** | the existence of the fixed point is **proved** via a fixed-point theorem: Banach for contracting operators, Tarski–Knaster for monotone, Adamek for continuous functors on cocomplete categories |
+| **E** | the fixed point is **computed** — iterations $x_{n+1} = \mathcal{T}_X(x_n)$, $x = \lim x_n$ are a program |
+
+The principle applies in every domain where self-reference
+arises:
+
+| Domain | The self-X form | Articulation hygiene |
+|--------|------------------|----------------------|
+| Mathematics | "the set of all sets not containing themselves" | operator + fixed point in a category where such a point exists and is unique |
+| Software engineering | self-modifying code | type-safe metaprogramming environment; first construct the transformation operator, then find the stable point |
+| Legal system | a constitution regulating its own amendment | a formal amendment procedure (operator) + the fixed point as the stable constitution surviving iterations of amendment |
+| AI architecture | a self-modifying training process | meta-learning operator + fixed point as the stable architecture surviving meta-training |
+| Organisational structure | an organisation restructuring itself | formal restructuring procedure (operator) + fixed point as the stable structure |
+
+The articulation-hygiene technique is the **constructive
+bypass** of the no-go theorem family (Russell, Gödel, Tarski,
+Lawvere, and their generalisations). These theorems show: in a
+complete system, any "self-X" formulation leads to a paradox.
+The hygiene gives an operational way to work with
+self-referential constructs **without** falling into paradox:
+instead of "self-X", an operator and its fixed point in a
+suitable category. Applicable not only in mathematics but in
+any domain where analogues of these no-go theorems operate
+(software systems via computability theory, legal systems via
+no-go theorems on total self-validation, etc.).
+
+The operational reading: **at CVE-L0 (object level), a
+self-referential claim is admissible only when it is
+re-articulated as the fixed point of an explicitly-named
+operator under a CVE-L4 fixpoint-class theorem.** Every
+CVE-L0 self-referential `Shape` declaration without an explicit
+`SelfReferenceWitness` is operationally indistinguishable from
+a Russell-paradox construction; the bare assertion "X is X"
+(or its CVE-L0 analogues — a cog that cites itself in
+`composes_with`, a capability targeting the cog's own holon, a
+constitution that ratifies its own amendment process) triggers
+[`AP-040 SelfReferenceWithoutOperator`](../anti-patterns/articulation.md#ap-040)
+in strict mode.
 
 Verum operationalises this discipline through two new first-class
 types and one new anti-pattern.
 
 ### 8.1 The two new types
 
-**`FixpointClass`** — the theorem class discharging the existence
-(and where applicable, uniqueness) of `Fix(T_X)`:
+#### Universal-property classifier {#fixpoint-class-universal}
 
-| Variant | Theorem | Discharges |
-|---------|---------|------------|
-| `Banach` | Banach fixed-point theorem | unique fixed point under contracting operator on complete metric space |
-| `Tarski` | Tarski-Knaster | existence (possibly non-unique) under monotone operator on complete lattice |
-| `Adamek` | Adamek's theorem on initial algebras | initial-algebra fixed point under continuous functor on cocomplete category |
-| `CustomFixpoint(citation)` | user-cited theorem | requires `@framework(...)` attribute; enumerable via `verum audit --framework-axioms` |
+Categorically, a fixed-point theorem is the assertion that for
+a chosen category $\mathcal{C}$ and a chosen class of
+endomorphisms $\mathcal{E} \subseteq \mathrm{End}(\mathcal{C})$,
+every $\mathcal{T} \in \mathcal{E}$ has a fixed point
+$\mathrm{Fix}(\mathcal{T})$ — and, where applicable, the fixed
+point is unique. The type of fixed-point witnesses is therefore
+indexed by the triple
+$(\mathcal{C}, \mathcal{E}, \mathrm{Theorem})$:
 
-**`SelfReferenceWitness`** — the operator + fixed-point pair plus
-the cited fixpoint class:
+$$
+\mathrm{FixpointClass} \;\cong\;
+  \sum_{\mathcal{C} : \mathrm{Cat}}
+    \sum_{\mathcal{E} : \mathrm{Sub}(\mathrm{End}(\mathcal{C}))}
+      \mathrm{Theorem}\bigl(\forall\, \mathcal{T} \in \mathcal{E}.\;
+        \exists\, \mathrm{Fix}(\mathcal{T})\bigr).
+$$
+
+The Verum-side `FixpointClass`
+(`core/architecture/types.vr:917`, mirrored in
+`crates/verum_kernel/src/arch.rs:1156`) inhabits this universal
+classifier directly: it is the record type
+$(\mathrm{category}, \mathrm{endomorphism\_class}, \mathrm{theorem})$
+where each component is a separate enum:
+
+```verum
+public type FixpointCategory is
+    | CompleteMetricSpace
+    | CompleteLattice
+    | CocompleteCategory
+    | CustomCategory(Text);
+
+public type EndomorphismClass is
+    | Contracting
+    | Monotone
+    | ContinuousFunctor
+    | CustomEndomorphismClass(Text);
+
+public type FixpointTheorem is
+    | Banach
+    | Tarski
+    | Adamek
+    | Custom(Text);
+
+public type FixpointClass is {
+    category: FixpointCategory,
+    endomorphism_class: EndomorphismClass,
+    theorem: FixpointTheorem,
+};
+```
+
+The three named theorems — Banach, Tarski-Knaster, Adamek —
+are produced by **smart constructors** that pin the canonical
+$(\mathcal{C}, \mathcal{E}, \mathrm{Theorem})$ triples:
+
+| Smart constructor | $(\mathcal{C}, \mathcal{E}, \mathrm{Theorem})$ | Uniqueness |
+|-------------------|------------------------------------------------|------------|
+| `fixpoint_class_banach()` | (`CompleteMetricSpace`, `Contracting`, `Banach`) | unique |
+| `fixpoint_class_tarski()` | (`CompleteLattice`, `Monotone`, `Tarski`) | existence guaranteed; uniqueness conditional |
+| `fixpoint_class_adamek()` | (`CocompleteCategory`, `ContinuousFunctor`, `Adamek`) | unique up to canonical iso (initial-algebra) |
+| `fixpoint_class_custom_fixpoint(citation)` | (`CustomCategory(citation)`, `CustomEndomorphismClass(citation)`, `Custom(citation)`) | as cited |
+
+The smart-constructor surface preserves the ergonomics of the
+old enum: a witness is built by writing
+`fixpoint_class_banach()` in place of `FixpointClass::Banach`.
+The richer record carries the universal-property data
+explicitly — a witness's category and endomorphism class are
+first-class queryable fields, not implicit in the variant tag.
+
+The triple is **open**: other named theorems (Knaster–Tarski
+lattice variant, Kleene fixed-point on dcpos, Brouwer for
+continuous self-maps of compact convex sets, Lefschetz for
+algebraic-topological maps, ...) are admitted via
+`fixpoint_class_custom_fixpoint(citation)` carrying a
+`@framework(...)` citation, enumerable through
+`verum audit --framework-axioms`. As new fixed-point theorems
+are added to a project's framework registry, the universal
+classifier extends without modification of any enum.
+
+Cross-side parity: every smart constructor + every component
+enum variant is pin-tested by
+[`pin_fixpoint_class_four_canonical`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/tests/k_arch_v_alignment.rs)
+in `crates/verum_kernel/tests/k_arch_v_alignment.rs:653`.
+
+**`SelfReferenceWitness`** (`core/architecture/types.vr:908`,
+mirrored in `crates/verum_kernel/src/arch.rs:1190`) — the
+operator + fixed-point pair plus the cited fixpoint class:
 
 ```verum
 public type SelfReferenceWitness is {
@@ -268,8 +419,13 @@ public type SelfReferenceWitness is {
 ```
 
 The witness is packaged into `ShapeDeclarations.self_reference:
-Maybe<SelfReferenceWitness>` alongside the existing `purpose`,
-`substrate`, `anchoring`, `e_sense` declarations.
+Maybe<SelfReferenceWitness>` (`core/architecture/types.vr:945`)
+alongside the existing `purpose`, `substrate`, `anchoring`,
+`e_sense` declarations. AP-040's predicate
+`check_self_reference_without_operator` at
+`crates/verum_kernel/src/arch_anti_pattern.rs:2374` enforces
+that any cog whose `Shape` exhibits a self-X pattern carries a
+non-`None` witness.
 
 ### 8.2 The detection rule (AP-040)
 
@@ -321,7 +477,7 @@ strict mode this is rejected at deploy.
         self_reference: Some(SelfReferenceWitness {
             operator:       "synarc.governance.amendment_operator",
             fixed_point:    "synarc.governance.constitution",
-            fixpoint_class: FixpointClass.Banach,
+            fixpoint_class: fixpoint_class_banach(),
         }),
         ..ShapeDeclarations::empty()
     },
@@ -345,10 +501,10 @@ already articulated as operator+fixed-point:
 
 | Concept | Operator | Fixed point | Class |
 |---------|----------|-------------|-------|
-| Validator-set rotation (§A2.6) | `synarc.consensus.rotation_operator` | active validator set | `Tarski` (monotone on stake-weighted lattice) |
-| Holon coinductive guardedness (§L6) | `synarc.cognition.holon_operator` | self-similar holon at depth-N | `Adamek` (continuous functor on coalgebra) |
-| Diakrisis canonical articulation (§A1.1) | `core.math.diakrisis.canonicalize` | unique canonical form | `Banach` (contracting on Bures metric) |
-| Audit-bundle self-application (§L4) | `verum_audit::self_audit` | `[T]`-status audit cog | `CustomFixpoint("CVE §20 self-application")` |
+| Validator-set rotation (§A2.6) | `synarc.consensus.rotation_operator` | active validator set | `fixpoint_class_tarski()` (monotone on stake-weighted lattice) |
+| Holon coinductive guardedness (§L6) | `synarc.cognition.holon_operator` | self-similar holon at depth-N | `fixpoint_class_adamek()` (continuous functor on coalgebra) |
+| Diakrisis canonical articulation (§A1.1) | `core.math.diakrisis.canonicalize` | unique canonical form | `fixpoint_class_banach()` (contracting on Bures metric) |
+| Audit-bundle self-application (§L4) | `verum_audit::self_audit` | `[T]`-status audit cog | `fixpoint_class_custom_fixpoint("CVE chronicle self-application")` |
 
 Each of these is a legitimate self-reference because the cog
 declares the operator and fixed point explicitly. AP-040 catches
@@ -383,15 +539,26 @@ mechanically verify the claim by re-running the gate.
 
 ## 9. Cross-references
 
-- [CVE overview](./overview.md) — the universal frame.
-- [Three axes](./three-axes.md) — C / V / E in detail.
-- [Seven layers](./seven-layers.md) — where L6 sits in the
-  stratification.
-- [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
-  — type-system counterpart for observer-role/register collisions.
-- [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
-  — substrate self-disclosure (cve-architecture spec §1.5).
-- [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
-  — formal anchoring boundary (cve-architecture spec §4.5).
-- [Audit protocol](../audit-protocol.md) — the gate runner that
-  applies the L6 check.
+Relation markers per the convention introduced in
+[three-axes §5](./three-axes.md#5-cross-references):
+
+- *frame:* [CVE overview](./overview.md) — universal CVE
+  architectural law (this page operationalises L6).
+- *frame:* [Three axes](./three-axes.md) — C/V/E axes whose
+  L6 self-application this page audits.
+- *frame:* [Seven layers](./seven-layers.md) — where L6 sits
+  in the stratification.
+- *operationalisation:* [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
+  — type-system counterpart for observer-role/register
+  collisions.
+- *operationalisation:* [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
+  — substrate self-disclosure (see
+  [overview §4.1](./overview.md#substrate-disclosure)).
+- *operationalisation:* [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
+  — formal-anchoring boundary (see
+  [overview §4.2](./overview.md#anchoring-disclosure)).
+- *operationalisation:* [`AP-040 SelfReferenceWithoutOperator`](../anti-patterns/articulation.md#ap-040)
+  — self-reference operator+fixed-point discipline (see
+  [§8 above](#self-reference-spec)).
+- *operationalisation:* [Audit protocol](../audit-protocol.md)
+  — gate runner that applies the L6 check.

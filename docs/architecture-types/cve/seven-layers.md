@@ -7,10 +7,45 @@ slug: /architecture-types/cve/seven-layers
 
 # CVE — seven layers (L0 .. L6)
 
+## Document CVE self-application {#document-cve-declarations}
+
+```verum
+ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "stratification of CVE application into seven layers + Verum-to-spec mapping",
+        k_min: CveThresholdK.FullWitness,
+        v_min: CveThresholdV.NamedCertification,
+        e_min: CveThresholdE.StructurallyReady,
+    }),
+    substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+    anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+    e_sense:   Some(ExecutabilitySense.StructuralReadiness),
+    self_reference: None,
+}
+```
+
+`Lifecycle`: `[D]` Definition of the seven-layer stratification
+(layers are defined here; revision goes through the
+[architectural-revisions chronicle](./architectural-revisions.md)).
+
 The CVE frame asks three questions: *constructive? verifiable?
 executable?* Asking these questions of *the same artefact* at
 different layers of abstraction yields different answers — and
 the layers must be kept distinct to avoid category errors.
+
+Stratification has operational meaning: a CVE-closure check at
+one layer uses one set of tools, at another a different set.
+**Mixing layers** is a typical source of elusive defects that
+hide in the unclarity of *at what level* an assertion lives.
+The seven-layer set is a **working set** that gives clean
+separation between artefact types each operational tool
+addresses; coarser stratifications mix tool classes inside one
+layer, finer stratifications generate cross-layer duplicates.
+The choice is operational, not dogmatic; a revision of the
+number of layers is registered through the
+[chronicle of architectural revisions](./architectural-revisions.md)
+when systematic observations show the current stratification
+generates inter-layer leaks or tool duplication.
 
 Verum stratifies the application of CVE into **seven layers**,
 L0 through L6. Each audit gate is positioned at a specific
@@ -173,7 +208,7 @@ serves as additional verification.
 yet produce inconsistent audit JSON (missing fields, wrong
 verdicts). L5 catches the *audit's* errors, not the project's.
 
-## 8. L6 — the frame itself
+## 8. L6 — the frame itself {#9-l6--the-frame-itself}
 
 **Subject:** CVE applied to CVE. *Is the CVE framework C-V-E?*
 
@@ -236,34 +271,95 @@ The seven-layer stratification is the *minimal* number of layers
 that keeps every axis-of-responsibility distinct. Adding a
 layer is permitted; merging two layers is a category error.
 
-## 11. ATS-V's own L0..L7 sub-layers — clarification
+## 11. Mapping to the universal CVE-architecture stratification
+
+> **Section declarations.** `FormalAnchoring`:
+> `CurryHowardLawvere` — the universal stratification is
+> framed in CHL-categorical terms. `Substrate`:
+> `AnalyticDecompositional`. `Lifecycle`: `[D]` Definition
+> (defines the mapping; not a theorem).
+
+Verum's seven layers above are an **operational refinement** of
+the universal seven-layer CVE-architecture stratification. The
+universal stratification, applicable to every knowledge system
+(mathematical theories, scientific corpora, legal systems,
+neural architectures), distinguishes seven object classes by
+abstraction level:
+
+| Universal CVE layer | Object class | What lives here |
+|---------------------|--------------|-----------------|
+| **CVE-L0 — Object** | concrete claims with subject content | theorems, definitions, executable programs with checked specifications, physical models with stated predictions, working laws, trained models with fixed weights |
+| **CVE-L1 — Meta-language** | claims ABOUT L0 objects | metatheorems (Gödel, Tarski, Lawvere), classifications of formal systems, no-go theorems, theorems on the limits of algorithmic learning |
+| **CVE-L2 — Methodological** | protocols of producing L0/L1 | the [seven-symbol status taxonomy](./seven-symbols.md), articulation hygiene, declared-purpose discipline, code-review protocols, peer-review standards |
+| **CVE-L3 — Meta-methodological** | discipline of building L2 | architecture-revision procedure, the chronicle of revisions, anticipatory specifications for not-yet-existing disciplines |
+| **CVE-L4 — Architectural** | the formal anchoring of CVE itself | [Curry-Howard-Lawvere](./overview.md#anchoring-disclosure), Yoneda-invariance, parallel domain anchorings (automata theory, control theory, distributed protocols, functional systems, institutional design) |
+| **CVE-L5 — Structural** | corpus-level invariants | regenerability, antifragility, minimality, stratified access, the audit chronicle as a corpus property |
+| **CVE-L6 — Anti-philosophical** | structural register prohibitions | onto-declarations, traditional appeals as justifications, phenomenological appeals, authoritative appeals, interpretative gestures (see [articulation hygiene](./articulation-hygiene.md)) |
+
+The two stratifications are **compatible refinements** of the
+same architectural law:
+
+| Verum layer | Universal CVE layer it operates inside | Relationship |
+|-------------|----------------------------------------|--------------|
+| Verum L0 (the object — code, value, theorem statement) | CVE-L0 | concrete-claim refinement |
+| Verum L1 (the proof term / SMT certificate) | CVE-L0 | concrete-claim refinement (the proof is also an object) |
+| Verum L2 (the proof method — tactic / SMT call) | CVE-L2 (methodological) | Verum's tactic IS a methodological protocol |
+| Verum L3 (the meta-theory) | CVE-L4 (architectural) | the meta-theory is part of the formal anchoring |
+| Verum L4 (the architectural shape) | CVE-L4 (architectural) | name match: Verum's shape is the architectural law operationalised |
+| Verum L5 (the audit report) | CVE-L5 (structural) | the report IS a corpus-level structural artefact |
+| Verum L6 (the frame itself) | CVE-L6 (anti-philosophical) | name match: self-application of CVE to itself |
+
+The **load-bearing alignment** is at L4: both stratifications
+agree that L4 is the *architectural shape* layer, and Verum's
+audit gates report `verdict: load-bearing` at L4 when the
+architectural commitments meet the body. Discrepancies elsewhere
+are presentation conventions, not architectural disagreement.
+
+For most Verum-engineering work the local stratification is the
+operational vocabulary; for cross-domain CVE-architecture work
+(e.g., applying CVE to a non-Verum knowledge system) the
+universal mapping is canonical.
+
+## 12. ATS-V's own L0..L7 sub-layers — clarification
 
 ATS-V uses *internal sub-layers* L0..L7 (e.g., L0 architectural
 primitives, L1 cog-level annotations, L2 cross-cog checks, L3
 catalog patterns, ...) to organise its own implementation. These
-sub-layers live *entirely within* CVE's layer **L4**.
+sub-layers live *entirely within* CVE-L4 — they are
+implementation-level granularity for the architectural-shape
+layer.
 
 The naming clash is unfortunate; the disambiguation rule is:
 
-- When discussing the CVE frame, prefix with `CVE-Ln`: CVE-L0,
-  CVE-L4, CVE-L6.
-- When discussing ATS-V's internal organisation, prefix with
-  `ATS-V-Ln`: ATS-V-L0, ATS-V-L4.
+- When discussing the universal CVE frame, prefix with `CVE-Ln`:
+  CVE-L0, CVE-L4, CVE-L6.
+- When discussing Verum's verification stack (this page's
+  primary stratification), prefix with `Verum-Ln`: Verum-L0,
+  Verum-L4 (matches CVE-L4 by name).
+- When discussing ATS-V's internal organisation (sub-layers
+  inside Verum-L4 = CVE-L4), prefix with `ATS-V-Ln`: ATS-V-L0,
+  ATS-V-L4.
 
-Documentation that mixes the two conventions without prefix is
-a candidate for the L6 articulation-hygiene check —
+Documentation that mixes the conventions without prefix is a
+candidate for the L6 articulation-hygiene check —
 [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
 in the MTAC band.
 
-## 12. Cross-references
+## 13. Cross-references
 
-- [CVE overview](./overview.md) — the universal frame.
-- [Three axes](./three-axes.md) — C / V / E in detail.
-- [Seven configurations](./seven-configurations.md) — the
-  truth-table.
-- [Seven canonical symbols](./seven-symbols.md) — the glyph
-  taxonomy.
-- [Articulation hygiene](./articulation-hygiene.md) — CVE-L6
-  register-prohibition discipline.
-- [Audit protocol](../audit-protocol.md) — the gate runner that
-  combines verdicts across layers.
+Relation markers per the convention introduced in
+[three-axes §5](./three-axes.md#5-cross-references):
+
+- *frame:* [CVE overview](./overview.md) — universal CVE
+  architectural law.
+- *frame:* [Three axes](./three-axes.md) — C/V/E axes that
+  this stratification organises.
+- *refinement:* [Seven configurations](./seven-configurations.md)
+  — truth-table specialising the same axes.
+- *refinement:* [Seven canonical symbols](./seven-symbols.md)
+  — glyph taxonomy specialising the same axes.
+- *specialisation:* [Articulation hygiene](./articulation-hygiene.md)
+  — CVE-L6 register-prohibition discipline at the topmost
+  layer.
+- *operationalisation:* [Audit protocol](../audit-protocol.md)
+  — gate runner combining verdicts across layers.

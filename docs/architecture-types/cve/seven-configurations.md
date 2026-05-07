@@ -7,6 +7,36 @@ slug: /architecture-types/cve/seven-configurations
 
 # CVE — seven configurations
 
+## Document CVE self-application {#document-cve-declarations}
+
+```verum
+ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "C/V/E truth-table specification + deciding rule + universal-removal predicate",
+        k_min: CveThresholdK.FullWitness,
+        v_min: CveThresholdV.NamedCertification,
+        e_min: CveThresholdE.StructurallyReady,
+    }),
+    substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+    anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+    e_sense:   Some(ExecutabilitySense.StructuralReadiness),
+    self_reference: None,
+}
+```
+
+`Lifecycle`: `[T]` Theorem of seven-cell closure — the
+27-cell configuration space $\mathcal{M}^3$ where
+$\mathcal{M} = \{\checkmark, \blacklozenge, \times\}$ collapses
+under the migration map to exactly the seven productive
+configurations of §1 plus `[✗]` Retracted. Constructive
+witness: §9 below enumerates all 27 cells with explicit
+migration target. Verifier: cross-side pin
+`pin_seven_configurations_closure_exhaustive` re-runs the
+case analysis at build time. Executable: the witness function
+`seven_configurations_closure_witness(c, v, e)` in
+`core/architecture/types.vr` returns the canonical productive
+glyph for any input cell.
+
 The three axes C / V / E each take three values (present /
 partial-or-conditional / absent), producing a 27-cell space.
 Of those 27 cells, only **seven are productive** in practice —
@@ -153,35 +183,167 @@ Citing a `[✗]` cog is
 retracted with reason "weak primitive — deprecated by NIST SP
 800-131A" and replacement `my_app.crypto.aes256_gcm`.
 
-## 9. The non-productive cells
+## 9. Closure theorem — exhaustive case analysis {#closure-theorem}
 
-The 27-cell C/V/E space minus the seven productive cells is 20
-cells. Why are they not in the canonical taxonomy?
+> **Theorem (CVE seven-cell closure).** Let
+> $\mathcal{M} = \{\checkmark, \blacklozenge, \times\}$ denote
+> the per-axis modes (positive, partial, absent). The
+> configuration space $\mathcal{M}^3$ has 27 cells. Every cell
+> migrates uniquely to one of the seven productive
+> configurations of §1, plus a special-case eighth glyph
+> `[✗]` Retracted that lies outside $\mathcal{M}^3$ by being a
+> meta-state (deliberate withdrawal).
 
-- **Verifiable but not constructive (C-absent ∧ V-present).** A
-  decision procedure with no witness construction. Operationally
-  this is just a runtime assertion — useful but degenerate; in
-  Verum it is rendered as `@verify(runtime)` rather than a
-  Lifecycle status.
-- **Executable but not verifiable (E-present ∧ V-absent).** Code
-  that runs but has no spec — typical "TODO: prove later". In
-  Verum this is rendered as a function annotated `@verify(static)`
-  inside an otherwise `[D]` Definition cog.
-- **Verifiable but not executable (V-present ∧ E-absent).** A
-  pencil-and-paper proof in the corpus without extraction. This
-  is rare in Verum because the extraction pipeline is integrated;
-  when it occurs, the cog is rendered as `[C]` with a condition
-  "this proof is not extractable, see `verum extract --target=…`".
-- **Constructive but neither verifiable nor executable.** A
-  pencil-and-paper construction documented as an attribute on a
-  `[H]` Hypothesis. The cog itself remains `[H]`.
+The proof is by exhaustive case analysis on $\mathcal{M}^3$.
+Case modes:
+- $\checkmark$ — axis positive (constructor present, verifier
+  present, executable);
+- $\blacklozenge$ — axis partial (formulated witness, conditional
+  verification, external delegation, or trivial-by-definition);
+- $\times$ — axis absent.
 
-In every non-productive cell, the artefact migrates to one of
-the seven canonical configurations within the project's
-lifetime. The seven cells are the *stable attractors* of the
-configuration space.
+The migration map is operational: each cell either *coincides*
+with a productive cell or *migrates* to one when the artefact
+is matured (per the
+[deciding rule §10](#deciding-rule)).
 
-## 10. The truth-table is *closed*
+| # | C | V | E | Migrates to | Reason |
+|---|---|---|---|-------------|--------|
+| 1 | $\checkmark$ | $\checkmark$ | $\checkmark$ | `[T]` Theorem | full closure — coincides with cell 1 of §1 |
+| 2 | $\checkmark$ | $\checkmark$ | $\blacklozenge$ | `[C]` Conditional | partial E lifts to E-conditional under stated environment, the trio reads as $\blacklozenge \blacklozenge \blacklozenge$ |
+| 3 | $\checkmark$ | $\checkmark$ | $\times$ | `[C]` Conditional with E="not extractable" | pencil-and-paper proof; condition records the missing extractor |
+| 4 | $\checkmark$ | $\blacklozenge$ | $\checkmark$ | `[D]` Definition (V trivial) or `[P]` Postulate (V external) or `[C]` Conditional (V conditional) | partial V triages by the kind of partiality — see the V-partial sub-classification below |
+| 5 | $\checkmark$ | $\blacklozenge$ | $\blacklozenge$ | `[C]` Conditional | both V and E partial; the conjunction reads as conditional closure |
+| 6 | $\checkmark$ | $\blacklozenge$ | $\times$ | `[C]` Conditional with E-condition | dropped to conditional; the conditions record the V-partial and E-absent state |
+| 7 | $\checkmark$ | $\times$ | $\checkmark$ | `[C]` with V="TODO: prove" *(transitional only)* or downgrade to `[H]` Hypothesis with `@plan(...)` | code that runs but has no spec; transitional cell, must mature into `[T]` or be downgraded |
+| 8 | $\checkmark$ | $\times$ | $\blacklozenge$ | `[H]` Hypothesis | constructor present, no V, partial E — speculative implementation with no spec |
+| 9 | $\checkmark$ | $\times$ | $\times$ | `[H]` Hypothesis | constructor without V or E — bare formulation that compiles |
+| 10 | $\blacklozenge$ | $\checkmark$ | $\checkmark$ | `[C]` Conditional | partial C reads as conditional construction (typed schema or bounded reference impl) |
+| 11 | $\blacklozenge$ | $\checkmark$ | $\blacklozenge$ | `[C]` Conditional | all three axes partial — canonical conditional |
+| 12 | $\blacklozenge$ | $\checkmark$ | $\times$ | `[C]` Conditional | partial C, present V, absent E — proof with no execution |
+| 13 | $\blacklozenge$ | $\blacklozenge$ | $\checkmark$ | `[C]` Conditional | partial C and V, present E — running prototype |
+| 14 | $\blacklozenge$ | $\blacklozenge$ | $\blacklozenge$ | `[C]` Conditional | all-partial = canonical conditional state |
+| 15 | $\blacklozenge$ | $\blacklozenge$ | $\times$ | `[H]` Hypothesis | partial C+V, no E — the artefact is a *bet* with maturation plan |
+| 16 | $\blacklozenge$ | $\times$ | $\checkmark$ | `[H]` Hypothesis | partial C, no V, present E — running prototype without spec, bet with plan |
+| 17 | $\blacklozenge$ | $\times$ | $\blacklozenge$ | `[H]` Hypothesis | partial C, no V, partial E — canonical hypothesis state |
+| 18 | $\blacklozenge$ | $\times$ | $\times$ | `[H]` Hypothesis | partial C alone — canonical hypothesis state, coincides with cell 5 of §1 |
+| 19 | $\times$ | $\checkmark$ | $\checkmark$ | `[I]` Interpretation *(transitional only)* — must mature: add C-witness or downgrade | V and E without C is operationally a runtime assertion (`@verify(runtime)`) that does not produce a witness; the assertion is a degenerate cell on the path to `[T]` or removal |
+| 20 | $\times$ | $\checkmark$ | $\blacklozenge$ | `[I]` *(transitional only)* | same as cell 19, with weaker E — must mature or be removed |
+| 21 | $\times$ | $\checkmark$ | $\times$ | `[I]` *(transitional only)* | V alone is empty operationally; transitional |
+| 22 | $\times$ | $\blacklozenge$ | $\checkmark$ | `[I]` *(transitional only)* | E without C is a black-box artefact; must mature into `[H]` (with C-plan) or be removed |
+| 23 | $\times$ | $\blacklozenge$ | $\blacklozenge$ | `[I]` *(transitional only)* | partial V and E without C — descriptive only |
+| 24 | $\times$ | $\blacklozenge$ | $\times$ | `[I]` *(transitional only)* | partial V alone — descriptive |
+| 25 | $\times$ | $\times$ | $\checkmark$ | `[I]` *(transitional only)* | running code without spec or witness — must mature into `[H]` with `@plan(...)` |
+| 26 | $\times$ | $\times$ | $\blacklozenge$ | `[I]` *(transitional only)* | partial E alone — descriptive |
+| 27 | $\times$ | $\times$ | $\times$ | `[I]` Interpretation | empty cell — coincides with cell 6 of §1 |
+| ⊥ | n/a | n/a | n/a | `[✗]` Retracted | meta-state outside $\mathcal{M}^3$: deliberate withdrawal; record preserved as negative example |
+
+**V-partial sub-classification (used in cell 4):**
+
+| V-partial mode | Migrates to |
+|----------------|-------------|
+| `trivial` (definition by fiat) | `[D]` Definition (cell 2 of §1) |
+| `external` (delegated to a trusted citation) | `[P]` Postulate (cell 4 of §1) |
+| `conditional` (under stated assumptions) | `[C]` Conditional (cell 3 of §1) |
+
+**Closure (proof end).** Every cell of $\mathcal{M}^3$ has been
+assigned a unique productive migration target (column "Migrates
+to"). Cells coinciding with productive ones are stable
+attractors (cells 1, 3, 5, 9, 14, 17, 18, 27 of the case
+analysis); the remaining 19 cells are *transitional* and the
+deciding rule (§10) drives them either to a productive cell
+(via Action A — replenishment) or to retracted state (via
+Action C — deletion). The seven configurations of §1 plus
+`[✗]` are the **stable attractors** of the entire
+configuration space. ∎
+
+The Verum-side closure witness is the function
+`seven_configurations_closure_witness(c, v, e)` declared in
+`core/architecture/types.vr` (returns the canonical
+`Lifecycle` glyph for any input cell), cross-side mirrored at
+`crates/verum_kernel/src/arch.rs::seven_configurations_closure_witness`,
+pin-tested by `pin_seven_configurations_closure_exhaustive` in
+`crates/verum_kernel/tests/k_arch_v_alignment.rs`.
+
+## 10. The deciding rule — three actions {#deciding-rule}
+
+When CVE-closure is **violated relative to the artefact's
+declared purpose** (see
+[audit termination](./overview.md#purpose-disclosure)) the
+audit applies one of three deciding actions. If the declared
+purpose is satisfied and there is no defect relative to it, no
+action is applied — the artefact is preserved as-is and the
+audit closes (the [fourth resolution](./overview.md#purpose-disclosure):
+preservation without change).
+
+### Action A — Replenishment of the missing component
+
+If the missing component can be built in reasonable time, it
+is built.
+
+- **Mathematics example.** *"There exists a fixed point of the
+  operator $\mathcal{T}$"* with contracting $\mathcal{T}$
+  satisfies axis V (Banach's theorem) but not axis C (no
+  explicit witness). Replenish: state the iterative procedure
+  $x_{n+1} = \mathcal{T}(x_n)$ and prove convergence; the limit
+  point is the constructive witness, and axis E follows
+  automatically. Configuration V → CVE⁺.
+- **Software engineering example.** A specification asserts an
+  API without a reference implementation: axis C is violated.
+  Replenish: write a reference implementation, validate via the
+  test battery. Configuration V → CVE⁺.
+- **Legal system example.** A statute declares a right without a
+  procedure of realisation: axis E is violated. Replenish:
+  develop an application procedure, ratify via subordinate
+  legislation. Configuration CV → CVE⁺.
+
+### Action B — Status downgrade
+
+If replenishment is not possible in reasonable time, the
+artefact's status is downgraded to one that reflects the actual
+configuration. A hypothesis without proof or counterexample
+goes to status [H] (or its domain analogue: a backlog item, an
+open scientific question, a pending bill).
+
+### Action C — Deletion
+
+If neither replenishment nor downgrade yields a sensible
+outcome, the artefact is deleted. The canonical case: a
+metaphysical assertion *"X is Y"* without specifying the
+category in which the identification occurs and without a
+formal functor between the concepts has no CVE configuration.
+Delete.
+
+### Universal removal of unclear-status assertions
+
+Every CVE-L5 corpus claiming `[T]`-mature aggregate status
+eliminates assertions **without a definite CVE-L0 configuration**.
+The mechanism specialises by domain: in mathematical theory,
+CVE-L0 assertions of status `[I]` are removed before the canonical
+edition; in software engineering, *"TODO: figure out"* comments
+are cleared before release; in legal systems, norms lacking a
+definite application procedure are removed at codification; in
+standards, vague phrasings are removed at finalisation. The
+CVE-L5 maturity predicate is: **every CVE-L0 artefact in the
+corpus has a precisely determined CVE configuration, fixed by an
+explicit status from the
+[seven-symbol taxonomy](./seven-symbols.md)**.
+
+### Solving rule, in tabular form
+
+Per the audit protocol's [§14.2 deciding table](../audit-protocol.md):
+
+| Configuration of K₁/V₁/E₁ answers | Action |
+|------------------------------------|--------|
+| All three "yes" | CVE-closed, mature status, preserve |
+| Two "yes" + one "no" or "partial" | Action A (replenish) or Action B (downgrade) |
+| One "yes" + two "no" or "partial" | Action B (downgrade to hypothesis) or Action C (delete) |
+| All three "no" | Action C (delete) |
+
+The deciding rule is uniform across domains; only the
+"yes" / "partial" / "no" criteria for each axis vary by domain.
+
+## 11. The truth-table is *closed*
 
 Adding a new productive configuration would require either a new
 combination of C/V/E modes or a new mode on one of the axes
@@ -195,14 +357,19 @@ framework, asked of itself, answers "the seven canonical
 configurations are exactly the productive cells of the truth
 table". A new configuration would falsify the answer.
 
-## 11. Cross-references
+## 12. Cross-references
 
-- [CVE overview](./overview.md) — the universal frame.
-- [Three axes](./three-axes.md) — the C / V / E dimensions.
-- [Seven canonical symbols](./seven-symbols.md) — the glyph
-  reference.
-- [Seven layers](./seven-layers.md) — the layered application.
-- [Articulation hygiene](./articulation-hygiene.md) — CVE-L6
-  register-prohibition discipline.
-- [Lifecycle primitive](../primitives/lifecycle.md) — the ATS-V
-  primitive that carries the seven glyphs.
+Relation markers per the convention introduced in
+[three-axes §5](./three-axes.md#5-cross-references):
+
+- *frame:* [CVE overview](./overview.md) — the universal frame.
+- *frame:* [Three axes](./three-axes.md) — the C / V / E
+  dimensions whose truth-table this page enumerates.
+- *specialisation:* [Seven canonical symbols](./seven-symbols.md)
+  — glyph reference for the seven cells.
+- *refinement:* [Seven layers](./seven-layers.md) — layered
+  application of CVE through the same configurations.
+- *refinement:* [Articulation hygiene](./articulation-hygiene.md)
+  — CVE-L6 register-prohibition discipline.
+- *operationalisation:* [Lifecycle primitive](../primitives/lifecycle.md)
+  — the ATS-V primitive that carries the seven glyphs.

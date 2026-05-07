@@ -7,6 +7,33 @@ slug: /architecture-types/cve
 
 # CVE — Constructive / Verifiable / Executable
 
+## Document CVE self-application {#document-cve-declarations}
+
+This page is itself a CVE-L0 artefact subject to the discipline
+it documents. Per [§4.3 audit termination](#purpose-disclosure),
+the page declares its purpose and thresholds explicitly so its
+own audit terminates:
+
+```verum
+ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "canonical statement of the CVE architectural law",
+        k_min: CveThresholdK.FullWitness,        // every concept defined explicitly
+        v_min: CveThresholdV.NamedCertification, // builds clean under Docusaurus
+        e_min: CveThresholdE.StructurallyReady,  // page is read-deployable on the website
+    }),
+    substrate:      Some(CognitiveSubstrate.AnalyticDecompositional),
+    anchoring:      Some(FormalAnchoring.CurryHowardLawvere),
+    e_sense:        Some(ExecutabilitySense.StructuralReadiness),
+    self_reference: None,
+}
+```
+
+`Lifecycle`: `[P]` Postulate of the CVE architectural law
+(this page **states** the law; the law is **applied** by
+downstream pages and operationalised by the
+[CVE-AH band](../anti-patterns/articulation.md#cve-articulation-hygiene-band-ap-033--ap-040)).
+
 CVE — **C**onstructive / **V**erifiable / **E**xecutable — is
 the universal correctness frame Verum applies to every
 proposition the system can carry. It is not a Verum-specific
@@ -50,6 +77,109 @@ is no "kind-of-verified" or "almost-a-theorem". Every artefact is
 in exactly one CVE configuration, surfaced by exactly one CVE
 glyph, and that glyph is part of the artefact's externally
 observable interface.
+
+### 1.1 Knowledge engineering as the object {#knowledge-engineering}
+
+CVE addresses a class of artefacts wider than any single
+discipline: mathematical theories and theorems, physical models
+and predictions, software systems and specifications, neural
+networks and their training, legal acts and their application,
+standards and protocols, courses and curricula, organisational
+structures, and **any other artefact in which knowledge is
+expressed for use**. The class is open: as new disciplines
+emerge — programmable law, machine-checkable science, autonomous
+agent ecosystems, civilisational durability infrastructures —
+each requires the same architectural discipline. CVE is the
+universal architectural law applicable across all of them.
+
+### 1.2 The three erosions a knowledge system must survive {#three-erosions}
+
+Every knowledge system at CVE-L5 (corpus-level) whose declared
+purpose includes a lifetime exceeding one generation experiences
+three classes of erosion. The CVE frame at CVE-L4 defends
+against all three simultaneously when applied through CVE-L0
+to CVE-L6:
+
+1. **Lexical erosion.** Terms drift in meaning. What reads
+   precisely at the moment of authorship becomes ambiguous,
+   multivalent, or inapplicable decades later. This affects
+   mathematical theorems (changes in meta-mathematical
+   convention), legal acts (evolution of juridical doctrine),
+   software interfaces (version incompatibilities), scientific
+   models (paradigm change).
+
+2. **Instrumental erosion.** Verification systems, computational
+   models, measurement instruments, programming languages
+   succeed each other. A proof in one system, when the toolchain
+   changes, requires re-derivation. A program compiled for one
+   format requires porting; a measurement taken with one
+   instrument requires recalibration on the next generation. A
+   knowledge system bound to specific implementations diverges
+   from its execution environment.
+
+3. **Register erosion.** Without an explicit criterion, the
+   boundary between formal assertion, methodological principle,
+   descriptive observation, and rhetorical gesture blurs. The
+   knowledge system fills with assertions whose status is
+   indistinguishable: what is checkable, what is taken on faith,
+   what is executable, what is mere rhetorical accompaniment?
+
+CVE's tri-axis closure — constructive witness (defends against
+ungrounded claims), verifiable check (defends against
+inscrutable claims), executable representation (defends against
+purely verbal claims) — defeats all three erosions
+simultaneously. Every CVE-L5 corpus built CVE-closed survives
+generations of tooling change; every CVE-L5 corpus not CVE-closed
+is dissolved by erosion at a rate proportional to the missing
+axes.
+
+### 1.3 The principle in one sentence {#cve-principle}
+
+Every knowledge artefact $A$ — theorem, theoretical model,
+program, law, protocol, neural-network architecture, simulation,
+specification, educational programme, organisational structure
+— must simultaneously satisfy three axes:
+
+1. **Constructiveness (C).** $A$ has an explicit constructive
+   witness: a concrete object realising $A$, or a formal
+   procedure that produces such an object.
+2. **Verifiability (V).** $A$ has a formal check of its
+   declared properties, executable mechanically — be it a proof
+   in a verification system, a test battery with stated
+   coverage, formal contract conformance, or passage through a
+   stipulated certification protocol.
+3. **Executability (E).** $A$ has a working representation in
+   the sense of **structural readiness for execution**: a
+   program deployable in a suitable environment; a functor
+   acting between categories; a protocol deployable between
+   parties; an instruction for an executor; a law with a
+   procedure of application; a trained model ready to accept
+   inputs; a simulation scenario. Readiness as a property of
+   the artefact, distinct from the fact of present execution
+   and from the post-factum chronicle of past execution — see
+   the [three senses of E](./three-axes.md#three-senses).
+
+Violation of any one axis **relative to the artefact's declared
+purpose** (see [audit termination](#purpose-disclosure))
+qualifies $A$ as defective and triggers one of three actions:
+replenishment of the missing component, downgrade of status,
+deletion. CVE is **architectural**, not subject-matter
+specific: it is not derived from within any one domain, it is
+**chosen** as a law of construction. The justification is
+operational — when applied consistently, CVE protects any
+knowledge system from the three erosions of §1.2, ensures
+compatibility with toolchain evolution, and supports
+durability.
+
+CVE is **one** possible architectural law of knowledge
+engineering, not the only one conceivable. Alternative
+tri-partitions are imaginable and may be rational under
+different goals. The advantage of CVE is operational closure on
+three axes chosen so that they cover the full cycle from
+artefact construction through its verification to its
+executable use. Adopting CVE is adopting it for these
+properties, not as dogma. Disclosing the cognitive substrate
+(see §4.1 below) is part of that operational honesty.
 
 ## 2. The three axes in detail
 
@@ -147,12 +277,41 @@ artefacts it claims to classify. CVE survives self-application.
 ### 4.1 Cognitive substrate disclosure {#substrate-disclosure}
 
 CVE operates under a specific cognitive mode — the
-**analytic-decompositional** substrate. Per
-[cve-architecture spec §1.5](../../../internal/cve/docs/cve-architecture.md),
-operational hygiene requires that the framework knows its own
-mode and does not masquerade as a universal neutral apparatus.
-Alternative substrates exist and are co-equal in their proper
-domains:
+**analytic-decompositional** substrate. The CVE decomposition
+relies on a concrete way of reading a knowledge artefact: the
+unity of $A$ is decomposed into three distinguishable
+projections (C, V, E), and its maturity reads as the simultaneous
+satisfaction of all three. The operations are: differentiating
+the projections, checking each separately, assembling the
+verdict. This is the working cognitive substrate of the
+principle.
+
+The analytic-decompositional mode is **not the only** way to
+work with knowledge artefacts. Alternative substrates exist:
+**holistic-relational** modes evaluate an artefact as a
+non-decomposable node in a network of relations (e.g.,
+liveness of a craft ensemble, maturity of a professional
+network, durability of a tradition through multi-generational
+reproduction); **action-centric** modes treat the action itself
+as the artefact (craft mastery, performance disciplines);
+**tradition-transmitting** modes locate identity in
+multi-generational reproduction.
+
+Operational hygiene requires the framework to **know its own
+mode** and not masquerade as a universal-neutral apparatus.
+CVE does not subsume these substrates; it claims only that its
+decomposition is operationally productive and applicable to
+**every artefact admitting explicit articulation**. Artefacts
+that exist in a mode of principled non-articulability (the
+living experience of a master, an idiosyncratic style, a fine
+sense of situation) are not covered by CVE-audit — that is an
+explicit boundary of applicability, the
+[CVE-zone vs out-of-CVE-zone distinction](#cve-zone).
+
+Alternative substrates remain compatible with CVE under
+explicit boundary marking: where their objects intersect the
+articulable contour, CVE applies; beyond that, their own
+maturity criteria govern. Compatibility, not concession.
 
 | Substrate | Operational mode | When CVE-zone applies |
 |-----------|------------------|-----------------------|
@@ -161,25 +320,87 @@ domains:
 | **`ActionCentric`** | The action IS the artefact (craft mastery, performance disciplines). | CVE captures the protocol + measurable markers; non-articulable mastery sits outside the CVE-zone. |
 | **`TraditionTransmitting`** | The artefact's identity is in multi-generational reproduction. | CVE captures the transmission lineage's articulable invariants. |
 
-The Verum-side `CognitiveSubstrate` enum exposes all four. In
+The Verum-side `CognitiveSubstrate` enum
+(`core/architecture/types.vr:589`, mirrored in
+`crates/verum_kernel/src/arch.rs:910`) exposes all four. In
 strict-mode `[T]` cogs, omitting an explicit substrate
 declaration triggers
 [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038):
 operationally indistinguishable from a vacuous claim of universality.
 
-The CVE-zone vs out-of-CVE-zone boundary is made explicit per
-[cve-architecture spec §13.4](../../../internal/cve/docs/cve-architecture.md):
-mature practice **knows what is transmissible** (CVE-zone) and
-what arises only in individual master work (outside CVE-zone),
-and does not conflate the registers.
+#### CVE-zone vs out-of-CVE-zone {#cve-zone}
+
+CVE captures the **transmissible articulable contour** of every
+artefact — the part that survives change of executor without
+loss of identity. There exist aspects of mastery that are not
+transmissible by instruction and arise only through individual
+work: a craftsman's aesthetic, an original solution in a novel
+situation, a recognisable hand. These are **not** an outer
+shell wrapped around a formalisable kernel and **not** an
+extra-formal essence of the practice — they are a **separate
+object** with which CVE does not work by construction, just as
+with any non-regularly-individual phenomenon. Their presence is
+legitimate; they simply do not fall in the CVE-zone of the
+transmissible contour and are not subject to CVE-audit. Mature
+practice **knows clearly** what of itself is transmitted
+(CVE-zone) and what arises in individual master work (outside
+CVE-zone), and does not conflate the registers.
+
+CVE-critique of *naïve* action-centric or tradition-centric
+modes targets unaddressed L6 register violations: appeals to
+"the individual intuition of the master", "untransmissible
+experience", "qualities accessible only to the initiated" —
+these violate the C axis (no transmissible procedure) and the V
+axis (no checkable criterion). A mature action-centric practice
+removes these appeals through explicit protocols, measurable
+markers, certification procedures. This does not make the
+practice less "deep" — it makes it **verifiably transmissible**.
 
 ### 4.2 Formal anchoring boundary {#anchoring-disclosure}
 
-The CVE tri-axis closure has an **eponymous** formal anchoring —
-the **Curry-Howard-Lawvere** triad (logic ↔ types ↔ categories) —
-which is the most-developed of all available anchorings.
-Per [cve-architecture spec §4.5](../../../internal/cve/docs/cve-architecture.md),
-parallel anchorings exist at various stages of formalisation:
+> **Section declarations.** `FormalAnchoring`:
+> `CurryHowardLawvere` — this section IS the canonical
+> formulation of CHL anchoring. `Substrate`:
+> `AnalyticDecompositional`. `Lifecycle`: `[D]` Definition (CHL
+> anchoring is defined here; not a theorem to be proved).
+
+In the mathematical foundations tradition the CVE tri-axis
+closure has a developed **formal anchoring** — the
+**Curry-Howard-Lawvere** (CHL) triad:
+
+| CVE axis | Register | Formal correspondence |
+|----------|----------|------------------------|
+| **C** — Constructiveness | type theory | programs as terms (BHK interpretation: a proposition is a type, a proof is a term) |
+| **V** — Verifiability | formal logic | propositions as types (Curry-Howard) |
+| **E** — Executability | category theory | functors as transformations (Lawvere categorical semantics) |
+
+**Curry-Howard correspondence** (CVE-L4): there exists a
+bijection $\Phi : \mathrm{Proof}(P) \xrightarrow{\sim} \mathrm{Term}(P)$
+between natural-deduction proofs of proposition $P$ and terms
+of type $P$ in simply-typed lambda calculus, and similarly for
+richer type theories. In dependently-typed systems (Idris,
+Lean 4, Agda, Coq) the correspondence is operational:
+type-checking implements formal verification through this
+bijection.
+
+**Lawvere categorical semantics** (CVE-L4): for each logical
+system $\mathcal{L}$ there is a category $\mathsf{Syn}(\mathcal{L})$
+in which derivability $\Gamma \vdash \varphi$ corresponds to
+existence of morphisms $\Gamma \to \varphi$. A functor
+$F : \mathsf{Syn}(\mathcal{L}_1) \to \mathsf{Syn}(\mathcal{L}_2)$
+transports derivations canonically between systems.
+
+**Univalent foundations (Voevodsky)** (CVE-L4): in homotopy
+type theory the univalence axiom $(A \simeq B) \simeq (A = B)$
+identifies equivalent types with equal types. Under this
+identification, propositions, proofs, and programs become
+three projections of one object; structural compatibility of
+the three CVE registers is guaranteed by univalence.
+
+CHL is the **eponymous and most-developed** anchoring. It is
+**not** the only valid one. Other domains have their own
+tri-registers at varying stages of formalisation. The Verum
+`FormalAnchoring` enum makes this explicit:
 
 | Anchoring | Tri-register | Formalisation stage |
 |-----------|--------------|---------------------|
@@ -195,20 +416,62 @@ CHL is the eponym, **not** the only valid anchoring. CVE applies
 in two regimes: **methodological CVE** (before formal anchoring in
 a domain) and **anchored-formal CVE** (after). A `[T]` Theorem cog
 under a non-CHL foundation without a declared `FormalAnchoring`
-triggers [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039):
+(`core/architecture/types.vr:652`, mirrored in
+`crates/verum_kernel/src/arch.rs:946`)
+triggers [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
+(predicate `check_anchoring_overextension` at
+`crates/verum_kernel/src/arch_anti_pattern.rs:2300`):
 the artefact silently inherits CHL semantics it does not satisfy.
+
+The formal anchoring does **not** assert CVE applies only where
+CHL is directly derivable. CVE-principle applies **before**
+and **after** establishing complete formal anchoring in a
+domain. *Before* — as a methodological discipline with
+domain-specific C/V/E criteria. *After* — as a formal theorem
+about triple closure, with toolchain-invariance guarantees
+analogous to Yoneda-invariance in categorical mathematics.
+Distinguishing the two regimes is essential: the CHL paradigm
+should not be extrapolated onto domains in which the
+corresponding formalisation has not yet been built.
 
 ### 4.3 Audit termination via declared Purpose {#purpose-disclosure}
 
 A naïve CVE audit has no built-in termination criterion: every
 inspection might reveal a refinement, and the audit drifts into
-infinite polishing. Per
-[cve-architecture spec §14.6](../../../internal/cve/docs/cve-architecture.md),
-the audit closes relative to the **declared purpose** of the
-artefact: the role for which it is built, with explicit thresholds
-on each of the three axes.
+infinite polishing. The deciding rule (replenish / downgrade /
+delete; see [seven-configurations §3.3](./seven-configurations.md#deciding-rule))
+answers *what to do with a defective artefact* but not *when
+the audit is complete*. Without an explicit termination
+criterion the audit loops forever — every inspection finds a
+refinement, the artefact "improves" but never closes as
+mature, and audit resources burn on perennial polishing. This
+is a form of silent decay: the audit appears to be working,
+but it never terminates.
 
-The Verum-side `Purpose` type captures this:
+The audit closes relative to the **declared purpose** of each
+artefact: the role for which it is built, with explicit
+thresholds on each of the three axes. The declaration is fixed
+**before** work begins:
+
+- which **level of axis C** suffices (full constructive
+  witness / scheme of construction with typed parameters /
+  reference implementation in a bounded domain);
+- which **depth of axis V** is required (full formal
+  verification / typecheck plus test battery with stated
+  coverage / passage of a named certification);
+- which **form of axis E** must be reached (structural
+  readiness for deployment in any environment of the declared
+  class / readiness in one specific environment / functorial
+  representation in one category).
+
+The Verum-side `Purpose` type
+(`core/architecture/types.vr:768`, mirrored in
+`crates/verum_kernel/src/arch.rs:1054`)
+captures this; the threshold enums
+(`CveThresholdK` at `types.vr:698` / `arch.rs:986`,
+`CveThresholdV` at `types.vr:712` / `arch.rs:1008`,
+`CveThresholdE` at `types.vr:727` / `arch.rs:1030`)
+enumerate the per-axis levels:
 
 ```verum
 type Purpose is {
@@ -223,6 +486,8 @@ When configuration meets thresholds, the audit closes —
 **no further action is taken**, the artefact is sound for its
 declared role. Without a declared purpose,
 [`AP-037 BoundlessAudit`](../anti-patterns/articulation.md#ap-037)
+(predicate `check_boundless_audit` at
+`crates/verum_kernel/src/arch_anti_pattern.rs:2230`)
 fires in strict mode: the audit becomes perennial critique rather
 than a terminating procedure.
 
@@ -231,6 +496,88 @@ rigour — it is the load-bearing distinction between **purposeful
 audit** and **infinite polishing** that, for Turing-complete
 systems, is forbidden by Rice's theorem and, for trained models,
 forbidden by the natural opacity of high-dimensional weights.
+
+#### Four functions of every audit round
+
+Each complete audit round runs four operationally distinct
+functions:
+
+1. **Differentiating** — determine on which axis the artefact
+   is closed and on which it is not.
+2. **Goal-directing** — compare observed configuration against
+   the declared thresholds.
+3. **Translating** — convert observed defects into one of the
+   three deciding actions:
+   [replenish, downgrade, delete](./seven-configurations.md#deciding-rule).
+4. **Terminating** — issue "audit complete" or "another round
+   needed" based on the comparison.
+
+The first three operate every round; the fourth determines
+whether there is a next round. Without an explicit terminating
+function the first three run idle. A CVE-audit that does not
+arrive at "complete" or "incomplete, the following action is
+required" is not an audit but **perennial critique**.
+
+#### The fourth resolution — preserve unchanged
+
+The deciding rule (§3.3 of the spec, mirrored in
+[seven-configurations](./seven-configurations.md#deciding-rule))
+applies the three actions when configuration **fails to reach**
+the declared thresholds. When configuration **does reach**
+them, none of the three actions applies: the artefact is
+preserved in its current form, and the audit closes. This
+fourth resolution — **preservation without change** — is the
+normal outcome of a successful audit; it is not listed as a
+separate action because it is the *non-application* of the
+three, not a fourth alternative.
+
+### 4.4 Stability under tool evolution {#tool-stability}
+
+CVE survives generations of tooling change through three
+overlapping safeguards:
+
+1. **Per-axis tool-invariance.**
+   - **Axis C** is not bound to any specific constructive
+     paradigm. BHK, Martin-Löf type theory, cubical type
+     theory, any future constructive paradigm — all satisfy
+     the requirement of an explicit constructive witness.
+   - **Axis V** is not bound to a specific verification
+     system. Lean, Coq, Agda, Isabelle, test frameworks,
+     certification procedures, or their successors all
+     deliver mechanical checkability.
+   - **Axis E** is not bound to a specific computational
+     model. Turing machine, lambda calculus, monadically
+     structured programs, homotopical computation, neural
+     architectures, deployable protocols, statutes — each
+     supplies an executable representation in its domain.
+
+   When the toolchain changes, CVE **re-anchors** onto the new
+   instruments. The architectural principle is not bound to
+   specific implementations.
+
+2. **Yoneda-invariance of universal definitions.** Concepts
+   defined through universal properties transport canonically
+   between categories — this is the second safeguard. Renaming
+   the categorical apparatus does not lose the meaning of
+   universal characterisations.
+
+3. **Stratification meta-insurance.** At CVE-L1 (meta-language)
+   every space of formal systems sufficiently rich to encode
+   primitive recursive arithmetic stratifies by formalisation
+   strength: effective systems, foundations of sufficient
+   completeness, classifiers, maximal classifiers, a hypothetical
+   absolute class. Existing
+   no-go theorems (Gödel, Tarski, Lawvere and their
+   generalisations) show: the upper absolute class is empty.
+   This stratum-invariance survives changes in concrete
+   formalisms — only the system within a stratum changes.
+
+The composite effect of the three safeguards is that a corpus
+built CVE-closed survives generations of toolchain change
+without loss of content. A corpus **not** built CVE-closed
+does not survive instrumental evolution; one built CVE-closed
+does. This is the load-bearing reason to choose CVE as an
+architectural principle.
 
 ## 5. CVE and the seven layers
 
@@ -308,11 +655,34 @@ Verum's CVE inherits five formal lines from the **Western
 mathematico-engineering tradition** of foundations and systems
 design — the line in which CHL (see §4.2 above) is most developed
 and engineering disciplines reach the level of international
-standards with explicit contractual design. This choice is not
-neutral: per
-[cve-architecture spec §19.7](../../../internal/cve/docs/cve-architecture.md),
-the lineage is a constatation of formal readiness, not a
-preference.
+standards with explicit contractual design.
+
+| Lineage | Axis covered | Contribution |
+|---------|--------------|--------------|
+| **Hilbert programme** | V | required complete verifiability of mathematics through reduction to a finite formal rule set; attacked by Gödel's incompleteness, but the methodological contribution — explicit verification — became the standard of every mature formal system |
+| **Brouwer–Bishop constructivism** | C | required constructive witnesses for every existential claim; CVE inherits primacy of constructive witnessing but does not require it exclusively (classical moves are admissible under explicit status marking) |
+| **Curry–Howard correspondence** | C ↔ V | first systematic example of two-axis closure; foundation of dependent-type systems (Idris, Lean 4, Agda) |
+| **Lawvere categorical semantics** | V ↔ E | second bridge: each logical system has a categorical semantics; systematic use of categorical apparatus for executable representation |
+| **Univalent foundations (Voevodsky)** | C ↔ V ↔ E | first systematic triple closure in homotopy type theory; univalence axiom guarantees structural compatibility of three registers in the univalent context |
+
+CVE also inherits engineering programmes: **Hoare** (formal
+program semantics, contracts, invariants — C and V in software);
+**Alexander's pattern language** (proto-formal realisation of
+all three axes in architecture); **systems engineering**
+(ISO/IEC/IEEE 15288, V-model, contract-based design — three
+axes at the level of large systems); **cryptographic security
+proofs** (adversary model, formal proof, implementation audit —
+three axes in cryptography). CVE is the systematic
+generalisation of all these programmes — a law inheriting the
+best practices of formal and engineering disciplines, not a
+doctrine and not a philosophical stance.
+
+The choice of Western mathematico-engineering lineage is **not
+neutral**: it is the line in which CHL has crystallised in
+modern form and engineering disciplines have reached the level
+of international standards with explicit contractual design.
+The lineage is a *constatation of current formal readiness*,
+not a preference.
 
 Parallel traditions of strict knowledge work exist in other
 cultural-formal contexts and remain open directions:

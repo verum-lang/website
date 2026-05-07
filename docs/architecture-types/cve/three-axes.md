@@ -7,6 +7,27 @@ slug: /architecture-types/cve/three-axes
 
 # CVE — three axes (C / V / E)
 
+## Document CVE self-application {#document-cve-declarations}
+
+```verum
+ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "axis-by-axis specification of C, V, E with independence demonstration",
+        k_min: CveThresholdK.FullWitness,
+        v_min: CveThresholdV.NamedCertification,
+        e_min: CveThresholdE.StructurallyReady,
+    }),
+    substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+    anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+    e_sense:   Some(ExecutabilitySense.StructuralReadiness),
+    self_reference: None,
+}
+```
+
+`Lifecycle`: `[D]` Definition (defines the three axes; not a
+theorem to be proved). Independence demonstration in §4 is `[T]`
+Theorem (a witness exists for every cell of the truth-table).
+
 The Constructive / Verifiable / Executable frame stands or falls
 on the **independence** of its three axes. If any one axis were
 derivable from another, the framework would collapse to a
@@ -125,18 +146,41 @@ property the claim asserts.
 
 ### 3.0 The three senses of executability {#three-senses}
 
-Per [cve-architecture spec §2.3.0](../../../internal/cve/docs/cve-architecture.md),
-the term "executable" carries three operationally distinct senses
-that audits frequently conflate. Verum's `ExecutabilitySense` enum
+The term "executable" in everyday usage carries several
+operationally distinct senses. Conflating them is a typical
+source of unclear judgements that mask the real state of an
+artefact. The CVE-E axis rests on **one** of these senses and
+must distinguish it from its neighbours. Verum's
+`ExecutabilitySense` enum
+(`core/architecture/types.vr:532`, mirrored in
+`crates/verum_kernel/src/arch.rs:877`)
 exposes all three; the soundness pin
-`executability_sense_canonical_unique` enforces that exactly one
-of them anchors CVE-E.
+`executability_sense_canonical_unique`
+(`core/architecture/types.vr:1364`, cross-side asserted at
+`crates/verum_kernel/tests/k_arch_v_alignment.rs:515`)
+enforces that exactly one of them (`StructuralReadiness`)
+anchors CVE-E.
 
 | Sense | Operational meaning | Canonical for CVE-E? |
 |-------|---------------------|----------------------|
-| **`StructuralReadiness`** | The artefact admits a working representation deployable in any environment of the declared class. | ✓ — THIS IS the content of the E axis. |
-| **`CurrentExecution`** | The artefact is, at this moment, running in production. | Stronger; characterises L0 maturity (`[T]` in §3.5 spec sense), but is NOT the E axis. |
-| **`PostFactumChronicle`** | Accumulated history of past execution. | Material for the §15 antifragility chronicle, NOT the E axis. |
+| **`StructuralReadiness`** | The artefact admits a working representation deployable in any environment of the declared class. Readiness as a **property of the artefact**, not the fact of present execution. | ✓ — THIS IS the content of the E axis. |
+| **`CurrentExecution`** | The artefact is, at this moment, running in production: the program executes in production, the law applies in court, the model serves requests. | Stronger; characterises full L0 maturity (`[T]` Theorem in the [seven-symbols](./seven-symbols.md) sense), but is NOT the E axis. |
+| **`PostFactumChronicle`** | Accumulated history of past execution: execution logs, the artefact's historical track. | Material for the antifragility chronicle (see [overview §1.2 erosions](./overview.md#three-erosions) and [chronicle of architectural revisions](./architectural-revisions.md)), NOT the E axis. |
+
+**Typical conflations.** *"The artefact is executable because it
+once executed"* (the third sense usurps the first); *"the
+artefact is executable because right now it is running"* (the
+second usurps the first, even though current operation may not
+imply structural readiness for fresh deployment); *"the artefact
+is executable because in principle it could execute"* —
+without confirmation of structural readiness — is rhetoric
+without content.
+
+The CVE-audit of axis E always checks the **first** sense: by
+the description of the artefact it is possible to construct or
+deploy a working representation in a suitable environment
+without recourse to external unverifiable resources. That is
+"working representation" in the canonical formulation.
 
 The canonicality is load-bearing: a `[T]` Theorem requires
 **structural readiness**, not "currently running" or "ran in
@@ -146,7 +190,8 @@ typical entry-point for the
 register collision — an audit that reads "executable" while the
 artefact is not redeployable.
 
-In code:
+In code (`crates/verum_kernel/src/arch.rs:901` exposes the
+`is_canonical_e` accessor):
 
 ```rust
 // kernel side
@@ -226,19 +271,30 @@ admit this, so all three are independent.
 
 ## 5. Cross-references
 
-- [CVE overview](./overview.md) — the universal frame, including
-  the cognitive-substrate disclosure (spec §1.5) and the
-  formal-anchoring boundary (spec §4.5).
-- [Seven configurations](./seven-configurations.md) — the
-  truth-table semantics.
-- [Seven canonical symbols](./seven-symbols.md) — the glyph
-  reference, including the three-senses-of-E pin in §1.5.
-- [Seven layers](./seven-layers.md) — the layered application.
-- [Articulation hygiene](./articulation-hygiene.md) — CVE-L6
-  self-application + CVE-AH band anti-patterns.
-- [Architectural revision chronicle](./architectural-revisions.md)
-  — the §20.4 self-application chronicle.
-- [Lifecycle primitive](../primitives/lifecycle.md) — the ATS-V
-  primitive that carries the seven glyphs.
-- [Audit protocol](../audit-protocol.md) — termination through
-  declared `Purpose` (spec §14.6).
+Each cross-reference carries an italicised **relation marker**:
+*frame* (the canonical statement this page specialises),
+*specialisation* (a more specific case of this page's content),
+*refinement* (adds detail without changing scope),
+*instantiation* (concrete application of this page's content),
+*operationalisation* (mechanises this page's content), or
+*pin* (cross-side invariant test).
+
+- *frame:* [CVE overview](./overview.md) — the universal CVE
+  architectural law, including
+  [cognitive-substrate disclosure](./overview.md#substrate-disclosure)
+  and [formal-anchoring boundary](./overview.md#anchoring-disclosure).
+- *specialisation:* [Seven configurations](./seven-configurations.md)
+  — truth-table over C/V/E producing seven productive cells.
+- *specialisation:* [Seven canonical symbols](./seven-symbols.md)
+  — glyph taxonomy from the C/V/E axes.
+- *refinement:* [Seven layers](./seven-layers.md) — the layered
+  application of the same three axes.
+- *refinement:* [Articulation hygiene](./articulation-hygiene.md)
+  — CVE-L6 self-application + CVE-AH band anti-patterns.
+- *frame:* [Architectural revision chronicle](./architectural-revisions.md)
+  — L4 chronicle that governs evolution of the axes themselves.
+- *operationalisation:* [Lifecycle primitive](../primitives/lifecycle.md)
+  — the ATS-V primitive that carries the seven glyphs.
+- *operationalisation:* [Audit protocol](../audit-protocol.md)
+  — termination through declared `Purpose`
+  (see [overview §4.3](./overview.md#purpose-disclosure)).

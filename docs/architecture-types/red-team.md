@@ -1,11 +1,11 @@
 ---
 sidebar_position: 91
-title: "Red-team — closed attack vectors"
-description: "Ten explicit attack vectors against the ATS-V architectural type system (5 surface + 5 CVE-AH band), the closure axioms that defeat them, and the threat-modelling discipline behind the catalog."
+title: "Adversarial threat modelling — closed attack vectors"
+description: "Ten explicit attack vectors against the ATS-V architectural type system (5 surface + 5 CVE-AH band), the closure axioms that defeat them, and the adversarial threat-modelling discipline behind the catalog."
 slug: /architecture-types/red-team
 ---
 
-# Red-team — closed attack vectors
+# Adversarial threat modelling — closed attack vectors
 
 A type system that catches honest mistakes is necessary but not
 sufficient.  An adversary writing `@arch_module(...)` declarations
@@ -14,7 +14,7 @@ surface alone, which depend on kernel state, which are silently
 absent.  This page documents the ten canonical attack vectors
 against ATS-V — five against the canonical surface (AT-1..AT-5)
 and five against the
-[cve-architecture spec](../../internal/cve/docs/cve-architecture.md)
+[CVE-architecture](./cve/overview.md)
 load-bearing concepts (AT-6..AT-10) — the closure axioms that
 defeat them, and the threat-modelling discipline used to
 enumerate new vectors.
@@ -247,8 +247,8 @@ regression), but the author "fixes" it by declaring the citing
 cog also `[H]`. The chain of `[H]` cogs propagates without ever
 producing a verifiable artefact.
 
-**Why it would work without closure.** Per
-[cve-architecture spec §3.5](./cve/seven-symbols.md#35-h-hypothesis--speculative-with-a-plan),
+**Why it would work without closure.** Per the
+[CVE seven-symbol taxonomy](./cve/seven-symbols.md#35-h-hypothesis--speculative-with-a-plan),
 `[H]` Hypothesis carries the **structural commitment** to an
 articulated maturation path. Without `@plan(...)` the cog is
 operationally an `[I]` Interpretation (CVE-violator) but
@@ -281,8 +281,9 @@ The CI gate marks the build green only because the audit is
 invoked but reports no specific failure (since there's no
 declared termination criterion).
 
-**Why it would work without closure.** Per
-[cve-architecture spec §14.6](./audit-protocol.md#purpose-termination),
+**Why it would work without closure.** Per the
+[CVE audit-termination discipline](./cve/overview.md#purpose-disclosure)
+operationalised in [audit-protocol §0](./audit-protocol.md#purpose-termination),
 without a declared `Purpose` the audit has no halting criterion.
 The protocol degenerates from auditing into perennial critique.
 
@@ -311,8 +312,8 @@ The cog's documentation reads "every artefact must satisfy this
 property" — universally quantified prose that, without explicit
 substrate disclosure, claims applicability across the
 analytic-decompositional, holistic-relational, action-centric,
-and tradition-transmitting domains simultaneously. Per
-[cve-architecture spec §1.5](./cve/overview.md#substrate-disclosure),
+and tradition-transmitting domains simultaneously. Per the
+[CVE cognitive-substrate disclosure](./cve/overview.md#substrate-disclosure),
 this is a register collision: CVE applies to the
 analytic-decompositional substrate; alternative substrates have
 their own evaluation criteria.
@@ -345,8 +346,8 @@ module org.governance.voting_protocol;
 ```
 
 The cog's body describes a multi-stakeholder voting procedure —
-a domain that
-[cve-architecture spec §4.5](./cve/overview.md#anchoring-disclosure)
+a domain that the
+[CVE formal-anchoring boundary](./cve/overview.md#anchoring-disclosure)
 locates in the **InstitutionalDesign** anchoring (normative
 structure ↔ decision procedure ↔ stabilised practices), not in
 the CHL anchoring (logic ↔ types ↔ categories). The default ZFC
@@ -354,8 +355,9 @@ foundation provides "anchored-formal CVE" semantics that the
 voting protocol does not actually inhabit — its `Theorem` claim
 inherits CHL semantics it cannot satisfy.
 
-**Why it would work without closure.** Per spec §4.5, parallel
-anchorings exist on different stages of formalisation;
+**Why it would work without closure.** Per the
+[CVE formal-anchoring boundary](./cve/overview.md#anchoring-disclosure),
+parallel anchorings exist on different stages of formalisation;
 methodological CVE applies before formal anchoring is
 established in a domain, anchored-formal CVE after. Without
 explicit `FormalAnchoring`, a non-CHL domain silently inherits

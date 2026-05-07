@@ -272,12 +272,13 @@ evolves only with explicit schema versioning.
 ## 7.5. The CVE-zone boundary
 
 The dual-audience surface mechanises the **transmissible
-articulable contour** of every artefact. Per
-[cve-architecture spec §13.4](../../internal/cve/docs/cve-architecture.md),
-every knowledge artefact has a part that survives transfer
-between executors without identity loss (the **CVE-zone**) and a
-part that arises only in the work of an individual master and is
-not transmissible by instruction (**outside the CVE-zone**).
+articulable contour** of every artefact. Every knowledge
+artefact has a part that survives transfer between executors
+without identity loss (the **CVE-zone**) and a part that arises
+only in the work of an individual master and is not
+transmissible by instruction (**outside the CVE-zone**); see
+[CVE — CVE-zone vs out-of-CVE-zone](./cve/overview.md#cve-zone)
+for the canonical distinction.
 
 | | CVE-zone | Outside CVE-zone |
 |---|----------|------------------|

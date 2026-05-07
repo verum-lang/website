@@ -375,15 +375,17 @@ foreign-foundation construct.
 
 ---
 
-# CVE articulation-hygiene band (AP-033 .. AP-040)
+## CVE articulation-hygiene band (AP-033 .. AP-040) {#cve-articulation-hygiene-band-ap-033--ap-040}
 
 The CVE-AH band operationalises the
-[cve-architecture spec](../../../internal/cve/docs/cve-architecture.md)
+[CVE-architecture](../cve/overview.md)
 load-bearing concepts that ATS-V was missing on its first
-canonical release: the three senses of the E axis (§2.3.0), the
-[H]/[I]/[✗] articulation discipline (§3.5), the cognitive substrate
-disclosure (§1.5), the formal anchoring boundary (§4.5), the audit
-termination via declared purpose (§14.6), the L6 register
+canonical release: the [three senses of the E axis](../cve/three-axes.md#three-senses),
+the [seven-symbol articulation discipline](../cve/seven-symbols.md),
+the [cognitive substrate disclosure](../cve/overview.md#substrate-disclosure),
+the [formal anchoring boundary](../cve/overview.md#anchoring-disclosure),
+the [audit termination via declared purpose](../cve/overview.md#purpose-disclosure),
+the L6 register
 prohibitions (§16), and the operator+fixed-point discipline for
 self-reference (§16). AP-040 closes
 [architectural-revision invariant **R4**](../cve/architectural-revisions.md).

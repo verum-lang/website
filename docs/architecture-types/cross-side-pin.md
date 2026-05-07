@@ -345,5 +345,5 @@ declarations.
 ## 9. Cross-reference
 
 - [Operationalisation surface](./operationalisation.md)
-- [Red-team — closed attack vectors](./red-team.md)
+- [Adversarial threat modelling — closed attack vectors](./red-team.md)
 - [Anti-pattern catalog overview](./anti-patterns/overview.md)

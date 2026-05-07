@@ -27,7 +27,7 @@ This page documents:
 A naïve audit has no built-in termination criterion: every
 inspection might reveal a refinement, and the protocol drifts into
 infinite polishing. Per
-[cve-architecture spec §14.6](../../../internal/cve/docs/cve-architecture.md),
+[CVE — audit termination via declared Purpose](./cve/overview.md#purpose-disclosure),
 the audit closes relative to the **declared purpose** of each
 artefact: the role for which it is built, with explicit thresholds
 on the K/V/E axes.
@@ -61,7 +61,7 @@ register collision: the audit has no termination criterion and
 degenerates into perennial critique.
 
 **Four functions of every audit round** (per
-[cve-architecture spec §14.6](../../../internal/cve/docs/cve-architecture.md)):
+[CVE — audit termination via declared Purpose](./cve/overview.md#purpose-disclosure)):
 
 1. **Differentiating** — determines on which axis the artefact is
    closed and on which it is not.
@@ -491,11 +491,13 @@ the pin reporting "synthetic disagrees as expected" is the
 strongest verdict; a green audit *without* the pin's confirmation
 is observational only.
 
-## 9. Red-team closure axioms
+## 9. Adversarial-closure axioms
 
 In addition to the 40-pattern catalog, the audit-bundle aggregator
 walks four kernel-discharge axioms that close known attack vectors
-against the ATS-V declarative surface:
+against the ATS-V declarative surface (see
+[adversarial threat modelling](./red-team.md) for the full
+catalog of attack vectors):
 
 | Axiom                                              | Closes | Explanation |
 |---|---|---|
@@ -506,7 +508,7 @@ against the ATS-V declarative surface:
 
 AT-4 (composition path traversal in `composes_with` resolution)
 is delegated to the module-loader; documented for completeness in
-[the red-team page](./red-team.md).
+[adversarial threat modelling](./red-team.md).
 
 These axioms surface in the `--bundle` aggregator alongside the
 eight base intrinsics (`kernel_arch_capability_discipline`,
@@ -629,8 +631,8 @@ graphs.
 
 - [Anti-pattern overview](./anti-patterns/overview.md) —
   the 40-pattern catalog the `--arch-discharges` gate consumes.
-- [Red-team closures](./red-team.md) — detailed exposition of
-  AT-1..AT-5 attack vectors and their closures.
+- [Adversarial threat modelling](./red-team.md) — detailed
+  exposition of AT-1..AT-10 attack vectors and their closures.
 - [Cross-side pin tests](./cross-side-pin.md) — kernel ↔ Verum
   alignment discipline that prevents drift in the discharge
   catalog.

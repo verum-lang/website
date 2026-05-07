@@ -7,6 +7,28 @@ slug: /architecture-types/cve/seven-symbols
 
 # CVE — Seven canonical symbols
 
+## Document CVE self-application {#document-cve-declarations}
+
+```verum
+ShapeDeclarations {
+    purpose: Some(Purpose {
+        role: "canonical glyph-by-glyph specification of the seven-symbol status taxonomy",
+        k_min: CveThresholdK.FullWitness,
+        v_min: CveThresholdV.NamedCertification,
+        e_min: CveThresholdE.StructurallyReady,
+    }),
+    substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
+    anchoring: Some(FormalAnchoring.CurryHowardLawvere),
+    e_sense:   Some(ExecutabilitySense.StructuralReadiness),
+    self_reference: None,
+}
+```
+
+`Lifecycle`: `[D]` Definition (the seven glyphs are defined
+here; downstream sites use the definitions). Cross-side pin:
+`pin_lifecycle_seven_glyphs_canonical` in
+`crates/verum_kernel/tests/k_arch_v_alignment.rs`.
+
 Every Verum artefact carries exactly one of seven canonical CVE
 statuses, surfaced as a single-character glyph. The glyphs are
 load-bearing in audit reports, in the [`Lifecycle`](../primitives/lifecycle.md)
@@ -36,10 +58,11 @@ removal". It is *less* strict than `[✗]` Retracted: the artefact
 still functions but is expected to be replaced. New code should
 prefer `[✗]` for deliberate withdrawals.
 
-## 1.5. The three senses of E (executability)
+### 1.1. The three senses of E (executability) {#three-senses-of-e}
 
 The CVE-E axis disambiguates three operationally distinct senses
-of "executable", per [cve-architecture spec §2.3.0](#three-senses-spec):
+of "executable" — see [three-axes §3.0](./three-axes.md#three-senses)
+for the canonical disambiguation:
 
 | Sense | Meaning | Canonical for E? |
 |-------|---------|------------------|
@@ -47,10 +70,13 @@ of "executable", per [cve-architecture spec §2.3.0](#three-senses-spec):
 | **Current execution** | The artefact is presently running in production | stronger — characterises L0 maturity, NOT the E axis |
 | **Post-factum chronicle** | Accumulated history of past execution | material for §15 antifragility chronicle, NOT the E axis |
 
-The Verum-side `ExecutabilitySense` enum exposes all three; the
-soundness pin `executability_sense_canonical_unique` enforces that
-exactly one (`StructuralReadiness`) anchors CVE-E. Conflating the
-senses is a register collision and produces silent audit-chronicle
+The Verum-side `ExecutabilitySense` enum
+(`core/architecture/types.vr:532`, mirrored in
+`crates/verum_kernel/src/arch.rs:877`) exposes all three; the
+soundness pin `executability_sense_canonical_unique`
+(`core/architecture/types.vr:1364`) enforces that exactly one
+(`StructuralReadiness`) anchors CVE-E. Conflating the senses
+is a register collision and produces silent audit-chronicle
 defects (audit reads "executable" but the artefact is not deployable,
 or vice versa).
 
@@ -269,7 +295,7 @@ machinery is realised. Naming the status `[I]` rather than
 it explicitly — there is no quiet path from `[I]` to "in
 production".
 
-### 3.7 `[✗]` Retracted — withdrawn
+### 3.7 `[✗]` Retracted — withdrawn {#37-retracted--withdrawn}
 
 **Variant:** `Lifecycle.Retracted(reason: Text, replacement: Maybe<Text>)`
 
@@ -347,17 +373,20 @@ attribute contract.
 
 ## 7. Cross-references
 
-- For the orthogonal axes that produce the seven configurations
-  see [Three axes](./three-axes.md).
-- For the truth-table semantics under each axis see
-  [Seven configurations](./seven-configurations.md).
-- For the layered application of the CVE frame across object /
-  proof / method / foundation / shape / communication / frame
-  see [Seven layers](./seven-layers.md).
-- For the L6 register prohibitions on self-application see
-  [Articulation hygiene](./articulation-hygiene.md).
-- For the ATS-V `Lifecycle` primitive that carries these glyphs
-  see [primitives/lifecycle](../primitives/lifecycle.md).
-- For the anti-patterns that consume the lifecycle ordering see
-  [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009)
-  and [`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033).
+Relation markers per the convention introduced in
+[three-axes §5](./three-axes.md#5-cross-references):
+
+- *frame:* [Three axes](./three-axes.md) — orthogonal C/V/E
+  axes whose configurations produce these seven glyphs.
+- *frame:* [Seven configurations](./seven-configurations.md) —
+  truth-table semantics underlying each glyph.
+- *refinement:* [Seven layers](./seven-layers.md) — layered
+  application of the CVE frame across object / proof / method
+  / foundation / shape / communication / frame.
+- *refinement:* [Articulation hygiene](./articulation-hygiene.md)
+  — CVE-L6 register prohibitions on self-application.
+- *operationalisation:* [primitives/lifecycle](../primitives/lifecycle.md)
+  — the ATS-V `Lifecycle` primitive that carries these glyphs.
+- *operationalisation:* [`AP-009 LifecycleRegression`](../anti-patterns/classical.md#ap-009)
+  and [`AP-033 RetractedCitationUse`](../anti-patterns/articulation.md#ap-033)
+  — anti-patterns that consume the lifecycle ordering.

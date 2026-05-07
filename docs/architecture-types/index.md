@@ -133,8 +133,8 @@ has forty entries split into four bands:
   full [MTAC primitive set](../verification/msfs-coord.md).
 
 - **CVE articulation-hygiene (AP-033 .. AP-040)** — operationalises
-  the [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md)
-  load-bearing concepts: retracted-citation use, hypothesis without
+  the [CVE-architecture](./cve/overview.md) load-bearing
+  concepts: retracted-citation use, hypothesis without
   maturation plan, interpretation in mature corpus, observer
   impersonation, boundless audit, implicit substrate, anchoring
   overextension, self-reference without operator+fixed-point. See
@@ -355,7 +355,7 @@ architecture-types/
 ├── dual-audience.md                 · developer surface vs auditor surface
 ├── self-application.md              · ATS-V annotated by ATS-V
 ├── operationalisation.md            · pure-data helpers & soundness pins
-├── red-team.md                      · five attack vectors and their closures
+├── red-team.md                      · adversarial threat modelling — ten attack vectors and their closures
 └── cross-side-pin.md                · kernel ↔ Verum alignment discipline
 ```
 
