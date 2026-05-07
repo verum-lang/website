@@ -64,7 +64,7 @@ fn replicate<T>(n: Int { self >= 0 }, x: T) -> [T; n] {
 complex or when you want a separate name for the proof:
 
 ```verum
-fn push<T>(v: Vec<T, n>, x: T) -> Vec<T, n + 1>
+fn push<T>(v: List<T, n>, x: T) -> List<T, n + 1>
     where n: Nat
     ensures |result| == |v| + 1
 { ... }
@@ -84,7 +84,7 @@ type Indexed<T> is protocol {
 };
 
 // As an argument type.
-fn fold<T, U>(xs: Vec<T, n>, z: U, step: Pi (i: Int) . fn(U, T) -> U) -> U { ... }
+fn fold<T, U>(xs: List<T, n>, z: U, step: Pi (i: Int) . fn(U, T) -> U) -> U { ... }
 ```
 
 All three forms carry identical semantics; the compiler normalises

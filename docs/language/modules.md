@@ -85,9 +85,9 @@ Verum's `CoherenceChecker` enforces four guarantees at compile time:
 1. **Orphan** — the `P`/`T` co-location rule above.
 2. **Overlap detection** — two impls that can apply to the same value
    are rejected, even if neither is strictly more specialised.
-3. **Specialisation checking** — an `impl<T: A> for Vec<T>` and a more
-   specific `impl<T: A + B> for Vec<T>` form a well-founded
-   hierarchy; diamonds are rejected.
+3. **Specialisation checking** — an `implement<T: A> P for List<T>`
+   and a more specific `implement<T: A + B> P for List<T>` form a
+   well-founded hierarchy; diamonds are rejected.
 4. **Cross-crate conflict detection** — when two dependency cogs both
    provide impls, the linker flags the conflict rather than silently
    picking one.
