@@ -49,9 +49,13 @@ prebuilt archives. Everything else requires a source build.
 This is the toolchain binary you run to compile Verum programs.
 End users running a prebuilt `verum` binary do not install any
 extra toolchain — the binary is self-contained for the target
-platform. **the SMT backend** is present as a stub; features that name it
-degrade to the SMT backend via the capability router — see
-[SMT routing](/docs/verification/smt-routing).
+platform. The SMT backend is bundled in-binary and routed via
+capability profiles ([SMT routing](/docs/verification/smt-routing));
+no external `z3` / `cvc5` / `bitwuzla` install is required for
+default workflows. External provers — Lean 4 and Coq / Rocq —
+are needed only for the [external-prover replay](/docs/architecture/external-prover-verification)
+gate (`verum audit --external-prover-replay`); see that page for
+install instructions.
 
 ### What programs compiled by `verum build` link against
 

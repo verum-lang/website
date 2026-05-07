@@ -273,7 +273,7 @@ async fn breaker_trips_after_five_failures() {
         for _ in 0..5 {
             let _ = call_breaker(&breaker, &url).await;
         }
-        assert!(!breaker.is_call_allowed());
+        assert(!breaker.is_call_allowed());
     }
 }
 ```

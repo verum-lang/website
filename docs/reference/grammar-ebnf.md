@@ -375,15 +375,15 @@ public module authentication { ... }
 The ATS-V phase (the architectural-type-checking phase in the
 compiler pipeline) parses `@arch_module(...)` named-args into a
 canonical `Shape` record (mirror of the kernel-side `Shape`
-type), runs anti-pattern checks across the 32-pattern catalog,
-and emits structured diagnostics with stable RFC error codes
-under a dual-audience design (machine-readable + human-readable
-in the same surface).
+type), runs anti-pattern checks across the 40-pattern catalog
+(AP-001..AP-040), and emits structured diagnostics with stable
+RFC error codes under a dual-audience design (machine-readable
++ human-readable in the same surface).
 
 See [Architecture-as-Types](../architecture-types/index.md) for
 the full architectural type system surface and
 [anti-pattern catalog](../architecture-types/anti-patterns/overview.md)
-for the 32-pattern reference.
+for the 40-pattern reference.
 
 ### 2.3 Modules and imports
 

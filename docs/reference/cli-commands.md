@@ -333,8 +333,10 @@ audits gated by explicit flags. Default mode (no flag) runs
 Flags (specific audit modes; pick one):
 - `--framework-axioms` — enumerate every `@framework(name, "citation")`
   marker grouped by framework. Non-zero on malformed markers.
-- `--kernel-rules` — print the 18 primitive inference rules implemented
-  by `verum_kernel` (auditor-facing TCB enumeration).
+- `--kernel-rules` — print the 38 kernel inference rules implemented
+  by `verum_kernel` (auditor-facing TCB enumeration: 9 Structural,
+  6 Cubical, 4 Refinement, 3 Quotient, 3 Inductive, 2 SMT/Axiom,
+  11 Diakrisis).
 - `--epsilon` — every `@enact(epsilon = …)` marker grouped by
   ε-primitive (dual to `--framework-axioms`).
 - `--coord` — per-theorem `(Framework, ν, τ)` MSFS coordinate

@@ -14,7 +14,7 @@ There is no second grammar, no `macro_rules!`-vs-procedural split,
 no quasi-quote that parses differently from ordinary expressions.
 
 This page is the map of the subsystem. Every surface form in Verum
-that runs at compile time — `@attribute`, `@derive`, `@sql_query!`,
+that runs at compile time — `@attribute`, `@derive`, `@sql_query(...)`,
 `sql#"..."`, `120_px`, `f"..."`, `@cfg(...)`, `@const`, custom
 `meta fn`s, proof tactics — resolves through the machinery
 described here. The deeper pages elaborate each component.
@@ -178,8 +178,10 @@ each in depth; the one-paragraph version:
   emits `implement` blocks.
 - **Attribute** — `@name(args)` on any item; receives the item's
   AST; emits transformed / wrapped items.
-- **Function-like** — `@name!(tokens)` in expression position;
-  receives arbitrary tokens; emits an expression or block.
+- **Function-like** — `@name(tokens)` in expression position;
+  receives arbitrary tokens; emits an expression or block. Verum
+  uses the same `@` prefix as attributes — there is no Rust-style
+  `!` suffix anywhere in the surface (see EBNF §2.20.6).
 - **Declarative** — `macro vec3 { ... }` pattern-rule form;
   receives pattern-matched tokens; emits pattern-substituted
   tokens. Fastest to expand, most restricted in power.

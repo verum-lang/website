@@ -133,8 +133,8 @@ declared in `core.architecture.composition`.  The kernel proptest
 harness in `crates/verum_kernel/src/arch_composition.rs` samples
 valid Shape triples and asserts left-fold ≡ right-fold across the
 entire input space.  A violation is not a separate AP-NNN code in
-the canonical 32-pattern catalog — it surfaces directly as a
-soundness-pin failure of the engine.
+the canonical 40-pattern catalog (AP-001..AP-040) — it surfaces
+directly as a soundness-pin failure of the engine.
 
 ## 6. The identity element
 
@@ -229,8 +229,8 @@ For every pair `(A, B)` where the cog graph mounts B from A, the
 engine evaluates the five composition rules — capability flow,
 foundation compatibility, tier compatibility, stratum
 admissibility, no-cycle — and either returns a merged Shape or a
-list of structured violations carrying the canonical 32-pattern
-RFC codes.
+list of structured violations carrying the canonical 40-pattern
+(AP-001..AP-040) RFC codes.
 
 The associativity pin `kernel_arch_composition_associative`
 discharges the rule `(A ⊗ B) ⊗ C ≡ A ⊗ (B ⊗ C)` whenever the

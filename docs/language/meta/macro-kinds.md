@@ -17,7 +17,7 @@ stays clean.
 |--------------------|-----------------------------------|-----------------------------|------------------------------|
 | **Derive**         | `@derive(Protocol)` on a type     | The type declaration's AST  | One or more `implement` blocks |
 | **Attribute**      | `@name(args)` on any item         | Item AST + args             | Transformed item(s)          |
-| **Function-like**  | `@name!(…)` in expr/stmt position | Arbitrary token tree        | An expression or block       |
+| **Function-like**  | `@name(…)` in expr/stmt position  | Arbitrary token tree        | An expression or block       |
 | **Declarative**    | `macro_rules`-style patterns      | Pattern-matched tokens      | Pattern-substituted tokens   |
 
 The rest of this page treats each in turn.
@@ -200,7 +200,7 @@ pub meta fn sql_query(tokens: TokenStream) -> TokenStream
 ### Usage
 
 ```verum
-let rows = @sql_query!("SELECT * FROM users WHERE id = :id");
+let rows = @sql_query("SELECT * FROM users WHERE id = :id");
 ```
 
 The brace forms `@name[…]` and `@name{…}` exist for DSLs that prefer
@@ -298,7 +298,7 @@ pub macro println {
     };
 }
 
-@println!("x = {}, y = {}", x, y);
+@println("x = {}, y = {}", x, y);
 ```
 
 ### When to reach for each form

@@ -198,7 +198,7 @@ meta fn opaque_bind() -> TokenStream {
 
 fn caller() {
     let y = 100;
-    let result = @opaque_bind!();   // expansion's `y` is not caller's `y`
+    let result = @opaque_bind();    // expansion's `y` is not caller's `y`
     // result is 200; caller's `y` is still 100
 }
 ```
@@ -222,7 +222,7 @@ meta fn assign_to(name: Ident, val: Int) -> TokenStream {
 
 fn caller() {
     let counter = 0;
-    @assign_to!(counter, 99);
+    @assign_to(counter, 99);
     // caller.counter is now 99 — the spliced `counter`
     // resolves to the caller's binding, as expected.
 }

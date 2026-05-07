@@ -173,12 +173,12 @@ implement Logger for TestLog {
 @test
 fn test_order_total() {
     let log = TestLog { messages: Shared.new(Mutex.new(List.new())) };
-    let db  = MemoryDatabase.seeded_with(vec![
-        Order { id: 42, items: vec![
+    let db  = MemoryDatabase.seeded_with(List.from([
+        Order { id: 42, items: List.from([
             Item { price: 10.0, quantity: 2 },
             Item { price: 5.0,  quantity: 3 },
-        ]},
-    ]);
+        ])},
+    ]));
 
     provide Logger = log.clone() in
     provide Database = db in {
@@ -188,7 +188,7 @@ fn test_order_total() {
 
     let messages = log.messages.lock().await.clone();
     assert_eq(messages.len(), 2);
-    assert!(messages[0].contains("computing total"));
+    assert(messages[0].contains(&Text.from("computing total")));
 }
 ```
 

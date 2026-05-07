@@ -360,7 +360,7 @@ pub meta fn sql(tokens: TokenStream) -> TokenStream
         Maybe.Some(t) => t,
         Maybe.None => {
             CompileDiag.emit_error(
-                "@sql! expects a string literal argument",
+                "@sql expects a string literal argument",
                 Span.current()
             );
             return TokenStream.empty();

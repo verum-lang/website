@@ -72,8 +72,11 @@ fn main() {
 
 ```verum
 fn load_config() -> Result<Config, Error> {
-    let path = env.var_opt("MYTOOL_CONFIG")
-        .unwrap_or_else(|| format!("{}/.mytool/config.toml", env.home_dir().unwrap_or(".".to_string())));
+    let home = env.home_dir().unwrap_or(Text.from("."));
+    let path = match env.var_opt(&Text.from("MYTOOL_CONFIG")) {
+        Some(p) => p,
+        None    => f"{home}/.mytool/config.toml",
+    };
 
     match fs.read_to_string(&Path.from(&path)) {
         Result.Ok(text) => toml_parse(&text).map_err(Error.from),
@@ -82,6 +85,14 @@ fn load_config() -> Result<Config, Error> {
     }
 }
 ```
+
+Notes:
+
+- Verum has no `format!` macro — string interpolation uses the
+  `f"..."` literal.
+- `Maybe<T>` (the `Option`-equivalent) deconstructs through `match`,
+  not Rust-style `.unwrap_or_else(closure)`. Use `.unwrap_or(default)`
+  for an eager default value.
 
 ### Coloured error output
 

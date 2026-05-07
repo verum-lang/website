@@ -64,7 +64,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Anti-pattern catalog (32 patterns)',
+          label: 'Anti-pattern catalog (40 patterns)',
           link: {type: 'doc', id: 'architecture-types/anti-patterns/overview'},
           items: [
             'architecture-types/anti-patterns/overview',
@@ -586,6 +586,7 @@ const sidebars: SidebarsConfig = {
       link: {type: 'generated-index', slug: '/category/stdlib-shell'},
       items: [
         'stdlib/shell',
+        'stdlib/cli',
       ],
     },
   ],
@@ -598,6 +599,8 @@ const sidebars: SidebarsConfig = {
     'architecture/codegen',
     'architecture/no-libc-architecture',
     'architecture/smt-integration',
+    'architecture/trusted-kernel',
+    'architecture/external-prover-verification',
     'architecture/verification-pipeline',
     'architecture/execution-environment',
     'architecture/incremental-compilation',

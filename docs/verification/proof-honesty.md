@@ -406,4 +406,7 @@ categorical preliminaries (`msfs_appendix_A_categorical_preliminaries_full`).
 * [`verum audit --framework-axioms`](/docs/verification/framework-axioms)
   — every `@framework(...)` citation grouped by lineage.
 * [`verum audit --kernel-rules`](/docs/verification/trusted-kernel) —
-  the 18 primitive inference rules implemented in `verum_kernel`.
+  the 38 kernel inference rules implemented in `verum_kernel`
+  (Var/Univ/Pi/Lam/App/Sigma/Pair/Fst/Snd structural fragment plus
+  Cubical, Refinement, Quotient, Inductive, SMT/Axiom, and Diakrisis
+  layers).

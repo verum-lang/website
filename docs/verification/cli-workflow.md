@@ -431,7 +431,7 @@ verum audit [OPTIONS]
 |-----------------------------|-----------------------------------------------------------|
 | `--framework-axioms`        | List all `@framework`-tagged axioms reachable from public API. |
 | `--admits`                  | List all `admit` / `sorry` uses.                           |
-| `--kernel-rules`            | List the 18 primitive kernel rules (for audit).            |
+| `--kernel-rules`            | List the 38 kernel inference rules (for audit). The TCB fragment (Var/Univ/Pi/Lam/App/Sigma/Pair/Fst/Snd) is the structural sub-roster; cubical, refinement, quotient, inductive, SMT/axiom, and Diakrisis rules layer on top. See `crates/verum_kernel/src/proof_tree.rs::KernelRule`. |
 | `--cone MODULE`             | Restrict to the transitive dependency cone of a module.    |
 | `--format {plain,json}`     | Output format.                                            |
 | `--since GIT_REF`           | Diff mode: show framework deps added since a git ref.     |

@@ -130,8 +130,15 @@ Benchmark metrics (9):
 V0 ships **mock runners** that emit canned values reflecting the
 documented landscape claims:
 
-- Verum kernel ≈ 5,000 LOC; Coq ≈ 200,000; Lean 4 ≈ 50,000;
-  Isabelle ≈ 10,000; Agda ≈ 30,000.
+- Verum kernel-TCB ≈ 5,000 LOC (target ceiling for the
+  trust-boundary subset; current `crates/verum_kernel/src/proof_checker.rs`
+  is ≈ 0.83 K LOC and the immediately-trusted surface
+  `proof_checker.rs + term.rs + lib.rs` is ≈ 2.1 K LOC); Coq ≈ 200,000;
+  Lean 4 ≈ 50,000; Isabelle ≈ 10,000; Agda ≈ 30,000. The full
+  `crates/verum_kernel/` (including all apply-graph + ATS-V dispatch +
+  bridge-audit infrastructure) is ≈ 52 K LOC, but those layers are
+  not part of the claimed TCB — they consume kernel verdicts, they
+  do not produce them.
 - Compilation speed ≈ 50,000 LOC/s for Verum (target); 15-30K for
   the rest.
 - LLM acceptance: Verum 65% (with the LCF-style fail-closed loop);

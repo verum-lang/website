@@ -267,12 +267,15 @@ async fn with_auth(req: Request, next: Next) -> Result<Response, Error> {
 Compose by folding the list of middlewares around a core handler:
 
 ```verum
-let middlewares = vec![with_logging, with_auth];
+let middlewares = List.from([with_logging, with_auth]);
 let handler = middlewares.iter().rfold(
     route as Next,
     |inner, mw| Next.from(move |req| mw(req, inner.clone())),
 );
 ```
+
+Verum uses `List<T>` (not Rust's `Vec<T>`) and constructs lists via
+`List.from([...])` or `[a, b, c]` literals — never the `vec!` macro.
 
 ## TLS
 

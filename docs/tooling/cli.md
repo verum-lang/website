@@ -144,7 +144,7 @@ gradual verification](/docs/verification/gradual-verification)**.
 ### Audit subcommands
 
 `verum audit` is the project-wide trust-boundary tool. As of the
-current revision it exposes **~45 gates** organised in eight bands
+current revision it exposes **~48 gates** organised in eight bands
 plus the `--bundle` aggregator. Each gate emits both human-readable
 and structured JSON output (under `audit-reports/*.json`); the
 JSON is `schema_version`-pinned for archival use. For the
@@ -153,13 +153,14 @@ predicate-level formalisation see
 for the workflow see
 [ATS-V → audit protocol](../architecture-types/audit-protocol.md).
 
-#### Kernel-soundness band (10 gates)
+#### Kernel-soundness band (11 gates)
 
 | Flag | Verifies |
 |------|----------|
 | `--kernel-rules` | The trusted-base inference rule list (one row per rule with citation) |
 | `--kernel-recheck` | Re-checks every theorem in the project against the trusted base |
 | `--kernel-soundness` | Per-rule discharge inventory + parallel Coq / Lean / Isabelle export |
+| `--external-prover-replay` | Drives the kernel-soundness export through real Lean 4 (`lake build`) and Coq / Rocq (`coqc`); reports per-backend `clean` / `iou-only` / `hard-error` / `not-available`. Backend filter via `--backend lean,coq,all`; `--strict` requires all installed. See [external-prover-verification](/docs/architecture/external-prover-verification). |
 | `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem |
 | `--kernel-intrinsics` | Kernel intrinsic registry — every `kernel_*` dispatch entry |
 | `--kernel-discharged-axioms` | Axioms admitted under `@kernel_discharge(...)` markers |
@@ -172,7 +173,7 @@ for the workflow see
 
 | Flag | Verifies |
 |------|----------|
-| `--arch-discharges` | The 32-pattern anti-pattern catalog |
+| `--arch-discharges` | The 40-pattern anti-pattern catalog (AP-001..AP-040) |
 | `--arch-coverage` | Annotation density + missing-Shape report |
 | `--arch-corpus` | Per-Lifecycle inventory of annotated cogs |
 | `--counterfactual` | Non-destructive scenario battery over Shapes |
@@ -556,7 +557,7 @@ design):
 | Subcommand | What it surfaces |
 |---|---|
 | `primitives` | The eight ATS-V primitives (Capability / Boundary / Lifecycle / Foundation / Tier / MsfsStratum / CveClosure / VerifyStrategy) with their canonical variant rosters. |
-| `catalog`    | The 32-pattern anti-pattern catalog. Same data as `verum audit --arch-discharges`, surfaced without running the gate. |
+| `catalog`    | The 40-pattern anti-pattern catalog (AP-001..AP-040). Same data as `verum audit --arch-discharges`, surfaced without running the gate. |
 | `rules`      | The kernel-rule discharge inventory — same data the audit's `--kernel-rules` band reports. |
 | `graph`      | Per-cog `composes_with` graph rendering (Graphviz DOT or JSON). |
 

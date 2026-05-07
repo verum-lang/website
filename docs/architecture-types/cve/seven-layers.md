@@ -175,7 +175,7 @@ Shape against the body?
 without runtime artefacts?
 
 **Audit gate at this layer:** `verum audit --arch-discharges`
-runs the 32-pattern catalog against every annotated cog;
+runs the 40-pattern catalog (AP-001..AP-040) against every annotated cog;
 `verum audit --counterfactual` evaluates the architectural
 invariants under counterfactual scenarios; `verum audit
 --adjunctions` recognises the four canonical adjunctions.

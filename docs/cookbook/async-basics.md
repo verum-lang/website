@@ -341,7 +341,7 @@ async fn test_retry_backoff() {
     provide Clock = clock.clone() in {
         let result = spawn slow_retry();
         clock.advance(10.seconds());
-        assert!(result.await.is_ok());
+        assert(result.await.is_ok());
     }
 }
 ```
