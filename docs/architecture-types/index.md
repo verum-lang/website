@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: "Architecture-as-Types (ATS-V)"
-description: "Verum's Architectural Type System — making architecture itself a typed, compiler-checked artefact. Eight primitives, thirty-nine anti-patterns, dual-audience surface."
+description: "Verum's Architectural Type System — making architecture itself a typed, compiler-checked artefact. Eight primitives, forty anti-patterns, dual-audience surface."
 slug: /architecture-types
 ---
 
@@ -104,12 +104,12 @@ infrastructure as ordinary type errors — same span pointers, same
 LSP integration, same `verum check` workflow. Architecture is no
 longer a separate review pass; it is part of the compiler.
 
-## 4. The thirty-nine anti-pattern catalog
+## 4. The forty anti-pattern catalog
 
 The check above is the foundation; on top of it ATS-V layers a
 canonical catalog of architectural defects, each registered as a
 refinement-level predicate. As of the current revision the catalog
-has thirty-nine entries split into four bands:
+has forty entries split into four bands:
 
 - **Capability / composition core (AP-001 .. AP-010)** —
   capability escalation, capability leak, dependency cycle, tier
@@ -132,13 +132,13 @@ has thirty-nine entries split into four bands:
   [modal-temporal anti-patterns](./anti-patterns/mtac.md) and the
   full [MTAC primitive set](../verification/msfs-coord.md).
 
-- **CVE articulation-hygiene (AP-033 .. AP-039)** — operationalises
+- **CVE articulation-hygiene (AP-033 .. AP-040)** — operationalises
   the [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md)
   load-bearing concepts: retracted-citation use, hypothesis without
   maturation plan, interpretation in mature corpus, observer
   impersonation, boundless audit, implicit substrate, anchoring
-  overextension. See
-  [CVE articulation-hygiene band](./anti-patterns/articulation.md#cve-articulation-hygiene-band-ap-033--ap-039).
+  overextension, self-reference without operator+fixed-point. See
+  [CVE articulation-hygiene band](./anti-patterns/articulation.md#cve-articulation-hygiene-band-ap-033--ap-040).
 
 Each anti-pattern publishes:
 
@@ -244,7 +244,7 @@ information already inferable from imports and exports.
 **Auditor surface** — exhaustive, machine-readable, mandatory.
 
 ```bash
-$ verum audit --arch-discharges     # 39 anti-patterns × all annotated cogs
+$ verum audit --arch-discharges     # 40 anti-patterns × all annotated cogs
 $ verum audit --counterfactual      # what changes if we drop a primitive?
 $ verum audit --adjunctions         # Inline ⊣ Extract / Specialise ⊣ Generalise / …
 $ verum audit --differential-kernel # two independent kernels agree

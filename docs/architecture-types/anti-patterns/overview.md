@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: "Anti-pattern catalog — overview"
-description: "Thirty-nine canonical architectural defects ATS-V detects at compile time, organised in four bands matching the canonical anti-pattern catalog."
+description: "Forty canonical architectural defects ATS-V detects at compile time, organised in four bands matching the canonical anti-pattern catalog."
 slug: /architecture-types/anti-patterns
 ---
 
@@ -27,7 +27,7 @@ removed.
 
 ## 1. The four bands
 
-The thirty-nine patterns split into four bands by *what kind of
+The forty patterns split into four bands by *what kind of
 architectural concern they address*. The bands are documentary
 categories — they all share the same diagnostic infrastructure,
 the same RFC code format (`ATS-V-AP-NNN`), and the same audit
@@ -38,7 +38,7 @@ pipeline.
 | **Capability / composition core** | AP-001 .. AP-010 | Capability discipline, composition algebra, lifecycle ordering, foundation drift, register mixing, transaction / resource straddling, CVE-closure completeness | [classical](./classical.md) |
 | **Boundary / lifecycle / capability ontology** | AP-011 .. AP-026 | Stratum admissibility, boundary invariants, wire encoding, authentication, deterministic-test discipline, linear / affine / relevant capability flavours, persistence and time-bound contracts, transitive lifecycle, declaration vs body drift, foundation-content alignment | [ontology](./articulation.md) |
 | **Modal-temporal architectural calculus** | AP-027 .. AP-032 | Temporal stability, counterfactual brittleness, refactoring adjunctions, universal-property uniqueness, evolution-trigger satisfiability, Yoneda observer-functor invariance | [mtac](./mtac.md) |
-| **CVE articulation-hygiene** | AP-033 .. AP-039 | Operationalises [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md) primitives: retracted-citation use, hypothesis without maturation plan, interpretation in mature corpus, observer impersonation, boundless audit, implicit substrate, anchoring overextension | [cve-ah](./articulation.md#cve-articulation-hygiene-band-ap-033--ap-039) |
+| **CVE articulation-hygiene** | AP-033 .. AP-040 | Operationalises [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md) primitives: retracted-citation use, hypothesis without maturation plan, interpretation in mature corpus, observer impersonation, boundless audit, implicit substrate, anchoring overextension, self-reference without operator+fixed-point | [cve-ah](./articulation.md#cve-articulation-hygiene-band-ap-033--ap-040) |
 
 The `classical` and `ontology` bands together cover what the
 ATS-V specification calls *static-architecture defects* —
@@ -97,6 +97,7 @@ discipline of [I] / [H] / [✗] (§3.5).
 | AP-037 | BoundlessAudit | cve-ah | strict-mode audit against Shape with no declared `Purpose` (cve-architecture spec §14.6) |
 | AP-038 | ImplicitSubstrate | cve-ah | strict `[T]` cog without declared `CognitiveSubstrate` (cve-architecture spec §1.5) |
 | AP-039 | AnchoringOverextension | cve-ah | `[T]` cog under non-CHL foundation without declared `FormalAnchoring` (cve-architecture spec §4.5) |
+| AP-040 | SelfReferenceWithoutOperator | cve-ah | self-referential `Shape` pattern (self ∈ composes_with / capability target) without declared `SelfReferenceWitness` (cve-architecture spec §16; closes architectural-revision invariant R4) |
 
 ## 3. The anatomy of an anti-pattern
 
@@ -284,7 +285,7 @@ preserved as adapters.
 
 ## 9. Default severity at a glance
 
-A common question: *"how many of the thirty-nine are errors by
+A common question: *"how many of the forty are errors by
 default?"* The default is encoded in each `check_*` function;
 many patterns escalate when `Shape.strict == true`. The summary
 below is the *strict-mode* picture:
@@ -301,7 +302,7 @@ incrementally per cog (via `@arch_module(strict: true)`).
 
 ## 10. Verum-side surface
 
-The 39-pattern catalog is exposed on the Verum side as a
+The 40-pattern catalog is exposed on the Verum side as a
 first-class enum in `core.architecture.anti_patterns`:
 
 ```verum
@@ -352,7 +353,7 @@ the ATS-V phase as a structured compiler diagnostic.
 
 ## 11. Implementation status
 
-Every code in the canonical 39-pattern roster has a corresponding
+Every code in the canonical 40-pattern roster has a corresponding
 `check_*` function on the kernel side.  The mapping is:
 
 | AP code | Check function | Lives in |

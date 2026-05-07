@@ -375,7 +375,7 @@ foreign-foundation construct.
 
 ---
 
-# CVE articulation-hygiene band (AP-033 .. AP-039)
+# CVE articulation-hygiene band (AP-033 .. AP-040)
 
 The CVE-AH band operationalises the
 [cve-architecture spec](../../../internal/cve/docs/cve-architecture.md)
@@ -383,8 +383,10 @@ load-bearing concepts that ATS-V was missing on its first
 canonical release: the three senses of the E axis (§2.3.0), the
 [H]/[I]/[✗] articulation discipline (§3.5), the cognitive substrate
 disclosure (§1.5), the formal anchoring boundary (§4.5), the audit
-termination via declared purpose (§14.6), and the L6 register
-prohibitions (§16).
+termination via declared purpose (§14.6), the L6 register
+prohibitions (§16), and the operator+fixed-point discipline for
+self-reference (§16). AP-040 closes
+[architectural-revision invariant **R4**](../cve/architectural-revisions.md).
 
 Patterns in this band fire either at **arch-check** (per-cog
 predicates touching `Shape.declarations`) or at **post-arch**
@@ -569,10 +571,114 @@ declarations: ShapeDeclarations {
 
 ---
 
+## AP-040 — SelfReferenceWithoutOperator {#ap-040}
+
+**Severity:** error in strict mode, warning otherwise · **Phase:** arch-check · **Stable since:** v0.4
+
+**Predicate.**
+`(self_path ∈ shape.composes_with
+   ∨ ∃ c ∈ shape.exposes ∪ shape.requires.
+       capability_target_text(c) ⊇ self_path)
+⟹ shape.declarations.self_reference.is_some()`,
+where `self_path` is the cog's fully-qualified module path.
+
+**Why it matters.** Per
+[cve-architecture spec §16](../cve/articulation-hygiene.md#self-reference-spec)
+articulation hygiene, every self-X claim must be re-articulated
+as `(operator T_X, fixed point Fix(T_X))` with a cited fixpoint-
+class theorem. A bare self-X assertion (cog citing itself in
+`composes_with`, capability targeting the cog's own holon,
+constitution ratifying its own amendment process) is operationally
+indistinguishable from a Russell-paradox construction: the
+chain's auditor cannot distinguish a legitimate fixed-point from
+a circular self-reference without the witness. AP-040 closes the
+[architectural-revision open invariant **R4**](../cve/architectural-revisions.md#7-open-invariants).
+
+**Detection scope.** The check inspects three textual surfaces:
+
+1. `shape.composes_with` — direct self-citation (most common).
+2. `shape.exposes` and `shape.requires` — capability targets
+   (`Read`/`Write` resource tags, `Custom` capability tags) whose
+   target text contains the cog's own path. Examples:
+   - `Capability.Read(ResourceTag.Database("synarc.governance.constitution"))`
+     declared by the `synarc.governance.constitution` cog →
+     self-X via capability target.
+   - `Capability.Custom { tag: "synarc:holon/<self>" }` declared by
+     the cog whose path matches `<self>` → self-X via custom tag.
+3. The check is **string-level**, not semantic; it catches the
+   bare assertion. Subtle semantic self-reference (e.g., a cog
+   that references another cog which references the first) is
+   bounded by AP-003 `DependencyCycle`.
+
+**Remediation.** Add `declarations.self_reference: Some(...)` to
+the `@arch_module(...)`:
+
+```verum
+declarations: ShapeDeclarations {
+    self_reference: Some(SelfReferenceWitness {
+        operator:       "path.to.operator_cog",     // T_X
+        fixed_point:    "path.to.fixed_point_cog",  // Fix(T_X)
+        fixpoint_class: FixpointClass.Banach,
+        //          // or Tarski / Adamek / CustomFixpoint("...")
+    }),
+    ..ShapeDeclarations::empty()
+}
+```
+
+The operator cog must have lifecycle ≥ `Conditional` and
+discharge the cited fixpoint-class obligation. The fixpoint
+class names which theorem closes existence (and uniqueness where
+applicable) of `Fix(T_X)`:
+
+| Class | Theorem | When to cite |
+|-------|---------|--------------|
+| `Banach` | Banach fixed-point | contracting operator on complete metric space |
+| `Tarski` | Tarski-Knaster | monotone operator on complete lattice |
+| `Adamek` | Adamek's theorem on initial algebras | continuous functor on cocomplete category |
+| `CustomFixpoint(citation)` | user-cited theorem | requires `@framework(...)` attribute |
+
+**Worked example.** A constitution amendment cog without a
+witness vs. with a witness:
+
+```verum
+// Triggers AP-040 in strict mode:
+@arch_module(
+    composes_with: ["synarc.governance.constitution"],  // SELF
+    strict:        true,
+    // declarations omitted
+)
+module synarc.governance.constitution;
+```
+
+```verum
+// Admitted (constitution as fixed point of amendment operator):
+@arch_module(
+    composes_with: ["synarc.governance.constitution"],
+    strict:        true,
+    declarations: ShapeDeclarations {
+        self_reference: Some(SelfReferenceWitness {
+            operator:       "synarc.governance.amendment_operator",
+            fixed_point:    "synarc.governance.constitution",
+            fixpoint_class: FixpointClass.Banach,
+        }),
+        ..ShapeDeclarations::empty()
+    },
+)
+module synarc.governance.constitution;
+```
+
+The second form re-articulates the bare self-X as «the
+constitution is the unique fixed point of the amendment operator
+under Banach's theorem». The amendment-operator cog discharges
+the contraction-coefficient bound; AP-040 admits the cog because
+the witness is present.
+
+---
+
 ## See also
 
 - [Anti-pattern catalog overview](./overview.md) — the indexing
-  page with the full 39-entry table.
+  page with the full 40-entry table.
 - [Capability / composition core (AP-001..AP-010)](./classical.md)
 - [Modal-temporal anti-patterns (AP-027..AP-032)](./mtac.md)
 - [Reflection tower](../../verification/reflection-tower) — for
@@ -580,7 +686,11 @@ declarations: ShapeDeclarations {
 - [Three-tier reference model](../../language/memory-model) — for
   AP-016 `CapabilityDuplication`'s linearity discipline.
 - [CVE overview](../cve/overview.md) — the cve-architecture
-  spec primitives that the CVE-AH band (AP-033..039)
+  spec primitives that the CVE-AH band (AP-033..AP-040)
   operationalises.
 - [Audit protocol — termination through Purpose](../audit-protocol.md#purpose-termination)
   — the CVE-AH band's load-bearing concept for AP-037.
+- [Articulation hygiene §8 — self-reference](../cve/articulation-hygiene.md#self-reference-spec)
+  — the operator+fixed-point discipline behind AP-040.
+- [Architectural revisions chronicle §7 — R4 closure](../cve/architectural-revisions.md)
+  — the open invariant that AP-040 closes.

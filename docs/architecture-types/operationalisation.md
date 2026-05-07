@@ -72,6 +72,8 @@ cross-side pin test compares both sides.
 | `purpose_default()`                    | `() → Purpose`                       | Default unspecified purpose; `[T]` strict-mode cogs SHOULD override. |
 | `defect_kind_tag(k)`                   | `DefectKind → Text`                  | Stable tag for §20.4 architectural-defect kind. |
 | `resolution_tag(r)`                    | `Resolution → Text`                  | Stable tag for §20.4 resolution path. |
+| `fixpoint_class_tag(f)`                | `FixpointClass → Text`               | Stable tag for §16 fixpoint-class (`banach` / `tarski` / `adamek` / `custom_fixpoint`). |
+| `self_reference_witness_unspecified()` | `() → SelfReferenceWitness`          | Default-constructor (test only); production cogs SHOULD supply concrete `operator`/`fixed_point` paths. |
 | `shape_declarations_empty()`           | `() → ShapeDeclarations`             | Empty declarations record; defaults filled at audit time. |
 | `cve_closure_degree(cve)`              | `CveClosure → Int`                   | 0..=3 — number of CVE axes present. |
 | `cve_closure_is_fully_closed(cve)`     | `CveClosure → Bool`                  | True iff all three axes present. |
@@ -192,11 +194,12 @@ public fn lifecycle_rank_strict_order_holds() -> Bool
 public fn stratum_l_abs_unique_inadmissible() -> Bool
 public fn foundation_canonical_inclusions_hold() -> Bool
 public fn tier_check_runs_nothing() -> Bool
-// CVE-architecture spec primitives (AP-033..AP-039 closure)
+// CVE-architecture spec primitives (AP-033..AP-040 closure)
 public fn executability_sense_canonical_unique() -> Bool   // §2.3.0 — only StructuralReadiness
 public fn cognitive_substrate_default_is_analytic() -> Bool // §1.5 — AnalyticDecompositional
 public fn formal_anchoring_default_is_chl() -> Bool         // §4.5 — CurryHowardLawvere
 public fn purpose_default_is_complete() -> Bool             // §14.6 — all three thresholds set
+public fn fixpoint_class_tags_distinct() -> Bool            // §16   — Banach/Tarski/Adamek/Custom distinct
 ```
 
 Each evaluates to `true` on a correct implementation; the
@@ -214,7 +217,7 @@ public fn adjunction_mirror_symmetry() -> Bool
 ### 3.3 Pins in `core.architecture.anti_patterns` / `corpus` / `parse`
 
 ```verum
-public fn anti_pattern_roster_size_invariant() -> Bool   // 39 (32 base + 7 CVE-AH band)
+public fn anti_pattern_roster_size_invariant() -> Bool   // 40 (32 base + 8 CVE-AH band)
 public fn corpus_invariant_roster_size_invariant() -> Bool  // 4
 public fn arch_module_field_count_invariant() -> Bool    // 13
 ```

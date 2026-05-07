@@ -102,7 +102,7 @@ the catalog has **~45 gates** organised into eight bands:
 
 | Flag | Verifies | Output |
 |------|----------|--------|
-| `--arch-discharges` | The 39-pattern anti-pattern catalog | `arch-discharges.json` |
+| `--arch-discharges` | The 40-pattern anti-pattern catalog | `arch-discharges.json` |
 | `--arch-coverage` | Annotation density + missing-Shape report | `arch-coverage.json` |
 | `--arch-corpus` | Per-Lifecycle inventory of annotated cogs | `arch-corpus.json` |
 | `--counterfactual` | Non-destructive scenario battery over Shapes | `counterfactual.json` |
@@ -228,7 +228,7 @@ indicates a kernel-implementation bug, not a corpus defect.
 
 ### 3.1 `--arch-discharges` — the catalog gate
 
-Runs every entry in the [39-pattern catalog](./anti-patterns/overview.md)
+Runs every entry in the [40-pattern catalog](./anti-patterns/overview.md)
 against every annotated cog. Verdict per pattern:
 
 - `ok` — no occurrences in the project.
@@ -458,7 +458,7 @@ A bundle with `verdict: load-bearing` makes a precise claim:
 
 > Every architectural primitive declared by every annotated cog
 > in this revision has been checked against the body, against
-> the cross-cog graph, and against the 39-pattern catalog. Every
+> the cross-cog graph, and against the 40-pattern catalog. Every
 > proof admitted in the proof corpus has been re-checked through
 > *both* the trusted-base kernel and the NbE kernel, and they
 > agree. Every framework axiom cited is enumerable in the
@@ -493,7 +493,7 @@ is observational only.
 
 ## 9. Red-team closure axioms
 
-In addition to the 39-pattern catalog, the audit-bundle aggregator
+In addition to the 40-pattern catalog, the audit-bundle aggregator
 walks four kernel-discharge axioms that close known attack vectors
 against the ATS-V declarative surface:
 
@@ -628,7 +628,7 @@ graphs.
 ## 11. Cross-references
 
 - [Anti-pattern overview](./anti-patterns/overview.md) —
-  the 39-pattern catalog the `--arch-discharges` gate consumes.
+  the 40-pattern catalog the `--arch-discharges` gate consumes.
 - [Red-team closures](./red-team.md) — detailed exposition of
   AT-1..AT-5 attack vectors and their closures.
 - [Cross-side pin tests](./cross-side-pin.md) — kernel ↔ Verum

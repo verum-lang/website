@@ -111,9 +111,11 @@ landed in two layers:
   `CognitiveSubstrate`, `FormalAnchoring`, `Purpose`,
   `ArchitecturalDefect` in `core/architecture/types.vr`,
   mirrored in `verum_kernel::arch`.
-- **Anti-pattern layer** — seven new entries in the canonical
-  AP roster (AP-033..AP-039), forming the
-  [CVE articulation-hygiene band](../anti-patterns/articulation.md#cve-articulation-hygiene-band-ap-033--ap-039).
+- **Anti-pattern layer** — eight entries in the canonical AP roster
+  (AP-033..AP-040), forming the
+  [CVE articulation-hygiene band](../anti-patterns/articulation.md#cve-articulation-hygiene-band-ap-033--ap-040).
+  AP-040 was added in the second chronicle entry (R4 closure); see
+  §7 below.
 
 ## 5. How a new defect gets registered
 
@@ -199,20 +201,57 @@ the CVE-zone by construction. The boundary is operationalised by
 and disclosed via [substrate disclosure](./overview.md#substrate-disclosure).
 No defect; the bounding is explicit.
 
-### Finding R4 — §16 articulation hygiene without dedicated AP
+### Finding R4 — §16 articulation hygiene without dedicated AP — **CLOSED in v0.4**
 
-Spec §16 formalises "never self-X, always operator + fixed
-point" as a methodological L2 protocol. The canonical
-anti-pattern catalog has [`AP-006 RegisterMixing`](../anti-patterns/classical.md#ap-006)
+**Original status (v0.3):** Spec §16 formalises "never self-X,
+always operator + fixed point" as a methodological L2 protocol.
+The canonical anti-pattern catalog had [`AP-006 RegisterMixing`](../anti-patterns/classical.md#ap-006)
 (register collisions) and [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
 (role/register mismatches), both of which catch operational
 violations of the §16 principle, but no AP fires specifically on
-"self-X without operator + fixed point". **Resolution:**
-deliberate. Spec §16 lives on L2 (methodological protocol), not
-L0/L4 (object/architectural law); the operational manifestations
-are caught by the existing two APs. A future revision MAY add
-AP-040 `SelfReferenceWithoutOperator` if reviewer experience
-shows a bypass surface.
+"self-X without operator + fixed point". The defect was deferred
+with the rationale that §16 lives at L2 (methodological protocol)
+and the existing two APs cover the operational manifestations.
+
+**Resolution (v0.4):** R4 is closed by introducing two new
+first-class types and one new anti-pattern:
+
+1. **`FixpointClass`** — enum naming the fixed-point theorem class
+   (Banach / Tarski / Adamek / CustomFixpoint).
+2. **`SelfReferenceWitness`** — record `{operator, fixed_point,
+   fixpoint_class}` packaging the operator + fixed-point pair as a
+   first-class declared property.
+3. **`ShapeDeclarations.self_reference: Maybe<SelfReferenceWitness>`**
+   — packages the witness alongside `purpose` / `substrate` /
+   `anchoring` / `e_sense`.
+4. **AP-040 `SelfReferenceWithoutOperator`** — fires when the cog's
+   `Shape` exhibits a self-X pattern (self in `composes_with`,
+   capability targeting cog's own path, custom-tag mentioning self)
+   but `declarations.self_reference` is `None`.
+5. **`@kernel_discharge("kernel_arch_self_reference_check")`** —
+   kernel-discharge bridge in `core/architecture/anti_patterns.vr`.
+
+The closure operationalises §16 as L4 (architectural law) rather
+than just L2: legitimate self-reference is a **typed declared
+property**, not just a methodological protocol; the bare self-X
+assertion is rejected at deploy time, not just flagged by reviewer
+discipline. See:
+
+- [`AP-040` entry](../anti-patterns/articulation.md#ap-040) for the
+  predicate, detection scope, and remediation recipe.
+- [Articulation hygiene §8](./articulation-hygiene.md#self-reference-spec)
+  for the operator+fixed-point discipline and worked examples.
+- Kernel-side: `verum_kernel::arch::{FixpointClass,
+  SelfReferenceWitness}` and
+  `verum_kernel::arch_anti_pattern::check_self_reference_without_operator`.
+- Cross-side pin: `pin_fixpoint_class_four_canonical` and
+  `pin_self_reference_witness_format` in
+  `crates/verum_kernel/tests/k_arch_v_alignment.rs`.
+
+The promotion of §16 from "deferred at L2" to "first-class at L4"
+is recorded as the **second** entry of the architectural-revision
+chronicle (after the seven §20.5 defects of v0.3 → v0.4 were
+landed in the prior chronicle entry).
 
 ### Finding R5 — §6.6 L5 regenerability without explicit predicate
 

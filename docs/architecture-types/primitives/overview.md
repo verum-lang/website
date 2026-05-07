@@ -280,7 +280,7 @@ A handful of clarifications that prevent common misreadings.
 - [Three orthogonal axes](../orthogonality.md) — capability vs
   property vs context.
 - [Anti-patterns overview](../anti-patterns/overview.md) — the
-  thirty-nine canonical defects ATS-V detects (32 base + 7 CVE
+  forty canonical defects ATS-V detects (32 base + 8 CVE
   articulation-hygiene band).
 - [Audit protocol](../audit-protocol.md) — how to run the audit
   gates that consume Shapes.

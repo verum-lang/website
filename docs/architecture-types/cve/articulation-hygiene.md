@@ -194,7 +194,7 @@ diagnostic includes the canonical fix.
 ## 7. The L6 ↔ CVE-AH connection
 
 Articulation hygiene at L6 connects to the CVE articulation-hygiene
-band through three load-bearing anti-patterns:
+band through four load-bearing anti-patterns:
 
 - [`AP-036 ObserverImpersonation`](../anti-patterns/articulation.md#ap-036)
   — observer role mismatches the register of the assertion content.
@@ -212,10 +212,149 @@ band through three load-bearing anti-patterns:
   `FormalAnchoring`. Per [cve-architecture spec §4.5](#anchoring-spec),
   the architectural law extends across domains only when the
   parallel anchoring is explicitly named.
+- [`AP-040 SelfReferenceWithoutOperator`](../anti-patterns/articulation.md#ap-040)
+  — self-referential `Shape` pattern without declared
+  `SelfReferenceWitness`. Operationalises
+  [cve-architecture spec §16](#self-reference-spec) («никогда
+  «само-X», всегда «оператор + неподвижная точка»). Closes the
+  architectural-revision open invariant **R4**.
 
 These patterns and the L6 gate together cover the full hygiene
 surface: the L6 gate catches prose-level register collisions,
-AP-036/038/039 catch type-system-level register collisions.
+AP-036/038/039/040 catch type-system-level register collisions and
+self-referential constructions.
+
+## 8. Self-reference: operator + fixed point as type-level discipline {#self-reference-spec}
+
+[Cve-architecture spec §16](../../../internal/cve/docs/cve-architecture.md)
+formalises one of the most subtle hygiene principles:
+
+> Никогда «само-X», всегда «оператор `T_X` + неподвижная точка
+> `Fix(T_X)`».
+
+The operational reading: **a self-referential claim is admissible
+only when it is re-articulated as the fixed point of an
+explicitly-named operator under a cited fixpoint-class theorem.**
+The bare assertion «X is X» (or its operational analogues — a cog
+that cites itself in `composes_with`, a capability targeting the
+cog's own holon, a constitution that ratifies its own
+amendment process) is operationally indistinguishable from a
+Russell-paradox construction.
+
+Verum operationalises this discipline through two new first-class
+types and one new anti-pattern.
+
+### 8.1 The two new types
+
+**`FixpointClass`** — the theorem class discharging the existence
+(and where applicable, uniqueness) of `Fix(T_X)`:
+
+| Variant | Theorem | Discharges |
+|---------|---------|------------|
+| `Banach` | Banach fixed-point theorem | unique fixed point under contracting operator on complete metric space |
+| `Tarski` | Tarski-Knaster | existence (possibly non-unique) under monotone operator on complete lattice |
+| `Adamek` | Adamek's theorem on initial algebras | initial-algebra fixed point under continuous functor on cocomplete category |
+| `CustomFixpoint(citation)` | user-cited theorem | requires `@framework(...)` attribute; enumerable via `verum audit --framework-axioms` |
+
+**`SelfReferenceWitness`** — the operator + fixed-point pair plus
+the cited fixpoint class:
+
+```verum
+public type SelfReferenceWitness is {
+    operator: Text,        // path to the cog implementing T_X
+    fixed_point: Text,     // path to the cog implementing Fix(T_X)
+    fixpoint_class: FixpointClass,
+};
+```
+
+The witness is packaged into `ShapeDeclarations.self_reference:
+Maybe<SelfReferenceWitness>` alongside the existing `purpose`,
+`substrate`, `anchoring`, `e_sense` declarations.
+
+### 8.2 The detection rule (AP-040)
+
+A cog's `Shape` exhibits a **self-X pattern** when at least one of:
+
+1. The cog's own module path appears in `composes_with` (the most
+   common variant).
+2. A capability in `exposes` or `requires` targets a resource whose
+   tag string contains the cog's own path (e.g. `Capability.Read(
+   ResourceTag.Database("synarc.governance.constitution"))` from
+   the `synarc.governance.constitution` cog).
+3. A `Capability.Custom { tag, ... }` whose tag contains the cog's
+   own path (chain-domain self-reference via `synarc:holon/<self>`
+   or similar).
+
+When self-X is present, AP-040 fires unless `Shape.declarations.
+self_reference` carries an explicit witness.
+
+### 8.3 Worked example — a constitution amendment cog
+
+**Without witness (triggers AP-040):**
+
+```verum
+@arch_module(
+    foundation:    Foundation.ZfcTwoInacc,
+    stratum:       MsfsStratum.LFnd,
+    lifecycle:     Lifecycle.Theorem("v1.0"),
+    composes_with: ["synarc.governance.constitution"],  // SELF
+    strict:        true,
+    // declarations omitted: AP-040 fires
+)
+module synarc.governance.constitution;
+```
+
+The cog cites itself in `composes_with` (the Russell-paradox
+shape: «the constitution is composed of the constitution»). In
+strict mode this is rejected at deploy.
+
+**With witness (admitted):**
+
+```verum
+@arch_module(
+    foundation:    Foundation.ZfcTwoInacc,
+    stratum:       MsfsStratum.LFnd,
+    lifecycle:     Lifecycle.Theorem("v1.0"),
+    composes_with: ["synarc.governance.constitution"],  // SELF, but...
+    strict:        true,
+    declarations: ShapeDeclarations {
+        self_reference: Some(SelfReferenceWitness {
+            operator:       "synarc.governance.amendment_operator",
+            fixed_point:    "synarc.governance.constitution",
+            fixpoint_class: FixpointClass.Banach,
+        }),
+        ..ShapeDeclarations::empty()
+    },
+)
+module synarc.governance.constitution;
+```
+
+The witness re-articulates the bare self-X as: *the constitution
+is the unique fixed point of the amendment-operator under Banach's
+theorem*. The `synarc.governance.amendment_operator` cog is a
+contracting operator (each amendment narrows admissible
+constitutions; iterating converges to a unique stable text). The
+cited theorem is mechanically discharged by the kernel through
+the `@framework(...)` registry; AP-039 closure ensures the
+fixpoint-class citation traces to a `[T]`-status proof.
+
+### 8.4 The discipline applied to existing chain features
+
+Several chain-level concepts that look like self-reference are
+already articulated as operator+fixed-point:
+
+| Concept | Operator | Fixed point | Class |
+|---------|----------|-------------|-------|
+| Validator-set rotation (§A2.6) | `synarc.consensus.rotation_operator` | active validator set | `Tarski` (monotone on stake-weighted lattice) |
+| Holon coinductive guardedness (§L6) | `synarc.cognition.holon_operator` | self-similar holon at depth-N | `Adamek` (continuous functor on coalgebra) |
+| Diakrisis canonical articulation (§A1.1) | `core.math.diakrisis.canonicalize` | unique canonical form | `Banach` (contracting on Bures metric) |
+| Audit-bundle self-application (§L4) | `verum_audit::self_audit` | `[T]`-status audit cog | `CustomFixpoint("CVE §20 self-application")` |
+
+Each of these is a legitimate self-reference because the cog
+declares the operator and fixed point explicitly. AP-040 catches
+the cogs that *look like* these but lack the witness — silent
+self-reference is the defect, witnessed self-reference is the
+discipline.
 
 ## 8. The discipline applied — a real example
 
