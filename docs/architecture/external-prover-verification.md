@@ -222,13 +222,16 @@ certificates.
 `K_Eps_Mu`, `K_Round_Trip`
 
 (Structural now: `K_Modal_Box`, `K_Modal_Diamond`, `K_Shape`,
-`K_Flat`, `K_Sharp` (FV-9); `K_Universe_Ascent` (collapses onto
-`T_univ` for u32-bounded universes); `K_Epsilon_Of` and
-`K_Alpha_Of` (wrap-preserves-typing, mirroring `t_modal_box` /
-`t_modal_diamond`; the M ⊣ A unit/counit-law content is the
-kernel's input contract); `K_Modal_Big_And` (premise-free at the
-export layer; homogeneous-typed-components is the kernel's input
-contract, mirroring `K_Inductive`).)
+`K_Flat`, `K_Sharp` — these had structural typing constructors in
+the export since FV-9; the modal-depth recursion / cohesive
+adjunction content is the kernel's input contract.
+`K_Universe_Ascent` collapses onto `T_univ` for u32-bounded
+universes.  `K_Epsilon_Of` and `K_Alpha_Of` use the
+wrap-preserves-typing template (`Typing Γ inner T → Typing Γ
+(...) T`); the M ⊣ A unit/counit-law content is the kernel's
+input contract.  `K_Modal_Big_And` is premise-free at the export
+layer; homogeneous-typed-components is the kernel's input
+contract, mirroring `K_Inductive`.)
 
 Discharge plan for the remaining 2: K_Eps_Mu's biadjunction
 relating articulation/enactment can't fold into structural
