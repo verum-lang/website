@@ -83,12 +83,13 @@ Each backend reports one of four verdicts:
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
   Isabelle) whose count matches the corpus's declared admit list.
-  *This is the default green state.* The export ships **14
+  *This is the default green state.* The export ships **12
   outstanding IOU axioms** (one per genuinely non-structural rule
   — the rest are real inductive constructors of the `Typing`
-  predicate).  IOU trajectory: 27 → 17 → 16 → 14 (pre-FV-9, post-
-  FV-9 structural fragment, post-K_Quot_Elim discharge, post-
-  K_Elim + K_Universe_Ascent discharge).
+  predicate).  IOU trajectory: 27 → 17 → 16 → 14 → 12 (pre-FV-9,
+  post-FV-9 structural fragment, post-K_Quot_Elim discharge,
+  post-K_Elim + K_Universe_Ascent discharge, post-K_Refine +
+  K_Refine_Omega discharge).
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
@@ -110,8 +111,8 @@ then apply the corresponding constructor".
 The remaining non-structural rules — those that genuinely depend on
 deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
 HOL — are honestly admitted via per-rule typed axioms named
-`<Rule>_iou`. There are **14** such IOUs (trajectory `27 → 17 →
-16 → 14`). Each axiom takes the rule's actual operands and
+`<Rule>_iou`. There are **12** such IOUs (trajectory `27 → 17 →
+16 → 14 → 12`). Each axiom takes the rule's actual operands and
 returns a `Prop`, so the soundness lemma's operand types are
 still *checked* by the foreign tool — the IOU just discharges the
 conclusion.
@@ -128,7 +129,7 @@ So `external-prover-replay` verifies:
   (drift-detected).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
-- ❌ It does **not** verify that the 14 IOU rules are actually
+- ❌ It does **not** verify that the 12 IOU rules are actually
   sound with respect to a denotational model. That's a separate,
   deeper effort tracked under "Kernel meta-theory in Mathlib" in
   the verification roadmap.
@@ -139,7 +140,7 @@ That gate runs a 24-cert battery through both the Rust kernel and
 the Lean ReferenceChecker and asserts cert-by-cert verdict
 agreement.
 
-## 4. The 14 outstanding IOUs
+## 4. The 12 outstanding IOUs
 
 Each IOU axiom names exactly the meta-theory it depends on. The
 audit's plain output enumerates every reason verbatim; here they
@@ -147,7 +148,8 @@ group by category. The bracketed `(N→M)` shows the per-category
 drop as structural pieces became real inductive constructors:
 the pre-FV-9 corpus had 27; FV-9 brought it to 17; the
 Quotient-elimination discharge brought it to 16; the K_Elim +
-K_Universe_Ascent discharge brought it to 14.
+K_Universe_Ascent discharge brought it to 14; the K_Refine +
+K_Refine_Omega discharge brought it to 12.
 
 ### Cubical (6→4) — CCHM / HoTT mechanisation
 
@@ -159,16 +161,23 @@ Discharge plan: port the cubical-type-theory chapter of
 [`agda/cubical`](https://github.com/agda/cubical) to a Lean 4
 fragment; or wait for `mathlib4`'s nascent CCHM port.
 
-### Refinement (4→3) — Definition 136.D1 + Lemma 136.L0
+### Refinement (4→1) — predicate decidability at value
 
-`K_Refine`, `K_Refine_Omega`, `K_Refine_Intro`
+`K_Refine_Intro`
 
-(Structural now: `K_Refine_Erase`.)
+(Structural now: `K_Refine_Erase` (FV-9), `K_Refine` and
+`K_Refine_Omega` (this discharge — predicate typed at
+`Pi x base (Universe 0)` captures the Bool-valued-predicate
+intent; the finite-universe bound `i : Nat` makes the
+ordinal-modal-depth-bound intent of K_Refine_Omega vacuous at the
+operational layer).)
 
-Discharge plan: formalise the refinement-typing hierarchy +
-ordinal modal-depth bound. Both are stated in
-`crates/verum_kernel/src/eps_mu.rs` but the Lean-side proofs are
-admitted.
+Discharge plan for `K_Refine_Intro`: predicate-decidability-at-
+the-introduced-value requires an evaluation oracle (the rule
+needs `eval(predicate, a) = true`), which is fundamentally a
+Bool-equality side condition outside the structural-premises
+template.  Multi-day work to formalise an `eval` reduction
+relation that the soundness lemma can quantify over.
 
 ### Quotient (3→0) — equivalence-relation properties
 
