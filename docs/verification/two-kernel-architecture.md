@@ -196,30 +196,50 @@ identify the bug.
 A static differential test on canonical certificates is good but
 not sufficient — bugs typically hide in non-canonical inputs. The
 **mutation-fuzz layer** (`verum audit --differential-kernel-fuzz`)
-sits atop the differential gate and runs an 11-variant mutation
-grammar:
+sits atop the differential gate and runs **mutation chains** of
+length 1–3 over a 16-seed roster (15 accept-path certs from the
+canonical battery + a K-combinator deeper seed).  The 11-variant
+mutation grammar:
 
 | Mutation | What it does |
 |----------|--------------|
-| Universe lift +1 / +2 / +3 | bumps universe levels |
-| Term replace | substitutes a subterm with a random closed term |
-| Type replace | substitutes a type with a random type |
-| Free-var inject | introduces a fresh free variable |
-| App-to-non-fn | applies a non-function in function position |
-| Lambda wrap | wraps a term in `λx. _` |
-| Term swap | swaps two random subterms |
-| Type swap | swaps two random types |
-| Pi binder rewrite | renames a Π-bound variable |
-| Lam binder rewrite | renames a λ-bound variable |
+| Lift all universes / term-only / type-only by `δ` | bumps universe levels asymmetrically |
+| Replace term / claimed_type with `Universe(0)` | substitutes with a known well-typed leaf |
+| Replace term with free `Var(idx)` | introduces an unbound variable |
+| App on non-function | wraps term in `App(term, Universe(0))` |
+| Wrap term in extra `λ` | adds a binder layer |
+| Swap term and type | exchanges the two CoreTerm fields |
+| Pi / Lam domain → `Universe(0)` | rewrites a top-level binder's domain |
 
-Each mutant is run through *every* registered kernel. The
-property invariant: every mutant produces unanimous agreement
-across all kernels. *Any* disagreement is a kernel bug.
+Each iteration:
+1. Picks seed `i % seeds.len()` (round-robin).
+2. Samples a chain of length 1–3 (capped at `MAX_MUTATION_CHAIN_LEN = 3`).
+3. Applies mutations in order (left-associative composition).
+4. Runs the mutant through every registered kernel.
+
+Property invariant: every mutant produces unanimous agreement
+across all kernels.  *Any* disagreement is a kernel bug.
+
+When a disagreement is found, the harness **automatically shrinks**
+the chain to a minimal failing case via greedy 1-element-removal
+to fixpoint (O(n²) registry calls — at most 6 calls per shrink for
+the 3-chain bound).  The shrunk chain is reported alongside the
+original; auditors see the smallest reproducer rather than a
+deeply-mutated cert.  A shrunk-to-empty chain is the highest-
+priority bug class (the seed alone disagrees).
+
+**Coverage instrumentation** is recorded for every campaign:
+per-mutation hit counts, per-seed hit counts, chain-length
+distribution.  Surfaced in plain-format output when the gate
+**passes** — catches sampling bias before it hides a kernel bug.
 
 The campaign is bounded (default 500 iterations) and uses a
 deterministic xorshift64* seed, so disagreements are reproducible
-across runs. Auditors who suspect a kernel bug re-run with the
-same seed and inspect the failing mutant.
+across runs.  Auditors who suspect a kernel bug re-run with the
+same `(seed, iteration)` pair and inspect the failing mutant.
+
+See [property-fuzz](../architecture/property-fuzz.md) for the
+full architecture page.
 
 ## 7. Liveness pin — the audit's own check
 

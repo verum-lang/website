@@ -532,14 +532,25 @@ The three kernels:
   footprint, and per-rule strict-intrinsic dispatch. Orthogonal
   to the term-level algorithms above.
 
-Differential testing — `verum audit --differential-kernel` and
-`verum audit --differential-kernel-fuzz` — runs every
-canonical certificate plus an 11-variant mutation grammar
-through all three kernels. A single disagreement fails the
-audit. A *synthetic always-accept kernel* registered alongside
-the real three acts as a liveness pin: the audit's invariant
-requires it to *disagree* on rejected certificates, ensuring
-the differential check is non-vacuous.
+Differential testing across **three layers**:
+- `verum audit --differential-kernel` runs the canonical 24-cert
+  battery (`verum_kernel::canonical_battery`) through all three
+  kernels and asserts unanimous agreement.
+- `verum audit --differential-kernel-fuzz` chains 1–3 mutations
+  per iteration (from an 11-variant grammar) over a 16-seed
+  roster, auto-shrinks any disagreement to a minimal failing
+  case, and surfaces per-mutation / per-seed / chain-length
+  coverage instrumentation.
+- `verum audit --differential-lean-checker` runs the same
+  canonical battery through the Rust kernel and a Lean
+  ReferenceChecker exe; cross-language verdict-by-verdict
+  agreement asserted.
+
+A single disagreement at any layer fails the audit. A *synthetic
+always-accept kernel* registered alongside the real three acts as
+a liveness pin: the audit's invariant requires it to *disagree*
+on rejected certificates, ensuring the differential check is
+non-vacuous.
 
 Verum is the first production proof assistant to ship multiple
 algorithmic kernels with continuous differential testing. See

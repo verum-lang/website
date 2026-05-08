@@ -245,11 +245,18 @@ The differential layer is documented in detail in
 [Three-kernel architecture](./two-kernel-architecture.md). At a
 glance:
 
-- `verum audit --differential-kernel` — runs every certificate
-  through all three kernels.
-- `verum audit --differential-kernel-fuzz` — runs an 11-variant
-  mutation grammar over canonical certificates and verifies
-  unanimous agreement.
+- `verum audit --differential-kernel` — runs the canonical 24-cert
+  battery (`verum_kernel::canonical_battery`) through all three
+  kernels.
+- `verum audit --differential-kernel-fuzz` — chains 1–3 mutations
+  per iteration over a 16-seed roster (the canonical battery's
+  accept-path certs + a K-combinator deeper seed), auto-shrinks
+  any disagreement to a minimal failing case via greedy 1-element
+  removal, and surfaces per-mutation / per-seed / chain-length
+  coverage instrumentation.  See [property-fuzz](../architecture/property-fuzz.md).
+- `verum audit --differential-lean-checker` — same canonical battery
+  through the Rust kernel and a Lean ReferenceChecker exe; verdict-
+  by-verdict agreement asserted.
 - A *synthetic always-accept* slot is registered as a liveness
   pin: the differential is non-vacuous because the synthetic
   *should* disagree with the real kernels on rejected
