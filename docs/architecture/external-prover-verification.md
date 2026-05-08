@@ -127,7 +127,14 @@ So `external-prover-replay` verifies:
   emission (wrong arity, wrong name, missing premise) fails the
   build.
 - ✅ Every IOU axiom name + arity matches the rule registry
-  (drift-detected).
+  (drift-detected).  The drift guard
+  (`SoundnessExporter::drift_check`) cross-validates per-rule
+  `LemmaStatus` in `mod.rs` against the actual `<Rule>_iou`
+  axiom presence in the export.  Three failure modes are
+  hard-rejected at audit time: (a) `Admitted` rule with no IOU
+  axiom (status drift); (b) `Proved` rule with an orphan IOU
+  axiom (incomplete discharge); (c) `DischargedByFramework`
+  rule with an IOU axiom (redundant trust extension).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
 - ❌ It does **not** verify that the 8 IOU rules are actually
