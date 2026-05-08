@@ -1,7 +1,7 @@
 ---
 sidebar_position: 10
 title: External-Prover Verification
-description: "Lean 4 + Coq/Rocq replay gate for the kernel-soundness corpus. The audit drives KernelSoundness.lean and kernel_soundness.v through real `lake build` / `coqc` invocations and reports per-backend pass / iou-only / hard-error verdicts."
+description: "Tri-prover replay gate for the kernel-soundness corpus — Lean 4, Coq/Rocq, and Isabelle/HOL. The audit drives KernelSoundness.lean / kernel_soundness.v / KernelSoundness.thy through real `lake build` / `coqc` / `isabelle process` invocations and reports per-backend pass / iou-only / hard-error verdicts. Three independent foundations agreeing on the same soundness claims."
 ---
 
 # External-Prover Verification
@@ -60,97 +60,129 @@ The audit gate `--kernel-soundness` drift-checks all three.
 ### 2.2 Foreign-tool re-check
 
 `verum audit --external-prover-replay` extends the gate with a real
-shell-out:
+shell-out across **three foundations**:
 
 | Backend | Tool | Project | Invocation |
 |---------|------|---------|------------|
 | Lean 4 (4.29.1+) | `lake build` | `verification/external/lean/` | builds `VerumExternalReplay/KernelSoundness.lean` |
 | Coq / Rocq (9.0+) | `coqc -Q . VerumExternalReplay kernel_soundness.v` | `verification/external/coq/` | type-checks the export |
+| Isabelle/HOL (2025-2+) | `isabelle process -T KernelSoundness -d .` | `verification/external/isabelle/` | re-elaborates `KernelSoundness.thy` |
+
+Three meaningfully-different foundations: Lean 4 is dependent type
+theory (predicative + impredicative `Prop`); Coq / Rocq is CIC
+(impredicative `Prop` + universe polymorphism); Isabelle/HOL is
+classical higher-order logic with extensible foundations.  Tri-prover
+agreement on the structural-fragment soundness lemmas is the
+load-bearing gate.
 
 Each backend reports one of four verdicts:
 
 - **`clean`** — backend exited 0 with no diagnostics. The
   kernel-soundness theorem typechecks unconditionally.
 - **`iou-only`** — backend exited 0; the only diagnostics are
-  honest IOUs (`sorry` warnings in Lean, `Admitted.` lines in Coq)
-  whose count matches the corpus's declared admit list. *This is
-  the default green state* — the corpus has 27 outstanding admits +
-  7 framework-discharged + 4 placeholder-proved.
+  honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
+  in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
+  Isabelle) whose count matches the corpus's declared admit list.
+  *This is the default green state.* As of FV-9 (the full
+  non-structural Typing inductive landed across all three
+  foundations), the export ships **17 outstanding IOU axioms** (one
+  per genuinely non-structural rule — the rest are now real
+  inductive constructors of the `Typing` predicate).
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
 - **`not-available`** — backend binary missing. Advisory unless
   `--strict`; CI uses `--strict`.
 
-## 3. What's NOT verified (honest IOUs)
+## 3. The structural fragment (real inductive constructors)
 
-The four "Proved" lemmas (`K_Var`, `K_Univ`, `K_FwAx`, `K_Pos`)
-are discharged via **placeholder axioms** in the emitted file:
+As of FV-9, the kernel-soundness export ships a **real `Typing`
+inductive predicate** across all three foundations — not just
+opaque `well_typed t T` placeholders. The structural fragment of
+the kernel (variable lookup, universe formation, dependent-product
+formation / introduction / elimination, framework axiom, recursion
+positivity, plus all the structural pieces of cubical / refinement
+/ quotient / modal layers) is encoded as **inductive constructors**
+of `Typing`. Every `K_*_sound` theorem proof becomes "by `intros`,
+then apply the corresponding constructor".
 
-```lean
-axiom ctx_lookup_sound : ∀ t T, well_typed t T
-axiom universe_form_sound : ∀ t T, well_typed t T
-axiom axiom_body_typed_in_prop : ∀ t T, well_typed t T
-axiom strict_positivity_sound : ∀ t T, well_typed t T
-```
-
-These axioms are **vacuously true** — `well_typed` is itself an
-opaque axiom. Their job is to discharge the soundness statements
-*at the level of theorem statement well-formedness*, not at the
-level of meta-theoretic content.
+The remaining non-structural rules — those that genuinely depend on
+deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
+HOL — are honestly admitted via per-rule typed axioms named
+`<Rule>_iou`. There are **17** such IOUs (down from 27 before
+FV-9). Each axiom takes the rule's actual operands and returns a
+`Prop`, so the soundness lemma's operand types are still *checked*
+by the foreign tool — the IOU just discharges the conclusion.
 
 So `external-prover-replay` verifies:
 
 - ✅ Every emitted theorem statement parses and type-checks in
   the foreign tool.
-- ✅ Every `Admitted` / `sorry` carries the same admit reason as
-  the Verum corpus (drift-detected).
+- ✅ For every structural rule, the proof uses a real `Typing`
+  constructor — not a placeholder. A bug in the structural
+  emission (wrong arity, wrong name, missing premise) fails the
+  build.
+- ✅ Every IOU axiom name + arity matches the rule registry
+  (drift-detected).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
-- ❌ It does **not** verify that the kernel rules are actually
+- ❌ It does **not** verify that the 17 IOU rules are actually
   sound with respect to a denotational model. That's a separate,
   deeper effort tracked under "Kernel meta-theory in Mathlib" in
   the verification roadmap.
 
-## 4. The 27 outstanding IOUs
+For a complementary check that exercises the **runtime kernel** —
+not just the meta-theory shape — see [differential-lean-checker](./differential-lean-checker.md).
+That gate runs a 24-cert battery through both the Rust kernel and
+the Lean ReferenceChecker and asserts cert-by-cert verdict
+agreement.
 
-Each admitted lemma names exactly the meta-theory it depends on.
-The audit's plain output enumerates every reason verbatim; here
-they group by category:
+## 4. The 17 outstanding IOUs
 
-### Cubical (6) — CCHM / HoTT mechanisation
+Each IOU axiom names exactly the meta-theory it depends on. The
+audit's plain output enumerates every reason verbatim; here they
+group by category. (The pre-FV-9 corpus had 27; the bracketed `(N→M)`
+shows the per-category drop as structural pieces became real
+inductive constructors.)
 
-`K_Path_Ty_Form`, `K_Path_Over_Form`, `K_Refl_Intro`, `K_HComp`,
-`K_Transp`, `K_Glue`
+### Cubical (6→4) — CCHM / HoTT mechanisation
+
+`K_Path_Over_Form`, `K_HComp`, `K_Transp`, `K_Glue`
+
+(Structural now: `K_Path_Ty_Form`, `K_Refl_Intro`.)
 
 Discharge plan: port the cubical-type-theory chapter of
 [`agda/cubical`](https://github.com/agda/cubical) to a Lean 4
 fragment; or wait for `mathlib4`'s nascent CCHM port.
 
-### Refinement (4) — Definition 136.D1 + Lemma 136.L0
+### Refinement (4→3) — Definition 136.D1 + Lemma 136.L0
 
-`K_Refine`, `K_Refine_Omega`, `K_Refine_Intro`, `K_Refine_Erase`
+`K_Refine`, `K_Refine_Omega`, `K_Refine_Intro`
+
+(Structural now: `K_Refine_Erase`.)
 
 Discharge plan: formalise the refinement-typing hierarchy +
 ordinal modal-depth bound. Both are stated in
 `crates/verum_kernel/src/eps_mu.rs` but the Lean-side proofs are
 admitted.
 
-### Quotient (3) — equivalence-relation properties
+### Quotient (3→1) — equivalence-relation properties
 
-`K_Quot_Form`, `K_Quot_Intro`, `K_Quot_Elim`
+`K_Quot_Elim`
+
+(Structural now: `K_Quot_Form`, `K_Quot_Intro`.)
 
 Discharge plan: lift `Mathlib.Logic.Equiv` + `Quotient.mk` /
 `Quotient.lift` mathlib lemmas through the export.
 
-### Inductive (2) — positivity decision procedure
+### Inductive (2→2) — positivity decision procedure
 
 `K_Inductive`, `K_Elim`
 
 Discharge plan: port Verum's strict-positivity checker into a
 Lean `Decidable` instance.
 
-### SMT/Axiom (1) — replay correctness
+### SMT/Axiom (1→1) — replay correctness
 
 `K_Smt`
 
@@ -159,11 +191,13 @@ Discharge plan: state "every cert that
 CoreTerm derivation" as a Lean predicate over a model of SMT
 certificates.
 
-### Diakrisis (11) — universe ascent, cohesive modalities, Eps/Mu
+### Diakrisis (11→6) — universe ascent, cohesive modalities, Eps/Mu
 
 `K_Eps_Mu`, `K_Universe_Ascent`, `K_Round_Trip`, `K_Epsilon_Of`,
-`K_Alpha_Of`, `K_Modal_Box`, `K_Modal_Diamond`, `K_Modal_Big_And`,
-`K_Shape`, `K_Flat`, `K_Sharp`
+`K_Alpha_Of`, `K_Modal_Big_And`
+
+(Structural now: `K_Modal_Box`, `K_Modal_Diamond`, `K_Shape`,
+`K_Flat`, `K_Sharp`.)
 
 Discharge plan: these depend on Schreiber DCCT (`schreiber_dcct`
 framework, 5 axioms in `core/math/frameworks/`), Shulman 2018 §3,
@@ -178,11 +212,14 @@ separately under the Diakrisis bridge-roster.
 #   • Rocq / Coq 9.x: brew install rocq  (macOS)
 #                     apt install coq    (Debian/Ubuntu, pre-Rocq)
 
-# Default — runs both backends, soft-fails on missing tools.
+# Default — runs all three backends, soft-fails on missing tools.
 verum audit --external-prover-replay
 
 # Lean only (faster on a fresh machine — Lake bootstraps quickly).
 verum audit --external-prover-replay --backend lean
+
+# Isabelle only.
+verum audit --external-prover-replay --backend isabelle
 
 # CI-grade strict mode.  Fails the gate if any backend isn't
 # installed; required reading for `--strict` is "if you can't
@@ -200,7 +237,7 @@ The gate is part of `verum audit --bundle` (the umbrella audit).
 Add to the GitHub Actions matrix:
 
 ```yaml
-- name: External-prover replay (Lean + Coq)
+- name: External-prover replay (Lean + Coq + Isabelle)
   run: |
     # elan + lake
     curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
@@ -208,7 +245,10 @@ Add to the GitHub Actions matrix:
     source $HOME/.elan/env
     # rocq via apt or brew, depending on runner OS
     sudo apt-get install -y coq
-    # the gate
+    # isabelle 2025-2 (download + extract; brew --cask isabelle on macOS)
+    curl -fsSL https://isabelle.in.tum.de/dist/Isabelle2025-2_linux.tar.gz | tar xz -C /opt
+    export PATH="/opt/Isabelle2025-2/bin:$PATH"
+    # the tri-prover gate
     verum audit --external-prover-replay --strict
 ```
 
@@ -238,9 +278,14 @@ When **promoting** an admit to a real proof:
 
 - [Trusted Kernel](./trusted-kernel.md) — the TCB this gate gives
   an external second opinion on.
+- [Differential Lean Checker](./differential-lean-checker.md) —
+  the complementary gate that checks **runtime kernel verdicts**
+  against the Lean ReferenceChecker cert-by-cert. Different layer:
+  this page proves theorem statements type-check; that page proves
+  the operational kernel returns the same accept/reject judgements.
 - [Verification Pipeline](./verification-pipeline.md) — the
   broader verification strategy this gate is one node of.
-- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-11-gates)
+- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)
   — full audit-flag table.
 - [Trust-extension report](../verification/proof-honesty.md) —
-  enumerates every `Admitted` / `sorry` seen by external provers.
+  enumerates every IOU axiom seen by external provers.

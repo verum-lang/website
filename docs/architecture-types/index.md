@@ -133,7 +133,7 @@ shapes:
 module verum_registry.http.handlers.publish;
 ```
 
-**Key field summary** (see [primitives/](./primitives/) for
+**Key field summary** (see [primitives/overview](./primitives/overview.md) for
 deep-dives):
 
 | Field | Type | Where to read |

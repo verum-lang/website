@@ -582,16 +582,17 @@ Verum stacks three additional layers atop the kernels:
 ## 13. The full audit gate catalog
 
 Every claim Verum makes is mechanically observable. As of the
-current revision, `verum audit` exposes **~48 gates** organised
+current revision, `verum audit` exposes **~49 gates** organised
 into eight bands. The `--bundle` aggregator combines them into a
 single L4 load-bearing verdict.
 
-**Kernel-soundness band** (11 gates): `--kernel-rules` ·
+**Kernel-soundness band** (12 gates): `--kernel-rules` ·
 `--kernel-recheck` · `--kernel-soundness` ·
-`--external-prover-replay` · `--kernel-v0-roster` ·
-`--kernel-intrinsics` · `--kernel-discharged-axioms` ·
-`--differential-kernel` · `--differential-kernel-fuzz` ·
-`--reflection-tower` · `--codegen-attestation`.
+`--external-prover-replay` · `--differential-lean-checker` ·
+`--kernel-v0-roster` · `--kernel-intrinsics` ·
+`--kernel-discharged-axioms` · `--differential-kernel` ·
+`--differential-kernel-fuzz` · `--reflection-tower` ·
+`--codegen-attestation`.
 
 **ATS-V band** (6 gates): `--arch-discharges` · `--arch-coverage` ·
 `--arch-corpus` · `--counterfactual` · `--adjunctions` ·
