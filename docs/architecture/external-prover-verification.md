@@ -122,10 +122,11 @@ So `external-prover-replay` verifies:
   constructor — not a placeholder. A bug in the structural
   emission (wrong arity, wrong name, missing premise) fails the
   build.
-- ✅ Every IOU axiom name + arity matches the rule registry
-  (drift-detected).  The drift surface is closed in **six
-  dimensions** — every dimension fires a pin test at audit time
-  with an actionable diagnostic:
+- ✅ Every IOU axiom name + arity + positional arg-type
+  sequence matches the rule registry (drift-detected).  The
+  drift surface is closed in **seven dimensions** — every
+  dimension fires a pin test at audit time with an actionable
+  diagnostic:
    * **Rule status ↔ IOU presence**: per-rule status (`Proved`
      / `Admitted` / `DischargedByFramework`) is cross-validated
      against the actual `<Rule>_iou` axiom presence in the
@@ -151,6 +152,13 @@ So `external-prover-replay` verifies:
      each foundation's parsed arity matches the registry,
      anchoring the three-way agreement on a single source of
      truth.
+   * **Three-way per-position arg-type agreement**: the
+     positional type sequence (excluding `Ctx` and the return
+     type) is parsed per foundation; all three must agree per
+     axiom in both length and per-position type.  Catches the
+     drift class where one foundation has the same arity as
+     another but with the args in a different order — invisible
+     to arity-only checks.
    * **Kernel registry ↔ Verum corpus (status + citations)**:
      `core/verify/kernel_soundness/theorems.vr` carries the
      parallel Verum-side narrative — per-rule
