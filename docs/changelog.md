@@ -16,6 +16,77 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Added — Argon2id (RFC 9106) with OWASP-tuned profiles (2026-05-08)
+
+`core.security.kdf.argon2` — pure-Verum API around the memory-hard
+Argon2id KDF with the three OWASP-2024-cheatsheet-canonical profiles
+plus a `Custom` operator-supplied variant.  `Argon2idHasher` impl of
+the existing `PasswordHasher` protocol; full PHC-string round-trip
+(`$argon2id$v=19$m=...,t=...,p=...$<base64-salt>$<base64-tag>`);
+constant-time tag compare.
+
+* **Profiles** — `Sensitive` (m=19 MiB, t=2, p=1; ~500 ms wall-clock;
+  the OWASP-recommended default), `Interactive` (m=64 MiB, t=3, p=4;
+  libsodium classic), `Paranoid` (m=256 MiB, t=8, p=1; KEK
+  derivation), `Custom { memory_kib, iterations, parallelism }`.
+* **Floor** — `validate_params` enforces OWASP 2024 floor on every
+  hash AND every verify (m ≥ 12 MiB ∧ t ≥ 2; m ≥ 8·p; salt 16-256;
+  tag 16-64) so a hostile PHC string can't push a verifier into
+  DoS-amplified rounds.
+* **Performance** — memory-hard kernel routed through
+  `@intrinsic("verum.argon2id.derive")` so the runtime backs it with
+  a constant-time native implementation.
+
+Re-exported behind `core.security.password_hash` so existing
+`PasswordHasher`-using callers swap with one line.
+
+### Added — postgres `Row` ORM façade + parameterised query API (2026-05-08)
+
+`core.database.postgres.row` — column-name-keyed view over
+`(RowDescription, List<WireValue>)` pairs returned by
+`PgConnection.simple_query` / `execute_prepared_typed`.  Eight typed
+getters (`get_text` / `_opt`, `get_bool`, `get_int` / `_opt`,
+`get_bytes`, `get_timestamp` / `_opt`, `get_text_array`) cover the
+registered postgres scalar / array families with per-OID guards,
+NULL discipline (`_opt` for nullable columns), and TEXT + BINARY
+wire-format coverage on every path.
+
+`AsyncPgPoolGuard` gains four ergonomic parameterised query methods
+that route through `prepare → execute_prepared_typed → close_prepared`
+internally and project rows into the `Row` façade:
+
+```verum
+let rows: List<Row>      = conn.query(sql, params).await?;
+let row:  Row            = conn.query_one(sql, params).await?;        // SQLSTATE 02000 on zero
+let opt:  Maybe<Row>     = conn.query_one_opt(sql, params).await?;    // Ok(None) on zero
+let tag:  Text           = conn.execute_with_params(sql, params).await?;
+```
+
+### Improved — inline-prelude propagation + multi-file mount-import recursion (2026-05-08)
+
+Three-layer fix targeting "type not found" failures when downstream
+projects mount stdlib types via the canonical short-form path
+(`mount database.postgres.row.Row`, `mount collections.List`,
+`mount encoding.json.{...}`, etc.):
+
+* `verum_types::collect_inline_mount_reexports_recursive` —
+  recursive walk over inline-module items + every nested public
+  submodule's Mount re-exports.  Surfaces every name the canonical
+  prelude pattern (`public module prelude { public mount
+  super.collections.List; … }`) places under a top-level mount glob.
+* `verum_types::is_stdlib_toplevel_path` — centralised prefix
+  discriminator for every immediate `core/` subdirectory (48 entries).
+* `verum_modules::propagate_submodule_reexports` — surface explicit
+  Path/Nested re-exports inside a public submodule into the outer
+  `ExportTable`.
+* `verum_compiler::pipeline::compile_orchestration` Pass 0 — recursive
+  `process_imports_recursive` descends into nested `ItemKind::Module`
+  bodies (anchoring `super` / `self` resolution at the outer
+  `current_module_path`).
+
+Fully general — no hardcoded "prelude" name; the recursion fires for
+any inline submodule that re-exports public names.
+
 ### Fixed — static-method dispatch for stdlib types (2026-05-06)
 
 `Type.static_method(...)` calls against stdlib types

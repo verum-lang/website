@@ -319,6 +319,103 @@ high-level operation surfaces a unified
 `ErrorResponse` → `DbError` translation (preserves SQLSTATE class
 + severity + message).
 
+## Typed row façade — `core.database.postgres.row.Row`
+
+`Row` is a column-name-keyed view over the wire-level
+`(RowDescription, List<WireValue>)` pair returned by
+`PgConnection.simple_query` / `execute_prepared_typed`.  Eight typed
+getters cover the registered postgres scalar / array families with
+per-OID guards, NULL discipline, and TEXT + BINARY wire-format
+coverage on every path.
+
+```verum
+mount core.database.postgres.row.Row;
+
+let row: Row = pool.acquire().await?
+    .query_one(&"SELECT id, name, active, created_at FROM users WHERE id = $1".into(),
+               vec![Some(TvInt4(42))]).await?;
+
+let id:         Int          = row.get_int("id")?;
+let name:       Text         = row.get_text("name")?;
+let active:     Bool         = row.get_bool("active")?;
+let nickname:   Maybe<Text>  = row.get_text_opt("nickname")?;  // nullable column
+let created_at: Rfc3339Time  = row.get_timestamp("created_at")?;
+```
+
+Getter coverage:
+
+| Method | OID family | Wire formats | NULL handling |
+|---|---|---|---|
+| `get_text` / `get_text_opt` | `TEXT`, `VARCHAR`, `BPCHAR` | UTF-8 (TEXT + BINARY converge) | `_opt` returns `Ok(None)` |
+| `get_bool` | `BOOL` | `t`/`f` (TEXT) or `0x00`/`0x01` (BINARY) | error |
+| `get_int` / `get_int_opt` | `INT2`, `INT4`, `INT8` | parse_int (TEXT) or sign-extending big-endian (BINARY) | `_opt` returns `Ok(None)` |
+| `get_bytes` | `BYTEA` | `\x<hex>` per `bytea_output=hex` (TEXT) or raw (BINARY) | error |
+| `get_timestamp` / `get_timestamp_opt` | `TIMESTAMP`, `TIMESTAMPTZ` | postgres `YYYY-MM-DD HH:MM:SS+00` → RFC 3339 | `_opt` returns `Ok(None)` |
+| `get_text_array` | `_text` (1009), `_varchar` (1015), `_bpchar` (1014) | `{a,b,"c"}` literal (TEXT) or length-prefix (BINARY) | NULL elements collapse to `""` |
+
+Plus introspection: `column_count()`, `column_index(name) -> Maybe<Int>`,
+`is_null(name) -> Bool`, `Row.new(description, values)` for adapter
+wiring.  Errors via `DbError.DecodeFailed { fault: DecodeFault {
+column_index, column_name, expected_type, found_oid, detail } }` for
+type-family mismatches; `DbError.Adapter("PG_ROW_COL_NOT_FOUND")` for
+unknown column names.
+
+**NULL discipline.**  `get_X` errors when the column is SQL-NULL;
+`get_X_opt` returns `Ok(None)`.  Callers that query nullable columns
+MUST use the `_opt` form — using `get_text` on a NULL column is a
+programmer error.
+
+## Parameterised query API — `AsyncPgPoolGuard`
+
+Four ergonomic methods on `AsyncPgPoolGuard` that route through
+`prepare → execute_prepared_typed → close_prepared` internally and
+project rows into the `Row` façade for downstream use:
+
+```verum
+let pool: AsyncPgPool = ...;
+let conn = pool.acquire().await?;
+
+// Full result set as Vec of Row.
+let rows: List<Row> = conn.query(
+    &"SELECT * FROM users WHERE active = $1".into(),
+    vec![Some(TvBool(true))],
+).await?;
+
+// Exactly one row — errors with SQLSTATE 02000 (no_data) on zero.
+let row: Row = conn.query_one(
+    &"SELECT email FROM users WHERE id = $1".into(),
+    vec![Some(TvInt4(user_id))],
+).await?;
+
+// Optional single row — Ok(None) on empty.
+let row_opt: Maybe<Row> = conn.query_one_opt(
+    &"SELECT email FROM users WHERE id = $1".into(),
+    vec![Some(TvInt4(user_id))],
+).await?;
+
+// DML returning command_tag (e.g. "UPDATE 3").
+let tag: Text = conn.execute_with_params(
+    &"UPDATE users SET active = $1 WHERE id = $2".into(),
+    vec![Some(TvBool(false)), Some(TvInt4(user_id))],
+).await?;
+```
+
+Plus four parameter-less delegations forwarding to the inner
+`AsyncPgConnection`: `execute(sql)`, `simple_query(sql)`, `ping()`,
+`prepare(sql)`.
+
+**Param encoding.**  Caller hands a `List<Maybe<TypedValue>>` —
+typically constructed via the `Tv*` constructors from
+`core.database.postgres.wire.typed`.  `None` encodes as SQL NULL;
+`Some(value)` runs through the per-OID binary encoder and ends up in
+the Bind frame's parameter section.
+
+**Result projection.**  Every cell from `execute_prepared_typed`'s
+`List<List<TypedValue>>` is mapped to a TEXT-format `WireValue` via
+the `typed_row_to_wire_values` helper, so the Row façade's TEXT-decode
+path handles both simple-query and prepared-statement-typed result
+sets uniformly.
+
 ## What's NOT in this module (yet)
 
 * TLS `verify-full` — TLS handshake works (`PtmDisable` mode), but

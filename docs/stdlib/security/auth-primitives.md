@@ -179,6 +179,81 @@ position is equally probable, even for non-power-of-10 alphabets.
 
 ## `password_hash` — PHC modular format
 
+Two backends plug in behind the same `PasswordHasher` protocol:
+**Argon2id** (the OWASP-recommended default for new deployments) and
+**PBKDF2-HMAC-SHA256** (FIPS-mode fallback / legacy compatibility).
+Both round-trip the canonical PHC string format
+(`$<id>$<params>$<base64u-salt>$<base64u-tag>`) so verification
+doesn't need side-channel knowledge of the hasher configuration.
+
+### `Argon2idHasher` — Argon2id (RFC 9106), OWASP 2024 defaults
+
+```verum
+mount core.security.password_hash.{
+    Argon2idHasher, Argon2idProfile, Argon2idParams,
+    PasswordHasher, PasswordHashError,
+};
+```
+
+```verum
+// OWASP 2024 Sensitive profile (the registry-canonical default).
+let hasher = Argon2idHasher.from_profile(Argon2idProfile.Sensitive)?;
+
+let phc: Text = hasher.hash(password_bytes)?;
+// "$argon2id$v=19$m=19456,t=2,p=1$<salt_b64u>$<tag_b64u>"
+
+let ok: Bool = hasher.verify(password_bytes, &phc)?;
+```
+
+#### Tuned profiles (OWASP password-storage cheatsheet, 2024)
+
+| Profile | `m` (KiB) | `t` | `p` | Wall-clock target | Use case |
+|---|---|---|---|---|---|
+| `Sensitive` | 19,456 (19 MiB) | 2 | 1 | ~500 ms | Login + token-creation; OWASP recommended default |
+| `Interactive` | 65,536 (64 MiB) | 3 | 4 | ~180 ms | High-throughput auth on multicore (libsodium classic) |
+| `Paranoid` | 262,144 (256 MiB) | 8 | 1 | ~5 s | KEK derivation; resists GPU farms |
+| `Custom { memory_kib, iterations, parallelism }` | — | — | — | — | Operator-tuned, subject to floor checks |
+
+#### Parameter floors
+
+`Argon2idParams` are validated by `validate_params(p)` on every hash
+AND every verify (so a hostile PHC string can't push a verifier into
+DoS-amplified rounds):
+
+| Constraint | Threshold | Action below |
+|---|---|---|
+| `memory_kib` | `ARGON2_OWASP_MIN_MEMORY_KIB` = 12,288 (12 MiB) | `WeakParameters` |
+| `iterations` | `ARGON2_OWASP_MIN_TIME` = 2 | `WeakParameters` |
+| `parallelism` | `[ARGON2_MIN_PARALLELISM=1, ARGON2_MAX_PARALLELISM=64]` | `WeakParameters` |
+| RFC 9106 §3 | `m ≥ 8 × p` | `WeakParameters` |
+| `memory_kib` ceiling | `ARGON2_MAX_MEMORY_KIB` = 4 GiB | `WeakParameters` |
+| Salt | 16-256 bytes | `WeakParameters` |
+| Tag | 16-64 bytes | `WeakParameters` |
+
+#### Why Argon2id (not 2d, not 2i, not PBKDF2)
+
+* **Argon2d** — data-DEPENDENT memory access; faster but vulnerable
+  to side-channel timing leaks if attacker controls co-resident
+  silicon.  Best for cryptocurrencies; **bad** for password hashing
+  in shared-tenancy environments.
+* **Argon2i** — data-INDEPENDENT memory access; resistant to
+  side-channel attacks but slower for the same memory cost.
+* **Argon2id (default)** — hybrid: first half-pass uses 2i, rest uses
+  2d.  RFC 9106 §4 designates this as the recommended default for
+  password hashing — gets 2d's GPU-resistance with 2i's
+  side-channel defence on the early passes that matter.
+* **PBKDF2** — required FIPS-mode fallback only; new deployments
+  should reach for `Argon2idHasher.from_profile(Sensitive)`.
+
+#### Performance
+
+The memory-hard kernel is routed through `@intrinsic("verum.argon2id.derive")`
+so the runtime can back it with a constant-time native implementation.
+A pure-bytecode Argon2id would run ~50× slower (≈25 s per Sensitive
+hash) — operationally untenable for the login flow.
+
+### `Pbkdf2Sha256Hasher` — FIPS-mode fallback
+
 ```verum
 mount core.security.password_hash.{
     Pbkdf2Sha256Hasher, PasswordHasher, PasswordHashError,
@@ -196,21 +271,20 @@ let phc: Text = hasher.hash(password_bytes)?;
 let ok = hasher.verify(password_bytes, &phc)?;
 ```
 
-### Guards
-
 | Bound | Floor | Action below |
 | ----- | ----- | ------------ |
 | Iterations | `MIN_PBKDF2_ITERATIONS` = 100,000 | `WeakParameters` |
 | Salt bytes | 8 | `WeakParameters` |
 | Output bytes | 16 | `WeakParameters` |
+| Iterations ceiling | `MAX_PBKDF2_ITERATIONS` = 10,000,000 | `WeakParameters` |
+
+PBKDF2 stays primarily for FIPS 140 mode + verifying historical
+hashes; Argon2id is preferred for new deployments.
 
 Any below-floor configuration is rejected at hash time — no
 silent fallback. The PHC string carries every parameter, so
 verification doesn't need side-channel knowledge of what the
 hasher was configured with.
-
-Argon2id and scrypt backends plug in behind the same
-`PasswordHasher` protocol in follow-up work.
 
 ## `token` — session / CSRF / OTP tokens
 
