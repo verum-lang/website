@@ -127,8 +127,8 @@ So `external-prover-replay` verifies:
   emission (wrong arity, wrong name, missing premise) fails the
   build.
 - ✅ Every IOU axiom name + arity matches the rule registry
-  (drift-detected).  The drift surface is now closed in three
-  dimensions:
+  (drift-detected).  The drift surface is now closed in **four
+  dimensions**:
    * **PR-1 — mod.rs ↔ IOU presence**:
      `SoundnessExporter::drift_check` cross-validates per-rule
      `LemmaStatus` in `mod.rs` against the actual `<Rule>_iou`
@@ -136,14 +136,25 @@ So `external-prover-replay` verifies:
      drift), `Proved`-with-orphan-axiom (incomplete discharge),
      and `DischargedByFramework`-with-axiom (redundant trust
      extension).
-   * **PR-1b — registry ↔ each foundation**: pin tests
+   * **PR-1b — registry ↔ each foundation (set)**: pin tests
      parse each `IOU_AXIOMS_LEAN` / `IOU_AXIOMS_COQ` /
      `IOU_AXIOMS_ISA` string constant and assert set equality
      with `iou_axiom_rule_names()`.  Catches single-foundation-
      only edits (e.g. axiom added to Lean but forgotten in Coq).
-   * **PR-1b — three-way agreement**: direct
+   * **PR-1b — three-way set agreement**: direct
      `Lean = Coq = Isabelle` set equality, separating axiom-
      name drift from rule-status drift in the audit output.
+   * **PR-1c — three-way arity agreement**: pin tests parse
+     argument-arrow counts (`→` / `->` / `\<Rightarrow>`) per
+     foundation and assert all three agree per axiom.  Catches
+     same-name-different-arity drift (e.g. `K_Refine_Intro_iou`
+     has 4 args in Lean but 5 in Coq).
+   * **PR-1d — registry ↔ each foundation (arity)**:
+     `iou_axiom_specs()` returns
+     `Vec<IouAxiomSpec { name, arity }>` — the canonical arity
+     anchor.  Pin tests assert each foundation's parsed arity
+     matches the spec, anchoring the three-way agreement on a
+     single source of truth.
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
 - ❌ It does **not** verify that the 8 IOU rules are actually
