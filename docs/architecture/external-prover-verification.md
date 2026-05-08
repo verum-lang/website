@@ -83,13 +83,14 @@ Each backend reports one of four verdicts:
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
   Isabelle) whose count matches the corpus's declared admit list.
-  *This is the default green state.* The export ships **12
+  *This is the default green state.* The export ships **11
   outstanding IOU axioms** (one per genuinely non-structural rule
   — the rest are real inductive constructors of the `Typing`
-  predicate).  IOU trajectory: 27 → 17 → 16 → 14 → 12 (pre-FV-9,
-  post-FV-9 structural fragment, post-K_Quot_Elim discharge,
-  post-K_Elim + K_Universe_Ascent discharge, post-K_Refine +
-  K_Refine_Omega discharge).
+  predicate).  IOU trajectory: 27 → 17 → 16 → 14 → 12 → 11
+  (pre-FV-9, post-FV-9 structural fragment, post-K_Quot_Elim
+  discharge, post-K_Elim + K_Universe_Ascent discharge,
+  post-K_Refine + K_Refine_Omega discharge, post-K_Inductive
+  discharge).
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
@@ -111,9 +112,9 @@ then apply the corresponding constructor".
 The remaining non-structural rules — those that genuinely depend on
 deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
 HOL — are honestly admitted via per-rule typed axioms named
-`<Rule>_iou`. There are **12** such IOUs (trajectory `27 → 17 →
-16 → 14 → 12`). Each axiom takes the rule's actual operands and
-returns a `Prop`, so the soundness lemma's operand types are
+`<Rule>_iou`. There are **11** such IOUs (trajectory `27 → 17 →
+16 → 14 → 12 → 11`). Each axiom takes the rule's actual operands
+and returns a `Prop`, so the soundness lemma's operand types are
 still *checked* by the foreign tool — the IOU just discharges the
 conclusion.
 
@@ -129,7 +130,7 @@ So `external-prover-replay` verifies:
   (drift-detected).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
-- ❌ It does **not** verify that the 12 IOU rules are actually
+- ❌ It does **not** verify that the 11 IOU rules are actually
   sound with respect to a denotational model. That's a separate,
   deeper effort tracked under "Kernel meta-theory in Mathlib" in
   the verification roadmap.
@@ -140,7 +141,7 @@ That gate runs a 24-cert battery through both the Rust kernel and
 the Lean ReferenceChecker and asserts cert-by-cert verdict
 agreement.
 
-## 4. The 12 outstanding IOUs
+## 4. The 11 outstanding IOUs
 
 Each IOU axiom names exactly the meta-theory it depends on. The
 audit's plain output enumerates every reason verbatim; here they
@@ -149,7 +150,8 @@ drop as structural pieces became real inductive constructors:
 the pre-FV-9 corpus had 27; FV-9 brought it to 17; the
 Quotient-elimination discharge brought it to 16; the K_Elim +
 K_Universe_Ascent discharge brought it to 14; the K_Refine +
-K_Refine_Omega discharge brought it to 12.
+K_Refine_Omega discharge brought it to 12; the K_Inductive
+discharge brought it to 11.
 
 ### Cubical (6→4) — CCHM / HoTT mechanisation
 
@@ -192,24 +194,18 @@ to discharge externally remains the kernel's input contract,
 audited at the Verum side via `verum audit --proof-honesty`
 rather than silently axiomatized in the export.
 
-### Inductive (2→1) — positivity decision procedure
+### Inductive (2→0) — fully empty bucket
 
-`K_Inductive`
-
-(Structural now: `K_Elim` — discharged via the same template as
-`K_Quot_Elim`.  The constructor takes structural premises
-(scrutinee well-typed at some inductive type, motive at the
-dependent universe over that inductive); per-constructor
-case-typing — the discipline mathlib's `Inductive.rec` requires —
-remains the kernel's input contract, audited at the Verum side
-rather than silently axiomatized in the export.)
-
-Discharge plan for `K_Inductive`: port Verum's strict-positivity
-checker into a Lean `Decidable` instance.  Multi-day work; the
-strict-positivity condition has a well-known structural definition
-(T appears only in non-negative position) but encoding it as a
-mechanical decidability oracle requires recursive structure on
-CoreTerm.
+*All Inductive rules now structural.*  `K_Elim` discharged via
+the structural-premises template (see prior K_Quot_Elim
+discharge); `K_Inductive` discharged premise-free at the export
+layer — the rule's premise becomes "an in-scope `Inductive_(path,
+args)` lives in some `Universe i`", and the strict-positivity
+check is the kernel's input contract (the kernel's `inductive`
+keyword analogue verifies strict positivity at definition time,
+mirroring mathlib's discipline).  By the time we have an
+`Inductive_(...)` term in CoreTerm, the kernel has already
+verified the strict-positivity invariant.
 
 ### SMT/Axiom (1→1) — replay correctness
 
