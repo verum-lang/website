@@ -83,14 +83,14 @@ Each backend reports one of four verdicts:
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
   Isabelle) whose count matches the corpus's declared admit list.
-  *This is the default green state.* The export ships **11
+  *This is the default green state.* The export ships **8
   outstanding IOU axioms** (one per genuinely non-structural rule
   — the rest are real inductive constructors of the `Typing`
-  predicate).  IOU trajectory: 27 → 17 → 16 → 14 → 12 → 11
-  (pre-FV-9, post-FV-9 structural fragment, post-K_Quot_Elim
-  discharge, post-K_Elim + K_Universe_Ascent discharge,
-  post-K_Refine + K_Refine_Omega discharge, post-K_Inductive
-  discharge).
+  predicate).  IOU trajectory: 27 → 17 → 16 → 14 → 12 → 11 → 8
+  (pre-FV-9, post-FV-9 structural fragment, post-K_Quot_Elim,
+  post-K_Elim + K_Universe_Ascent, post-K_Refine + K_Refine_Omega,
+  post-K_Inductive, post-K_Epsilon_Of + K_Alpha_Of +
+  K_Modal_Big_And).
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
@@ -112,11 +112,11 @@ then apply the corresponding constructor".
 The remaining non-structural rules — those that genuinely depend on
 deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
 HOL — are honestly admitted via per-rule typed axioms named
-`<Rule>_iou`. There are **11** such IOUs (trajectory `27 → 17 →
-16 → 14 → 12 → 11`). Each axiom takes the rule's actual operands
-and returns a `Prop`, so the soundness lemma's operand types are
-still *checked* by the foreign tool — the IOU just discharges the
-conclusion.
+`<Rule>_iou`. There are **8** such IOUs (trajectory `27 → 17 →
+16 → 14 → 12 → 11 → 8`). Each axiom takes the rule's actual
+operands and returns a `Prop`, so the soundness lemma's operand
+types are still *checked* by the foreign tool — the IOU just
+discharges the conclusion.
 
 So `external-prover-replay` verifies:
 
@@ -130,7 +130,7 @@ So `external-prover-replay` verifies:
   (drift-detected).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
-- ❌ It does **not** verify that the 11 IOU rules are actually
+- ❌ It does **not** verify that the 8 IOU rules are actually
   sound with respect to a denotational model. That's a separate,
   deeper effort tracked under "Kernel meta-theory in Mathlib" in
   the verification roadmap.
@@ -141,7 +141,7 @@ That gate runs a 24-cert battery through both the Rust kernel and
 the Lean ReferenceChecker and asserts cert-by-cert verdict
 agreement.
 
-## 4. The 11 outstanding IOUs
+## 4. The 8 outstanding IOUs
 
 Each IOU axiom names exactly the meta-theory it depends on. The
 audit's plain output enumerates every reason verbatim; here they
@@ -151,7 +151,8 @@ the pre-FV-9 corpus had 27; FV-9 brought it to 17; the
 Quotient-elimination discharge brought it to 16; the K_Elim +
 K_Universe_Ascent discharge brought it to 14; the K_Refine +
 K_Refine_Omega discharge brought it to 12; the K_Inductive
-discharge brought it to 11.
+discharge brought it to 11; the K_Epsilon_Of + K_Alpha_Of +
+K_Modal_Big_And discharge brought it to 8.
 
 ### Cubical (6→4) — CCHM / HoTT mechanisation
 
@@ -216,22 +217,29 @@ Discharge plan: state "every cert that
 CoreTerm derivation" as a Lean predicate over a model of SMT
 certificates.
 
-### Diakrisis (11→5) — cohesive modalities, Eps/Mu
+### Diakrisis (11→2) — biadjunction algebra + bridge-audit
 
-`K_Eps_Mu`, `K_Round_Trip`, `K_Epsilon_Of`, `K_Alpha_Of`,
-`K_Modal_Big_And`
+`K_Eps_Mu`, `K_Round_Trip`
 
 (Structural now: `K_Modal_Box`, `K_Modal_Diamond`, `K_Shape`,
-`K_Flat`, `K_Sharp` (FV-9), `K_Universe_Ascent` (this discharge —
-collapses onto `T_univ` since Verum's universe index is u32-bounded
-and no transfinite heights are representable; the
-overflow-at-the-tower-top boundary is pinned by the proof_checker's
-DEFECT-2 fix).)
+`K_Flat`, `K_Sharp` (FV-9); `K_Universe_Ascent` (collapses onto
+`T_univ` for u32-bounded universes); `K_Epsilon_Of` and
+`K_Alpha_Of` (wrap-preserves-typing, mirroring `t_modal_box` /
+`t_modal_diamond`; the M ⊣ A unit/counit-law content is the
+kernel's input contract); `K_Modal_Big_And` (premise-free at the
+export layer; homogeneous-typed-components is the kernel's input
+contract, mirroring `K_Inductive`).)
 
-Discharge plan for the remaining 5: depend on Schreiber DCCT
+Discharge plan for the remaining 2: K_Eps_Mu's biadjunction
+relating articulation/enactment can't fold into structural
+premises without the rule degenerating to identity (the typing
+content alone doesn't capture the algebraic relationship).
+K_Round_Trip's bridge-audit completeness is fundamentally about
+the bridge mechanics producing a specific derivation; structural
+discharge would be vacuous.  Both depend on Schreiber DCCT
 (`schreiber_dcct` framework, 5 axioms in `core/math/frameworks/`),
 Shulman 2018 §3, and Lurie HTT — none has a mature mathlib port
-today. Tracked separately under the Diakrisis bridge-roster.
+today.
 
 ## 5. Running locally
 
