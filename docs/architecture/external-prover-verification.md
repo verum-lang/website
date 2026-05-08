@@ -283,6 +283,12 @@ When **promoting** an admit to a real proof:
   against the Lean ReferenceChecker cert-by-cert. Different layer:
   this page proves theorem statements type-check; that page proves
   the operational kernel returns the same accept/reject judgements.
+- [Three-Kernel Differential](./three-kernel-differential.md) —
+  the within-Rust complement: the same 24-cert canonical battery
+  also flows through three structurally-distinct in-process Rust
+  kernels (`proof_checker` bidirectional / `proof_checker_nbe` NbE
+  / `kernel_v0` manifest-driven) and unanimity is asserted
+  cert-by-cert.
 - [Verification Pipeline](./verification-pipeline.md) — the
   broader verification strategy this gate is one node of.
 - [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)

@@ -607,6 +607,7 @@ const sidebars: SidebarsConfig = {
     'architecture/trusted-kernel',
     'architecture/external-prover-verification',
     'architecture/differential-lean-checker',
+    'architecture/three-kernel-differential',
     'architecture/verification-pipeline',
     'architecture/execution-environment',
     'architecture/incremental-compilation',

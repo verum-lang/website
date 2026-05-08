@@ -52,9 +52,17 @@ to disagree only when one of them has a bug.
 
 ## 3. The 24-cert canonical battery
 
-The battery (`verum_cli::commands::audit::load_differential_battery`)
-is hand-crafted to exercise every load-bearing kernel pathway. It
-covers four orthogonal axes:
+The battery
+(`verum_kernel::canonical_battery::canonical_battery`)
+is hand-crafted to exercise every load-bearing kernel pathway and
+lives in the kernel crate as a single source of truth: the same
+24 certs flow through this gate (Rust↔Lean cross-language) **and**
+through the in-process N-kernel gate
+([three-kernel-differential](./three-kernel-differential.md)).
+Editing the battery happens in one place; both gates pick up the
+new coverage automatically.
+
+It covers four orthogonal axes:
 
 ### Structural fragment (the parts both kernels must accept)
 
