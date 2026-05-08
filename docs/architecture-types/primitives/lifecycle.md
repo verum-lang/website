@@ -245,16 +245,26 @@ module my_app.crypto.security_arguments;
 
 ### 4.5 `Plan(target_completion: Text)` — *(legacy)*
 
-**When:** committed work, not yet implemented. Distinct from
-`[P]` Postulate. Retained for backward compatibility with existing
-codebases.
+**When:** committed work, not yet implemented.  Distinct from
+`[P]` Postulate (which carries a citation backing).
+
+**Why retained.** Cogs in the existing corpus already cite
+`Plan(...)` lifecycle entries; removing the variant would break
+those citations.  Retained as a legacy form pending a future
+RFC that folds `Plan` into `Hypothesis(...)` plus the
+`@plan(...)` attribute.
+
+**Replacement guidance.** New code SHOULD prefer
+`Hypothesis(ConfidenceLevel.X)` plus `@plan(target: "...",
+milestones: [...])` — the same intent ("committed but not
+implemented") expressed via the canonical maturation pair.
+
+**Audit treatment.** Lint warning, not error.  The audit gate
+flags `Plan(...)` declarations as "legacy" in the audit-bundle
+output but does not block release.  A per-cog `@suppress("legacy_lifecycle")`
+opt-out exists for cogs that have a documented migration plan.
 
 **Companion attributes:** `@plan(target: "...", milestones: [...])`.
-
-**Maturation path:** new code SHOULD prefer `Hypothesis` for
-not-yet-formalised intent and let the `@plan` attribute carry the
-target date. The Plan variant will be folded into Hypothesis in a
-future release.
 
 ### 4.6 `Hypothesis(confidence: ConfidenceLevel)` — `[H]`
 
@@ -328,14 +338,31 @@ module my_app.crypto.des_legacy;
 
 ### 4.9 `Obsolete(reason: Text, replacement: Maybe<Text>)` — *(legacy)*
 
-**When:** scheduled for removal. *Less* strict than `[✗]`
+**When:** scheduled for removal.  *Less* strict than `[✗]`
 Retracted: the artefact still functions but is expected to be
 replaced.
 
-**Maturation path:** new code SHOULD prefer `Retracted` for
-explicit withdrawals; `Obsolete` is retained for migration paths
-where the artefact must remain callable for one or more release
-cycles before final removal.
+**Why retained.** A staged-removal lifecycle stage is genuinely
+useful — `Retracted` is "do not cite", `Obsolete` is "still
+callable, but cite the replacement going forward".  Existing
+cogs use `Obsolete` for graceful migration paths where breaking
+callers in one release would be impractical.  Retained pending a
+future RFC that folds `Obsolete` into `Retracted` with a
+`@migration_window(release: "...")` annotation.
+
+**Replacement guidance.** New code SHOULD prefer
+`Retracted(reason, Some(replacement))` for explicit withdrawals.
+For migration paths where the artefact must remain callable for
+one or more release cycles before final removal, document the
+window explicitly in the `reason` field and use `Retracted(...)`
+with the replacement pointer — most consumers will read the
+`reason` and migrate.
+
+**Audit treatment.** Lint warning, not error.  Cogs declaring
+`Obsolete(...)` are listed in the audit-bundle's `legacy_status`
+section; the audit gate emits a warning but does not block
+release.  Citing an `Obsolete(...)` cog is allowed at compile
+time (unlike `Retracted` which produces AP-033).
 
 ## 5. Compile-time checks summary
 

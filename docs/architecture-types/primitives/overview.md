@@ -5,20 +5,26 @@ description: "Capability, Boundary, Composition, Lifecycle, Foundation, Tier, St
 slug: /architecture-types/primitives
 ---
 
-# The Eight Architectural Primitives
+# The Architectural Primitives
 
 The Architectural Type System for Verum (ATS-V) imports no foreign
 concepts. Every architectural claim — capability, boundary, lifecycle,
 composition discipline — is expressed in *existing Verum syntax*:
-variants, records, attributes, protocols. The eight primitives
-listed below are the canonical vocabulary.
+variants, records, attributes, protocols. The primitives listed
+below are the canonical vocabulary.
+
+The first eight (per-cog primitives) describe a single cog's
+architectural intent. The ninth (Corpus) covers cross-cog
+properties that no single cog can attest to alone.
 
 This page is a tour. Each primitive has its own deep-dive document
 linked from the table; readers new to ATS-V should read this page
 in order, then follow the deep-dives in the order they appear in
 their own work.
 
-## 1. The eight primitives at a glance
+## 1. The primitives at a glance
+
+### Per-cog primitives
 
 | # | Primitive | Verum surface | Question it answers | Deep-dive |
 |---|-----------|---------------|---------------------|-----------|
@@ -30,6 +36,18 @@ their own work.
 | 6 | **Tier** | `type Tier is …` (variant) | Where does this code execute? | [details](./tier.md) |
 | 7 | **Stratum** | `type MsfsStratum is …` (variant) | Which Modular-Stratified-Foundation level? | [details](./stratum.md) |
 | 8 | **Shape** | `type Shape is { … }` (record) | The aggregate carrier — a `Shape` *is* the architectural fingerprint. | [details](./shape.md) |
+
+### Discharge-attestation primitive
+
+| # | Primitive | Verum surface | Question it answers | Deep-dive |
+|---|-----------|---------------|---------------------|-----------|
+| 9 | **CVE** | `type ShapeDeclarations is { … }` + `Purpose` / `CognitiveSubstrate` / `FormalAnchoring` / `ExecutabilitySense` / `SelfReferenceWitness` | How does the cog attest to its Constructive / Verifiable / Executable discharge? | [details](./cve.md) |
+
+### Cross-cog primitive
+
+| # | Primitive | Verum surface | Question it answers | Deep-dive |
+|---|-----------|---------------|---------------------|-----------|
+| 10 | **Corpus** | `type CorpusInvariant is …` + `@arch_corpus(...)` | What does the *whole graph of cogs* look like together? | [details](./corpus.md) |
 
 ## 2. The aggregate — `Shape`
 

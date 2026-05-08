@@ -58,7 +58,9 @@ already in the language carry the entire load.
 | **[Shape](./primitives/shape.md)** | `type Shape is { … }` (record) | The aggregate carrier — a `Shape` *is* a typed architectural fingerprint. |
 
 A cog (the unit of compilation) declares its `Shape` via the
-`@arch_module(...)` attribute on its `module …;` statement:
+`@arch_module(...)` attribute on its `module …;` statement.
+
+### Minimal form
 
 ```verum
 @arch_module(
@@ -81,6 +83,67 @@ capability, I require that one, I preserve these boundary invariants,
 I run at this tier, my proof corpus rests on this foundation* — is
 checked against the actual code body and against the surrounding
 graph of cogs.
+
+### Production-grade form
+
+Production cogs typically also include the
+[CVE primitives](./primitives/cve.md) under a `declarations:`
+field, plus ergonomic capability builders for the high-frequency
+shapes:
+
+```verum
+@arch_module(
+    foundation:    Foundation.ZfcTwoInacc,
+    stratum:       MsfsStratum.LCls,
+    lifecycle:     Lifecycle.Theorem("v3.0"),
+    exposes: [
+        capability_http2_inbound(),
+        capability_http_outbound(),
+        capability_persist_database("postgres".to_text()),
+        capability_persist_disk("s3://verum-registry-prod/".to_text()),
+        capability_spawn_structured(),
+        capability_time_bounded(&Duration.from_hours(1)),
+    ],
+    requires:      [],
+    composes_with: [
+        "core.architecture.types".to_text(),
+        "core.architecture.anti_patterns".to_text(),
+    ],
+    declarations:  ShapeDeclarations {
+        purpose: Some(Purpose {
+            role:   "Registry publish-flow handler — Sigstore keyless pathway".to_text(),
+            k_min:  CveThresholdK.TypedSchema,
+            v_min:  CveThresholdV.TypecheckPlusTests,
+            e_min:  CveThresholdE.DeployedInOneEnv,
+        }),
+        substrate:      Some(CognitiveSubstrate.ActionCentric),
+        anchoring:      Some(FormalAnchoring.DistributedProtocols),
+        e_sense:        Some(ExecutabilitySense.CurrentExecution),
+        self_reference: Some(SelfReferenceWitness {
+            operator:    "registry.publish(registry-cog)".to_text(),
+            fixed_point: "the registry republishing itself".to_text(),
+            fixpoint_class: FixpointClass {
+                category:           FixpointCategory.CompleteMetricSpace,
+                endomorphism_class: EndomorphismClass.Contracting,
+                theorem:            FixpointTheorem.Banach,
+            },
+        }),
+    },
+)
+module verum_registry.http.handlers.publish;
+```
+
+**Key field summary** (see [primitives/](./primitives/) for
+deep-dives):
+
+| Field | Type | Where to read |
+|---|---|---|
+| `foundation` / `stratum` / `lifecycle` / `at_tier` | per-cog primitives | [foundation](./primitives/foundation.md), [stratum](./primitives/stratum.md), [lifecycle](./primitives/lifecycle.md), [tier](./primitives/tier.md) |
+| `exposes` / `requires` / `preserves` / `consumes` | capability lists + boundary invariants | [capability](./primitives/capability.md), [boundary](./primitives/boundary.md) |
+| `composes_with` | composition graph edges | [composition](./primitives/composition.md) |
+| `declarations: ShapeDeclarations` | CVE attestation surface | [cve](./primitives/cve.md) |
+| `cve_closure_C` / `cve_closure_V_strategy` / `cve_closure_E` | per-axis discharge citations (strict-mode required) | [cve](./primitives/cve.md), [audit-protocol](./audit-protocol.md) |
+| `strict: Bool` | whether the cog enforces full CVE-closure presence | [audit-protocol](./audit-protocol.md) §3 |
 
 ## 3. Architectural type-checking — what the compiler does
 

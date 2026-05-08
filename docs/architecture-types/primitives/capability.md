@@ -81,11 +81,32 @@ public type PersistenceMedium is
     | DistributedLog(Text);
 
 public type NetProtocol is
-    | Tcp | Udp | Unix | Tls | Quic | Http | Grpc;
+    | Tcp
+    | Udp
+    | Unix
+    | Tls
+    | Quic
+    | Http
+    | Http2
+    | Http3
+    | Grpc
+    | WebSocket
+    | Mqtt
+    | Amqp;
 
 public type NetDirection is
     | Inbound | Outbound | Bidirectional;
 ```
+
+The 12 NetProtocol variants cover the canonical wire-protocol set
+ATS-V tracks at the architectural layer.  The HTTP family
+distinguishes `Http` (HTTP/1.1) from `Http2` and `Http3` because
+the audit-protocol checks against deployed config differ —
+`Http2` carries the Rapid-Reset CVE-2023-44487 surface, `Http3`
+introduces QUIC-transport considerations, and `Http` (1.1) has
+its own historical CVE band.  The `WebSocket` / `Mqtt` /
+`Amqp` variants cover bidirectional message-queue style
+protocols where direction semantics is `Bidirectional`.
 
 ## 2. The two slots — `exposes` vs `requires`
 
@@ -140,7 +161,119 @@ then composition fails at compile time. This is the architectural
 analogue of the [context system](../../language/context-system.md)'s
 runtime DI check, but performed at the static-shape layer.
 
-## 4. Capability inference from mounts
+## 4. Ergonomic constructors
+
+Most production cogs assemble their `exposes` / `requires` lists
+by hand, and writing `Capability.Network(NetProtocol.Http2,
+NetDirection.Inbound)` repeatedly is verbose enough to cloud the
+intent.  The stdlib ships a set of **ergonomic builder
+functions** in
+[`core.architecture.types`](https://github.com/verum-lang/verum/blob/main/core/architecture/types.vr)
+that produce the canonical Capability values directly.  These are
+sugar — the canonical variant constructors above remain
+available for programmatic construction and pattern matching.
+
+### 4.1 Network capability builders
+
+| Builder | Equivalent canonical form | Use |
+|---|---|---|
+| `capability_http_inbound()`       | `Capability.Network(NetProtocol.Http, NetDirection.Inbound)`        | HTTP/1.1 inbound (legacy clients) |
+| `capability_http2_inbound()`      | `Capability.Network(NetProtocol.Http2, NetDirection.Inbound)`       | HTTP/2 inbound (browser + modern CLI) |
+| `capability_http3_inbound()`      | `Capability.Network(NetProtocol.Http3, NetDirection.Inbound)`       | HTTP/3 inbound (QUIC) |
+| `capability_http_outbound()`      | `Capability.Network(NetProtocol.Http, NetDirection.Outbound)`       | Outbound HTTP (any version, abstract) |
+| `capability_grpc_inbound()`       | `Capability.Network(NetProtocol.Grpc, NetDirection.Inbound)`        | gRPC server |
+| `capability_websocket_inbound()`  | `Capability.Network(NetProtocol.WebSocket, NetDirection.Inbound)`   | WebSocket server |
+
+### 4.2 Persistence capability builders
+
+| Builder | Equivalent canonical form | Use |
+|---|---|---|
+| `capability_persist_database(connection_tag: Text)` | `Capability.Persist(PersistenceMedium.DatabaseMedium(connection_tag))` | SQL connection (e.g. `"postgres"`, `"mysql/main"`) |
+| `capability_persist_disk(path: Text)`               | `Capability.Persist(PersistenceMedium.Disk(path))`                     | Filesystem / object-store URI (e.g. `"s3://bucket/prefix/"`) |
+| `capability_persist_log(topic: Text)`               | `Capability.Persist(PersistenceMedium.DistributedLog(topic))`          | Kafka / NATS / Redis-Streams topic |
+
+### 4.3 Spawn capability builders
+
+| Builder | Equivalent canonical form | Use |
+|---|---|---|
+| `capability_spawn_structured()`                                  | `Capability.Spawn(TaskLifetime.ScopedToParent)`                  | Structured-concurrency spawn (the canonical default) |
+| `capability_spawn_detached()`                                    | `Capability.Spawn(TaskLifetime.Detached)`                        | Long-running daemon with operator-controlled shutdown |
+| `capability_spawn_deadlined(d: &Duration)`                       | `Capability.Spawn(TaskLifetime.Deadlined(d.as_millis()))`         | Explicit-deadline worker |
+
+### 4.4 Time-bound capability builders
+
+| Builder | Equivalent canonical form | Use |
+|---|---|---|
+| `capability_time_bounded(d: &Duration)` | `Capability.TimeBound(expiration_after_duration(d))` | Capability that expires after a typed duration (sessions, signed URL leases) |
+| `expiration_after_duration(d: &Duration)` | `ExpirationPolicy.AfterDuration(d.as_millis())` | The underlying ExpirationPolicy form for use with `Capability.TimeBound(...)` directly |
+| `expiration_at_seconds(unix_seconds: Int)` | `ExpirationPolicy.AtUnixTime(unix_seconds)` | The underlying ExpirationPolicy form for absolute deadlines |
+
+### 4.5 Idiomatic vs canonical comparison
+
+A registry handler declaration using **canonical** variant
+constructors:
+
+```verum
+@arch_module(
+    exposes: [
+        Capability.Network(NetProtocol.Http2, NetDirection.Inbound),
+        Capability.Network(NetProtocol.Http,  NetDirection.Outbound),
+        Capability.Persist(PersistenceMedium.DatabaseMedium("postgres")),
+        Capability.Persist(PersistenceMedium.Disk("s3://verum-registry-prod/")),
+        Capability.Spawn(TaskLifetime.ScopedToParent),
+        Capability.TimeBound(ExpirationPolicy.AfterDuration(3_600_000)),
+    ],
+)
+module verum_registry.root;
+```
+
+The same declaration using **ergonomic builders** (idiomatic):
+
+```verum
+@arch_module(
+    exposes: [
+        capability_http2_inbound(),
+        capability_http_outbound(),
+        capability_persist_database("postgres".to_text()),
+        capability_persist_disk("s3://verum-registry-prod/".to_text()),
+        capability_spawn_structured(),
+        capability_time_bounded(&Duration.from_hours(1)),
+    ],
+)
+module verum_registry.root;
+```
+
+Two equivalent surfaces, same compiled `Shape`.  The audit
+gate, the kernel parser, and the pin tests do not distinguish
+the two forms — both lower to the same Capability variant
+values.  Cog authors are encouraged to use the ergonomic
+builders for the high-frequency cases (HTTP, database, spawn,
+time-bound) and reserve the canonical variant constructors for
+unusual protocol/direction combinations or programmatic
+generation.
+
+### 4.6 When to use canonical variants directly
+
+The ergonomic builders cover the high-frequency cases.  Three
+situations call for the canonical form:
+
+1. **Pattern matching**: an audit-bundle consumer that walks
+   `exposes` arms must `match` against `Capability.Read(...)` /
+   `Capability.Network(...)` etc. — no builders involved.
+2. **Programmatic construction**: code that synthesises
+   capabilities at runtime (test fixtures, audit-bundle replay)
+   may prefer the explicit constructor for clarity.
+3. **Uncommon shapes**: `Capability.Network(NetProtocol.Mqtt,
+   NetDirection.Bidirectional)` has no builder — message-queue
+   protocols are infrequent enough that the canonical form is
+   the only path.
+
+The pin discipline ([cross-side-pin](../cross-side-pin.md))
+verifies that every builder exists with a stable signature and
+returns the documented canonical form.  Adding a new builder
+requires updating the pin in lockstep.
+
+## 5. Capability inference from mounts
 
 Verum's compiler can *infer* required capabilities from the import
 graph. A cog that mounts `core.io.fs` automatically picks up
@@ -165,7 +298,7 @@ The hint is informational; suppress it by either (a) listing
 the capability explicitly, or (b) confining the mount inside a
 private sub-cog whose Shape encapsulates the capability.
 
-## 5. The `consumes` field
+## 6. The `consumes` field
 
 Adjacent to `exposes` and `requires` is the `Shape.consumes` field:
 
@@ -192,7 +325,7 @@ canonical vocabulary is:
 | `"file_descriptor/N"` | N file-descriptor allocations |
 | `"network_socket/N"` | N network sockets |
 
-## 6. Capability — property — context: the orthogonality
+## 7. Capability — property — context: the orthogonality
 
 A common misreading: "capability is the same as side effect, just
 written down architecturally". It is not. The three concepts are
@@ -226,7 +359,7 @@ Each of the three axes covers a different aspect:
 
 For the full discussion see [Three orthogonal axes](../orthogonality.md).
 
-## 7. Substructural quantity
+## 8. Substructural quantity
 
 A capability's "linearity" — may it be used once, multiple times,
 or never duplicated? — is *not* expressed inside the `Capability`
@@ -249,7 +382,7 @@ This decomposition keeps `Capability` small (nine variants) and
 delegates linearity to the existing substructural surface. ATS-V
 introduces zero new quantity machinery.
 
-## 8. Capability and the context system — bridging the two
+## 9. Capability and the context system — bridging the two
 
 The context system (`using [Database, Logger]`) is Verum's runtime
 DI mechanism; the capability primitive is Verum's compile-time
@@ -272,7 +405,7 @@ checker emits a CapabilityEscalation diagnostic *at the call site
 that uses the context*, not just at the cog declaration. This
 ensures the diagnostic locates the offending code.
 
-## 9. Custom capabilities
+## 10. Custom capabilities
 
 Codebases that need capability tags beyond the canonical set use
 `Capability.CustomCapability(Text)`. The text is free-form and
@@ -285,7 +418,7 @@ gates do not know how to interpret them. A custom capability
 appears verbatim in `verum audit --arch-discharges` reports;
 auditors are responsible for understanding what it means.
 
-## 10. Worked example — capability flow
+## 11. Worked example — capability flow
 
 Consider a three-cog stack:
 
@@ -335,7 +468,7 @@ The composition is well-typed at the architectural layer. An
 auditor reads the three Shapes and sees the architectural intent
 without reading any function body.
 
-## 11. Capability and security boundaries
+## 12. Capability and security boundaries
 
 ATS-V capabilities are an *architectural* discipline, not a
 sandbox. They tell auditors *what the program may do*; they do
@@ -352,7 +485,7 @@ region that strips network access at runtime is well-typed
 architecturally but *will* trip the runtime check. The two layers
 are independent quality gates.
 
-## 12. Cross-references
+## 13. Cross-references
 
 - [Three orthogonal axes](../orthogonality.md) — Capability /
   Property / Context.

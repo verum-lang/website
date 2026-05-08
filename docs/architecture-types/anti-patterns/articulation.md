@@ -1,21 +1,39 @@
 ---
 sidebar_position: 3
-title: "Boundary / lifecycle / capability ontology (AP-011 .. AP-026)"
-description: "The middle sixteen ATS-V anti-patterns: stratum admissibility, boundary invariants, wire encoding, authentication, capability flavours, lifecycle transitivity, declaration drift, foundation-content alignment."
+title: "Boundary / lifecycle / capability ontology + CVE articulation-hygiene (AP-011..AP-026 + AP-033..AP-040)"
+description: "The middle band of ATS-V anti-patterns plus the CVE articulation-hygiene band: stratum admissibility, boundary invariants, wire encoding, authentication, capability flavours, lifecycle transitivity, declaration drift, foundation-content alignment, retracted-citation use, hypothesis-without-plan, observer impersonation, boundless audit, implicit substrate, anchoring overextension, self-reference without operator."
 slug: /architecture-types/anti-patterns/articulation
 ---
 
-# Boundary / lifecycle / capability ontology (AP-011 .. AP-026)
+# Boundary / lifecycle / capability ontology + CVE articulation-hygiene (AP-011..AP-026 + AP-033..AP-040)
 
-Band 2 covers the architectural defects that touch the
-**capability ontology** (linear / affine / relevant / unrestricted
-flavours), **boundary discipline** (wire encoding, authentication,
-invariants), and **lifecycle / foundation transitivity**
-(transitive citation chains, declaration vs body drift,
-foundation-content mismatch).
+This page covers **24 anti-patterns** drawn from two adjacent
+bands:
 
-Patterns in this band fire either at **arch-check** (per-cog
-predicates that touch only `Shape` plus the
+  - **AP-011..AP-026 (16 patterns)** — boundary/lifecycle/capability
+    ontology proper.  These touch the **capability ontology**
+    (linear / affine / relevant / unrestricted flavours),
+    **boundary discipline** (wire encoding, authentication,
+    invariants), and **lifecycle / foundation transitivity**
+    (transitive citation chains, declaration vs body drift,
+    foundation-content mismatch).
+  - **AP-033..AP-040 (8 patterns)** — CVE articulation-hygiene.
+    These touch how cogs *articulate* their Constructive /
+    Verifiable / Executable discharge — retracted-citation use,
+    hypothesis without maturation plan, interpretation in mature
+    corpus, observer impersonation, boundless audit, implicit
+    substrate, anchoring overextension, self-reference without
+    operator.
+
+The two bands consolidated onto a single page because the CVE
+articulation patterns describe how cogs articulate their
+discharge — structurally close to the existing articulation
+discipline of the AP-011..026 band.  See
+[anti-patterns/coherence](./coherence.md) §2 for the full
+band-history note.
+
+Patterns in this combined band fire either at **arch-check**
+(per-cog predicates that touch only `Shape` plus the
 [`DiagnosticContext`](../../reference/glossary)) or at
 **post-arch** (transitive predicates that walk the cog graph).
 
