@@ -123,7 +123,7 @@ So `external-prover-replay` verifies:
   emission (wrong arity, wrong name, missing premise) fails the
   build.
 - ✅ Every IOU axiom name + arity matches the rule registry
-  (drift-detected).  The drift surface is now closed in **five
+  (drift-detected).  The drift surface is closed in **six
   dimensions**:
    * **mod.rs ↔ IOU presence**:
      `SoundnessExporter::drift_check` cross-validates per-rule
@@ -151,14 +151,23 @@ So `external-prover-replay` verifies:
      anchor.  Pin tests assert each foundation's parsed arity
      matches the spec, anchoring the three-way agreement on a
      single source of truth.
-   * **Rust mod.rs ↔ Verum-side `theorems.vr`**: pin test
-     parses `core/verify/kernel_soundness/theorems.vr` for the
-     `KernelRule.K<Name> => LemmaStatus.<Status>` per-rule
+   * **Rust mod.rs ↔ Verum-side `theorems.vr` (status)**: pin
+     test parses `core/verify/kernel_soundness/theorems.vr` for
+     the `KernelRule.K<Name> => LemmaStatus.<Status>` per-rule
      entries, converts the .vr camelCase rule names back to
      Rust snake-form, and asserts every per-rule status agrees
      with `canonical_rules()` in mod.rs.  Catches the parallel
      narrative-source-of-truth drift (manual sync omissions
      are now mechanical errors).
+   * **Rust mod.rs ↔ Verum-side `theorems.vr` (citations)**:
+     for every `DischargedByFramework` rule, the citation triple
+     `(lemma_path, framework, citation)` agrees across the two
+     sources of truth (whitespace-normalized so multi-line .vr
+     continuations vs single-line Rust literals don't generate
+     spurious diffs).  Catches drift in the framework
+     attribution that cites mathlib4 / Coq stdlib / ZFC upstream
+     artifacts — the trust-extension surface a foreign auditor
+     clicks through to verify a discharge.
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
 - ❌ It does **not** verify that the 8 IOU rules are actually
