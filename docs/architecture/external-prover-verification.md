@@ -86,11 +86,7 @@ Each backend reports one of four verdicts:
   *This is the default green state.* The export ships **8
   outstanding IOU axioms** (one per genuinely non-structural rule
   — the rest are real inductive constructors of the `Typing`
-  predicate).  IOU trajectory: 27 → 17 → 16 → 14 → 12 → 11 → 8
-  (pre-FV-9, post-FV-9 structural fragment, post-K_Quot_Elim,
-  post-K_Elim + K_Universe_Ascent, post-K_Refine + K_Refine_Omega,
-  post-K_Inductive, post-K_Epsilon_Of + K_Alpha_Of +
-  K_Modal_Big_And).
+  predicate).
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
@@ -99,24 +95,24 @@ Each backend reports one of four verdicts:
 
 ## 3. The structural fragment (real inductive constructors)
 
-As of FV-9, the kernel-soundness export ships a **real `Typing`
-inductive predicate** across all three foundations — not just
-opaque `well_typed t T` placeholders. The structural fragment of
-the kernel (variable lookup, universe formation, dependent-product
-formation / introduction / elimination, framework axiom, recursion
-positivity, plus all the structural pieces of cubical / refinement
-/ quotient / modal layers) is encoded as **inductive constructors**
-of `Typing`. Every `K_*_sound` theorem proof becomes "by `intros`,
-then apply the corresponding constructor".
+The kernel-soundness export ships a **real `Typing` inductive
+predicate** across all three foundations — not opaque
+`well_typed t T` placeholders. The structural fragment of the
+kernel (variable lookup, universe formation, dependent-product
+formation / introduction / elimination, framework axiom,
+recursion positivity, plus all the structural pieces of cubical
+/ refinement / quotient / modal layers) is encoded as
+**inductive constructors** of `Typing`. Every `K_*_sound` theorem
+proof becomes "by `intros`, then apply the corresponding
+constructor".
 
 The remaining non-structural rules — those that genuinely depend on
 deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
 HOL — are honestly admitted via per-rule typed axioms named
-`<Rule>_iou`. There are **8** such IOUs (trajectory `27 → 17 →
-16 → 14 → 12 → 11 → 8`). Each axiom takes the rule's actual
-operands and returns a `Prop`, so the soundness lemma's operand
-types are still *checked* by the foreign tool — the IOU just
-discharges the conclusion.
+`<Rule>_iou`. There are **8** such IOUs. Each axiom takes the
+rule's actual operands and returns a `Prop`, so the soundness
+lemma's operand types are still *checked* by the foreign tool —
+the IOU just discharges the conclusion.
 
 So `external-prover-replay` verifies:
 
@@ -127,34 +123,42 @@ So `external-prover-replay` verifies:
   emission (wrong arity, wrong name, missing premise) fails the
   build.
 - ✅ Every IOU axiom name + arity matches the rule registry
-  (drift-detected).  The drift surface is now closed in **four
+  (drift-detected).  The drift surface is now closed in **five
   dimensions**:
-   * **PR-1 — mod.rs ↔ IOU presence**:
+   * **mod.rs ↔ IOU presence**:
      `SoundnessExporter::drift_check` cross-validates per-rule
      `LemmaStatus` in `mod.rs` against the actual `<Rule>_iou`
      axiom presence.  Catches `Admitted`-without-axiom (status
      drift), `Proved`-with-orphan-axiom (incomplete discharge),
      and `DischargedByFramework`-with-axiom (redundant trust
      extension).
-   * **PR-1b — registry ↔ each foundation (set)**: pin tests
-     parse each `IOU_AXIOMS_LEAN` / `IOU_AXIOMS_COQ` /
-     `IOU_AXIOMS_ISA` string constant and assert set equality
-     with `iou_axiom_rule_names()`.  Catches single-foundation-
-     only edits (e.g. axiom added to Lean but forgotten in Coq).
-   * **PR-1b — three-way set agreement**: direct
+   * **Registry ↔ each foundation (set)**: pin tests parse each
+     `IOU_AXIOMS_LEAN` / `IOU_AXIOMS_COQ` / `IOU_AXIOMS_ISA`
+     string constant and assert set equality with
+     `iou_axiom_rule_names()`.  Catches single-foundation-only
+     edits (e.g. axiom added to Lean but forgotten in Coq).
+   * **Three-way set agreement**: direct
      `Lean = Coq = Isabelle` set equality, separating axiom-
      name drift from rule-status drift in the audit output.
-   * **PR-1c — three-way arity agreement**: pin tests parse
+   * **Three-way arity agreement**: pin tests parse
      argument-arrow counts (`→` / `->` / `\<Rightarrow>`) per
      foundation and assert all three agree per axiom.  Catches
      same-name-different-arity drift (e.g. `K_Refine_Intro_iou`
      has 4 args in Lean but 5 in Coq).
-   * **PR-1d — registry ↔ each foundation (arity)**:
+   * **Registry ↔ each foundation (arity)**:
      `iou_axiom_specs()` returns
      `Vec<IouAxiomSpec { name, arity }>` — the canonical arity
      anchor.  Pin tests assert each foundation's parsed arity
      matches the spec, anchoring the three-way agreement on a
      single source of truth.
+   * **Rust mod.rs ↔ Verum-side `theorems.vr`**: pin test
+     parses `core/verify/kernel_soundness/theorems.vr` for the
+     `KernelRule.K<Name> => LemmaStatus.<Status>` per-rule
+     entries, converts the .vr camelCase rule names back to
+     Rust snake-form, and asserts every per-rule status agrees
+     with `canonical_rules()` in mod.rs.  Catches the parallel
+     narrative-source-of-truth drift (manual sync omissions
+     are now mechanical errors).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
 - ❌ It does **not** verify that the 8 IOU rules are actually
@@ -172,35 +176,28 @@ agreement.
 
 Each IOU axiom names exactly the meta-theory it depends on. The
 audit's plain output enumerates every reason verbatim; here they
-group by category. The bracketed `(N→M)` shows the per-category
-drop as structural pieces became real inductive constructors:
-the pre-FV-9 corpus had 27; FV-9 brought it to 17; the
-Quotient-elimination discharge brought it to 16; the K_Elim +
-K_Universe_Ascent discharge brought it to 14; the K_Refine +
-K_Refine_Omega discharge brought it to 12; the K_Inductive
-discharge brought it to 11; the K_Epsilon_Of + K_Alpha_Of +
-K_Modal_Big_And discharge brought it to 8.
+group by category.
 
-### Cubical (6→4) — CCHM / HoTT mechanisation
+### Cubical (4) — CCHM / HoTT mechanisation
 
 `K_Path_Over_Form`, `K_HComp`, `K_Transp`, `K_Glue`
 
-(Structural now: `K_Path_Ty_Form`, `K_Refl_Intro`.)
+(Structural in the export: `K_Path_Ty_Form`, `K_Refl_Intro`.)
 
 Discharge plan: port the cubical-type-theory chapter of
 [`agda/cubical`](https://github.com/agda/cubical) to a Lean 4
 fragment; or wait for `mathlib4`'s nascent CCHM port.
 
-### Refinement (4→1) — predicate decidability at value
+### Refinement (1) — predicate decidability at value
 
 `K_Refine_Intro`
 
-(Structural now: `K_Refine_Erase` (FV-9), `K_Refine` and
-`K_Refine_Omega` (this discharge — predicate typed at
-`Pi x base (Universe 0)` captures the Bool-valued-predicate
+(Structural in the export: `K_Refine_Erase`, `K_Refine`,
+`K_Refine_Omega`.  The predicate is typed at
+`Pi x base (Universe 0)`, capturing the Bool-valued-predicate
 intent; the finite-universe bound `i : Nat` makes the
-ordinal-modal-depth-bound intent of K_Refine_Omega vacuous at the
-operational layer).)
+ordinal-modal-depth-bound intent of `K_Refine_Omega` vacuous at
+the operational layer.)
 
 Discharge plan for `K_Refine_Intro`: predicate-decidability-at-
 the-introduced-value requires an evaluation oracle (the rule
@@ -209,33 +206,32 @@ Bool-equality side condition outside the structural-premises
 template.  Multi-day work to formalise an `eval` reduction
 relation that the soundness lemma can quantify over.
 
-### Quotient (3→0) — equivalence-relation properties
+### Quotient (0) — fully empty bucket
 
-*All Quotient rules now structural.*  `K_Quot_Form` + `K_Quot_Intro`
-discharged in FV-9; `K_Quot_Elim` discharged in the Quotient-
-elimination pass — its constructor takes structural premises
+*All Quotient rules structural.*  `K_Quot_Form`, `K_Quot_Intro`,
+and `K_Quot_Elim` constructors take structural premises
 (scrutinee at the quotient, motive at the dependent universe,
-case_fn at the dependent product) directly, mirroring the shape
-of `K_Quot_Form` / `K_Quot_Intro`.  The respect-of-equivalence
-side condition that mathlib's `Quotient.lift` requires its caller
-to discharge externally remains the kernel's input contract,
-audited at the Verum side via `verum audit --proof-honesty`
-rather than silently axiomatized in the export.
+case_fn at the dependent product) directly.  The
+respect-of-equivalence side condition that mathlib's
+`Quotient.lift` requires its caller to discharge externally
+remains the kernel's input contract, audited at the Verum side
+via `verum audit --proof-honesty` rather than silently
+axiomatized in the export.
 
-### Inductive (2→0) — fully empty bucket
+### Inductive (0) — fully empty bucket
 
-*All Inductive rules now structural.*  `K_Elim` discharged via
-the structural-premises template (see prior K_Quot_Elim
-discharge); `K_Inductive` discharged premise-free at the export
-layer — the rule's premise becomes "an in-scope `Inductive_(path,
-args)` lives in some `Universe i`", and the strict-positivity
-check is the kernel's input contract (the kernel's `inductive`
-keyword analogue verifies strict positivity at definition time,
+*All Inductive rules structural.*  `K_Elim` uses the
+structural-premises template (mirroring `K_Quot_Elim`);
+`K_Inductive` is premise-free at the export layer — the rule's
+premise becomes "an in-scope `Inductive_(path, args)` lives in
+some `Universe i`", and the strict-positivity check is the
+kernel's input contract (the kernel's `inductive` keyword
+analogue verifies strict positivity at definition time,
 mirroring mathlib's discipline).  By the time we have an
 `Inductive_(...)` term in CoreTerm, the kernel has already
 verified the strict-positivity invariant.
 
-### SMT/Axiom (1→1) — replay correctness
+### SMT/Axiom (1) — replay correctness
 
 `K_Smt`
 
@@ -244,21 +240,21 @@ Discharge plan: state "every cert that
 CoreTerm derivation" as a Lean predicate over a model of SMT
 certificates.
 
-### Diakrisis (11→2) — biadjunction algebra + bridge-audit
+### Diakrisis (2) — biadjunction algebra + bridge-audit
 
 `K_Eps_Mu`, `K_Round_Trip`
 
-(Structural now: `K_Modal_Box`, `K_Modal_Diamond`, `K_Shape`,
-`K_Flat`, `K_Sharp` — these had structural typing constructors in
-the export since FV-9; the modal-depth recursion / cohesive
-adjunction content is the kernel's input contract.
-`K_Universe_Ascent` collapses onto `T_univ` for u32-bounded
-universes.  `K_Epsilon_Of` and `K_Alpha_Of` use the
-wrap-preserves-typing template (`Typing Γ inner T → Typing Γ
-(...) T`); the M ⊣ A unit/counit-law content is the kernel's
-input contract.  `K_Modal_Big_And` is premise-free at the export
-layer; homogeneous-typed-components is the kernel's input
-contract, mirroring `K_Inductive`.)
+(Structural in the export: `K_Modal_Box`, `K_Modal_Diamond`,
+`K_Shape`, `K_Flat`, `K_Sharp` — wrap-preserves-typing
+constructors; the modal-depth recursion / cohesive adjunction
+content is the kernel's input contract.  `K_Universe_Ascent`
+collapses onto `T_univ` for u32-bounded universes.
+`K_Epsilon_Of` and `K_Alpha_Of` use the wrap-preserves-typing
+template (`Typing Γ inner T → Typing Γ (...) T`); the M ⊣ A
+unit/counit-law content is the kernel's input contract.
+`K_Modal_Big_And` is premise-free at the export layer;
+homogeneous-typed-components is the kernel's input contract,
+mirroring `K_Inductive`.)
 
 Discharge plan for the remaining 2: K_Eps_Mu's biadjunction
 relating articulation/enactment can't fold into structural
@@ -300,12 +296,12 @@ verum audit --external-prover-replay --format json
 
 ## 6. Wiring in CI
 
-The gate is wired into CI via `.github/workflows/audit-gates.yml`
-(landed in PR-1).  Three job tiers:
+The gate is wired into CI via `.github/workflows/audit-gates.yml`.
+Three job tiers:
 
 1. **In-process gates** (every push + PR, ~5 minutes) —
    `--differential-kernel`, `--differential-kernel-fuzz`,
-   `--kernel-soundness` (with the drift guard from PR-1),
+   `--kernel-soundness` (which runs the drift guard),
    `--kernel-rules`, `--kernel-recheck`.  No external toolchain.
 2. **Differential Lean checker** (every push + PR, ~10 minutes
    uncached / ~2 minutes cached) — Lake artefacts cached.

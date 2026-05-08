@@ -130,10 +130,9 @@ The pin test enforces that every kernel `tag()` / `code()` /
 
 The cross-side pin test lives at
 `crates/verum_kernel/tests/k_arch_v_alignment.rs` and enforces
-**53 pin tests as of the 2026-05-08 baseline** (FV-9 38-rule
-real-Typing across all three foundations + AP-040 closure +
-transitive multi-hop closure).  The pin tests fall into eight
-bands:
+**53 pin tests** covering: 38-rule real-Typing across all three
+foundations, the full anti-pattern closure, and transitive
+multi-hop closure.  The pin tests fall into eight bands:
 
 | Band | Pin count | Coverage |
 |---|---|---|
@@ -384,14 +383,13 @@ This pin is the *liveness pin* for the resolver: it would fail
 if the depth-`≥2` filter were inverted, the cycle prevention
 were over-eager, or the recursion bottomed out incorrectly.
 
-The four pins together raised the cross-side alignment count
-from **39 → 43**, and subsequent FV-9 38-rule real-Typing closure
-plus AP-040 articulation-hygiene pins brought the total to **53
-as of 2026-05-08**.  Adding a new resolver in the same band
-(e.g. the future AP-018 `CompositionPathDeception` adapter,
-which will also need depth-`≥2` semantics) requires composing
-against `for_each_transitive_peer` — re-implementing DFS in a
-separate file fails review.
+These four transitive-closure pins are part of the **53-pin
+total** that covers the cross-side alignment surface.  Adding a
+new resolver in the same band (e.g. a future
+`CompositionPathDeception` adapter, which would also need
+depth-`≥2` semantics) requires composing against
+`for_each_transitive_peer` — re-implementing DFS in a separate
+file fails review.
 
 ## 8. Diagnostic-bundle integration
 

@@ -6,10 +6,9 @@ description: "Cert-by-cert agreement gate between the Rust kernel (`Certificate:
 
 # Differential Lean Checker
 
-> Status: load-bearing CI gate (FV-3, landed 2026-05-08). The 24-cert
-> canonical battery is run through the Rust kernel and the Lean
-> ReferenceChecker on every release; cert-by-cert verdict
-> disagreement fails the audit.
+> Status: load-bearing CI gate. The 24-cert canonical battery is
+> run through the Rust kernel and the Lean ReferenceChecker on
+> every release; cert-by-cert verdict disagreement fails the audit.
 
 ## 1. Why this gate exists
 
@@ -33,10 +32,9 @@ exactly the kind of bug the meta-theory checker can't catch. The
 load-bearing fix is to **run the same certificate through both
 implementations and compare verdicts**.
 
-That's `--differential-lean-checker`. On its first run, the gate
-immediately surfaced a real disagreement
-(**[DEFECT-5](#5-defects-found-by-this-gate)**) and pinned it. The
-DEFECT-5 fix is the load-bearing value of the gate.
+That's `--differential-lean-checker`.  See
+[§5](#5-bug-class-this-gate-is-designed-to-catch) for the
+representative bug class this design pattern surfaces.
 
 ## 2. The two kernels
 
@@ -89,16 +87,16 @@ It covers four orthogonal axes:
 | `unbound-var-deep` | de Bruijn index past Γ length |
 | `claimed-not-a-type` | claimed_type doesn't itself have a universe kind |
 
-### DEFECT mirrors (regression pins for past kernel bugs)
+### Boundary-pin certs (regression battery)
 
-| Cert ID | Defect pinned |
+| Cert ID | What it pins |
 |---------|---------------|
-| `defect-1-mirror` | DEFECT-1 (substitution capture in dependent codomain) |
-| `defect-2-univ-max-overflows` | DEFECT-2 (universe overflow at u32::MAX) |
-| `defect-2-univ-max-minus-one-ok` | DEFECT-2 boundary: `MAX-1 : MAX` accepted |
-| `defect-3-mirror` | DEFECT-3 (Pi-introduction without binder-type kind check) |
-| `defect-4-claimed-is-value` | DEFECT-4 (claimed_type validation: must itself be a type) |
-| `defect-4-claimed-is-pi-of-value` | DEFECT-4 nested case |
+| `defect-1-mirror` | substitution capture in dependent codomain |
+| `defect-2-univ-max-overflows` | universe overflow at `u32::MAX` |
+| `defect-2-univ-max-minus-one-ok` | tower-top boundary: `MAX-1 : MAX` accepted |
+| `defect-3-mirror` | Pi-introduction without binder-type kind check |
+| `defect-4-claimed-is-value` | `claimed_type` validation: must itself be a type |
+| `defect-4-claimed-is-pi-of-value` | claimed_type validation, nested case |
 
 ### Polymorphic / cross-instantiation shapes
 
@@ -176,25 +174,24 @@ stored for diagnostic reading but **not** required to match
 between implementations (different error categories are an
 implementation choice, not a correctness claim).
 
-## 5. Defects found by this gate
+## 5. Bug class this gate is designed to catch
 
-### DEFECT-5 — universe-tower-top escape hatch (2026-05-08, fixed in
-the same commit that landed the gate)
+The differential pattern catches algorithmic divergences visible
+only when two structurally-different kernels disagree on the same
+input.  A representative case in the regression battery: the
+universe-tower-top boundary.  When `Certificate::verify` infers
+the kind of `claimed_type`, a `Universe(u32::MAX)` triggers
+`UniverseOverflow` on its successor — even though the
+`claimed_type` *is* a valid type at the top of the universe tower.
+Lean's `Nat` is unbounded, so a naive Lean implementation accepts
+the cert while the Rust kernel correctly rejects.
 
-When `Certificate::verify` infers the kind of `claimed_type`, a
-`Universe(u32::MAX)` triggers `UniverseOverflow` on its successor —
-even though the claimed_type *is* a valid type at the top of the
-universe tower. Lean's `Nat` is unbounded, so the Lean checker
-accepted the cert; the Rust checker rejected it.
-
-The fix: `Certificate::verify` now treats
-`Err(UniverseOverflow)` from the DEFECT-4 kind-check as
-"claimed_type lives at the top of the universe tower — still a
-type." Step 2 (`def_eq` on inferred-vs-claimed) catches any
-genuine type mismatch downstream.
-
-The cert `defect-5-universe-tower-top` (which is `defect-2-univ-
-max-minus-one-ok` under its original name) is now part of the
+Verum's resolution: `Certificate::verify` treats
+`Err(UniverseOverflow)` from the kind-check step as "claimed_type
+lives at the top of the universe tower — still a type."  The
+subsequent `def_eq` check on inferred-vs-claimed catches any
+genuine type mismatch downstream.  The boundary cert
+(`defect-2-univ-max-minus-one-ok`) is permanently part of the
 regression battery.
 
 ## 6. Running locally
@@ -220,7 +217,7 @@ The gate is part of `verum audit --bundle` (the umbrella audit).
 Add to the GitHub Actions matrix alongside the tri-prover replay:
 
 ```yaml
-- name: Differential Lean checker (FV-3)
+- name: Differential Lean checker
   run: |
     # elan + lake (required for both gates)
     curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
@@ -257,7 +254,7 @@ When **finding a kernel disagreement** (i.e., the gate failed):
 1. Add a `defect-N-mirror` cert to the battery that captures the
    minimal failing shape.
 2. Fix the kernel(s). Document the defect in the audit ledger
-   (`docs/architecture/verum-kernel-audit-2026.md`).
+   (`docs/architecture/verum-kernel-audit.md`).
 3. Confirm the cert flips to unanimous agreement.
 
 ## 9. Cross-references

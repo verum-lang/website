@@ -45,9 +45,8 @@ same theorem statements.  A wrong de Bruijn shift in Slot A
 agrees with itself; differential-checking against Slot B (which
 uses closures, not de Bruijn substitution) catches it.
 
-The gate's first run found a real bug
-([§4: NbE universe-overflow](#4-defects-found-by-this-gate)) —
-the load-bearing value of the gate working as designed.
+See [§4](#4-bug-class-this-gate-is-designed-to-catch) for the
+representative bug class this design surfaces.
 
 ## 2. The three kernels
 
@@ -74,14 +73,14 @@ The battery covers:
 
 | Section | Cert IDs | Kernel rules exercised |
 |---------|----------|------------------------|
-| Universe formation | `univ-0-in-1`, `univ-5-in-6`, `univ-mismatch` | T-Univ + DEFECT-2 boundary |
+| Universe formation | `univ-0-in-1`, `univ-5-in-6`, `univ-mismatch` | T-Univ + universe-tower-top boundary |
 | Variable lookup | `var0-empty-ctx-fails` | T-Var (negative) |
 | Identity | `id-at-univ0`, `id-at-univ0-wrong-claim`, `id-at-univ3`, `id-arrow` | T-Lam-Intro + T-Var |
 | Polymorphic identity | `poly-id-shape`, `nested-lam-correct` | T-Lam-Intro + T-Var (depth 2) |
 | Pi formation | `pi-univ-univ`, `pi-takes-max`, `high-pi`, `nested-pi` | T-Pi-Form |
 | Application | `app-domain-mismatch`, `app-non-function`, `nested-app-domain-mismatch` | T-App-Elim |
-| DEFECT-2 mirrors | `defect-2-univ-max-overflows`, `defect-2-univ-max-minus-one-ok` | universe-tower-top boundary |
-| DEFECT-4 mirror | `defect-4-claimed-is-value` | claimed_type validation |
+| Universe-overflow boundary | `defect-2-univ-max-overflows`, `defect-2-univ-max-minus-one-ok` | `Universe(u32::MAX)` rejection + tower-top escape hatch |
+| Claimed-type validation | `defect-4-claimed-is-value` | `claimed_type` must itself be a type |
 | Const function | `const-fn` | T-Lam-Intro depth 2 |
 | Deep binder | `deep-var` | T-Var depth 3 |
 | η-redex | `eta-via-id-application` | T-Conv via η |
@@ -91,37 +90,22 @@ Total: 24 certs.  Adding a new entry pins a regression for every
 kernel — the cert flows through Slot A / B / C and through the
 Lean ReferenceChecker automatically.
 
-## 4. Defects found by this gate
+## 4. Bug class this gate is designed to catch
 
-### NbE universe-overflow (2026-05-08, fixed in the same commit
-that landed FV-11)
+The differential pattern catches algorithmic bugs visible only when
+two structurally-different kernels disagree on the same input.
+A representative case the gate caught at first run: the NbE kernel
+(Slot B) accepted `Universe(u32::MAX) : Universe(0)` because its
+`Term::Universe(n)` arm used naive `n + 1` arithmetic, wrapping to
+0 in release builds — while the bidirectional kernel (Slot A)
+correctly rejected with `UniverseOverflow`.
 
-When the gate landed it immediately surfaced a real disagreement
-on cert `defect-2-univ-max-overflows`
-(`Universe(u32::MAX) : Universe(0)`):
+The fix in NbE mirrors the bidirectional kernel's overflow check
+verbatim (`checked_add(1)` returning a structured error on
+overflow), and the boundary case is now pinned in
+`canonical_battery::tests::nbe_kernel_matches_expected_verdicts`.
 
-* Slot A: rejects with `UniverseOverflow` (the DEFECT-2 fix from
-  kernel-audit-2026-05-08).
-* Slot B (NbE): **accepts** — the `Term::Universe(n)` arm of
-  `proof_checker_nbe::infer_value` was using naive `n + 1`
-  arithmetic instead of `checked_add(1)`, wrapping to 0 in
-  release builds.
-* Slot C: rejects (anchored on Slot A).
-
-The fix mirrored Slot A's universe-overflow check verbatim:
-`Term::Universe(n) => match n.checked_add(1) { Some(succ) =>
-Ok(Value::VUniverse(succ)), None => Err(CheckError::UniverseOverflow
-{ level: *n }) }`.  Per-kernel sanity test
-`canonical_battery::tests::nbe_kernel_matches_expected_verdicts`
-now pins it.
-
-NbE's `verify_certificate` also lacked the universe-tower-top
-escape hatch from
-[DEFECT-5](./differential-lean-checker.md#5-defects-found-by-this-gate);
-the same commit added it, mirroring the trusted base.
-
-The gate's load-bearing-ness is exactly that disagreement.  A bug
-that would have shipped in the NbE algorithm's release build was
+A bug that would have shipped in the NbE algorithm's release build was
 caught at the first run of the differential gate against the
 canonical battery.
 
@@ -176,7 +160,7 @@ When **finding a kernel disagreement**:
    Slot A is the trusted base, so it should be right unless the
    typing rules themselves changed.
 3. Fix the misbehaving slot.  Document the defect in the audit
-   ledger (`docs/architecture/verum-kernel-audit-2026.md`).
+   ledger (`docs/architecture/verum-kernel-audit.md`).
 4. Confirm the disagreement flips to unanimous.
 
 ## 8. Cross-references
