@@ -280,8 +280,28 @@ verum audit --external-prover-replay --format json
 
 ## 6. Wiring in CI
 
-The gate is part of `verum audit --bundle` (the umbrella audit).
-Add to the GitHub Actions matrix:
+The gate is wired into CI via `.github/workflows/audit-gates.yml`
+(landed in PR-1).  Three job tiers:
+
+1. **In-process gates** (every push + PR, ~5 minutes) —
+   `--differential-kernel`, `--differential-kernel-fuzz`,
+   `--kernel-soundness` (with the drift guard from PR-1),
+   `--kernel-rules`, `--kernel-recheck`.  No external toolchain.
+2. **Differential Lean checker** (every push + PR, ~10 minutes
+   uncached / ~2 minutes cached) — Lake artefacts cached.
+3. **Tri-prover replay** (push to main only, ~30 minutes
+   uncached / ~5 minutes cached) — Isabelle 2025-2 distribution
+   + HOL heap cached; this caching is the load-bearing
+   optimisation since first-build of the HOL heap takes 8-12
+   minutes on its own.
+
+All three tiers upload `target/audit-reports/` as workflow
+artefacts (14-day retention for tiers 1-2, 30-day for tier 3) so
+any drift / disagreement detected in CI has a downloadable
+forensic record.
+
+The minimal manual `--external-prover-replay` invocation if
+you're scripting it outside CI:
 
 ```yaml
 - name: External-prover replay (Lean + Coq + Isabelle)
@@ -291,11 +311,14 @@ Add to the GitHub Actions matrix:
       | sh -s -- -y --default-toolchain leanprover/lean4:v4.29.1
     source $HOME/.elan/env
     # rocq via apt or brew, depending on runner OS
-    sudo apt-get install -y coq
+    sudo apt-get install -y coq rocq-prover
     # isabelle 2025-2 (download + extract; brew --cask isabelle on macOS)
-    curl -fsSL https://isabelle.in.tum.de/dist/Isabelle2025-2_linux.tar.gz | tar xz -C /opt
+    curl -fsSL https://isabelle.in.tum.de/dist/Isabelle2025-2_linux.tar.gz \
+      | sudo tar xz -C /opt
     export PATH="/opt/Isabelle2025-2/bin:$PATH"
-    # the tri-prover gate
+    # pre-build HOL heap (slowest part on a fresh runner)
+    isabelle build -b HOL
+    # the tri-prover gate itself
     verum audit --external-prover-replay --strict
 ```
 
