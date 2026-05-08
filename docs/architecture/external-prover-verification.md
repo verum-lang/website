@@ -83,11 +83,11 @@ Each backend reports one of four verdicts:
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
   Isabelle) whose count matches the corpus's declared admit list.
-  *This is the default green state.* As of FV-9 (the full
-  non-structural Typing inductive landed across all three
-  foundations), the export ships **17 outstanding IOU axioms** (one
-  per genuinely non-structural rule — the rest are now real
-  inductive constructors of the `Typing` predicate).
+  *This is the default green state.* The export ships **16
+  outstanding IOU axioms** (one per genuinely non-structural rule
+  — the rest are real inductive constructors of the `Typing`
+  predicate).  Down from 27 before FV-9 + 17 before the
+  Quotient-elimination discharge.
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
@@ -109,10 +109,11 @@ then apply the corresponding constructor".
 The remaining non-structural rules — those that genuinely depend on
 deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
 HOL — are honestly admitted via per-rule typed axioms named
-`<Rule>_iou`. There are **17** such IOUs (down from 27 before
-FV-9). Each axiom takes the rule's actual operands and returns a
-`Prop`, so the soundness lemma's operand types are still *checked*
-by the foreign tool — the IOU just discharges the conclusion.
+`<Rule>_iou`. There are **16** such IOUs (down from 27 before
+FV-9 and 17 before the Quotient-elimination discharge). Each
+axiom takes the rule's actual operands and returns a `Prop`, so
+the soundness lemma's operand types are still *checked* by the
+foreign tool — the IOU just discharges the conclusion.
 
 So `external-prover-replay` verifies:
 
@@ -126,7 +127,7 @@ So `external-prover-replay` verifies:
   (drift-detected).
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
-- ❌ It does **not** verify that the 17 IOU rules are actually
+- ❌ It does **not** verify that the 16 IOU rules are actually
   sound with respect to a denotational model. That's a separate,
   deeper effort tracked under "Kernel meta-theory in Mathlib" in
   the verification roadmap.
@@ -137,13 +138,14 @@ That gate runs a 24-cert battery through both the Rust kernel and
 the Lean ReferenceChecker and asserts cert-by-cert verdict
 agreement.
 
-## 4. The 17 outstanding IOUs
+## 4. The 16 outstanding IOUs
 
 Each IOU axiom names exactly the meta-theory it depends on. The
 audit's plain output enumerates every reason verbatim; here they
-group by category. (The pre-FV-9 corpus had 27; the bracketed `(N→M)`
-shows the per-category drop as structural pieces became real
-inductive constructors.)
+group by category. The bracketed `(N→M)` shows the per-category
+drop as structural pieces became real inductive constructors:
+the pre-FV-9 corpus had 27; FV-9 brought it to 17; the
+Quotient-elimination discharge brought it to 16.
 
 ### Cubical (6→4) — CCHM / HoTT mechanisation
 
@@ -166,14 +168,18 @@ ordinal modal-depth bound. Both are stated in
 `crates/verum_kernel/src/eps_mu.rs` but the Lean-side proofs are
 admitted.
 
-### Quotient (3→1) — equivalence-relation properties
+### Quotient (3→0) — equivalence-relation properties
 
-`K_Quot_Elim`
-
-(Structural now: `K_Quot_Form`, `K_Quot_Intro`.)
-
-Discharge plan: lift `Mathlib.Logic.Equiv` + `Quotient.mk` /
-`Quotient.lift` mathlib lemmas through the export.
+*All Quotient rules now structural.*  `K_Quot_Form` + `K_Quot_Intro`
+discharged in FV-9; `K_Quot_Elim` discharged in the Quotient-
+elimination pass — its constructor takes structural premises
+(scrutinee at the quotient, motive at the dependent universe,
+case_fn at the dependent product) directly, mirroring the shape
+of `K_Quot_Form` / `K_Quot_Intro`.  The respect-of-equivalence
+side condition that mathlib's `Quotient.lift` requires its caller
+to discharge externally remains the kernel's input contract,
+audited at the Verum side via `verum audit --proof-honesty`
+rather than silently axiomatized in the export.
 
 ### Inductive (2→2) — positivity decision procedure
 
