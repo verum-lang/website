@@ -1,13 +1,13 @@
 ---
 sidebar_position: 11
 title: Differential Lean Checker
-description: "Cert-by-cert agreement gate between the Rust kernel (`Certificate::verify`) and the Lean executable `verum_replay_checker`. A 24-cert canonical battery is run through both; per-cert verdicts must agree. Where the tri-prover replay checks the meta-theory shape of the soundness export, this gate checks the operational kernel — same accept/reject judgements as a re-implementation."
+description: "Cert-by-cert agreement gate between Verum's trusted-base kernel and an independent Lean executable (`verum_replay_checker`). A 24-cert canonical battery is run through both; per-cert verdicts must agree. Where the tri-prover replay checks the meta-theory shape of the soundness export, this gate checks the operational kernel — same accept/reject judgements as a re-implementation."
 ---
 
 # Differential Lean Checker
 
 > Status: load-bearing CI gate. The 24-cert canonical battery is
-> run through the Rust kernel and the Lean ReferenceChecker on
+> run through the trusted-base kernel and the Lean ReferenceChecker on
 > every release; cert-by-cert verdict disagreement fails the audit.
 
 ## 1. Why this gate exists
@@ -21,7 +21,7 @@ independent foundations** (Lean 4, Coq / Rocq, Isabelle / HOL).
 
 Neither of those checks ever asks the question:
 
-> *Given the same certificate, do the Rust kernel and an
+> *Given the same certificate, do the trusted-base kernel and an
 > independent re-implementation of the same rules produce the
 > same verdict?*
 
@@ -38,10 +38,10 @@ representative bug class this design pattern surfaces.
 
 ## 2. The two kernels
 
-| Kernel | Path | Implementation |
-|--------|------|----------------|
-| **Rust** | `crates/verum_kernel/src/proof_checker.rs::Certificate::verify` | The trusted base: ~826 LOC bidirectional bidirectional type checker over de Bruijn `Term`. |
-| **Lean** | `verification/external/lean/VerumExternalReplay/ReferenceChecker.lean::verifyCertificate` | Independent re-implementation in Lean 4 over a structurally-identical `Term` ADT. |
+| Kernel | Implementation |
+|--------|----------------|
+| **Trusted-base** | The kernel's bidirectional type checker over a de Bruijn `Term` calculus.  ~826 LOC.  The verdict authority. |
+| **Lean reference** | Independent re-implementation in Lean 4 (`verification/external/lean/VerumExternalReplay/ReferenceChecker.lean`) over a structurally-identical `Term` ADT. |
 
 The two implementations were authored separately against the same
 abstract specification (the typing rules in
@@ -51,7 +51,7 @@ to disagree only when one of them has a bug.
 ## 3. The 24-cert canonical battery
 
 The battery
-(`verum_kernel::canonical_battery::canonical_battery`)
+(`canonical_battery` in the kernel crate)
 is hand-crafted to exercise every load-bearing kernel pathway and
 lives in the kernel crate as a single source of truth: the same
 24 certs flow through this gate (Rust↔Lean cross-language) **and**
@@ -126,7 +126,7 @@ new defect found against the kernel adds a `defect-N-mirror` cert.
             │                                 │
             ▼                                 ▼
   ┌──────────────────┐             ┌────────────────────┐
-  │  Rust kernel     │             │  Serialise battery │
+  │  trusted-base kernel     │             │  Serialise battery │
   │                  │             │  → JSON file       │
   │  Certificate::   │             └─────────┬──────────┘
   │  verify(cert)    │                       │
@@ -179,25 +179,25 @@ implementation choice, not a correctness claim).
 The differential pattern catches algorithmic divergences visible
 only when two structurally-different kernels disagree on the same
 input.  A representative case in the regression battery: the
-universe-tower-top boundary.  When `Certificate::verify` infers
-the kind of `claimed_type`, a `Universe(u32::MAX)` triggers
-`UniverseOverflow` on its successor — even though the
+universe-tower-top boundary.  When the kernel's certificate
+verifier infers the kind of `claimed_type`, a `Universe(u32::MAX)`
+triggers `UniverseOverflow` on its successor — even though the
 `claimed_type` *is* a valid type at the top of the universe tower.
 Lean's `Nat` is unbounded, so a naive Lean implementation accepts
-the cert while the Rust kernel correctly rejects.
+the cert while the trusted-base kernel correctly rejects.
 
-Verum's resolution: `Certificate::verify` treats
-`Err(UniverseOverflow)` from the kind-check step as "claimed_type
+Verum's resolution: certificate verification treats
+`UniverseOverflow` from the kind-check step as "claimed_type
 lives at the top of the universe tower — still a type."  The
-subsequent `def_eq` check on inferred-vs-claimed catches any
-genuine type mismatch downstream.  The boundary cert
+subsequent definitional-equality check on inferred-vs-claimed
+catches any genuine type mismatch downstream.  The boundary cert
 (`defect-2-univ-max-minus-one-ok`) is permanently part of the
 regression battery.
 
 ## 6. Running locally
 
 ```bash
-# Default — runs Rust kernel + Lean exe, reports per-cert verdicts.
+# Default — runs trusted-base kernel + Lean exe, reports per-cert verdicts.
 verum audit --differential-lean-checker
 
 # JSON output for machine consumption.  Battery + Rust verdicts
@@ -232,7 +232,7 @@ debug investigation pattern is:
 
 1. Read the cert's `term` and `claimed_type` from the battery
    JSON.
-2. Step both implementations (Rust via `cargo test
+2. Step both implementations (the kernel via `cargo test
    -p verum_kernel proof_checker -- --nocapture`; Lean via
    `lake env lean` REPL on `ReferenceChecker.lean`).
 3. The kernel that produces the *wrong* verdict per the typing

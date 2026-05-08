@@ -224,10 +224,10 @@ battery.  The fuzz seed roster picks it up automatically.
 
 **Adding a mutation**:
 
-1. Add a variant to `Mutation` in
-   `crates/verum_kernel/src/differential_fuzz.rs`.
+1. Add a variant to the `Mutation` enum in the differential-
+   fuzz module.
 2. Implement its `apply_mutation` arm.
-3. Extend `Mutation::tag()`.
+3. Extend the variant's stable diagnostic tag.
 4. Extend `sample_mutation` to draw it.
 5. Run `verum audit --differential-kernel-fuzz`; the new tag
    should appear in the coverage matrix with non-zero hits.

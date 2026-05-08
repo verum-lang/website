@@ -30,7 +30,7 @@ flowchart LR
     CERT --> REPLAY["replay_smt_cert"]
     REPLAY --> CT
     FW["Framework axioms<br/>(core/math/frameworks/*.vr)"] --> REG[["AxiomRegistry"]]
-    REG --> KR(["verum_kernel::infer<br/>verify_full"])
+    REG --> KR(["Trusted-base kernel<br/>infer · verify_full"])
     CT --> KR
     KR --> OK[["✓ theorem proved"]]
     KR --> ERR[["✗ KernelError"]]
@@ -103,11 +103,11 @@ every downstream pass today.
 
 ## Typing rules
 
-Every rule is one concrete clause in the match statement in
-`verum_kernel::infer`. The column "Status" says *real* when the
-rule checks the full shape (both sides of every binder) and
-*bring-up* when the rule produces a well-formed result but defers
-a sub-check until a richer proof-term format reaches the kernel.
+Every rule is one concrete clause of the kernel's `infer`
+relation.  The column "Status" says *real* when the rule checks
+the full shape (both sides of every binder) and *bring-up* when
+the rule produces a well-formed result but defers a sub-check
+until a richer proof-term format reaches the kernel.
 
 | Constructor      | Rule                                                                                         | Status   |
 |------------------|----------------------------------------------------------------------------------------------|----------|
@@ -218,7 +218,7 @@ cannot leak into an accepted theorem.
 After the kernel lands, Verum's trusted computing base is exactly:
 
 1. The Rust compiler and its linked dependencies (unavoidable).
-2. `verum_kernel::{check, infer, verify_full}` and their subroutines
+2. The trusted-base kernel's `check` / `infer` / `verify_full` entry points and their subroutines
    (`substitute`, `structural_eq`, `universe_level`).
 3. Every axiom registered via `AxiomRegistry::register`, each
    carrying its `FrameworkId` attribution.

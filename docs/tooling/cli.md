@@ -165,7 +165,7 @@ for the workflow see
 | `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem |
 | `--kernel-intrinsics` | Kernel intrinsic registry — every `kernel_*` dispatch entry |
 | `--kernel-discharged-axioms` | Axioms admitted under `@kernel_discharge(...)` markers |
-| `--differential-kernel` | N-way agreement gate over the canonical 24-cert battery (`verum_kernel::canonical_battery`).  Runs every cert through the default kernel registry — Slot A (`proof_checker` bidirectional + WHNF), Slot B (`proof_checker_nbe` Normalisation by Evaluation), Slot C (`kernel_v0` manifest-driven verifier) — and asserts unanimous accept/reject.  Complementary to `--differential-lean-checker`: that gate compares Rust↔Lean cross-language; this gate compares three structurally-distinct algorithms within Rust on the same battery.  Found and pinned a NbE universe-overflow bug on its first run. See [three-kernel-differential](/docs/architecture/three-kernel-differential). |
+| `--differential-kernel` | N-way agreement gate over the canonical 24-cert battery.  Runs every cert through the default kernel registry — Slot A (bidirectional + WHNF), Slot B (Normalisation by Evaluation with closures + level-indexed quote), Slot C (manifest-driven meta-soundness verifier) — and asserts unanimous accept/reject.  Complementary to `--differential-lean-checker`: that gate compares the trusted-base kernel against an independent Lean re-implementation cross-language; this gate compares three structurally-distinct algorithms within the same process on the same battery. See [three-kernel-differential](/docs/architecture/three-kernel-differential). |
 | `--differential-kernel-fuzz` | Property-based mutation fuzz over the canonical-battery seed roster.  Each iteration picks a seed, samples a mutation chain (length 1–3 from an 11-variant grammar — universe lifts, subterm swaps, binder-domain rewrites, app-injections, free-variable substitutions), applies it, and runs the mutant through the default kernel registry (Slot A / B / C).  Disagreements are auto-shrunk to a minimal failing case via greedy 1-element-removal.  The audit report carries per-mutation hit counts + per-seed hit counts + chain-length distribution so sampling bias is observable when the gate passes.  See [property-fuzz](/docs/architecture/property-fuzz). |
 | `--reflection-tower` | MSFS-grounded 4-stage meta-soundness |
 | `--codegen-attestation` | Per-pass codegen kernel-discharge status |
@@ -615,11 +615,11 @@ verum elaborate-proof <FILE> [--out DIR]
 ```
 
 `check-proof` re-verifies a `.vproof` JSON certificate
-(`{ term, claimed_type, metadata }`) via the minimal kernel in
-`verum_kernel::proof_checker`. Exits 0 iff the term has the
-claimed type. The kernel's six rules form the irreducible
-trusted base — every other discharge route reduces to a sequence
-of rule applications this command can re-check.
+(`{ term, claimed_type, metadata }`) via the trusted-base
+kernel.  Exits 0 iff the term has the claimed type.  The
+kernel's six rules form the irreducible trusted base — every
+other discharge route reduces to a sequence of rule applications
+this command can re-check.
 
 `elaborate-proof` walks every theorem / lemma / corollary in
 `<FILE>` and emits a `<theorem-name>.vproof` file per declaration

@@ -22,7 +22,7 @@ cross-language**
 
 Neither of those checks the question:
 
-> *Are the multiple Rust-side kernel implementations consistent
+> *Are the multiple in-process kernel implementations consistent
 > with each other?*
 
 The trusted base ([`proof_checker.rs`](./trusted-kernel.md)) does
@@ -50,20 +50,19 @@ representative bug class this design surfaces.
 
 ## 2. The three kernels
 
-| Slot | Path | Algorithm |
-|------|------|-----------|
-| **A** | `crates/verum_kernel/src/proof_checker.rs` | Bidirectional type-checking with explicit substitution + WHNF.  ~1067 LOC.  The trusted base. |
-| **B** | `crates/verum_kernel/src/proof_checker_nbe.rs` | Normalisation by Evaluation with closures + level-indexed quote.  ~720 LOC.  Structurally distinct from Slot A. |
-| **C** | `crates/verum_kernel/src/kernel_registry.rs::KernelV0Kernel` | Manifest-driven meta-soundness verifier.  Anchors on Slot A's structural verdict, then walks the kernel-v0 rule registry asserting audit-cleanness + meta-soundness footprint + strict-intrinsic dispatch. |
+| Slot | Algorithm |
+|------|-----------|
+| **A** | Bidirectional type-checking with explicit substitution + WHNF.  ~1067 LOC.  The trusted base. |
+| **B** | Normalisation by Evaluation with closures + level-indexed quote.  ~720 LOC.  Structurally distinct from Slot A. |
+| **C** | Manifest-driven meta-soundness verifier.  Anchors on Slot A's structural verdict, then walks the bootstrap rule registry asserting audit-cleanness + meta-soundness footprint + strict-intrinsic dispatch. |
 
 The default `KernelRegistry` registers all three.  Adding a fourth
 slot (e.g., a future HOAS-based checker) is one line.
 
 ## 3. The canonical battery
 
-A single 24-cert library
-(`crates/verum_kernel/src/canonical_battery.rs::canonical_battery`)
-is the source of truth for **every** kernel-differential audit.
+A single 24-cert library — the canonical-battery registry — is
+the source of truth for **every** kernel-differential audit.
 Both this gate and `--differential-lean-checker` consume it; the
 former runs it through Slot A / B / C, the latter through the Rust
 kernel + the Lean ReferenceChecker exe.  One battery, two
@@ -102,8 +101,8 @@ correctly rejected with `UniverseOverflow`.
 
 The fix in NbE mirrors the bidirectional kernel's overflow check
 verbatim (`checked_add(1)` returning a structured error on
-overflow), and the boundary case is now pinned in
-`canonical_battery::tests::nbe_kernel_matches_expected_verdicts`.
+overflow), and the boundary case is now pinned in the
+canonical-battery test suite.
 
 A bug that would have shipped in the NbE algorithm's release build was
 caught at the first run of the differential gate against the
@@ -136,7 +135,7 @@ CI failure mode: the report enumerates each disagreeing cert with
 which kernels accepted vs rejected.  Debug investigation:
 
 1. Read the cert's `term` and `claimed_type` from the kernel-side
-   battery (`canonical_battery::canonical_battery`).
+   battery (the canonical-battery registry).
 2. Step the disagreeing kernels independently.  Each kernel has
    its own `verify` entry point; mark the failing reduction step.
 3. The kernel that produces the *wrong* verdict per the typing
@@ -147,7 +146,7 @@ which kernels accepted vs rejected.  Debug investigation:
 When **adding a cert** to the canonical battery:
 
 1. Append a `CanonicalCert::build(id, term, claimed_type)` to
-   `canonical_battery::canonical_battery()`.
+   the canonical-battery registry.
 2. Add the cert's ID to `expected_verdict()`.
 3. Run `verum audit --differential-kernel` and
    `verum audit --differential-lean-checker`.  Both gates must
@@ -167,7 +166,7 @@ When **finding a kernel disagreement**:
 
 - [Trusted Kernel](./trusted-kernel.md) — Slot A.
 - [Differential Lean Checker](./differential-lean-checker.md) —
-  the cross-language complement (Rust kernel ↔ Lean
+  the cross-language complement (trusted-base kernel ↔ Lean
   ReferenceChecker over the same canonical battery).
 - [External-Prover Verification](./external-prover-verification.md)
   — the meta-theory shape gate (theorem statements typecheck across

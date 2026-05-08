@@ -253,8 +253,7 @@ solver upgrades.
 Everything described above — VCGen, encoding, the capability router,
 the SMT executor, proof extraction, caching, bounds elimination —
 runs **outside** Verum's trusted computing base. The sole trusted
-checker is a distinct crate, `verum_kernel`, target size under
-5 000 lines of Rust.
+checker is the trusted-base kernel, target size under 5 000 lines.
 
 ### Surface
 
@@ -280,7 +279,7 @@ emits `CoreTerm` values that the kernel re-checks.
 After the kernel lands, Verum's TCB is exactly:
 
 1. The Rust compiler and its linked dependencies.
-2. `verum_kernel::{check, infer, verify_full}` and their subroutines
+2. The trusted-base kernel's `check` / `infer` / `verify_full` entry points and their subroutines
    (`substitute`, `structural_eq`, universe rules).
 3. Axioms registered via `AxiomRegistry::register`. Each registration
    stores a `FrameworkId` attribution (framework name + citation),
@@ -313,7 +312,7 @@ All `CoreTerm` constructors have real typing rules today except
 `SmtProof`, whose checker is the dedicated `replay_smt_cert` path.
 That routine is implemented per-backend (the SMT backend proof format
 first), completing the "SMT out of TCB" story. Test coverage is
-maintained at 30 / 30 pass in `cargo test -p verum_kernel`.
+maintained at 30 / 30 pass in the kernel test suite.
 
 ## See also
 

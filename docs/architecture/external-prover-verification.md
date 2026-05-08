@@ -18,7 +18,7 @@ description: "Tri-prover replay gate for the kernel-soundness corpus — Lean 4,
 Verum's kernel-soundness pipeline ([`verum audit --kernel-soundness`](../verification/cli-workflow.md))
 historically did three things:
 
-1. Drift-checked the Rust-side rule list against the `.vr` corpus.
+1. Drift-checked the kernel rule registry against the `.vr` corpus.
 2. Enumerated per-rule status (`Proved` / `Admitted` / `DischargedByFramework`).
 3. **Emitted** parallel Lean 4 + Coq theory files into
    `target/audit-reports/kernel-soundness/` for "independent re-checking".
@@ -50,10 +50,10 @@ fails immediately on this kind of regression.
 
 - `core/verify/kernel_soundness/` — the corpus (rule list, lemma
   names, admit reasons, framework citations).
-- `crates/verum_kernel/src/proof_tree.rs::KernelRule` — the
-  Rust-side enum mirror (38 rules).
-- `crates/verum_kernel/src/soundness/` — the cross-export pipeline
-  (`SoundnessExporter`, `LeanBackend`, `CoqBackend`).
+- The kernel rule registry — the canonical 38-rule list with
+  per-rule status (`Proved` / `Admitted` / `DischargedByFramework`).
+- The cross-export pipeline — emits parallel Lean / Coq /
+  Isabelle theory files from the rule registry.
 
 The audit gate `--kernel-soundness` drift-checks all three.
 
@@ -124,52 +124,48 @@ So `external-prover-replay` verifies:
   build.
 - ✅ Every IOU axiom name + arity matches the rule registry
   (drift-detected).  The drift surface is closed in **six
-  dimensions**:
-   * **mod.rs ↔ IOU presence**:
-     `SoundnessExporter::drift_check` cross-validates per-rule
-     `LemmaStatus` in `mod.rs` against the actual `<Rule>_iou`
-     axiom presence.  Catches `Admitted`-without-axiom (status
-     drift), `Proved`-with-orphan-axiom (incomplete discharge),
-     and `DischargedByFramework`-with-axiom (redundant trust
-     extension).
-   * **Registry ↔ each foundation (set)**: pin tests parse each
-     `IOU_AXIOMS_LEAN` / `IOU_AXIOMS_COQ` / `IOU_AXIOMS_ISA`
-     string constant and assert set equality with
-     `iou_axiom_rule_names()`.  Catches single-foundation-only
-     edits (e.g. axiom added to Lean but forgotten in Coq).
-   * **Three-way set agreement**: direct
-     `Lean = Coq = Isabelle` set equality, separating axiom-
-     name drift from rule-status drift in the audit output.
-   * **Three-way arity agreement**: pin tests parse
-     argument-arrow counts (`→` / `->` / `\<Rightarrow>`) per
-     foundation and assert all three agree per axiom.  Catches
-     same-name-different-arity drift (e.g. `K_Refine_Intro_iou`
-     has 4 args in Lean but 5 in Coq).
-   * **Registry ↔ each foundation (arity)**:
-     `iou_axiom_specs()` returns
-     `Vec<IouAxiomSpec { name, arity }>` — the canonical arity
-     anchor.  Pin tests assert each foundation's parsed arity
-     matches the spec, anchoring the three-way agreement on a
-     single source of truth.
-   * **Rust mod.rs ↔ Verum-side `theorems.vr` (status)**: pin
-     test parses `core/verify/kernel_soundness/theorems.vr` for
-     the `KernelRule.K<Name> => LemmaStatus.<Status>` per-rule
-     entries, converts the .vr camelCase rule names back to
-     Rust snake-form, and asserts every per-rule status agrees
-     with `canonical_rules()` in mod.rs.  Catches the parallel
-     narrative-source-of-truth drift (manual sync omissions
-     are now mechanical errors).
-   * **Rust mod.rs ↔ Verum-side `theorems.vr` (citations)**:
+  dimensions** — every dimension fires a pin test at audit time
+  with an actionable diagnostic:
+   * **Rule status ↔ IOU presence**: per-rule status (`Proved`
+     / `Admitted` / `DischargedByFramework`) is cross-validated
+     against the actual `<Rule>_iou` axiom presence in the
+     emitted theory files.  Catches `Admitted`-without-axiom
+     (status drift), `Proved`-with-orphan-axiom (incomplete
+     discharge), and `DischargedByFramework`-with-axiom
+     (redundant trust extension).
+   * **Registry ↔ each foundation (set)**: each foundation's
+     IOU axiom block is parsed and its rule-name set asserted
+     equal to the canonical IOU registry.  Catches single-
+     foundation-only edits (e.g. axiom added to Lean but
+     forgotten in Coq).
+   * **Three-way set agreement**: direct `Lean = Coq =
+     Isabelle` set equality, separating axiom-name drift from
+     rule-status drift in the audit output.
+   * **Three-way arity agreement**: argument-arrow counts (`→`
+     / `->` / `\<Rightarrow>`) are parsed per foundation; all
+     three must agree per axiom.  Catches same-name-different-
+     arity drift (e.g. `K_Refine_Intro_iou` has 4 args in Lean
+     but 5 in Coq).
+   * **Registry ↔ each foundation (arity)**: the IOU registry
+     declares the canonical arity per axiom; pin tests assert
+     each foundation's parsed arity matches the registry,
+     anchoring the three-way agreement on a single source of
+     truth.
+   * **Kernel registry ↔ Verum corpus (status + citations)**:
+     `core/verify/kernel_soundness/theorems.vr` carries the
+     parallel Verum-side narrative — per-rule
+     `KernelRule.K<Name> => LemmaStatus.<Status>` entries plus,
      for every `DischargedByFramework` rule, the citation triple
-     `(lemma_path, framework, citation)` agrees across the two
-     sources of truth (whitespace-normalized so multi-line .vr
-     continuations vs single-line Rust literals don't generate
-     spurious diffs).  Catches drift in the framework
-     attribution that cites mathlib4 / Coq stdlib / ZFC upstream
-     artifacts — the trust-extension surface a foreign auditor
-     clicks through to verify a discharge.
+     `(lemma_path, framework, citation)`.  Pin tests parse the
+     `.vr` corpus and assert per-rule status + citation parity
+     with the kernel rule registry (whitespace-normalized so
+     multi-line continuations don't generate spurious diffs).
+     Catches drift in the framework attribution that cites
+     mathlib4 / Coq stdlib / ZFC upstream artifacts — the
+     trust-extension surface a foreign auditor clicks through
+     to verify a discharge.
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
-  Rust enums exactly (encoder bug surface).
+  kernel's data definitions exactly (encoder bug surface).
 - ❌ It does **not** verify that the 8 IOU rules are actually
   sound with respect to a denotational model. That's a separate,
   deeper effort tracked under "Kernel meta-theory in Mathlib" in
@@ -177,9 +173,9 @@ So `external-prover-replay` verifies:
 
 For a complementary check that exercises the **runtime kernel** —
 not just the meta-theory shape — see [differential-lean-checker](./differential-lean-checker.md).
-That gate runs a 24-cert battery through both the Rust kernel and
-the Lean ReferenceChecker and asserts cert-by-cert verdict
-agreement.
+That gate runs a 24-cert battery through both the trusted-base
+kernel and the Lean ReferenceChecker and asserts cert-by-cert
+verdict agreement.
 
 ## 4. The 8 outstanding IOUs
 
@@ -244,10 +240,9 @@ verified the strict-positivity invariant.
 
 `K_Smt`
 
-Discharge plan: state "every cert that
-`verum_kernel::replay_smt_cert` accepts denotes a well-typed
-CoreTerm derivation" as a Lean predicate over a model of SMT
-certificates.
+Discharge plan: state "every certificate the kernel's SMT-cert
+replay accepts denotes a well-typed CoreTerm derivation" as a
+Lean predicate over a model of SMT certificates.
 
 ### Diakrisis (2) — biadjunction algebra + bridge-audit
 
@@ -351,23 +346,26 @@ you're scripting it outside CI:
 
 When **adding** a kernel rule:
 
-1. Append to `KernelRule` enum in `crates/verum_kernel/src/proof_tree.rs`.
-2. Append a `RuleSpec` to `canonical_rules()` in
-   `crates/verum_kernel/src/soundness/mod.rs` with status set to
-   `admitted("<concrete IOU citing meta-theory dependency>")`.
-3. Mirror in `core/verify/kernel_soundness/theorems.vr` (drift gate).
-4. Run `verum audit --external-prover-replay`. The gate must stay
-   green: `iou-only` is fine, `hard-error` means the Lean / Coq
-   emission is broken — fix the emitter before merging.
+1. Append the rule's identifier to the kernel rule enum.
+2. Append a rule spec to the canonical rule registry with status
+   set to admitted, citing the meta-theory dependency.
+3. Mirror the entry in `core/verify/kernel_soundness/theorems.vr`
+   (the drift gate cross-validates the two sides).
+4. Run `verum audit --external-prover-replay`.  The gate must
+   stay green: `iou-only` is fine, `hard-error` means the
+   Lean / Coq / Isabelle emission is broken — fix the emitter
+   before merging.
 
 When **promoting** an admit to a real proof:
 
-1. Replace `admitted(...)` with `proved(coq_tactics, lean_tactics)`.
-2. Provide a concrete tactic chain that closes the goal against
-   the placeholder axioms (or — better — a real proof that doesn't
+1. Flip the rule's status from admitted to proved (or
+   discharged-by-framework if upstream-cited), supplying a
+   concrete tactic chain for each foundation.
+2. Provide a tactic chain that closes the goal against the
+   placeholder axioms (or — better — a real proof that doesn't
    rely on them).
-3. Rerun the gate. The IOU count decreases; CI doesn't care about
-   the absolute number, only about hard-errors.
+3. Rerun the gate.  The IOU count decreases; CI doesn't care
+   about the absolute number, only about hard-errors.
 
 ## 8. Cross-references
 
@@ -379,11 +377,10 @@ When **promoting** an admit to a real proof:
   this page proves theorem statements type-check; that page proves
   the operational kernel returns the same accept/reject judgements.
 - [Three-Kernel Differential](./three-kernel-differential.md) —
-  the within-Rust complement: the same 24-cert canonical battery
-  also flows through three structurally-distinct in-process Rust
-  kernels (`proof_checker` bidirectional / `proof_checker_nbe` NbE
-  / `kernel_v0` manifest-driven) and unanimity is asserted
-  cert-by-cert.
+  the within-process complement: the same 24-cert canonical
+  battery also flows through three structurally-distinct
+  in-process kernels (bidirectional / NbE / manifest-driven) and
+  unanimity is asserted cert-by-cert.
 - [Verification Pipeline](./verification-pipeline.md) — the
   broader verification strategy this gate is one node of.
 - [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)
