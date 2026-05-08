@@ -127,14 +127,23 @@ So `external-prover-replay` verifies:
   emission (wrong arity, wrong name, missing premise) fails the
   build.
 - ✅ Every IOU axiom name + arity matches the rule registry
-  (drift-detected).  The drift guard
-  (`SoundnessExporter::drift_check`) cross-validates per-rule
-  `LemmaStatus` in `mod.rs` against the actual `<Rule>_iou`
-  axiom presence in the export.  Three failure modes are
-  hard-rejected at audit time: (a) `Admitted` rule with no IOU
-  axiom (status drift); (b) `Proved` rule with an orphan IOU
-  axiom (incomplete discharge); (c) `DischargedByFramework`
-  rule with an IOU axiom (redundant trust extension).
+  (drift-detected).  The drift surface is now closed in three
+  dimensions:
+   * **PR-1 — mod.rs ↔ IOU presence**:
+     `SoundnessExporter::drift_check` cross-validates per-rule
+     `LemmaStatus` in `mod.rs` against the actual `<Rule>_iou`
+     axiom presence.  Catches `Admitted`-without-axiom (status
+     drift), `Proved`-with-orphan-axiom (incomplete discharge),
+     and `DischargedByFramework`-with-axiom (redundant trust
+     extension).
+   * **PR-1b — registry ↔ each foundation**: pin tests
+     parse each `IOU_AXIOMS_LEAN` / `IOU_AXIOMS_COQ` /
+     `IOU_AXIOMS_ISA` string constant and assert set equality
+     with `iou_axiom_rule_names()`.  Catches single-foundation-
+     only edits (e.g. axiom added to Lean but forgotten in Coq).
+   * **PR-1b — three-way agreement**: direct
+     `Lean = Coq = Isabelle` set equality, separating axiom-
+     name drift from rule-status drift in the audit output.
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   Rust enums exactly (encoder bug surface).
 - ❌ It does **not** verify that the 8 IOU rules are actually
