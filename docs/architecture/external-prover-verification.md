@@ -1,7 +1,7 @@
 ---
 sidebar_position: 10
 title: External-Prover Verification
-description: "Tri-prover replay gate for the kernel-soundness corpus — Lean 4, Coq/Rocq, and Isabelle/HOL. The audit drives KernelSoundness.lean / kernel_soundness.v / KernelSoundness.thy through real `lake build` / `coqc` / `isabelle process` invocations and reports per-backend pass / iou-only / hard-error verdicts. Three independent foundations agreeing on the same soundness claims."
+description: "Multi-prover replay gate for the kernel-soundness corpus — Lean 4, Coq/Rocq, Isabelle/HOL, and Cubical Agda. The audit drives KernelSoundness.lean / kernel_soundness.v / KernelSoundness.thy / KernelSoundness.agda through real `lake build` / `coqc` / `isabelle build` / `agda --cubical` invocations and reports per-backend pass / iou-only / hard-error verdicts. Four independent foundations agreeing on the same soundness claims."
 ---
 
 # External-Prover Verification
@@ -53,27 +53,31 @@ fails immediately on this kind of regression.
 - The kernel rule registry — the canonical 38-rule list with
   per-rule status (`Proved` / `Admitted` / `DischargedByFramework`).
 - The cross-export pipeline — emits parallel Lean / Coq /
-  Isabelle theory files from the rule registry.
+  Isabelle / Agda theory files from the rule registry.
 
-The audit gate `--kernel-soundness` drift-checks all three.
+The audit gate `--kernel-soundness` drift-checks all four.
 
 ### 2.2 Foreign-tool re-check
 
 `verum audit --external-prover-replay` extends the gate with a real
-shell-out across **three foundations**:
+shell-out across **four foundations**:
 
 | Backend | Tool | Project | Invocation |
 |---------|------|---------|------------|
 | Lean 4 (4.29.1+) | `lake build` | `verification/external/lean/` | builds `VerumExternalReplay/KernelSoundness.lean` |
 | Coq / Rocq (9.0+) | `coqc -Q . VerumExternalReplay kernel_soundness.v` | `verification/external/coq/` | type-checks the export |
-| Isabelle/HOL (2025-2+) | `isabelle process -T KernelSoundness -d .` | `verification/external/isabelle/` | re-elaborates `KernelSoundness.thy` |
+| Isabelle/HOL (2025-2+) | `isabelle build -d . KernelSoundness` | `verification/external/isabelle/` | re-elaborates `KernelSoundness.thy` |
+| Cubical Agda (2.8+) | `agda --cubical KernelSoundness.agda` | `verification/external/agda/` | re-elaborates `KernelSoundness.agda` under cubical mode |
 
-Three meaningfully-different foundations: Lean 4 is dependent type
+Four meaningfully-different foundations: Lean 4 is dependent type
 theory (predicative + impredicative `Prop`); Coq / Rocq is CIC
 (impredicative `Prop` + universe polymorphism); Isabelle/HOL is
-classical higher-order logic with extensible foundations.  Tri-prover
-agreement on the structural-fragment soundness lemmas is the
-load-bearing gate.
+classical higher-order logic with extensible foundations; Cubical
+Agda is the only major prover with native CCHM cubical support
+(`--cubical` mode), which closes the cubical-fragment gap that the
+other three foundations leave at the meta-theoretic level.
+Multi-prover agreement on the structural-fragment soundness lemmas
+is the load-bearing gate.
 
 Each backend reports one of four verdicts:
 
@@ -82,7 +86,8 @@ Each backend reports one of four verdicts:
 - **`iou-only`** — backend exited 0; the only diagnostics are
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
-  Isabelle) whose count matches the corpus's declared admit list.
+  Isabelle, `postulate <Rule>-sound` blocks in Agda) whose count
+  matches the corpus's declared admit list.
   **The IOU registry is currently empty**
   (`iou_axiom_specs() == vec![]`) — every rule is structurally
   `Proved` or `DischargedByFramework`. A future brand-new rule
@@ -98,8 +103,13 @@ Each backend reports one of four verdicts:
 ## 3. The structural fragment (real inductive constructors)
 
 The kernel-soundness export ships a **real `Typing` inductive
-predicate** across all three foundations — not opaque
-`well_typed t T` placeholders. The structural fragment of the
+predicate** across the Lean / Coq / Isabelle foundations — not
+opaque `well_typed t T` placeholders. (Cubical Agda currently
+emits per-rule `postulate <Rule>-sound` declarations whose
+signatures are still type-checked end-to-end; promoting Agda
+postulates to a structural `data Typing : Ctx → CoreTerm →
+CoreTerm → Set` mirrors the Lean/Coq trajectory and is tracked
+as future work.) The structural fragment of the
 kernel (variable lookup, universe formation, dependent-product
 formation / introduction / elimination, framework axiom,
 recursion positivity, plus all the structural pieces of cubical

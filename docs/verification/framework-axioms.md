@@ -232,7 +232,8 @@ values:
 | **`Admitted`** | Open obligation — the rule's soundness lemma is `sorry` / `Admitted.` in the per-foundation export | no |
 
 **Current registry state**: every canonical kernel rule is
-either `Proved` (full structural proof in three foundations) or
+either `Proved` (full structural proof in Lean / Coq / Isabelle
++ shape-checked postulate in Cubical Agda) or
 `DischargedByFramework` (cited upstream proof). **No rules sit
 at `Admitted`** — see
 `crates/verum_kernel/src/soundness/mod.rs::iou_axiom_specs()`,

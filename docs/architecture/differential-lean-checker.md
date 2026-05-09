@@ -16,8 +16,9 @@ The kernel-soundness export pipeline ([`--kernel-soundness`](../verification/cli
 verifies that the **theorem statements** of the 38 kernel rules
 typecheck. The tri-prover replay
 ([`--external-prover-replay`](./external-prover-verification.md))
-verifies that those theorem statements typecheck across **three
-independent foundations** (Lean 4, Coq / Rocq, Isabelle / HOL).
+verifies that those theorem statements typecheck across **four
+independent foundations** (Lean 4, Coq / Rocq, Isabelle / HOL,
+Cubical Agda).
 
 Neither of those checks ever asks the question:
 
@@ -261,7 +262,7 @@ When **finding a kernel disagreement** (i.e., the gate failed):
 
 - [External-Prover Verification](./external-prover-verification.md)
   — the complementary gate that checks **theorem statements**
-  across three foundations (vs this page checks runtime verdicts
+  across four foundations (vs this page checks runtime verdicts
   in two implementations).
 - [Trusted Kernel](./trusted-kernel.md) — the TCB this gate is one
   layer of differential second-opinion on.

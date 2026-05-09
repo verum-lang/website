@@ -13,8 +13,8 @@ description: "N-way agreement gate over the canonical 24-cert battery: Slot A (p
 ## 1. Why this gate exists
 
 The kernel-soundness pipeline checks **theorem statement
-well-formedness** across three foundations
-([Lean / Coq / Isabelle](./external-prover-verification.md)).
+well-formedness** across four foundations
+([Lean / Coq / Isabelle / Cubical Agda](./external-prover-verification.md)).
 The differential Lean-checker gate checks **runtime kernel verdicts
 against an independent Lean re-implementation
 cross-language**
@@ -40,7 +40,7 @@ But Verum ships **two more** in-process kernels:
   the canonical registry.
 
 Three independent algorithms checking the same canonical battery
-catch a different bug class than three foundations checking the
+catch a different bug class than four foundations checking the
 same theorem statements.  A wrong de Bruijn shift in Slot A
 agrees with itself; differential-checking against Slot B (which
 uses closures, not de Bruijn substitution) catches it.
@@ -185,6 +185,6 @@ When **finding a kernel disagreement**:
   ReferenceChecker over the same canonical battery).
 - [External-Prover Verification](./external-prover-verification.md)
   — the meta-theory shape gate (theorem statements typecheck across
-  three foundations).
+  four foundations).
 - [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-13-gates)
   — full audit-flag table.
