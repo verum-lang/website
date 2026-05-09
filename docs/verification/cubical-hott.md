@@ -24,10 +24,10 @@ Traditional equality is either:
 - **Definitional**: `a ≡ b` if they reduce to the same normal form;
   too coarse.
 
-**Path equality** is better: `Path<A>(a, b)` is a _continuous path_
-from `a` to `b` in type `A`. Paths compose, invert, and transport
-values — and they are computational, meaning `transport refl x` really
-does reduce to `x`.
+**Path equality** is better: `HottPath<A>(a, b)` is a _continuous
+path_ from `a` to `b` in type `A`. Paths compose, invert, and
+transport values — and they are computational, meaning
+`transport refl x` really does reduce to `x`.
 
 ## Path types
 
@@ -42,20 +42,20 @@ signatures — the compiler binds each `@builtin_*` to a
 ```verum
 // Path in type A from a to b. Conceptually a function from the
 // interval [0, 1] to A such that p(i0) = a and p(i1) = b.
-public type Path<A>(a: A, b: A) is @builtin_path;
+public type HottPath<A>(a: A, b: A) is @builtin_path;
 
 // Reflexivity
-public fn refl<A>(x: A) -> Path<A>(x, x) {
+public fn refl<A>(x: A) -> HottPath<A>(x, x) {
     @builtin_refl(x)
 }
 
 // Inverse (symmetry)
-public fn sym<A>(a: A, b: A, p: Path<A>(a, b)) -> Path<A>(b, a) {
+public fn sym<A>(a: A, b: A, p: HottPath<A>(a, b)) -> HottPath<A>(b, a) {
     @builtin_sym(p)
 }
 
 // Concatenation (transitivity)
-public fn trans<A>(a: A, b: A, c: A, p: Path<A>(a, b), q: Path<A>(b, c)) -> Path<A>(a, c) {
+public fn trans<A>(a: A, b: A, c: A, p: HottPath<A>(a, b), q: HottPath<A>(b, c)) -> HottPath<A>(a, c) {
     @builtin_trans(p, q)
 }
 ```
@@ -79,7 +79,7 @@ The interval obeys the axioms of a De Morgan algebra with `0` and `1`.
 Transport moves a value along a type-level path:
 
 ```verum
-fn transport<A: Type, B: Type>(p: Path<Type>(A, B), x: A) -> B {
+fn transport<A: Type, B: Type>(p: HottPath<Type>(A, B), x: A) -> B {
     @builtin_transport(p, x)
 }
 ```
@@ -114,7 +114,7 @@ Pattern matching on a HIT must handle both value and path
 constructors; the compiler checks coherence.
 
 ```verum
-fn circle_map<B>(base: B, loop_proof: Path<B>(base, base), c: Circle) -> B {
+fn circle_map<B>(base: B, loop_proof: HottPath<B>(base, base), c: Circle) -> B {
     match c {
         Circle.Base   => base,
         Circle.Loop() => loop_proof,
@@ -129,7 +129,7 @@ Verum's cubical normaliser implements this computationally.
 `ua` is declared as a Verum axiom in `core/math/hott.vr`:
 
 ```verum
-public axiom ua<A, B>(e: Equiv<A, B>) -> Path<Type>(A, B);
+public axiom ua<A, B>(e: Equiv<A, B>) -> HottPath<Type>(A, B);
 ```
 
 Because `ua` is an axiom rather than a meta-intrinsic, every use of
@@ -198,8 +198,8 @@ inverse:
 type Equiv<A, B> is {
     to:       fn(A) -> B,
     from:     fn(B) -> A,
-    left_id:  (x: A) -> Path<A>(from(to(x)), x),
-    right_id: (y: B) -> Path<B>(to(from(y)), y),
+    left_id:  (x: A) -> HottPath<A>(from(to(x)), x),
+    right_id: (y: B) -> HottPath<B>(to(from(y)), y),
     coh:      /* coherence condition */,
 };
 ```
@@ -215,7 +215,7 @@ The grammar exposes three cubical-specific tactics in its
 
 ```verum
 theorem circle_loop_squared_is_refl() ->
-    Path<Circle>(trans(Base, Base, Base, Loop, Loop), refl(Base))
+    HottPath<Circle>(trans(Base, Base, Base, Loop, Loop), refl(Base))
 {
     by cubical;
 }
