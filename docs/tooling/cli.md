@@ -617,9 +617,9 @@ verum elaborate-proof <FILE> [--out DIR]
 `check-proof` re-verifies a `.vproof` JSON certificate
 (`{ term, claimed_type, metadata }`) via the trusted-base
 kernel.  Exits 0 iff the term has the claimed type.  The
-kernel's six rules form the irreducible trusted base — every
-other discharge route reduces to a sequence of rule applications
-this command can re-check.
+kernel's thirteen rules (Π/Σ/Id with universe polymorphism) form
+the irreducible trusted base — every other discharge route reduces
+to a sequence of rule applications this command can re-check.
 
 `elaborate-proof` walks every theorem / lemma / corollary in
 `<FILE>` and emits a `<theorem-name>.vproof` file per declaration

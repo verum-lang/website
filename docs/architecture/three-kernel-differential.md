@@ -93,20 +93,32 @@ Lean ReferenceChecker automatically.
 
 The differential pattern catches algorithmic bugs visible only when
 two structurally-different kernels disagree on the same input.
-A representative case the gate caught at first run: the NbE kernel
-(Slot B) accepted `Universe(u32::MAX) : Universe(0)` because its
-`Term::Universe(n)` arm used naive `n + 1` arithmetic, wrapping to
-0 in release builds — while the bidirectional kernel (Slot A)
-correctly rejected with `UniverseOverflow`.
+Two representative cases the gate caught:
 
-The fix in NbE mirrors the bidirectional kernel's overflow check
-verbatim (`checked_add(1)` returning a structured error on
-overflow), and the boundary case is now pinned in the
-canonical-battery test suite.
+1. **Universe overflow at the tower top.** The NbE kernel (Slot B)
+   accepted `Universe(u32::MAX) : Universe(0)` because its
+   `Term::Universe(n)` arm used naive `n + 1` arithmetic, wrapping
+   to 0 in release builds — while the bidirectional kernel (Slot A)
+   correctly rejected. Both kernels now route through
+   `Level::checked_succ`, returning `None` (→ `UniverseOverflow`)
+   when the concrete carrier hits `u32::MAX`. Symbolic carriers
+   (`Var`/`Succ`/`Max`) are unbounded so overflow is impossible by
+   construction.
 
-A bug that would have shipped in the NbE algorithm's release build was
-caught at the first run of the differential gate against the
-canonical battery.
+2. **App on a non-function head.** The NbE kernel accepted
+   `App(Universe(MAX-1), x) ≡ Universe(MAX-1)` because
+   `apply_value`'s fallback silently dropped the application. Slot A
+   rejected via `NotAFunction`; Slot B's silent collapse gave a
+   false accept. Fixed by introducing `Neutral::NStuck(Box<Value>)`:
+   non-function heads wrap as `NApp(NStuck(f), x)` so `def_eq` sees
+   the application structurally and never equates `App(stuck, x)`
+   with bare `stuck`. The same gate now wraps `Fst`/`Snd` and
+   `J(_, _, scrutinee)` on non-canonical scrutinees.
+
+In both cases the bug would have shipped silently in NbE's release
+build. The differential gate caught them at the first run against
+the canonical battery; both edge cases are now pinned regression
+tests + property-fuzz invariants.
 
 ## 5. Running locally
 

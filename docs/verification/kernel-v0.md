@@ -57,7 +57,7 @@ substitution-lemma, β-confluence, etc.) tracked by
 | Rule | File | Status | Description |
 |------|------|--------|-------------|
 | K-Var | `rules/k_var.vr` | Proved | Variable lookup in context: `Γ, x:A ⊢ x : A` |
-| K-Univ | `rules/k_univ.vr` | Proved | `Universe(n) : Universe(n+1)` — universe stratification |
+| K-Univ | `rules/k_univ.vr` | Proved | `Universe(l) : Universe(succ l)` — universe stratification, polymorphic over level expressions (`Concrete`/`Var`/`Succ`/`Max`) |
 | K-Pi-Form | `rules/k_pi_form.vr` | DischargedByFramework (mathlib4) | Π-type formation: `(A:U(n)) → (B:U(m))` in `U(max(n,m))` |
 | K-Lam-Intro | `rules/k_lam_intro.vr` | DischargedByFramework (mathlib4) | λ introduction: body's type under binder gives Π type |
 | K-App-Elim | `rules/k_app_elim.vr` | DischargedByFramework (mathlib4) | Apply elimination + substitution |
@@ -83,7 +83,7 @@ end:
 
 | Component | Trust contribution |
 |---|---|
-| `proof_checker` module | minimal calculus-of-constructions checker — six rules, bidirectional `infer` + `check` |
+| `proof_checker` module | extended-CoC checker (Π/Σ/Id with universe polymorphism) — 13 rules, bidirectional `infer` + `check` |
 | `kernel_v0/` Verum source | hand-auditable 10-rule mirror; one file per rule plus soundness lemmas |
 | Manifest verifier | structural type-check + manifest audit-cleanness + meta-soundness footprint + per-rule strict-intrinsic dispatch |
 
@@ -207,8 +207,7 @@ is the multi-year mechanisation work: replacing each upstream
 citation with a Verum-language proof that re-derives the
 upstream lemma in-kernel. Until then the citation triple is the
 load-bearing trust delegation, and a reviewer can independently
-verify each of the six rules by reading the cited upstream
-artefact.
+verify each rule by reading the cited upstream artefact.
 
 **Why is this audit-clean and not just admitted?** The
 distinction matters: an `admitted_with_iou` rule names a

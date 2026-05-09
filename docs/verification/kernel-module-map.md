@@ -31,7 +31,7 @@ The minimum that must be trusted for soundness:
 
 | Module | LOC | Role |
 |--------|-----|------|
-| `proof_checker` | ~786 | **The trusted base (Algorithm A).** Minimal CoC checker (6 rules). Bidirectional `infer` + `check`. |
+| `proof_checker` | ~2.4K | **The trusted base (Algorithm A).** Extended-CoC checker (Π/Σ/Id with universe polymorphism) — 13 rules, bidirectional `infer` + `check`. |
 | `proof_checker_nbe` | ~713 | **Second algorithmic kernel (Algorithm B).** Normalisation-by-Evaluation for [differential testing](./two-kernel-architecture.md). |
 | `kernel_registry::KernelV0Kernel` | — | **Third algorithmic kernel (Algorithm C).** Manifest-driven bootstrap verifier — anchors structural type-check, manifest audit-cleanness, meta-soundness footprint, per-rule strict-intrinsic dispatch. |
 | `proof_checker_meta` | — | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). |

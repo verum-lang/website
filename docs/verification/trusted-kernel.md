@@ -107,36 +107,87 @@ manifest itself into a self-hosted checker.
 
 ---
 
-## 3. Layer B — `proof_checker` (the trusted base, 6 rules)
+## 3. Layer B — `proof_checker` (the trusted base)
 
 The trusted base lives in the `proof_checker` module and
-implements a minimal Calculus of Constructions (CoC) fragment.
-**Six inference rules** are exhaustive:
+implements an extended Calculus of Constructions: dependent
+functions (Π), dependent pairs (Σ), and intensional identity
+types (Id) with universe-polymorphic level expressions.
+
+**Thirteen inference rules** are exhaustive:
 
 | # | Rule | Signature (informal) |
 |---|------|---------------------|
 | 1 | T-Var | `Γ, x:A ⊢ x : A` |
-| 2 | T-Univ | `Γ ⊢ Universe(n) : Universe(n+1)` |
+| 2 | T-Univ | `Γ ⊢ Universe(l) : Universe(succ l)` |
 | 3 | T-Pi-Form | `Γ ⊢ A : U_i`, `Γ, x:A ⊢ B : U_j` ⟹ `Γ ⊢ Π x:A.B : U_max(i,j)` |
 | 4 | T-Lam-Intro | `Γ, x:A ⊢ t : B` ⟹ `Γ ⊢ λx:A.t : Π x:A.B` |
 | 5 | T-App-Elim | `Γ ⊢ f : Π x:A.B`, `Γ ⊢ a : A` ⟹ `Γ ⊢ f a : B[x ↦ a]` |
-| 6 | T-Conv | `Γ ⊢ t : A`, `A ≡_β B` ⟹ `Γ ⊢ t : B` |
+| 6 | T-Sigma-Form | `Γ ⊢ A : U_i`, `Γ, x:A ⊢ B : U_j` ⟹ `Γ ⊢ Σ x:A.B : U_max(i,j)` |
+| 7 | T-Pair-Intro | `Γ ⊢ a : A`, `Γ ⊢ b : B[x ↦ a]` ⟹ `Γ ⊢ (a, b) : Σ x:A.B` |
+| 8 | T-Fst-Elim | `Γ ⊢ p : Σ x:A.B` ⟹ `Γ ⊢ fst p : A` |
+| 9 | T-Snd-Elim | `Γ ⊢ p : Σ x:A.B` ⟹ `Γ ⊢ snd p : B[x ↦ fst p]` |
+| 10 | T-Id-Form | `Γ ⊢ A : U_i`, `Γ ⊢ a, b : A` ⟹ `Γ ⊢ Id(A, a, b) : U_i` |
+| 11 | T-Refl-Intro | `Γ ⊢ a : A` ⟹ `Γ ⊢ refl a : Id(A, a, a)` |
+| 12 | T-J-Elim | `Γ ⊢ P : Π_:A. U_i`, `Γ ⊢ h : P a`, `Γ ⊢ p : Id(A, a, b)` ⟹ `Γ ⊢ J(P, h, p) : P b` |
+| 13 | T-Conv | `Γ ⊢ t : A`, `A ≡ B` ⟹ `Γ ⊢ t : B` |
 
-The Term language carries five variants — exactly what the six
-rules require:
+Definitional equality (T-Conv) decides `α + β + η + level-eq + ι`,
+where `ι` is path induction's β-rule `J(_, h, refl) → h` and
+β-projection `fst(a, _) → a` / `snd(_, b) → b`.
+
+The Term language carries twelve variants:
 
 | Variant | Carries | Role |
 |---|---|---|
 | `Var(i)` | de-Bruijn index `i` | bound variable lookup |
-| `Universe(n)` | level `n` | a universe; lives in `Universe(n+1)` |
+| `Universe(l)` | level expression `l` | a universe; lives in `Universe(succ l)` |
 | `Pi(A, B)` | domain + codomain | dependent function type `Π x:A. B` |
 | `Lam(A, b)` | type-annotated body | typed λ-abstraction |
 | `App(f, x)` | function + argument | application |
+| `Sigma(A, B)` | domain + codomain | dependent pair type `Σ x:A. B` |
+| `Pair(a, b)` | both components | pair constructor `(a, b)` |
+| `Fst(p)` | the pair | first projection |
+| `Snd(p)` | the pair | second projection |
+| `Id { ty, lhs, rhs }` | carrier + endpoints | identity type `Id(A, a, b)` |
+| `Refl(value)` | the value | reflexivity proof `refl a` |
+| `J { motive, base, scrutinee }` | predicate + base case + path | path induction |
+
+### 3.0 Universe polymorphism — Level expressions
+
+Universes are not a flat `u32` ladder; the carrier is a structured
+`Level` expression supporting universe-polymorphic schemas:
+
+```rust
+pub enum Level {
+    Concrete(u32),                   // closed level Type@n
+    Var(String),                     // universe variable Type@u
+    Succ(Box<Level>),                // l + 1
+    Max(Box<Level>, Box<Level>),     // max(l1, l2)
+}
+```
+
+Equality on levels is decided by canonical normalisation
+(idempotency `max(x, x) = x`; identity `max(0, x) = x`;
+common-Succ factoring `max(succ a, succ b) = succ(max a b)`;
+flatten + sort + dedupe `Max` summands). The procedure is
+**sound** (no false positives) and **complete on closed levels**
+(every closed level reduces to a single `Concrete`); on open
+levels with the same canonical form it is decidable, conservative
+on structurally-distinct expressions over the same variables.
+
+A polymorphic schema `λ(A : Type@u). λ(x : A). x` typechecks at
+`Π(A : Type@u). Π(_ : A). A` for every level variable `u` —
+the kernel never needs to instantiate `u`.
+
+`Concrete(u32::MAX)` has no successor, so `Universe(Concrete(MAX))`
+is rejected with `UniverseOverflow` rather than wrapping to
+`Universe(Concrete(0))` (the unsound corner that DEFECT-2 closed).
 
 The kernel exposes a bidirectional API: `infer` synthesises a
 type for a term in a context; `check` verifies that a term has
 a given type. Together they implement the full type-checking
-discipline of the six rules.
+discipline of the thirteen rules.
 
 ### 3.1 What this layer DOES NOT do
 
@@ -144,17 +195,42 @@ A deliberate scope restriction. The trusted base does NOT:
 
 - Type-check refinement types (`Int { p }` requires SMT — handled
   by the broader infrastructure, not the trusted base).
-- Decide propositional equality up to η beyond α + β.
+- Decide propositional equality up to η beyond α + β + ι.
+- Type-check cubical primitives (HComp / Transp / Glue) — those
+  layer above the trusted base via the broader kernel's rule set.
 - Inspect `@framework`-cited axioms (those are leaves the
   apply-graph audit handles).
-- Aspire to feature parity with Coq's `coqchk` — it aspires to
-  feature parity with HOL Light's kernel: minimal, exhaustive,
-  hand-readable.
+- Inductive types beyond Σ — booleans, naturals, lists, etc. are
+  Church-encoded via Π or admitted by `kernel_v0` axioms; native
+  inductives are a future extension.
 
 The trade-off is deliberate. A wider kernel admits more programs
 directly; a narrower kernel makes the *surface a reviewer must
-audit* smaller. Verum chooses the narrower kernel and lifts the
-broader features to user-side discharge mechanisms.
+audit* smaller. Verum balances the trade-off by including Π / Σ /
+Id (the foundational equality type former) — sufficient to encode
+every "exists" proposition and every transport/symm/trans/cong
+proof — while leaving cubical / inductive / refinement to the
+broader infrastructure.
+
+### 3.1a Derived constructions in the trusted base
+
+With Π / Σ / Id all kernel-checkable, the following are derivable
+without any further rule additions:
+
+- **Conjunction** as `Σ x:A. B` (non-dependent Σ)
+- **Existential** as `Σ x:A. P x` (dependent Σ)
+- **Symmetry** of equality: `J(λx. Id(A, x, a), refl_a, p)` has
+  type `Id(A, b, a)` given `p : Id(A, a, b)`
+- **Transitivity** as nested `J`
+- **Transport** along a path: `J(λx. P x, h, p)` carries
+  `h : P a` to a value of type `P b`
+- **Congruence** of `f`: motive `λx. Id(B, f(a), f(x))` discharged
+  by `J` at `refl_(f(a))`
+- **Function extensionality** (with Π and Id) — an axiom in this
+  fragment, but provable in the cubical extension layered above
+
+These derivations are kernel-checked once the user names them; the
+trusted base does not need to recognise them syntactically.
 
 ### 3.2 The `Certificate` lifecycle at this layer
 

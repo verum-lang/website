@@ -94,11 +94,11 @@ battery automatically adds it to the fuzz seed roster.
 
 | Mutation | What it does | Typical effect |
 |----------|--------------|----------------|
-| `LiftAllUniverses { delta }` | Add `delta` to every `Universe(n)` in BOTH term and type | Usually preserves typeability (cumulativity test) |
+| `LiftAllUniverses { delta }` | Add `delta` to every `Universe(level)` in BOTH term and type, walking through `Concrete` summands of `Level::Succ`/`Max` | Usually preserves typeability (cumulativity test) |
 | `LiftTermUniversesOnly` | Lift only term-side universes | Usually breaks — both kernels MUST reject identically |
 | `LiftClaimedTypeUniversesOnly` | Lift only type-side universes | Usually breaks — same |
-| `ReplaceTermWithUniverseZero` | Replace term with `Universe(0)` | Usually breaks |
-| `ReplaceClaimedTypeWithUniverseZero` | Replace type with `Universe(0)` | Usually breaks |
+| `ReplaceTermWithUniverseZero` | Replace term with `Universe(Concrete(0))` | Usually breaks |
+| `ReplaceClaimedTypeWithUniverseZero` | Replace type with `Universe(Concrete(0))` | Usually breaks |
 | `ReplaceTermWithFreeVariable { idx }` | Replace term with `Var(idx)` (free in empty ctx) | MUST reject as `UnboundVariable` |
 | `AppToNonFunction` | Wrap term in `App(term, Universe(0))` | MUST reject (App on non-function) |
 | `WrapTermInExtraLam { domain }` | Wrap term in extra lambda layer | Usually breaks (term type changes) |
