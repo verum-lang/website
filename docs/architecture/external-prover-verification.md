@@ -174,10 +174,16 @@ So `external-prover-replay` verifies:
      to verify a discharge.
 - ✅ The shape of `CoreTerm`, `CoreType`, `KernelRule` mirrors the
   kernel's data definitions exactly (encoder bug surface).
-- ❌ It does **not** verify that the 8 IOU rules are actually
-  sound with respect to a denotational model. That's a separate,
-  deeper effort tracked under "Kernel meta-theory in Mathlib" in
-  the verification roadmap.
+- ✅ The IOU axiom registry is currently **empty**
+  (`iou_axiom_specs()` returns `vec![]`) — every kernel rule has
+  been promoted from open IOU to either a structurally-premised
+  `Proved` constructor or a `DischargedByFramework` rule citing
+  a vetted upstream proof. See [framework axioms — IOU registry](/docs/verification/framework-axioms#the-iou-axiom-registry--kernel-rule-trust-extension)
+  for the full discharge protocol. The historical IOU enumeration
+  in §4 below is preserved as context — every entry there has
+  since been closed via the FV-9 → FV-18 discharge sequence; the
+  drift-check in `SoundnessExporter::drift_check` continues to
+  enforce the empty-registry invariant.
 
 For a complementary check that exercises the **runtime kernel** —
 not just the meta-theory shape — see [differential-lean-checker](./differential-lean-checker.md).
@@ -185,99 +191,90 @@ That gate runs a 24-cert battery through both the trusted-base
 kernel and the Lean ReferenceChecker and asserts cert-by-cert
 verdict agreement.
 
-## 4. The 8 outstanding IOUs
+## 4. Trust extension surface (steady state)
 
-Each IOU axiom names exactly the meta-theory it depends on. The
-audit's plain output enumerates every reason verbatim; here they
-group by category.
+The kernel's trust-extension surface used to admit a handful of
+**open IOU axioms** — kernel rules whose soundness lemma was
+exported as `axiom <Rule>_iou : Ctx → … → Prop` rather than
+proved structurally. After the FV-9 through FV-18 discharge
+sequence the registry is **empty**: `iou_axiom_specs()` returns
+`vec![]`, and every `KernelRule` carries either a `Proved` or
+`DischargedByFramework` status in `canonical_rules()`.
 
-### Cubical (4) — CCHM / HoTT mechanisation
+Each entry below names how the rule is currently discharged.
+The historical "open IOU" framing is preserved alongside, since
+the same shape would re-apply if a brand-new kernel rule were
+added that we hadn't yet proved (the registry would re-acquire
+an `Admitted` entry plus an `iou_axiom_specs` row, the
+`drift_check` would notice, and the audit gate would flip until
+the structural proof landed).
 
-`K_Path_Over_Form`, `K_HComp`, `K_Transp`, `K_Glue`
+### Cubical (CCHM / HoTT mechanisation)
 
-(Structural in the export: `K_Path_Ty_Form`, `K_Refl_Intro`.)
+* `K_Path_Ty_Form`, `K_Refl_Intro`, `K_Path_Over_Form`,
+  `K_HComp`, `K_Transp`, `K_Glue` — **all `Proved`**.
+  `K_Path_Over_Form` was the first cubical IOU closed (FV-15);
+  `K_HComp`, `K_Transp`, `K_Glue` were discharged together in
+  the FV-16 batch reusing the same structural-premises template;
+  the side conditions (CCHM regularity, Kan-filling
+  compatibility, univalence-via-Glue) are the kernel's input
+  contract — verified at runtime in `support.rs::normalize_core`
+  rather than re-proved in the soundness theorem.
 
-Discharge plan: port the cubical-type-theory chapter of
-[`agda/cubical`](https://github.com/agda/cubical) to a Lean 4
-fragment; or wait for `mathlib4`'s nascent CCHM port.
+### Refinement (predicate decidability at value)
 
-### Refinement (1) — predicate decidability at value
+* `K_Refine`, `K_Refine_Omega`, `K_Refine_Erase`,
+  `K_Refine_Intro` — **all `Proved`**. `K_Refine_Intro` was
+  closed in FV-13 with a 3-premise structural constructor
+  (`Typing Γ a base`, `Typing Γ base (Universe i)`,
+  `Typing Γ predicate (Pi x base (Universe 0))`).
+  Predicate-truth-at-the-introduced-value remains the kernel's
+  runtime contract (mirroring `K_Quot_Elim` discipline).
 
-`K_Refine_Intro`
+### Quotient (HIT)
 
-(Structural in the export: `K_Refine_Erase`, `K_Refine`,
-`K_Refine_Omega`.  The predicate is typed at
-`Pi x base (Universe 0)`, capturing the Bool-valued-predicate
-intent; the finite-universe bound `i : Nat` makes the
-ordinal-modal-depth-bound intent of `K_Refine_Omega` vacuous at
-the operational layer.)
+* `K_Quot_Form`, `K_Quot_Intro`, `K_Quot_Elim` — **all `Proved`**
+  with structural premises (scrutinee at the quotient, motive
+  at the dependent universe, case_fn at the dependent product).
+  The respect-of-equivalence side condition that mathlib's
+  `Quotient.lift` requires its caller to discharge externally
+  remains the kernel's input contract.
 
-Discharge plan for `K_Refine_Intro`: predicate-decidability-at-
-the-introduced-value requires an evaluation oracle (the rule
-needs `eval(predicate, a) = true`), which is fundamentally a
-Bool-equality side condition outside the structural-premises
-template.  Multi-day work to formalise an `eval` reduction
-relation that the soundness lemma can quantify over.
+### Inductive
 
-### Quotient (0) — fully empty bucket
+* `K_Inductive`, `K_Pos`, `K_Elim` — **all `Proved`**. `K_Elim`
+  uses the structural-premises template (mirroring
+  `K_Quot_Elim`); `K_Inductive` is premise-free at the export
+  layer — by the time the kernel sees an `Inductive_(path,
+  args)` term, the strict-positivity invariant has already been
+  verified at registration time by the `inductive` keyword
+  analogue.
 
-*All Quotient rules structural.*  `K_Quot_Form`, `K_Quot_Intro`,
-and `K_Quot_Elim` constructors take structural premises
-(scrutinee at the quotient, motive at the dependent universe,
-case_fn at the dependent product) directly.  The
-respect-of-equivalence side condition that mathlib's
-`Quotient.lift` requires its caller to discharge externally
-remains the kernel's input contract, audited at the Verum side
-via `verum audit --proof-honesty` rather than silently
-axiomatized in the export.
+### SMT / replay correctness
 
-### Inductive (0) — fully empty bucket
+* `K_Smt` — **`Proved`** (FV-17). Discharged via the structural
+  premise `T : Universe i ⇒ SmtProof solver_tag : T`; the
+  SMT-certificate replay is a kernel runtime contract enforced
+  by `replay_smt_cert`.
 
-*All Inductive rules structural.*  `K_Elim` uses the
-structural-premises template (mirroring `K_Quot_Elim`);
-`K_Inductive` is premise-free at the export layer — the rule's
-premise becomes "an in-scope `Inductive_(path, args)` lives in
-some `Universe i`", and the strict-positivity check is the
-kernel's input contract (the kernel's `inductive` keyword
-analogue verifies strict positivity at definition time,
-mirroring mathlib's discipline).  By the time we have an
-`Inductive_(...)` term in CoreTerm, the kernel has already
-verified the strict-positivity invariant.
+### Diakrisis (biadjunction + bridge-audit)
 
-### SMT/Axiom (1) — replay correctness
+* `K_Modal_Box`, `K_Modal_Diamond`, `K_Modal_Big_And`, `K_Shape`,
+  `K_Flat`, `K_Sharp`, `K_Universe_Ascent`, `K_Epsilon_Of`,
+  `K_Alpha_Of` — **all `Proved`** via the wrap-preserves-typing
+  template; the modal-depth recursion / cohesive adjunction
+  content is the kernel's input contract.
+* `K_Eps_Mu` — **`DischargedByFramework`** citing Mac Lane,
+  *Categories for the Working Mathematician*, Theorem IV.7.3
+  (biadjunction triangle identities).
+* `K_Round_Trip` — **`DischargedByFramework`** citing the
+  Verum-internal bridge-audit specification.
 
-`K_Smt`
-
-Discharge plan: state "every certificate the kernel's SMT-cert
-replay accepts denotes a well-typed CoreTerm derivation" as a
-Lean predicate over a model of SMT certificates.
-
-### Diakrisis (2) — biadjunction algebra + bridge-audit
-
-`K_Eps_Mu`, `K_Round_Trip`
-
-(Structural in the export: `K_Modal_Box`, `K_Modal_Diamond`,
-`K_Shape`, `K_Flat`, `K_Sharp` — wrap-preserves-typing
-constructors; the modal-depth recursion / cohesive adjunction
-content is the kernel's input contract.  `K_Universe_Ascent`
-collapses onto `T_univ` for u32-bounded universes.
-`K_Epsilon_Of` and `K_Alpha_Of` use the wrap-preserves-typing
-template (`Typing Γ inner T → Typing Γ (...) T`); the M ⊣ A
-unit/counit-law content is the kernel's input contract.
-`K_Modal_Big_And` is premise-free at the export layer;
-homogeneous-typed-components is the kernel's input contract,
-mirroring `K_Inductive`.)
-
-Discharge plan for the remaining 2: K_Eps_Mu's biadjunction
-relating articulation/enactment can't fold into structural
-premises without the rule degenerating to identity (the typing
-content alone doesn't capture the algebraic relationship).
-K_Round_Trip's bridge-audit completeness is fundamentally about
-the bridge mechanics producing a specific derivation; structural
-discharge would be vacuous.  Both depend on Schreiber DCCT
-(`schreiber_dcct` framework, 5 axioms in `core/math/frameworks/`),
-Shulman 2018 §3, and Lurie HTT — none has a mature mathlib port
-today.
+These nine `DischargedByFramework` entries (the seven structural
+mathlib4 rules — K_Pi_Form / K_Lam_Intro / K_App_Elim /
+K_Sigma_Form / K_Pair_Intro / K_Fst_Elim / K_Snd_Elim — plus
+K_Eps_Mu and K_Round_Trip) are exactly what
+`#print axioms kernel_soundness` enumerates.
 
 ## 5. Running locally
 

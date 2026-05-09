@@ -49,9 +49,17 @@ algorithmic slot — see
 ```
 
 The chain descends to `kernel_v0` and stops. `kernel_v0`'s
-soundness rests on a small set of *meta-theory IOUs* (named
-substitution-lemma, β-confluence, etc.) tracked by
-`verum audit --soundness-iou`.
+soundness once rested on a small set of open *meta-theory IOUs*
+(substitution-lemma, β-confluence, etc.); after the FV-9 → FV-18
+discharge sequence every IOU has been closed — six of the ten
+manifest rules are now `DischargedByFramework` (mathlib4 /
+lean4_stdlib citations) and four are structurally `Proved`. The
+audit-clean steady state is enumerable via
+`verum audit --trust-extension-report`. Any future kernel
+extension that re-introduces an `Admitted` rule re-acquires an
+`iou_axiom_specs` registry row, the `drift_check` notices, and
+the audit gate flips until the structural proof or framework
+citation lands.
 
 ## 2. The 10 minimal rules
 
@@ -70,8 +78,13 @@ substitution-lemma, β-confluence, etc.) tracked by
 
 Status reflects the broader 38-rule kernel-soundness corpus at
 `core/verify/kernel_soundness/`. **Four** of the ten are already
-proved structurally; **six** carry concrete meta-theory IOUs
-named in detail by the IOU dashboard.
+proved structurally; **six** are `DischargedByFramework` with
+cited upstream proofs (mathlib4 / lean4_stdlib). **Zero** rules
+sit at `Admitted` — both the kernel-v0 manifest's status table
+below AND the broader 38-rule registry have an empty
+`iou_axiom_specs()` (FV-17 endgame). See
+[framework axioms — IOU registry](./framework-axioms.md#the-iou-axiom-registry--kernel-rule-trust-extension)
+for the discharge protocol.
 
 The audit gate `verum audit --kernel-v0-roster` walks the
 manifest and confirms every rule has its corresponding `.vr`
