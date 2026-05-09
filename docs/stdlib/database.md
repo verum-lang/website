@@ -578,14 +578,13 @@ Two CI guardrails enforce the most load-bearing invariants:
   makes a 4 × 4 KiB round-trip exceed the 30 s test timeout.
   Single-page round-trip (`page_roundtrip.vr`) runs in ~7 s.
 
-* **`PosixVfs`** — production-ready as of commit 919a69d0 (real-DB
-  paths route through `safe_open_raw` to bypass a Tier-0 interpreter
-  recursion in `&[Byte]` parameter coercion).  All 5 critical L0
-  primitives (`random_bytes`, `current_time`, `file_size`,
-  `truncate`, `access`) are wired to real syscalls;
-  `core.sys.locking` and `core.sys.durability` integration shipped
-  in commit 98b91213.  The shm path (`MappedFileShm`) for cross-
-  process WAL-index remains pending.
+* **`PosixVfs`** — production-ready: real-DB paths route through
+  `safe_open_raw` to bypass a Tier-0 interpreter recursion in
+  `&[Byte]` parameter coercion. All 5 critical L0 primitives
+  (`random_bytes`, `current_time`, `file_size`, `truncate`,
+  `access`) are wired to real syscalls; `core.sys.locking` and
+  `core.sys.durability` integration is in place. The shm path
+  (`MappedFileShm`) for cross-process WAL-index remains pending.
 
 * **File-format parity with C-SQLite** — diagnostic harness in
   `internal/diag/sqlite-real/` (gitignored) opens real SQLite 3.x
