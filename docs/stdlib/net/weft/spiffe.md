@@ -11,7 +11,7 @@ mTLS, JWT-SVID for HTTP-auth. Rotation through a SPIRE agent
 (default TTL 1 hour, refresh at half-TTL). Verum 2026 datacenter
 default: mTLS everywhere with workload-identity-as-principal.
 
-Source: `core/net/weft/spiffe.vr` (281 LOC).
+Source: `core/net/weft/spiffe.vr`.
 
 ## `Principal` — the authenticated identity context
 

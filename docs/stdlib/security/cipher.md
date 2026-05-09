@@ -454,8 +454,8 @@ block =
 
 | File | Role |
 |---|---|
-| `core/security/cipher/aes.vr` | AES-128 + AES-256 core — ~410 LOC |
-| `core/security/cipher/chacha20.vr` | ChaCha20 block + XOR stream — ~205 LOC |
+| `core/security/cipher/aes.vr` | AES-128 + AES-256 core |
+| `core/security/cipher/chacha20.vr` | ChaCha20 block + XOR stream |
 
 ## Related modules
 

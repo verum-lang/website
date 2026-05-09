@@ -535,8 +535,8 @@ updates.
 
 | File | Role |
 |---|---|
-| `core/security/pq/ml_kem.vr`       | ML-KEM-512/768/1024 — ~130 LOC |
-| `core/security/pq/ml_dsa.vr`       | ML-DSA-44/65/87 — ~120 LOC |
+| `core/security/pq/ml_kem.vr`       | ML-KEM-512/768/1024 |
+| `core/security/pq/ml_dsa.vr`       | ML-DSA-44/65/87 |
 | `core/security/pq/sphincs_plus.vr` | SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} — 12 parameter sets |
 | `core/security/pq/mod.vr`          | Public re-exports |
 

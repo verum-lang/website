@@ -87,7 +87,7 @@ durable-byte-storage protocol.  Everything above L0 only ever talks to
 `VfsProtocol`.  This layer does NOT know about pages, transactions,
 or SQL — only files and bytes.
 
-**Files.** `core/database/sqlite/native/l0_vfs/` (9 files, 2.5 KLOC).
+**Files.** `core/database/sqlite/native/l0_vfs/` (9 files).
 
 | File | Purpose |
 |------|---------|
@@ -126,7 +126,7 @@ keeps them for the connection's lifetime.
 *pages*.  Owns the page cache, the WAL or rollback journal, and the
 checkpoint loop.  Everything above L1 sees pages — never bytes.
 
-**Files.** `core/database/sqlite/native/l1_pager/` (12 files, 2.4 KLOC).
+**Files.** `core/database/sqlite/native/l1_pager/` (12 files).
 
 | File | Purpose |
 |------|---------|
@@ -165,7 +165,7 @@ arranges pages into b-trees.
 sequence of bytes and produces a list of typed register values; writes
 them back.
 
-**Files.** `core/database/sqlite/native/l2_record/` (7 files, 1.0 KLOC).
+**Files.** `core/database/sqlite/native/l2_record/` (7 files).
 
 | File | Purpose |
 |------|---------|
@@ -199,7 +199,7 @@ them back.
 Owns cursors that scan forward / backward / seek by key, plus the
 balance algorithm that splits and merges pages on insert/delete.
 
-**Files.** `core/database/sqlite/native/l3_btree/` (7 files, 1.4 KLOC).
+**Files.** `core/database/sqlite/native/l3_btree/` (7 files).
 
 | File | Purpose |
 |------|---------|
@@ -234,7 +234,7 @@ register-SSA virtual machine with **97 opcodes** (vs 147 in C-SQLite —
 the deltas are codepoints we don't yet generate, not opcodes that map
 to behaviour).
 
-**Files.** `core/database/sqlite/native/l4_vdbe/` (7 files, 3.2 KLOC).
+**Files.** `core/database/sqlite/native/l4_vdbe/` (7 files).
 
 | File | Purpose |
 |------|---------|
@@ -276,7 +276,7 @@ public type StepResult is
 six-pass pipeline: **lexer → parser → AST → resolver → planner →
 codegen**.
 
-**Files.** `core/database/sqlite/native/l5_sql/` (15 files, 7.5 KLOC).
+**Files.** `core/database/sqlite/native/l5_sql/` (15 files).
 
 | File | Purpose |
 |------|---------|
@@ -291,7 +291,7 @@ codegen**.
 | `parser/token_stream.vr` | Lookahead token cursor |
 | `resolver.vr` | Name resolution: column references, table aliases, schema lookup; produces fully-resolved AST with affinities and column types |
 | `planner.vr` | Cost-based planner.  Picks index vs scan, join order, materialisation strategy.  Mirrors catalogues [`where_loop_cost_model`](#), [`subquery_materialization_api`](#), [`automatic_index_pragma`](#) |
-| `codegen.vr` | The 2.5 KLOC code-emitter.  Walks the resolved AST and emits opcodes with relocatable jump targets |
+| `codegen.vr` | The code-emitter.  Walks the resolved AST and emits opcodes with relocatable jump targets |
 | `compile.vr` | Top-level pipeline driver — `compile(sql) → Result<Program, CompileError>` |
 | `mod.vr` | Public re-exports |
 
@@ -323,7 +323,7 @@ codegen**.
 **Responsibility.** Per-connection state — the open VFS file, pager
 handle, schema cache, transaction state, prepared-statement cache.
 
-**Files.** `core/database/sqlite/native/l6_session/` (5 files, 1.0 KLOC).
+**Files.** `core/database/sqlite/native/l6_session/` (5 files).
 
 | File | Purpose |
 |------|---------|
@@ -361,7 +361,7 @@ errors to user-facing `DbError`, holds capability gates
 `execute` / `query_first_row` / `query_all` shortcuts on top of the
 prepare-step-finalize cycle.
 
-**Files.** `core/database/sqlite/native/l7_api/` (7 files, ~1.9 KLOC).
+**Files.** `core/database/sqlite/native/l7_api/` (7 files).
 
 | File | Purpose |
 |------|---------|

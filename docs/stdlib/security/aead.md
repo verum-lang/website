@@ -493,8 +493,8 @@ QUIC on Android.
 
 | File | Role |
 |---|---|
-| `core/security/aead/aes_gcm.vr` | AES-128-GCM + AES-256-GCM — ~460 LOC |
-| `core/security/aead/chacha20_poly1305.vr` | ChaCha20-Poly1305 AEAD — ~190 LOC |
+| `core/security/aead/aes_gcm.vr` | AES-128-GCM + AES-256-GCM |
+| `core/security/aead/chacha20_poly1305.vr` | ChaCha20-Poly1305 AEAD |
 
 ## Related modules
 

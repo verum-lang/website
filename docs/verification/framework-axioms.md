@@ -209,6 +209,112 @@ This is the explicit counterpart to the implicit trust most proof
 assistants carry: axioms are **not** in the library by default; you
 have to register them, and every registration is enumerable.
 
+## The IOU axiom registry — kernel-rule trust extension
+
+`@framework` axioms above are *user-facing* mathematical postulates.
+There is a second, distinct trust-extension surface inside the
+kernel itself: the **IOU axiom registry**, which tracks how each
+of the kernel's own canonical inference rules is discharged.
+
+Every kernel rule (`K_Var`, `K_Pi_Form`, `K_Lam_Intro`,
+`K_App_Elim`, `K_Sigma_Form`, `K_Pair_Intro`, `K_Fst_Elim`,
+`K_Snd_Elim`, `K_Refine`, `K_Refine_Intro`, `K_Path_Ty_Form`,
+`K_Path_Over_Form`, `K_HComp`, `K_Transp`, `K_Glue`, `K_Quot_Form`,
+`K_Quot_Intro`, `K_Quot_Elim`, `K_Inductive_Form`,
+`K_Inductive_Elim`, `K_Eps_Mu`, `K_Round_Trip`, `K_Smt`, …) carries
+a [`LemmaStatus`](https://docs.rs/verum_kernel/) with one of three
+values:
+
+| Status | Meaning | Audit-clean? |
+|--------|---------|---|
+| **`Proved`** | A real proof exists in `proof_checker.rs`'s `Typing` constructor + `lean.rs` / `coq.rs` / `isabelle.rs` exporters | yes |
+| **`DischargedByFramework`** | Discharged by a vetted upstream proof (mathlib4, lean4_stdlib, CCHM, Mac Lane Theorem IV.7.3, etc.) with `lemma_path`, `framework`, `citation` fields | yes (L4-acceptable) |
+| **`Admitted`** | Open obligation — the rule's soundness lemma is `sorry` / `Admitted.` in the per-foundation export | no |
+
+**Current registry state**: every canonical kernel rule is
+either `Proved` (full structural proof in three foundations) or
+`DischargedByFramework` (cited upstream proof). **No rules sit
+at `Admitted`** — see
+`crates/verum_kernel/src/soundness/mod.rs::iou_axiom_specs()`,
+which returns `vec![]` (the architectural endgame for the FV-9
+through FV-18 IOU-discharge sequence). Adding a brand-new rule
+that we haven't yet proved is allowed (it lands as `Admitted`
+plus an `iou_axiom_specs` entry), but the audit gate flips to
+failure as soon as that happens — `Admitted` is never the
+steady-state.
+
+Consequently `#print axioms kernel_soundness` (Lean) /
+`Print Assumptions kernel_soundness.` (Coq) /
+`print_facts` (Isabelle) on the exported soundness theorem
+enumerates **exactly** the framework citations — every other
+constructor's discharge is structural.
+
+### The `--trust-extension-report` audit gate
+
+```bash
+$ verum audit --trust-extension-report
+Trust extension report
+────────────────────────────────────────
+
+  ▸ Proved:
+      K_Var, K_Universe, K_Pi_Form, K_Lam_Intro, K_App_Elim,
+      K_Sigma_Form, K_Pair_Intro, K_Fst_Elim, K_Snd_Elim,
+      K_Refine, K_Refine_Intro, K_Path_Ty_Form, K_Refl_Intro,
+      K_Path_Over_Form, K_HComp, K_Transp, K_Glue,
+      K_Quot_Form, K_Quot_Intro, K_Inductive_Form,
+      K_Inductive_Elim, …
+
+  ▸ DischargedByFramework:
+      · K_Pi_Form          mathlib4              CategoryTheory.Adjunction
+      · K_Lam_Intro        mathlib4              CategoryTheory.Adjunction
+      · K_App_Elim         mathlib4              CategoryTheory.Adjunction
+      · K_Sigma_Form       mathlib4              CategoryTheory.Limits.Sigma
+      · K_Pair_Intro       mathlib4              CategoryTheory.Limits.Sigma
+      · K_Fst_Elim         mathlib4              CategoryTheory.Limits.Sigma
+      · K_Snd_Elim         mathlib4              CategoryTheory.Limits.Sigma
+      · K_Eps_Mu           Mac Lane              Categories for the Working Mathematician, Theorem IV.7.3
+      · K_Round_Trip       Verum-internal        bridge-audit specification
+
+  ▸ Admitted:
+      (none — the IOU registry is empty)
+
+Trust extension surface: framework citations only; no open IOUs.
+```
+
+A new `Admitted` entry — i.e. a kernel rule whose soundness lemma
+is `sorry`-equivalent in the export — flips this gate to failure.
+The discipline ensures every load-bearing meta-theory dependency
+is enumerable from the kernel itself, with the same
+"`@framework(name, citation)` audit shape" as user-facing axioms.
+
+### Adding or rewinding an IOU
+
+Removing a `DischargedByFramework` entry by promoting it to
+`Proved` requires landing the corresponding structural proof in
+`proof_checker.rs`'s `Typing` inductive **and** the per-foundation
+exporters; the audit gate's `drift_check` cross-validates that
+the per-rule `LemmaStatus` in `mod.rs` agrees with both
+`canonical_rules()` and `iou_axiom_specs()`.
+
+Re-introducing an `Admitted` entry (when a brand-new kernel rule
+is added that we haven't yet proved) requires the inverse:
+register it in `iou_axiom_specs()` with its arity and citation
+comment, and revert the per-foundation `Typing` constructor's
+structural premises to the `IOU-hypothesis` form. The drift check
+catches half-completed transitions.
+
+### Three foundations agree
+
+The IOU registry status is **exported in lock-step** to all three
+foundations: Lean 4 (`verification/external/lean/`),
+Coq (`verification/external/coq/`), and Isabelle/HOL
+(`verification/external/isabelle/`). The export pipeline
+([three-kernel architecture](./two-kernel-architecture.md)) walks
+`iou_axiom_specs()` once and emits the same structured citation
+in each foundation's syntax. Cross-foundation disagreement on a
+rule's discharge status is structurally impossible — the registry
+*is* the single source of truth.
+
 ## Worked example — bridging two proof systems
 
 ```verum

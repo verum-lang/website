@@ -12,7 +12,7 @@ one and the same accept loop drives plain TCP (`Server<H>`),
 TLS-terminating (`TlsServer<H>`), and HTTP/2 cleartext upgrade
 (`Http2cRunner`) variants without duplicated code.
 
-Source: `core/net/weft/listener.vr` (309 LOC).
+Source: `core/net/weft/listener.vr`.
 
 ## `ListenerConfig`
 

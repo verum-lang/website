@@ -241,7 +241,7 @@ request-scope" — runtime arenas *implement* scopes, the calculus
 
 | File | Role |
 |---|---|
-| `core/security/regions.vr` | Tofte-Talpin calculus surface — ~160 LOC |
+| `core/security/regions.vr` | Tofte-Talpin calculus surface |
 
 ## Related modules
 

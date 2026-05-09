@@ -375,7 +375,7 @@ VCS discharge: `vcs/specs/L1-core/security/hmac_hkdf.vr`
 
 | File | Role |
 |---|---|
-| `core/security/kdf/hkdf.vr` | HKDF-SHA-{256, 384, 512}, ~260 LOC |
+| `core/security/kdf/hkdf.vr` | HKDF-SHA-{256, 384, 512} |
 
 ## Related modules
 

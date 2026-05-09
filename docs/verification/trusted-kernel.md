@@ -435,7 +435,12 @@ proofs of the simulation diagrams land.
 rules — K-Pi-Form, K-Lam-Intro, K-App-Elim, K-Beta, K-Eta,
 K-Sub — have already been promoted to `DischargedByFramework`
 with mathlib4 / lean4_stdlib citations, demonstrating the
-audit-clean discipline. See [kernel_v0](./kernel-v0.md) §7.)
+audit-clean discipline. See [kernel_v0](./kernel-v0.md) §7.
+The full kernel-rule registry now sits at **Proved +
+DischargedByFramework only** with the IOU axiom registry empty
+(`iou_axiom_specs()` returns `vec![]`); see
+[framework axioms](./framework-axioms.md#the-iou-axiom-registry--kernel-rule-trust-extension)
+for the discharge protocol.)
 
 ---
 

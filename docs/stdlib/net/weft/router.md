@@ -12,7 +12,7 @@ walks. It implements `Handler` itself, so a Router can be composed
 inside another Router via `.nest()`, can be wrapped in `.layer()`,
 and can serve as the root `WeftApp` handler.
 
-Source: `core/net/weft/router.vr` (367 LOC).
+Source: `core/net/weft/router.vr`.
 
 ## Path patterns
 

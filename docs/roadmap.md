@@ -38,9 +38,9 @@ Production-ready:
 - **VBC bytecode**: ~350 opcodes (primary + extended tables), full
   interpreter (37-file dispatch table), LLVM AOT path
   (0.85–0.95× of C), MLIR GPU path.
-- **Stdlib**: ~180 K lines of `.vr` across `core/` — `base`, `collections`,
-  `text`, `mem`, `async`, `sync`, `runtime`, `io`, `time`, `sys`,
-  `term`, `net`, `math`, `simd`, `meta`, `proof`,
+- **Stdlib**: a substantial `.vr` tree across `core/` — `base`,
+  `collections`, `text`, `mem`, `async`, `sync`, `runtime`, `io`,
+  `time`, `sys`, `term`, `net`, `math`, `simd`, `meta`, `proof`,
   `theory_interop`, `context`, `security`, foundations
   (`eval` / `control` / `concurrency` / `logic`).
 - **Single binary**: all tools ship in one `verum` executable — LSP

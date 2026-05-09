@@ -243,8 +243,9 @@ All of the above — tactics, SMT discharge, cubical reductions,
 framework axioms, derive-generated code — eventually produces a
 proof term. That proof term is re-checked by `verum_kernel`, the
 LCF-style kernel that is the **sole** trusted checker in Verum's
-stack. It targets under 5 000 lines of Rust at completion; today it
-is 1 180 lines with 30 unit tests pinning every typing rule.
+stack. It is held to a single-reviewer / single-session audit
+budget and ships an extensive lib-test suite pinning every
+typing rule.
 
 ```bash
 $ verum audit --framework-axioms    # enumerate the trusted boundary

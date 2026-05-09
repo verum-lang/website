@@ -11,7 +11,7 @@ TCP / TLS / vsock / UDS stream through the keep-alive loop until
 the client closes, the listener drains, or the cancellation token
 fires.
 
-Source: `core/net/weft/connection.vr` (458 LOC).
+Source: `core/net/weft/connection.vr`.
 
 ## `ConnectionConfig`
 

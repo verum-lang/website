@@ -514,7 +514,7 @@ to start with a clock > 5 min off.
 
 | File | Role |
 |---|---|
-| `core/security/spiffe/id.vr` | `SpiffeId` type — parse + validate — 167 LOC |
+| `core/security/spiffe/id.vr` | `SpiffeId` type — parse + validate |
 | `core/security/spiffe/svid.vr` | `X509Svid`, `JwtSvid`, bundles, responses |
 | `core/security/spiffe/workload_api.vr` | SPIRE Workload API client |
 | `core/security/spiffe/mod.vr` | Public re-exports |

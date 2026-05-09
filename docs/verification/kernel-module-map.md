@@ -8,10 +8,10 @@ slug: /verification/kernel-module-map
 # Kernel module map
 
 The `verum_kernel` crate is the trusted infrastructure for Verum's
-verification machinery. As of the current revision it ships **63
-modules**. This page is the canonical inventory: every module
-listed, what it does, which trust layer it sits on, and which
-audit gate consumes it.
+verification machinery. As of the current revision it ships **67
+top-level modules + an 11-file `soundness/` submodule**. This page
+is the canonical inventory: every module listed, what it does,
+which trust layer it sits on, and which audit gate consumes it.
 
 The discipline of an enumerable trust boundary cuts both ways:
 auditors get a complete map; new contributors learn the codebase
@@ -29,18 +29,20 @@ consume these modules see
 
 The minimum that must be trusted for soundness:
 
-| Module | LOC | Role |
-|--------|-----|------|
-| `proof_checker` | ~2.4K | **The trusted base (Algorithm A).** Extended-CoC checker (Π/Σ/Id with universe polymorphism) — 13 rules, bidirectional `infer` + `check`. |
-| `proof_checker_nbe` | ~713 | **Second algorithmic kernel (Algorithm B).** Normalisation-by-Evaluation for [differential testing](./two-kernel-architecture.md). |
-| `kernel_registry::KernelV0Kernel` | — | **Third algorithmic kernel (Algorithm C).** Manifest-driven bootstrap verifier — anchors structural type-check, manifest audit-cleanness, meta-soundness footprint, per-rule strict-intrinsic dispatch. |
-| `proof_checker_meta` | — | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). |
-| `term` | — | The `CoreTerm` data type — proof-term representation. |
-| `ctx` | — | Type-checking context (de Bruijn-indexed binders). |
-| `errors` | — | `CheckError` / `KernelError` — the kernel's error surface. |
-| `verdict` | — | `VerificationVerdict` + `DischargeMethod` (ATS-V foundation). |
+| Module | Role |
+|--------|------|
+| `proof_checker` | **The trusted base (Algorithm A).** Extended-CoC checker (Π/Σ/Id with universe polymorphism + the four DEFECT-{1,2,3,4} fixes) — 13 inference rules, bidirectional `infer` + `check`, fuel-bounded `whnf`, capture-avoiding `subst`. |
+| `proof_checker_nbe` | **Second algorithmic kernel (Algorithm B).** Normalisation-by-Evaluation with closures + level-indexed `quote`. Mirrors all four DEFECT fixes including `Neutral::NStuck` for the App-of-non-function gate. See [differential testing](./two-kernel-architecture.md). |
+| `kernel_registry::KernelV0Kernel` | **Third algorithmic kernel (Algorithm C).** Manifest-driven bootstrap verifier — anchors structural type-check, manifest audit-cleanness, meta-soundness footprint, per-rule strict-intrinsic dispatch. |
+| `proof_checker_meta` | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). Hosts the canonical `shift_universes` walker + the binding-site-correct `shift_universes_in_context`. |
+| `support` | The shared CoreTerm normaliser (`normalize_core` + `NormaliseCtx`), capture-avoiding `substitute`, definitional equality, the cubical face/interval markers, and the SMT-cert replay surface. Not Layer-A trusted in the Π/Σ/Id sense — but Layer-A trusted for **every** broader kernel rule that consumes a normaliser. |
+| `term` | The `CoreTerm` data type — proof-term representation. 32 constructors covering Π/Σ/Id + cubical (PathTy/Refl/PathOver/HComp/Transp/Glue) + refinement + quotient (HIT) + inductive + Diakrisis (ε/α/Modal*/Shape/Flat/Sharp). |
+| `ctx` | Type-checking context with `iter_outer_to_inner` raw-type API. |
+| `errors` | `CheckError` / `KernelError` — the kernel's error surface. |
+| `verdict` | `VerificationVerdict` + `DischargeMethod` (ATS-V foundation). |
+| `canonical_battery` | The 24-cert canonical battery — single source of truth shared by `verum audit --differential-kernel` (in-process N-kernel) and `--differential-lean-checker` (Rust ↔ Lean). Each `CanonicalCert` carries its own `expected_outcome` (no parallel lookup table). |
 
-These seven modules are the **trusted-base TCB**. A reviewer
+These nine modules are the **trusted-base TCB**. A reviewer
 auditing Verum's soundness reads these top-to-bottom; every
 other module either *cites* one of these or *consumes* its
 output without modifying its trust.
@@ -150,6 +152,30 @@ the [framework-axiom audit](./framework-axioms.md).
 | `eps_mu` | ε-μ-style coherence machinery. |
 | `depth` | M-iteration depth witnesses for K-Refine. |
 
+### 7a. The `soundness/` submodule
+
+The kernel exports a per-foundation soundness theorem to **three
+independent proof assistants** (Lean 4, Coq, Isabelle/HOL). The
+exporter lives in its own submodule:
+
+| Module | Role |
+|--------|------|
+| `soundness::mod` | The IOU axiom registry (`iou_axiom_specs`), the canonical 38-rule list (`canonical_rules`) with `LemmaStatus = Proved | DischargedByFramework | Admitted`, and the cross-foundation drift checker. Currently 29 Proved + 9 DischargedByFramework + 0 Admitted. |
+| `soundness::lean` | `LeanBackend` — emits `inductive Typing : Ctx → CoreTerm → CoreTerm → Prop` with structural per-rule constructors, plus the case-analysis `kernel_soundness` theorem. |
+| `soundness::coq` | `CoqBackend` — emits the same shape in Coq syntax, with `apply (T_var ...)` style lemma proofs. |
+| `soundness::isabelle` | `IsabelleBackend` — emits Isabelle/HOL `inductive Typing` with ⊢ turnstile syntax + per-rule `lemma … by (rule T_*)` proofs and the Π-form `Soundness :: KernelRule ⇒ bool` definition. |
+| `soundness::discharge_status` | The `DischargeStatus` / `LemmaStatus` ADT shared with `kernel_v0_manifest` and `codegen_attestation`. |
+| `soundness::kernel_v0_manifest` | The `kernel_v0` manifest verifier table (10 bootstrap rules: K-Var/K-Univ/K-Pi-Form/…). |
+| `soundness::apply_graph` | Apply-graph audit walker for `verum audit --apply-graph`. |
+| `soundness::corpus_export` | Per-foundation corpus serialiser. |
+| `soundness::expr_translate` + `soundness::proof_body_translate` | AST → per-foundation expression / tactic-script translators. |
+
+The trust-extension report (`verum audit --trust-extension-report`)
+walks `iou_axiom_specs()` and emits the structured Proved /
+DischargedByFramework / Admitted breakdown — see
+[framework axioms](./framework-axioms.md#the-iou-axiom-registry--kernel-rule-trust-extension)
+for the full discharge protocol.
+
 ---
 
 ## 8. Codegen-attestation
@@ -191,9 +217,12 @@ pipeline's soundness claims.
 
 | Module | Role |
 |--------|------|
-| `normalize_cache` | β-reduction memoisation cache for the trusted-base normaliser. |
-| `support` | Shared utilities (text, formatting, common types). |
+| `normalize_cache` | `StructuralHash` + β-reduction memoisation cache; the `definitional_eq` fast-path. |
 | `ordinal` | Ordinal-arithmetic primitives (used by `NuOrdinal` and the reflection tower). |
+
+(`support` was previously listed here; it is now in Layer A —
+the unified `normalize_core` driver makes it load-bearing for
+every kernel rule that consumes a normaliser.)
 
 ---
 
@@ -201,32 +230,35 @@ pipeline's soundness claims.
 
 | Module | Role |
 |--------|------|
-| `lib` | The crate's `lib.rs` — re-exports the public API and ships ~837 LOC of integration code (the `KERNEL_RULE_NAMES` constant, the public-API `KernelProofNode` re-export, the `record_inference` helper, etc). |
+| `lib` | The crate's `lib.rs` — re-exports the public API plus integration code (the `KERNEL_RULE_NAMES` constant, the public-API `KernelProofNode` re-export, the `record_inference` helper, etc). |
 
 ---
 
 ## 13. Module count summary
 
 ```
-Layer A — irreducible core              :  7 modules
+Layer A — irreducible core              : 10 modules
 Layer B — differential / registry       :  3 modules
-Layer C — meta-soundness                :  5 modules
-ATS-V                                   : 10 modules
+Layer C — meta-soundness                :  4 modules (includes proof_checker_meta)
+ATS-V                                   : 11 modules (incl. arch_capability_inference)
 Verification goals / dispatchers        :  6 modules
 Categorical infrastructure              : 14 modules
-Soundness adapters                      :  8 modules
+Soundness adapters                      :  8 modules + soundness/ submodule (11 files)
 Codegen attestation                     :  1 module
 Tactics / proof tree                    :  5 modules
 Round-trip / cross-format               :  2 modules
-Performance / caching                   :  3 modules
+Performance / caching                   :  2 modules
 Library entry point                     :  1 module (lib.rs)
                                         ─────
-                                          63 modules total (~58 KLOC)
+                                          78 files total
 ```
 
-The trusted-base subset (Layer A) is **&lt; 1500 LOC** — the
-auditor-readable irreducible core. Everything else either cites
-Layer A or consumes its output.
+The Layer A irreducible core (`proof_checker.rs` + the supporting
+`support.rs` driver that every kernel rule consumes for
+normalisation and definitional equality) is the auditor-readable
+trusted base. Everything else either cites Layer A or consumes
+its output. `cargo test -p verum_kernel --lib` pins an extensive
+lib-test suite plus integration tests against this boundary.
 
 ---
 

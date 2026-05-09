@@ -13,6 +13,22 @@ diagnostic. This page enumerates the soundness gates that guard each
 proof rule, what happens when the gate trips, and how to extend the
 gate set when adding a new rule.
 
+:::note Two distinct gate layers
+The gates documented here are the **`proof_validator` gates** —
+the high-level proof-tree checker that elaborates user-written
+tactics + structured proofs into kernel-checkable terms.
+
+There is a **second** soundness-gate layer inside the trusted
+kernel itself (`proof_checker.rs` + `proof_checker_nbe.rs` +
+`kernel_v0`): the four DEFECT fixes (η-completeness,
+universe-overflow, fuel-bounded `whnf`, claimed-type-is-a-type),
+the `Neutral::NStuck` App-of-non-function gate, and the
+unanimous-agreement contract enforced by the
+[three-kernel differential](../architecture/three-kernel-differential.md).
+A bug in either layer is independently caught — the two layers
+together implement the full soundness pipeline.
+:::
+
 The architectural rule across every gate is the same: **the
 validator never advances state from a proof term unless the term
 structurally corresponds to the goal it claims to discharge**.

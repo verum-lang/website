@@ -244,8 +244,9 @@ name, an obligation hash, and a trace of rule tags. The kernel:
 4. Returns the witness; the caller compares its hash to the
    obligation's expected hash before admitting the theorem.
 
-The kernel is the **single trusted component** — ~2 000 LOC of
-Rust, auditable, with zero calls back into user code. Everything
+The kernel is the **single trusted component** — a small,
+single-reviewer-audit-able Rust crate, with zero calls back into
+user code. Everything
 else — the SMT backends, the translator, the tactic engine,
 framework-axiom registries — sits outside the kernel's trust
 boundary. A lying solver cannot forge a theorem because the
@@ -670,7 +671,8 @@ part of the shipping release:
 - **Trusted-base kernel** — LCF-style core with allowlist-gated
   SMT proof-tree replay (28 the SMT backend rules + 29 ALETHE rules),
   hierarchical composition via `CoreTerm::App`, UIP rejection
-  for univalence preservation. Targeting &lt; 5 KLOC.
+  for univalence preservation. Held to a single-reviewer /
+  single-session audit budget.
 - **NbE kernel** — independent normalisation-by-evaluation
   implementation; differentially tested against the trusted base.
 - **Reflection tower (MSFS-grounded)** — four-stage

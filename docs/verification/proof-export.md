@@ -15,8 +15,8 @@ title: Proof Export
 Proof export turns a "Verum says this theorem is proved" claim
 into *"here is the proof; check it yourself"* — a social, not
 just technical, transition. When the exported proof re-verifies
-in Lean, the chain of trust extends from Verum's 2 000-LOC kernel
-through Lean's ~2 500-LOC kernel, providing independent
+in Lean, the chain of trust extends from Verum's small audit-able
+kernel through Lean's independent kernel, providing cross-language
 cross-validation.
 
 :::note
@@ -220,10 +220,10 @@ table below compares:
 
 | Target   | Proof checked by   | TCB delta                                         | Preserves framework deps? |
 |----------|--------------------|---------------------------------------------------|---------------------------|
-| Lean 4   | Lean kernel (~2 500 LOC) | Independent kernel; disagreement is a bug to file | Yes (as Lean `axiom`)     |
-| Coq      | Coq kernel (~15 000 LOC) | Independent kernel; HoTT layer imports plugin   | Yes (as Coq `Axiom`)      |
-| Dedukti  | `dkcheck` (~3 000 LOC) | Shallowest TCB; explicit rewrite rules           | Dependencies must be in scope |
-| Metamath | Metamath checker (~300 LOC) | Smallest kernel of any target                | Framework axioms emitted as Metamath `$a` statements |
+| Lean 4   | Lean kernel       | Independent kernel; disagreement is a bug to file | Yes (as Lean `axiom`)     |
+| Coq      | Coq kernel        | Independent kernel; HoTT layer imports plugin   | Yes (as Coq `Axiom`)      |
+| Dedukti  | `dkcheck`         | Shallowest TCB; explicit rewrite rules           | Dependencies must be in scope |
+| Metamath | Metamath checker  | Smallest kernel of any target                | Framework axioms emitted as Metamath `$a` statements |
 
 Pick Lean for the widest community of re-users, Coq for
 formalization-heavy contexts, Dedukti for SMT-heavy batches,

@@ -46,42 +46,42 @@ and validated by types at compile time.
 
 ## Module map
 
-| Module | File | LOC | Purpose |
-|---|---|---|---|
-| `service` | `core/net/weft/service.vr` | 60 | `Service<Req,Resp>` + `Layer<Inner>` + `ServiceBuilder<S>` + `Identity` layer. |
-| `error` | `core/net/weft/error.vr` | 261 | `IntoResponse` protocol, `WeftError` taxonomy, `WeftErrorCategory`, `ExtractRejection`. |
-| `response_ext` | `core/net/weft/response_ext.vr` | 101 | Response builders: `resp_status`, `resp_text`, `resp_with_header`, `resp_with_body_text`, `resp_ok`. |
-| `handler` | `core/net/weft/handler.vr` | 327 | `WeftRequest`, `Handler` protocol, extractors (`PathParam<T>`, `QueryParam<T>`, `BodyBytes`, `BodyText`), `ClosureHandler`. |
-| `json_extractor` | `core/net/weft/json_extractor.vr` | 417 | `Json<T>` extractor with five gates (content-type / size cap / UTF-8 / parse / materialise) plus `JsonDeserialize<T>` protocol. |
-| `router` | `core/net/weft/router.vr` | 367 | Radix-tree router: `route()`, `get()`, `post()`, `put()`, `delete()`, `patch()`, `nest()`, `fallback()`. |
-| `transport` | `core/net/weft/transport.vr` | 90 | `WeftTransport` byte-duplex protocol with blanket `TcpStream` impl. |
-| `connection` | `core/net/weft/connection.vr` | 458 | Per-connection HTTP/1.1 pipeline (keep-alive, chunked, drain, `serve_http1`). |
-| `listener` | `core/net/weft/listener.vr` | 309 | `Server<H>` plus accept loop, `ConnectionRunner` protocol, `PlainHttp1Runner`, `SO_REUSEPORT`, two-phase shutdown. |
-| `app` | `core/net/weft/app.vr` | 117 | `WeftApp.new(handler).bind(addr).serve()` plus `child_spec()` for supervisor integration. |
-| `tls` | `core/net/weft/tls.vr` | 224 | `TlsTransport` + `TlsHttp1Runner` + `Server<H>.serve_tls(cfg)`, zero crypto duplicated. |
-| `http2` | `core/net/weft/http2.vr` | 484 | `Http2Limits` (Rapid-Reset hard defaults), `Http2cRunner`, `Server.serve_h2c()`. |
-| `http3` | `core/net/weft/http3.vr` | 359 | `WeftQuicConfig`, `Http3WeftServer<H>`, post-quantum hybrid TLS defaults. |
-| `h3` | `core/net/weft/h3.vr` | 316 | WebTransport / Datagrams / Multipath QUIC server adapter. |
-| `h3_priority` | `core/net/weft/h3_priority.vr` | 122 | RFC 9218 Extensible Priorities — urgency 0..7 + incremental flag. |
-| `zero_rtt_gate` | `core/net/weft/zero_rtt_gate.vr` | 188 | 0-RTT replay-safe handler annotation enforcement (`@allow_0rtt(idempotent_only=true)`). |
-| `websocket` | `core/net/weft/websocket.vr` | 723 | RFC 6455 full handshake, CONT re-assembly, auto-PONG, Close-echo, `WsServer<H>`. |
-| `rpc` | `core/net/weft/rpc.vr` | 369 | Connect-RPC (wire-compatible with gRPC) — 17 status codes plus HTTP mapping plus `Router.rpc_unary()`. |
-| `arena_pool` | `core/net/weft/arena_pool.vr` | 270 | Per-request arena lease with RAII reset-on-drop; CBGR-backed O(1) generational invalidation. |
-| `bufpool` | `core/net/weft/bufpool.vr` | 344 | Buffer pool shaped for io_uring registered-buffer optimisation (runtime intrinsic is a follow-up). |
-| `backpressure` | `core/net/weft/backpressure.vr` | 517 | `ConcurrencyLimitLayer`, `RateLimitLayer`, `LoadShedLayer`, `CoDelLayer` (sojourn-time admission), tenant-fair WFQ. |
-| `adaptive` | `core/net/weft/adaptive.vr` | 184 | `AdaptiveConcurrencyLayer` — Vegas algorithm port. |
-| `timeout` | `core/net/weft/timeout.vr` | 89 | `TimeoutLayer.ms(N)` per-request deadline propagation. |
-| `tracing` | `core/net/weft/tracing.vr` | 217 | W3C Trace Context propagation, `TracingLayer`. |
-| `metrics` | `core/net/weft/metrics.vr` | 271 | Prometheus-text registry, standard RPS / latency-histogram / connection-count metrics. |
-| `metrics_otlp` | `core/net/weft/metrics_otlp.vr` | 540 | OTLP/gRPC + OTLP/HTTP+JSON push exporter, tail-based sampling hooks, exemplar attach. |
-| `health` | `core/net/weft/health.vr` | 226 | `/_health/live` + `/_health/ready` plus supervisor-state probe and dep-readiness aggregator. |
-| `refined_routes` | `core/net/weft/refined_routes.vr` | 169 | `PathRefinement<T>` plus factories (`int_between`, `text_one_of`, `slug`); bridge to the language refinement system. |
-| `spiffe` | `core/net/weft/spiffe.vr` | 281 | `Principal`, `SpiffeAuthLayer<P>` (JWT / mTLS), `TrustBundleProvider`. |
-| `dst` | `core/net/weft/dst.vr` | 418 | Deterministic Simulation Testing primitives — `TestClock`, `SeededRng`, `SimNetworkConfig`, `TaskSchedule`, `WeftSimulator`. |
-| `wasm_filter` | `core/net/weft/wasm_filter.vr` | 327 | Proxy-Wasm 0.2.1 sandbox plus `WasmCapabilities` plus CPU / memory / instruction caps. |
+| Module | File | Purpose |
+|---|---|---|
+| `service` | `core/net/weft/service.vr` | `Service<Req,Resp>` + `Layer<Inner>` + `ServiceBuilder<S>` + `Identity` layer. |
+| `error` | `core/net/weft/error.vr` | `IntoResponse` protocol, `WeftError` taxonomy, `WeftErrorCategory`, `ExtractRejection`. |
+| `response_ext` | `core/net/weft/response_ext.vr` | Response builders: `resp_status`, `resp_text`, `resp_with_header`, `resp_with_body_text`, `resp_ok`. |
+| `handler` | `core/net/weft/handler.vr` | `WeftRequest`, `Handler` protocol, extractors (`PathParam<T>`, `QueryParam<T>`, `BodyBytes`, `BodyText`), `ClosureHandler`. |
+| `json_extractor` | `core/net/weft/json_extractor.vr` | `Json<T>` extractor with five gates (content-type / size cap / UTF-8 / parse / materialise) plus `JsonDeserialize<T>` protocol. |
+| `router` | `core/net/weft/router.vr` | Radix-tree router: `route()`, `get()`, `post()`, `put()`, `delete()`, `patch()`, `nest()`, `fallback()`. |
+| `transport` | `core/net/weft/transport.vr` | `WeftTransport` byte-duplex protocol with blanket `TcpStream` impl. |
+| `connection` | `core/net/weft/connection.vr` | Per-connection HTTP/1.1 pipeline (keep-alive, chunked, drain, `serve_http1`). |
+| `listener` | `core/net/weft/listener.vr` | `Server<H>` plus accept loop, `ConnectionRunner` protocol, `PlainHttp1Runner`, `SO_REUSEPORT`, two-phase shutdown. |
+| `app` | `core/net/weft/app.vr` | `WeftApp.new(handler).bind(addr).serve()` plus `child_spec()` for supervisor integration. |
+| `tls` | `core/net/weft/tls.vr` | `TlsTransport` + `TlsHttp1Runner` + `Server<H>.serve_tls(cfg)`, zero crypto duplicated. |
+| `http2` | `core/net/weft/http2.vr` | `Http2Limits` (Rapid-Reset hard defaults), `Http2cRunner`, `Server.serve_h2c()`. |
+| `http3` | `core/net/weft/http3.vr` | `WeftQuicConfig`, `Http3WeftServer<H>`, post-quantum hybrid TLS defaults. |
+| `h3` | `core/net/weft/h3.vr` | WebTransport / Datagrams / Multipath QUIC server adapter. |
+| `h3_priority` | `core/net/weft/h3_priority.vr` | RFC 9218 Extensible Priorities — urgency 0..7 + incremental flag. |
+| `zero_rtt_gate` | `core/net/weft/zero_rtt_gate.vr` | 0-RTT replay-safe handler annotation enforcement (`@allow_0rtt(idempotent_only=true)`). |
+| `websocket` | `core/net/weft/websocket.vr` | RFC 6455 full handshake, CONT re-assembly, auto-PONG, Close-echo, `WsServer<H>`. |
+| `rpc` | `core/net/weft/rpc.vr` | Connect-RPC (wire-compatible with gRPC) — 17 status codes plus HTTP mapping plus `Router.rpc_unary()`. |
+| `arena_pool` | `core/net/weft/arena_pool.vr` | Per-request arena lease with RAII reset-on-drop; CBGR-backed O(1) generational invalidation. |
+| `bufpool` | `core/net/weft/bufpool.vr` | Buffer pool shaped for io_uring registered-buffer optimisation (runtime intrinsic is a follow-up). |
+| `backpressure` | `core/net/weft/backpressure.vr` | `ConcurrencyLimitLayer`, `RateLimitLayer`, `LoadShedLayer`, `CoDelLayer` (sojourn-time admission), tenant-fair WFQ. |
+| `adaptive` | `core/net/weft/adaptive.vr` | `AdaptiveConcurrencyLayer` — Vegas algorithm port. |
+| `timeout` | `core/net/weft/timeout.vr` | `TimeoutLayer.ms(N)` per-request deadline propagation. |
+| `tracing` | `core/net/weft/tracing.vr` | W3C Trace Context propagation, `TracingLayer`. |
+| `metrics` | `core/net/weft/metrics.vr` | Prometheus-text registry, standard RPS / latency-histogram / connection-count metrics. |
+| `metrics_otlp` | `core/net/weft/metrics_otlp.vr` | OTLP/gRPC + OTLP/HTTP+JSON push exporter, tail-based sampling hooks, exemplar attach. |
+| `health` | `core/net/weft/health.vr` | `/_health/live` + `/_health/ready` plus supervisor-state probe and dep-readiness aggregator. |
+| `refined_routes` | `core/net/weft/refined_routes.vr` | `PathRefinement<T>` plus factories (`int_between`, `text_one_of`, `slug`); bridge to the language refinement system. |
+| `spiffe` | `core/net/weft/spiffe.vr` | `Principal`, `SpiffeAuthLayer<P>` (JWT / mTLS), `TrustBundleProvider`. |
+| `dst` | `core/net/weft/dst.vr` | Deterministic Simulation Testing primitives — `TestClock`, `SeededRng`, `SimNetworkConfig`, `TaskSchedule`, `WeftSimulator`. |
+| `wasm_filter` | `core/net/weft/wasm_filter.vr` | Proxy-Wasm 0.2.1 sandbox plus `WasmCapabilities` plus CPU / memory / instruction caps. |
 
-**Total:** 32 modules, ~10,000 LOC. Plus `core/net/proxy/` (L7
-reverse-proxy kit) — another ~1,600 LOC.
+**Total:** 32 weft modules, plus `core/net/proxy/` — the L7
+reverse-proxy kit (see below).
 
 ## `core.net.proxy` — L7 reverse-proxy kit
 

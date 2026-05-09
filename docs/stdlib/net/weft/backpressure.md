@@ -11,9 +11,9 @@ typed and explicit.
 
 Sources:
 
-- `core/net/weft/backpressure.vr` (517 LOC) — fixed-limit layers and
+- `core/net/weft/backpressure.vr` — fixed-limit layers and
   CoDel sojourn-time admission.
-- `core/net/weft/adaptive.vr` (184 LOC) — Vegas adaptive
+- `core/net/weft/adaptive.vr` — Vegas adaptive
   concurrency.
 
 ## Three-axis model

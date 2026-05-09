@@ -497,19 +497,19 @@ exercised; ~503 such smokes are green at HEAD.
 
 ## Layer-by-layer file inventory
 
-| Layer | Files | LOC | Highlights |
-|-------|-------|-----|-----------|
-| **L0 VFS**       | 9   | 2,573  | `posix_vfs.vr`, `memdb_vfs.vr`, `mock_vfs.vr`, `locking.vr`, `shm.vr`, `clock.vr`, `registry.vr` |
-| **L1 Pager**     | 12  | 2,436  | `pager.vr`, `actor.vr`, `page_cache.vr`, `db_header.vr`, `recovery.vr`, `checkpointer.vr`, `journal/` |
-| **L2 Record**    | 7   | 1,060  | `record.vr`, `varint.vr`, `affinity.vr`, `collation.vr`, `type_coercion.vr`, `strict.vr` |
-| **L3 B-tree**    | 7   | 1,421  | `btree.vr`, `cursor.vr`, `balance.vr`, `overflow.vr`, `page_layout.vr`, `integrity.vr` |
-| **L4 VDBE**      | 7   | 3,203  | `interpreter.vr`, `opcode.vr`, `program.vr`, `register.vr`, `optimizer.vr`, `cursor_table.vr` |
-| **L5 SQL**       | 15  | 7,519  | `lexer.vr`, `parser/`, `ast.vr`, `resolver.vr`, `planner.vr`, `codegen.vr`, `compile.vr` |
-| **L6 Session**   | 5   | 977    | `connection.vr`, `statement.vr`, `schema_cache.vr`, `bridge.vr` |
-| **L7 API**       | 2   | 329    | `database.vr` |
+| Layer | Files | Highlights |
+|-------|-------|-----------|
+| **L0 VFS**       | 9   | `posix_vfs.vr`, `memdb_vfs.vr`, `mock_vfs.vr`, `locking.vr`, `shm.vr`, `clock.vr`, `registry.vr` |
+| **L1 Pager**     | 12  | `pager.vr`, `actor.vr`, `page_cache.vr`, `db_header.vr`, `recovery.vr`, `checkpointer.vr`, `journal/` |
+| **L2 Record**    | 7   | `record.vr`, `varint.vr`, `affinity.vr`, `collation.vr`, `type_coercion.vr`, `strict.vr` |
+| **L3 B-tree**    | 7   | `btree.vr`, `cursor.vr`, `balance.vr`, `overflow.vr`, `page_layout.vr`, `integrity.vr` |
+| **L4 VDBE**      | 7   | `interpreter.vr`, `opcode.vr`, `program.vr`, `register.vr`, `optimizer.vr`, `cursor_table.vr` |
+| **L5 SQL**       | 15  | `lexer.vr`, `parser/`, `ast.vr`, `resolver.vr`, `planner.vr`, `codegen.vr`, `compile.vr` |
+| **L6 Session**   | 5   | `connection.vr`, `statement.vr`, `schema_cache.vr`, `bridge.vr` |
+| **L7 API**       | 2   | `database.vr` |
 
-Total engine: ~62 files, ~19.5 KLOC.  Total tree (engine + catalogues
-+ helpers): **1,382 files, 106,975 LOC**.
+Engine totals to roughly 62 files; including catalogues and
+helpers the full SQLite-compatible tree is ~1,400 files.
 
 ## Naming conventions
 
@@ -546,7 +546,7 @@ when any reserved name is redefined.
 
 | Surface | Coverage |
 |---------|----------|
-| Catalogues / typed surface | 1,398 `.vr` files, 108.5 KLOC, ~368 catalogue modules across 8 engine layers; 511 `@test: typecheck-pass` smokes green |
+| Catalogues / typed surface | ~1,400 `.vr` files, ~368 catalogue modules across 8 engine layers; 511 `@test: typecheck-pass` smokes green |
 | Runtime conformance tests | 5 `@test: run-*` smokes:  `l0_vfs/memdb_open_write_read.vr`, `l1_pager/page_roundtrip.vr`, `l2_record/varint_roundtrip.vr`, `l2_record/crc32_vectors.vr`, `_codegen_regressions/result_match_stdlib_l6_open_memory.vr` |
 | Differential corpus vs C-SQLite | 4 SQL fixtures in `vcs/differential/sqlite/cross-impl/sql/` (`create+insert+select`, `transaction`, `join+aggregate`, `window+cte`); driver in `vcs/differential/sqlite/compare.sh` |
 | Performance benchmarks | 1 macro fixture in `vcs/benchmarks/macro/db_query.vr` |

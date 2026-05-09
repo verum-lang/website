@@ -15,9 +15,10 @@ Verum kernel ships.
 
 The architectural role is **self-hosting** — at completion,
 the kernel's logic is *fixed-point compilable by Verum itself*,
-shrinking the trusted base from ~800 LOC to a ~100 LOC
-bootstrap shim. This is the **Milawa pattern**: kernel(N+1)
-verified by kernel(N), descending to a tiny bootstrap.
+shrinking the trusted base to a tiny bootstrap shim that the
+host language only has to read end-to-end. This is the **Milawa
+pattern**: kernel(N+1) verified by kernel(N), descending to a
+tiny bootstrap.
 
 For the layered three-rule-tier architecture see
 [Trusted kernel](./trusted-kernel.md). For the three-kernel

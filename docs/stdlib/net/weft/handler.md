@@ -10,8 +10,8 @@ The handler layer is what makes Weft's developer ergonomics
 indistinguishable from popular axum-style frameworks, while the
 type system makes it impossibly safer.
 
-Sources: `core/net/weft/handler.vr` (327 LOC),
-`core/net/weft/json_extractor.vr` (417 LOC).
+Sources: `core/net/weft/handler.vr`,
+`core/net/weft/json_extractor.vr`.
 
 ## `WeftRequest` — server-side enriched request
 

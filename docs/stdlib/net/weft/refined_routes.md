@@ -29,7 +29,7 @@ compatible with the URL pattern's refinement. Handler authors write
 `Path<UserId>` and the compiler proves the value reaching the handler
 satisfies the refinement.
 
-Source: `core/net/weft/refined_routes.vr` (169 LOC).
+Source: `core/net/weft/refined_routes.vr`.
 
 ## `PathRefinement<T>` — the bridge
 

@@ -182,8 +182,8 @@ The migration is **substantially complete**.
 
 | Surface                              | Notes |
 |--------------------------------------|-------|
-| `freeaddrinfo` / `getaddrinfo` (DNS) | Replacement strategy: Verum-native UDP DNS resolver against `/etc/resolv.conf`.  ~500 LOC standalone task. **Deferred.** |
-| `verum_vbc::ffi::*` (libffi paths)   | Replace libffi with `__sys_*_raw` intrinsics.  ~1000 LOC across `verum_vbc/src/ffi/platform/{linux,darwin}.rs`.  **Deferred.** |
+| `freeaddrinfo` / `getaddrinfo` (DNS) | Replacement strategy: Verum-native UDP DNS resolver against `/etc/resolv.conf`.  Standalone task. **Deferred.** |
+| `verum_vbc::ffi::*` (libffi paths)   | Replace libffi with `__sys_*_raw` intrinsics under `verum_vbc/src/ffi/platform/{linux,darwin}.rs`.  **Deferred.** |
 | `setjmp` / `longjmp` (exception unwinding, Linux body only) | Cross-compile fix landed; Linux body needs `llvm.eh.sjlj.setjmp`. **Open.** |
 | `printf` in `Debug` opcode helper    | Internal-only debug helper; route through `verum_internal_puts` + Verum's number-to-text helpers. **Open — debug only.** |
 

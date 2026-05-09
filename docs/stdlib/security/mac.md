@@ -369,8 +369,8 @@ tag  = a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9
 
 | File | Role |
 |---|---|
-| `core/security/mac/hmac.vr` | HMAC-SHA-{256, 384, 512} — ~260 LOC |
-| `core/security/mac/poly1305.vr` | Poly1305 — ~340 LOC |
+| `core/security/mac/hmac.vr` | HMAC-SHA-{256, 384, 512} |
+| `core/security/mac/poly1305.vr` | Poly1305 |
 
 ## Related modules
 

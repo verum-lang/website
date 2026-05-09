@@ -14,7 +14,7 @@ count, and Antithesis's commercial deterministic hypervisor.
 For a verifiable-by-construction framework like Weft, SMT catches
 implementation bugs and DST catches logic bugs in the specification.
 
-Source: `core/net/weft/dst.vr` (418 LOC).
+Source: `core/net/weft/dst.vr`.
 
 ## Why DST?
 

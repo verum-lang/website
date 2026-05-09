@@ -133,18 +133,30 @@ public axiom ua<A, B>(e: Equiv<A, B>) -> Path<Type>(A, B);
 Because `ua` is an axiom rather than a meta-intrinsic, every use of
 it is visible to `verum audit --framework-axioms` tooling at the
 proof-corpus level. With a concrete equivalence, transport along
-`ua(e)` reduces by the cubical normaliser's rules (five of them,
+`ua(e)` reduces by the cubical normaliser's rules (eight of them,
 implemented in `verum_smt/src/cubical_tactic.rs`):
 
 ```verum
 let p = ua(int_to_nat_equiv);
 let n: Nat = transport(p, 42);
-// transport(ua(e), x)        ↦ e.forward(x)
-// transport(sym(ua(e)), x)   ↦ e.inverse(x)
-// transport(refl, x)         ↦ x
-// hcomp(φ, const, base)      ↦ base
-// Path(i, body)[endpoint]    ↦ body[i/endpoint]
+// 1. transport(refl, x)        ↦ x
+// 2. transport(ua(e), x)       ↦ e.fwd(x)
+// 3. transport(sym(ua(e)), x)  ↦ e.bwd(x)
+// 4. hcomp(base, refl(sides))  ↦ base
+// 5. (λi. body) @ endpoint     ↦ body[i := endpoint]
+// 6. refl(x) @ _               ↦ x
+// 7. sym(refl(x))              ↦ refl(x)
+// 8. ua(id_equiv)              ↦ refl(Type)
 ```
+
+A separate, **kernel-internal** cubical-reduction set lives in
+`crates/verum_kernel/src/support.rs::normalize_core` —
+`HComp` face-bot / face-top, `Transp` (i1 / Refl-path / const-carrier),
+`Glue` face-bot / face-top, and the PathOver degenerate-loop
+collapse. These fire whenever the kernel normalises a CoreTerm
+(definitional equality, η-equivalence checks, etc.); they
+implement the *Kan-fibrancy* contract that ties cubical
+constructors to the broader type-theory.
 
 Applications:
 - **Quotient types**: express `Q = A / R` as a HIT, prove universal

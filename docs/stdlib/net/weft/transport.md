@@ -10,7 +10,7 @@ Plumbing that lets the HTTP/1.1 connection pipeline work uniformly
 over plain TCP, TLS-wrapped TCP, Unix-domain sockets, and (eventually)
 QUIC bidirectional streams.
 
-Source: `core/net/weft/transport.vr` (90 LOC).
+Source: `core/net/weft/transport.vr`.
 
 ## `WeftTransport` — the byte-duplex protocol
 

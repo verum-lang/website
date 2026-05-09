@@ -21,8 +21,9 @@ replay surface — is one Rust crate that lives end-to-end inside a
 single afternoon's review. It currently reaches every `CoreTerm`
 constructor with a real typing rule (the only `NotImplemented`
 arm is `SmtProof`, which dispatches to per-backend replay) and
-ships **1 341 lib tests** (`cargo test -p verum_kernel --lib`)
-plus a tri-prover external corpus (Lean 4, Coq, Isabelle/HOL).
+ships an extensive lib-test suite (`cargo test -p verum_kernel
+--lib`) plus a tri-prover external corpus (Lean 4, Coq,
+Isabelle/HOL).
 
 ## Where the kernel sits
 
@@ -311,8 +312,8 @@ discharge is an unaudited "trust me".
 
 ## Test coverage
 
-The kernel ships with **1 341 lib tests** pinning every typing
-rule plus the supporting primitives (`substitute`,
+The kernel ships with an extensive lib-test suite pinning every
+typing rule plus the supporting primitives (`substitute`,
 `definitional_eq`, `normalize_core`, `replay_smt_cert`,
 `AxiomRegistry::register`, `InductiveRegistry`, the IOU registry,
 universe-level projection, the cubical face/interval helpers,

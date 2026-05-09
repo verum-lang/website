@@ -9,7 +9,7 @@ description: Typed errors that always render. Five-axis classification (Transien
 Verum's error model makes "every error must render to a response"
 a typed contract, not a runtime hope.
 
-Source: `core/net/weft/error.vr` (261 LOC).
+Source: `core/net/weft/error.vr`.
 
 ## `IntoResponse` — every error renders
 

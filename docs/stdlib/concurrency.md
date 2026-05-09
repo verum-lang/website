@@ -223,7 +223,7 @@ These congruences are definitional — the module today ships the
 term algebra plus capture-avoiding `substitute`, not a reducer or
 congruence oracle. Callers who need one build it on top of
 `substitute` + pattern matching on `Process`; a reference
-implementation in ~50 LOC lives in
+implementation lives in
 `vcs/specs/L3-extended/concurrency/pi_reducer.vr`.
 
 ### Multi-party session types

@@ -253,7 +253,8 @@ solver upgrades.
 Everything described above — VCGen, encoding, the capability router,
 the SMT executor, proof extraction, caching, bounds elimination —
 runs **outside** Verum's trusted computing base. The sole trusted
-checker is the trusted-base kernel, target size under 5 000 lines.
+checker is the trusted-base kernel, held to a single-reviewer /
+single-session audit budget.
 
 ### Surface
 

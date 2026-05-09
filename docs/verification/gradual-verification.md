@@ -345,10 +345,11 @@ simple file grep away.
 All the proof machinery above (elaboration in `verum_types`, tactics
 in `verum_verification`, SMT dispatch in `verum_smt`, cubical NbE,
 framework-axiom registry) produces proof terms in an **explicit typed
-calculus**. A separate crate — `verum_kernel`, target size under
-5 000 lines of Rust — is the **sole trusted checker**. If the kernel
-accepts a term, the theorem is considered proved; if it rejects one,
-no downstream pass can rescue it.
+calculus**. A separate crate — `verum_kernel`, held to a
+single-reviewer / single-session audit budget — is the **sole
+trusted checker**. If the kernel accepts a term, the theorem is
+considered proved; if it rejects one, no downstream pass can
+rescue it.
 
 The kernel's public API is:
 

@@ -11,7 +11,7 @@ component. Modelled on the Tower service trait — battle-tested in
 production servers and clients across the ecosystem — with one
 normative change: `poll_ready` is mandatory.
 
-Source: `core/net/weft/service.vr` (60 LOC).
+Source: `core/net/weft/service.vr`.
 
 ## Protocol — `Service<Req, Resp>`
 
@@ -196,7 +196,7 @@ than auth's narrow identity-provider call.
 
 ## Status
 
-- **Implementation**: complete (60 LOC).
+- **Implementation**: complete.
 - **Conformance**: `service_basic` test passing.
 - **Phase**: 1 (Core Service Layer) — closed.
 - **Next**: middleware chain effect-system audit — Phase 6.
