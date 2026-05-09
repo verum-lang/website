@@ -157,12 +157,15 @@ which kernels accepted vs rejected.  Debug investigation:
 
 When **adding a cert** to the canonical battery:
 
-1. Append a `CanonicalCert::build(id, term, claimed_type)` to
-   the canonical-battery registry.
-2. Add the cert's ID to `expected_verdict()`.
-3. Run `verum audit --differential-kernel` and
+1. Append a `CanonicalCert::accept(id, term, claimed_type)` (or
+   `::reject(...)`) to the canonical-battery registry.  Each
+   cert carries its expected outcome via the
+   `expected_outcome: bool` field, so there is no parallel
+   verdict-table to keep in sync.
+2. Run `verum audit --differential-kernel` and
    `verum audit --differential-lean-checker`.  Both gates must
-   reach unanimous agreement before merge.
+   reach unanimous agreement, AND the per-kernel sanity tests
+   must agree with `cert.expected_outcome`, before merge.
 
 When **finding a kernel disagreement**:
 
