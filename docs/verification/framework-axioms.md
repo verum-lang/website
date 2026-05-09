@@ -216,20 +216,25 @@ There is a second, distinct trust-extension surface inside the
 kernel itself: the **IOU axiom registry**, which tracks how each
 of the kernel's own canonical inference rules is discharged.
 
-Every kernel rule (`K_Var`, `K_Pi_Form`, `K_Lam_Intro`,
-`K_App_Elim`, `K_Sigma_Form`, `K_Pair_Intro`, `K_Fst_Elim`,
-`K_Snd_Elim`, `K_Refine`, `K_Refine_Intro`, `K_Path_Ty_Form`,
-`K_Path_Over_Form`, `K_HComp`, `K_Transp`, `K_Glue`, `K_Quot_Form`,
-`K_Quot_Intro`, `K_Quot_Elim`, `K_Inductive_Form`,
-`K_Inductive_Elim`, `K_Eps_Mu`, `K_Round_Trip`, `K_Smt`, …) carries
-a [`LemmaStatus`](https://docs.rs/verum_kernel/) with one of three
-values:
+Every canonical kernel rule
+(`canonical_rules()` enumerates 38 — `K_Var`, `K_Univ`, `K_Pi_Form`,
+`K_Lam_Intro`, `K_App_Elim`, `K_Sigma_Form`, `K_Pair_Intro`,
+`K_Fst_Elim`, `K_Snd_Elim`, `K_Path_Ty_Form`, `K_Refl_Intro`,
+`K_Path_Over_Form`, `K_HComp`, `K_Transp`, `K_Glue`,
+`K_Refine_Erase`, `K_Refine`, `K_Refine_Omega`, `K_Refine_Intro`,
+`K_Quot_Form`, `K_Quot_Intro`, `K_Quot_Elim`, `K_Inductive`,
+`K_Pos`, `K_Elim`, `K_Smt`, `K_FwAx`, `K_Eps_Mu`,
+`K_Universe_Ascent`, `K_Round_Trip`, `K_Epsilon_Of`, `K_Alpha_Of`,
+`K_Modal_Box`, `K_Modal_Diamond`, `K_Modal_Big_And`, `K_Shape`,
+`K_Flat`, `K_Sharp`) carries a `LemmaStatus`
+(`crates/verum_kernel/src/soundness/mod.rs::LemmaStatus`) with one
+of three values:
 
 | Status | Meaning | Audit-clean? |
 |--------|---------|---|
-| **`Proved`** | A real proof exists in `proof_checker.rs`'s `Typing` constructor + `lean.rs` / `coq.rs` / `isabelle.rs` exporters | yes |
+| **`Proved`** | A real proof exists in `proof_checker.rs`'s `Typing` constructor + `lean.rs` / `coq.rs` / `isabelle.rs` / `agda.rs` exporters | yes |
 | **`DischargedByFramework`** | Discharged by a vetted upstream proof (mathlib4, lean4_stdlib, CCHM, Mac Lane Theorem IV.7.3, etc.) with `lemma_path`, `framework`, `citation` fields | yes (L4-acceptable) |
-| **`Admitted`** | Open obligation — the rule's soundness lemma is `sorry` / `Admitted.` in the per-foundation export | no |
+| **`Admitted`** | Open obligation — the rule's soundness lemma is admitted in the per-foundation export (`sorry` in Lean, `Admitted.` in Coq, per-rule `axiomatization where K_<n>_sound: "..."` in Isabelle, `postulate` in Agda) | no |
 
 **Current registry state**: every canonical kernel rule is
 either `Proved` (full structural proof in Lean / Coq + per-rule

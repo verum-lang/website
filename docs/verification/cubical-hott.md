@@ -34,8 +34,10 @@ does reduce to `x`.
 The stdlib's `core/math/hott.vr` declares the type and its
 introduction / elimination forms. These are the canonical
 signatures — the compiler binds each `@builtin_*` to a
-`CubicalExtended` VBC sub-op (see
-`verum_vbc/src/codegen/expressions.rs` §4077+).
+`CubicalExtended` VBC sub-op via the
+`@builtin_refl` / `@builtin_transport` / `@builtin_sym` /
+`@builtin_trans` arms in
+`verum_vbc::codegen::expressions::compile_call`.
 
 ```verum
 // Path in type A from a to b. Conceptually a function from the
@@ -222,7 +224,7 @@ theorem circle_loop_squared_is_refl() ->
 `by cubical` dispatches to the cubical normaliser
 (`verum_smt::cubical_tactic`) which implements:
 
-- path reduction (the five bullet-listed rules above);
+- path reduction (the eight bullet-listed rules above);
 - transport normalisation along `refl` / `ua(e)` / `sym(ua(e))`;
 - HIT coherence checking for path-case branches;
 - glue / unglue simplifications when Glue types land fully.

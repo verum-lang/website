@@ -24,7 +24,7 @@ trust delegation:
 | Layer | Where | Rules | Purpose |
 |-------|-------|-------|---------|
 | **kernel_v0** | `core/verify/kernel_v0/` (Verum source) | 10 | Verum-side bootstrap meta-theory; hand-auditable |
-| **proof_checker** | `proof_checker` module | 6 | minimal CoC checker; the trusted base |
+| **proof_checker** | `proof_checker` module | 13 | extended CoC checker (Π / Σ / Id with universe polymorphism); the trusted base |
 | **KernelRuleId audit registry** | `zfc_self_recognition` module | 7 | Audit-time meta-soundness footprint enumeration |
 
 This page covers all three layers, their interfaces, and how the
@@ -155,17 +155,15 @@ The Term language carries twelve variants:
 
 ### 3.0 Universe polymorphism — Level expressions
 
-Universes are not a flat `u32` ladder; the carrier is a structured
-`Level` expression supporting universe-polymorphic schemas:
+Universes are not a flat 32-bit ladder; the carrier is a
+structured `Level` expression supporting universe-polymorphic
+schemas. A level is one of four shapes:
 
-```rust
-pub enum Level {
-    Concrete(u32),                   // closed level Type@n
-    Var(String),                     // universe variable Type@u
-    Succ(Box<Level>),                // l + 1
-    Max(Box<Level>, Box<Level>),     // max(l1, l2)
-}
-```
+- **`Concrete(n)`** — a closed level `Type@n` for some natural `n`.
+- **`Var(u)`** — a level variable `Type@u`, used by polymorphic
+  schemas.
+- **`Succ(l)`** — the successor `l + 1`.
+- **`Max(a, b)`** — the meet `max(a, b)` of two levels.
 
 Equality on levels is decided by canonical normalisation
 (idempotency `max(x, x) = x`; identity `max(0, x) = x`;
@@ -180,9 +178,10 @@ A polymorphic schema `λ(A : Type@u). λ(x : A). x` typechecks at
 `Π(A : Type@u). Π(_ : A). A` for every level variable `u` —
 the kernel never needs to instantiate `u`.
 
-`Concrete(u32::MAX)` has no successor, so `Universe(Concrete(MAX))`
-is rejected with `UniverseOverflow` rather than wrapping to
-`Universe(Concrete(0))` (the unsound corner that DEFECT-2 closed).
+A maximally-saturated `Concrete(MAX)` has no successor, so
+`Universe(Concrete(MAX))` is rejected with `UniverseOverflow`
+rather than wrapping to `Universe(Concrete(0))` (the unsound
+corner that DEFECT-2 closed).
 
 The kernel exposes a bidirectional API: `infer` synthesises a
 type for a term in a context; `check` verifies that a term has
@@ -249,21 +248,19 @@ fails the audit.
 ## 4. Layer C — `KernelRuleId` audit registry (7 rules)
 
 The third layer is *not* a checker — it is an **audit registry**
-for meta-soundness footprint enumeration. Lives in
-`zfc_self_recognition` module. Seven canonical
-rules, each carrying an explicit ZFC + inaccessible decomposition:
+for meta-soundness footprint enumeration. Lives in the
+`zfc_self_recognition` module. Seven canonical rules carry an
+explicit ZFC + inaccessible decomposition:
 
-```rust
-pub enum KernelRuleId {
-    Refine,    // K-Refine    — depth-strict comprehension
-    Univ,      // K-Univ      — universe consistency
-    Pos,       // K-Pos       — strict positivity (Berardi 1998)
-    Norm,      // K-Norm      — strong normalisation
-    FwAx,      // K-FwAx      — framework-axiom admission (Prop-only)
-    AdjUnit,   // K-Adj-Unit  — α ⊣ ε unit identity (Diakrisis 108.T)
-    AdjCounit, // K-Adj-Counit — α ⊣ ε counit identity
-}
-```
+| Tag | Purpose |
+|---|---|
+| `K-Refine` | depth-strict comprehension |
+| `K-Univ` | universe consistency |
+| `K-Pos` | strict positivity (Berardi 1998) |
+| `K-Norm` | strong normalisation |
+| `K-FwAx` | framework-axiom admission (Prop-only) |
+| `K-Adj-Unit` | α ⊣ ε unit identity (Diakrisis 108.T) |
+| `K-Adj-Counit` | α ⊣ ε counit identity |
 
 Each rule's `required_meta_theory()` returns the precise ZFC
 axioms (out of the 9 in `ZfcAxiom::full_list()`) plus the
@@ -288,14 +285,9 @@ cardinals** (κ_1 and κ_2) — the canonical
 
 ### 4.1 The kernel-meta-soundness predicate
 
-`zfc_self_recognition` exposes:
-
-```rust
-pub fn kernel_meta_soundness_holds() -> bool;
-```
-
-…which walks every kernel rule's `required_meta_theory()` and
-confirms each requirement is bounded by ZFC + 2-inaccessibles.
+`zfc_self_recognition` exposes a `kernel_meta_soundness_holds()`
+predicate that walks every kernel rule's `required_meta_theory()`
+and confirms each requirement is bounded by ZFC + 2-inaccessibles.
 For the current rule set this holds vacuously — the seven rules'
 union *is* ZFC + 2-inacc.
 
@@ -321,15 +313,18 @@ The differential layer is documented in detail in
 [Three-kernel architecture](./two-kernel-architecture.md). At a
 glance:
 
-- `verum audit --differential-kernel` — runs the canonical 24-cert
-  battery (`verum_kernel::canonical_battery`) through all three
-  kernels.
+- `verum audit --differential-kernel` — runs the canonical-cert
+  battery (`verum_kernel::canonical_battery::canonical_battery()`,
+  built from `CanonicalCert::accept` / `CanonicalCert::reject`
+  entries) through all three kernels.
 - `verum audit --differential-kernel-fuzz` — chains 1–3 mutations
-  per iteration over a 16-seed roster (the canonical battery's
-  accept-path certs + a K-combinator deeper seed), auto-shrinks
-  any disagreement to a minimal failing case via greedy 1-element
-  removal, and surfaces per-mutation / per-seed / chain-length
-  coverage instrumentation.  See [property-fuzz](../architecture/property-fuzz.md).
+  per iteration over a fuzz-seed roster (the canonical battery's
+  accept-path certs + a K-combinator deeper seed; see
+  `verum_kernel::differential_fuzz::seed_certificates`), auto-
+  shrinks any disagreement to a minimal failing case via greedy
+  1-element removal, and surfaces per-mutation / per-seed /
+  chain-length coverage instrumentation.  See
+  [property-fuzz](../architecture/property-fuzz.md).
 - `verum audit --differential-lean-checker` — same canonical battery
   through the Rust kernel and a Lean ReferenceChecker exe; verdict-
   by-verdict agreement asserted.
@@ -347,21 +342,15 @@ assistant ships.
 
 The three rule layers + the differential layer + future Verum
 self-hosted kernel cooperate via a **kernel registry**
-(`kernel_registry` module). The registry
-exposes a uniform `KernelImpl` trait that lets the audit pipeline
-query every registered kernel without caring which is which:
+(`kernel_registry` module). The registry exposes a uniform
+`KernelImpl` interface (`name()` + `check(certificate) ->
+KernelVerdict`) so the audit pipeline can query every registered
+kernel without caring which is which.
 
-```rust
-pub trait KernelImpl {
-    fn name(&self) -> &str;
-    fn check(&self, cert: &Certificate) -> KernelVerdict;
-}
-```
-
-Verdicts are `Accepted` / `Rejected { reason }` /
-`NotYetSelfHosting`. The differential gate iterates the registry,
-collects per-kernel verdicts, and reports `BothAccept` /
-`BothReject` / `Disagreement` per certificate.
+Verdicts are `Accepted`, `Rejected { reason }`, or
+`NotYetSelfHosting`. The differential gate iterates the
+registry, collects per-kernel verdicts, and reports
+`BothAccept` / `BothReject` / `Disagreement` per certificate.
 
 Adding a new kernel is therefore additive — the audit pipeline
 need not change when (e.g.) the Verum self-hosted kernel
