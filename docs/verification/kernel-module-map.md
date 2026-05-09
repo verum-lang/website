@@ -36,13 +36,13 @@ The minimum that must be trusted for soundness:
 | `kernel_registry::KernelV0Kernel` | **Third algorithmic kernel (Algorithm C).** Manifest-driven bootstrap verifier — anchors structural type-check, manifest audit-cleanness, meta-soundness footprint, per-rule strict-intrinsic dispatch. |
 | `proof_checker_meta` | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). Hosts the canonical `shift_universes` walker + the binding-site-correct `shift_universes_in_context`. |
 | `support` | The shared CoreTerm normaliser (`normalize_core` + `NormaliseCtx`), capture-avoiding `substitute`, definitional equality, the cubical face/interval markers, and the SMT-cert replay surface. Not Layer-A trusted in the Π/Σ/Id sense — but Layer-A trusted for **every** broader kernel rule that consumes a normaliser. |
-| `term` | The `CoreTerm` data type — proof-term representation. 32 constructors covering Π/Σ/Id + cubical (PathTy/Refl/PathOver/HComp/Transp/Glue) + refinement + quotient (HIT) + inductive + Diakrisis (ε/α/Modal*/Shape/Flat/Sharp). |
+| `term` | The `CoreTerm` data type — proof-term representation. 31 constructors covering Π/Σ + cubical (PathTy/Refl/PathOver/HComp/Transp/Glue) + refinement + quotient (Quotient/QuotIntro/QuotElim) + inductive (Inductive/Elim) + SMT-proof + framework axiom + Diakrisis (EpsilonOf/AlphaOf/ModalBox/ModalDiamond/ModalBigAnd/Shape/Flat/Sharp). |
 | `ctx` | Type-checking context with `iter_outer_to_inner` raw-type API. |
 | `errors` | `CheckError` / `KernelError` — the kernel's error surface. |
 | `verdict` | `VerificationVerdict` + `DischargeMethod` (ATS-V foundation). |
 | `canonical_battery` | The 24-cert canonical battery — single source of truth shared by `verum audit --differential-kernel` (in-process N-kernel) and `--differential-lean-checker` (Rust ↔ Lean). Each `CanonicalCert` carries its own `expected_outcome` (no parallel lookup table). |
 
-These nine modules are the **trusted-base TCB**. A reviewer
+These ten modules are the **trusted-base TCB**. A reviewer
 auditing Verum's soundness reads these top-to-bottom; every
 other module either *cites* one of these or *consumes* its
 output without modifying its trust.
@@ -81,7 +81,7 @@ the trusted base from Gödel-2nd-style self-reference.
 
 | Module | Role |
 |--------|------|
-| `arch` | Eight architectural primitives: Capability / Boundary / Composition / Lifecycle / Foundation / Tier / Stratum / Shape. |
+| `arch` | Six top-level architectural primitives — `Capability` / `Boundary` / `Lifecycle` / `Foundation` / `Tier` / `Shape` (composition relations live in `arch_composition`, MSFS-stratum classification in `MsfsStratum`). |
 | `arch_parse` | `@arch_module(...)` named-args → `Shape` parser. |
 | `arch_phase` | the architectural-type-checking phase — the architectural type-checking phase wired into the compiler pipeline. |
 | `arch_anti_pattern` | The 40-pattern anti-pattern catalog (AP-001..AP-040) with stable RFC error codes. |
@@ -91,6 +91,8 @@ the trusted base from Gödel-2nd-style self-reference.
 | `arch_counterfactual` | Counterfactual reasoning engine + metric extraction. |
 | `arch_adjunction` | Adjunction analyzer for refactoring (4 canonical adjunctions). |
 | `arch_yoneda` | Yoneda-equivalence checker per ATS-V spec §20.7. |
+| `arch_capability_inference` | Capability ontology — primitive-call → `Capability` resolver feeding `PhaseInputs.inferred_used_capabilities` (AP-001 CapabilityEscalation). |
+| `arch_transitive` | Transitive peer-graph traversal for multi-hop ATS-V checks (AP-019 FoundationDowngrade, etc.). |
 
 For the surface documentation see
 [Architecture-as-Types](../architecture-types/index.md).
@@ -241,17 +243,17 @@ every kernel rule that consumes a normaliser.)
 Layer A — irreducible core              : 10 modules
 Layer B — differential / registry       :  3 modules
 Layer C — meta-soundness                :  4 modules (includes proof_checker_meta)
-ATS-V                                   : 11 modules (incl. arch_capability_inference)
+ATS-V                                   : 12 modules (incl. arch_capability_inference + arch_transitive)
 Verification goals / dispatchers        :  6 modules
 Categorical infrastructure              : 14 modules
-Soundness adapters                      :  8 modules + soundness/ submodule (11 files)
+Soundness adapters                      :  8 modules + soundness/ submodule (12 files)
 Codegen attestation                     :  1 module
 Tactics / proof tree                    :  5 modules
 Round-trip / cross-format               :  2 modules
 Performance / caching                   :  2 modules
 Library entry point                     :  1 module (lib.rs)
                                         ─────
-                                          78 files total
+                                          79 files total
 ```
 
 The Layer A irreducible core (`proof_checker.rs` + the supporting
