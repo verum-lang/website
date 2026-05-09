@@ -9,7 +9,7 @@ slug: /verification/kernel-module-map
 
 The `verum_kernel` crate is the trusted infrastructure for Verum's
 verification machinery. As of the current revision it ships **67
-top-level modules + an 11-file `soundness/` submodule**. This page
+top-level modules + a 12-file `soundness/` submodule**. This page
 is the canonical inventory: every module listed, what it does,
 which trust layer it sits on, and which audit gate consumes it.
 
