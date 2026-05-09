@@ -55,7 +55,7 @@ output without modifying its trust.
 |--------|------|
 | `differential` | Differential-kernel testing harness — runs every certificate through every registered kernel. |
 | `differential_fuzz` | Property-based mutation fuzzer over the kernel registry (11-variant mutation grammar). |
-| `kernel_registry` | N-kernel registry trait `KernelImpl` for differential testing. |
+| `kernel_registry` | N-kernel registry trait `KernelChecker` (`name` + `description` + `verify`) + `KernelV0Kernel` (Algorithm C) + `verify_all` aggregator producing an `AgreementVerdict`. |
 
 These modules surface *kernel-implementation* trust at audit time
 (`verum audit --differential-kernel{,-fuzz}`).

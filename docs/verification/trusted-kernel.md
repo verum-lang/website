@@ -343,14 +343,18 @@ assistant ships.
 The three rule layers + the differential layer + future Verum
 self-hosted kernel cooperate via a **kernel registry**
 (`kernel_registry` module). The registry exposes a uniform
-`KernelImpl` interface (`name()` + `check(certificate) ->
-KernelVerdict`) so the audit pipeline can query every registered
-kernel without caring which is which.
+`KernelChecker` trait (`name()` + `description()` +
+`verify(cert) -> Result<(), CheckError>`) so the audit pipeline
+can query every registered kernel without caring which is which.
 
-Verdicts are `Accepted`, `Rejected { reason }`, or
-`NotYetSelfHosting`. The differential gate iterates the
-registry, collects per-kernel verdicts, and reports
-`BothAccept` / `BothReject` / `Disagreement` per certificate.
+Per-kernel verdicts are `Result<(), CheckError>` (accept = `Ok`,
+reject = `Err` with a typed `CheckError`).  The differential gate
+calls `KernelRegistry::verify_all(cert)` which collects per-kernel
+results and produces an `AgreementVerdict`: `Unanimous` (every
+kernel accepted), `UnanimousReject` (every kernel rejected), or
+`Disagreement { accepting, rejecting }` (the kernels split).
+Disagreement is the failure signal — proof of a real bug in at
+least one kernel implementation.
 
 Adding a new kernel is therefore additive — the audit pipeline
 need not change when (e.g.) the Verum self-hosted kernel
