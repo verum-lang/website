@@ -232,7 +232,8 @@ values:
 | **`Admitted`** | Open obligation — the rule's soundness lemma is `sorry` / `Admitted.` in the per-foundation export | no |
 
 **Current registry state**: every canonical kernel rule is
-either `Proved` (full structural proof in Lean / Coq / Isabelle
+either `Proved` (full structural proof in Lean / Coq + per-rule
+`apply (rule T_<n>)` axiomatization-fact discharge in Isabelle
 + shape-checked postulate in Cubical Agda) or
 `DischargedByFramework` (cited upstream proof). **No rules sit
 at `Admitted`** — see
@@ -244,9 +245,10 @@ as soon as that happens — `Admitted` is never the steady-state.
 
 Consequently `#print axioms kernel_soundness` (Lean) /
 `Print Assumptions kernel_soundness.` (Coq) /
-`print_facts` (Isabelle) on the exported soundness theorem
-enumerates **exactly** the framework citations — every other
-constructor's discharge is structural.
+`print_facts kernel_full_soundness` (Isabelle) on the
+exported soundness corpus enumerates **exactly** the
+framework citations — every other constructor's discharge is
+structural.
 
 ### The `--trust-extension-report` audit gate
 
@@ -302,17 +304,20 @@ comment, and revert the per-foundation `Typing` constructor's
 structural premises to the `IOU-hypothesis` form. The drift check
 catches half-completed transitions.
 
-### Three foundations agree
+### Four foundations agree
 
-The IOU registry status is **exported in lock-step** to all three
-foundations: Lean 4 (`verification/external/lean/`),
-Coq (`verification/external/coq/`), and Isabelle/HOL
-(`verification/external/isabelle/`). The export pipeline
-([three-kernel architecture](./two-kernel-architecture.md)) walks
+The IOU registry status is **exported in lock-step** to all four
+foundations: Lean 4 (`verification/external/lean/`), Coq / Rocq
+(`verification/external/coq/`), Isabelle/HOL
+(`verification/external/isabelle/`), and Cubical Agda
+(`verification/external/agda/`). The export pipeline walks
 `iou_axiom_specs()` once and emits the same structured citation
-in each foundation's syntax. Cross-foundation disagreement on a
-rule's discharge status is structurally impossible — the registry
-*is* the single source of truth.
+in each foundation's syntax — `axiom <Rule>_iou` in Lean,
+`Axiom <Rule>_iou` in Coq, `axiomatization … <Rule>_iou`
+blocks in Isabelle, `postulate <Rule>-iou` in Agda. Cross-
+foundation disagreement on a rule's discharge status is
+structurally impossible — the registry *is* the single source
+of truth.
 
 ## Worked example — bridging two proof systems
 
