@@ -158,6 +158,20 @@ collapse. These fire whenever the kernel normalises a CoreTerm
 implement the *Kan-fibrancy* contract that ties cubical
 constructors to the broader type-theory.
 
+## External-prover cross-check via Cubical Agda
+
+The kernel-soundness export ships a **Cubical Agda** theory file
+alongside the Lean / Coq / Isabelle exports. Cubical Agda is the
+only major prover with native CCHM cubical support
+(`{-# OPTIONS --cubical #-}`) — it natively reduces `transport`,
+`hcomp`, and `Glue` primitives instead of treating them as
+opaque postulates. The export at
+`verification/external/agda/KernelSoundness.agda` is re-checked
+by `agda --cubical KernelSoundness.agda` as part of the
+`verum audit --external-prover-replay` gate; see
+[external-prover-verification](/docs/architecture/external-prover-verification)
+for the four-foundation cross-export pipeline.
+
 Applications:
 - **Quotient types**: express `Q = A / R` as a HIT, prove universal
   property, use it computationally.

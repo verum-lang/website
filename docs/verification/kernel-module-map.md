@@ -154,16 +154,17 @@ the [framework-axiom audit](./framework-axioms.md).
 
 ### 7a. The `soundness/` submodule
 
-The kernel exports a per-foundation soundness theorem to **three
-independent proof assistants** (Lean 4, Coq, Isabelle/HOL). The
-exporter lives in its own submodule:
+The kernel exports a per-foundation soundness theorem to **four
+independent proof assistants** (Lean 4, Coq / Rocq, Isabelle/HOL,
+Cubical Agda). The exporter lives in its own submodule:
 
 | Module | Role |
 |--------|------|
-| `soundness::mod` | The IOU axiom registry (`iou_axiom_specs`), the canonical 38-rule list (`canonical_rules`) with `LemmaStatus = Proved | DischargedByFramework | Admitted`, and the cross-foundation drift checker. Currently 29 Proved + 9 DischargedByFramework + 0 Admitted. |
+| `soundness::mod` | The IOU axiom registry (`iou_axiom_specs`), the canonical 38-rule list (`canonical_rules`) with `LemmaStatus = Proved | DischargedByFramework | Admitted`, and the cross-foundation drift checker. Empty IOU registry (`iou_axiom_specs()` returns `vec![]`) — every kernel rule is either `Proved` or `DischargedByFramework` with a cited upstream proof. |
 | `soundness::lean` | `LeanBackend` — emits `inductive Typing : Ctx → CoreTerm → CoreTerm → Prop` with structural per-rule constructors, plus the case-analysis `kernel_soundness` theorem. |
 | `soundness::coq` | `CoqBackend` — emits the same shape in Coq syntax, with `apply (T_var ...)` style lemma proofs. |
-| `soundness::isabelle` | `IsabelleBackend` — emits Isabelle/HOL `inductive Typing` with ⊢ turnstile syntax + per-rule `lemma … by (rule T_*)` proofs and the Π-form `Soundness :: KernelRule ⇒ bool` definition. |
+| `soundness::isabelle` | `IsabelleBackend` — emits Isabelle/HOL with the structural fragment as a 9-rule `inductive Typing` and the remaining 29 rules as a single `axiomatization where T_<n>: …` block (Isabelle's `rule` tactic accepts both inductive constructors and named axioms uniformly). The split is necessary because Isabelle's eager strong-induction-principle elaboration scales poorly at 38 mutually-tangled constructors. |
+| `soundness::agda` | `AgdaBackend` — emits Cubical Agda (`{-# OPTIONS --cubical #-}`); structural fragment is currently postulate-only (per-rule `K_<Name>-sound` postulates whose signatures are still type-checked end-to-end). Cubical Agda is the only major prover with native CCHM cubical support, so it closes the cubical-fragment gap that Lean / Coq / Isabelle leave at the meta-theoretic level. |
 | `soundness::discharge_status` | The `DischargeStatus` / `LemmaStatus` ADT shared with `kernel_v0_manifest` and `codegen_attestation`. |
 | `soundness::kernel_v0_manifest` | The `kernel_v0` manifest verifier table (10 bootstrap rules: K-Var/K-Univ/K-Pi-Form/…). |
 | `soundness::apply_graph` | Apply-graph audit walker for `verum audit --apply-graph`. |
