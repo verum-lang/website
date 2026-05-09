@@ -103,20 +103,29 @@ Each backend reports one of four verdicts:
 ## 3. The structural fragment (real inductive constructors)
 
 The kernel-soundness export ships a **real `Typing` inductive
-predicate** across the Lean / Coq / Isabelle foundations — not
-opaque `well_typed t T` placeholders. (Cubical Agda currently
-emits per-rule `postulate <Rule>-sound` declarations whose
-signatures are still type-checked end-to-end; promoting Agda
-postulates to a structural `data Typing : Ctx → CoreTerm →
-CoreTerm → Set` mirrors the Lean/Coq trajectory and is tracked
-as future work.) The structural fragment of the
-kernel (variable lookup, universe formation, dependent-product
-formation / introduction / elimination, framework axiom,
-recursion positivity, plus all the structural pieces of cubical
-/ refinement / quotient / modal layers) is encoded as
-**inductive constructors** of `Typing`. Every `K_*_sound` theorem
-proof becomes "by `intros`, then apply the corresponding
-constructor".
+predicate** across the Lean and Coq foundations — not opaque
+`well_typed t T` placeholders. The Isabelle/HOL emission keeps
+the same nine structural rules as a single `inductive Typing`
+declaration (`Var` / `Universe` / `Pi` / `Lam` / `App` / `Sigma`
+/ `Pair` / `Fst` / `Snd`) and the remaining rules as **independent
+per-rule `axiomatization where T_<n>: "..."` blocks** (one block
+per rule, no `and`-chaining); per-rule blocks bound Isabelle's
+type-inference scope to a single rule at a time, which is what
+keeps the elaborator tractable on the universe-polymorphic
+non-structural fragment. Cubical Agda currently emits per-rule
+`postulate <Rule>-sound` declarations whose signatures are still
+type-checked end-to-end; promoting Agda postulates to a
+structural `data Typing : Ctx → CoreTerm → CoreTerm → Set`
+mirrors the Lean/Coq trajectory and is tracked as future work.
+The structural fragment of the kernel (variable lookup, universe
+formation, dependent-product formation / introduction /
+elimination, framework axiom, recursion positivity, plus all the
+structural pieces of cubical / refinement / quotient / modal
+layers) is encoded as **inductive constructors** of `Typing`
+where the foundation supports it. Every `K_*_sound` theorem proof
+becomes "by `intros`, then apply the corresponding constructor"
+(or, in Isabelle, `apply (rule T_<n>)` against the corresponding
+axiomatization fact).
 
 Historically there were a handful of non-structural rules — those
 that genuinely depended on deep meta-theory not yet ported to
