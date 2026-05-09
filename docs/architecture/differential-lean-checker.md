@@ -265,5 +265,5 @@ When **finding a kernel disagreement** (i.e., the gate failed):
   in two implementations).
 - [Trusted Kernel](./trusted-kernel.md) — the TCB this gate is one
   layer of differential second-opinion on.
-- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)
+- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-13-gates)
   — full audit-flag table.

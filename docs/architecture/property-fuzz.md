@@ -252,5 +252,5 @@ battery.  The fuzz seed roster picks it up automatically.
   input distribution).
 - [Differential Lean Checker](./differential-lean-checker.md) —
   cross-language complement.
-- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)
+- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-13-gates)
   — full audit-flag table.

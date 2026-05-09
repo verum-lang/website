@@ -236,12 +236,10 @@ either `Proved` (full structural proof in three foundations) or
 `DischargedByFramework` (cited upstream proof). **No rules sit
 at `Admitted`** — see
 `crates/verum_kernel/src/soundness/mod.rs::iou_axiom_specs()`,
-which returns `vec![]` (the architectural endgame for the FV-9
-through FV-18 IOU-discharge sequence). Adding a brand-new rule
-that we haven't yet proved is allowed (it lands as `Admitted`
-plus an `iou_axiom_specs` entry), but the audit gate flips to
-failure as soon as that happens — `Admitted` is never the
-steady-state.
+which returns `vec![]`. Adding a brand-new rule that hasn't yet
+been proved is allowed (it lands as `Admitted` plus an
+`iou_axiom_specs` entry), but the audit gate flips to failure
+as soon as that happens — `Admitted` is never the steady-state.
 
 Consequently `#print axioms kernel_soundness` (Lean) /
 `Print Assumptions kernel_soundness.` (Coq) /

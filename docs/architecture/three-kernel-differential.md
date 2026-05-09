@@ -186,5 +186,5 @@ When **finding a kernel disagreement**:
 - [External-Prover Verification](./external-prover-verification.md)
   — the meta-theory shape gate (theorem statements typecheck across
   three foundations).
-- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)
+- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-13-gates)
   — full audit-flag table.

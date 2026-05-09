@@ -83,10 +83,12 @@ Each backend reports one of four verdicts:
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
   Isabelle) whose count matches the corpus's declared admit list.
-  *This is the default green state.* The export ships **8
-  outstanding IOU axioms** (one per genuinely non-structural rule
-  — the rest are real inductive constructors of the `Typing`
-  predicate).
+  **The IOU registry is currently empty**
+  (`iou_axiom_specs() == vec![]`) — every rule is structurally
+  `Proved` or `DischargedByFramework`. A future brand-new rule
+  that hasn't yet been proved would re-introduce an `iou-only`
+  verdict; the audit gate's drift-check catches the
+  re-introduction.
 - **`hard-error`** — backend rejected the export with a real
   type / parse / scoping error. Load-bearing regression. Exits
   non-zero.
@@ -106,13 +108,18 @@ recursion positivity, plus all the structural pieces of cubical
 proof becomes "by `intros`, then apply the corresponding
 constructor".
 
-The remaining non-structural rules — those that genuinely depend on
-deep meta-theory not yet ported to mathlib / Coq stdlib / Isabelle's
-HOL — are honestly admitted via per-rule typed axioms named
-`<Rule>_iou`. There are **8** such IOUs. Each axiom takes the
-rule's actual operands and returns a `Prop`, so the soundness
-lemma's operand types are still *checked* by the foreign tool —
-the IOU just discharges the conclusion.
+Historically there were a handful of non-structural rules — those
+that genuinely depended on deep meta-theory not yet ported to
+mathlib / Coq stdlib / Isabelle's HOL — admitted via per-rule typed
+axioms named `<Rule>_iou`. The open-IOU set is now empty: every
+former IOU has been either promoted to a structural-premises
+constructor (the preferred route) or marked
+`DischargedByFramework` with a vetted upstream citation. The
+`<Rule>_iou` axiom shape is preserved so that future
+re-introductions stay drift-checked; each axiom takes the rule's
+actual operands and returns a `Prop`, so the soundness lemma's
+operand types are *checked* by the foreign tool even when the
+IOU itself discharges the conclusion.
 
 So `external-prover-replay` verifies:
 
@@ -181,9 +188,9 @@ So `external-prover-replay` verifies:
   a vetted upstream proof. See [framework axioms — IOU registry](/docs/verification/framework-axioms#the-iou-axiom-registry--kernel-rule-trust-extension)
   for the full discharge protocol. The historical IOU enumeration
   in §4 below is preserved as context — every entry there has
-  since been closed via the FV-9 → FV-18 discharge sequence; the
-  drift-check in `SoundnessExporter::drift_check` continues to
-  enforce the empty-registry invariant.
+  since been closed; the drift-check in
+  `SoundnessExporter::drift_check` continues to enforce the
+  empty-registry invariant.
 
 For a complementary check that exercises the **runtime kernel** —
 not just the meta-theory shape — see [differential-lean-checker](./differential-lean-checker.md).
@@ -196,15 +203,15 @@ verdict agreement.
 The kernel's trust-extension surface used to admit a handful of
 **open IOU axioms** — kernel rules whose soundness lemma was
 exported as `axiom <Rule>_iou : Ctx → … → Prop` rather than
-proved structurally. After the FV-9 through FV-18 discharge
-sequence the registry is **empty**: `iou_axiom_specs()` returns
-`vec![]`, and every `KernelRule` carries either a `Proved` or
-`DischargedByFramework` status in `canonical_rules()`.
+proved structurally. The registry is now **empty**:
+`iou_axiom_specs()` returns `vec![]`, and every `KernelRule`
+carries either a `Proved` or `DischargedByFramework` status in
+`canonical_rules()`.
 
 Each entry below names how the rule is currently discharged.
 The historical "open IOU" framing is preserved alongside, since
 the same shape would re-apply if a brand-new kernel rule were
-added that we hadn't yet proved (the registry would re-acquire
+added that hadn't yet been proved (the registry would re-acquire
 an `Admitted` entry plus an `iou_axiom_specs` row, the
 `drift_check` would notice, and the audit gate would flip until
 the structural proof landed).
@@ -212,21 +219,19 @@ the structural proof landed).
 ### Cubical (CCHM / HoTT mechanisation)
 
 * `K_Path_Ty_Form`, `K_Refl_Intro`, `K_Path_Over_Form`,
-  `K_HComp`, `K_Transp`, `K_Glue` — **all `Proved`**.
-  `K_Path_Over_Form` was the first cubical IOU closed (FV-15);
-  `K_HComp`, `K_Transp`, `K_Glue` were discharged together in
-  the FV-16 batch reusing the same structural-premises template;
-  the side conditions (CCHM regularity, Kan-filling
-  compatibility, univalence-via-Glue) are the kernel's input
-  contract — verified at runtime in `support.rs::normalize_core`
-  rather than re-proved in the soundness theorem.
+  `K_HComp`, `K_Transp`, `K_Glue` — **all `Proved`** via the
+  structural-premises template; the side conditions (CCHM
+  regularity, Kan-filling compatibility, univalence-via-Glue)
+  are the kernel's input contract — verified at runtime in
+  `support.rs::normalize_core` rather than re-proved in the
+  soundness theorem.
 
 ### Refinement (predicate decidability at value)
 
 * `K_Refine`, `K_Refine_Omega`, `K_Refine_Erase`,
-  `K_Refine_Intro` — **all `Proved`**. `K_Refine_Intro` was
-  closed in FV-13 with a 3-premise structural constructor
-  (`Typing Γ a base`, `Typing Γ base (Universe i)`,
+  `K_Refine_Intro` — **all `Proved`**. `K_Refine_Intro` uses a
+  3-premise structural constructor (`Typing Γ a base`,
+  `Typing Γ base (Universe i)`,
   `Typing Γ predicate (Pi x base (Universe 0))`).
   Predicate-truth-at-the-introduced-value remains the kernel's
   runtime contract (mirroring `K_Quot_Elim` discipline).
@@ -252,10 +257,10 @@ the structural proof landed).
 
 ### SMT / replay correctness
 
-* `K_Smt` — **`Proved`** (FV-17). Discharged via the structural
-  premise `T : Universe i ⇒ SmtProof solver_tag : T`; the
-  SMT-certificate replay is a kernel runtime contract enforced
-  by `replay_smt_cert`.
+* `K_Smt` — **`Proved`**. Discharged via the structural premise
+  `T : Universe i ⇒ SmtProof solver_tag : T`; the SMT-certificate
+  replay is a kernel runtime contract enforced by
+  `replay_smt_cert`.
 
 ### Diakrisis (biadjunction + bridge-audit)
 
@@ -268,7 +273,7 @@ the structural proof landed).
   *Categories for the Working Mathematician*, Theorem IV.7.3
   (biadjunction triangle identities).
 * `K_Round_Trip` — **`DischargedByFramework`** citing the
-  Verum-internal bridge-audit specification.
+  internal bridge-audit specification.
 
 These nine `DischargedByFramework` entries (the seven structural
 mathlib4 rules — K_Pi_Form / K_Lam_Intro / K_App_Elim /
@@ -388,7 +393,7 @@ When **promoting** an admit to a real proof:
   unanimity is asserted cert-by-cert.
 - [Verification Pipeline](./verification-pipeline.md) — the
   broader verification strategy this gate is one node of.
-- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-12-gates)
+- [`verum audit` CLI surface](../tooling/cli.md#kernel-soundness-band-13-gates)
   — full audit-flag table.
 - [Trust-extension report](../verification/proof-honesty.md) —
   enumerates every IOU axiom seen by external provers.
