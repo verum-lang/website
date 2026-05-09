@@ -93,9 +93,12 @@ Existing accessors keep their signatures; new public types
 `AntiPatternCode::meta`) provide the consolidated source of
 truth; legacy callers are unaffected.
 
-verum_kernel test count: 1306 (mid-week) → 1352 lib tests (+46
-new pins across the four refactors); full suite reaches 1818
-tests. Zero behavioural regressions.
+The four refactors collectively added pin tests for every
+collapsed parallel-data structure (meta-accessor agreement,
+full_list uniqueness, ordinal partition checks). The kernel's
+existing `cargo test -p verum_kernel --lib` suite covers the
+new invariants alongside the structural rule set. Zero
+behavioural regressions.
 
 ### Added — Argon2id (RFC 9106) with OWASP-tuned profiles (2026-05-08)
 
