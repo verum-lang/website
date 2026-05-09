@@ -311,25 +311,22 @@ catches half-completed transitions.
 
 ### Four foundations agree
 
-The IOU registry status is **exported in lock-step** to the three
-proof-assistant foundations whose `Typing` predicate is
-encoded structurally: Lean 4 (`verification/external/lean/`),
-Coq / Rocq (`verification/external/coq/`), and Isabelle/HOL
-(`verification/external/isabelle/`). The export pipeline walks
+The IOU registry status is **exported in lock-step** to all four
+foundations: Lean 4 (`verification/external/lean/`), Coq / Rocq
+(`verification/external/coq/`), Isabelle/HOL
+(`verification/external/isabelle/`), and Cubical Agda
+(`verification/external/agda/`). The export pipeline walks
 `iou_axiom_specs()` once and emits the same structured citation
 in each foundation's syntax via `render_iou_axioms_lean()` /
-`_coq()` / `_isabelle()` — `axiom <Rule>_iou` in Lean,
-`Axiom <Rule>_iou` in Coq, and `axiomatization … <Rule>_iou`
-blocks in Isabelle. Cubical Agda's emission today is per-rule
-`postulate <Rule>-sound` declarations whose signatures are
-type-checked end-to-end but whose IOU surface is not separately
-materialised — every Agda rule is admitted at the postulate
-layer regardless of registry status. Promoting Agda to the
-same IOU-distinct shape as the other three is tracked as
-follow-up work; until it lands, registry-side drift between
-the three structural foundations is the load-bearing invariant
-(cross-foundation disagreement is structurally impossible — the
-registry *is* the single source of truth).
+`_coq()` / `_isabelle()` / `_agda()` — `axiom <Rule>_iou` in
+Lean, `Axiom <Rule>_iou` in Coq, `axiomatization … <Rule>_iou`
+blocks in Isabelle, and `postulate <Rule>_iou : Ctx → … → Set`
+blocks in Cubical Agda. Cross-foundation disagreement on a
+rule's discharge status is structurally impossible — the
+registry *is* the single source of truth. Drift between the
+four foundations' emitted text is closed by construction: every
+backend's IOU block is a cached projection of the same
+`iou_axiom_specs()` walk.
 
 ## Worked example — bridging two proof systems
 
