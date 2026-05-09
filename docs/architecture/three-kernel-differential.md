@@ -52,9 +52,9 @@ representative bug class this design surfaces.
 
 | Slot | Algorithm |
 |------|-----------|
-| **A** | Bidirectional type-checking with explicit substitution + WHNF.  ~1067 LOC.  The trusted base. |
-| **B** | Normalisation by Evaluation with closures + level-indexed quote.  ~720 LOC.  Structurally distinct from Slot A. |
-| **C** | Manifest-driven meta-soundness verifier.  Anchors on Slot A's structural verdict, then walks the bootstrap rule registry asserting audit-cleanness + meta-soundness footprint + strict-intrinsic dispatch. |
+| **A** | Bidirectional type-checking with explicit substitution + WHNF (`proof_checker.rs`).  The trusted base. |
+| **B** | Normalisation by Evaluation with closures + level-indexed quote (`proof_checker_nbe.rs`).  Structurally distinct from Slot A. |
+| **C** | Manifest-driven meta-soundness verifier (`kernel_v0`).  Anchors on Slot A's structural verdict, then walks the bootstrap rule registry asserting audit-cleanness + meta-soundness footprint + strict-intrinsic dispatch. |
 
 The default `KernelRegistry` registers all three.  Adding a fourth
 slot (e.g., a future HOAS-based checker) is one line.
