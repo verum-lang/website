@@ -153,13 +153,14 @@ predicate-level formalisation see
 for the workflow see
 [ATS-V → audit protocol](../architecture-types/audit-protocol.md).
 
-#### Kernel-soundness band (12 gates)
+#### Kernel-soundness band (13 gates)
 
 | Flag | Verifies |
 |------|----------|
 | `--kernel-rules` | The trusted-base inference rule list (one row per rule with citation) |
 | `--kernel-recheck` | Re-checks every theorem in the project against the trusted base |
 | `--kernel-soundness` | Per-rule discharge inventory + parallel Coq / Lean / Isabelle export |
+| `--trust-extension-report` | Auditor-facing snapshot of the kernel-rule trust extension surface — every `KernelRule` partitioned into `Proved` / `DischargedByFramework { lemma_path, framework, citation }` / `Admitted { reason }` buckets. The current steady state is zero `Admitted`; an `Admitted` entry trips the gate. See [framework axioms — IOU registry](/docs/verification/framework-axioms#the-iou-axiom-registry--kernel-rule-trust-extension). |
 | `--external-prover-replay` | Drives the kernel-soundness export through Lean 4 (`lake build`), Coq / Rocq (`coqc`), and Isabelle/HOL (`isabelle build`); reports per-backend `clean` / `iou-only` / `hard-error` / `not-available`. Three independent foundations agreeing. Backend filter via `--backend lean,coq,isabelle,all`; `--strict` requires all installed. See [external-prover-verification](/docs/architecture/external-prover-verification). |
 | `--differential-lean-checker` | Cert-by-cert agreement gate: a 24-cert battery (T-Univ / T-Var / identity at multiple universes / polymorphic identity / T-Pi-Form / T-App-Elim correct + mismatched / T-App on non-function / boundary-pin certs / nested binders / η-redex / negative shapes) is run through both the Rust kernel (`Certificate::verify`) and the Lean executable `verum_replay_checker` (built via `lake build`); per-cert verdicts must agree. Where `--external-prover-replay` checks meta-theory shape (the 38 `K_*_sound` theorem statements type-check across three foundations), `--differential-lean-checker` checks the operational kernel — same accept/reject judgements as a re-implementation. See [differential-lean-checker](/docs/architecture/differential-lean-checker). |
 | `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem |

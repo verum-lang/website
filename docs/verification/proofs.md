@@ -125,12 +125,17 @@ theorem sum_first_n(n: Int { self >= 0 }) -> sum(0..=n) == n * (n+1) / 2 {
 Every proof term — whether written by hand, produced by a tactic,
 or generated from an SMT certificate — reaches **`verum_kernel`**,
 the LCF-style trusted checker. The kernel re-checks the proof term
-against its declared type using 18 dedicated typing rules (Pi, Lam,
-App, Sigma, Pair, Fst, Snd, PathTy, Refl, HComp, Transp, Glue,
-Refine, Inductive, Elim, Var, Universe, Axiom). The one constructor
-that is not self-contained is `SmtProof`, whose check dispatches to
-`replay_smt_cert` and reconstructs a checkable witness from the
-solver's proof trace.
+against its declared type using a typing rule per `CoreTerm`
+constructor — Var / Universe / Pi / Lam / App / Sigma / Pair /
+Fst / Snd / PathTy / Refl / PathOver / HComp / Transp / Glue /
+Refine / Quotient / QuotIntro / QuotElim / Inductive / Elim /
+Axiom plus the Diakrisis ε/α + modal + cohesive (∫ ⊣ ♭ ⊣ ♯)
+operators. The full rule taxonomy enumerates 38 named kernel
+rules (`KernelRule` in `proof_tree.rs::full_list()`); see
+[trusted kernel](/docs/architecture/trusted-kernel) for the
+complete list. The one constructor that is not self-contained is
+`SmtProof`, whose check dispatches to `replay_smt_cert` and
+reconstructs a checkable witness from the solver's proof trace.
 
 This is why tactics are *outside* Verum's trusted computing base —
 a buggy tactic either fails to build a proof term or builds an

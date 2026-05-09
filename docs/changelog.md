@@ -16,6 +16,87 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Refactored — kernel drift-defect collapse pass (2026-05-09)
+
+Four cohesive single-source-of-truth refactors landed across the
+kernel crate. Each collapses a parallel hand-maintained data
+table into a single match expression with compile-time-checked
+exhaustiveness, turning silent runtime drift into structurally
+impossible mistakes.
+
+* **Three normaliser variants → `normalize_core`** —
+  `normalize_with_budget`, `normalize_with_axioms_budget`, and
+  `normalize_with_inductives_budget` had drifted apart in
+  ways that were genuinely unsound: the axiom-aware and
+  inductive-aware normalisers silently dropped the cubical
+  Kan-fibrancy reductions (HComp face-bot/top, Transp i1/Refl/const,
+  Glue face-bot/top) that plain `normalize` fired. Concrete
+  consequence: `definitional_eq_with_axioms` (the SMT-routed
+  equality check) could fail to identify provably-equal cubical
+  terms once they were guarded by an axiom registry. Replaced
+  with a single `normalize_core(term, &mut NormaliseCtx)` driver
+  in `support.rs`; ~750 lines of parallel structural recursion
+  collapsed to one. New public `normalize_full` is the canonical
+  "all features on" entry point.
+
+* **`CanonicalCert::expected_outcome` + helpers** —
+  `crates/verum_kernel/src/canonical_battery.rs` had its 24-cert
+  battery's expected verdicts encoded twice: in the cert
+  constructor's shape and in a parallel `expected_verdict(id)`
+  arm-table lookup. Folded the verdict into `CanonicalCert`
+  itself + added readability constructors
+  `CanonicalCert::accept(...)` / `::reject(...)`. The free
+  `expected_verdict(id)` is now a one-line shim over the battery
+  walk; the previously-required `every_id_has_an_expected_verdict`
+  sanity test became vacuous (you can't construct a cert without
+  a verdict).
+
+* **`KernelRuleId::strict_intrinsic_suffix()`** — a hardcoded
+  7-arm `KernelRuleId → strict-intrinsic-name` mapping in
+  `kernel_registry.rs::strict_tag_of` was moved onto the enum
+  itself (alongside `name()` and `full_list()`) so adding a rule
+  is a single-place change. `kernel_registry.rs` now calls
+  `rule.strict_intrinsic_suffix()`; the free function is gone.
+
+* **`KernelRule::meta()` consolidation** — three parallel
+  methods on the 38-variant `KernelRule` enum (`name()` /
+  `v_stage()` / `category()`) collapsed into a single 38-arm
+  `meta()` returning `KernelRuleMeta`. The legacy accessors
+  become `#[inline]` projections. New `KernelRule::full_list()`
+  mirrors `KernelRuleId::full_list`. Three new pin tests:
+  `meta_accessors_agree_for_every_rule`,
+  `full_list_covers_every_variant`,
+  `full_list_count_matches_soundness_corpus`.
+  Deprecated `KernelRule::citation()` shim (zero callers)
+  deleted.
+
+* **`AntiPatternCode::meta()` + `AntiPatternBand`** — the largest
+  reduction. `AntiPatternCode` (40 variants) had **seven**
+  parallel data tables (`code` / `name` / `docs_url` / `season`
+  / `is_cve_ah` / `is_mtac` / `full_list`). The per-pattern
+  ordinal was encoded twice (literal `"ATS-V-AP-NNN"` in `code()`
+  + integer in `docs_url()`'s ordinal-mapping match) and could
+  silently drift. Introduced `AntiPatternBand { Core, Base,
+  Mtac, CveAh }` carrying the canonical `band.season()` mapping;
+  `AntiPatternCodeMeta { code, name, ordinal, band }` with one
+  40-arm `meta()` source-of-truth. Eight drift pins added:
+  code-format-matches-ordinal, name-matches-variant-id,
+  ordinals-partition-1-to-40-uniquely, band-ordinal-ranges,
+  is_*-agree-with-meta-band, season-cohort-partition,
+  full_list-uniqueness, docs_url-format.
+
+Public API across all four refactors is **additive only**.
+Existing accessors keep their signatures; new public types
+(`NormaliseCtx`, `KernelRuleMeta`, `AntiPatternBand`,
+`AntiPatternCodeMeta`) plus new methods (`KernelRule::meta`,
+`KernelRule::full_list`, `KernelRuleId::strict_intrinsic_suffix`,
+`AntiPatternCode::meta`) provide the consolidated source of
+truth; legacy callers are unaffected.
+
+verum_kernel test count: 1306 (mid-week) → 1352 lib tests (+46
+new pins across the four refactors); full suite reaches 1818
+tests. Zero behavioural regressions.
+
 ### Added — Argon2id (RFC 9106) with OWASP-tuned profiles (2026-05-08)
 
 `core.security.kdf.argon2` — pure-Verum API around the memory-hard
