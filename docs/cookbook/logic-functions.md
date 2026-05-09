@@ -135,8 +135,8 @@ Even with `@logic`, some predicates are too hard:
   forces the solver to prove absence across all integers. Either bound
   the search or supply a manual proof.
 - **Non-linear arithmetic with quantifiers**: escalate to
-  `@verify(thorough)` — races the SMT backend (whose cylindrical algebraic
-  decomposition handles these well) with the SMT backend and tactics.
+  `@verify(thorough)` — races a CAD-capable adapter (cylindrical algebraic
+  decomposition handles these well) against the default adapter and tactics.
 - **Higher-order**: `@logic` functions can't take function arguments.
   Specialise or use a tactic.
 

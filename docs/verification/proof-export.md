@@ -54,7 +54,7 @@ Three granularities:
    replayed in the target. Target re-checks by invoking its own
    kernel.
 3. **SMT certificate.** The underlying SMT-LIB obligation plus
-   the solver's own proof-tree (the SMT backend `(proof …)`, the SMT backend ALETHE),
+   the solver's own proof-tree (native `(proof …)` or ALETHE),
    with the target invoking a solver-agnostic proof-checker
    (dkcheck, smtlib2proof, etc.).
 
@@ -192,7 +192,7 @@ for Coq's Gallina syntax. The main differences from Lean:
 Dedukti is a shallow logical framework — it is the best target
 for exporting SMT proofs because the `.dk` format is
 explicitly designed as an interchange for automated theorem
-provers. Each multiple SMT backends proof rule has a Dedukti signature; the
+provers. Each adapter proof rule has a Dedukti signature; the
 exporter re-plays the proof tree as applications of those
 signatures.
 
@@ -279,11 +279,11 @@ is treated as a regression.
    will emit the theorem as an opaque axiom with the framework
    tag `hott:native`.
 
-2. **SMT proof-tree fidelity.** the SMT backend's `(proof …)` format is
-   under-specified and changes between releases. the backend's ALETHE
-   is more stable. For the Certified strategy we prefer the SMT backend
-   proofs when both agree, falling back to the SMT backend only when the SMT backend
-   cannot solve. This preference is configurable via
+2. **SMT proof-tree fidelity.** Native solver `(proof …)` formats are
+   under-specified and change between releases. ALETHE is more stable.
+   For the Certified strategy we prefer ALETHE-shaped proofs when both
+   agree, falling back to a native format only when ALETHE cannot
+   represent the proof. This preference is configurable via
    `--smt-proof-preference {auto}`.
 
 3. **Framework axiom drift.** If a framework's formalization in

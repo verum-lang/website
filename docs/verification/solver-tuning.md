@@ -12,7 +12,7 @@ combinations to reach for under specific workflow goals.
 
 If you only want to set a per-function timeout, use
 `@verify(thorough)` and stop reading. If you need to bound
-memory in CI, configure the SMT backend's quantifier strategy, or
+memory in CI, configure the SMT layer's quantifier strategy, or
 debug a stuck proof, this page is the one to bookmark.
 
 ---
@@ -27,7 +27,7 @@ verification stack. For each, you see:
   attribute.
 - **Default** — the value you get from `Default::default()`.
 - **Effect** — what changing the value actually does.
-- **Wiring scope** — which multiple SMT backends parameter scope (global,
+- **Wiring scope** — which solver-adapter parameter scope (global,
   Config, or Solver) the field reaches; see [scope discipline](#parameter-scope-discipline)
   for why this matters.
 
@@ -84,7 +84,7 @@ and `let` bindings.
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `enable_smt` | `true` | When `false`, fall back to syntactic-only subsumption — fast but conservative (rejects valid programs that need SMT). |
-| `timeout_ms` | `100` | Per-query the SMT backend budget. The spec mandates 10–500 ms for refinement checks; values outside that range trigger a warning at type-check time. |
+| `timeout_ms` | `100` | Per-query SMT solver budget. The spec mandates 10–500 ms for refinement checks; values outside that range trigger a warning at type-check time. |
 | `enable_cache` | `true` | Memoise verification conditions by their SHA-256 fingerprint. Disabling adds ~30% to total verification time. |
 | `max_cache_size` | `10 000` | LRU bound. Each entry is ~512 B, so 10 k entries ≈ 5 MB. |
 
@@ -115,15 +115,15 @@ computation, refinement projection.
 
 | Field | Default | Effect |
 |-------|--------:|--------|
-| `timeout_ms` | `5 000` | Per-QE-call the SMT backend budget. |
+| `timeout_ms` | `5 000` | Per-QE-call solver budget. |
 | `max_iterations` | `10` | Reserved for iterative QE (planned). |
-| `use_qe_lite` | `true` | Try the SMT backend's `qe-light` first — fast for linear arithmetic. |
+| `use_qe_lite` | `true` | Try the solver's `qe-light` tactic first — fast for linear arithmetic. |
 | `use_qe_sat` | `true` | SAT-preprocess Boolean-heavy formulas before QE. |
 | `use_model_projection` | `true` | Model-based projection for non-linear cases. |
 | `use_skolemization` | `true` | Skolem-functions fallback when QE-lite + projection fail. |
 | `simplify_level` | `2` | See chain table below. |
 
-`simplify_level` maps to escalating the SMT backend tactic chains:
+`simplify_level` maps to escalating solver tactic chains:
 
 | Level | Chain |
 |-------|-------|
@@ -149,10 +149,10 @@ interpolant as candidate invariant).
 
 | Field | Default | Effect |
 |-------|---------|--------|
-| `algorithm` | `MBI` | Pick: `McMillan` (proof-based, strongest), `Pudlak` (dual, weakest), `Dual` (combines), `Symmetric` (avoids McMillan/Pudlak bias), `MBI` (model-based, the SMT backend-native), `PingPong` / `Pogo` (specialised). |
+| `algorithm` | `MBI` | Pick: `McMillan` (proof-based, strongest), `Pudlak` (dual, weakest), `Dual` (combines), `Symmetric` (avoids McMillan/Pudlak bias), `MBI` (model-based, solver-native), `PingPong` / `Pogo` (specialised). |
 | `strength` | `Balanced` | Bias toward stronger or weaker interpolant. |
 | `simplify` | `true` | Run `simplify` on the result before returning. |
-| `timeout_ms` | `Some(5 000)` | Per-interpolation the SMT backend budget; `None` = unbounded (only for offline runs). |
+| `timeout_ms` | `Some(5 000)` | Per-interpolation solver budget; `None` = unbounded (only for offline runs). |
 | `proof_based` | `false` | Reserved for proof-based fallback. |
 | `model_based` | `true` | Reserved for MBI fallback hint. |
 | `quantifier_elimination` | `true` | When `false`, MBI's `project_onto_shared` skips QE and returns the original formula. McMillan correctness (`A ⇒ I`) is preserved; the `I ∧ B ⇒ ⊥` half degrades. |
@@ -179,20 +179,20 @@ max_projection_vars  = 50         # bail earlier on blowup
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `timeout_ms` | `30 000` | Global wall-clock for the entire verifier pass. |
-| `constraint_timeout_ms` | `100` | Per-constraint the SMT backend budget — triggers graceful degradation (constraint stays in runtime CFG instead of being eliminated). |
-| `enable_proofs` | `true` | Request the SMT backend proof generation. |
+| `constraint_timeout_ms` | `100` | Per-constraint solver budget — triggers graceful degradation (constraint stays in runtime CFG instead of being eliminated). |
+| `enable_proofs` | `true` | Request solver proof generation. |
 | `enable_unsat_cores` | `true` | Extract minimal unsat cores for diagnostics. |
 | `minimize_cores` | `true` | Iterate to find a *minimal* core (more expensive). |
 | `enable_caching` | `true` | Proof-cache lookups across runs. |
 | `max_cache_size` | `10 000` | LRU bound on the proof cache. |
-| `enable_parallel` | `false` | Reserved — the SMT backend Context is not Send/Sync in 0.19. |
+| `enable_parallel` | `false` | Reserved — current solver-adapter contexts are not Send/Sync. |
 | `num_workers` | `cpus()` | Reserved. |
-| `auto_tactics` | `true` | Use the SMT backend's tactic auto-selection when constructing solvers. |
+| `auto_tactics` | `true` | Use the solver's tactic auto-selection when constructing solvers. |
 | `memory_limit_mb` | `Some(4096)` | Process-wide memory ceiling — see [parameter-scope discipline](#parameter-scope-discipline) for why this is global, not per-solver. |
 
 ---
 
-## SmtBackendConfig — the SMT backend-specific tuning
+## SmtBackendConfig — backend context tuning
 
 **Owner**: `verum_smt::backend::SmtContextManager`.
 
@@ -202,7 +202,7 @@ max_projection_vars  = 50         # bail earlier on blowup
 |-------|---------|--------|--------------|
 | `enable_proofs` | `true` | Proof-log generation. | Config |
 | `minimize_cores` | `true` | Pass to `unsat_core` extraction. | Solver Params |
-| `enable_interpolation` | `false` | Enable the SMT backend's MBI tactic when interpolating. | tactic dispatch |
+| `enable_interpolation` | `false` | Enable the solver's MBI tactic when interpolating. | tactic dispatch |
 | `global_timeout_ms` | `Some(30 000)` | Context-level timeout. | Config (`set_timeout_msec`) |
 | `memory_limit_mb` | `Some(8192)` | Process-wide memory ceiling. | **Global** (`memory_max_size`) |
 | `enable_mbqi` | `true` | Model-based quantifier instantiation. | Solver Params (per-query) |
@@ -221,13 +221,13 @@ auto_tactics  = false   # remove heuristic non-determinism
 
 ---
 
-## SmtBackendConfig — the SMT backend-specific tuning
+## SmtBackendConfig — adapter-level tuning
 
 **Owner**: `verum_smt::backend::SmtBackend`.
 
 **Where set**: `[verify.solver.smt-backend]`.
 
-| Field | Default | the SMT backend option | Effect |
+| Field | Default | Adapter option | Effect |
 |-------|---------|-------------|--------|
 | `logic` | `ALL` | `:logic` | SMT-LIB logic name. |
 | `timeout_ms` | `Some(30 000)` | `tlimit-per` | Per-query timeout. |
@@ -235,12 +235,12 @@ auto_tactics  = false   # remove heuristic non-determinism
 | `produce_models` | `true` | `produce-models` | SAT result + model. |
 | `produce_proofs` | `true` | `produce-proofs` | UNSAT result + proof log. |
 | `produce_unsat_cores` | `true` | `produce-unsat-cores` | UNSAT + core. |
-| `preprocessing` | `true` | `preprocess-only=false` | When `false`, the SMT backend stops after preprocessing — useful for instrumentation, never for production. |
+| `preprocessing` | `true` | `preprocess-only=false` | When `false`, the adapter stops after preprocessing — useful for instrumentation, never for production. |
 | `quantifier_mode` | `Auto` | `quant-mode` | `None` / `EMatching` / `CEGQI` / `MBQI` / `Auto`. |
 | `random_seed` | `None` | `seed` | Reproducibility. |
 | `verbosity` | `0` | `verbosity` | 0–5; saturates at 5. |
 
-**Quantifier-mode tuning**: the SMT backend's `Auto` heuristic picks per
+**Quantifier-mode tuning**: the adapter's `Auto` heuristic picks per
 goal. Pin a mode when you have ground truth about goal shape:
 
 | Mode | Best for |
@@ -259,7 +259,7 @@ goal. Pin a mode when you have ground truth about goal shape:
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `cache_size` | `10 000` | LRU bound on result cache. |
-| `smt_timeout_ms` | `100` | Per-query the SMT backend budget. **Updated dynamically** by `RefinementSmtBackend::set_timeout_ms` so each `RefinementConfig.timeout_ms` change takes effect immediately. |
+| `smt_timeout_ms` | `100` | Per-query solver budget. **Updated dynamically** by `RefinementSmtBackend::set_timeout_ms` so each `RefinementConfig.timeout_ms` change takes effect immediately. |
 
 This is an internal struct; you don't normally configure it
 directly — `RefinementConfig.timeout_ms` propagates here.
@@ -276,7 +276,7 @@ types, π-calculus processes, lazy data structures.
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `max_depth` | `100` | Hard cap on recursive-destructor unfolding. |
-| `timeout_ms` | `30 000` | Per-query the SMT backend budget. |
+| `timeout_ms` | `30 000` | Per-query solver budget. |
 | `generate_counterexamples` | `true` | When `false`, leave the counterexample slot as `None` to save formatting work — useful when you only need the boolean answer. |
 | `infinite_strategy` | `BoundedUnfolding` | `Coinduction` / `UpToBisimulation` / `BoundedUnfolding`. |
 
@@ -291,7 +291,7 @@ graph predicates).
 
 | Field | Default | Effect |
 |-------|--------:|--------|
-| `entailment_timeout_ms` | `5 000` | Per-entailment the SMT backend budget. |
+| `entailment_timeout_ms` | `5 000` | Per-entailment solver budget. |
 | `max_unfolding_depth` | `10` | Bound on recursive-predicate unfolding (`ListSeg`, `TreePred`). |
 | `enable_frame_inference` | `true` | Gates `infer_frame`; when `false`, returns typed failure so callers that only need entailment validity skip the residual computation (~30% encoder reduction on large heaps). |
 | `enable_symbolic_execution` | `true` | Reserved — feature not yet enabled by default in encoder. |
@@ -309,10 +309,10 @@ contradict?), proof-search debugging.
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `minimize` | `true` | Iterate to find a *minimal* core. |
-| `quick_extraction` | `false` | Trade minimality for speed — return the first unsat-core the SMT backend finds. |
+| `quick_extraction` | `false` | Trade minimality for speed — return the first unsat-core the solver finds. |
 | `max_iterations` | `100` | Bound on minimization iteration count. |
-| `timeout_ms` | `Some(10 000)` | Per-extraction the SMT backend budget — folded into the same `Params` that sets `unsat_core: true`. |
-| `proof_based` | `false` | Use the SMT backend's proof API instead of assumption-tracking — slower but more precise. |
+| `timeout_ms` | `Some(10 000)` | Per-extraction solver budget — folded into the same `Params` that sets `unsat_core: true`. |
+| `proof_based` | `false` | Use the solver's proof API instead of assumption-tracking — slower but more precise. |
 
 ---
 
@@ -321,12 +321,12 @@ contradict?), proof-search debugging.
 **Owner**: `verum_smt::parallel::ParallelSolver`.
 
 **Used by**: `@verify(thorough)` and `@verify(certified)`
-modes — both multiple SMT backends race to discharge the same goal.
+modes — multiple solver workers race to discharge the same goal.
 
 | Field | Default | Effect |
 |-------|--------:|--------|
 | `num_workers` | `cpus()` | Worker thread count. |
-| `strategies` | `default_strategies()` | Per-worker strategy list (the SMT backend logic, tactics, seed). |
+| `strategies` | `default_strategies()` | Per-worker strategy list (logic, tactics, seed). |
 | `timeout_ms` | `Some(30 000)` | Global timeout. |
 | `enable_sharing` | `true` | **Broader gate** — must be true for *any* cross-worker exchange. |
 | `enable_lemma_exchange` | `true` | Per-feature gate; effective only when `enable_sharing` is also true. |
@@ -358,7 +358,7 @@ refinement, weighted-soft-constraint solving).
 |-------|---------|--------|
 | `incremental` | `true` | Gates `push` / `pop` scope manipulation. When `false`, push/pop are no-ops (paired so the stack stays balanced). |
 | `max_solutions` | `Some(usize::MAX)` | Cap for Pareto-front enumeration. |
-| `timeout_ms` | `Some(30 000)` | Per-query the SMT backend budget. |
+| `timeout_ms` | `Some(30 000)` | Per-query solver budget. |
 | `enable_cores` | `true` | Extract unsat cores for soft-constraint debugging. |
 | `method` | `Lexicographic` | `Lexicographic` / `Pareto` / `Box` / `WeightedSum`. |
 
@@ -375,7 +375,7 @@ refinement, weighted-soft-constraint solving).
 | `max_size` | `2 000` | Entry cap. |
 | `max_size_bytes` | `500 MB` | Memory cap. |
 | `ttl` | `30 days` | Result expiry. |
-| `statistics_driven` | `true` | When `false`, cache everything. When `true`, gate inserts on the SMT backend stats. |
+| `statistics_driven` | `true` | When `false`, cache everything. When `true`, gate inserts on solver stats. |
 | `min_decisions_to_cache` | `1 000` | ≥ this many SMT decisions → cache. |
 | `min_conflicts_to_cache` | `100` | ≥ this many conflicts → cache. |
 | `min_solve_time_ms` | `100` | ≥ this elapsed → cache. |
@@ -391,7 +391,7 @@ provide stats.
 
 ## Parameter-scope discipline
 
-The SMT backend has three distinct parameter scopes that are **not
+The SMT layer has three distinct parameter scopes that are **not
 interchangeable** — even for the same param key:
 
 | Scope | API | Persistence |
@@ -410,16 +410,16 @@ The empirically verified rule per key:
 | `proof` | ✅ | ✅ (`set_proof_generation`) | ❌ |
 | `timeout` | partial | ✅ (`set_timeout_msec`) | ✅ (`set_u32`) |
 | `unsat_core` | ❌ | ✅ | ✅ — must fold into the same `Params` value as the timeout |
-| `quant-mode` (the SMT backend) | n/a | n/a | ✅ via `smt_solver_set_option` |
+| `quant-mode` (adapter) | n/a | n/a | ✅ via `smt_solver_set_option` |
 
 :::warning Don't trust your intuition
 A parameter that looks settable at any scope frequently
-isn't. the SMT backend's silent-ignore behaviour means an incorrect
+isn't. The adapter's silent-ignore behaviour means an incorrect
 choice produces a "config seems to work" failure mode that
 only shows up under stress (`memory_max_size` is the
 canonical example: setting it on `Config` lets the build
-succeed but the SMT backend ignores the limit; setting it on `Solver`
-makes the SMT backend mis-route easy queries).
+succeed but the adapter ignores the limit; setting it on `Solver`
+makes the adapter mis-route easy queries).
 
 If you're adding a new param to the verifier, **empirically
 verify** at each scope before committing. The verifier's
@@ -427,30 +427,14 @@ audit suite includes regression tests for every parameter
 that has been wired this way.
 :::
 
-### `Solver::set_params` is **destructive**
+### Solver-parameter calls are destructive
 
-A subtle gotcha: `Solver::set_params(&params)` *replaces*
-the entire param set. Two separate calls do not accumulate:
-
-```rust
-// WRONG — second call erases the first
-let mut p1 = Params::new();
-p1.set_bool("unsat_core", true);
-solver.set_params(&p1);
-
-let mut p2 = Params::new();
-p2.set_u32("timeout", 5000);
-solver.set_params(&p2);   // unsat_core is now back to default
-
-// RIGHT — fold both keys into a single Params value
-let mut p = Params::new();
-p.set_bool("unsat_core", true);
-p.set_u32("timeout", 5000);
-solver.set_params(&p);
-```
-
-Every per-solver call site in the verifier follows this
-pattern. The audit suite has a regression test for it.
+A subtle gotcha at the adapter boundary: applying a parameter
+set to a live solver instance *replaces* its current parameter
+state. The verifier folds every per-solver tunable into a single
+batched apply per query, so two adjacent calls cannot
+accidentally erase each other's settings. The audit suite has a
+regression test that pins this folding behaviour.
 
 ---
 
@@ -492,7 +476,7 @@ num_workers      = 1
 
 ```toml
 [verify.solver.smt-backend]
-verbosity        = 3          # the SMT backend trace output
+verbosity        = 3          # solver trace output
 
 [verify.solver.unsat_core]
 minimize         = true

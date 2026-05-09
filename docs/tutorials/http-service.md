@@ -432,7 +432,7 @@ $ verum test
    all 4 tests passed
 ```
 
-Notice the `[verify]` line: the capability router dispatched to the SMT backend
+Notice the `[verify]` line: the capability router dispatched to the SMT layer
 and proved `codegen.generate` satisfies its postconditions **at
 compile time**. The property test then sanity-checks with random
 inputs.
@@ -474,7 +474,7 @@ $ curl localhost:8080/health
 - **Context protocols for DI.** One `Store` trait, an in-memory
   implement for tests, swap for production — no mocking framework.
 - **`@verify(formal)` with loop invariants.** The code generator's
-  post-condition is proven by the SMT backend, not tested.
+  post-condition is proven by the SMT layer, not tested.
 - **Structured concurrency with backpressure.** `nursery` bounds
   task lifetimes; `Semaphore` bounds total concurrency.
 

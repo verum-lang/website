@@ -201,16 +201,18 @@ The shared graph-theoretic primitive lives in
 [`crates/verum_kernel/src/arch_transitive.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/src/arch_transitive.rs)
 as a depth-first walker:
 
-```rust
-pub const MAX_TRANSITIVE_DEPTH: usize = 32;
+The walker exposes a single `for_each_transitive_peer` entry
+point. Inputs:
 
-pub fn for_each_transitive_peer<'a, F>(
-    registry:   &'a BTreeMap<String, Shape>,
-    start:      &str,
-    mut visit:  F,
-) where
-    F: FnMut(PeerVisit<'a>);
-```
+| Parameter | Role |
+|-----------|------|
+| `registry`| The full cog registry, keyed by name. |
+| `start`   | The starting cog. |
+| `visit`   | A callback invoked once per reachable peer. |
+
+The walker uses a fixed maximum transitive depth of `32`,
+matching the audit-corpus depth bound documented elsewhere in
+this section.
 
 The walker emits `PeerVisit { path, shape }` for every reachable
 cog at depth `≥ 1`, with `path` recording the full chain.

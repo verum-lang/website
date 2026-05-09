@@ -149,8 +149,8 @@ cog.
 **Path type** — `Path<A>(a, b)` — a proof that `a` and `b` are equal
 in type `A`, treated as data that can be transported.
 
-**Portfolio (verification)** — Running the SMT backend in parallel on the
-same obligation and cross-validating.
+**Portfolio (verification)** — Running multiple solver adapters in parallel on
+the same obligation and cross-validating.
 
 **Protocol** — A trait / interface. Declared as `type P is protocol { ... }`.
 
@@ -169,8 +169,9 @@ not implementation: `List` (not `Vec`), `Text` (not `String`).
 
 **SMT** — Satisfiability Modulo Theories. The class of solvers Verum's
 verification backend dispatches to. Language-level Verum does not commit
-to a specific SMT solver; the current implementation bundles multiple SMT backends as backends behind the capability router, and a Verum-native
-solver is on the roadmap.
+to a specific SMT solver; the current implementation bundles solver
+adapters behind the capability router, and a Verum-native solver is on
+the roadmap.
 
 **SSA** — Static single assignment form. Used by CBGR analysis.
 
@@ -206,8 +207,3 @@ representation. Every tier runs on VBC.
 **VCS** — Verum Conformance Suite. The comprehensive language test
 suite at `vcs/`.
 
-## Z
-
-**the SMT backend** — One of the SMT solvers the current verification backend can
-dispatch to (alongside the SMT backend). Implementation detail, not a language
-commitment — see **SMT**.

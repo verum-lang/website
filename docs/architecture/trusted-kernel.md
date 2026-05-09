@@ -32,7 +32,7 @@ flowchart LR
     SRC[".vr source"] --> EL["Elaborator<br/>(verum_types)"]
     EL --> CT[["CoreTerm"]]
     TAC["Tactics<br/>(verum_verification)"] --> CT
-    SMT["SMT backends<br/>(multiple SMT backends / E / Vampire)"] --> CERT[["SmtCertificate"]]
+    SMT["SMT layer<br/>(pluggable solver adapters,<br/>first-order provers)"] --> CERT[["SmtCertificate"]]
     CERT --> REPLAY["replay_smt_cert"]
     REPLAY --> CT
     FW["Framework axioms<br/>(core/math/frameworks/*.vr)"] --> REG[["AxiomRegistry"]]
@@ -66,66 +66,27 @@ functions, dependent pairs, cubical paths with `hcomp` / `transp` /
 `Glue`, refinement types, user / stdlib / higher inductive types,
 SMT-certificate witnesses, and registered axioms.
 
-```rust
-pub enum CoreTerm {
-    // Identifiers and universes
-    Var(Text),
-    Universe(UniverseLevel),
+The `CoreTerm` calculus is partitioned into the following groups
+of constructors:
 
-    // Dependent functions
-    Pi  { binder, domain, codomain },
-    Lam { binder, domain, body },
-    App(Heap<CoreTerm>, Heap<CoreTerm>),
+| Group | Constructors |
+|-------|--------------|
+| Identifiers and universes        | `Var`, `Universe` |
+| Dependent functions              | `Pi`, `Lam`, `App` |
+| Dependent pairs (Σ-types)        | `Sigma`, `Pair`, `Fst`, `Snd` |
+| Cubical HoTT                     | `PathTy`, `Refl`, `PathOver`, `HComp`, `Transp`, `Glue` |
+| Refinement                       | `Refine` (a base type, a binder, and a predicate over it) |
+| Quotient / HIT                   | `Quotient`, `QuotIntro`, `QuotElim` |
+| Inductive types and elimination  | `Inductive`, `Elim` |
+| External witnesses               | `SmtProof` (carries an `SmtCertificate`), `Axiom` (carries a `FrameworkId`) |
+| Diakrisis (Actic dual)           | `EpsilonOf`, `AlphaOf` |
+| Modal operators                  | `ModalBox`, `ModalDiamond`, `ModalBigAnd` |
+| Cohesive modalities (∫ ♭ ♯)      | `Shape`, `Flat`, `Sharp` |
 
-    // Dependent pairs
-    Sigma { binder, fst_ty, snd_ty },
-    Pair(Heap<CoreTerm>, Heap<CoreTerm>),
-    Fst(Heap<CoreTerm>),
-    Snd(Heap<CoreTerm>),
-
-    // Cubical HoTT
-    PathTy   { carrier, lhs, rhs },
-    Refl(Heap<CoreTerm>),
-    PathOver { motive, path, lhs, rhs },
-    HComp    { phi, walls, base },
-    Transp   { path, regular, value },
-    Glue     { carrier, phi, fiber, equiv },
-
-    // Refinement
-    Refine { base, binder, predicate },
-
-    // Quotient (HIT / set-quotient)
-    Quotient { carrier, relation },
-    QuotIntro(Heap<CoreTerm>),
-    QuotElim { quot, motive, case, coh },
-
-    // Inductive types + elimination
-    Inductive { path, args },
-    Elim      { scrutinee, motive, cases },
-
-    // External witnesses
-    SmtProof(SmtCertificate),
-    Axiom    { name, ty, framework },
-
-    // Diakrisis (Actic dual): ε / α tokens
-    EpsilonOf(Heap<CoreTerm>),
-    AlphaOf(Heap<CoreTerm>),
-
-    // Modal operators
-    ModalBox(Heap<CoreTerm>),
-    ModalDiamond(Heap<CoreTerm>),
-    ModalBigAnd(List<Heap<CoreTerm>>),
-
-    // Cohesive modalities (∫ ♭ ♯)
-    Shape(Heap<CoreTerm>),
-    Flat(Heap<CoreTerm>),
-    Sharp(Heap<CoreTerm>),
-}
-```
-
-`UniverseLevel` is `Concrete(u32) | Variable(Text) | Succ(box) |
-Max(box, box) | Prop`, with `checked_add` on every `Succ` step
-so the level lattice cannot wrap silently in release builds.
+`UniverseLevel` is one of `Concrete(n)`, `Variable(name)`,
+`Succ(level)`, `Max(level, level)`, or `Prop`, with checked
+arithmetic on every `Succ` step so the level lattice cannot wrap
+silently in release builds.
 
 ## Typing rules
 
@@ -179,19 +140,17 @@ when its name appears in the free variables of the value being
 substituted, the binder is α-renamed to a fresh name (via
 `fresh_binder_name`) before the body is descended.
 
-```rust
-pub fn substitute(term: &CoreTerm, name: &str, value: &CoreTerm)
-    -> CoreTerm {
-    // For every binder constructor (Pi / Lam / Sigma / Refine):
-    //   1. If the binder name == `name`: stop — the inner body
-    //      shadows the substitution target.
-    //   2. Else if `binder ∈ free_vars(value)`: α-rename the
-    //      binder to a fresh name (avoiding both `free_vars(body)`
-    //      and `free_vars(value) ∪ {name}`), then substitute under
-    //      the renamed binder.
-    //   3. Else: descend with `name` unchanged.
-}
-```
+For every binder constructor (`Pi` / `Lam` / `Sigma` / `Refine`),
+substitution proceeds as follows:
+
+1. If the binder's name equals the substitution target, stop —
+   the inner body shadows it.
+2. Otherwise, if the binder's name occurs free in the value
+   being substituted, α-rename the binder to a fresh name
+   (avoiding both the body's free variables and the union of the
+   value's free variables with the substitution target), then
+   recurse under the renamed binder.
+3. Otherwise, descend with the substitution target unchanged.
 
 The three Barendregt cases (no clash, shadow stop, capture-avoiding
 α-rename) are uniformly handled across all four binder
@@ -245,39 +204,37 @@ registration stores a `FrameworkId { framework, citation }` so
 Duplicate registration is refused — the kernel will not silently
 accept two axioms sharing a name.
 
-```rust
-pub struct AxiomRegistry { entries: List<RegisteredAxiom> }
+The registry exposes three operations:
 
-impl AxiomRegistry {
-    pub fn register(&mut self, name: Text, ty: CoreTerm,
-                    framework: FrameworkId)
-        -> Result<(), KernelError>;
+| Operation        | Effect |
+|------------------|--------|
+| `register(name, ty, framework)` | Add an axiom; rejects duplicate names with a typed error. |
+| `get(name)`      | Look up a registered axiom by name. |
+| `all()`          | Enumerate every registered axiom — the audit surface that `verum audit --framework-axioms` walks. |
 
-    pub fn get(&self, name: &str) -> Maybe<&RegisteredAxiom>;
-    pub fn all(&self) -> &List<RegisteredAxiom>;
-}
-```
-
-`RegisteredAxiom { name, ty, framework }` is the wire format for
-both the `verum audit --framework-axioms` CLI and the
-`.verum-cert` exporter — a single source of truth for the trusted
-boundary.
+Each entry carries the axiom's `name`, its declared `ty` (a
+`CoreTerm`), and its `FrameworkId { framework, citation }`
+attribution. The same record is the wire format both for the
+`verum audit --framework-axioms` CLI and for the `.verum-cert`
+exporter — a single source of truth for the trusted boundary.
 
 ## The SMT certificate
 
-```rust
-pub struct SmtCertificate {
-    pub backend: Text,             // "backend-a", "backend-b", "e", "vampire", ...
-    pub backend_version: Text,     // pinned per-cert to the exact solver
-    pub trace: List<u8>,           // normalized proof trace
-    pub obligation_hash: Text,     // content-addressed obligation ID
-}
-```
+`SmtCertificate` is the wire format every solver adapter must
+produce. Its fields are:
 
-The certificate format is backend-neutral. Each backend's native
-proof trace is normalized by `verum_smt::proof_extraction` into the
-common shape, so the kernel's `replay_smt_cert` knows only "parse a
-trace per backend name", not "every backend's bespoke format".
+| Field | Role |
+|-------|------|
+| `backend`         | Opaque string tag identifying which adapter produced this certificate. |
+| `backend_version` | Pinned per-certificate to the exact build of that adapter. |
+| `trace`           | Normalised proof trace (a byte sequence in a kernel-defined shape). |
+| `obligation_hash` | Content-addressed identifier of the original obligation. |
+
+The certificate format is backend-neutral. Each adapter's native
+proof trace is normalised by `verum_smt::proof_extraction` into
+this common shape, so the kernel's `replay_smt_cert` only ever
+sees "parse a trace per backend tag" — it never depends on any
+particular solver's bespoke format.
 
 When replay succeeds the kernel synthesises a corresponding
 `CoreTerm` witness and re-checks it with `infer`. A solver bug that

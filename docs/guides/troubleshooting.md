@@ -58,15 +58,15 @@ macOS: `xcode-select --install`.
 
 Default timeout is 5 s per obligation. Causes:
 - Unbounded quantifier: `forall x: Int. P(x)` → bound it — `forall x in 0..n. P(x)`.
-- Heavy nonlinearity: escalate to `@verify(thorough)` — races the SMT backend
-  with the SMT backend (whose CAD engine is better at nonlinear arithmetic).
+- Heavy nonlinearity: escalate to `@verify(thorough)` — races the
+  default adapter with a CAD-capable adapter (better at nonlinear arithmetic).
 - Cached stale result: `verum clean` and retry.
 
 Increase per-project: `verum.toml [verify] solver_timeout_ms = 30_000`.
 
 ### "Solvers disagreed on obligation"
 
-A portfolio run found the SMT backend disagreeing. Very rare — usually a
+A portfolio run found two adapters disagreeing. Very rare — usually a
 solver bug. Report with the SMT-LIB query (`verum verify --emit-smtlib`)
 so the Verum team can file it upstream.
 

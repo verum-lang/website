@@ -151,7 +151,7 @@ public fn encrypt(key: Key32, nonce: Nonce, plaintext: &Bytes)
 ```
 
 The `@verify(certified)` decoration discharges the
-post-condition with both multiple SMT backends in agreement, exports a
+post-condition with two solver adapters in agreement, exports a
 proof certificate, and re-checks it through the kernel. The
 `Lifecycle.Theorem("v1.0")` annotation pins this fact at the
 architectural layer.
@@ -360,9 +360,9 @@ that consumes audit reports — IDEs, code-review bots, dashboards —
 should use this method rather than re-deriving the glyph from the
 variant tag.
 
-```rust
-let lifecycle = shape.lifecycle.clone();
-println!("status: {} ({})", lifecycle.cve_glyph(), lifecycle.tag());
+```verum
+let lifecycle = shape.lifecycle;
+print(f"status: {lifecycle.cve_glyph()} ({lifecycle.tag()})");
 // status: T (theorem)
 ```
 

@@ -63,7 +63,7 @@ Build:
 [verify] clamp   ✓ (formal/smt-backend, 6 ms)
 ```
 
-Done — the capability router dispatched to the SMT backend and the postcondition
+Done — the capability router dispatched to the SMT layer and the postcondition
 is proven across every branch.
 
 ### Graduating a loop — add invariants
@@ -102,7 +102,7 @@ For the critical 1% of your code:
 fn critical_security_function(...) -> ... { ... }
 ```
 
-Runs the SMT backend in parallel and confirms they agree. ~2× compile
+Runs multiple solver adapters in parallel and confirms they agree. ~2× compile
 cost on that one function. Disagreement → CI failure with detailed
 diagnostics.
 
@@ -117,9 +117,10 @@ nonlinearity, or a predicate the solver can't decompose.
   the proof.
 - Move a complex predicate into a named `@logic fn` that the solver
   can reuse.
-- Escalate to `@verify(thorough)` — races the SMT backend, and tactic-based
-  proof search in parallel; the SMT backend handles nonlinear arithmetic and
-  strings better than the SMT backend so this often unblocks hard goals.
+- Escalate to `@verify(thorough)` — races available solver adapters
+  and tactic-based proof search in parallel; different adapters handle
+  nonlinear arithmetic and strings with different strengths, so the
+  race often unblocks hard goals.
 - Bound quantifiers: `forall x: Int. P(x)` → `forall x in 0..n. P(x)`.
 
 **"Counter-example: …"**: the solver found an input that violates
@@ -142,8 +143,8 @@ Start strict, loosen if needed:
 ```
 @verify(runtime)      →   prototype; asserts only
 @verify(static)       →   default; free
-@verify(formal)          →   annotate invariants; the SMT backend proves
-@verify(thorough)    →   safety-critical; both solvers
+@verify(formal)          →   annotate invariants; the SMT layer proves
+@verify(thorough)    →   safety-critical; multiple adapters
 @verify(certified)    →   kernel-class; proof term required
 ```
 
@@ -152,6 +153,6 @@ And keep moving items down the list as the code matures.
 ### See also
 
 - **[Gradual verification](/docs/verification/gradual-verification)**
-- **[SMT routing](/docs/verification/smt-routing)** — how the SMT backend are chosen.
+- **[SMT routing](/docs/verification/smt-routing)** — how solver adapters are chosen.
 - **[Verified data structure tutorial](/docs/tutorials/verified-data-structure)**
   — full walkthrough with loop invariants.

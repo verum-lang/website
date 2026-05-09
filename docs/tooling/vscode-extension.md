@@ -87,7 +87,7 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 
 All five `verum/*` JSON-RPC methods backing these commands are live;
 the server routes them through
-`LspService.build(...).custom_method(...)`. the SMT backend is isolated behind a
+`LspService.build(...).custom_method(...)`. The SMT layer is isolated behind a
 dedicated `verum-smt-worker` OS thread so the handler futures are
 `Send` — see
 [LSP → Custom `verum/*` JSON-RPC methods — architecture](/docs/tooling/lsp#custom-verum-json-rpc-methods--architecture)
@@ -261,7 +261,7 @@ output channel for the actual stderr. Most likely causes:
 
 ### `verum.lsp.smtSolver` set to `smt-backend` produces different results from `auto`
 
-Expected — `auto` races multiple SMT backends according to the goal shape.
+Expected — `auto` races available solver adapters according to the goal shape.
 Prefer `auto` for correctness-critical work and `smt-backend` only
 when reproducing a specific solver's trace. See
 [Verification / SMT routing](/docs/verification/smt-routing).

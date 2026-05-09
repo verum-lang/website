@@ -140,10 +140,10 @@ strictly increasing rigour:
 | `runtime`      | Runtime assertions                                            | Default for the `application` profile. |
 | `static`       | Dataflow + CBGR                                               | Trivially decidable refinements without SMT. |
 | `fast`         | Bounded SMT                                                   | ≤ 100 ms / goal; UNKNOWN-tolerant. |
-| `formal`       | multiple SMT backends portfolio                                           | Default `dev` for `research` profile. |
+| `formal`       | SMT solver portfolio                                          | Default `dev` for `research` profile. |
 | `proof`        | User tactic + kernel re-check                                 | Promotes when SMT cannot discharge. |
 | `thorough`     | `formal` + invariants / frame / termination                   | Catches missing specs. |
-| `reliable`     | `thorough` + the SMT backend ∧ the SMT backend cross-check                            | UNKNOWN on disagreement. |
+| `reliable`     | `thorough` + cross-adapter agreement                          | UNKNOWN on disagreement. |
 | `certified`    | `reliable` + certificate re-check + cross-format export       | Default `release` for `research` profile. |
 | `synthesize`   | Inverse proof search → strictest non-synth strategy           | Holes filled by search; cost is unbounded. |
 
@@ -219,10 +219,10 @@ integer = seconds).
 
 ### `[verify.solver]` — solver tuning
 
-Direct passthroughs to `SmtBackendConfig`, `SmtBackendConfig`, and the
+Direct passthroughs to `SmtBackendConfig` and the
 intermediate verifier configs. Each field is **load-bearing**
 — see [Architecture → SMT integration → Configuration knobs](/docs/architecture/smt-integration#configuration-knobs)
-for the full matrix and which multiple SMT backends parameter scope each
+for the full matrix and which solver-adapter parameter scope each
 setting reaches.
 
 ```toml
@@ -230,7 +230,7 @@ setting reaches.
 # Solver selection
 backend                 = "auto"          # auto | auto | portfolio | capability_router
 
-# the SMT backend-specific tuning
+# SMT-backend context tuning
 [verify.solver.smt-backend]
 enable_proofs           = true
 minimize_cores          = true
@@ -242,7 +242,7 @@ enable_patterns         = true
 random_seed             = 42              # reproducibility (smt.random_seed)
 auto_tactics            = true            # auto_config Config param
 
-# the SMT backend-specific tuning
+# SMT-backend adapter-level tuning
 [verify.solver.smt-backend]
 logic                   = "ALL"           # SMT-LIB logic name
 timeout_ms              = 30_000          # tlimit-per
@@ -337,15 +337,14 @@ min_conflicts_to_cache  = 100
 min_solve_time_ms       = 100
 ```
 
-:::tip the SMT backend parameter-scope discipline
-The SMT backend has three parameter scopes that are **not interchangeable**:
-global (`set_global_param`), Config (`Config::set_param_value`),
-and Solver (`Params::set_u32` + `Solver::set_params`). The
-verifier picks the right scope per key empirically — for
-example, `memory_max_size` only works at global scope (Config
-is silently ignored, Solver mis-routes queries). The matrix
-in [Architecture → SMT integration](/docs/architecture/smt-integration#solver-parameter-scope-discipline)
-documents every key the manifest exposes.
+:::tip Solver parameter-scope discipline
+Each tunable in this section is wired to a specific scope inside
+the SMT layer (process-global, per-context, or per-query). The
+mapping is not interchangeable — assigning a parameter at the
+wrong scope can silently no-op. The verifier picks the correct
+scope per key, and the operator's manual at
+[Verification → Solver tuning → Parameter-scope discipline](/docs/verification/solver-tuning#parameter-scope-discipline)
+documents every knob the manifest exposes.
 :::
 
 ### Recap: how the manifest reaches the solver
@@ -361,9 +360,9 @@ Phase config (e.g. ContractVerificationPhase, StaticVerifier)
     ↓ (forwarded into the subsystem)
 Subsystem config (e.g. RefinementConfig, QEConfig, InterpolationConfig)
     ↓ (consulted by the verifier method)
-Backend-specific config (SmtBackendConfig / SmtBackendConfig)
+Backend-specific config (SmtBackendConfig)
     ↓ (per-call wiring on each fresh solver)
-The SMT backend Params / the SMT backend options
+Adapter Params / SMT-LIB options
 ```
 
 Every field in this chain has been audited for "set but never

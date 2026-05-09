@@ -16,7 +16,7 @@ for that contract.
 
 ## Mental model
 
-When the SMT backend proves `forall x. x >= 0 -> x + 1 >= 1`, it doesn't just
+When an SMT solver proves `forall x. x >= 0 -> x + 1 >= 1`, it doesn't just
 return `unsat`.  It produces a **proof certificate** — a structured
 record of the inference steps used to reach the conclusion.  Verum
 ingests this cert and:
@@ -26,7 +26,7 @@ ingests this cert and:
    recognised, the theory is one of the supported SMT-LIB logics,
    and the body / conclusion are non-empty.
 2. **Per-backend replay** (optional).  Hands the cert to one or
-   more replay backends (the SMT backend, veriT, OpenSMT, MathSAT) and
+   more replay backends (every solver adapter on PATH) and
    collects each verdict.
 3. **Multi-backend consensus** (`@verify(certified)` semantics).
    The cert is committed to the proof corpus only when **every
@@ -145,7 +145,7 @@ The six supported formats:
 | `verum_canonical` | Verum's backend-independent canonical format.  Every production backend lowers to this; the kernel re-checker decomposes it into elementary kernel-rule applications. |
 | `smt_native` | the backend's native `(proof ...)` format. |
 | `alethe` | the backend's ALETHE format — more stable across releases than the backend's native; recommended export target. |
-| `lfsc_pattern` | LFSC pattern format (CVC4 / the SMT backend legacy). |
+| `lfsc_pattern` | Legacy LFSC pattern format. |
 | `open_smt` | OpenSMT2 native proof format. |
 | `mathsat` | MathSAT5 native proof format. |
 

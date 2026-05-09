@@ -83,7 +83,7 @@ fn deref(r: ThinRef<T>) -> &T {
 Three loads, one compare, one conditional branch. On the
 `production_targets` bench (x86_64, release build) this measures
 **~0.93 ns** — well under the ≤ 15 ns design target set in
-[`docs/detailed/26-cbgr-implementation`](https://github.com/verum-lang/verum/blob/main/docs/detailed/26-cbgr-implementation.md).
+[`docs/detailed/cbgr-implementation`](https://github.com/verum-lang/verum/blob/main/docs/detailed/cbgr-implementation.md).
 
 ## Why not just bounds-check?
 

@@ -14,8 +14,12 @@ Everything `verum_codegen` produces is compiled ahead of time.
 
 ## LLVM backend
 
-Located in `verum_codegen::llvm`. Huge — `instruction.rs` alone is
-1.1 M LOC.
+Located in `verum_codegen::llvm`. Organised by concern: instruction
+lowering (`instruction.rs`), VBC translation (`vbc_lowering.rs`),
+runtime helpers (`runtime.rs`), FFI trampolines (`ffi.rs`), tensor /
+SIMD intrinsic mapping (`tensor_ir.rs`, `simd.rs`), platform-specific
+IR (`platform_ir.rs`), and target-triple gating
+(`target_triple.rs`).
 
 ### VBC → LLVM IR
 
@@ -32,8 +36,14 @@ Located in `verum_codegen::llvm`. Huge — `instruction.rs` alone is
 ### Runtime support
 
 `runtime.rs` generates:
-- CBGR helper functions (fast-path in-asm; slow-path in C).
-- Alloc / dealloc entry points (call into `verum_toolchain::mem`).
+- CBGR helper functions (fast-path open-coded inline; slow-path
+  emitted as IR helpers in the same module).
+- Allocation entry points: every `Heap(...)` lowers to a wrapper
+  that calls `verum_os_alloc` / `verum_os_free`, themselves emitted
+  by `platform_ir.rs` against `mmap` / `munmap` on Unix and
+  `VirtualAlloc` / `VirtualFree` on Windows. There is no libc
+  allocator in the dependency chain — see
+  **[no-libc architecture](/docs/architecture/no-libc-architecture)**.
 - Context stack primitives (push, pop, lookup).
 - Panic and unwind machinery.
 
@@ -47,9 +57,12 @@ Located in `verum_codegen::llvm`. Huge — `instruction.rs` alone is
 
 ### Tensor and SIMD
 
-`tensor_ir.rs` (134 K LOC) and `simd.rs` (21 K LOC) map tensor and
-SIMD opcodes to platform intrinsics — SSE/AVX/AVX-512 on x86_64, NEON
-on aarch64, scalar fallbacks on other targets.
+`tensor_ir.rs` and `simd.rs` map tensor and SIMD opcodes to platform
+intrinsics — SSE / AVX / AVX-512 on x86_64, NEON on aarch64, scalar
+fallbacks on other targets. Tensor ops that have a fused intrinsic
+form on the target (flash attention, layer norm, …) are kept as a
+single op all the way down so vendor intrinsics can be emitted
+directly rather than reconstructed from primitive linalg.
 
 ### GPU (Metal)
 
@@ -199,16 +212,27 @@ pass fuses into the forward kernel whenever the dataflow allows
 
 ## Linking
 
-`link.rs` invokes the platform linker:
+`link.rs` drives the in-tree LLD wrapper (`verum_llvm_sys::lld`) and
+applies a **no-libc** linking configuration on every platform:
 
-- **Linux**: `lld` with musl for static builds; `ld.bfd` as fallback.
-- **macOS**: `ld64`, dynamic system libraries (libSystem).
-- **Windows**: `lld-link` with MSVC CRT.
-- **Cross-compilation**: pre-staged sysroots bundled in the `verum` binary.
+- **Linux**: `lld` (ELF flavour). No libc, no libm, no libpthread —
+  the runtime calls direct syscalls.
+- **macOS**: `lld` (Mach-O flavour) linking only `libSystem.B.dylib`,
+  Apple's required boundary.
+- **Windows**: `lld-link` linking only `ntdll.dll` + `kernel32.dll`
+  — no MSVC CRT, no UCRT.
+- **FreeBSD**: `lld` (ELF flavour) with direct syscalls.
+- **Cross-compilation**: pre-staged sysroots bundled in the `verum`
+  binary; every per-platform decision reads the **target** triple,
+  never the host's `cfg(target_os)`.
 
 LTO options:
 - `thin` (default): fast, good inlining.
 - `full`: slower, maximum cross-module optimisation.
+
+See **[no-libc architecture](/docs/architecture/no-libc-architecture)**
+for the full ruleset and the per-platform link-audit procedure
+(`ldd` / `otool` / `dumpbin`).
 
 ## Debug information
 

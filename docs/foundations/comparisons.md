@@ -58,7 +58,7 @@ restrictions (no dependent return types, no refinement interaction).
 **SMT-backed verification as a compiler phase.** Verum integrates an
 SMT backend as a first-class compilation phase; `@verify(formal)` is
 grammar, not an external-tool hook. (The current implementation
-bundles multiple SMT backends behind a capability router; a Verum-native solver
+bundles solver adapters behind a capability router; a Verum-native solver
 is on the roadmap.) In Rust, SMT-based verification lives in external
 tools that re-parse source.
 
@@ -204,7 +204,7 @@ verification, sometimes HoTT.
   100% proved. Strategies range from `@verify(runtime)` to
   `@verify(certified)`, chosen per function.
 - **SMT-first.** Most goals in Verum are discharged automatically by
-  the SMT backend; only the hard goals need tactics. In Coq / Agda, the
+  the SMT layer; only the hard goals need tactics. In Coq / Agda, the
   default is interactive proof.
 - **No built-in totality requirement.** Functions need not be total
   by default. Coinduction is opt-in via `cofix`.
@@ -228,7 +228,7 @@ practical verification.
 
 ### Where Verum differs
 
-- **Dual-solver portfolio.** Verum routes between the SMT backend based
+- **Dual-solver portfolio.** Verum routes between solver adapters based
   on goal shape. F\* is single-solver.
 - **Memory model.** Verum has CBGR with three tiers built into the
   language. F\* compiles to C via Low\* (or to OCaml, for

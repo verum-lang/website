@@ -77,8 +77,8 @@ Several primary opcodes are prefixes into second-byte tables:
   Wire format `[0x1F] [sub_op:u8] [operands...]`. Sub-op `0x00`
   is reserved as a forward-compat anchor; encoders must not emit
   it, decoders accept it as a no-op so future extensions land
-  cleanly without breaking older interpreters. Carved out of the
-  reserved `IntArith1F` slot during the #167 opcode-space audit.
+  cleanly without breaking older interpreters. Carved out of a
+  previously-reserved opcode slot during an opcode-space audit.
 
 #### Extended-operand length prefix
 

@@ -67,17 +67,16 @@ boundary closes the tower from above.
 
 ## 2. The four structural stages
 
-Verum's `ReflectionStage` enum is consequently *four* canonical
-stages — not five-plus ordinal-indexed levels:
+`ReflectionStage` is consequently a *four-stage* canonical
+hierarchy — not a five-plus ordinal-indexed family. The four
+stages, from base to boundary:
 
-```rust
-pub enum ReflectionStage {
-    Base,                          // REF^0 — per-rule footprint
-    StableUnderUniverseAscent,     // REF^≥1 — Theorem 9.6
-    BoundedByOneInaccessible,      // REF^ω — Theorem 8.2
-    AbsoluteBoundaryEmpty,         // REF^Abs — Theorem 5.1
-}
-```
+| Constructor                  | Stage |
+|------------------------------|-------|
+| `Base`                       | REF<sup>0</sup> — per-rule footprint. |
+| `StableUnderUniverseAscent`  | REF<sup>≥1</sup> — Theorem 9.6. |
+| `BoundedByOneInaccessible`   | REF<sup>ω</sup> — Theorem 8.2. |
+| `AbsoluteBoundaryEmpty`      | REF<sup>Abs</sup> — Theorem 5.1. |
 
 | Stage | Verdict source | Citation |
 |-------|----------------|----------|
@@ -93,30 +92,15 @@ verdicts.
 
 ## 3. The discharge functions
 
-Each stage has a corresponding discharge function in
-`verum_kernel::reflection_tower`:
+Each stage has a corresponding boolean discharge predicate
+exposed by `verum_kernel::reflection_tower`:
 
-```rust
-pub fn base_discharges() -> bool {
-    // Per-rule footprint must be bounded by ZFC + 2·κ.
-    kernel_meta_soundness_holds()
-}
-
-pub fn stable_under_universe_ascent_discharges() -> bool {
-    // MSFS Theorem 9.6: every k ≥ 1 reduces to base.
-    base_discharges()
-}
-
-pub fn omega_bounded_discharges() -> bool {
-    // MSFS Theorem 8.2: tower instantiation ≤ 3 inaccessibles.
-    max_inaccessible_required() <= 3
-}
-
-pub fn absolute_boundary_empty_discharges() -> bool {
-    // MSFS Theorem 5.1: 𝓛_Abs is uniformly empty.
-    true
-}
-```
+| Predicate                                  | Verdict |
+|--------------------------------------------|---------|
+| `base_discharges()`                        | The per-rule footprint is bounded by ZFC + 2·κ — delegates to `kernel_meta_soundness_holds()`. |
+| `stable_under_universe_ascent_discharges()`| Every `k ≥ 1` reduces to the base stage (MSFS Theorem 9.6). Delegates to `base_discharges()`. |
+| `omega_bounded_discharges()`               | The tower instantiation requires no more than three inaccessibles (MSFS Theorem 8.2). Computed by walking every kernel rule's `required_meta_theory()` and confirming the largest inaccessible-index is ≤ 3. |
+| `absolute_boundary_empty_discharges()`     | The absolute stratum 𝓛<sub>Abs</sub> is uniformly empty (MSFS Theorem 5.1). Holds unconditionally on the current corpus. |
 
 The `omega_bounded` discharge walks every kernel rule's
 `required_meta_theory()`, picks the largest inaccessible-index,

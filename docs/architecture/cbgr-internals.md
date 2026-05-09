@@ -340,7 +340,7 @@ The configs share a uniform shape:
 |------------------------|---------|--------------------------------------------------------|
 | `max_abstraction_level`| `4`     | Caps the abstraction level requested by `abstract_predicate`. Higher → more aggressive (less precise). |
 | `path_threshold`       | `50`    | `merge_similar_paths` skips work when path count is below this. |
-| `use_smt_equivalence`   | `true`  | Gates `check_equivalence_smt`. When `false`, the method returns the conservative "not provably equivalent" answer without invoking the SMT backend (stats counter still increments). Surfaced via `smt_equivalence_enabled()`. |
+| `use_smt_equivalence`   | `true`  | Gates `check_equivalence_smt`. When `false`, the method returns the conservative "not provably equivalent" answer without invoking the SMT layer (stats counter still increments). Surfaced via `smt_equivalence_enabled()`. |
 | `use_subsumption`      | `true`  | Gates `check_subsumption_smt` symmetrically. Surfaced via `subsumption_enabled()`. |
 | `use_widening`         | `true`  | Master switch over `abstract_level3`. When `false`, level-3 falls back to level-2 (no widening) — preserves precision at the cost of slower convergence on deeply-nested loops. Surfaced via `widening_enabled()`. |
 | `widening_threshold`   | `3`     | When widening is enabled: widen after this many iterations on the same predicate hash. |
@@ -358,12 +358,12 @@ The configs share a uniform shape:
 
 Convenience constructors:
 
-```rust
-PromotionConfig::default()       // enable + safe heap default
-PromotionConfig::aggressive()    // enable + allow heap + lower confidence (0.80)
-PromotionConfig::conservative()  // enable + extra_conservative + tight confidence (0.99)
-PromotionConfig::disabled()      // master switch off (every ref managed)
-```
+| Constructor      | Effect |
+|------------------|--------|
+| `default()`      | Enabled with the safe heap default (no heap promotion). |
+| `aggressive()`   | Enabled, allows heap promotion, lower confidence threshold (0.80). |
+| `conservative()` | Enabled with `extra_conservative` set and a tight confidence threshold (0.99). |
+| `disabled()`     | Master switch off — every reference stays managed. |
 
 ### `ConcurrencyAnalysisConfig`
 
@@ -411,20 +411,11 @@ constructor — depth_policy + compressor are auto-installed.
 
 The three domain gates are independent — opting out of constant
 tracking keeps symbolic and range tracking active (and vice-versa)
-so callers can build a precise per-analysis cost/precision profile.
-Construction:
-
-```rust
-let config = ValueTrackingConfig {
-    enable_constant_propagation: true,
-    enable_range_analysis: false,           // skip range refinement
-    enable_symbolic_execution: true,
-    max_iterations: 50,                     // cap at 50 worklist iters
-};
-let propagator = ValuePropagator::with_config(config);
-// Driven by EnhancedEscapeAnalyzer:
-let result = analyzer.track_concrete_values_with_config(config);
-```
+so callers can build a precise per-analysis cost / precision
+profile. The configuration is passed when constructing a
+`ValuePropagator` or driving the enhanced escape analyser; both
+honour the same `ValueTrackingConfig` shape and propagate the
+gates uniformly through their worklist.
 
 ### `DiagnosticsConfig`
 

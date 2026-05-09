@@ -9,8 +9,10 @@ description: The five-layer architecture of the Verum compiler — VBC-first, ca
 Verum is a **VBC-first** compiler: every program lowers to Verum
 Bytecode, and VBC is either interpreted (Tier 0) or compiled to
 native code via LLVM (Tier 1). A separate MLIR path emits GPU binaries
-for `@device(gpu)` code. The compiler is a 24-crate Rust workspace
-(~1.36 M LOC) organised into five layers.
+for `@device(gpu)` code. The compiler is a Rust workspace organised
+into five layers, plus a thin Layer 1.5 of shared protocol-type
+definitions to break what would otherwise be a circular dependency
+between the type system and the SMT backend.
 
 ## Reading paths
 
@@ -46,13 +48,18 @@ flowchart TD
         L1B["verum_ast · verum_syntax<br/>lossless red-green tree"]
     end
 
+    subgraph L15["Layer 1.5 — Shared protocol types"]
+        L15A["verum_protocol_types<br/>shared type defs (no logic)"]
+    end
+
     subgraph L2["Layer 2 — Type system + verification"]
         L2A["verum_types<br/>infer · unify · refinement · cubical"]
-        L2B["verum_cbgr<br/>11-module reference-analysis suite"]
-        L2C["verum_smt<br/>capability-routed SMT backend"]
+        L2B["verum_cbgr<br/>reference-analysis suite (escape · NLL · Polonius · …)"]
+        L2C["verum_smt<br/>capability-routed SMT layer"]
         L2D["verum_verification<br/>VCGen · Hoare · tactics"]
         L2E["verum_modules<br/>resolver · coherence · parallel loader"]
         L2F["verum_kernel<br/>LCF-style trusted checker"]
+        L2G["verum_core<br/>typed pipeline IR"]
     end
 
     subgraph L3["Layer 3 — Execution (VBC-first)"]
@@ -62,39 +69,44 @@ flowchart TD
 
     subgraph L4["Layer 4 — Orchestration & tools"]
         L4A["verum_compiler<br/>pipeline · derives · hygiene"]
-        L4B["verum_toolchain · verum_cli · verum_lsp · verum_dap"]
+        L4B["verum_cli · verum_lsp · verum_dap"]
         L4C["verum_interactive<br/>REPL + Playbook TUI"]
+        L4D["verum_stdlib_precompiler<br/>build-time stdlib archive"]
     end
 
     OUT[["Executable / interpreted result"]]
 
-    SRC --> L0 --> L1 --> L2
-    L2 -- "TypedAST" --> L3
+    SRC --> L0 --> L1 --> L15 --> L2
+    L2 -- "typed IR" --> L3
     L3 --> L4 --> OUT
 ```
 
 ## Key crates at a glance
 
-Line counts reflect the current release.
+| Crate | Role |
+|-------|------|
+| `verum_common`         | Semantic-type primitives (`List`, `Text`, `Map`, …) and shared layout constants. |
+| `verum_fast_parser`    | Main recursive-descent parser — direct-to-AST. |
+| `verum_ast`            | AST node definitions. |
+| `verum_syntax`         | Lossless red-green tree for the formatter and IDE. |
+| `verum_protocol_types` | Shared protocol / GAT / CBGR-predicate type definitions (no logic). |
+| `verum_types`          | Inference, unification, refinement, cubical, dependent, exhaustiveness. |
+| `verum_cbgr`           | Reference-tier analysis suite (escape, NLL, Polonius, points-to, SMT-alias, …). |
+| `verum_smt`            | Capability-routed SMT layer — portfolio executor with cross-validation between solver adapters. |
+| `verum_verification`   | Hoare logic, VCGen, tactic evaluator, dependent verifier, certificate replay. |
+| `verum_kernel`         | LCF-style trusted kernel — sole member of the TCB. |
+| `verum_core`           | Typed pipeline IR — the stable contract between AST and kernel. |
+| `verum_modules`        | Module resolution, coherence, parallel loader, cog resolver. |
+| `verum_vbc`            | Bytecode, interpreter (Tier 0), VBC codegen, monomorphisation, archive format. |
+| `verum_codegen`        | LLVM (CPU) + MLIR (GPU) backends. |
+| `verum_compiler`       | Phase orchestration, derives, hygiene, embedded stdlib, incremental compiler. |
+| `verum_lsp`            | LSP 3.17 server. |
+| `verum_dap`            | Debug Adapter Protocol server. |
+| `verum_interactive`    | REPL and Playbook TUI. |
+| `verum_cli`            | Command-line frontend (binary `verum`). |
 
-| Crate | Role | LOC |
-|-------|------|----:|
-| `verum_types` | Type system (inference, refinement, cubical) | 221 K |
-| `verum_vbc` | Bytecode, interpreter, VBC codegen, monomorphization | 192 K |
-| `verum_compiler` | Phase orchestration, derives, linker config | 161 K |
-| `verum_smt` | SMT backend, capability router, portfolio executor | 139 K |
-| `verum_cbgr` | 11-module reference-tier analysis suite | 103 K |
-| `verum_fast_parser` | Main recursive-descent parser | 89 K |
-| `verum_codegen` | LLVM (CPU) + MLIR (GPU) backends | 81 K |
-| `verum_verification` | VCGen, Hoare logic, tactic evaluator | 59 K |
-| `verum_kernel` | LCF-style trusted checker — sole member of the TCB | 1.2 K |
-| `verum_parser` | Legacy parser (partial, being phased out) | 49 K |
-| `verum_ast` | AST definitions | 47 K |
-| `verum_lsp` | Language server (LSP 3.17) | 33 K |
-| `verum_cli` | Command-line frontend (35 commands) | 32 K |
-
-See **[crate map](/docs/architecture/crate-map)** for every crate with
-LOC and key files.
+See **[crate map](/docs/architecture/crate-map)** for every crate
+with key files and entry points.
 
 ## Pipeline summary
 
@@ -129,20 +141,24 @@ verifier and advanced optimisation passes. Full phase detail:
 - Refinement types with SMT discharge; `@verify(formal|thorough|certified)`.
 - Dependent types — Π, Σ, path types, computational univalence.
 - Cubical normaliser with HoTT primitives and HITs.
-- Dual-backend SMT with a capability router that classifies obligations
-  by theory and picks the appropriate solver.
-- VBC bytecode with ~350 opcodes (primary + extended tables) and a
-  37-file dispatch-table interpreter.
+- Capability-routed SMT layer that classifies obligations by theory
+  signature and picks the best solver adapter; obligations marked
+  high-assurance can be cross-validated by running multiple adapters
+  in parallel.
+- VBC bytecode with primary + extended opcode tables and a
+  dispatch-table interpreter.
 - LLVM AOT codegen with tier-aware CBGR lowering
   (`Ref` / `RefChecked` / `RefUnsafe`).
-- CBGR memory safety — 11 analysis modules (escape, NLL, Polonius,
-  points-to, SMT-alias, …) feeding per-reference tier decisions.
+- CBGR memory safety — a multi-module analysis suite (escape, NLL,
+  Polonius, points-to, SMT-alias, ownership, lifetime, concurrency, …)
+  feeding per-reference tier decisions.
 - Module system: 5-level visibility, coherence (orphan + overlap +
   specialisation), cycle-break strategy ranking, parallel loading.
 - Structured concurrency: `async`, `await`, `spawn`, `nursery`,
   work-stealing executor.
 - LSP 3.17 server, DAP debug server, Playbook notebook TUI, REPL.
-- 35 CLI commands covering the full project lifecycle.
+- A CLI covering the full project lifecycle (build, run, test,
+  check, lint, fmt, audit, bench, doc, doctor, publish, …).
 
 ### Newer but validated
 
@@ -275,13 +291,18 @@ A stable bytecode gives:
   containing VBC plus optional proof certificates; validators can
   recheck without re-parsing Verum source.
 
-### Why dual-backend SMT?
+### Why capability-routed SMT?
 
-The SMT backend excels at linear arithmetic, arrays, and quantifier-free
-fragments. the SMT backend excels at strings, bitvectors with interpretation,
-and theory combinations. The capability router classifies each
-obligation's theory and dispatches — better coverage than either
-solver alone.
+Different solver implementations have different strengths — some
+are stronger on linear arithmetic and quantifier-free fragments,
+others on strings, bitvectors with interpretation, finite-model
+finding, or specific theory combinations. The capability router
+classifies each obligation by its theory signature and dispatches
+to the adapter best suited to it. The portfolio executor can also
+cross-validate by running multiple adapters in parallel for
+high-assurance obligations. The interface is solver-agnostic so
+adapters can be swapped without touching the verification
+pipeline.
 
 ### Why three CBGR tiers?
 
@@ -311,7 +332,7 @@ implementations.
   layout, capability bits, VBC tier opcodes, MLIR dialect.
 - **[Codegen](/docs/architecture/codegen)** — LLVM (CPU) and MLIR
   (GPU) backends.
-- **[SMT integration](/docs/architecture/smt-integration)** — how multiple SMT backends are wired in.
+- **[SMT integration](/docs/architecture/smt-integration)** — how solver adapters are wired in.
 - **[Verification pipeline](/docs/architecture/verification-pipeline)**
   — Phase 3a + Phase 4 solver internals.
 - **[Incremental compilation](/docs/architecture/incremental-compilation)**

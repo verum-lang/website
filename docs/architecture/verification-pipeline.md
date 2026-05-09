@@ -12,9 +12,9 @@ two invocation points in the compilation pipeline:
 
 :::note Solver choice is an implementation detail
 The language layer talks to an abstract SMT backend. The current
-release dispatches to multiple SMT backends through the capability router; a
-Verum-native solver is on the roadmap. Specific solver names below
-are notes about the current implementation, not part of Verum's
+release dispatches to one or more solver adapters through the capability
+router; a Verum-native solver is on the roadmap. Specific solver names
+below are notes about the current implementation, not part of Verum's
 language contract.
 :::
 
@@ -40,7 +40,7 @@ internal stages — the solver work, not the public pipeline phases.
 |-----------|-------------------------------|-----------------------------------------------------------------------------|
 | **5.1**   | Obligation collection         | refinement types, `requires` / `ensures`, loop invariants, CBGR hints       |
 | **5.2**   | SMT encoding                  | `verum_smt::expr_to_smtlib` + `@logic` axiom injection                      |
-| **5.3**   | Capability router             | theory classification → the SMT backend / portfolio                               |
+| **5.3**   | Capability router             | theory classification → adapter / portfolio                                 |
 | **5.4**   | Executor                      | synchronous / portfolio / cross-validate, per-obligation timeout            |
 | **5.5**   | Proof extraction & certify    | solver log → Verum proof term (machine-checked if `@verify(certified)`)     |
 | **5.6**   | Caching                       | SMT-LIB fingerprint → result, `target/smt-cache/`                           |
@@ -51,7 +51,7 @@ flowchart TD
     IN[["Verified HIR<br/>(from Phase 4)"]]
     S1["5.1 · Obligation collection<br/><i>refinements, ensures/requires,<br/>loop invariants, CBGR hints</i>"]
     S2["5.2 · SMT encoding<br/><i>expr_to_smtlib + @logic axioms</i>"]
-    S3["5.3 · Capability router<br/><i>theory classification →<br/>the SMT backend / portfolio</i>"]
+    S3["5.3 · Capability router<br/><i>theory classification →<br/>adapter / portfolio</i>"]
     S4["5.4 · Executor<br/><i>synchronous · portfolio ·<br/>cross-validate · timeout</i>"]
     S5["5.5 · Proof extraction & certify<br/><i>solver log → Verum proof term</i>"]
     S6["5.6 · Caching<br/><i>SMT-LIB fingerprint → result</i>"]
@@ -66,29 +66,26 @@ flowchart TD
 Walks the typed HIR and emits one `VerificationObligation` per
 logical claim that must hold:
 
-```rust
-type VerificationObligation is {
-    id:          ObligationId,
-    kind:        ObligationKind,
-    context:     List<Binding>,      // in-scope bindings
-    goal:        Expression,         // predicate that must hold
-    source:      Span,
-    verify_mode: VerifyMode,         // runtime | static | smt | portfolio | certified
-}
+Each `VerificationObligation` carries an identifier, a kind, the
+in-scope bindings that form its context, a goal predicate, the
+source span it was emitted from, and a verify mode (`runtime` /
+`static` / `smt` / `portfolio` / `certified`).
 
-enum ObligationKind {
-    RefinementWellFormed,            // from `Int { self > 0 }`
-    RefinementSubsumption,           // narrowing / subtyping boundary
-    Precondition,                    // where requires
-    Postcondition,                   // where ensures
-    LoopInvariant,                   // invariant clause
-    LoopTermination,                 // decreases clause
-    ArrayBounds,                     // xs[i] with unknown i
-    ContextCapability,               // capability subsumption
-    ReferencePromotion,              // &T -> &checked T safe?
-    PatternExhaustiveness,           // match completeness
-}
-```
+The `ObligationKind` enumeration covers every reason an
+obligation can be raised:
+
+| Kind                       | Source |
+|----------------------------|--------|
+| `RefinementWellFormed`     | A refinement type such as `Int { self > 0 }`. |
+| `RefinementSubsumption`    | A narrowing / subtyping boundary. |
+| `Precondition`             | A `where requires` clause. |
+| `Postcondition`            | A `where ensures` clause. |
+| `LoopInvariant`            | An `invariant` clause. |
+| `LoopTermination`          | A `decreases` clause. |
+| `ArrayBounds`              | An `xs[i]` access with non-trivial index. |
+| `ContextCapability`        | A capability-subsumption check. |
+| `ReferencePromotion`       | Tier-promotion query (`&T → &checked T`). |
+| `PatternExhaustiveness`    | A `match` completeness check. |
 
 Sources: `verum_compiler::phases::verification_phase::collect_obligations`
 plus hooks in `verum_types::infer` that emit obligations during flow
@@ -112,36 +109,33 @@ their bodies emitted as `(define-fun-rec …)` before the obligation's
 
 ## 5.3 — Capability router
 
-`verum_smt::capability_router` classifies each obligation by theory
-usage:
+`verum_smt::capability_router` classifies each obligation by
+theory usage. The classifier walks the goal AST and tags it
+with the theories it touches; the router then maps the theory
+set to an adapter choice.
 
-```rust
-fn classify(obligation: &Obligation) -> TheorySet {
-    let mut ts = TheorySet::empty();
-    for node in obligation.goal.walk() {
-        match node {
-            Add(_,_) | Sub(_,_) | Mul(_,_)           => ts |= LIA,
-            Mul(a,b) if !a.is_const() && !b.is_const() => ts |= NIA,
-            BitAnd(_,_) | BitOr(_,_) | Shl(_,_)      => ts |= BV,
-            Index(_,_) | Length(_)                    => ts |= Array,
-            Concat(_,_) | Matches(_,_)                => ts |= String,
-            Forall(_,_) | Exists(_,_)                 => ts |= Quant,
-            _ => (),
-        }
-    }
-    ts
-}
+| AST shape encountered            | Theory tag added |
+|----------------------------------|------------------|
+| Add / Sub / Mul                  | LIA              |
+| Mul of two non-constants         | NIA (nonlinear)  |
+| Bit-and / Bit-or / Shift         | BV               |
+| Index / Length                   | Array            |
+| Concat / Matches                 | String           |
+| Forall / Exists                  | Quantifier       |
 
-fn route(theories: TheorySet) -> SolverChoice {
-    match theories {
-        ts if ts <= (LIA | BV | Array | Quant)         => the SMT backend,
-        ts if ts.contains(String) || ts.contains(NIA)   => the SMT backend,
-        ts if ts.contains(FiniteModelFinding)           => the SMT backend,
-        _ if in_portfolio_mode()                        => Portfolio { primary: true, complementary: true },
-        _                                                => the SMT backend,    // default bias
-    }
-}
-```
+The mapping from the resulting tag set to an adapter choice
+follows the rules below. The router does not name any specific
+solver — it picks the highest-ranked adapter whose declared
+capabilities cover the tag set. When portfolio mode is in
+effect, several adapters race against each other.
+
+| Tag set                                          | Adapter choice |
+|--------------------------------------------------|----------------|
+| Subset of `LIA ∪ BV ∪ Array ∪ Quantifier`         | Adapter strongest on linear arithmetic. |
+| Contains `String` or `NIA`                       | Adapter strongest on those theories. |
+| Contains `FiniteModelFinding`                     | Adapter advertising finite-model finding. |
+| Otherwise (and portfolio mode on)                 | Race the available adapters in parallel. |
+| Otherwise                                         | Default-ranked adapter. |
 
 ## 5.4 — Executor
 
@@ -225,14 +219,14 @@ and by later refinement-aware passes (`passes/cbgr_integration.rs`).
 
 Empirical on a 50 K-LOC mixed project, Apple M3 Max:
 
-| Theory mix | Count | Median (ms) | p95 | Preferred solver |
-|---|---:|---:|---:|---|
-| LIA only | 2,100 | 8 | 35 | SMT backend |
-| LIA + bitvector | 940 | 14 | 60 | SMT backend |
-| LIA + string | 110 | 45 | 180 | SMT backend |
-| Nonlinear (NIA) | 42 | 320 | 1,800 | SMT backend |
-| Cubical / path | 18 | 120 | 400 | cubical_tactic → the SMT backend |
-| **overall** | 3,210 | 12 | 85 | — |
+| Theory mix       | Count | Median (ms) |  p95 | Adapter dispatch |
+|------------------|------:|------------:|-----:|------------------|
+| LIA only         | 2 100 |           8 |   35 | linear-arithmetic adapter |
+| LIA + bitvector  |   940 |          14 |   60 | linear-arithmetic adapter |
+| LIA + string     |   110 |          45 |  180 | string-capable adapter    |
+| Nonlinear (NIA)  |    42 |         320 | 1800 | nonlinear-capable adapter |
+| Cubical / path   |    18 |         120 |  400 | cubical tactic → SMT layer |
+| **overall**      | 3 210 |          12 |   85 | — |
 
 ## Telemetry
 
@@ -240,8 +234,8 @@ Empirical on a 50 K-LOC mixed project, Apple M3 Max:
 `.verum/telemetry/routing.jsonl`:
 
 ```json
-{"obligation": "search/postcond#3", "theories": ["lia","array"], "routed": "smt-backend", "ms": 8, "result": "unsat"}
-{"obligation": "parse/postcond#1", "theories": ["lia","string"], "routed": "smt-backend", "ms": 72, "result": "unsat"}
+{"obligation": "search/postcond#3", "theories": ["lia","array"], "routed": "primary", "ms": 8, "result": "unsat"}
+{"obligation": "parse/postcond#1", "theories": ["lia","string"], "routed": "string-capable", "ms": 72, "result": "unsat"}
 {"obligation": "crypto/invariant#7", "theories": ["lia","bv"], "routed": "portfolio", "primary_ms": 20, "complementary_ms": 35, "agreed": true}
 ```
 
@@ -258,17 +252,16 @@ single-session audit budget.
 
 ### Surface
 
-```rust
-pub fn infer(ctx: &Context, term: &CoreTerm, axioms: &AxiomRegistry)
-    -> Result<CoreTerm, KernelError>;
+The kernel exposes three entry points:
 
-pub fn verify_full(ctx: &Context, term: &CoreTerm,
-                   expected: &CoreTerm, axioms: &AxiomRegistry)
-    -> Result<(), KernelError>;
+| Entry point         | Role |
+|---------------------|------|
+| `infer`             | Given a `CoreTerm` and an axiom registry, return the term's inferred type or a typed `KernelError`. |
+| `verify_full`       | Given a `CoreTerm` and an *expected* type, confirm that `infer` agrees with the expected type. |
+| `replay_smt_cert`   | Re-derive a checkable proof term from an `SmtCertificate`; fails closed if the certificate cannot be replayed. |
 
-pub fn replay_smt_cert(ctx: &Context, cert: &SmtCertificate)
-    -> Result<CoreTerm, KernelError>;
-```
+Each takes the typing context and the axiom registry as
+read-only inputs; none mutates global state.
 
 `CoreTerm` is the explicit typed calculus the kernel checks — Π / Σ /
 Path / HComp / Transp / Glue / Refine / Inductive / Elim / Axiom /
@@ -289,9 +282,9 @@ After the kernel lands, Verum's TCB is exactly:
 
 ### Consequences
 
-**SMT out of TCB.** Every SMT backend (the SMT backend, E, Vampire,
-Alt-Ergo, Zipperposition, the forthcoming native solver) produces an
-`SmtCertificate` — a backend-neutral proof trace normalised by
+**SMT out of TCB.** Every solver adapter — current external
+adapters and the forthcoming native solver alike — produces an
+`SmtCertificate`: a backend-neutral proof trace normalised by
 `verum_smt::proof_extraction`. The kernel's `replay_smt_cert`
 re-derives a `CoreTerm` witness from the certificate. A bug that
 lets a solver emit a spurious "proof" fails the replay here and
@@ -311,14 +304,14 @@ rejected the elaborated term", not "false theorem accepted".
 
 All `CoreTerm` constructors have real typing rules today except
 `SmtProof`, whose checker is the dedicated `replay_smt_cert` path.
-That routine is implemented per-backend (the SMT backend proof format
-first), completing the "SMT out of TCB" story. Test coverage is
-maintained at 30 / 30 pass in the kernel test suite.
+That routine is implemented per-adapter (one solver's proof format
+first), completing the "SMT out of TCB" story. Kernel-side test
+coverage tracks every replay path.
 
 ## See also
 
 - **[SMT integration](/docs/architecture/smt-integration)** — the
-  surrounding SMT subsystem (the SMT backend bindings, proof search tactics).
+  surrounding SMT subsystem (solver adapters, proof search tactics).
 - **[Verification → gradual verification](/docs/verification/gradual-verification)** — user-facing model, `@framework(...)`
   attribute, trusted-boundary audit.
 - **[Verification → SMT routing](/docs/verification/smt-routing)** —

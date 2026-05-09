@@ -263,7 +263,7 @@ Settings:
 
 ### `smt`
 
-Hands the goal to the SMT backend — the SMT backend, or a portfolio,
+Hands the goal to the SMT layer — a single adapter or a portfolio,
 selected by the router. See
 [verification/smt-routing](/docs/verification/smt-routing).
 
@@ -548,7 +548,7 @@ tactic_stmt   = 'let' , identifier , [ ':' , type_expr ] , '=' , expression , ';
 - **[Proof DSL](/docs/language/proof-dsl)** — theorem/lemma/axiom
   declarations, `calc`, structured proofs.
 - **[verification/smt-routing](/docs/verification/smt-routing)** — how
-  `smt` picks between the SMT backend, portfolio.
+  `smt` picks between a single adapter and a portfolio.
 - **[verification/cubical-hott](/docs/verification/cubical-hott)** —
   the `cubical` tactic in depth.
 - **[cookbook/calc-proofs](/docs/cookbook/calc-proofs)** — calc-chain

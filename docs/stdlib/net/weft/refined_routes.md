@@ -124,7 +124,7 @@ with refinement `Q` only if `Q ⊆ P`:
 Q ⊆ P  ≡  forall x. Q(x) -> P(x)
 ```
 
-The compiler dispatches this to the SMT backend. If SMT proves the
+The compiler dispatches this to the SMT layer. If SMT proves the
 implication, the route compiles. Otherwise the compiler emits the
 counterexample value:
 

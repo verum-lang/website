@@ -127,17 +127,16 @@ multi-step jumps `κ_s → κ_t` with `t > s + 1`.
 The audit trail is `verum_kernel::diakrisis_bridge::BridgeAudit`.
 Its surface:
 
-```rust
-pub struct BridgeAudit { /* private */ }
+`BridgeAudit` is an opaque audit collector with the following
+operations:
 
-impl BridgeAudit {
-    pub fn new() -> Self;
-    pub fn record(&mut self, bridge: BridgeId, context: impl Into<Text>);
-    pub fn admits(&self) -> &[BridgeAdmit];
-    pub fn is_decidable(&self) -> bool;
-    pub fn bridges(&self) -> List<&'static str>;
-}
-```
+| Operation       | Effect |
+|-----------------|--------|
+| `new()`         | Construct an empty audit. |
+| `record(bridge, context)` | Log that `bridge` was admitted at `context`. Idempotent on `(bridge, context)` pairs. |
+| `admits()`      | Return the recorded admissions in insertion order. |
+| `is_decidable()`| `true` iff every admission falls inside the decidable bridge corpus. |
+| `bridges()`     | Enumerate the static bridge identifiers the corpus knows about. |
 
 **Idempotence invariant**: `record(bridge, ctx)` is idempotent on
 `(bridge, context)` pairs. The same bridge invoked from the same

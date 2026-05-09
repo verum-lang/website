@@ -1,14 +1,14 @@
 ---
 sidebar_position: 12
 title: Refinement-typed networking — V1–V10
-description: How the warp TLS 1.3 + QUIC + X.509 stack discharges ten verification obligations through the SMT backend.
+description: How the warp TLS 1.3 + QUIC + X.509 stack discharges ten verification obligations through the SMT layer.
 ---
 
 # Refinement-typed networking — V1–V10
 
 The pure-Verum TLS 1.3 + QUIC + X.509 stack (codename **warp**) ships
 with **ten** verification obligations its design requires to hold.
-Each one is refinement-typed at the call site, so the SMT backend discharges them
+Each one is refinement-typed at the call site, so the SMT layer discharges them
 at compile time — they are not runtime asserts, not unit tests.
 
 The ten obligations come from the protocol-correctness contract the
@@ -20,7 +20,7 @@ bounds, and X.509 chain validation. The matrix below names each one
 and links its proof.
 
 This page maps each obligation to its theorem file, the type that
-carries the contract, and the proof tactic the SMT backend uses.
+carries the contract, and the proof tactic the solver uses.
 
 ## Discharge matrix
 
@@ -77,9 +77,10 @@ theorem v3_insert_preserves_invariant
 }
 ```
 
-`well_formed` is the same `@forall` predicate the type carries. the SMT backend
-takes the AST of `insert` (which lives in `core/net/quic/ack_ranges.vr`),
-encodes it via `verum_smt::backend`, and emits the verification
+`well_formed` is the same `@forall` predicate the type carries. The
+verifier takes the AST of `insert` (which lives in
+`core/net/quic/ack_ranges.vr`), encodes it via `verum_smt::backend`,
+and emits the verification
 condition over `(ranges, pn)`. The compiler routes through the
 `refinement_reflection` strategy from
 [`verification/smt-routing`](/docs/verification/smt-routing) and
@@ -109,8 +110,8 @@ implement Path {
 ```
 
 V7 says: while the path is unvalidated, no `can_send` can return
-`Ok(_)` if it would push `bytes_sent` above the 3× ceiling. the SMT backend
-discharges this by proving the implication: `requested ≤
+`Ok(_)` if it would push `bytes_sent` above the 3× ceiling. The
+solver discharges this by proving the implication: `requested ≤
 3*bytes_received - bytes_sent` (the only branch that returns Ok).
 
 Runtime companion: `path_anti_amp.vr` exercises the same property
@@ -139,11 +140,11 @@ constructive function whose return type is the refined `VerifiedChain`
 
 ## Dependencies
 
-Each verification call routes through the SMT backend over QF_AUFLIA modulo
+Each verification call routes through the SMT layer over QF_AUFLIA modulo
 the language's typed-AST encoding. Background:
 
 - [Verification pipeline](/docs/architecture/verification-pipeline)
-- [SMT routing](/docs/verification/smt-routing) — when to use the SMT backend vs
+- [SMT routing](/docs/verification/smt-routing) — when to use SMT vs
   refinement reflection vs the fallback abstract interpreter.
 - [Counterexamples](/docs/verification/counterexamples) — how to
   read an `unsat` failure when one of these theorems fails to

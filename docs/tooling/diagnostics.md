@@ -130,13 +130,11 @@ Typical phases:
 | `compiler.codegen.vbc_to_llvm` | inner VBC → LLVM lowering |
 | `compiler.phase.interpret` | Tier 0 (VBC interpreter) |
 
-Third-party code that embeds `verum_compiler` / `verum_vbc` can push
-its own breadcrumbs:
-
-```rust
-let _bc = verum_error.breadcrumb.enter("mytool.stage", file_path);
-// work happens here; breadcrumb is popped automatically on scope exit
-```
+Third-party code that embeds `verum_compiler` / `verum_vbc` can
+push its own breadcrumbs by acquiring a scoped guard from
+`verum_error.breadcrumb.enter("mytool.stage", file_path)`. The
+guard is automatically popped on scope exit, so a breadcrumb
+cannot outlive its surrounding work.
 
 The trail is bounded (64 entries) and mirrored to a
 cross-thread snapshot so the signal handler can include it even
@@ -263,25 +261,18 @@ rayon worker wake paths, re-introducing a ~70 % SIGSEGV rate in the
 
 ## Chaining your own panic hook
 
-`crash.install` chains into whatever hook was set before it. If you
-need custom panic metrics in addition to the crash report, install
-your hook first:
-
-```rust
-fn main() {
-    my_metrics.install_panic_hook();
-    verum_error.crash.install(Default.default());
-    …
-}
-```
+`crash.install` chains into whatever hook was set before it. If
+you need custom panic metrics in addition to the crash report,
+install your own hook first and then call
+`verum_error.crash.install(...)` — the crash reporter will defer
+to the previously installed hook before doing its own work.
 
 The Verum CLI itself does **not** install the stock `PanicLogger`
-from `verum_error.panic_handler` by default — benchmarking showed
-the extra hook measurably increased the crash rate on the
-`phase_generate_native` race path (0 / 50 → 11 / 50 release builds).
-The structured report produced by the crash reporter already contains
-everything `PanicLogger` would record plus the breadcrumb trail and
-environment.
+from `verum_error.panic_handler` by default. Benchmarking showed
+the extra hook measurably destabilised release builds on the
+codegen race path; the structured report produced by the crash
+reporter already contains everything `PanicLogger` would record,
+plus the breadcrumb trail and environment snapshot.
 
 ## Signal-safety caveats
 
@@ -325,19 +316,15 @@ JSON envelope, stderr branding, diagnose-bundle hint — so a single
 override rebrands the whole reporter without touching any rendering
 code:
 
-```rust
-let cfg = CrashReporterConfig {
-    app_name: "myapp".into(),
-    issue_tracker_url: "https://example.com/myapp/issues/new".into(),
-    ..Default::default()
-};
-verum_error::crash::install(cfg);
-```
+In practice an embedder constructs a `CrashReporterConfig`,
+overrides `app_name` and `issue_tracker_url` to its own
+identifiers, leaves the remaining fields at their defaults, and
+calls `verum_error.crash.install(cfg)`.
 
-The header titlecases the first letter, so `myapp` renders as
-`Myapp`. The lowercased `app_name` is used verbatim in the stderr
-prefix and the `diagnose bundle` hint, matching the shell convention
-of lowercase tool names.
+The header title-cases the first letter, so `myapp` renders as
+`Myapp`. The lowercased `app_name` is used verbatim in the
+stderr prefix and the `diagnose bundle` hint, matching the
+shell convention of lowercase tool names.
 
 ## Render configuration knobs
 

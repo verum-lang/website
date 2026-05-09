@@ -53,11 +53,11 @@ that segment. `Pipeline::new_core` and `Pipeline::new` both pin
 `cog_name = "core"` on the session-wide registry and on every loader
 derived from the session.
 
-```rust
-let mut loader = session.create_module_loader();
-loader.set_cog_name("core");           // strips "core." prefix
-session.module_registry().write().set_cog_name("core");
-```
+When set, the loader and the session-wide registry both
+canonicalise paths whose first segment matches the cog name by
+stripping that segment. `Pipeline::new_core` and `Pipeline::new`
+each pin `core` as the session's cog name, so every loader
+derived from the session sees the same canonicalisation rule.
 
 ## Unified ID allocation — ensuring invariants #2 and #3
 

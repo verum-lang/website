@@ -162,9 +162,9 @@ public fn is_vegetarian(p: Pizza) -> Bool
 ```
 
 The `@verify(formal)` discharge consults the OWL 2 framework
-axioms (the `subClassOf` / `disjointClasses` the SMT backend encoding) plus
+axioms (the `subClassOf` / `disjointClasses` SMT encoding) plus
 Verum's value-level type checker. The post-condition `result ==
-true => p is VegetarianPizza` is admitted by the SMT backend
+true => p is VegetarianPizza` is admitted by the SMT layer
 because `VegetarianPizza ⊏ Pizza` is in the framework axiom
 package — the proof is two lines of class-hierarchy lookup.
 
@@ -190,7 +190,7 @@ For unbounded queries `count_o_unbounded` returns `Maybe.None`
 with `E_OWL2_UNBOUNDED_COUNT` as the diagnostic — *unless* the
 surrounding refinement type carries an explicit cardinality
 bound (e.g. `{x : Int | x ≤ K ∧ x = count_o(_, P)}`), in which
-case the verifier dispatches to the SMT backend Finite Model Finding and
+case the verifier dispatches to SMT Finite Model Finding and
 recovers the count from the discovered finite model. See
 [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)
 for the dispatcher contract and the four-variant outcome

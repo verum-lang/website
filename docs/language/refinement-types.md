@@ -7,7 +7,7 @@ title: Refinement Types
 
 A **refinement type** is a type together with a predicate that every
 value of that type must satisfy. Predicates are written in the
-refinement fragment of Verum — a decidable subset that the SMT backend
+refinement fragment of Verum — a decidable subset that the SMT layer
 can reason about directly.
 
 ## Syntax
@@ -150,7 +150,7 @@ The `self` in the return type refinement refers to the return value;
 Refinements are:
 - **Written** in Verum's expression syntax;
 - **Translated** to SMT-LIB at compile time;
-- **Discharged** by the SMT backend (capability router picks);
+- **Discharged** by the SMT layer (capability router picks the adapter);
 - **Erased** from the final binary.
 
 When the solver cannot prove an obligation, the compiler prints the
@@ -174,7 +174,7 @@ error[V3402]: refinement violated at call site
 - **Undecidable predicates are rejected**: the refinement language is
   deliberately a decidable fragment.
 - **Recursion in `@logic` functions** requires a termination metric
-  (`decreases`) — the SMT backend cannot prove termination automatically.
+  (`decreases`) — the solver cannot prove termination automatically.
 - **Mutation is not expressible**: refinement predicates are pure;
   `self.is_sorted()` talks about a snapshot, not an ongoing invariant.
 

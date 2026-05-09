@@ -80,8 +80,8 @@ At compile time:
 1. The compiler collects all `@logic` functions reachable from the
    refinements being checked.
 2. Each function is translated to SMT-LIB as a recursive / quantified
-   definition, using the solver's native support (the SMT backend's `define-fun-rec`,
-   the SMT backend's `define-fun-rec` with fmf for termination).
+   definition, using the solver's native `define-fun-rec` (with the
+   adapter's preferred termination strategy, e.g. fmf).
 3. The axiom is asserted before the obligation is solved.
 
 The translator lives in `verum_smt::expr_to_smtlib`.
@@ -113,7 +113,7 @@ fn insert(t: RBTree, k: Int) -> RBTree
 
 The SMT solver proves the postcondition using the `@logic` axioms
 directly. No manual proof needed for linear arithmetic cases; for
-nonlinear or string-heavy cases, the SMT backend is dispatched (see
+nonlinear or string-heavy cases, a stronger adapter is dispatched (see
 **[SMT routing](/docs/verification/smt-routing)**).
 
 ## Inspecting the generated SMT-LIB
@@ -127,9 +127,9 @@ Useful for debugging obligations that mysteriously fail.
 
 ## Reflection + portfolio
 
-When `@verify(thorough)` is set, both the SMT backend receive the same
-reflected axioms. A disagreement indicates a bug in one of the solvers
-and is reported:
+When `@verify(thorough)` is set, every active solver adapter receives
+the same reflected axioms. A disagreement indicates a bug in one of
+the solvers and is reported:
 
 ```
 warning[V6104]: solvers disagreed on obligation
@@ -305,16 +305,16 @@ the termination check) can cause the kernel to reject the replayed
 term, but it cannot accept a false theorem.
 
 `@verify(certified)` is the stronger discharge — it runs cross-
-validation through an orthogonal technique (second SMT backend,
+validation through an orthogonal technique (a second solver adapter,
 tactic-based proof, or proof-carrying-code witness). A `@logic`
-function whose semantics diverge between multiple SMT backends is caught at
+function whose semantics diverge between two adapters is caught at
 this gate rather than silently accepted. See
 **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**.
 
 ## See also
 
 - **[SMT routing](/docs/verification/smt-routing)** — how the router
-  picks the SMT backend for your `@logic` function.
+  picks an adapter for your `@logic` function.
 - **[Contracts](/docs/verification/contracts)** — `requires`,
   `ensures`, `invariant` — including the bare-clause syntax that
   matches the stdlib convention.

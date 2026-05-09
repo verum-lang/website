@@ -88,19 +88,14 @@ point") rather than an internal-discharge proof.
 kernel_v0 manifest. Single source of truth across every Verum
 manifest that tracks soundness discharge.
 
-```rust
-// crate::soundness::DischargeStatus
-pub enum DischargeStatus {
-    Discharged,
-    DischargedByFramework {
-        lemma_path: String,   // e.g. "core.verify.kernel_v0.lemmas.beta.church_rosser_confluence"
-        framework:  String,   // e.g. "mathlib4" / "lean4_stdlib" / "vellvm"
-        citation:   String,   // e.g. "Mathlib.Computability.Lambda.ChurchRosser"
-    },
-    AdmittedWithIou { iou: String },
-    NotYetAttested,
-}
-```
+`DischargeStatus` has four constructors:
+
+| Status                  | Payload | Meaning |
+|-------------------------|---------|---------|
+| `Discharged`            | —       | Proved internally by the kernel. |
+| `DischargedByFramework` | `{ lemma_path, framework, citation }` — e.g. `lemma_path = "core.verify.kernel_v0.lemmas.beta.church_rosser_confluence"`, `framework = "mathlib4"`, `citation = "Mathlib.Computability.Lambda.ChurchRosser"`. | Resolved by a registered upstream framework. |
+| `AdmittedWithIou`       | `{ iou }` — the identifier of the named-but-unresolved obligation. | Honestly admitted gap; not yet audit-clean. |
+| `NotYetAttested`        | —       | No attestation recorded; trusted by code review only. |
 
 | Status | Audit-clean | Meaning |
 |--------|:-----------:|---------|
@@ -142,14 +137,14 @@ citations. See [kernel_v0](./kernel-v0.md) §7.)
 
 The full per-pass record:
 
-```rust
-pub struct PassAttestation {
-    pub pass_id:           CodegenPassId,
-    pub status:            AttestationStatus,
-    pub proof_obligation:  String,   // what the pass MUST preserve
-    pub kernel_intrinsic:  String,   // the name of the discharge intrinsic
-}
-```
+A `PassAttestation` carries four fields:
+
+| Field               | Role |
+|---------------------|------|
+| `pass_id`           | Identifier of the codegen pass being attested. |
+| `status`            | The attestation status (the alias for `DischargeStatus` defined above). |
+| `proof_obligation`  | The semantic invariant the pass commits to preserving. |
+| `kernel_intrinsic`  | Name of the kernel intrinsic that discharges the obligation. |
 
 `proof_obligation` is the *semantic invariant* the pass commits
 to. Examples:

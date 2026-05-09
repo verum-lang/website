@@ -198,13 +198,13 @@ touches**, then consults the `VerifyStrategy` to choose a backend:
 ```text
 Classification        → Preferred backend    → Fallback
 --------------------    --------------------   --------------
-LIA-only                the SMT backend
-Nonlinear arith         the SMT backend (NLA tactic)       the SMT backend (farkas)
-Strings                 the SMT backend (seq theory)
-FMF/quantifiers         the SMT backend (fmf_enum)       the SMT backend (mbqi)
-Arrays only             the SMT backend
-Bitvector-heavy         the SMT backend                    (no symmetric BV on the SMT backend)
-Nonlinear + quantifier  the SMT backend (portfolio)      the SMT backend (rlimit pass)
+LIA-only                primary adapter
+Nonlinear arith         primary adapter (NLA tactic)       fallback adapter (farkas)
+Strings                 primary adapter (seq theory)
+FMF/quantifiers         primary adapter (fmf_enum)       fallback adapter (mbqi)
+Arrays only             primary adapter
+Bitvector-heavy         primary adapter                    (no symmetric BV on the fallback)
+Nonlinear + quantifier  primary adapter (portfolio)      fallback adapter (rlimit pass)
 ```
 
 See [SMT routing](./smt-routing.md) for the full table. The router
@@ -217,7 +217,7 @@ lands) doesn't require a single user-code change.
 Each strategy translates to a concrete solver invocation:
 
 - `Static` / `Formal`: single `(check-sat)` call with a timeout.
-- `Thorough`: a **portfolio race** — multiple SMT backends launched in
+- `Thorough`: a **portfolio race** — multiple solver workers launched in
   parallel, first to return `unsat` wins; on disagreement the result
   is logged as `Split` and escalated.
 - `Certified`: portfolio + proof-term extraction from the winning
@@ -247,7 +247,7 @@ name, an obligation hash, and a trace of rule tags. The kernel:
 The kernel is the **single trusted component** — a small,
 single-reviewer-audit-able Rust crate, with zero calls back into
 user code. Everything
-else — the SMT backends, the translator, the tactic engine,
+else — the solver adapters, the translator, the tactic engine,
 framework-axiom registries — sits outside the kernel's trust
 boundary. A lying solver cannot forge a theorem because the
 certificate's trace must correspond to the obligation hash that the
@@ -265,11 +265,11 @@ flowchart TB
     User[User code<br/>contracts + proofs] --> Types[verum_types<br/>obligation emission]
     Types --> Translate[verum_smt::translate<br/>IR → SMT-LIB]
     Translate --> Router[capability_router<br/>theory taxonomy]
-    Router --> the SMT backend[the SMT backend]
-    Router --> the SMT backend[the SMT backend]
+    Router --> Adapter1[primary adapter]
+    Router --> Adapter2[fallback adapter]
     Router --> Portfolio[portfolio race]
-    the SMT backend --> Certificate[SmtCertificate]
-    the SMT backend --> Certificate
+    Adapter1 --> Certificate[SmtCertificate]
+    Adapter2 --> Certificate
     Portfolio --> Certificate
     Certificate --> Kernel[verum_kernel<br/>trusted LCF]
     Kernel --> Axiom[CoreTerm::Axiom]
@@ -652,7 +652,7 @@ part of the shipping release:
   strategies in the gradual ladder.
 - **Refinement types + `@logic` reflection** — user functions
   lifted into solver axioms with unfold-budget knobs.
-- **ADT encoding** — the SMT backend datatypes per variant with cached sort
+- **ADT encoding** — native SMT datatypes per variant with cached sort
   reuse.
 - **Cubical / HoTT primitives** — `PathTy`, `HComp`, `Transp`,
   `Glue` as first-class kernel rules with subterm validation.
@@ -669,10 +669,10 @@ part of the shipping release:
 **Trust boundary**
 
 - **Trusted-base kernel** — LCF-style core with allowlist-gated
-  SMT proof-tree replay (28 the SMT backend rules + 29 ALETHE rules),
-  hierarchical composition via `CoreTerm::App`, UIP rejection
-  for univalence preservation. Held to a single-reviewer /
-  single-session audit budget.
+  SMT proof-tree replay covering both native solver rules and
+  ALETHE rules, hierarchical composition via `CoreTerm::App`,
+  UIP rejection for univalence preservation. Held to a
+  single-reviewer / single-session audit budget.
 - **NbE kernel** — independent normalisation-by-evaluation
   implementation; differentially tested against the trusted base.
 - **Reflection tower (MSFS-grounded)** — four-stage
@@ -700,7 +700,7 @@ part of the shipping release:
 - **Obligation-level profiling** — `--profile-obligation`
   breakdown with per-obligation timings.
 - **Solver diagnostic side channels** — `--dump-smt` /
-  `--solver-protocol` / `--lsp-mode` threaded through both multiple SMT backends backends.
+  `--solver-protocol` / `--lsp-mode` threaded through every solver adapter.
 - **`core.verify` stdlib** — user-facing surface mirroring the
   compiler's `VerificationLevel` / `ProofAttempt` /
   `VerificationOutcome` / certificate-envelope types.

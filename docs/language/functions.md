@@ -200,8 +200,8 @@ iteration — it proves the loop terminates.
    **Phase 3a** (contracts) and **Phase 4** (semantic analysis).
 2. `invariant + decreases` generate loop-local obligations in
    Phase 4.
-3. Each obligation is dispatched to the SMT backend, or the portfolio per
-   the function's `@verify(...)` strategy.
+3. Each obligation is dispatched to a single solver adapter or the
+   portfolio per the function's `@verify(...)` strategy.
 4. Results are cached keyed on SMT-LIB fingerprint and reused
    across incremental builds.
 

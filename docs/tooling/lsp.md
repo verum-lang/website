@@ -174,10 +174,10 @@ LSP extensions". Their call path is:
    (`validate_refinement` / `promote_to_checked` /
    `infer_refinement`), which in turn pushes SMT work onto a
    dedicated `verum-smt-worker` thread.
-4. The worker thread exclusively owns the the SMT backend context; it returns
+4. The worker thread exclusively owns the solver-adapter context; it returns
    `SmtCheckResult` through a `tokio.sync.oneshot`. Only `Send`
    types cross the await boundary.
-5. `getEscapeAnalysis` and `getProfile` don't touch the SMT backend — they run in
+5. `getEscapeAnalysis` and `getProfile` don't touch the SMT layer — they run in
    the handler's async context directly.
 
 Complementary client-side surfaces:
@@ -278,10 +278,10 @@ Beyond standard LSP 3.17, the Verum server routes these JSON-RPC methods:
 | `verum/getProfile`           | live   | Return the cached per-document compilation / CBGR profiling summary used by the dashboard webview.           |
 
 All five methods are registered through the LSP service's
-custom-method chain. The SMT backend session driving the refinement
+custom-method chain. The SMT-adapter session driving the refinement
 methods runs on a dedicated OS thread (`verum-smt-worker`)
 isolated from the async runtime, so the futures that cross the
-`Send` bound never capture non-`Send` the SMT backend binding types.
+`Send` bound never capture non-`Send` adapter binding types.
 
 ## Performance
 

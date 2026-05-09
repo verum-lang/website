@@ -209,7 +209,7 @@ claim.
 
 | Mode | Meaning | Example |
 |------|---------|---------|
-| **Present** | The system carries an algorithmic check that runs in bounded time. | Refinement type `Int { self > 0 }` — the SMT backend decides instances. |
+| **Present** | The system carries an algorithmic check that runs in bounded time. | Refinement type `Int { self > 0 }` — the SMT layer decides instances. |
 | **Conditional** | The check is effective only under stated assumptions. | "Halting on terminating inputs" — checkable only if termination is given. |
 | **Absent** | No check, even partial; the claim is asserted without a procedure. | A `[P]` Postulate cited from an external corpus. |
 

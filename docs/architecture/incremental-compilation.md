@@ -109,7 +109,7 @@ flowchart TD
     BUILD["compile & write artefacts to cache"]
     P6["Phase 6 · monomorphization<br/><i>dedupe against cached instantiations</i>"]
     P7["Phase 7 · execute<br/><i>Tier 0 interp · Tier 1 collects .o files</i>"]
-    P75["the corresponding pipeline phase · link (AOT only)<br/><i>final binary with LTO</i>"]
+    P75["Phase 7.5 · link (AOT only)<br/><i>final binary with LTO</i>"]
 
     P5 --> LOOP --> FP --> HIT
     HIT -- "yes" --> REUSE
@@ -194,10 +194,10 @@ quarantined:
 
 ## Limitations and current work
 
-- **Parallel compilation**: the orchestrator is single-threaded
-  today (GAP-6 in the implementation roadmap). Function-level
-  parallelism in Phases 6/7 is available but the outer phase loop
-  serialises. Multi-worker coordinator is on the near-term roadmap.
+- **Parallel compilation**: the outer phase loop is single-threaded
+  today. Function-level parallelism in Phases 6/7 is available, but
+  a true multi-worker phase coordinator is on the near-term
+  roadmap.
 - **Stdlib lazy loading**: the full stdlib is parsed on every build
   start; disk-cache materialises results but in-memory reloading is
   still O(stdlib-size). Lazy module loading is under development.

@@ -142,21 +142,22 @@ discharged before the type checker sees the annotated function.
 
 - **Bidirectional inference** (`verum_types::infer`).
 - **Refinement types** — narrowed by flow analysis where possible;
-  unresolved predicates become SMT obligations at this phase
-  (the corresponding pipeline phase in the internal numbering — the DependentVerifier runs
-  here, not in a later phase).
+  unresolved predicates become SMT obligations at this phase. The
+  `DependentVerifier` runs here, as a sub-step of semantic analysis,
+  not as a later phase of its own.
 - **Context clauses** — `using [...]` resolved; capability subtyping
   checked.
 - **CBGR analysis** — every `&T` receives a tier annotation
-  (managed / checked / unsafe) through the 11-module analysis suite
-  documented in **[cbgr internals](/docs/architecture/cbgr-internals#compile-time-analysis-suite)**.
+  (managed / checked / unsafe) through the multi-module
+  reference-analysis suite documented in
+  **[cbgr internals](/docs/architecture/cbgr-internals#compile-time-analysis-suite)**.
 - **Cubical bridge** — `Type.Eq` values translated via
   `verum_types::cubical_bridge` to cubical terms before unification.
 
-Verification results that feed later phases are produced here, not
-in a separate Phase 5 — what the public docs previously called
-"Phase 5 verification" is actually the **Phase 4 refinement /
-DependentVerifier sub-step** plus the Phase 3a contract sub-step. See
+Verification results that feed later phases are produced here as
+the **Phase 4 refinement / DependentVerifier sub-step**, which
+together with the Phase 3a contract sub-step covers everything
+the SMT layer is asked to discharge. See
 **[verification pipeline](/docs/architecture/verification-pipeline)**
 for the solver-side internals.
 
@@ -216,28 +217,19 @@ Playbook TUI, and `meta fn` evaluation inside Phases 2–4.
 
 `run_native_compilation` lowers VBC → LLVM IR via
 `verum_codegen::llvm::VbcToLlvmLowering`, runs LLVM's optimisation
-pipeline, emits object files, and hands off to **the corresponding pipeline phase linking**
+pipeline, emits object files, and hands off to **Phase 7.5 linking**
 below. Triggered by `verum build`, `verum run --aot`, or
 `[profile.release] tier = "1"`.
 
-:::note Rayon fence before LLVM
-LLVM registers back-end passes lazily via function-local statics
-guarded by Itanium-ABI `__cxa_guard_acquire`. Rayon workers parked
-after earlier phases (stdlib parse, semantic analysis) race those
-guards on their wake path — on arm64 macOS this used to SIGSEGV
-~70 % of release builds inside `phase_generate_native`. The
-pipeline now:
-
-1. Calls `Target::initialize_native` on the main thread in
-   `verum_cli::main`, before any worker is spawned, so the IR-pass
-   half of the registry is populated under zero contention.
-2. Replaces the old `rayon::yield_now()` barrier with
-   `rayon::broadcast(|_| ())` just before codegen — a real fence
-   that waits for every worker to wake, run a no-op, and re-park.
-
-100 / 100 AOT builds of the reproducer are stable after the change.
-Regression guard: `tier1_repeated_aot_build_is_stable` in
-a `cli` integration test.
+:::note Worker fence before LLVM
+LLVM initialises its back-end pass registry lazily via
+function-local statics. To keep that initialisation race-free
+across the parallel phase pool, the pipeline initialises the
+target on the main thread before any worker is spawned, then
+issues a fan-out / fan-in barrier just before codegen so every
+worker has finished its prior phase by the time LLVM is touched.
+This keeps repeated AOT builds deterministic on every supported
+host.
 :::
 
 ### Dual-path: GPU via MLIR
@@ -248,18 +240,20 @@ ops exceed a cost threshold) go through
 `verum.tensor` → `linalg` → `gpu` → PTX / HSACO / SPIR-V / Metal.
 **MLIR is only used for GPU** — CPU code always goes through LLVM.
 
-## the corresponding pipeline phase — Final linking (AOT only)
+## Phase 7.5 — Final linking (AOT only)
 
 Static linking via **embedded LLD** — Verum ships its own linker.
 
-- **No-libc freestanding**: the runtime is a freestanding C shim in
-  `verum_toolchain`; no musl / MSVC CRT / libSystem dependency
-  except for macOS, where `libSystem.B.dylib` is Apple's stable ABI
-  entry point.
-- **LLD backends**: ELF (Linux), Mach-O (macOS), COFF (Windows).
+- **No-libc freestanding**: the runtime is implemented in Verum's
+  own intrinsics; no glibc / musl / MSVC CRT dependency. macOS is
+  the one exception, where `libSystem.B.dylib` is Apple's stable
+  ABI entry point and the only acceptable boundary. See
+  **[no-libc architecture](/docs/architecture/no-libc-architecture)**.
+- **LLD flavours**: ELF (Linux, FreeBSD), Mach-O (macOS), COFF
+  (Windows).
 - **LTO**: thin by default (configurable in `[linker]` / `[lto]`).
 - **Targets**: x86_64, aarch64, riscv64, wasm32, plus embedded
-  (thumbv7em, riscv32imac).
+  profiles such as `thumbv7em` and `riscv32imac`.
 
 ## Parallelisation strategy
 
@@ -291,7 +285,7 @@ flowchart TD
     P5["Phase 5 · VBC codegen<br/><i>per-function</i>"]
     P6["Phase 6 · monomorphization<br/><i>per-specialisation</i>"]
     P7["Phase 7 · execute<br/><i>per-target</i>"]
-    P75["the corresponding pipeline phase · link<br/><i>sequential, whole-program</i>"]
+    P75["Phase 7.5 · link<br/><i>sequential, whole-program</i>"]
 
     P0 --> P1 --> P2 --> P3 --> P3A --> P4
     P4 --> P4A

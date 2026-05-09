@@ -47,7 +47,7 @@ $ verum verify --emit-smtlib src/stack.vr
 # writes target/smtlib/*.smt2 — one per obligation
 ```
 
-Run the SMT backend interactively on it:
+Run an SMT solver interactively on it:
 
 ```bash
 $ smt-backend -st target/smtlib/push_postcond.smt2
@@ -111,17 +111,17 @@ forall x: Int where 0 <= x && x <= max. P(x)
 
 #### 5. Nonlinear arithmetic
 
-The SMT backend's nonlinear engine is limited; the SMT backend's is better. The capability
-router already sends nonlinear goals to the SMT backend, but if that's still
-not enough, escalate:
+Different solver adapters vary in nonlinear strength. The capability
+router already routes nonlinear goals to the strongest available
+adapter, but if that's still not enough, escalate:
 
 ```verum
 @verify(thorough) fn nonlinear_fn(...) -> ... { ... }
 ```
 
-`thorough` races the SMT backend, and tactic-based proof search in
-parallel and takes the first success. Otherwise, supply lemmas that
-linearise the reasoning.
+`thorough` races the available solver adapters and tactic-based
+proof search in parallel and takes the first success. Otherwise,
+supply lemmas that linearise the reasoning.
 
 #### 6. Missing `@logic` axiom
 
@@ -153,14 +153,14 @@ goals are easier.
 3. **Escalate the strategy**:
 
    ```verum
-   @verify(thorough)    // races the SMT backend + proof search in parallel
+   @verify(thorough)    // races the SMT layer + proof search in parallel
    @verify(certified)   // thorough + orthogonal cross-validation
    ```
 
-   The capability router already picks the SMT backend for nonlinear / string
-   / finite-model-finding goals and the SMT backend for LIA / bitvectors / arrays,
-   so you do not need to pin a backend — escalating the strategy is
-   the right lever.
+   The capability router already routes nonlinear / string /
+   finite-model-finding goals to the strongest available adapter and
+   LIA / bitvector / array goals to the cheapest one, so you do not
+   need to pin a backend — escalating the strategy is the right lever.
 
 4. **Supply inductive hints**:
 
@@ -195,8 +195,8 @@ goals are easier.
 
 ### Playbook — "portfolio disagreement"
 
-With `@verify(thorough)`, a disagreement means the SMT backend returned
-conflicting verdicts:
+With `@verify(thorough)`, a disagreement means two solver adapters
+returned conflicting verdicts:
 
 ```
 warning[V6104]: portfolio solvers disagreed

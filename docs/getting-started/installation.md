@@ -51,8 +51,8 @@ End users running a prebuilt `verum` binary do not install any
 extra toolchain — the binary is self-contained for the target
 platform. The SMT backend is bundled in-binary and routed via
 capability profiles ([SMT routing](/docs/verification/smt-routing));
-no external `z3` / `cvc5` / `bitwuzla` install is required for
-default workflows. External provers — Lean 4 and Coq / Rocq —
+no separate solver install is required for default workflows.
+External provers — Lean 4 and Coq / Rocq —
 are needed only for the [external-prover replay](/docs/architecture/external-prover-verification)
 gate (`verum audit --external-prover-replay`); see that page for
 install instructions.
@@ -173,8 +173,8 @@ pins the right components (`rustfmt`, `clippy`, `rust-src`,
 
 ### 2. Clone with submodules
 
-The repository carries the SMT backend, and a few other natives as Git
-submodules. Clone with `--recursive` so they come along:
+The repository carries bundled SMT-solver sources and a few other
+natives as Git submodules. Clone with `--recursive` so they come along:
 
 ```bash
 git clone --recursive https://github.com/verum-lang/verum
@@ -217,7 +217,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc   # or ~/.zshrc
 
 Either path does the same end-to-end work the first time:
 
-- bundled SMT solvers (the SMT backend) compile and link statically;
+- bundled SMT solvers compile and link statically;
 - the native LLVM dependency builds and installs in-tree
   automatically (~30–60 min on a 4-core box, fully silent except
   for cargo `warning:` lines);
@@ -358,7 +358,7 @@ Components:
   Parser:       verum_parser + verum_fast_parser v0.1.0
   Type Checker: verum_types v0.1.0
   Kernel:       verum_kernel v0.1.0   (LCF-style trusted checker)
-  SMT Solver:   multiple SMT backends (via verum_smt capability router)
+  SMT Solver:   solver-adapter pool (via verum_smt capability router)
   CBGR Runtime: verum_cbgr v0.1.0
 
 Usage:

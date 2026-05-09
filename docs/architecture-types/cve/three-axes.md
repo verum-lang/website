@@ -101,7 +101,7 @@ claim.
 
 | Mode | Meaning | Verum surface |
 |------|---------|---------------|
-| **Present** | Algorithmic check, bounded time. | `Int { self > 0 }` — the SMT backend decides instances. |
+| **Present** | Algorithmic check, bounded time. | `Int { self > 0 }` — the SMT layer decides instances. |
 | **Conditional** | Effective only under stated assumptions. | "Halting on terminating inputs" — conditional check. |
 | **External** | Check delegated to a trusted external base. | `[P]` Postulate citing a published theorem. |
 | **Absent** | No check, even partial. | A claim asserted without procedure. |
@@ -190,17 +190,15 @@ typical entry-point for the
 register collision — an audit that reads "executable" while the
 artefact is not redeployable.
 
-In code (`crates/verum_kernel/src/arch.rs:901` exposes the
-`is_canonical_e` accessor):
+The kernel exposes an `is_canonical_e` accessor on
+`ExecutabilitySense`. Among its three constructors only
+`StructuralReadiness` is canonical-E:
 
-```rust
-// kernel side
-use verum_kernel::arch::ExecutabilitySense;
-
-assert!(ExecutabilitySense::StructuralReadiness.is_canonical_e());
-assert!(!ExecutabilitySense::CurrentExecution.is_canonical_e());
-assert!(!ExecutabilitySense::PostFactumChronicle.is_canonical_e());
-```
+| Constructor              | `is_canonical_e()` |
+|--------------------------|:-----------------:|
+| `StructuralReadiness`    | `true`            |
+| `CurrentExecution`       | `false`           |
+| `PostFactumChronicle`    | `false`           |
 
 ```verum
 // Verum side — declare the sense explicitly when it matters

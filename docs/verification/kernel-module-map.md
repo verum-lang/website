@@ -147,7 +147,7 @@ the [framework-axiom audit](./framework-axioms.md).
 | `framework_citation` | `@framework(name, "...")` → `FrameworkCitation` data layer + manifest collector. |
 | `accessibility` | `@accessibility(λ)` Diakrisis Axi-4 marker enumeration. |
 | `foundation_profile` | Foundation profiles (ZFC / HoTT / Cubical / Cic / MLTT / Eff / Custom). |
-| `foreign_system` | External system citations (Coq, Lean, Isabelle, the SMT backend). |
+| `foreign_system` | External system citations (Coq, Lean, Isabelle, SMT). |
 | `diakrisis_bridge` | The α/ε bidirectional bridge primitives (Diakrisis 108.T). |
 | `eps_mu` | ε-μ-style coherence machinery. |
 | `depth` | M-iteration depth witnesses for K-Refine. |

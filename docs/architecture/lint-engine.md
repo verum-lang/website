@@ -46,132 +46,84 @@ parser-tolerant text scanner (clippy's choice — and clippy lives
 inside rustc) or lose text-scan's resilience. Verum's two-engine
 split keeps each at its best.
 
-## The `LintPass` trait
+## The lint-pass interface
 
-Every AST rule is one struct implementing one trait:
+Every AST rule is one *pass*. A pass is a small unit that exposes
+five facts about itself plus a single entry point that runs it:
 
-```rust
-pub trait LintPass: Sync {
-    fn name(&self) -> &'static str;
-    fn description(&self) -> &'static str;
-    fn default_level(&self) -> LintLevel;
-    fn category(&self) -> LintCategory;
-    fn check(&self, ctx: &LintCtx<'_>) -> Vec<LintIssue>;
-}
-```
+| Item            | Role |
+|-----------------|------|
+| `name`          | Stable identifier referenced by `[lint]` config. |
+| `description`   | One-line user-facing summary shown by `verum lint --explain`. |
+| `default_level` | The severity the pass emits when the user has not overridden it. |
+| `category`      | Bucket used by presets (`naming`, `architecture`, `refinement-policy`, `cbgr-budget`, `capability`, `style`, …). |
+| `check(ctx)`    | Runs the pass against a per-file context and returns its raw findings. |
 
-The static registry — every pass available, no plugin loader:
+The set of passes is a **static registry**: the engine ships
+every available pass at compile time and there is no plugin
+loader. Adding a rule means appending one entry to the registry
+and one descriptor to the rule table — no build-script and no
+registration macro.
 
-```rust
-pub fn passes() -> &'static [&'static dyn LintPass] {
-    static PASSES: &[&(dyn LintPass + Sync + 'static)] = &[
-        &RedundantRefinementPass,
-        &EmptyRefinementBoundPass,
-        // … plus the rest: naming, architecture, refinement-policy,
-        // CBGR-budget, capability, style ceilings, custom AST rules.
-    ];
-    /* widening transmute */
-}
-```
-
-A pass typically has zero state — it's a unit struct. Per-call state
-lives in a fresh `Visitor` instance constructed inside `check`:
-
-```rust
-struct V<'s, 'p> {
-    source: &'s str,
-    file: &'p Path,
-    issues: Vec<LintIssue>,
-}
-impl<'s, 'p> Visitor for V<'s, 'p> {
-    fn visit_type(&mut self, ty: &Type) {
-        if let TypeKind::Refined { predicate, .. } = &ty.kind {
-            // emit issues into self.issues
-        }
-        verum_ast::visitor::walk_type(self, ty);   // recurse
-    }
-}
-```
-
-The walker is the production `verum_ast::Visitor` — no parallel
-walker is built or maintained inside the lint code. New passes
-override only the `visit_*` methods relevant to their concern; every
+Passes are typically stateless — per-call state lives inside a
+fresh visitor that the pass constructs inside `check`. The
+visitor is the production AST visitor exported by `verum_ast`;
+the lint engine does not maintain a parallel walker. New passes
+override only the visit methods relevant to their concern; every
 other node walks itself by default.
 
-## `LintCtx`
+## The lint context
 
-Per-file context every pass receives:
+Each pass receives a per-file context with three fields:
 
-```rust
-pub struct LintCtx<'a> {
-    pub file: &'a Path,
-    pub source: &'a str,
-    pub module: &'a Module,
-}
-```
+| Field    | Role |
+|----------|------|
+| `file`   | The path being checked, used for diagnostic location. |
+| `source` | The original source text, used by passes that need byte-level lookups. |
+| `module` | The already-parsed AST. |
 
-Passes receive the **already-parsed** `Module` — file IO and parse
-happen once per file in `lint_file`, not per pass. Adding new passes
-is essentially free.
+Passes always see the **already-parsed** module — file I/O and
+parsing happen once per file, not once per pass. Adding new
+passes is essentially free.
 
 ## Span → (line, column)
 
-Verum spans are byte ranges (`Span { start: u32, end: u32 }`); lint
-diagnostics need `(line, column)` for editors. The helper:
+Verum spans are byte ranges. Lint diagnostics need `(line,
+column)` for editors, so the engine ships a helper that walks
+the source once per call (linear in the file size). For typical
+lint cardinality — tens of issues per file — this cost is
+negligible.
 
-```rust
-pub fn span_to_line_col(source: &str, byte_offset: u32) -> (usize, usize)
-```
+## Engine integration
 
-…walks the source once per call (O(n)). For typical lint cardinality
-(tens of issues per file) this is negligible.
+`lint_file` runs the two engines in sequence:
 
-## Engine integration in `lint_file`
+1. **Read** the file once.
+2. **Text-scan rules** run on the raw text, using a lightweight
+   line-based descriptor produced by a single source pass. This
+   stage is parse-tolerant and always fires.
+3. **AST passes** run only if the file parses cleanly. The
+   parsed module is shared with every pass through the lint
+   context.
+4. **Aggregate** the resulting issue list and return it to the
+   caller.
 
-```rust
-fn lint_file(path: &Path) -> Result<List<LintIssue>> {
-    let content = fs::read_to_string(path)?;
-    let mut issues = List::new();
-
-    // 1. text-scan rules (always run, parse-tolerant)
-    let info = FileInfo::parse(&content);
-    check_unchecked_refinement(path, &info, &mut issues);
-    /* ...the other 19 text-scan rules... */
-
-    // 2. AST passes (only when the file parses cleanly)
-    if let Ok(module) = parser.parse_module(lexer, fid) {
-        let ctx = lint_engine::LintCtx { file: path, source: &content, module: &module };
-        for issue in lint_engine::run(&ctx) {
-            issues.push(issue);
-        }
-    }
-    Ok(issues)
-}
-```
-
-Parse failures fall through silently — text-scan rules still report,
-AST passes simply don't fire. This is the same robustness clippy's
-late-pass system gets via rustc's recovery, but with a smaller
-surface to maintain.
+If parsing fails, the AST passes simply do not fire — text-scan
+findings are still reported. This gives the linter the same
+robustness an IDE expects from a half-typed file.
 
 ## Severity resolution
 
-Both engines emit at each rule's default level. Filtering happens
-*after* collection:
+Both engines emit issues at each rule's *default* level.
+Filtering happens **after** collection: for every raw issue, the
+effective level is computed by walking the precedence stack and
+either emitting the issue at the resolved level or dropping it
+when the rule is configured off.
 
-```rust
-let cfg = load_full_lint_config();
-for issue in raw_issues {
-    if let Some(lvl) = cfg.effective_level(issue.rule, issue.level) {
-        emit(issue with lvl);
-    }
-}
-```
-
-`effective_level` walks the precedence stack documented in
+The precedence stack is documented in
 [lint configuration → precedence stack](/docs/reference/lint-configuration#precedence-stack):
-severity_map → preset → disabled / denied / allowed / warned →
-default.
+`severity_map` → preset → disabled / denied / allowed /
+warned → default.
 
 ## Lessons borrowed
 
@@ -215,24 +167,21 @@ rule:
 - One visitor per file, all rules folded in, keeps the AST walked
   exactly once regardless of how many user rules are defined.
 
-The four supported `kind` values
-(`method_call | call | attribute | unsafe_block`) match the same AST
-shapes that built-in passes use, via:
+User AST rules support exactly four `kind` values, each
+matching one well-defined AST shape:
 
-```rust
-match self.spec.kind.as_str() {
-    "method_call" => match expr.kind { ExprKind::MethodCall { .. } => … },
-    "call"        => match expr.kind { ExprKind::Call { .. }       => … },
-    "attribute"   => /* iterate Module.items, inspect item attrs */,
-    "unsafe_block"=> match expr.kind { ExprKind::Unsafe(_)         => … },
-    _ => {}
-}
-```
+| `kind`         | Matches against |
+|----------------|-----------------|
+| `method_call`  | Method-call expressions (`receiver.name(args)`). |
+| `call`         | Function-call expressions. |
+| `attribute`    | Attributes attached to module-level items. |
+| `unsafe_block` | `unsafe { ... }` expression blocks. |
 
-The user-rule `name` field becomes the diagnostic's static `rule`
-field via a tiny `Box::leak` — bounded by the number of distinct
-user-rule names defined in the lifetime of one `verum lint` process,
-which is small (handfuls, not thousands).
+User rules are data, not code: the matcher is one of the four
+shapes above and the engine dispatches purely on the `kind`
+field. Each user rule's diagnostic is tagged with the rule's
+configured `name`, picked up automatically by every downstream
+formatter.
 
 User rules participate in every downstream feature for free:
 `[lint.severity]`, per-file overrides, `@allow(...)` attributes,

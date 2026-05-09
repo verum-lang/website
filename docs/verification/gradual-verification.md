@@ -26,7 +26,7 @@ where you want it to go.
 ### Layer 1 — compile-time gradient (`VerificationLevel`)
 
 This is the coarse three-way switch `Runtime | Static | Proof` that
-drives *pipeline* decisions: whether the SMT backend is invoked,
+drives *pipeline* decisions: whether the SMT layer is invoked,
 whether runtime assertion checks are emitted, whether a proof
 certificate is produced. Defined in `verum_verification::level`.
 
@@ -64,12 +64,12 @@ strategy:
 | `formal`            | ω              | Proof    | full SMT verification, capability router picks backend | recommended production default |
 | `proof`             | ω + 1          | Proof    | user-supplied tactic block; kernel rechecks. Dominates SMT and admits induction. | theorems, foundational lemmas |
 | `thorough`          | ω · 2          | Proof    | portfolio race with 2× timeout — first success wins; mandatory `decreases` / `invariant` / `frame` | hard obligations |
-| `reliable`          | ω · 2 + 1      | Proof    | `thorough` + the SMT backend ∧ the SMT backend must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
+| `reliable`          | ω · 2 + 1      | Proof    | `thorough` + two solver adapters must both return UNSAT; any disagreement → UNKNOWN | critical code, security audits |
 | `certified`         | ω · 2 + 2      | Proof    | `reliable` + certificate materialisation, kernel re-check, multi-format export | security-critical, external audit, `.verum-cert` export |
 | `coherent_static`   | ω · 2 + 3      | Proof    | α-cert + symbolic ε-claim; polynomial in `|P|·|φ|`; CI ≤ 60 s | weak coherence; production fallback |
 | `coherent_runtime`  | ω · 2 + 4      | Hybrid   | α-cert + runtime ε-monitor; trace-bounded; CI ≤ 5 min | hybrid coherence; runtime monitoring |
 | `coherent`          | ω · 2 + 5      | Proof    | α/ε bidirectional check via 108.T-bridge; single-exponential; CI ≤ 30 min | critical-safety code requiring full operational coherence |
-| `synthesize`        | ≤ ω · 3 + 1    | Proof    | treat goal as synthesis problem; capability router dispatches to the synthesis-capable backend (the SMT backend SyGuS today) | program synthesis, hole filling, invariant generation |
+| `synthesize`        | ≤ ω · 3 + 1    | Proof    | treat goal as synthesis problem; capability router dispatches to a synthesis-capable adapter (SyGuS-based today) | program synthesis, hole filling, invariant generation |
 
 **Strict monotonicity.** The ν-ordinals are pinned to make the
 ladder strictly monotone:
@@ -200,7 +200,7 @@ rapid iteration.
 When a refinement or contract cannot be discharged syntactically, the
 compiler translates it to SMT-LIB and dispatches through the
 **capability router** (see **[SMT routing](/docs/verification/smt-routing)**).
-The router picks the SMT backend based on the obligation's theory mix.
+The router picks an adapter based on the obligation's theory mix.
 
 Results are cached keyed on the SMT-LIB fingerprint — a proof stays
 valid until the function or its dependencies change. Compile time
@@ -250,8 +250,8 @@ obligation binary_search/postcond at src/search.vr:25:5
 ```
 
 The obligation is dispatched through the capability router and fed
-to the SMT backend, the portfolio executor, or the tactic evaluator based
-on the selected strategy.
+to a single adapter, the portfolio executor, or the tactic evaluator
+based on the selected strategy.
 
 ## Telemetry and stats
 
@@ -351,26 +351,23 @@ trusted checker**. If the kernel accepts a term, the theorem is
 considered proved; if it rejects one, no downstream pass can
 rescue it.
 
-The kernel's public API is:
+The kernel exposes three entry points:
 
-```rust
-pub fn infer(ctx: &Context, term: &CoreTerm, axioms: &AxiomRegistry)
-    -> Result<CoreTerm, KernelError>;
+| Entry point         | Role |
+|---------------------|------|
+| `infer`             | Given a `CoreTerm` and an axiom registry, return the term's inferred type or a typed `KernelError`. |
+| `verify_full`       | Given a `CoreTerm` and an *expected* type, confirm that `infer` agrees with the expected type. |
+| `replay_smt_cert`   | Re-derive a checkable proof term from an `SmtCertificate`; fails closed if the certificate cannot be replayed. |
 
-pub fn verify_full(ctx: &Context, term: &CoreTerm,
-                   expected: &CoreTerm, axioms: &AxiomRegistry)
-    -> Result<(), KernelError>;
-
-pub fn replay_smt_cert(ctx: &Context, cert: &SmtCertificate)
-    -> Result<CoreTerm, KernelError>;
-```
+Each takes the typing context and the axiom registry as
+read-only inputs.
 
 Two implications flow from this boundary:
 
-1. **SMT is outside the TCB.** multiple SMT backends / E / Vampire / Alt-Ergo each
-   produce an `SmtCertificate`; the kernel re-derives a checkable
-   proof term from the certificate via `replay_smt_cert`. A bug in a
-   solver that produced a spurious "proof" fails the replay — it
+1. **SMT is outside the TCB.** Every solver adapter produces an
+   `SmtCertificate`; the kernel re-derives a checkable proof term
+   from the certificate via `replay_smt_cert`. A bug in a solver
+   that emits a spurious "proof" fails the replay here — it
    cannot leak into an accepted theorem.
 
 2. **Tactics are outside the TCB.** Every tactic — including every

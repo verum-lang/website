@@ -63,7 +63,7 @@ RFCs undergo a **two-week comment period** before merge. Big ones
 ```bash
 git clone <repository-url>
 cd verum
-./scripts/bootstrap.sh           # installs Rust 1.82+, LLVM 21, the SMT backend
+./scripts/bootstrap.sh           # installs Rust 1.82+, LLVM 21, bundled SMT solvers
 cargo build --release -p verum_cli
 ./target/release/verum --version
 ```
@@ -148,11 +148,12 @@ Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`,
 `chore`. Example:
 
 ```
-feat(smt): add the SMT backend SyGuS integration
+feat(smt): add SyGuS adapter integration
 
-Route synthesis obligations (@verify(synthesize)) to the SMT backend's
-SyGuS engine. the SMT backend doesn't support SyGuS; the router now checks
-the obligation kind at classification time.
+Route synthesis obligations (@verify(synthesize)) to a SyGuS-capable
+adapter. The default adapter doesn't support SyGuS; the router now
+checks the obligation kind at classification time and dispatches
+accordingly.
 
 Closes #1234.
 ```

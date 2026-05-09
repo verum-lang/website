@@ -264,7 +264,7 @@ project, when `FILE` is omitted). See also
   `certified 3×`, `synthesize 5×`.
 - `--smt-proof-preference <BACKEND>` — backend used when the `Certified`
   strategy exports a proof certificate. Default `smt-backend` (ALETHE proofs
-  are more stable across releases than the SMT backend native proofs). Only affects
+  are more stable across releases than native solver proofs). Only affects
   export; does not change which solver closes an obligation.
 
 **Scope**:

@@ -91,17 +91,16 @@ project root.
 | `--strategy fast`             | `Fast`                 | 3 s     | Static encoding only.               |
 | `--strategy static` (default) | `Static`               | 30 s    | Single solver call.                 |
 | `--strategy formal`           | `Formal`               | 60 s    | Full tactic library.                |
-| `--strategy thorough`         | `Thorough`             | 300 s   | Portfolio race (multiple SMT backends).         |
+| `--strategy thorough`         | `Thorough`             | 300 s   | Portfolio race across solver adapters.        |
 | `--strategy certified`        | `Certified`            | 300 s   | Portfolio + kernel replay + cross-validation. |
-| `--strategy synthesize`       | `Synthesize`           | 600 s   | the SMT backend SyGuS body synthesis (requires `synth-fun` in the obligation). |
+| `--strategy synthesize`       | `Synthesize`           | 600 s   | SyGuS body synthesis (requires `synth-fun` in the obligation). |
 
 ### Solver selection
 
 | Flag                | Meaning                                                     |
 |---------------------|-------------------------------------------------------------|
 | `--solver auto`     | Capability-router decides (default).                        |
-| `--solver smt-backend`       | Force the SMT backend for every obligation.                              |
-| `--solver smt-backend`     | Force the SMT backend for every obligation.                            |
+| `--solver smt-backend`| Force the configured SMT adapter for every obligation.    |
 | `--solver portfolio`| Parallel race, first `unsat` wins.                          |
 | `--solver capability`| Explicit capability-router invocation (diagnostic).        |
 
@@ -186,7 +185,7 @@ Ladder dispatch — per-theorem @verify(strategy) verdicts
 
   Theorem / lemma / corollary       Strategy            Verdict             Detail
   ─────────────────────────────────  ──────────────────  ──────────────────  ────────────────────
-  ring_add_comm                      formal              dispatch_pending    V1: portfolio SMT (multiple SMT backends)
+  ring_add_comm                      formal              dispatch_pending    V1: portfolio SMT
   cbgr_check_runtime                 runtime             closed              runtime-assertion: cbgr_check_runtime (CBGR check fires at call site) (0ms)
 
   Verdict totals:
@@ -211,7 +210,7 @@ JSON shape:
     { "kind": "theorem", "name": "ring_add_comm",
       "file": "src/algebra.vr", "strategy": "formal",
       "verdict": "dispatch_pending",
-      "detail": "V1: portfolio SMT (multiple SMT backends) via verum_smt::backend_switcher" }
+      "detail": "V1: portfolio SMT via verum_smt::backend_switcher" }
   ]
 }
 ```
@@ -512,7 +511,7 @@ verification mode in editor settings without touching
 | Symptom                                      | First thing to try                                    |
 |----------------------------------------------|--------------------------------------------------------|
 | "Solver timeout"                             | `--strategy thorough` or `--timeout 120`               |
-| "Solver returned unknown"                    | `--solver portfolio` (race multiple SMT backends)                  |
+| "Solver returned unknown"                    | `--solver portfolio` (race solver adapters)                  |
 | "Counterexample not minimal"                 | `--minimize-timeout 60`                                |
 | "Verification is slow"                       | `verum smt-stats` → pick the theory bucket that dominates |
 | "Proof works locally, fails in CI"           | `verum smt-info` both sides; check solver version drift |

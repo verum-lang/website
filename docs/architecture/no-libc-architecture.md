@@ -114,17 +114,12 @@ miscompiles cross builds: a Linux host producing a macOS binary
 cannot use the host's libc convention.
 
 The canonical inspection API lives in
-`crates/verum_codegen/src/llvm/target_triple.rs`:
-
-```rust
-pub fn target_is_linux(module: &Module) -> bool;
-pub fn target_is_darwin(module: &Module) -> bool;
-pub fn target_is_windows(module: &Module) -> bool;
-pub fn target_is_aarch64(module: &Module) -> bool;
-pub fn target_is_x86_64(module: &Module) -> bool;
-```
-
-Reviewers reject any new `#[cfg(target_os = ...)]` in codegen.
+`crates/verum_codegen/src/llvm/target_triple.rs` and exposes
+boolean predicates over the target's OS family (Linux / Darwin /
+Windows) and architecture (`aarch64` / `x86_64`). Every codegen
+decision that branches on platform reads through this surface.
+Host-side `cfg(target_os = ...)` directives are not accepted in
+codegen; cross-builds rely on the target triple alone.
 
 ## 5. Verification procedure
 

@@ -52,19 +52,19 @@ verum smt-stats --top 10 --by-theory
 ## 2. Theory taxonomy cost profile
 
 Under `--solver auto`, the router picks the cheapest backend for
-each theory class. Typical costs (measured on a desktop-class
-machine with the SMT backend 4.12.2 / the SMT backend 1.0.9):
+each theory class. Typical costs measured on a desktop-class
+machine running the standard solver-adapter pair:
 
-| Theory                     | Typical time per obligation | Backend       | Escalation cost                     |
-|----------------------------|------------------------------|---------------|--------------------------------------|
-| Bool / LIA                 | 1–10 ms                      | the SMT backend            | Rare; if it happens, reflect.        |
-| LRA (linear reals)         | 5–30 ms                      | the SMT backend            | Nonlinear bump.                      |
-| Bitvector (< 64 bits)      | 5–20 ms                      | the SMT backend            | Width blow-up at 256+.               |
-| Arrays + LIA               | 10–50 ms                     | the SMT backend            | Extensionality ~ 200 ms.             |
-| Strings (basic)            | 20–200 ms                    | the SMT backend          | Quantified strings can hit seconds.  |
-| Nonlinear arith            | 50–5,000 ms                  | the SMT backend NLA        | Highly dependent on degree.          |
-| FMF quantifiers            | 100–10,000 ms                | the SMT backend fmf_enum | Add triggers; often cuts 10×.         |
-| Mixed + quantifiers        | 500+ ms                      | Portfolio     | Biggest wins from reflection hints.  |
+| Theory                     | Typical time per obligation | Backend             | Escalation cost                     |
+|----------------------------|------------------------------|---------------------|--------------------------------------|
+| Bool / LIA                 | 1–10 ms                      | primary adapter     | Rare; if it happens, reflect.        |
+| LRA (linear reals)         | 5–30 ms                      | primary adapter     | Nonlinear bump.                      |
+| Bitvector (< 64 bits)      | 5–20 ms                      | primary adapter     | Width blow-up at 256+.               |
+| Arrays + LIA               | 10–50 ms                     | primary adapter     | Extensionality ~ 200 ms.             |
+| Strings (basic)            | 20–200 ms                    | string-capable adapter | Quantified strings can hit seconds. |
+| Nonlinear arith            | 50–5,000 ms                  | NLA-capable adapter | Highly dependent on degree.          |
+| FMF quantifiers            | 100–10,000 ms                | FMF-capable adapter | Add triggers; often cuts 10×.        |
+| Mixed + quantifiers        | 500+ ms                      | Portfolio           | Biggest wins from reflection hints.  |
 
 If your obligation sits in the top two rows, it's already fast.
 If it sits in the bottom two, the remediation patterns in §5
@@ -107,7 +107,7 @@ reflection model itself.
 ## 4. Quantifier trigger costs
 
 Universal quantifiers (`forall x. P(x)`) are the single biggest
-source of solver runaway. multiple SMT backends handle them via
+source of solver runaway. SMT solvers handle them via
 *instantiation*: each time the solver finds a term matching the
 trigger pattern, it instantiates the quantifier at that term.
 
@@ -153,8 +153,8 @@ as "trigger will silently fail to fire":
 | Code  | Defect                                        | Fix                                                      |
 |-------|-----------------------------------------------|----------------------------------------------------------|
 | W502  | No bound-var references                       | Trigger mentions no quantifier variable — it never fires. Usually means the syntax is off; the outer-scope term you meant to match isn't the trigger's target. |
-| W503  | Missing bound vars                            | Partial coverage — the listed variables aren't mentioned. the SMT backend can't instantiate them through this trigger alone. Add them to the pattern or provide a second trigger. |
-| W504  | Interpreted head                              | Trigger's outermost head is `+` / `<=` / `=` / Boolean combinators. the SMT backend never instantiates on interpreted heads — the trigger is dead code. Wrap the operand in an uninterpreted function or drop the trigger entirely. |
+| W503  | Missing bound vars                            | Partial coverage — the listed variables aren't mentioned. The solver can't instantiate them through this trigger alone. Add them to the pattern or provide a second trigger. |
+| W504  | Interpreted head                              | Trigger's outermost head is `+` / `<=` / `=` / Boolean combinators. SMT solvers never instantiate on interpreted heads — the trigger is dead code. Wrap the operand in an uninterpreted function or drop the trigger entirely. |
 
 The validation runs unconditionally on every extracted
 trigger — a project that emits thousands of triggers sees
@@ -173,7 +173,7 @@ ensures forall x, y: Int. x + y == y + x
 Rewrite:
 
 ```verum
-// Use an auxiliary uninterpreted function so the SMT backend has
+// Use an auxiliary uninterpreted function so the solver has
 // something to instantiate on.
 @logic
 fn sum(x: Int, y: Int) -> Int { x + y }
@@ -234,8 +234,8 @@ verum verify --mode proof --strategy certified <target> --on-disagreement=log
 
 This logs the disagreement without failing the build, so you can
 inspect whether a solver is buggy or the encoding is ambiguous.
-Common causes: non-linear arithmetic handled differently by the SMT backend
-vs the SMT backend, or a user-defined function without `@logic` where the
+Common causes: non-linear arithmetic handled differently by each
+adapter, or a user-defined function without `@logic` where the
 solvers uninterpret the symbol differently.
 
 ### 5.5 "Timeout per obligation"

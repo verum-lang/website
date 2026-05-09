@@ -329,22 +329,14 @@ Each event carries `kind`, `name` (empty for quote enter/exit),
   the buffer (zero-clone), suitable for streaming consumers that
   want to flush events between passes.
 
-```rust
-let config = ExpansionConfig {
-    debug_bindings: true,
-    ..Default::default()
-};
-let mut expander = QuoteExpander::new(context, config);
-
-expander.enter_quote(0, span).unwrap();
-expander.process_binding(name.clone(), span, BindingKind::Variable, false);
-expander.process_reference(&name, span);
-expander.exit_quote();
-
-for event in expander.debug_bindings_log() {
-    // Use event.kind, event.name, event.span, event.depth
-}
-```
+Concretely, a tooling consumer constructs an `ExpansionConfig`
+with `debug_bindings = true`, hands it to a fresh
+`QuoteExpander`, walks its own AST through the expander's
+`enter_quote` / `process_binding` / `process_reference` /
+`exit_quote` lifecycle, and reads back the resulting trace
+through `debug_bindings_log()`. Each recorded event carries the
+binding kind, the bound name, its source span, and the quote
+depth at which it was observed.
 
 When `debug_bindings = false` the recording short-circuits before
 any allocation — production callers pay nothing.

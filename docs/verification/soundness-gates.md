@@ -286,13 +286,13 @@ remediation hint pointing at `register_axiom` /
 
 Path: `recheck_with_smt`.
 
-Each hypothesis in scope is translated to a the SMT backend expression via the
+Each hypothesis in scope is translated to an SMT expression via the
 shared translator and asserted on the solver. Hypotheses that
 don't translate cleanly are skipped (sound conservative — operates
 without that assumption rather than asserting vacuous truth).
 Pre-fix the loop bound a fresh `Bool::new_const(name)` and
 asserted **that**, completely discarding the hypothesis's
-proposition. the SMT backend saw every hypothesis as `h0 := true` regardless of
+proposition. The solver saw every hypothesis as `h0 := true` regardless of
 content; re-checks that should have found counterexamples
 silently passed.
 
@@ -304,9 +304,9 @@ Walks the formula's AST via
 `collect_typed_variables_from_bool` to harvest each variable's
 actual sort (Int, Bool, Real, Bool, …). Bound-variable
 construction uses `Dynamic::fresh_const(name, &sort)` so the
-existential quantifier binds the same the SMT backend constants that appear
+existential quantifier binds the same SMT constants that appear
 free in the body. Pre-fix all variables were defaulted to Bool,
-which left the QE tactic operating on a vacuous quantifier (the SMT backend
+which left the QE tactic operating on a vacuous quantifier (SMT
 distinguishes constants by name AND sort, so `Bool::new_const("x")`
 does not bind a free `Int::new_const("x")`).
 

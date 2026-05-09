@@ -6,122 +6,158 @@ title: SMT Integration
 # SMT Integration
 
 `verum_smt` is the bridge between the type checker and the SMT
-subsystem. It runs during **Phase 3a** (contract verification) and
-the refinement / dependent-verifier sub-step of **Phase 4**
-(semantic analysis) — see the **[verification pipeline](/docs/architecture/verification-pipeline)**
-for the subsystem-internal stages (5.1–5.7 below are the solver's
-own numbering, not public compilation phases).
+subsystem. It runs during **Phase 3a** (contract verification)
+and the refinement / dependent-verifier sub-step of **Phase 4**
+(semantic analysis) — see the
+**[verification pipeline](/docs/architecture/verification-pipeline)**
+for the subsystem-internal stages (5.1–5.7 below are the SMT
+subsystem's own numbering, not public compilation phases).
 
 :::note On the choice of solver
-Verum's verification layer is **backend-agnostic** at the language
-level. The current release bundles multiple SMT backends behind the capability
-router; a Verum-native SMT solver is on the roadmap and will slot into
-the same interface. Anywhere specific backends are named below, read
-them as *the current implementation* — the subsystem's contract with
-the rest of the compiler is what is load-bearing, not the specific
-solver.
+Verum's verification layer is **backend-agnostic** at the
+language level. The current release ships a portfolio of solver
+adapters behind a capability router; an in-tree Verum-native SMT
+solver is on the roadmap and will plug into the same adapter
+trait. Anywhere a specific external solver is alluded to below,
+read it as *the current implementation* — the subsystem's
+contract with the rest of the compiler is what is load-bearing,
+not the specific solver.
 :::
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    IN[["Obligation (AST)"]]
-    ES["expr_to_smtlib<br/><i>AST → SMT-LIB</i>"]
+    IN[["Obligation (typed IR)"]]
+    ES["expr_to_smtlib<br/><i>typed IR → SMT-LIB</i>"]
     RR["refinement_reflection<br/><i>inject @logic axioms</i>"]
-    CR["capability_router<br/><i>classify theories → pick solver</i>"]
-    the SMT backend["primary_backend"]
-    the SMT backend["complementary_backend"]
+    CR["capability_router<br/><i>classify theory → pick adapter</i>"]
+    A1[["Adapter A"]]
+    A2[["Adapter B"]]
     PF["portfolio_executor"]
     CACHE[["cache + telemetry"]]
 
     IN --> ES --> RR --> CR
-    CR --> the SMT backend
-    CR --> the SMT backend
+    CR --> A1
+    CR --> A2
     CR --> PF
-    the SMT backend --> CACHE
-    the SMT backend --> CACHE
+    A1 --> CACHE
+    A2 --> CACHE
     PF --> CACHE
 ```
+
+Every box upstream of `CACHE` lives in `verum_smt`. The boundary
+with the rest of the compiler is the `SmtBackend` adapter trait
+(`solver_adapters.rs` + `solver_capability.rs`); concrete
+adapters live behind feature flags so the same compilation
+pipeline can be linked against a different solver set without
+touching the verifier.
 
 ## Translation
 
 `expr_to_smtlib.rs` walks a refinement / contract expression and
 emits SMT-LIB:
 
-```
+```text
 Verum: x > 0 && x < 100
 SMT:   (and (> x 0) (< x 100))
 
 Verum: forall i in 0..xs.len(). xs[i] < key
-SMT:   (forall ((i Int)) (=> (and (>= i 0) (< i (List.len xs))) (< (List.get xs i) key)))
+SMT:   (forall ((i Int))
+         (=> (and (>= i 0) (< i (List.len xs)))
+             (< (List.get xs i) key)))
 ```
 
-Datatypes, generics, and refinement types are encoded in the solver's
-native datatype / sort system.
+Datatypes, generics, and refinement types are encoded in the
+solver's native datatype / sort system through the abstract
+adapter API — the verifier never embeds adapter-specific syntax
+in its own code.
 
 ## Refinement reflection
 
 User `@logic` functions become `define-fun-rec` in SMT-LIB:
 
-```
+```text
 (define-fun-rec is_sorted ((xs (List Int))) Bool
   (match xs
     ((nil) true)
-    ((cons x rest) (match rest
-      ((nil) true)
-      ((cons y _) (and (<= x y) (is_sorted rest)))))))
+    ((cons x rest)
+      (match rest
+        ((nil) true)
+        ((cons y _) (and (<= x y) (is_sorted rest)))))))
 ```
+
+This means `@logic` definitions are first-class in the obligation
+language — refinement predicates can call them, and the SMT
+adapter sees the same recursion structure the verifier sees.
 
 ## Capability routing
 
-`capability_router.rs` classifies each obligation by theory usage:
+`capability_router.rs` classifies each obligation by the theories
+it touches (linear / nonlinear arithmetic, bitvector, array,
+string, finite model, recursive datatypes, quantifier alternation,
+…). Classification is mechanical: the router walks the SMT-LIB
+tree, tags each node with its theory contribution, unions the
+tags up to the obligation's signature, and looks the signature up
+in a capability table that knows which adapters can prove what.
 
-- LIA, bitvector, array → **the SMT backend**.
-- Strings, nonlinear, SyGuS, FMF → **the SMT backend**.
-- Mixed that both support → the SMT backend (faster on average).
-- Mixed only the SMT backend supports → the SMT backend.
-
-Classification is by AST walk: tag nodes with theories, union, look
-up in capability table.
+The router's output is a ranked adapter list per obligation, not
+a single choice — the executor (below) decides whether to run
+the top adapter alone, race two adapters, or run a portfolio.
 
 ## Backend switcher
 
-`backend_switcher.rs` implements four strategies:
+`backend_switcher.rs` implements four executor strategies on top
+of the router's ranking:
 
-- **Manual** — fixed backend.
-- **Auto** — router-driven per obligation.
-- **Fallback** — try primary, fall back to other on timeout.
-- **Portfolio** — both solvers in parallel.
+- **Manual** — a fixed adapter, ignoring the ranking.
+- **Auto** — top-of-ranking adapter; the default for cheap
+  obligations.
+- **Fallback** — try the top adapter; on timeout / unknown,
+  fall back through the ranking.
+- **Portfolio** — race several adapters in parallel.
 
 ## Portfolio
 
 `portfolio_executor.rs`:
 
-1. Spawn every available SMT backend on the same obligation.
-2. Wait for both or timeout.
+1. Spawn every available adapter on the same obligation.
+2. Wait for the first conclusive result, or for the timeout.
 3. Cross-validate:
-   - both unsat → accepted.
-   - both sat (counter-example) → rejected, user sees one.
-   - one unsat, one sat → **disagreement**; flagged.
-   - timeouts handled per policy.
+   - all adapters return `unsat` → accepted.
+   - all return `sat` (counter-example) → rejected, the user is
+     shown one counter-example.
+   - adapters disagree (one `unsat`, another `sat`) →
+     **disagreement** is flagged as a hard error, never silently
+     resolved.
+   - timeouts handled per policy (see *Configuration* below).
 
-Used for `@verify(thorough)` and `@verify(certified)`.
+Used for `@verify(thorough)` and `@verify(certified)`. A
+disagreement is treated as an SMT-layer bug, not a verification
+verdict — the obligation does not advance.
 
 ## Caching
 
-Every obligation has an SMT-LIB fingerprint (SHA-256). Proof results
-are cached per project (`target/smt-cache/`). Invalidation:
+Every obligation has an SMT-LIB-canonicalised fingerprint
+(SHA-256). Proof results are cached per project under
+`target/smt-cache/`. Invalidation rules:
 
-- Cache hit: verify the saved result against the current obligation.
-- Solver upgrade: fingerprints include solver version; upgrades
-  invalidate partial.
+- **Cache hit**: re-validate the saved result against the
+  current obligation fingerprint; if it matches, the obligation
+  is short-circuited and the result is reused.
+- **Adapter upgrade**: fingerprints include the adapter version,
+  so an adapter upgrade invalidates partial entries while keeping
+  any obligation whose adapter wasn't bumped.
+- **Compiler upgrade**: `config_hash` participates in the
+  fingerprint, so a compiler version bump cleans the cache as a
+  side effect.
 
 ## Telemetry & routing statistics
 
-Every solver `check()` call records routing choice, outcome (SAT/UNSAT/
-unknown), elapsed time, and theory class into a shared
-`Arc<RoutingStats>` on the `Session`. The CLI exposes this data:
+Every adapter `check()` call records routing choice, outcome
+(SAT / UNSAT / unknown), elapsed time, and theory class into a
+shared `Arc<RoutingStats>` on the `Session`. The CLI exposes this
+data:
 
 ```bash
 verum build --smt-stats      # persist stats to .verum/state/smt-stats.json
@@ -130,316 +166,233 @@ verum smt-stats --json       # machine-readable JSON
 verum smt-stats --reset      # clear after printing
 ```
 
-The `Context` object (verum_smt/context.rs) auto-records on every
-`check()` call when a routing-stats collector is installed via
-`context.with_routing_stats(arc)`. Both the contract-verification
-phase (api.rs) and the refinement verifier (pipeline.rs phase_verify)
-wire the session's collector automatically.
+The session's `Context` (`verum_smt/context.rs`) auto-records on
+every `check()` call when a routing-stats collector is installed
+via `context.with_routing_stats(arc)`. Both the contract-
+verification phase and the refinement verifier wire the
+session's collector automatically.
 
 ## Proof search
 
-`proof_search.rs` (230 K LOC) implements tactics:
+`proof_search.rs` implements the tactic primitives:
 
-- `auto` — call solver with default configuration.
-- `omega` — linear integer fragment.
+- `auto` — adapter call with default configuration.
+- `omega` — linear integer fragment (Presburger).
 - `ring` — ring-axiom rewriting.
 - `simp [rules]` — simplification rewriting.
 - `induction` — structural induction.
 - `cases` — case split.
 
-Tactics can compose via the `tactics.rs` combinator language.
+Tactics compose via the `tactics.rs` combinator language; users
+script them through the `@verify`-attribute and proof-DSL
+surface documented in
+**[Verification → proofs](/docs/verification/proofs)**.
 
 ## Proof extraction
 
-`proof_extraction.rs` (135 K LOC) extracts a proof term from an SMT
-unsat response. Each bundled backend emits a proof log; the translator
-normalises them to Verum's proof-term representation for machine
-checking.
+`proof_extraction.rs` extracts a proof term from an `unsat`
+response. Each adapter emits a proof log; the translator
+normalises adapter-native logs into Verum's proof-term
+representation, which the
+**[trusted kernel](/docs/architecture/trusted-kernel)** can then
+re-check independently. This is what removes the SMT solver
+from the trusted computing base.
 
 ## Cubical tactic
 
-`cubical_tactic.rs` (1058 lines) handles cubical / HoTT obligations
-that general SMT cannot discharge:
+`cubical_tactic.rs` handles cubical / HoTT obligations that
+ordinary SMT cannot discharge:
 
 - Path reduction.
 - HIT coherence.
 - Transport normalisation.
 - Glue / unglue simplification.
-- Category-theoretic rewrites (associativity, identity laws, etc.).
+- Category-theoretic rewrites (associativity, identity laws, …).
 
 It decomposes obligations into smaller fragments, dispatches the
-decidable ones to SMT, and applies rewrites for the rest.
+decidable ones to the SMT layer, and applies the cubical
+rewriting system for the rest.
 
 ## Performance
 
-Typical obligation mix (measured on a 50 KLOC Verum project):
+Typical obligation mix, measured on a 50 KLOC Verum project:
 
-| Theory | Count | Avg time (ms) | p95 |
-|--------|------:|--------------:|----:|
-| LIA only | 2,100 | 8 | 35 |
-| LIA + bv | 940 | 14 | 60 |
-| LIA + string | 110 | 45 | 180 |
-| Nonlinear | 42 | 320 | 1,800 |
-| Cubical | 18 | 120 | 400 |
+| Theory          | Count | Avg time (ms) |  p95 |
+|-----------------|------:|--------------:|-----:|
+| LIA only        | 2 100 |             8 |   35 |
+| LIA + bitvector |   940 |            14 |   60 |
+| LIA + string    |   110 |            45 |  180 |
+| Nonlinear       |    42 |           320 | 1800 |
+| Cubical         |    18 |           120 |  400 |
 
-Overall: ~92% of obligations discharge in under 50 ms.
+Overall: roughly **92 %** of obligations discharge in under
+50 ms.
 
 ## Configuration knobs
 
-The verifier exposes the underlying solver configuration through
-typed structs, each with a `Default` matching the spec defaults.
-Every field listed below is **load-bearing**: changing the value
-has an observable effect on the corresponding solver invocation.
-The audit recipe is documented under
-[scope discipline](#solver-parameter-scope-discipline) — each
-field's wiring layer (the SMT backend global / Config / Solver Params) is
-chosen based on which scope the SMT backend honours for that specific key.
+The verifier exposes its tunables through typed configuration
+structs, each with a `Default` matching the spec defaults. The
+fields described below are the **language-level** knobs — they
+describe behaviour that a Verum project author can reasonably
+configure, not adapter-internal solver parameters. Adapter-
+specific tuning belongs in the adapter's own configuration
+surface.
 
 ### `RefinementConfig` — refinement-type verification
 
 Used by `RefinementChecker::check_with_smt` and
-`verify_refinement_with_assumptions` for refinement subtyping
+`verify_refinement_with_assumptions` for refinement-subtyping
 queries (`T{φ1} <: T{φ2} iff φ1 ⇒ φ2`).
 
-| Field | Default | Effect | Wiring |
-|-------|--------:|--------|--------|
-| `enable_smt` | `true` | gate the SMT path; when `false`, fall back to syntactic-only subsumption. | direct branch |
-| `timeout_ms` | `100` | per-query the SMT backend budget. | `Params::set_u32("timeout", _)` on every fresh `Solver` |
-| `enable_cache` | `true` | cache verification conditions by SHA-256 fingerprint. | direct branch |
-| `max_cache_size` | `10 000` | bound on the cache map size; oldest entries evicted on overflow. | `len()`-check + LRU-N |
+| Field            | Default  | Effect |
+|------------------|---------:|--------|
+| `enable_smt`     | `true`   | Gate the SMT path; when `false`, fall back to syntactic-only subsumption. |
+| `timeout_ms`     |   `100`  | Per-query budget. |
+| `enable_cache`   | `true`   | Cache verification conditions by SHA-256 fingerprint. |
+| `max_cache_size` | `10 000` | Bound on the cache map size; oldest entries evicted on overflow. |
 
-The timeout reaches the SMT backend via the `SmtBackend::set_timeout_ms`
-trait method (called before every check) and forwarded by
-`RefinementSmtBackend` to the inner `SubsumptionChecker`, which
-configures the SMT backend's `timeout` solver parameter.
+The timeout reaches the SMT layer through the adapter trait's
+typed timeout setter, not by writing solver-specific parameter
+keys from the verifier.
 
 ### `QEConfig` — quantifier elimination
 
 Used by `QuantifierEliminator` for invariant synthesis,
 weakest-precondition computation, and refinement projection.
 
-| Field | Default | Effect | Wiring |
-|-------|--------:|--------|--------|
-| `timeout_ms` | `5 000` | per-query the SMT backend budget. | `Params::set_u32("timeout", _)` |
-| `max_iterations` | `10` | (reserved for future iterative QE) | — |
-| `use_qe_lite` | `true` | fast-path linear-arithmetic QE. | direct branch |
-| `use_qe_sat` | `true` | SAT-preprocessed QE for Boolean-heavy formulas. | direct branch |
-| `use_model_projection` | `true` | model-based projection for non-linear cases. | direct branch |
-| `use_skolemization` | `true` | Skolemization fallback. | direct branch |
-| `simplify_level` | `2` | escalating simplification chain — see below. | `Tactic` chain at construction |
-
-`simplify_level` maps to the SMT backend tactic chains:
-
-| Level | Tactic chain |
-|-------|--------------|
-| `0` | `skip` (identity — no rewriting) |
-| `1` | `simplify` |
-| `2` (default) | `simplify` ∘ `propagate-values` |
-| `3+` | `simplify` ∘ `propagate-values` ∘ `ctx-simplify` |
+| Field                  | Default | Effect |
+|------------------------|--------:|--------|
+| `timeout_ms`           | `5 000` | Per-query budget. |
+| `use_qe_lite`          | `true`  | Fast-path linear-arithmetic QE. |
+| `use_qe_sat`           | `true`  | SAT-preprocessed QE for Boolean-heavy formulas. |
+| `use_model_projection` | `true`  | Model-based projection for non-linear cases. |
+| `use_skolemization`    | `true`  | Skolemisation fallback. |
+| `simplify_level`       |     `2` | Escalating simplification chain (`0` skip, `1` simplify, `2` simplify + propagate, `3+` plus context simplification). |
 
 ### `InterpolationConfig` — Craig interpolation
 
-Used by `InterpolationEngine` for compositional verification
-and inductive-invariant synthesis.
+Used by `InterpolationEngine` for compositional verification and
+inductive-invariant synthesis.
 
-| Field | Default | Effect | Wiring |
-|-------|---------|--------|--------|
-| `algorithm` | `MBI` | `McMillan` / `Pudlak` / `Dual` / `Symmetric` / `MBI` / `PingPong` / `Pogo`. | algorithm dispatch |
-| `strength` | `Balanced` | bias toward stronger (McMillan) or weaker (Pudlak) interpolant. | `dual_interpolate` branch |
-| `simplify` | `true` | run the SMT backend's `simplify` on the result. | direct branch |
-| `timeout_ms` | `Some(5 000)` | per-query the SMT backend budget. | folded into `Params` alongside `proof: true` |
-| `proof_based` | `false` | (reserved for future fallback when McMillan/Pudlak fail) | — |
-| `model_based` | `true` | (reserved for future fallback when MBI fails) | — |
-| `quantifier_elimination` | `true` | when `false`, `project_onto_shared` skips QE and returns the original formula. McMillan's `A ⇒ I` half stays sound; the `I ∧ B ⇒ ⊥` half degrades in precision. | direct branch |
-| `max_projection_vars` | `100` | reject MBI projection when the elimination set exceeds this — exponential in the number of vars for some theories. | `len() > max` returns typed failure |
+| Field                    | Default      | Effect |
+|--------------------------|--------------|--------|
+| `algorithm`              | `MBI`        | `McMillan` / `Pudlak` / `Dual` / `Symmetric` / `MBI` / `PingPong` / `Pogo`. |
+| `strength`               | `Balanced`   | Bias toward stronger (McMillan) or weaker (Pudlak) interpolant. |
+| `simplify`               | `true`       | Run an interpolant simplifier on the result. |
+| `timeout_ms`             | `5 000`      | Per-query budget. |
+| `quantifier_elimination` | `true`       | When `false`, projection skips QE — McMillan's `A ⇒ I` half stays sound; the `I ∧ B ⇒ ⊥` half degrades in precision. |
+| `max_projection_vars`    | `100`        | Reject MBI projection when the elimination set exceeds this — exponential in the number of vars for some theories. |
 
 ### `StaticVerificationConfig` — bounds / safety verification
 
-Used by `StaticVerifier` for compile-time elimination of
-runtime checks.
+Used by `StaticVerifier` for compile-time elimination of runtime
+checks.
 
-| Field | Default | Effect | Wiring |
-|-------|--------:|--------|--------|
-| `timeout_ms` | `30 000` | global wall-clock for the verifier. | direct branch |
-| `constraint_timeout_ms` | `100` | per-constraint the SMT backend budget. | `Config::set_timeout_msec` + `Params::set_u32("timeout", _)` |
-| `enable_proofs` | `true` | request the SMT backend proof generation. | `Config::set_proof_generation` |
-| `enable_unsat_cores` | `true` | extract minimal unsat cores. | direct branch on result handling |
-| `minimize_cores` | `true` | iterate to find a minimal core. | direct branch |
-| `enable_caching` | `true` | proof-cache lookups. | direct branch |
-| `max_cache_size` | `10 000` | bound on proof cache entries. | passed to `ProofCache::new` |
-| `enable_parallel` | `false` | (reserved — the SMT backend Context is not Send/Sync in 0.19) | — |
-| `num_workers` | `cpus()` | (reserved) | — |
-| `auto_tactics` | `true` | use the SMT backend's tactic auto-selection. | `create_solver_with_tactic` branch |
-| `memory_limit_mb` | `Some(4096)` | process-wide memory ceiling. | `smt-backend::set_global_param("memory_max_size", _)` — see scope discipline |
-
-### `SmtBackendConfig` — the SMT backend-specific tuning
-
-Used by `SmtBackend` when the router selects the SMT backend.
-
-| Field | Default | the SMT backend option |
-|-------|---------|-------------|
-| `logic` | `ALL` | `:logic` |
-| `timeout_ms` | `Some(30 000)` | `tlimit-per` |
-| `incremental` | `true` | `incremental` |
-| `produce_models` | `true` | `produce-models` |
-| `produce_proofs` | `true` | `produce-proofs` |
-| `produce_unsat_cores` | `true` | `produce-unsat-cores` |
-| `preprocessing` | `true` | `preprocess-only` (false → run preprocessing AND solving) |
-| `quantifier_mode` | `Auto` | `quant-mode` (`none` / `ematching` / `cegqi` / `mbqi`); `Auto` leaves the SMT backend's heuristic |
-| `random_seed` | `None` | `seed` |
-| `verbosity` | `0` | `verbosity` (saturated at 5) |
-
-### `SmtBackendConfig` — the SMT backend-specific tuning
-
-Used by `SmtContextManager` for context-level settings.
-
-| Field | Default | Effect | Wiring scope |
-|-------|---------|--------|--------------|
-| `enable_proofs` | `true` | proof-log generation. | Config |
-| `minimize_cores` | `true` | (consumed by `unsat_core` path) | Solver Params |
-| `enable_interpolation` | `false` | enable the SMT backend's MBI tactic when interpolating. | tactic dispatch |
-| `global_timeout_ms` | `Some(30 000)` | context-level timeout. | `Config::set_timeout_msec` |
-| `memory_limit_mb` | `Some(8192)` | process-wide memory ceiling. | **Global param** — `set_global_param("memory_max_size", _)` |
-| `enable_mbqi` | `true` | model-based quantifier instantiation. | Solver Params (per-query) |
-| `enable_patterns` | `true` | pattern-based quantifier instantiation. | Solver Params (per-query) |
-| `random_seed` | `None` | reproducibility. | **Global param** — `set_global_param("smt.random_seed", _)` |
-| `num_workers` | `cpus().max(4)` | (forwarded to `ParallelConfig`) | — |
-| `auto_tactics` | `true` | tactic auto-selection. | `Config::set_param_value("auto_config", _)` |
+| Field                  | Default  | Effect |
+|------------------------|---------:|--------|
+| `timeout_ms`           | `30 000` | Global wall-clock for the verifier. |
+| `constraint_timeout_ms`|    `100` | Per-constraint budget. |
+| `enable_proofs`        |  `true`  | Request proof generation. |
+| `enable_unsat_cores`   |  `true`  | Extract minimal unsat cores. |
+| `minimize_cores`       |  `true`  | Iterate to find a minimal core. |
+| `enable_caching`       |  `true`  | Proof-cache lookups. |
+| `max_cache_size`       | `10 000` | Bound on proof-cache entries. |
+| `auto_tactics`         |  `true`  | Use the adapter's automatic tactic selection. |
+| `memory_limit_mb`      |  `4096`  | Process-wide memory ceiling. |
 
 ### `SubsumptionConfig` — refinement subtyping
 
 Used internally by `SubsumptionChecker`.
 
-| Field | Default | Effect |
-|-------|--------:|--------|
-| `cache_size` | `10 000` | LRU bound on the subsumption-result cache. |
-| `smt_timeout_ms` | `100` | per-query the SMT backend budget; updated dynamically by `RefinementSmtBackend::set_timeout_ms` so each `RefinementConfig.timeout_ms` change takes effect immediately. |
+| Field            | Default  | Effect |
+|------------------|---------:|--------|
+| `cache_size`     | `10 000` | LRU bound on the subsumption-result cache. |
+| `smt_timeout_ms` |    `100` | Per-query budget; updated dynamically so each `RefinementConfig.timeout_ms` change takes effect immediately. |
 
 ### `BisimulationConfig` — coinductive bisimulation
 
 Used by `BisimulationChecker` for behavioural equivalence.
 
-| Field | Default | Effect |
-|-------|--------:|--------|
-| `max_depth` | `100` | hard cap on recursive-destructor unfolding. |
-| `timeout_ms` | `30 000` | per-query the SMT backend budget. |
-| `generate_counterexamples` | `true` | when `false`, leave `BisimulationResult::counterexample` as `None` to save formatting work. |
-| `infinite_strategy` | `BoundedUnfolding` | `Coinduction` / `Up-to-bisimulation` / `BoundedUnfolding`. |
+| Field                       | Default      | Effect |
+|-----------------------------|--------------|--------|
+| `max_depth`                 |        `100` | Hard cap on recursive-destructor unfolding. |
+| `timeout_ms`                |     `30 000` | Per-query budget. |
+| `generate_counterexamples`  |       `true` | When `false`, leaves the counterexample slot empty to save formatting work. |
+| `infinite_strategy`         | `BoundedUnfolding` | One of `Coinduction` / `Up-to-bisimulation` / `BoundedUnfolding`. |
 
 ### `SepLogicConfig` — separation logic
 
 Used by `SepLogicEncoder` for heap-shape verification.
 
-| Field | Default | Effect |
-|-------|--------:|--------|
-| `entailment_timeout_ms` | `5 000` | per-entailment the SMT backend budget. |
-| `max_unfolding_depth` | `10` | bound on recursive-predicate unfolding. |
-| `enable_frame_inference` | `true` | gate `infer_frame`; when `false`, returns typed failure so callers that only need entailment validity can skip the residual computation (~30% encoder reduction on large heaps). |
-| `enable_symbolic_execution` | `true` | (reserved — feature not yet enabled by default in encoder) |
-| `enable_caching` | `true` | (reserved — encoding cache infrastructure exists but isn't yet read) |
+| Field                     | Default | Effect |
+|---------------------------|--------:|--------|
+| `entailment_timeout_ms`   | `5 000` | Per-entailment budget. |
+| `max_unfolding_depth`     |    `10` | Bound on recursive-predicate unfolding. |
+| `enable_frame_inference`  | `true`  | Gate `infer_frame`; when `false`, returns typed failure so callers that only need entailment validity skip the residual computation. |
 
 ### `UnsatCoreConfig` — minimal unsat-core extraction
 
 Used by `UnsatCoreExtractor`.
 
-| Field | Default | Effect | Wiring |
-|-------|--------:|--------|--------|
-| `minimize` | `true` | iterate to find a minimal core. | direct branch |
-| `quick_extraction` | `false` | trade minimality for speed. | direct branch |
-| `max_iterations` | `100` | bound on minimization iteration count. | `for ... in 0..max` |
-| `timeout_ms` | `Some(10 000)` | per-extraction the SMT backend budget. | folded into `Params` alongside `unsat_core: true` |
-| `proof_based` | `false` | use the SMT backend's proof API instead of assumption-tracking. | direct branch |
+| Field              | Default   | Effect |
+|--------------------|----------:|--------|
+| `minimize`         |    `true` | Iterate to find a minimal core. |
+| `quick_extraction` |   `false` | Trade minimality for speed. |
+| `max_iterations`   |     `100` | Bound on minimisation iteration count. |
+| `timeout_ms`       |  `10 000` | Per-extraction budget. |
+| `proof_based`      |   `false` | Use the adapter's proof API instead of assumption-tracking. |
 
 ### `ParallelConfig` — portfolio + cube-and-conquer
 
-Used by `ParallelSolver` for multi-strategy / multi-thread solving.
+Used by `ParallelSolver` for multi-strategy / multi-thread
+solving.
 
-| Field | Default | Effect |
-|-------|--------:|--------|
-| `num_workers` | `cpus()` | thread count. |
-| `strategies` | `default_strategies()` | per-worker strategy list. |
-| `timeout_ms` | `Some(30 000)` | global timeout. |
-| `enable_sharing` | `true` | **broader gate** — must be true for any cross-worker exchange (currently includes lemma exchange). |
-| `enable_lemma_exchange` | `true` | per-feature gate; effective only when `enable_sharing` is also true. |
-| `race_mode` | `true` | first-to-finish terminates others. |
-| `lemma_exchange_interval_ms` | `500` | how often workers swap learned clauses. |
-| `max_lemmas_per_exchange` | `10` | bound on payload size per exchange round. |
-| `enable_cube_and_conquer` | `false` | search-space partitioning. |
-| `cubes_per_worker` | `4` | partition target. |
+| Field                       | Default     | Effect |
+|-----------------------------|-------------|--------|
+| `num_workers`               | `cpus()`    | Thread count. |
+| `strategies`                | `default_strategies()` | Per-worker strategy list. |
+| `timeout_ms`                | `30 000`    | Global timeout. |
+| `enable_sharing`            | `true`      | Master gate for any cross-worker exchange. |
+| `enable_lemma_exchange`     | `true`      | Per-feature gate; effective only when `enable_sharing` is also true. |
+| `race_mode`                 | `true`      | First conclusive worker terminates the others. |
+| `lemma_exchange_interval_ms`|       `500` | How often workers swap learned clauses. |
+| `max_lemmas_per_exchange`   |        `10` | Bound on payload size per exchange round. |
+| `enable_cube_and_conquer`   |     `false` | Search-space partitioning. |
+| `cubes_per_worker`          |         `4` | Partition target. |
 
-### `OptimizerConfig` — MaxSAT / Pareto optimization
+### `OptimizerConfig` — MaxSAT / Pareto optimisation
 
-Used by `SmtOptimizer` for soft-constraint optimization.
+Used by `SmtOptimizer` for soft-constraint optimisation.
 
-| Field | Default | Effect |
-|-------|---------|--------|
-| `incremental` | `true` | gates `push` / `pop` scope manipulation. When `false`, push/pop are no-ops (paired so the stack stays balanced). |
-| `max_solutions` | `Some(usize::MAX)` | cap for Pareto-front enumeration. |
-| `timeout_ms` | `Some(30 000)` | per-query the SMT backend budget. |
-| `enable_cores` | `true` | extract unsat cores for soft-constraint debugging. |
-| `method` | `Lexicographic` | `Lexicographic` / `Pareto` / `Box` / `WeightedSum`. |
+| Field            | Default            | Effect |
+|------------------|--------------------|--------|
+| `incremental`    | `true`             | Gate `push` / `pop` scope manipulation. When `false`, push / pop are no-ops (paired so the stack stays balanced). |
+| `max_solutions`  | `usize::MAX`       | Cap for Pareto-front enumeration. |
+| `timeout_ms`     | `30 000`           | Per-query budget. |
+| `enable_cores`   | `true`             | Extract unsat cores for soft-constraint debugging. |
+| `method`         | `Lexicographic`    | One of `Lexicographic` / `Pareto` / `Box` / `WeightedSum`. |
 
 ### `CacheConfig` — verification-result cache
 
-Used by `VerificationCache` for cross-build SMT result reuse.
+Used by `VerificationCache` for cross-build SMT-result reuse.
 
-| Field | Default | Effect |
-|-------|--------:|--------|
-| `max_size` | `2 000` | LRU entry cap. |
-| `max_size_bytes` | `500 MB` | memory cap. |
-| `ttl` | `30 days` | result expiry. |
-| `statistics_driven` | `true` | (when `false`, cache everything; when `true`, gate inserts on the SMT backend stats — see below) |
-| `min_decisions_to_cache` | `1 000` | ≥ this many SMT decisions → cache. |
-| `min_conflicts_to_cache` | `100` | ≥ this many conflicts → cache. |
-| `min_solve_time_ms` | `100` | ≥ this elapsed → cache. |
-| `distributed_cache` | `None` | (reserved — manifest field consumed; cross-build distributed cache is opt-in) |
-
-Statistics-driven caching only fires for callers that route
-through `VerificationCache::insert_with_stats`. The default
-`get_or_verify` path uses unconditional `insert` since
-`verify_fn` doesn't return stats today.
-
-## Solver parameter scope discipline
-
-The SMT backend has three distinct parameter scopes that are **not
-interchangeable** even for the same param key:
-
-1. **Global** — `smt-backend::set_global_param(key, value)` →
-   `smt_global_param_set`. Process-wide; the most-recent call
-   wins. Memory caps and seeds belong here.
-2. **Config** — `Config::set_param_value(key, value)` →
-   `smt_set_param_value` on a `Config` struct. Applied at
-   context construction. Proof generation, model generation,
-   timeouts (via the typed `set_timeout_msec` helper),
-   `auto_config`, and `unsat_core` belong here.
-3. **Solver Params** — `Params::set_u32 / set_bool / ...` +
-   `Solver::set_params(&p)`. Per-solver. Per-query timeouts,
-   `unsat_core: true`, and most tuning knobs belong here.
-
-The empirically verified rule:
-
-| Key | Global | Config | Solver |
-|-----|:------:|:------:|:------:|
-| `memory_max_size` | ✅ | ❌ silent ignore + help dump | ❌ mis-routes |
-| `smt.random_seed` | ✅ | partial | ✅ |
-| `auto_config` | ✅ | ✅ | ❌ |
-| `proof` | ✅ | ✅ (`set_proof_generation`) | ❌ |
-| `timeout` | partial | ✅ (`set_timeout_msec`) | ✅ (`set_u32`) |
-| `unsat_core` | ❌ | ✅ | ✅ — must fold into the same `Params` value as the timeout (`Solver::set_params` replaces the whole set, so two calls erase the first) |
-| `quant-mode` (the SMT backend) | n/a | n/a | ✅ on the the SMT backend solver via `smt_solver_set_option` |
-
-When wiring a new param, **empirically verify** at each scope
-before committing — the SMT backend's silent-ignore behaviour means an
-incorrect scope choice produces a "config seems to work but
-has no effect" failure mode that's only visible under stress.
+| Field                   | Default       | Effect |
+|-------------------------|---------------|--------|
+| `max_size`              | `2 000`       | LRU entry cap. |
+| `max_size_bytes`        | `500 MB`      | Memory cap. |
+| `ttl`                   | `30 days`     | Result expiry. |
+| `statistics_driven`     | `true`        | When `false`, cache everything; when `true`, gate inserts on per-query work-statistics (decisions / conflicts / elapsed) so trivial queries don't pollute the cache. |
+| `min_decisions_to_cache`| `1 000`       | Threshold for the statistics-driven gate. |
+| `min_conflicts_to_cache`| `100`         | Threshold for the statistics-driven gate. |
+| `min_solve_time_ms`     | `100`         | Threshold for the statistics-driven gate. |
 
 ## Wiring layers
 
-The same conceptual setting may need to be wired at multiple
+The same conceptual setting may need to be wired at several
 layers because callers can opt out independently. The verifier
 follows this hierarchy when threading a tunable through:
 
-```
+```text
 caller intent (CLI flag / verum.toml / @verify attribute)
     ↓
 Session-level options (CompilerOptions)
@@ -448,23 +401,20 @@ Phase config (e.g. VerificationPhaseConfig)
     ↓
 Subsystem config (e.g. RefinementConfig)
     ↓
-Backend config (SmtBackendConfig / SmtBackendConfig)
-    ↓
-multiple SMT backends solver param
+Adapter-trait setters (typed; never raw solver param keys)
 ```
 
-When a knob is documented but a layer in this chain is
-missing, the field is **inert** — it appears configurable
-but the lower layers ignore the change. The compiler's CI
-pinned 30+ such fields by 2026-04-29 (audit recipe in
-`vcs/red-team/round-2-implementation.md`); each closure adds
-the missing wiring and pin tests for the no-fire / fire
-branches.
+When a knob is documented but a layer in this chain is missing,
+the field is **inert** — it appears configurable but the lower
+layers ignore the change. The verifier's CI pins every
+configuration field with paired no-fire / fire branches so
+incomplete wiring is a hard test failure, not a quietly
+ignored option.
 
 ## See also
 
 - **[Verification → SMT routing](/docs/verification/smt-routing)** —
-  user-facing policy.
+  user-facing routing policy.
 - **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
   — how `@logic` functions reach the solver.
 - **[Verification → proofs](/docs/verification/proofs)** — the

@@ -130,19 +130,26 @@ Benchmark metrics (9):
 V0 ships **mock runners** that emit canned values reflecting the
 documented landscape claims:
 
-- Verum kernel-TCB ≈ 5,000 LOC (target ceiling for the
-  trust-boundary subset; current `crates/verum_kernel/src/proof_checker.rs`
-  is ≈ 0.83 K LOC and the immediately-trusted surface
-  `proof_checker.rs + term.rs + lib.rs` is ≈ 2.1 K LOC); Coq ≈ 200,000;
-  Lean 4 ≈ 50,000; Isabelle ≈ 10,000; Agda ≈ 30,000. The full
-  `crates/verum_kernel/` (including all apply-graph + ATS-V dispatch +
-  bridge-audit infrastructure) is ≈ 52 K LOC, but those layers are
-  not part of the claimed TCB — they consume kernel verdicts, they
-  do not produce them.
-- Compilation speed ≈ 50,000 LOC/s for Verum (target); 15-30K for
-  the rest.
-- LLM acceptance: Verum 65% (with the LCF-style fail-closed loop);
-  others 0% (no comparable feature exists).
+- Verum kernel TCB: held to a single-reviewer / single-session
+  audit budget — the trust-boundary subset that produces
+  verdicts. Surrounding kernel infrastructure (apply-graph,
+  ATS-V dispatch, bridge-audit) is part of the same crate but
+  consumes kernel verdicts rather than producing them, so it
+  sits outside the claimed TCB. By contrast, mainstream proof
+  assistants ship trusted bases that are roughly two orders of
+  magnitude larger: Coq's kernel is on the order of a hundred
+  thousand lines of OCaml, Lean 4's kernel is in the tens of
+  thousands, Isabelle is in the low tens of thousands, and
+  Agda is similarly sized. Verum's smaller TCB is the point of
+  the LCF-style design — the rest of this benchmark is about
+  measuring whether that smaller surface still catches what
+  the larger ones do.
+- Compilation speed: target ≥ 50 KLOC/s for Verum; mainstream
+  ahead-of-time compilers in the comparison set typically
+  measure in the 15–30 KLOC/s range.
+- LLM acceptance rate: Verum's LCF-style fail-closed loop turns
+  speculative tactics into accept-or-reject verdicts; the
+  mainstream comparison set has no equivalent feature.
 
 These canned values are **placeholders for the protocol shape**, not
 real measurements.  V1+ swaps in production runners that actually

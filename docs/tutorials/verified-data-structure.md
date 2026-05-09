@@ -51,7 +51,7 @@ fn singleton<T: Ord>(x: T) -> SortedList<T>
 ```
 
 The compiler checks both `ensures` clauses. Vacuous quantifiers
-discharge immediately — the first proof takes the SMT backend ~8 ms.
+discharge immediately — the first proof takes the solver ~8 ms.
 
 ## 3. Insertion
 
@@ -217,8 +217,8 @@ $ verum test
 If `merge` takes > 5 s to verify, try:
 
 - Escalate to `@verify(thorough)` on merge specifically — this races
-  the SMT backend, and tactic-based proof search; the SMT backend's quantifier
-  reasoning is often faster on nested foralls.
+  the available solver adapters and tactic-based proof search; specialised
+  adapter quantifier reasoning is often faster on nested foralls.
 - Split invariants 4 and 5 into separate helper `@logic` lemmas
   that name the adjacency property.
 - Let the proof cache persist across runs (on by default) and the
@@ -237,7 +237,7 @@ If `merge` takes > 5 s to verify, try:
 
 - **[Proofs](/docs/verification/proofs)** — when SMT isn't enough,
   write a proof term.
-- **[SMT routing](/docs/verification/smt-routing)** — how the SMT backend
+- **[SMT routing](/docs/verification/smt-routing)** — how solver adapters
   decide what to dispatch.
 - **[Refinement patterns](/docs/cookbook/refinements)** — the common
   idioms.

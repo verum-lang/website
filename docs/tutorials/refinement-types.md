@@ -262,7 +262,7 @@ $ verum check
     finished in 1.8s
 ```
 
-30 proofs — all discharged by the SMT backend with median 42 ms per goal.
+30 proofs — all discharged by the SMT layer with median 42 ms per goal.
 
 ## Step 10 — See a rejection
 
@@ -336,4 +336,4 @@ A bounded ring buffer whose:
 - **[tutorials/verified-data-structure](/docs/tutorials/verified-data-structure)** —
   a bigger verified data structure (sorted list).
 - **[verification/smt-routing](/docs/verification/smt-routing)** —
-  how the compiler picks the SMT backend, or portfolio.
+  how the compiler picks an adapter or a portfolio.

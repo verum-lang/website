@@ -247,7 +247,7 @@ audit gate maps onto a verdict.
 
 | Flag | Dispatcher | Routes |
 |------|------------|--------|
-| `--count-o-dispatch` | `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → the SMT backend Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
+| `--count-o-dispatch` | `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → SMT Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
 
 #### Aggregator (1 gate)
 

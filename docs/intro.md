@@ -173,7 +173,7 @@ emitted at build time. **See
 | Differential testing | typically none | two independent algorithmic kernels run in parallel + mutation fuzzing; any disagreement fails the audit |
 | Memory safety | borrow checker (no opt-out without `unsafe`) | three tiers: safe by default, compiler-proven-safe where provable, manually-proven-safe at FFI boundary |
 | Effects / contexts | hidden globals + ad-hoc thread-locals | explicit `using [...]` clause — propagates across async, no implicit injection. Same grammar drives runtime DI and compile-time meta-contexts |
-| SMT integration | none / single backend | multi-backend (the SMT backend, specialised dependent / exhaustiveness / refinement) with capability routing |
+| SMT integration | none / single backend | multi-backend (general SMT plus specialised dependent / exhaustiveness / refinement adapters) with capability routing |
 | Proof export | external | Lean / Coq / Dedukti / Metamath / Isabelle export plus program extraction |
 | Stdlib type names | implementation-leaking (`Vec`, `String`, `HashMap`) | semantic-honest (`List`, `Text`, `Map`, `Heap`, `Shared`) |
 | Framework axioms | implicit / undocumented | every cited axiom carries a structured citation; the trusted boundary is enumerable |
@@ -230,7 +230,7 @@ budget supports.
 | Static + portfolio | `formal` | full portfolio SMT | the recommended production default |
 | Proof | `proof` | user tactic + kernel re-check | hand-proved theorems |
 | Proof + specs | `thorough` | `formal` + mandatory decreases / invariant / frame | hot loops, recursion |
-| Proof + cross-check | `reliable` | multiple SMT backends must agree | safety-critical |
+| Proof + cross-check | `reliable` | two solver adapters must agree | safety-critical |
 | Proof + certified | `certified` | `reliable` + certificate export + kernel re-check | regulatory, supply-chain |
 | Coherence (weak / hybrid / strict) | `coherent_*` | bidirectional α/ε check | full operational coherence |
 | Synthesis | `synthesize` | inverse search via SyGuS | spec-first development |
