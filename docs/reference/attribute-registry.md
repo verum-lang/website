@@ -41,20 +41,38 @@ attribute, its valid targets, and a one-line semantics.
 
 The `@verify` attribute takes a **semantic strategy** — the underlying
 solver (single adapter, portfolio, …) is an implementation detail picked
-by the capability router. The full set admitted by the grammar:
+by the capability router. Strategies are arranged on a strictly
+monotone ν-ordinal ladder; see
+**[verification → gradual verification](../verification/gradual-verification.md)**
+for the full ladder and its operational semantics.
 
-| Attribute | Targets | Semantics |
-|-----------|---------|-----------|
-| `@verify(runtime)`    | fn, type | runtime assertion check only; no formal proof |
-| `@verify(static)`     | fn, type | static type-level verification only |
-| `@verify(formal)`     | fn, type | formal verification with the default strategy (recommended) |
-| `@verify(proof)`      | fn, type | alias of `formal`, emphasising proof extraction |
-| `@verify(fast)`       | fn, type | optimise for fast verification; may sacrifice completeness on hard goals |
-| `@verify(thorough)`   | fn, type | maximum completeness; races multiple strategies, returns the first success |
-| `@verify(reliable)`   | fn, type | alias of `thorough`, emphasising result reliability |
-| `@verify(certified)`  | fn, type | independently cross-verified; required for proof-certificate export (Coq/Lean/Dedukti/Metamath) |
-| `@verify(synthesize)` | fn, type | synthesis mode — generate a term satisfying the spec rather than checking it |
-| `@framework(name, "citation")` | axiom, theorem, lemma | Mark a statement as a trusted axiom borrowed from an external framework. `name` is the framework identifier (identifier syntax); the string is a human-readable citation (paper / URL / section). Surfaced by `verum audit --framework-axioms` for supply-chain review. |
+The complete set admitted by the grammar:
+
+| Attribute | Targets | ν-ordinal | Semantics |
+|-----------|---------|:---------:|-----------|
+| `@verify(runtime)`           | fn, type | 0          | runtime assertion check only; no formal proof |
+| `@verify(static)`            | fn, type | 1          | static type-level verification only |
+| `@verify(fast)`              | fn, type | 2          | optimise for fast verification (capability router with reduced timeout); may sacrifice completeness on hard goals |
+| `@verify(complexity_typed)`  | fn, type | < ω (n)    | bounded-arithmetic verification (V₀ / V₁ / S¹₂ / V_NP / V_PH / IΔ₀); polynomial-time; CI budget ≤ 30 s. Use for crypto protocols, real-time, embedded |
+| `@verify(formal)`            | fn, type | ω          | full SMT verification with the default strategy (recommended production default) |
+| `@verify(proof)`             | fn, type | ω + 1      | user-supplied tactic block; kernel rechecks. Dominates SMT and admits induction. Use for theorems / foundational lemmas |
+| `@verify(thorough)`          | fn, type | ω · 2      | maximum completeness; portfolio race with extended timeout; mandatory `decreases` / `invariant` / `frame` |
+| `@verify(reliable)`          | fn, type | ω · 2 + 1  | `thorough` + cross-solver agreement: two independent solver adapters must both return UNSAT; any disagreement → UNKNOWN |
+| `@verify(certified)`         | fn, type | ω · 2 + 2  | `reliable` + certificate materialisation, kernel re-check, multi-format export — required for `.verum-cert` export (Coq / Lean / Dedukti / Metamath) |
+| `@verify(coherent_static)`   | fn, type | ω · 2 + 3  | weak operational coherence — α-cert + symbolic ε-claim; polynomial in `\|P\|·\|φ\|`; CI ≤ 60 s |
+| `@verify(coherent_runtime)`  | fn, type | ω · 2 + 4  | hybrid operational coherence — α-cert + runtime ε-monitor; trace-bounded; CI ≤ 5 min |
+| `@verify(coherent)`          | fn, type | ω · 2 + 5  | strict operational coherence — α/ε bidirectional check; single-exponential; CI ≤ 30 min. Use for critical-safety code requiring full operational coherence |
+| `@verify(synthesize)`        | fn, type | ≤ ω · 3 + 1 | synthesis mode — generate a term satisfying the spec rather than checking it; capability router dispatches to a synthesis-capable adapter (SyGuS-based) |
+| `@verify(assume)`            | fn, type | —          | escape hatch — trust the programmer; **no verification is performed**. Off-ladder; use only when the obligation is established by means outside the verification pipeline (manual review, external tooling, foundational axiom). Audit-tracked via `verum audit --assumptions` |
+| `@framework(name, "citation")` | axiom, theorem, lemma | — | Mark a statement as a trusted axiom borrowed from an external framework. `name` is the framework identifier (identifier syntax); the string is a human-readable citation (paper / URL / section). Surfaced by `verum audit --framework-axioms` for supply-chain review. |
+
+Multiple strategies may be chained (`@verify([proof, static, runtime])`)
+to express a verification *fallback chain* — the first successful
+strategy wins; later strategies serve as a safety net for obligations
+the earlier strategies couldn't discharge. Chains are written
+left-to-most-trusted; the kernel-side strategy ladder enforces strict
+monotonicity, so `@verify([runtime, proof])` is rejected as an
+ill-formed chain (the runtime fallback can never strengthen a proof).
 
 ## Safety
 
