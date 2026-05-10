@@ -266,21 +266,243 @@ fn set_panic_handler(h: fn(&PanicInfo) -> !)
 
 ---
 
+## Module status
+
+Each `core.sys.*` module carries an explicit conformance status so you
+know what you can rely on today versus what is still in flight. The
+status is the truth-table over the module's API surface as exercised
+by `core-tests/sys/<module>/` under both `verum test --interp` (Tier 0
+VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method conformance-tested. Algebraic laws pinned by exhaustive or large-domain property tests. Cross-stdlib integration verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
+| **partial** | Subset of the public API is conformance-tested. The rest is exercised in `regression_test.vr` via `@ignore`d (or workaround-style) tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
+| **regression-only** | Module is gated by upstream stdlib / language-level defects. Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
+| **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `common.vr`        | undocumented | — |
+| `cabi.vr`          | undocumented | — |
+| `bitfield.vr`      | **regression-only** | [core-tests/sys/bitfield](https://github.com/verum-lang/verum/tree/main/core-tests/sys/bitfield) — 56 unit + 3 pinned regressions (gated by cross-module free-fn dispatch defect) |
+| `mmio.vr`          | undocumented | — |
+| `interrupt.vr`     | undocumented | — |
+| `time_ops.vr`      | undocumented | — |
+| `file_ops.vr`      | undocumented | — |
+| `net_ops.vr`       | undocumented | — |
+| `process_ops.vr`   | undocumented | — |
+| `process_native.vr`| undocumented | — |
+| `context_ops.vr`   | undocumented | — |
+| `signal.vr`        | undocumented | — |
+| `fs_watch.vr`      | undocumented | — |
+| `io_engine.vr`     | undocumented | — |
+| `init.vr`          | undocumented | — |
+| `durability.vr`    | undocumented | — |
+| `locking/mod.vr`   | undocumented | — |
+| `embedded.vr`      | undocumented | — |
+| `no_runtime.vr`    | undocumented | — |
+
+---
+
 ## Bitfields and MMIO
 
-### `Bitfield`
+### `core.sys.bitfield` — bit-manipulation primitives
+
+> **Status: regression-only**.
+>
+> The 8 free functions plus `field_mask` and `USIZE_BITS` are landed in
+> `core/sys/bitfield.vr` and route through `core/sys/mod.vr`'s
+> `bitfield.{...}` re-export. Implementation is `pure`,
+> `@inline(always)`, branchless except at the documented
+> `width == 0` / `width >= USIZE_BITS` boundaries — under
+> monomorphisation each call collapses to one or two CPU instructions
+> and is eligible for constant folding when the arguments are
+> compile-time constants.
+>
+> The conformance suite is currently `regression-only` because the
+> cross-module free-function dispatch defect (see
+> [core-tests/sys/bitfield/audit.md §3.2](https://github.com/verum-lang/verum/tree/main/core-tests/sys/bitfield/audit.md#32-cross-module-free-function-dispatch-silently-returns-unitnil))
+> short-circuits every assertion to `()` at `--interp` runtime. The
+> implementation itself has no known correctness gaps; the suite turns
+> green at runtime the moment the dispatch defect closes.
+
+#### Canonical API surface
+
+All operations work over `USize` — the platform-native bitfield word
+that pairs with the `BitfieldElement` protocol's
+`to_bits / from_bits` lingua franca. On any 64-bit target the LLVM
+lowering is bit-identical to `UInt64`; on 32-bit embedded targets
+`USize` narrows to 32 bits and the operations follow.
 
 ```verum
-type BitfieldElement is protocol {
-    fn extract(raw: UInt64, mask: UInt64, shift: Int) -> Self;
-    fn insert(raw: UInt64, value: Self, mask: UInt64, shift: Int) -> UInt64;
+mount core.sys.bitfield;
+
+// --- Bit-width constant ----------------------------------------
+public const USIZE_BITS: USize = USize.bits;
+
+// --- Single-bit operations -------------------------------------
+public pure fn test_bit(value: USize, n: USize) -> Bool;
+public pure fn set_bit(value: USize, n: USize) -> USize;
+public pure fn clear_bit(value: USize, n: USize) -> USize;
+public pure fn toggle_bit(value: USize, n: USize) -> USize;
+
+// --- Mask operations -------------------------------------------
+public pure fn set_bits(value: USize, mask: USize) -> USize;
+public pure fn clear_bits(value: USize, mask: USize) -> USize;
+
+// --- Field operations ------------------------------------------
+public pure fn field_mask(offset: USize, width: USize) -> USize;
+public pure fn extract_bits(value: USize, offset: USize, width: USize) -> USize;
+public pure fn insert_bits(value: USize, bits: USize, offset: USize, width: USize) -> USize;
+```
+
+#### Boundary table
+
+Let `N = USIZE_BITS`. Every field operation lifts the boundary cases
+out of the hot path so the call is total over `0..=N` regardless of
+host-instruction-set quirks.
+
+| `width` | `extract_bits(v, o, w)` | `insert_bits(v, b, o, w)` | `field_mask(o, w)` |
+|---|---|---|---|
+| `0` | `0` | `value` (no field, no change) | `0` |
+| `1..N-1` | `(v >> o) & ((1 << w) - 1)` | `(v & !field) \| ((b & low_mask) << o)` | `((1 << w) - 1) << o` |
+| `N` (full) | `value` (full read-through) | `bits` (full overwrite) | `!0` (all ones) |
+
+The `width >= USIZE_BITS` lift exists because LLVM defines `shl ?, N`
+as poison when `N >= bit_width`; on x86_64 the silicon further masks
+the shift count to `N-1`, producing `1 << 0 = 1` instead of "all
+ones". Without the lift the hot-path expression would yield UB at the
+boundary; with it, every call is defined.
+
+#### Algebraic laws
+
+Every operation carries an algebraic contract:
+
+| Operation | Law |
+|---|---|
+| `set_bit / clear_bit / set_bits / clear_bits` | **Idempotent**: applying twice with the same mask/index is the same as applying once. |
+| `toggle_bit` | **Self-inverse**: `toggle_bit(toggle_bit(v, n), n) == v`. |
+| `extract_bits ∘ insert_bits` | **Round-trip**: `extract_bits(insert_bits(v, b, o, w), o, w) == b & field_mask(0, w)` for any `o + w ≤ USIZE_BITS`. |
+| `field_mask` | **Disjoint-union**: `field_mask(o, w) \| field_mask(o + w, k) == field_mask(o, w + k)` when `o + w + k ≤ USIZE_BITS`. |
+| `insert_bits` | **Adjacent-field independence**: leaves every bit outside `[o, o + w)` unchanged. |
+| `test_bit` ↔ `extract_bits` | `test_bit(v, n) == (extract_bits(v, n, 1) == 1)` for every `n < USIZE_BITS`. |
+| `set_bit` ↔ `set_bits` | `set_bit(v, n) == set_bits(v, 1 << n)` (single-bit form is the mask form specialised to a unit mask). Same for `clear_bit` ↔ `clear_bits`. |
+
+#### Caller contracts (NOT runtime-enforced)
+
+```
+n < USIZE_BITS                  for *_bit operations
+offset + width <= USIZE_BITS    for *_bits / extract / insert
+width <= USIZE_BITS             for field_mask / extract / insert
+```
+
+Violating these silently yields the LLVM-poison value of the
+underlying shift; downstream computations remain defined-but-garbage.
+Bitfield-codegen call sites prove these invariants from the
+surrounding `@bits(N)` annotations, so the runtime checks would be
+pure overhead.
+
+#### Example — packed sensor sample
+
+```verum
+mount core.sys.bitfield;
+
+// 16-bit packed sample: 4-bit channel | 12-bit value
+fn pack_sample(channel: USize, value: USize) -> USize {
+    let raw = bitfield.insert_bits(0 as USize, channel, 0 as USize, 4 as USize);
+    bitfield.insert_bits(raw, value, 4 as USize, 12 as USize)
 }
 
-type Bitfield<const W: Int> is { raw: UInt64, mask: UInt64 };
-
-fn extract_bits<T: BitfieldElement>(raw: UInt64, mask: UInt64, shift: Int) -> T
-fn insert_bits<T: BitfieldElement>(raw: UInt64, value: T, mask: UInt64, shift: Int) -> UInt64
+fn unpack_sample(raw: USize) -> (USize, USize) {
+    let channel = bitfield.extract_bits(raw, 0 as USize, 4 as USize);
+    let value   = bitfield.extract_bits(raw, 4 as USize, 12 as USize);
+    (channel, value)
+}
 ```
+
+#### `BitfieldElement` and `Bitfield` protocols
+
+The protocols underlie compiler-generated `@bitfield` types (see
+`@bitfield` attribute below):
+
+```verum
+public type BitfieldElement is protocol {
+    const BIT_WIDTH: USize;
+    fn from_bits(bits: USize) -> Self;
+    fn to_bits(self) -> USize;
+};
+
+implement BitfieldElement for Bool   { const BIT_WIDTH: USize = 1;  ... }
+implement BitfieldElement for UInt8  { const BIT_WIDTH: USize = 8;  ... }
+implement BitfieldElement for UInt16 { const BIT_WIDTH: USize = 16; ... }
+implement BitfieldElement for UInt32 { const BIT_WIDTH: USize = 32; ... }
+implement BitfieldElement for UInt64 { const BIT_WIDTH: USize = 64; ... }
+
+public type Bitfield is protocol {
+    const SIZE_BYTES: USize;
+    const SIZE_BITS:  USize;
+    fn zero() -> Self;
+    fn as_bytes(&self)        -> &[UInt8];
+    fn as_bytes_mut(&mut self) -> &mut [UInt8];
+};
+```
+
+The compiler auto-derives `Bitfield` for any type annotated with
+`@bitfield`. Bitfield fields have one absolute restriction: their
+address cannot be taken (`&field` is forbidden). Total bits must
+align to byte boundaries (or use explicit `@padding`).
+
+#### `@bitfield` attribute and derived types
+
+```verum
+@repr(C)
+@bitfield
+@endian(little)
+public type TcpFlags is {
+    @bits(1) fin: Bool,
+    @bits(1) syn: Bool,
+    @bits(1) rst: Bool,
+    @bits(1) psh: Bool,
+    @bits(1) ack: Bool,
+    @bits(1) urg: Bool,
+    @bits(2) reserved: UInt8,
+};
+
+let flags = TcpFlags { fin: true, syn: true, ..TcpFlags.zero() };
+assert(flags.fin);
+assert(flags.syn);
+```
+
+Compile-time verification helpers (used by `@bitfield` lowering):
+
+```verum
+@const public fn verify_byte_alignment<TOTAL_BITS: meta USize>() -> Bool
+    where TOTAL_BITS % 8 == 0;
+
+@const public fn verify_field_width<FIELD_BITS: meta USize, TYPE_BITS: meta USize>() -> Bool
+    where FIELD_BITS <= TYPE_BITS;
+
+@const public fn verify_enum_fits<MAX_VARIANT: meta USize, BITS: meta USize>() -> Bool
+    where MAX_VARIANT < (1 << BITS);
+```
+
+#### Open defects
+
+The conformance suite under `core-tests/sys/bitfield/` pins three
+language-level defects that block the suite from turning green at
+runtime; each has its own task on the language-implementation track.
+
+| # | Defect | Status |
+|---|---|---|
+| 1 | Cross-module free-function dispatch silently returns `Unit/nil` at `--interp` runtime — affects every `mount X.{free_fn}` and `module.fn(args)` call site (workspace-wide; `core.base.glob.matches` exhibits the same shape). | tracked, in progress |
+| 2 | `mount X.{public_const}` does not register the name in the codegen's global symbol table; cross-module imports of `public const` items report `UndefinedVariable("CONST_NAME")` at codegen. Workaround: `mount X; X.CONST`. | tracked |
+| 3 | Parallel UInt64 implementations in `core.math.bits` previously caused codegen to dispatch to the wrong implementation under monomorphisation. **Eliminated** by collapsing to the single canonical home (`core.sys.bitfield`); pinned in `regression_test.vr` to prevent re-introduction. | closed |
+
+These defects are NOT specific to `core.sys.bitfield` — they are
+foundational language-level gaps that cascade into every module that
+exercises cross-module free-function calls. Closing any of them
+unlocks coverage in many downstream modules at once.
 
 ### MMIO — memory-mapped I/O
 
