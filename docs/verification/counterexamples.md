@@ -229,6 +229,79 @@ Fix rules are defined in `verum_verification::fix_suggestions` and
 are plugin-extensible (see [Tactic DSL](./tactic-dsl.md) for
 authoring).
 
+### 4.6 Failure-category classification
+
+Every counterexample carries a structured `FailureCategory` tag
+that classifies the runtime-safety failure mode. The category
+drives IDE quick-fix dispatch, telemetry counters, and
+documentation links — consumers branch on the category
+rather than parsing the human-readable contradiction string.
+
+The taxonomy is **closed** (six tags, additions are
+language-version events) and partitions into three orthogonal
+axes via classifier flags. The full table:
+
+| Category              | `is_arithmetic_failure` | `is_memory_failure` | `has_quickfix_pattern` | `is_catch_all` |
+|-----------------------|:-----------------------:|:-------------------:|:----------------------:|:--------------:|
+| `DivisionByZero`      | ✓                       |                     | ✓                      |                |
+| `ArithmeticOverflow`  | ✓                       |                     | ✓                      |                |
+| `IndexOutOfBounds`    |                         | ✓                   | ✓                      |                |
+| `NullDereference`     |                         | ✓                   | ✓                      |                |
+| `NegativeValue`       | ✓                       |                     | ✓                      |                |
+| `Other`               |                         |                     |                        | ✓              |
+
+Two cross-cutting invariants are pinned by the
+`meta_pin_failure_category_round_trip_and_partitions`
+drift-test in `verum_smt::counterexample` and surface as a
+test failure if they ever diverge:
+
+* **Arithmetic ⊕ memory** — a category is arithmetic, memory,
+  or neither (the catch-all), never both. Pinned so a future
+  hybrid category (e.g. "pointer arithmetic overflow") forces
+  an explicit reclassification.
+* **`has_quickfix_pattern ⇔ ¬is_catch_all`** — exact equality.
+  Every named category has a structured guard the IDE can
+  offer (`x != 0` for `DivisionByZero`, bounds check for
+  `IndexOutOfBounds`, etc.); only the catch-all `Other`
+  doesn't. Adding a new named category that lacks a quick-fix
+  pattern surfaces here.
+
+Each variant carries a `display_name` field
+(e.g. `"Division by Zero"`, `"Index Out of Bounds"`) that the
+JSON wire and the human emitter share — single source of truth
+for the human-readable category label. The legacy `Display`
+impl that previously hardcoded the six display strings inline
+now reduces to one line that reads from the
+`FailureCategory::meta()` table.
+
+The category is exposed in the JSON wire as the `category`
+field alongside the per-variant flag set:
+
+```json
+{
+  "schema_version": 1,
+  "category": {
+    "name": "division_by_zero",
+    "display_name": "Division by Zero",
+    "is_arithmetic_failure": true,
+    "is_memory_failure": false,
+    "has_quickfix_pattern": true,
+    "is_catch_all": false
+  },
+  ...
+}
+```
+
+IDE plugins that want to render a "show only memory-safety
+failures" filter, or a CI dashboard that wants to count
+arithmetic-domain regressions separately, branch on the
+classifier flags rather than enumerating variant names. New
+categories ship with their classifier-flag answers
+pre-decided in `core_metadata`-style fact-pack tables, which
+means consumers never need to handle "unknown category"
+fallback paths — every `FailureCategory` value the runtime
+emits has a complete fact-pack.
+
 ---
 
 ## 5. Counterexamples for quantified obligations
