@@ -21,6 +21,40 @@ and interval streams.
 | `julian.vr` | Julian Day ↔ Unix / Gregorian conversions (Richards 1998) |
 | `mod.vr` | `Time` namespace + re-exports |
 
+## Module status
+
+Each `core.time.*` module carries an explicit conformance status — same
+contract as [`core.base`](./base.md#module-status) and
+[`core.collections`](./collections.md#module-status). The status row is
+the truth-table over the module's public API exercised by
+`core-tests/time/<module>/` under both Tier 0 (interpreter) and Tier 2
+(AOT). Disagreement between tiers is itself a test failure.
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
+| **partial** | Subset stable; remainder gated by upstream defects, documented per-module. |
+| **regression-only** | Tests gate on language-level defects (function-id remap on cross-module helper calls, archive-driven `monotonic_nanos` resolution, …). |
+| **undocumented** | Snapshot from source; no runtime conformance pin yet. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 12/32; arithmetic, accessors, equality green. Failures cluster on `duration_since` / `Instant` cross-module helpers (function-id remap) and on the `Int.add` mis-dispatch when an `AsyncInterval.period_ns` returns a `()`-tagged value. |
+| `duration_parse.vr` | **undocumented** | — |
+| `instant.vr`        | **regression-only** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — every test fails on `FunctionNotFound(FunctionId(N))` because the `monotonic_nanos` syscall helper isn't reachable from the test compilation unit until the function-id remap fix lands. |
+| `system_time.vr`    | **partial** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — `SystemTime.now`/`as_unix_nanos` stable; `duration_since` blocked. |
+| `interval.vr`       | **undocumented** | — |
+| `rfc3339.vr`        | **undocumented** | — |
+| `cron.vr`           | **undocumented** | — |
+| `julian.vr`         | **partial** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — 6/19; round-trip fixtures and Gregorian-day-of-week tables pass. Failures cluster on the same cross-module dispatch class as `instant.vr`. |
+| `mod.vr`            | **stable** | Re-export surface only — every name lifts to the originating module's status row above. |
+
+The status table is the runtime truth, not the file's `lifecycle`
+annotation: `lifecycle: Lifecycle.Theorem("v0.1")` is the *spec*
+lifecycle (what the contract promises); the table above is the
+*implementation* lifecycle (what the runtime currently delivers).
+When the two diverge, the table is the source of truth for callers.
+
 ---
 
 ## `Duration`
