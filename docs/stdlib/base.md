@@ -1110,18 +1110,71 @@ match result {
 type LogLevel is Trace | Debug | Info | Warn | Error;
 
 type Logger is protocol {
-    fn log(&self, record: &LogRecord);
+    fn log(&self, level: LogLevel, message: &Text);
     fn is_enabled(&self, level: LogLevel) -> Bool;
 }
 
 type LogRecord is {
     level: LogLevel,
     message: Text,
+    fields: List<(Text, Text)>,
     module_path: Maybe<Text>,
     file: Maybe<Text>,
     line: Maybe<Int>,
 };
+
+type LogRecordBuilder is { /* opaque */ };
 ```
+
+### Level constructors (free functions)
+
+For `mount` import sites that prefer free-function style over
+`LogLevel.Trace`:
+
+```verum
+mount core.base.log.{
+    LogLevel, LogRecord, LogRecordBuilder,
+    level_trace, level_debug, level_info, level_warn, level_error,
+};
+
+let l: LogLevel = level_warn();
+```
+
+`LogLevel` itself implements `Eq`, `Ord`, `Clone`, `Copy`, `Hash`,
+`Display`, `Debug`, `Default` (defaults to `Info`); `severity()` →
+`0..4` and `name()` → `"TRACE".."ERROR"` are the workhorse accessors.
+
+### `LogRecord` construction
+
+```verum
+LogRecord.new(level, message, fields)              // 3-arg canonical
+LogRecord.simple(level, message)                   // shortcut, fields = []
+
+// Chainable builder methods (each returns a new record):
+rec.with_field(key, value)
+rec.with_module_path(path)
+rec.with_file(file)
+rec.with_line(line)
+```
+
+### `LogRecordBuilder` — imperative builder
+
+For sites where a record is assembled across control-flow paths
+(e.g. attaching fields conditionally before finalising):
+
+```verum
+let rec = LogRecordBuilder.new()
+    .level(level_warn())
+    .message("disk full".to_text())
+    .field("disk".to_text(),    "/var".to_text())
+    .field("free_gb".to_text(), "0".to_text())
+    .module_path("daemon::disk".to_text())
+    .file("disk.vr".to_text())
+    .line(142)
+    .build();
+```
+
+Defaults: `Info` / empty message / no fields / no source location.
 
 ### Convenience functions (require `Logger` in context)
 
@@ -1139,7 +1192,10 @@ fn handle(req: Request) using [Logger] {
 ### Backends
 
 `NullLogger` (no-op, useful in tests). Real backends are in user code
-or third-party cogs (file logger, journald, syslog, …).
+or third-party cogs (file logger, journald, syslog, …). To wire a
+backend, `implement Logger for MyBackend { … }` and provide it via
+`provide MyBackend.new() as Logger { … }` — the same context-system
+plumbing covered in [`stdlib/context`](./context.md).
 
 ---
 
