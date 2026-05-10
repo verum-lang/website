@@ -128,32 +128,39 @@ cbgr_checks      = "optimized"       # all | optimized | proven
 `tier` accepts the strings `"0"`, `"interpreter"`, `"interp"` for
 interpreter mode and `"1"`, `"aot"`, `"release"`, `"native"` for AOT.
 
-### Verification levels — nine-strategy ladder
+### Verification levels — fourteen-strategy ladder
 
-The `verification` field of every profile (and `default_strategy` of
-`[verify]` below) accepts one of ten lowercase strings, ordered by
-strictly increasing rigour:
+The `verification` field of every profile (and `default_strategy`
+of `[verify]` below) accepts one of fifteen lowercase strings:
+the fourteen verification strategies admitted by the grammar plus
+the tooling-side-only `none` sentinel. Strategies are ordered on
+a strictly monotone ν-ordinal ladder so promotions are always
+checked in one direction (lax → strict).
 
-| Value          | Strategy                                                      | When to pick |
-|----------------|---------------------------------------------------------------|--------------|
-| `none`         | Unchecked                                                     | Never auto-selected; only by explicit override. |
-| `runtime`      | Runtime assertions                                            | Default for the `application` profile. |
-| `static`       | Dataflow + CBGR                                               | Trivially decidable refinements without SMT. |
-| `fast`         | Bounded SMT                                                   | ≤ 100 ms / goal; UNKNOWN-tolerant. |
-| `formal`       | SMT solver portfolio                                          | Default `dev` for `research` profile. |
-| `proof`        | User tactic + kernel re-check                                 | Promotes when SMT cannot discharge. |
-| `thorough`     | `formal` + invariants / frame / termination                   | Catches missing specs. |
-| `reliable`     | `thorough` + cross-adapter agreement                          | UNKNOWN on disagreement. |
-| `certified`    | `reliable` + certificate re-check + cross-format export       | Default `release` for `research` profile. |
-| `synthesize`   | Inverse proof search → strictest non-synth strategy           | Holes filled by search; cost is unbounded. |
+| Value                | ν-ordinal      | Strategy                                                                                       | When to pick |
+|----------------------|:--------------:|------------------------------------------------------------------------------------------------|--------------|
+| `none`               | —              | Unchecked (tooling-only sentinel — does not correspond to a `@verify(...)` attribute)          | Never auto-selected; only by explicit override. |
+| `runtime`            | 0              | Runtime assertions; no formal proof                                                            | Default for the `application` profile. |
+| `static`             | 1              | Dataflow + CBGR                                                                                | Trivially decidable refinements without SMT. |
+| `fast`               | 2              | Capability router with reduced timeout (≤ 100 ms / goal)                                       | UNKNOWN-tolerant; iterative development. |
+| `complexity_typed`   | < ω (n)        | Bounded-arithmetic verification (V₀ / V₁ / S¹₂ / V_NP / V_PH / IΔ₀); polynomial-time; CI ≤ 30 s | Crypto protocols, real-time, embedded. |
+| `formal`             | ω              | Full SMT verification (default strategy)                                                       | Default `dev` for `research` profile. |
+| `proof`              | ω + 1          | User tactic block + kernel re-check (dominates SMT; admits induction)                          | Theorems / foundational lemmas. |
+| `thorough`           | ω · 2          | Portfolio race with extended timeout; mandatory `decreases` / `invariant` / `frame`             | Catches missing specs. |
+| `reliable`           | ω · 2 + 1      | `thorough` + cross-solver agreement: two adapters must both return UNSAT                       | UNKNOWN on disagreement. |
+| `certified`          | ω · 2 + 2      | `reliable` + certificate materialisation + multi-format export                                 | Default `release` for `research` profile; required for `.verum-cert` export (Coq / Lean / Dedukti / Metamath). |
+| `coherent_static`    | ω · 2 + 3      | Weak operational coherence — α-cert + symbolic ε-claim; polynomial in `\|P\|·\|φ\|`; CI ≤ 60 s | Production fallback for coherence-required code. |
+| `coherent_runtime`   | ω · 2 + 4      | Hybrid operational coherence — α-cert + runtime ε-monitor; trace-bounded; CI ≤ 5 min            | Hybrid coherence; runtime monitoring acceptable. |
+| `coherent`           | ω · 2 + 5      | Strict operational coherence — α/ε bidirectional check; single-exponential; CI ≤ 30 min        | Critical-safety code requiring full operational coherence. |
+| `synthesize`         | ≤ ω · 3 + 1    | Inverse proof search (synthesis); holes filled by capability-router-dispatched SyGuS adapter   | Cost is unbounded — opt-in only. |
+| `assume`             | —              | **No verification is performed** — escape hatch off the ladder                                  | Audit-tracked via `verum audit --assumptions`; use only when the obligation is established outside the verification pipeline. |
 
 **Direction** — `@verify(proof)` on a function compiling under
-`@verify(runtime)` is always accepted (lax → strict). The reverse
-requires re-proof and is rejected by the level-inference pass.
+`@verify(runtime)` is always accepted (lax → strict, monotone in
+ν-ordinal). The reverse requires re-proof and is rejected by the
+level-inference pass.
 
-Plus the coherent and complexity-typed extensions (`complexity_typed`,
-`coherent_static`, `coherent_runtime`, `coherent`) — see
-[Gradual verification](/docs/verification/gradual-verification)
+See [Gradual verification](/docs/verification/gradual-verification)
 for the full ν-coordinate ordering, capability-router dispatch
 table, and cost / completeness trade-off per strategy.
 

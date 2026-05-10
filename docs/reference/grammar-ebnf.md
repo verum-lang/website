@@ -288,17 +288,33 @@ std_attribute        = 'std' , [ '(' , identifier , ')' ] ;
 specialize_attribute = 'specialize' ;
 derive_attribute     = 'derive' , '(' , identifier , { ',' , identifier } , ')' ;
 
-verify_attribute = 'verify' , '(' ,
-    ( 'runtime' | 'static' | 'formal' | 'proof'
-    | 'fast' | 'thorough' | 'reliable'
-    | 'certified' | 'synthesize'
-    | 'coherent' | 'coherent_static' | 'coherent_runtime'
-    | 'complexity_typed' ) , ')' ;
+verify_attribute = 'verify' , '(' , verify_strategy_list , ')' ;
+verify_strategy_list = verify_strategy
+                     | '[' , verify_strategy , { ',' , verify_strategy } , ']' ;
+verify_strategy = 'runtime' | 'static' | 'fast'
+                | 'complexity_typed'
+                | 'formal' | 'proof'
+                | 'thorough' | 'reliable' | 'certified'
+                | 'coherent_static' | 'coherent_runtime' | 'coherent'
+                | 'synthesize'
+                | 'assume' ;
 ```
 
 `@verify` selects a **semantic strategy** rather than a particular
 solver — the compiler chooses an adapter or portfolio per the router.
 See [SMT routing](/docs/verification/smt-routing).
+
+The fourteen accepted strategies are arranged on a strictly monotone
+ν-ordinal ladder (see
+[Gradual verification](/docs/verification/gradual-verification) for
+the full ladder). The list-form chains a fallback sequence:
+`@verify([proof, static, runtime])` runs `proof` first; on failure
+falls back to `static`, then `runtime`. Chains are written
+left-to-most-trusted; the kernel rejects monotonicity-violating
+chains like `@verify([runtime, proof])`. `assume` is the off-ladder
+escape hatch — using it in a chain disables verification for the
+remainder of the chain and is audit-tracked via
+`verum audit --assumptions`.
 
 #### Attribute classification (the architecture rework)
 
