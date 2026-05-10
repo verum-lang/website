@@ -263,12 +263,12 @@ Trust extension report
 ────────────────────────────────────────
 
   ▸ Proved:
-      K_Var, K_Universe, K_Pi_Form, K_Lam_Intro, K_App_Elim,
+      K_Var, K_Univ, K_Pi_Form, K_Lam_Intro, K_App_Elim,
       K_Sigma_Form, K_Pair_Intro, K_Fst_Elim, K_Snd_Elim,
       K_Refine, K_Refine_Intro, K_Path_Ty_Form, K_Refl_Intro,
       K_Path_Over_Form, K_HComp, K_Transp, K_Glue,
-      K_Quot_Form, K_Quot_Intro, K_Inductive_Form,
-      K_Inductive_Elim, …
+      K_Quot_Form, K_Quot_Intro, K_Inductive,
+      K_Pos, K_Elim, …
 
   ▸ DischargedByFramework:
       · K_Pi_Form          mathlib4              CategoryTheory.Adjunction
