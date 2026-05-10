@@ -40,12 +40,12 @@ the truth-table over the module's public API exercised by
 | Module | Status | Conformance suite |
 |---|---|---|
 | `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 12/32; arithmetic, accessors, equality green. Failures cluster on `duration_since` / `Instant` cross-module helpers (function-id remap) and on the `Int.add` mis-dispatch when an `AsyncInterval.period_ns` returns a `()`-tagged value. |
-| `duration_parse.vr` | **undocumented** | — |
+| `duration_parse.vr` | **undocumented** | Documented below; no `core-tests/time/duration_parse/` suite yet. |
 | `instant.vr`        | **regression-only** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — every test fails on `FunctionNotFound(FunctionId(N))` because the `monotonic_nanos` syscall helper isn't reachable from the test compilation unit until the function-id remap fix lands. |
 | `system_time.vr`    | **partial** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — `SystemTime.now`/`as_unix_nanos` stable; `duration_since` blocked. |
-| `interval.vr`       | **undocumented** | — |
-| `rfc3339.vr`        | **undocumented** | — |
-| `cron.vr`           | **undocumented** | — |
+| `interval.vr`       | **undocumented** | Documented below; no conformance suite. |
+| `rfc3339.vr`        | **undocumented** | Documented below; no `core-tests/time/rfc3339/` suite yet. |
+| `cron.vr`           | **undocumented** | Documented below; no `core-tests/time/cron/` suite yet. |
 | `julian.vr`         | **partial** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — 6/19; round-trip fixtures and Gregorian-day-of-week tables pass. Failures cluster on the same cross-module dispatch class as `instant.vr`. |
 | `mod.vr`            | **stable** | Re-export surface only — every name lifts to the originating module's status row above. |
 
