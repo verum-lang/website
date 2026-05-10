@@ -185,7 +185,7 @@ Applications:
 ## Proof erasure
 
 Cubical machinery is **erased** during VBC codegen
-(`verum_compiler::proof_erasure`). Paths, transports, and HIT path
+(`verum_compiler::phases::proof_erasure`). Paths, transports, and HIT path
 cases compile to identity / passthrough operations. Your code runs at
 full speed; the types are a compile-time tool.
 
