@@ -59,24 +59,31 @@ flowchart TD
 
 | # | Phase | Parallel? | Key files |
 |---|---|---|---|
-| 0 | Stdlib preparation | once per build | `phases/phase0_stdlib.rs` |
-| 1 | Lexical & parsing | per-file | `verum_lexer`, `verum_fast_parser` |
-| 2 | Meta registry & AST registration | sequential | `phases/meta_registry.rs` |
-| 3 | Macro expansion & literal processing | sequential | `phases/macro_expansion.rs` |
-| 2.9 | Safety gate | per-module | `phases/safety_gate.rs` — rejects `unsafe`, `@ffi`, based on `[safety]` config |
-| 3 | Macro expansion & literal processing | sequential | `phases/macro_expansion.rs` |
-| 3a | Contract verification (SMT) | per-obligation | `phases/contract_verification.rs` |
-| 3b | Safety gate (re-check) | per-module | Same gate, inside `phase_type_check` for defense in depth |
-| 4 | Semantic analysis (types + CBGR) | per-module | `verum_types::infer`, `phases/semantic_analysis.rs` |
-| 4a | Autodiff compilation | per `@differentiable` | `phases/autodiff_compilation.rs` |
-| 4b | Context-system validation | per-function | `phases/context_validation.rs` — gated by `[context].enabled` |
-| 4c | Send/Sync validation | per-module | `phases/send_sync_validation.rs` |
-| 4d | Dependency analysis | per-module | target-profile enforcement (no_std/no_alloc) |
-| 4e | FFI boundary validation | per-module | `phases/ffi_boundary.rs` — gated by `[safety].ffi` |
-| 5 | VBC code generation | per-function | `phases/vbc_codegen.rs`, `verum_vbc::codegen` |
-| 6 | VBC monomorphization | per-specialisation | `phases/vbc_mono.rs` |
-| 7 | Execution (Tier 0 or Tier 1) | per-target | `pipeline::phase_interpret` / `run_native_compilation` |
-| 7.5 | Final linking | sequential | `phases/linking.rs` + embedded LLD |
+| 0   | Stdlib preparation                     | once per build         | `phases/phase0_stdlib.rs` |
+| 1   | Lexical & parsing                      | per-file               | `verum_lexer`, `verum_fast_parser` |
+| 2   | Meta registry & AST registration       | sequential             | `phases/meta_registry_phase.rs` |
+| 2.9 | Safety gate                            | per-module             | `phases/safety_gate.rs` — rejects `unsafe` / `@ffi` based on `[safety]` config |
+| 3   | Macro expansion & literal processing   | sequential             | `phases/macro_expansion.rs` |
+| 3a  | Contract verification (SMT)            | per-obligation         | `phases/contract_verification.rs` (+ `contract_verification_diagnostics.rs`) |
+| 3b  | Safety gate re-check                   | per-module             | Same gate as 2.9, re-run inside `phase_type_check` for defense in depth |
+| 4   | Semantic analysis (types + CBGR)       | per-module             | `verum_types::infer`, `phases/semantic_analysis.rs` |
+| 4a  | Autodiff compilation                   | per `@differentiable`  | `phases/autodiff_compilation.rs` |
+| 4b  | Context-system validation              | per-function           | `phases/context_validation.rs` — gated by `[context].enabled` |
+| 4c  | Send/Sync validation                   | per-module             | `phases/send_sync_validation.rs` |
+| 4d  | Dependency analysis                    | per-module             | `phases/dependency_analysis.rs` — target-profile enforcement (`no_std` / `no_alloc`) |
+| 4e  | FFI boundary validation                | per-module             | `phases/ffi_boundary.rs` — gated by `[safety].ffi` |
+| 4f  | Entry-point detection                  | once per build         | `phases/entry_detection.rs` — picks `fn main` or the script wrapper |
+| 4g  | Verified-contract registration         | once per build         | `phases/verified_contract.rs` (+ `phases/proof_verification.rs` / `proof_erasure.rs` for the proof side) |
+| 4h  | Bridge-discharge check                 | per-bridge             | `phases/bridge_discharge_check.rs` — discharges Diakrisis IOU axioms |
+| 5   | VBC code generation                    | per-function           | `phases/vbc_codegen.rs`, `verum_vbc::codegen` |
+| 5a  | CFG construction                       | per-function           | `phases/cfg_constructor.rs` (verification track only) |
+| 5b  | Delegate expansion                     | per-function           | `phases/delegate_expansion.rs` (compilation track) |
+| 6   | VBC monomorphization                   | per-specialisation     | `phases/vbc_mono.rs` |
+| 6a  | Optimisation (verification track)      | per-function           | `phases/optimization.rs` over `phases/mir_lowering.rs` MIR — bounds-elim / CBGR-elim / SMT-VC obligations live here, NOT on the main path |
+| 6b  | Verification phase                     | per-obligation         | `phases/verification_phase.rs` — drives gradual-verification gradient + capability-router dispatch |
+| 7   | Execution — Tier 0 (interpret)         | per-target             | `pipeline::phase_interpret` |
+| 7   | Execution — Tier 1 (AOT)               | per-target             | `pipeline::run_native_compilation`, `phases/codegen_tiers.rs` |
+| 7.5 | Final linking                          | sequential             | `phases/linking.rs` + embedded LLD |
 
 :::note MIR is *not* in the main pipeline
 The compiler contains MIR infrastructure, but it is only used by the
