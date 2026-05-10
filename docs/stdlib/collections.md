@@ -43,7 +43,7 @@ by `core-tests/collections/<module>/` under both `verum test --interp`
 | `consistent_hash.vr`| undocumented | — |
 | `adjacency_list.vr` | undocumented | — |
 | `alias_sampler.vr`  | undocumented | — |
-| `toposort.vr`       | undocumented | — |
+| `toposort.vr`       | **regression-only** | [core-tests/collections/toposort](https://github.com/verum-lang/verum/tree/main/core-tests/collections/toposort) — 4 narrow unit tests + 6 pinned regressions (Map.contains_key/get + Text.from defects gate the algorithm itself) |
 | `trie.vr`           | undocumented | — |
 | `union_find.vr`     | **partial** | [core-tests/collections/union_find](https://github.com/verum-lang/verum/tree/main/core-tests/collections/union_find) — 31 unit + 14 property + 7 integration + 11 pinned regressions |
 
