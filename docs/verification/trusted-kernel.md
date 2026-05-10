@@ -71,25 +71,27 @@ handles the irreducible core.
 `kernel_v0` is the **Verum-language** mirror of the trusted-base
 checker. It lives at `core/verify/kernel_v0/` and ships:
 
-- A canonical 10-rule manifest (one `.vr` file per rule).
-- Soundness lemmas under `lemmas/`.
-- Per-rule judgment forms under `judgment.vr`.
-- Context structure under `context.vr`.
+- A canonical 10-rule manifest (one `.vr` file per rule under
+  `rules/`).
+- Soundness lemmas under `lemmas/` (one file per derived structural
+  lemma: `beta.vr`, `eta.vr`, `sub.vr`, `subst.vr`, `cartesian.vr`).
+- Per-rule judgment forms in `judgment.vr` (top-level alongside
+  `context.vr` and `core_term.vr`).
 
 The ten rules:
 
 | File | Rule | What it does |
 |------|------|--------------|
-| `k_var.vr` | `K-Var` | Variable lookup `Γ, x:A ⊢ x : A` |
-| `k_univ.vr` | `K-Univ` | Universe formation `Γ ⊢ Universe(n) : Universe(n+1)` |
-| `k_pi_form.vr` | `K-Pi-Form` | Π-type formation `Γ ⊢ A : U`, `Γ, x:A ⊢ B : U` ⊢ `Π x:A.B : U` |
-| `k_lam_intro.vr` | `K-Lam-Intro` | λ-abstraction introduction |
-| `k_app_elim.vr` | `K-App-Elim` | Application elimination |
-| `k_sub.vr` | `K-Sub` | Substitution lemma |
-| `k_beta.vr` | `K-Beta` | β-conversion `(λx:A. b) a ↝ b[x ↦ a]` |
-| `k_eta.vr` | `K-Eta` | η-equivalence `λx. f x ≡ f` |
-| `k_pos.vr` | `K-Pos` | Strict positivity (Berardi 1998) |
-| `k_fwax.vr` | `K-FwAx` | Framework-axiom admission |
+| `rules/k_var.vr` | `K-Var` | Variable lookup `Γ, x:A ⊢ x : A` |
+| `rules/k_univ.vr` | `K-Univ` | Universe formation `Γ ⊢ Universe(n) : Universe(n+1)` |
+| `rules/k_pi_form.vr` | `K-Pi-Form` | Π-type formation `Γ ⊢ A : U`, `Γ, x:A ⊢ B : U` ⊢ `Π x:A.B : U` |
+| `rules/k_lam_intro.vr` | `K-Lam-Intro` | λ-abstraction introduction |
+| `rules/k_app_elim.vr` | `K-App-Elim` | Application elimination |
+| `rules/k_sub.vr` | `K-Sub` | Substitution lemma |
+| `rules/k_beta.vr` | `K-Beta` | β-conversion `(λx:A. b) a ↝ b[x ↦ a]` |
+| `rules/k_eta.vr` | `K-Eta` | η-equivalence `λx. f x ≡ f` |
+| `rules/k_pos.vr` | `K-Pos` | Strict positivity (Berardi 1998) |
+| `rules/k_fwax.vr` | `K-FwAx` | Framework-axiom admission |
 
 The audit gate `verum audit --kernel-v0-roster` walks the
 manifest and confirms every rule has its corresponding `.vr`
