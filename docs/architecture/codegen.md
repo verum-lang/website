@@ -139,20 +139,37 @@ the pattern from `linalg`.
 
 ### GPU targets
 
-Five backends share the MLIR pipeline:
+Four backends share the MLIR pipeline. The canonical mapping is
+the `GpuTarget` enum in
+`crates/verum_codegen/src/mlir/vbc_lowering.rs` — every row below
+is a direct projection of that enum's `target_triple()` /
+`dialect()` / `memory_space()` accessors:
 
-| Target | Triple | Matmul tile (default) |
-|--------|--------|------------------------|
-| CUDA (NVIDIA, tensor cores) | `nvptx64-nvidia-cuda` | 128×128×32 on SM8x, 64×64×32 on SM7x |
-| CUDA (NVIDIA, no TC)        | `nvptx64-nvidia-cuda` | 32×32×8 |
-| ROCm (AMD, matrix cores)    | `amdgcn-amd-amdhsa`   | 128×128×16 |
-| ROCm (AMD, no MC)           | `amdgcn-amd-amdhsa`   | 32×32×8 |
-| Metal (Apple)               | `air64-apple-macosx`  | 32×32×8 |
-| Vulkan                       | `spirv64-unknown-vulkan` | 16×16×8 |
-| SYCL / oneAPI                | `spir64-unknown-unknown` | 16×16×8 |
+| Target | MLIR target triple        | Primary dialect | memref memory space |
+|--------|---------------------------|-----------------|:-------------------:|
+| CUDA (NVIDIA)               | `nvptx64-nvidia-cuda`     | `nvvm`          | 1 (device global)   |
+| ROCm (AMD)                  | `amdgcn-amd-amdhsa`       | `rocdl`         | 1 (device global)   |
+| Vulkan                      | `spirv64-unknown-vulkan`  | `spirv`         | 0 (host-shared)     |
+| Metal (Apple)               | `air64-apple-macos`       | `metal`         | 0 (host-shared)     |
 
-Tile sizes come from `GpuTarget::matmul_tile_sizes()`; the compiler
-picks the widest variant supported by the detected device.
+Two natural partitions on the `GpuTarget` surface:
+
+* **Device-global memory** (`memory_space == 1`): CUDA + ROCm.
+  These targets carry a separate device address space; memref
+  attributes pin allocations into device global memory.
+* **Host-shared memory** (`memory_space == 0`): Vulkan + Metal.
+  Address-space 0 is the default; the host-shared model lets
+  CPU and GPU access the same allocation without an explicit
+  copy. A wrong classification on this axis silently miscompiles
+  memref attributes — pinned by the `meta_pin_gpu_target_round_
+  trip_unique_and_classification` test in the lowering crate.
+
+Matmul tile sizes are picked per-launch by the
+`gpu.lower-matmul-tile` MLIR pass based on detected device
+capability rather than declared statically per target — the
+numbers vary with CUDA SM version, ROCm CDNA variant, Vulkan
+driver, and Metal GPU family, and are not enumerable as a
+single-row-per-target table.
 
 ### AOT compilation
 
