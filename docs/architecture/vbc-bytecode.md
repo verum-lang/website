@@ -60,9 +60,10 @@ Several primary opcodes are prefixes into second-byte tables:
   `PathRefl`, `PathLambda`, `PathApp`, `PathSym`, `PathTrans`,
   `PathAp`, `Transport`, `Hcomp`, `IntervalMeet`, `IntervalJoin`,
   `IntervalRev`, `Ua`, `UaInv`, `EquivFwd`, `EquivBwd`.
-- **`SimdExtended` (0x2A)** — 73 SIMD ops including `VecSplat`,
+- **`SimdExtended` (0x2A)** — 67 SIMD ops including `VecSplat`,
   `VecLoad`, `VecAdd`, `VecFma`, `VecShuffle`, `VecReduce`, gather /
-  scatter.
+  scatter.  Variant count pinned by the `simd_meta_count_pinned_at_
+  sixty_seven` drift-test on `SimdSubOpcode::ALL`.
 - **`TensorExtended` (0xFC)** — attention, softmax, layernorm,
   batchnorm, einsum, conv, the flash-attention intrinsic.
 - **`GpuExtended` (0xF8)** — kernel launch, sync, memcpy, stream
