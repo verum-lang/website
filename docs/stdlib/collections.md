@@ -9,6 +9,44 @@ description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every sem
 Semantic-honest data structures. You talk to the protocol; the compiler
 chooses the implementation.
 
+## Module status
+
+Each `core.collections.*` module carries an explicit conformance status
+so you know what you can rely on today versus what is still in flight.
+The status is the truth-table over the module's API surface as exercised
+by `core-tests/collections/<module>/` under both `verum test --interp`
+(Tier 0 VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method is conformance-tested. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
+| **partial** | Subset of the public API is conformance-tested and stable. The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
+| **regression-only** | Module is gated by upstream stdlib / language-level defects. Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
+| **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `list.vr`           | undocumented | — |
+| `map.vr`            | undocumented | — |
+| `set.vr`            | undocumented | — |
+| `multiset.vr`       | undocumented | — |
+| `deque.vr`          | undocumented | — |
+| `heap.vr`           | undocumented | — |
+| `btree.vr`          | undocumented | — |
+| `slice.vr`          | undocumented | — |
+| `lru.vr`            | undocumented | — |
+| `ttl_cache.vr`      | undocumented | — |
+| `bloom.vr`          | undocumented | — |
+| `hyperloglog.vr`    | undocumented | — |
+| `count_min.vr`      | undocumented | — |
+| `reservoir.vr`      | **partial**  | [core-tests/collections/reservoir](https://github.com/verum-lang/verum/tree/main/core-tests/collections/reservoir) — 14 unit + 7 property + 4 integration + 4 pinned regressions (CSPRNG-gated replacement phase) |
+| `consistent_hash.vr`| undocumented | — |
+| `adjacency_list.vr` | undocumented | — |
+| `alias_sampler.vr`  | undocumented | — |
+| `toposort.vr`       | undocumented | — |
+| `trie.vr`           | undocumented | — |
+| `union_find.vr`     | **partial** | [core-tests/collections/union_find](https://github.com/verum-lang/verum/tree/main/core-tests/collections/union_find) — 31 unit + 14 property + 7 integration + 11 pinned regressions |
+
 ### Core data structures
 
 | File | What's in it |
@@ -768,18 +806,63 @@ items past 4 billion observations.
 
 ### `Reservoir<T>`
 
+> **Status: partial**.
+> Fill-phase API (`new`, `offer` while `len < capacity`, `len`,
+> `capacity`, `seen`, `take`, `reset`) is conformance-tested on
+> `--interp` and `--aot`. The replacement-phase path (`offer` after
+> `len == capacity`) is currently gated on the missing
+> `core.sys.common.random_bytes` intrinsic in the VBC dispatch table —
+> tests pinned in `core-tests/collections/reservoir/regression_test.vr`.
+
+```verum
+public type Reservoir<T> is {
+    samples:  List<T>,
+    capacity: Int,
+    seen:     UInt64,
+};
+```
+
 ```verum
 let mut res: Reservoir<TraceId> = Reservoir.new(1000);
 while let Some(trace) = stream.next() {
-    res.offer(trace);
+    let _ = res.offer(trace);   // Bool: true iff item retained.
 }
 let sample: List<TraceId> = res.take();
 ```
+
+API:
+
+```verum
+Reservoir.new(capacity: Int) -> Reservoir<T>     // capacity < 1 clamped to 1
+res.offer(item: T) -> Bool                       // true iff item retained
+res.take(self) -> List<T>                        // consumes
+res.len() -> Int                                 // current sample count
+res.capacity() -> Int                            // configured cap
+res.seen() -> UInt64                             // total items observed
+res.reset()                                      // drop samples + zero seen
+```
+
+Behavioural laws (pinned by `property_test.vr`):
+
+* **Capacity clamping**: `new(n).capacity() = max(n, 1)`.
+* **Seen counter**: `seen()` advances exactly once per `offer`.
+* **Fill-phase retention**: every `offer` returns true while
+  `seen ≤ capacity`.
+* **Length ceiling**: `len() ≤ capacity()` at all times.
+* **Reset round-trip**: `reset() ⇒ len = 0 ∧ seen = 0`; `capacity` is
+  preserved.
+* **Reset idempotency**: repeated `reset()` calls leave the same
+  observable state.
+* **Capacity invariance**: no public API call besides construction
+  changes `capacity()`.
 
 Vitter 1985 Algorithm R — uniform sampling from a stream of
 unknown length. Every item has marginal probability
 `capacity / stream_length` of surviving. Used by tail-sampling
 tracers, streaming analytics, ML out-of-core shuffling.
+
+Conformance suite: `core-tests/collections/reservoir/` —
+14 unit + 7 property + 4 integration + 4 pinned regressions.
 
 ---
 
@@ -804,3 +887,151 @@ Adding/removing one node moves only `key_count / node_count`
 entries (the consistent-hashing property). `nodes_for_key(key, N)`
 returns N distinct nodes in preference order — primary first,
 then replicas.
+
+---
+
+## `UnionFindInt` and `UnionFind<T>` — Disjoint-Set Union
+
+> **Status: partial**.
+> `UnionFindInt` (Int-keyed dense path) is conformance-tested end-to-end
+> on both `--interp` and `--aot`. Generic `UnionFind<T: Hash + Eq>` is
+> tested along the working axis (distinct-key make, find on unregistered
+> keys, union creates keys, len tracking) and `@ignore`d in
+> `regression_test.vr` for the broken axis (idempotent make on duplicate
+> keys, component_size after union). Every defect that gates the
+> remaining coverage is reproduced in the regression suite and tracked.
+
+DSU — Tarjan 1975, with both path compression and union-by-rank, giving
+amortised inverse-Ackermann (`O(α(n)) ≈ O(1)`) cost per operation.
+
+Two APIs. Pick the dense one when keys are densely-indexed integers
+(graph nodes 0..n-1, slot indices, etc.); pick the generic one for
+strings, UUIDs, or any `Hash + Eq` carrier.
+
+### `UnionFindInt` — dense Int-keyed (array-backed)
+
+```verum
+public type UnionFindInt is {
+    parent:     List<Int>,
+    rank:       List<Int>,
+    components: Int,
+    size:       List<Int>,
+};
+```
+
+```verum
+let mut uf = UnionFindInt.new(n);
+
+uf.find(x: Int) -> Int                 // canonical root, path-compressed
+uf.union(a: Int, b: Int) -> Bool       // true iff this call merged distinct sets
+uf.same_set(a: Int, b: Int) -> Bool
+uf.component_size(x: Int) -> Int
+uf.component_count() -> Int            // O(1) — cached
+uf.len() -> Int                        // total elements (== n)
+uf.clear()                             // restore initial singleton state
+```
+
+Behavioural contract (laws pinned by `property_test.vr`):
+
+* **Reflexivity**:    `same_set(x, x)`
+* **Symmetry**:       `same_set(a, b) = same_set(b, a)`
+* **Transitivity**:   `same_set(a, b) ∧ same_set(b, c) ⇒ same_set(a, c)`
+* **Union introduces equivalence**: `union(a, b) ⇒ same_set(a, b)`
+* **Union return-value partition**: `union(a, b) = true` iff `a` and `b`
+  were in distinct sets at call entry.
+* **Idempotent union**: a second `union(a, b)` is a no-op; state and
+  `component_count()` are unchanged.
+* **Component-count invariant**: each successful union decrements the
+  count by exactly 1; failed unions leave it unchanged.
+* **Component-size sum**: `Σ component_size(root_i) = n` over distinct
+  roots.
+* **Find idempotency**: `find(find(x)) = find(x)`.
+* **`same_set` definition**: `same_set(a, b) = (find(a) == find(b))`.
+* **Clear restores singletons**: post-`clear()`, every element is its
+  own root and `component_count() = n`.
+
+Use cases (industry-standard DSU territory):
+
+* **Kruskal MST** — sort edges by weight, union endpoints, accept the
+  edge iff the union returned `true`.
+* **CRDT add-wins set reconciliation** — per-key DSU over causal-set
+  representatives.
+* **Static-analyser equivalence classes** — variable aliasing, escape
+  analysis, type-variable bands.
+* **Image-segmentation connected-component labelling** —
+  4/8-connected pixels via two raster passes.
+* **Cycle detection in incremental graph construction** —
+  `same_set(u, v)` before adding edge `(u, v)`.
+
+### `UnionFind<T: Hash + Eq>` — generic, map-backed
+
+```verum
+public type UnionFind<T: Hash + Eq> is {
+    parent:     Map<T, T>,
+    rank:       Map<T, Int>,
+    size:       Map<T, Int>,
+    components: Int,
+};
+```
+
+```verum
+let mut uf: UnionFind<Text> = UnionFind.new();
+
+uf.make(x: T)                          // ensure x is known; idempotent
+uf.find(x: &T) -> T                    // canonical root, path-compressed
+uf.union(a: T, b: T) -> Bool           // true iff merge happened
+uf.same_set(a: &T, b: &T) -> Bool
+uf.component_size(x: &T) -> Int
+uf.component_count() -> Int
+uf.len() -> Int                        // distinct keys ever introduced
+```
+
+Same algebraic laws as `UnionFindInt`. The "make is idempotent on
+duplicate keys" axis is currently blocked by upstream
+`Map.contains_key(&K)` defect (see [Open defects](#open-defects-in-collections)).
+
+### Length protocol
+
+Both types implement `Length`, so the free-function form works:
+
+```verum
+assert_eq(uf.len(), len(&uf));
+```
+
+### Performance
+
+* `find`: amortised `O(α(n))` ≈ `O(1)`. α is the inverse Ackermann
+  function — bounded by 4 for any conceivable input size.
+* `union`: amortised `O(α(n))`.
+* `component_count`: `O(1)`. The counter is maintained in-line, not
+  recomputed.
+* `component_size`: `O(α(n))` (one find).
+* `clear` (UnionFindInt only): `O(n)` on the dense backing arrays.
+
+### Conformance suite
+
+`core-tests/collections/union_find/` — 52 non-ignored tests, 11 pinned
+regressions. Run with `verum test --interp --filter test_uf_` and
+`verum test --interp --filter property_int_`.
+
+---
+
+## Open defects in collections
+
+Tracked across the conformance suite under
+`core-tests/collections/<module>/regression_test.vr`. Each entry below
+links to the regression-pinned reproducer.
+
+| # | Defect | Surface | Status |
+|---|---|---|---|
+| 1 | `Map.get(K) -> V` returns zero-value on miss instead of `Maybe<V>` | `core/collections/map.vr:457`; ~666 call sites | tracked, fix is a cross-cutting migration |
+| 2 | `Map.contains_key(&K)` silently returns false (type mismatch) | `core/collections/map.vr:614`; reachable from `union_find.vr:183` | tracked |
+| 3 | `Map.get_optional` / `Map.get_key_value` lenient-skipped at runtime | `core/collections/map.vr:504, 579` | tracked, requires compiler-side investigation |
+| 4 | `Text.from_utf8_unchecked` heap-allocated Text has zero-length `as_bytes()` despite correct `len` field | `core/text/text.vr:439`; surfaces in every `Map<Text, V>` populated via `Text.from(...)` | tracked, requires interpreter-side `RefSliceRaw` fix |
+| 5 | `Text.eq(&self, &Text)` method dispatch returns false for byte-identical literal Texts | `core/text/text.vr:3370`; method-resolution lands on the wrong impl | tracked |
+| 6 | `core.sys.common.random_bytes` intrinsic missing from VBC dispatch table | reachable from `core/collections/reservoir.vr:148`; gates `Reservoir.offer` replacement phase, plus any `core.base.random.*` use site (`Bloom`, `HyperLogLog` HMAC keys) | tracked |
+
+These defects are **not** specific to the `UnionFind` types — they are
+foundational stdlib / language-level gaps that cascade into every
+module that touches `Map<Text, V>` or `Map<&K, V>`. Closing any of them
+unlocks coverage in multiple downstream modules at once.
