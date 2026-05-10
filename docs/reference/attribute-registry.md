@@ -217,19 +217,96 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 
 ## Optimisation
 
+### Inlining
+
 | Attribute | Targets | Semantics |
 |-----------|---------|-----------|
-| `@inline` | fn | suggest inlining |
-| `@inline(always)` | fn | force inlining |
-| `@inline(never)` | fn | forbid inlining |
-| `@hot` | fn | mark as hot path; bias optimisation / layout |
-| `@cold` | fn | mark as cold path; bias away |
-| `@vectorize(lanes = N)` | fn | request SIMD vectorisation |
-| `@unroll(factor = N)` | fn | request loop unrolling |
-| `@multiversion` | fn | emit multiple versions for CPU feature dispatch |
-| `@link_section("name")` | fn, static | place into a named section |
-| `@no_mangle` | fn, static | disable name mangling |
-| `@vbc_direct_lowering` | fn (intrinsic) | Intrinsic function lowers directly to a VBC opcode without a regular call frame. Used on time/CPU/sleep primitives in `core/intrinsics/runtime/`; users should not hand-apply this attribute. |
+| `@inline`            | fn | suggest inlining (compiler decides — equivalent to `@inline(suggest)`) |
+| `@inline(always)`    | fn | force inlining at every call site |
+| `@inline(never)`     | fn | forbid inlining (e.g. for cold error paths) |
+| `@inline(release)`   | fn | inline only in release builds; treated as `suggest` in debug builds |
+| `@hot`               | fn | mark as hot path; bias optimisation / layout |
+| `@cold`              | fn | mark as cold path; bias away |
+| `@likely`            | branch | branch-prediction hint — taken-likely |
+| `@unlikely`          | branch | branch-prediction hint — taken-unlikely |
+
+### Loops & vectorisation
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@unroll`             | loop | bare form requests full unrolling — equivalent to `@unroll(full)` |
+| `@unroll(N)`          | loop | unroll exactly `N` iterations |
+| `@unroll(full)`       | loop | fully unroll the loop |
+| `@no_unroll`          | loop | prevent loop unrolling |
+| `@vectorize`          | loop | enable auto-vectorisation (default — equivalent to `@vectorize(auto)`) |
+| `@vectorize(force)`   | loop | force vectorisation; emit a diagnostic if the loop cannot vectorise |
+| `@simd(prefer)`       | loop | try vectorisation, fall back to scalar if it would be unsafe |
+| `@simd(never)` / `@no_vectorize` | loop | disable vectorisation entirely |
+| `@vectorize(width: N)` | loop | optional width hint (e.g. 4, 8, 16); orthogonal to the mode |
+| `@no_alias`           | loop | assert pointers in the loop body don't alias |
+| `@ivdep`              | loop | assert no inter-iteration data dependencies (Intel-style hint) |
+| `@parallel`           | loop | mark for auto-parallelisation |
+| `@reduce(op)`         | loop | declare a reduction operator (`add` / `multiply` / `min` / `max` / `bitand` / `bitor` / `bitxor` / `and` / `or`; the operator form `+` / `*` / `&` / `|` / `^` / `&&` / `||` parses to the same variant) |
+| `@prefetch(read \| write, locality: N)` | expr | cache-prefetch hint; `locality` is 0–3 (0 = streaming / no temporal locality; 3 = high temporal locality) |
+| `@access_pattern(sequential \| random \| streaming)` | field, expr | declare access pattern for layout / prefetch optimisations |
+
+### Code generation
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@optimize(none \| size \| speed \| balanced)` | fn | override the global optimisation level for this function |
+| `@multiversion`         | fn | emit multiple versions for CPU feature dispatch |
+| `@cpu_dispatch(features)` | fn | per-target-feature dispatch table |
+| `@target_cpu("name")`   | fn, module | force a specific target CPU (e.g. `"znver3"`, `"apple-m1"`) |
+| `@target_feature("+f1,-f2")` | fn | enable / disable specific CPU features |
+| `@black_box`            | fn, expr | optimisation barrier — prevents constant folding through the value |
+| `@const_eval` / `@const_fold` / `@const_prop` | fn | force compile-time evaluation / fold-with-optimisation / aggressive propagation respectively |
+| `@deterministic_fp` / `@deterministic_fp(strict)` | fn | bit-for-bit reproducible floating-point semantics — see [Safety](#safety) |
+
+### LTO & linkage
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@no_lto`              | fn, module | exclude from link-time optimisation |
+| `@lto(always)`         | fn, module | force LTO even in debug builds |
+| `@lto(thin)`           | fn, module | use Thin LTO for this unit |
+| `@visibility(hidden \| default \| protected)` | fn, static | symbol visibility |
+| `@linkage(external \| internal \| private \| weak \| linkonce \| linkonce_odr \| common \| available_externally)` | fn, static | fine-grained linkage. `weak` / `linkonce*` / `common` admit multiple definitions (linker-merged); the others require a single definition. |
+| `@weak`                | fn, static | shorthand for `@linkage(weak)` |
+| `@naked`               | fn | emit no prologue / epilogue (assembly-level control) |
+| `@used`                | fn, static | retain the symbol even if appears unreferenced |
+| `@no_return`           | fn | function never returns (panics / aborts / loops forever) |
+| `@link_section("name")` | fn, static | place into a named ELF / Mach-O / PE section |
+| `@no_mangle`           | fn, static | disable name mangling |
+| `@link_name("name")`   | fn, static | override the linker name |
+
+### PGO (profile-guided optimisation)
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@profile`                   | fn | mark for profiling (instrumentation pass collects counts) |
+| `@profile("name")`           | fn | profile under a named bucket (segregate hot / cold reports) |
+| `@frequency(N)`              | fn | hand-supplied expected calls per second; the optimiser treats this as an oracle when no PGO data is available |
+| `@branch_probability(P)`     | branch | hand-supplied branch-taken probability (`0.0`–`1.0`) |
+
+### Memory layout
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@align(N)`            | type, field | force alignment to `N` bytes |
+| `@bit_offset(N)` / `@bits(N)` | bitfield | bit-level placement / width |
+| `@endian(little \| big)` | type, field | byte-order for serialisation |
+| `@section(idx)`        | static | place in a non-default linker section index |
+| `@register_block` / `@register_offset(N)` | type | memory-mapped I/O layout |
+| `@bitfield`            | type | declare a packed bitfield record |
+
+### Tier discipline
+
+| Attribute | Targets | Semantics |
+|-----------|---------|-----------|
+| `@vbc_direct_lowering` | fn (intrinsic) | Intrinsic function lowers directly to a VBC opcode without a regular call frame. Used on time / CPU / sleep primitives in `core/intrinsics/runtime/`; users should not hand-apply this attribute. |
+| `@llvm_only`           | fn | function cannot run in the VBC interpreter (Tier 0). The compiler rejects `--tier=interpret` runs that reach this function. |
+| `@requires_runtime`    | fn | declares a specific runtime feature dependency (e.g. async runtime, GPU dispatch); failure to provide produces a typed link-time diagnostic. |
 
 ## Testing
 
