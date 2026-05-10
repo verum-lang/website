@@ -858,6 +858,66 @@ rule would. The two engines complement each other: AST rules read
 *structure*, text-scan rules read *strings*, and each is the right
 tool for one shape of evidence.
 
+## Compiler-internal lint families
+
+The lints above use **kebab-case** identifiers and fire on user
+source. A second tier of lints fires from compiler internals — they
+catch drift between user code and the intrinsic / staged-meta /
+stdlib subsystems. These use **snake_case** identifiers (the wire
+form expected by `verum lint -D <name>`, `[lint.severity]`,
+`@allow / @deny / @warn`) and `Wxxxx` / `Exxxx` codes drawn from
+three reserved ranges:
+
+  * `09xx` — intrinsic-call diagnostics.
+  * `10xx` — staged-meta evaluation diagnostics.
+  * `11xx` — stdlib-API hazards.
+
+Apply them the same way as the kebab-case rules above (CLI flag,
+config file, attribute) — the linter accepts both wire forms in
+the same surfaces.
+
+### `intrinsic_*` — intrinsic-call diagnostics
+
+Fires when a function annotated `@intrinsic("name")` is referenced
+in a way that doesn't match the registry shape.
+
+| Rule                         | Default | Warn / Error code | Fires on                                                             |
+|------------------------------|---------|-------------------|----------------------------------------------------------------------|
+| `missing_intrinsic`          | warn    | `W0901` / `E0901` | Reference to an `@intrinsic("name")` whose registry entry is absent. |
+| `intrinsic_arg_count`        | error   | `W0900` / `E0902` | Wrong number of arguments at a registered intrinsic call site.       |
+| `intrinsic_arg_type`         | error   | `W0900` / `E0903` | Wrong argument type — intrinsic typecheck rejected the call shape.   |
+| `intrinsic_protocol_bound`   | error   | `W0900` / `E0904` | Argument type fails the intrinsic's protocol bound (e.g. `Add` for `+`). |
+| `intrinsic_platform`         | error   | `W0900` / `E0905` | Intrinsic is not available on the current target platform.           |
+| `intrinsic_const_eval`       | error   | `W0900` / `E0906` | `@const`-evaluated intrinsic call diverged or produced a typed error. |
+| `intrinsic_deprecated`       | warn    | `W0902` / `E0900` | Reference to a registered-but-deprecated intrinsic; suggest the replacement. |
+| `intrinsic_unstable`         | warn    | `W0903` / `E0900` | Reference to an unstable intrinsic; promotion to allow flips off the warning. |
+
+### Staged-meta diagnostics
+
+Fires from the staged-meta evaluator (`@meta` / `@const` /
+`@derive` / `@cfg`-time evaluation passes) when stage discipline
+is violated.
+
+| Rule                    | Default | Warn / Error code | Fires on                                                                                     |
+|-------------------------|---------|-------------------|----------------------------------------------------------------------------------------------|
+| `stage_mismatch`        | error   | `W1000` / `E1001` | Expression at runtime stage referenced from a `@meta` body (or vice-versa).                  |
+| `cross_stage_call`      | error   | `W1000` / `E1002` | `@meta fn` called from a runtime function or vice-versa without the stage-bridge attribute.  |
+| `stage_overflow`        | error   | `W1000` / `E1003` | Stage index escapes the configured stage-tower depth.                                        |
+| `cyclic_stage`          | error   | `W1000` / `E1004` | Stage-call graph contains a cycle (would non-terminate at @const time).                      |
+| `invalid_stage_escape`  | error   | `W1000` / `E1005` | `@const` escape (e.g. `escape! { ... }`) used in a context where its stage is unbound.       |
+| `unused_stage`          | warn    | `W1001` / `E1000` | A `@meta` import is brought into scope but never instantiated at any meta-evaluation site.   |
+| `stage_downgrade`       | warn    | `W1002` / `E1000` | Stage explicitly downgraded via attribute; flagged so the audit pass can review the choice.  |
+
+### Stdlib-API hazards
+
+| Rule              | Default | Warn / Error code | Fires on                                                                                        |
+|-------------------|---------|-------------------|-------------------------------------------------------------------------------------------------|
+| `map_get_hazard`  | warn    | `W1100` / `E1100` | `Map.get(key)` used where `Map.get_or(key, default)` or pattern-matching on the `Maybe` return is the recommended idiom. |
+
+The names listed in this section are surfaced verbatim by
+`verum lint --list-rules` and accept the same severity controls as
+every other rule.
+
 ## How to control rule severity
 
 Three ways, finest to coarsest:
