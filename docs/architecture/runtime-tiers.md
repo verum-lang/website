@@ -149,11 +149,16 @@ flowchart TD
 See **[codegen](/docs/architecture/codegen)** for the MLIR dialect
 stack and per-target tile sizes.
 
-## Why only two execution modes
+## Why only two production execution modes
 
-An early design pass evaluated a third, JIT-based tier and removed
-it. The reasoning is worth stating because other systems languages
-have made a different call:
+The two **production** execution modes are Interpreter (Tier 0)
+and AOT (Tier 1).  An MLIR-backed JIT exists internally as the
+**experimental `CompilationMode::MlirJit` mode** (see
+`pipeline::CompilationMode` + `pipeline/mlir.rs::JitEngine`); its
+intended use is hot-reload and incremental-rebuild during
+interactive development, not as a third production tier.
+
+The design rationale for keeping JIT off the production tier list:
 
 - The interpreter already starts in milliseconds and handles the
   entire VBC opcode surface (including cubical, HoTT, and autodiff
@@ -164,15 +169,19 @@ have made a different call:
   JIT's peak performance, once warmed up. A JIT's usual advantage
   — "no ahead-of-time compile step" — doesn't exist because the
   interpreter fills that role.
-- A third tier would double the combinatorial surface of the
-  backend (interpreter × JIT × AOT, each with its own CBGR-tier
-  lowerings) while targeting a use case that neither of the
-  existing two already covers.
+- A third production tier would double the combinatorial surface
+  of the backend (interpreter × JIT × AOT, each with its own
+  CBGR-tier lowerings) while targeting a use case that neither
+  of the existing two already covers.
 
-Verum ships an interpreter and an AOT compiler. There is no
-intermediate JIT tier, and no internal JIT used by the REPL, the
-Playbook, or the incremental compilation cache — those all run
-through the same interpreter that handles `verum run`.
+The retained JIT infrastructure under `crates/verum_codegen/src/
+mlir/jit/` (engine, hot-reload, incremental, REPL, symbol
+resolver) is reachable only by selecting the experimental
+`MlirJit` compilation mode explicitly. The canonical
+`verum run` / `verum build` flows route through Interpreter /
+AOT respectively; the REPL, the Playbook, and the incremental
+compilation cache all run on the same interpreter that handles
+`verum run`, not on the JIT.
 
 ## Axis 2 — CBGR safety tiers
 

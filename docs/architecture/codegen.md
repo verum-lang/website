@@ -188,18 +188,36 @@ touches only the kernels whose VBC actually changed. First-build
 times vary by target (~50 ms per kernel for NVPTX on modern
 hardware) but are paid once per edit, not per program run.
 
-### On the absence of a JIT
+### Why JIT is not a production execution tier
 
-Verum evaluated an ORC-based JIT tier during early design and
-removed it. The reasoning: the interpreter already starts in
-milliseconds and handles the full VBC instruction set (including
-cubical and HoTT opcodes that a JIT would have to recompile every
-time the type checker changes); the AOT path produces native code
-that beats any JIT's warm-up and peak performance; and a third
-tier doubles the combinatorial surface area of the backend without
-providing a use case that the other two do not already cover. A
-two-mode design (`verum run` for iteration, `verum build` for
-production) turns out to be enough.
+Verum's two **production** execution tiers are the VBC interpreter
+(Tier 0) and the AOT-compiled native binary (Tier 1).  An MLIR
+`ExecutionEngine`-backed JIT exists as the **experimental
+`CompilationMode::MlirJit` mode** (see `pipeline.rs::CompilationMode`
++ `pipeline/mlir.rs::JitEngine`) — its primary use case is hot-reload
+during interactive development and incremental rebuild, *not*
+shipping production code.
+
+The reasoning for keeping JIT off the production tier list:
+
+  * The interpreter already starts in milliseconds and handles the
+    full VBC instruction set (including cubical, HoTT, and autodiff
+    opcodes that a JIT would have to recompile every time the type
+    checker changes).
+  * The AOT path produces native code that matches or beats a JIT's
+    peak performance once warmed up — there is no warm-up to avoid
+    because the interpreter fills the no-AOT-step role.
+  * Promoting JIT to a third production tier would double the
+    combinatorial surface of the backend (interpreter × JIT × AOT,
+    each with its own CBGR-tier lowerings) without targeting a use
+    case that neither of the existing two already covers.
+
+The retained JIT infrastructure under `crates/verum_codegen/src/
+mlir/jit/` (engine, hot-reload, incremental, REPL, symbol
+resolver) is reachable only by selecting the experimental
+`MlirJit` compilation mode explicitly; the canonical
+`verum run` / `verum build` flows route through Interpreter /
+AOT respectively.
 
 ### GPU binaries
 
