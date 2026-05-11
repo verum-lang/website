@@ -39,14 +39,14 @@ the truth-table over the module's public API exercised by
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 12/32; arithmetic, accessors, equality green. Failures cluster on `duration_since` / `Instant` cross-module helpers (function-id remap) and on the `Int.add` mis-dispatch when an `AsyncInterval.period_ns` returns a `()`-tagged value. |
+| `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 5/32 (regressed from 12 by parallel changes to the typechecker's primitive `inherent_methods` table — separate timeline, not a Tier-0 dispatch issue). Arithmetic, accessors, equality green on the source side; runtime gates hit cross-module helper resolution. |
 | `duration_parse.vr` | **undocumented** | Documented below; no `core-tests/time/duration_parse/` suite yet. |
-| `instant.vr`        | **regression-only** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — every test fails on `FunctionNotFound(FunctionId(N))` because the `monotonic_nanos` syscall helper isn't reachable from the test compilation unit until the function-id remap fix lands. |
-| `system_time.vr`    | **partial** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — `SystemTime.now`/`as_unix_nanos` stable; `duration_since` blocked. |
+| `instant.vr`        | **regression-only** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — 0/8. Every test fails on `FunctionNotFound(FunctionId(N))` — the `monotonic_nanos` syscall helper lives in `core.sys.linux.time` (or darwin/windows equivalents) which the user-test's lazy-load `wanted_module_prefixes` never reaches. Closes when the transitive module loader (#118) lands. |
+| `system_time.vr`    | **partial** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — 1/3. `SystemTime.now`/`as_unix_nanos` stable; `duration_since` blocked. |
 | `interval.vr`       | **undocumented** | Documented below; no conformance suite. |
 | `rfc3339.vr`        | **undocumented** | Documented below; no `core-tests/time/rfc3339/` suite yet. |
 | `cron.vr`           | **undocumented** | Documented below; no `core-tests/time/cron/` suite yet. |
-| `julian.vr`         | **partial** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — 6/19; round-trip fixtures and Gregorian-day-of-week tables pass. Failures cluster on the same cross-module dispatch class as `instant.vr`. |
+| `julian.vr`         | **partial** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — 9/19. Round-trip fixtures and Gregorian-day-of-week tables pass. Failures cluster on the same cross-module dispatch class as `instant.vr`. |
 | `mod.vr`            | **stable** | Re-export surface only — every name lifts to the originating module's status row above. |
 
 The status table is the runtime truth, not the file's `lifecycle`
