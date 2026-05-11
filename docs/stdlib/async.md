@@ -10,6 +10,50 @@ Full async toolkit: `Future` protocol, executors, channels, async
 streams, timers, structured concurrency (`nursery`), racing (`select`),
 circuit breakers, retry policies, parallel helpers.
 
+## Module status
+
+Each `core.async.*` module carries an explicit conformance status so
+you know what you can rely on today versus what is still in flight.
+The status is the truth-table over the module's API surface as
+exercised by `core-tests/async/<module>/` under both `verum test
+--interp` (Tier 0 VBC interpreter) and `verum test --aot` (Tier 2 LLVM
+AOT, `--test-threads 1`).
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method is conformance-tested. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
+| **complete** | Synonym for *stable* used by the conformance suite: 100 % public API coverage, every algebraic law pinned, every regression guarded forever. |
+| **partial** | Subset of the public API is conformance-tested and stable. The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
+| **regression-only** | Module is gated by upstream stdlib / language-level defects. Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
+| **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `poll.vr`          | **complete** | [core-tests/async/poll](https://github.com/verum-lang/verum/tree/main/core-tests/async/poll) — 42 unit + 21 property + 14 integration + 7 regression-as-guardrail |
+| `waker.vr`         | undocumented | — |
+| `future.vr`        | undocumented | — |
+| `task.vr`          | undocumented | — |
+| `channel.vr`       | undocumented | — |
+| `broadcast.vr`     | undocumented | — |
+| `executor.vr`      | undocumented | — |
+| `select.vr`        | undocumented | — |
+| `stream.vr`        | undocumented | — |
+| `generator.vr`     | undocumented | — |
+| `nursery.vr`       | undocumented | — |
+| `timer.vr`         | undocumented | — |
+| `spawn_config.vr`  | undocumented | — |
+| `spawn_with.vr`    | undocumented | — |
+| `parallel.vr`      | undocumented | — |
+| `cancellation.vr`  | undocumented | — |
+| `panic_fence.vr`   | undocumented | — |
+| `semaphore.vr`     | undocumented | — |
+| `backoff.vr`       | undocumented | — |
+| `diagnostics.vr`   | undocumented | — |
+| `async_iterator.vr`| undocumented | — |
+| `intrinsics.vr`    | undocumented | — |
+
+---
+
 | File | Purpose |
 |---|---|
 | `poll.vr` | `Poll<T>` — the three async states |
@@ -31,27 +75,139 @@ circuit breakers, retry policies, parallel helpers.
 
 ---
 
-## `Poll<T>` — the three states
+## `Poll<T>` — the two-state algebra
+
+> **Status: complete.**
+> Full public-API conformance under Tier 0 (interpreter) and Tier 2
+> (LLVM AOT, `--test-threads 1`). 42 unit + 21 property + 14
+> integration + 7 regression-as-guardrail tests; every algebraic law
+> on the `Functor`-shape (identity, composition, Pending-as-absorbing-
+> element), the Maybe-isomorphism round-trip, and the `Eq` / `Clone`
+> / `Default` protocols are exhaustively pinned over a representative
+> `Int` payload domain. Conformance suite:
+> [core-tests/async/poll](https://github.com/verum-lang/verum/tree/main/core-tests/async/poll).
+
+The foundational poll-state algebra. Every async surface in the stdlib
+(`Future.poll`, `Stream.poll_next`, `AsyncIterator.poll_next`, cancellation
+checks, …) returns `Poll<T>` as its hot-path completion signal.
 
 ```verum
-type Poll<T> is Ready(T) | Pending;
+public type Poll<T> is
+    | Ready(T)      // computation completed with value
+    | Pending;      // not yet complete — the caller must re-poll
 ```
 
-Methods:
+### Predicates
 
 ```verum
-p.is_ready() / p.is_pending() -> Bool
-p.map<U, F>(f: F) -> Poll<U>
-p.unwrap() -> T                   // panics if Pending
-p.unwrap_or(default) -> T
-p.ready() -> Maybe<T>
+p.is_ready() -> Bool         // O(1), inlined
+p.is_pending() -> Bool       // O(1), inlined; is_ready ⊕ is_pending = true ∀ p
 ```
 
-For `Poll<Result<T, E>>`:
+### Functorial map
 
 ```verum
-ready_ok(t: T)   -> Poll<Result<T, E>>
-ready_err(e: E)  -> Poll<Result<T, E>>
+p.map<U, F: fn(T) -> U>(self, f: F) -> Poll<U>
+```
+
+`Pending` is the absorbing element: `Pending.map(f) == Pending` for any
+`f`; the closure is never invoked. `Ready(t).map(f)` materialises
+`Ready(f(t))`.
+
+```verum
+let p: Poll<Int>  = Poll.Ready(3);
+let q: Poll<Int>  = p.map(|x| x * 2);              // Poll.Ready(6)
+let r: Poll<Text> = p.map(|x| f"{x}");             // Poll.Ready("3")
+```
+
+### Extraction
+
+```verum
+p.unwrap(self)            -> T                  // panics if Pending
+p.unwrap_or(self, default: T) -> T              // Pending → default
+p.ready(self)             -> Maybe<T>           // Pending → None
+```
+
+`p.ready()` is the canonical bridge to `Maybe<T>`: `Ready(t) ↔ Some(t)`
+and `Pending ↔ None`. The reverse direction is the `From<Maybe<T>>`
+impl below; the two together form a structural isomorphism between
+`Poll<T>` and `Maybe<T>` on the observable surface.
+
+### Conversions
+
+```verum
+From<Maybe<T>> for Poll<T>           // Some(t) -> Ready(t), None -> Pending
+```
+
+> **Removed blanket impl.** An earlier `From<T> for Poll<T>` blanket
+> impl was deleted: under any substitution `T = Maybe<U>` it
+> overlapped `From<Maybe<T>>` and the impl-coherence selector silently
+> routed `Poll.from(non_maybe_value)` through the Maybe arm —
+> collapsing the result to `Poll.Pending` regardless of input. Write
+> `Poll.Ready(value)` directly; it is the explicit, unambiguous form
+> and produces byte-identical code.
+
+### `Poll<Result<T, E>>` — async-result composition
+
+`map_ok` / `map_err` live on the `Poll<Result<T, E>>` shape so async
+functions whose `Output` is `Result<T, E>` compose without
+intermediate destructuring.
+
+```verum
+Poll.ready_ok(t: T)   -> Poll<Result<T, E>>     // shorthand for Ready(Ok(t))
+Poll.ready_err(e: E)  -> Poll<Result<T, E>>     // shorthand for Ready(Err(e))
+
+p.map_ok<U, F>(self, f: F) -> Poll<Result<U, E>>      // F: fn(T) -> U
+p.map_err<U, F>(self, f: F) -> Poll<Result<T, U>>     // F: fn(E) -> U
+```
+
+`Pending` remains the absorbing element on both arms:
+`Pending.map_ok(f) == Pending` and `Pending.map_err(f) == Pending`.
+`Ready(Err(e)).map_ok(f) == Ready(Err(e))` (no re-wrapping); symmetric
+for `map_err`.
+
+```verum
+let p: Poll<Result<Int, Text>> = Poll.ready_ok(10);
+let mid: Poll<Result<Int, Text>> = p.map_ok(|x| x + 1);
+let after: Poll<Result<Int, Text>> = mid.map_ok(|x| x * 2);  // Ready(Ok(22))
+```
+
+### Protocol implementations
+
+```verum
+implement<T: Eq>      Eq      for Poll<T>;     // structural on Ready/Pending
+implement<T: Clone>   Clone   for Poll<T>;
+implement<T>          Default for Poll<T>;     // = Pending
+implement<T: Debug>   Debug   for Poll<T>;     // "Ready(<t>)" | "Pending"
+```
+
+### Algebraic laws
+
+All pinned by `core-tests/async/poll/property_test.vr`:
+
+| Law | Statement |
+|---|---|
+| **Functor identity** | `p.map(\|x\| x) == p` |
+| **Functor composition** | `p.map(g).map(f) == p.map(\|x\| f(g(x)))` |
+| **Pending absorbs map** | `Pending.map(f) == Pending` |
+| **Maybe round-trip** | `Poll.from(p.ready()) == p` |
+| **Result arm preservation** | `Ready(Err(e)).map_ok(f) == Ready(Err(e))`; symmetric for `map_err` |
+| **Eq reflexive / symmetric / transitive** | standard equality laws on the two-variant carrier |
+| **Default invariance** | `Poll.default() = Pending` for every payload type |
+
+### Pattern matching
+
+`Poll<T>` is exhaustive on two arms; nest with `Maybe` or `Result` for
+the common composite patterns:
+
+```verum
+fn classify(p: Poll<Result<Int, Text>>) -> Text {
+    match p {
+        Poll.Ready(Ok(_))  => "ready-ok",
+        Poll.Ready(Err(_)) => "ready-err",
+        Poll.Pending       => "pending",
+    }
+}
 ```
 
 ---
