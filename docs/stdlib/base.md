@@ -73,7 +73,7 @@ for the discovery contract).
 | `nanoid.vr`          | **regression-only** | [core-tests/base/nanoid](https://github.com/verum-lang/verum/tree/main/core-tests/base/nanoid) — 0/1. function-id remap. |
 | `string_distance.vr` | **undocumented** | — |
 | `ulid.vr`            | **regression-only** | [core-tests/base/ulid](https://github.com/verum-lang/verum/tree/main/core-tests/base/ulid) — 0/6. `ulid_from_parts` function-id remap; sequential-ULID lex-ordering tickles `StackOverflow` in monotonic-counter loop. |
-| `uuid.vr`            | **partial** | [core-tests/base/uuid](https://github.com/verum-lang/verum/tree/main/core-tests/base/uuid) — `Uuid.parse`/`from_bytes` stable; `Uuid.to_text` STILL lenient-skipped on `Text.new` — same cluster as the broader Text.* method cascade (~400 stdlib lenient-skips at May-11 baseline). Tracked under task #16 stage-1: pre-pass that pre-registers every `implement <CanonicalType> { public fn ... }` block into `global_function_registry` before per-module compilation so `core.base.uuid` (compiled before `core.text`) sees `Text.new` stub immediately. |
+| `uuid.vr`            | **partial** | [core-tests/base/uuid](https://github.com/verum-lang/verum/tree/main/core-tests/base/uuid) — `Uuid.parse`/`from_bytes` stable; `Uuid.to_text` previously lenient-skipped on `Text.new` (one of ~400 Text.* method cascade entries at May-11 baseline). **Closed end-to-end by task #16 stages 1+2** (commits `471066f53` Stage 1 canonical-type static-method pre-registration + `22f2ddebd` Stage 2 variant-constructor pre-registration + `37fc3fdc3` stub-overwrite discipline): caller-modules now see `Text.new` / `List.from` / `AtomicInt.new` / `Duration.from_secs` / variant constructors as stubs from compile-time-zero; producing modules' real bodies overlay the stubs via the sentinel-ID-range overwrite gate at `stdlib_bootstrap.rs:1453`. Stage 1 alone targets 386 Text-method skips; combined with Stage 2's 131 variant-constructor skips, ~631 of 1333 fresh-baseline skips (≈47%) close as one architectural fix. |
 | `snowflake.vr`       | **regression-only** | [core-tests/base/snowflake](https://github.com/verum-lang/verum/tree/main/core-tests/base/snowflake) — 0/6. function-id remap. |
 | `semver.vr`          | **regression-only** | [core-tests/base/semver](https://github.com/verum-lang/verum/tree/main/core-tests/base/semver) — 0/2. `format`/`format_semver` aliased; tests still gated by function-id remap when the test compilation unit references a stdlib helper. |
 | `semver_constraint.vr` | **undocumented** | — |
@@ -98,6 +98,71 @@ which mechanism fires for a given call site helps narrow runtime
 | **Deref-protocol auto-deref** | When method dispatch fails on a heap receiver, walks the Deref chain (bounded depth 4) calling `deref()` to unwrap inner values, then retries dispatch by qualified name. | `refmut.push(item)` on `RefMut<List<T>>` |
 | **Target-type-aware `.into()` rewrite** | At codegen time, `let x: T = expr.into()` rewrites to `T::from(expr)` when `T.from` exists in the function table. | `let opt: Maybe<Int> = 42.into()` → `Some(42)` |
 | **Unique bare-suffix match** | Last resort when bare-name method is unique across the function table (single function ending in `.<name>`); skipped on ambiguity. | unqualified `it.next()` resolving to a unique `*.next` |
+
+## Stdlib bootstrap pre-pass architecture (task #16)
+
+Stdlib precompile runs in two stages inside
+`verum_compiler::pipeline::stdlib_bootstrap::compile_core`:
+
+1. **STEP 3** — global typechecker registration across ALL stdlib
+   modules (Pass 0–5: import aliases, cross-module imports, type
+   names, type bodies, function signatures, protocols, impl blocks).
+   At the end, the typechecker's `inherent_methods` /
+   `variant_constructor_parents` / `inductive_constructors` are
+   populated with the entire stdlib surface.
+
+2. **STEP 3.5 + 3.6** — global VBC-codegen registry pre-pass
+   (introduced May-11 to close ~631 of 1333 lenient-skips):
+
+   * **3.5** — for every `implement <CanonicalType> { public fn ... }`
+     inherent-impl block where `<CanonicalType>` is in the closed
+     canonical-stdlib set (Text / List / Map / Set / Deque /
+     BTreeMap / BTreeSet / Heap / Shared / Weak / Cow / Pin /
+     Mutex / RwLock / AtomicInt / AtomicBool / AtomicU64 /
+     AtomicI32 / AtomicU32 / Channel / Semaphore / Duration /
+     Instant / Maybe / Result), pre-register every public method
+     as a stub `FunctionInfo` keyed under `<CanonicalType>.<method>`
+     into `global_function_registry`.  Stub `FunctionId` lives in
+     the sentinel range `u32::MAX - 0x40_0000..`.
+
+   * **3.6** — for every `type X is A | B | C(T) | D { f: F };`
+     declaration, pre-register every variant constructor under
+     qualified `<X>.<Variant>` (unconditional) and simple
+     `<Variant>` (first-wins).  Stub `FunctionId` lives in
+     `u32::MAX - 0xC0_0000..` (distinct from 3.5 range).
+
+3. **STEP 4** — per-module VBC codegen.  Each `compile_core_module_from_ast`
+   calls `codegen.import_functions(&self.global_function_registry)`
+   so its private codegen ctx sees EVERY canonical-stdlib stub from
+   compile-time-zero.  Function bodies that reference `Text.new` /
+   `AdMysql` / `Duration.from_secs` resolve immediately via the
+   stub's qualified name, regardless of whether the producing
+   module has finished compiling yet.
+
+4. **STEP 4 export-back** — when each module completes, its real
+   bodies export back to `global_function_registry` via the
+   stub-overwrite gate at `stdlib_bootstrap.rs:1453`: entries whose
+   existing `FunctionId` falls in the stage-1 or stage-2 sentinel
+   range are OVERWRITTEN; everything else preserves the original
+   first-wins discipline.  Real bodies always replace stubs, never
+   the other way around.
+
+**Net effect**: `Text.new` is reachable from every stdlib body
+regardless of its file's compilation order vs `core/text/text.vr`.
+Same for `AdMysql`, `Duration.from_secs`, and every other canonical-
+type constructor + variant.  Closes tasks #4 + #8 (Text.from
+cascade) as side-effects.
+
+The sentinel-ID ranges are 4M slots each — single bootstrap
+typically registers thousands of stubs, well within range.  Stubs
+become permanent if a module FAILS to compile (existing first-wins
+preserves whatever the export-back exposed); since stub bodies are
+`Call { func_id = sentinel }` which the runtime rejects with
+`Function N not found`, a stuck stub is a HARD ERROR (visible),
+not a silent panic-stub like the pre-fix lenient-skip class.
+
+Commits: `471066f53` (stage-1) + `22f2ddebd` (stage-2) +
+`37fc3fdc3` (stub-overwrite discipline).
 
 The order above is the **fallback order** — each layer fires only when
 the previous one missed. Tier-0 always wins; protocol-default and
