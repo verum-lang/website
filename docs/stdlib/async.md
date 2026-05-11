@@ -33,24 +33,24 @@ AOT, `--test-threads 1`).
 | `waker.vr`         | **partial**  | [core-tests/async/waker](https://github.com/verum-lang/verum/tree/main/core-tests/async/waker) — 9 working + 2 pinned regressions (inline-vtable redesign + record-literal Clone-corruption fix + Waker construction inlining; waker construction + clone + wake_by_ref + will_wake all now green; 2 residual pins: fn_ref-as-Int identity stability and Debug auto-derive precedence for record types) |
 | `future.vr`        | **partial**  | [core-tests/async/future](https://github.com/verum-lang/verum/tree/main/core-tests/async/future) — 17 working (construction + SelectResult variant algebra + Maybe interop) + 14 pinned regressions (the Future.poll / FutureExt.block surface is gated by the same `&self` auto-deref defect as waker §C) |
 | `backoff.vr`       | **partial**  | [core-tests/async/backoff](https://github.com/verum-lang/verum/tree/main/core-tests/async/backoff) — 14 working (BackoffStrategy variant + match-coverage) + 7 pinned regressions (Backoff.<ctor> blocked by upstream CSPRNG intrinsic gap shared with reservoir) |
-| `task.vr`          | undocumented | — |
-| `channel.vr`       | undocumented | — |
-| `broadcast.vr`     | undocumented | — |
-| `executor.vr`      | undocumented | — |
-| `select.vr`        | undocumented | — |
-| `stream.vr`        | undocumented | — |
-| `generator.vr`     | undocumented | — |
-| `nursery.vr`       | undocumented | — |
-| `timer.vr`         | undocumented | — |
-| `spawn_config.vr`  | undocumented | — |
-| `spawn_with.vr`    | undocumented | — |
-| `parallel.vr`      | undocumented | — |
-| `cancellation.vr`  | undocumented | — |
-| `panic_fence.vr`   | undocumented | — |
-| `semaphore.vr`     | undocumented | — |
-| `diagnostics.vr`   | undocumented | — |
-| `async_iterator.vr`| undocumented | — |
-| `intrinsics.vr`    | undocumented | — |
+| `task.vr`          | **partial**  | [core-tests/async/task](https://github.com/verum-lang/verum/tree/main/core-tests/async/task) — 16 working (JoinError variant algebra + TaskId record construction + List<TaskId> bookkeeping) + 2 pinned (TaskId.new atomic counter + JoinError Debug, both gated by upstream defects) |
+| `diagnostics.vr`   | **partial**  | [core-tests/async/diagnostics](https://github.com/verum-lang/verum/tree/main/core-tests/async/diagnostics) — 15 working (TaskLifecycleState 6-variant lifecycle + partition + terminal-state classification + List-histogram). Pure data-type module — no runtime dependency. |
+| `cancellation.vr`  | **partial**  | [core-tests/async/cancellation](https://github.com/verum-lang/verum/tree/main/core-tests/async/cancellation) — 11 working (CancelReason 4-variant + Aborted(Text) payload + List bookkeeping). Timeout{deadline} arm deferred to integration once Instant works under interp. |
+| `channel.vr`       | **partial**  | [core-tests/async/channel](https://github.com/verum-lang/verum/tree/main/core-tests/async/channel) — 12 working (TrySendError + TryRecvError variant algebra + payload recovery + retry-signal classification). |
+| `broadcast.vr`     | **partial**  | [core-tests/async/broadcast](https://github.com/verum-lang/verum/tree/main/core-tests/async/broadcast) — 18 working (BroadcastRecvError + TryRecvResult<T> 4-variant + LagPolicy 3-variant + Maybe interop). |
+| `select.vr`        | **partial**  | [core-tests/async/select](https://github.com/verum-lang/verum/tree/main/core-tests/async/select) — 12 working (Either<A,B> + SelectError + race-outcome bookkeeping). |
+| `nursery.vr`       | **partial**  | [core-tests/async/nursery](https://github.com/verum-lang/verum/tree/main/core-tests/async/nursery) — 8 working (NurseryErrorBehavior 3-policy + priority/severity ordering). |
+| `spawn_config.vr`  | **partial**  | [core-tests/async/spawn_config](https://github.com/verum-lang/verum/tree/main/core-tests/async/spawn_config) — 21 working (RestartPolicy + IsolationLevel + Priority 4-rank ordering + will-restart classification). |
+| `spawn_with.vr`    | **partial**  | [core-tests/async/spawn_with](https://github.com/verum-lang/verum/tree/main/core-tests/async/spawn_with) — 10 working (CircuitState 3-variant breaker lifecycle Closed → Open → HalfOpen → Closed + can-attempt classification). |
+| `executor.vr`      | undocumented | — (depends on extern FFI symbols not callable under interp) |
+| `stream.vr`        | undocumented | — (StreamExt depends on Future protocol; deferred until #11 closes) |
+| `generator.vr`     | undocumented | — (runtime-bound) |
+| `timer.vr`         | undocumented | — (Future-bound types only) |
+| `parallel.vr`      | undocumented | — (function-only, no data types) |
+| `panic_fence.vr`   | undocumented | — (Future-bound) |
+| `semaphore.vr`     | undocumented | — (single-variant SemaphoreError + Future-bound) |
+| `async_iterator.vr`| undocumented | — (protocol-only) |
+| `intrinsics.vr`    | undocumented | — (Future-bound, extern FFI) |
 
 ### Cross-module language defects
 
