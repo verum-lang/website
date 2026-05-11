@@ -120,20 +120,20 @@ mathematical structure:
 
 | Module | Mathematical structure |
 |--------|----------------------|
-| `adjoint_functor` | Adjoint pairs L ⊣ R |
-| `cartesian_fibration` | Cartesian / coCartesian fibrations (Lurie HTT §2.4) |
-| `cofibration` | Cofibration / fibration discipline |
-| `factorisation` | Factorisation systems |
-| `grothendieck` | Grothendieck construction (∫: Cat^op → Cat) |
-| `infinity_category` | (∞,1)-category primitives |
-| `infinity_topos` | (∞,1)-topos primitives |
-| `limits_colimits` | Limit / colimit dispatchers |
-| `pronk_fractions` | Pronk's bicategory of fractions (1996) |
-| `reflective_subcategory` | Reflective subcategory machinery |
-| `truncation` | n-truncation τ_{≤n} (Lurie HTT 5.5.6) |
-| `universe_ascent` | Universe hierarchy + the K-Univ kernel rule |
-| `whitehead` | Whitehead's theorem promotion |
-| `yoneda` | Yoneda lemma + the equivalence at L4 |
+| `adjoint_functor` | Adjoint Functor Theorem (HTT 5.5.2.9 / Special AFT) — V0 algorithmic kernel rule constructing adjoint pairs L ⊣ R from solution-set conditions. |
+| `cartesian_fibration` | Cartesian / coCartesian fibrations (HTT 3.1) + Straightening / Unstraightening (HTT 3.2.0.1) — algorithmic kernel rules. |
+| `cofibration` | Cubical cofibration calculus — interval subsumption + face-formula algebra (M-VVA-FU Sub-2.4-cubical). |
+| `factorisation` | Factorisation systems on (∞,1)-categories — V0 algorithmic kernel rule (HTT 5.2.8). |
+| `grothendieck` | ∞-Grothendieck construction (HTT 5.1.4) — algorithmic kernel rule. |
+| `infinity_category` | Native (∞,n)-categorical kernel infrastructure. |
+| `infinity_topos` | (∞,1)-topos infrastructure — algorithmic kernel rule (Lurie HTT 6.1). |
+| `limits_colimits` | Limits and colimits in (∞,1)-categories — algorithmic kernel rule (HTT 1.2.13 + HTT 5.5.3 + HTT 4.4). |
+| `pronk_fractions` | Pronk's bicategory of fractions (Pronk 1996, *Compositio Mathematica* 102.3). |
+| `reflective_subcategory` | Reflective subcategories (HTT 5.2.7) — algorithmic kernel rule. |
+| `truncation` | n-truncation τ_{≤n} for (∞,1)-categories — V0 algorithmic kernel rule (HTT 5.5.6). |
+| `universe_ascent` | Categorical-coherence `K-Universe-Ascent` kernel rule + `UniverseTier` — verifies meta-classifier applications `M_stack(α)` ascend the universe hierarchy soundly. |
+| `whitehead` | Whitehead criterion for (∞,n)-equivalence — V0 algorithmic kernel rule (HTT 1.2.4.3 generalised). |
+| `yoneda` | Yoneda embedding + ∞-Kan extensions — algorithmic kernel rules. |
 
 These modules cite the published mathematical literature; their
 content is admitted under `@framework(...)` markers visible to
@@ -147,12 +147,12 @@ the [framework-axiom audit](./framework-axioms.md).
 |--------|------|
 | `axiom` | `CoreTerm::Axiom` constructor — the only path from external citation into a kernel-checkable term. |
 | `framework_citation` | `@framework(name, "...")` → `FrameworkCitation` data layer + manifest collector. |
-| `accessibility` | `@accessibility(λ)` Diakrisis Axi-4 marker enumeration. |
-| `foundation_profile` | Foundation profiles (ZFC / HoTT / Cubical / Cic / MLTT / Eff / Custom). |
-| `foreign_system` | External system citations (Coq, Lean, Isabelle, SMT). |
-| `diakrisis_bridge` | The α/ε bidirectional bridge primitives (Diakrisis 108.T). |
-| `eps_mu` | ε-μ-style coherence machinery. |
-| `depth` | M-iteration depth witnesses for K-Refine. |
+| `accessibility` | Adámek-Rosický 1.26 — algorithmic λ-filtered colimit closure of κ-accessible categories (the second MSFS load-bearing pivot after HTT 5.1.4 Grothendieck construction; unblocks MSFS §6.1 β-part Step 4 and the AR-AFT-based Lemma 10.3 (ι, r) construction). |
+| `foundation_profile` | The `FoundationProfile` enum — 10 variants spanning the ZFC family (`Zfc`, `ZfcOneInaccessible`, `ZfcTwoInaccessibles`, `ZfcThreeInaccessibles`), the MLTT family (`Mltt`, `MlttUip`, `PredicativeMltt`), `Hott`, `Cubical`, and `Cic`. Drives per-corpus foundation classification + audit filtering. |
+| `foreign_system` | The `ForeignSystem` enum — single source of truth for the 7 external proof systems Verum exports / re-checks against (`Coq`, `Lean4`, `Mizar`, `Isabelle`, `Agda`, `Dedukti`, `Metamath`). |
+| `diakrisis_bridge` | Diakrisis bridge admits + `BridgeAudit` ledger — explicit named axioms that surface type-theoretic results currently outside the kernel's decidable fragment (confluence-of-modal-rewrite, quotient canonical-representative, cohesive adjunction unit/counit, ε-μ τ-witness, Drake reflection extended). Trusted boundary for `K-Round-Trip`'s universal-canonicalize discipline. |
+| `eps_mu` | `K-Eps-Mu` kernel-rule machinery — verifies the canonical 2-natural equivalence `τ : ε ∘ M ≃ A ∘ ε` from Diakrisis Proposition 5.1 / Corollary 5.10 (ν = e ∘ ε). |
+| `depth` | M-iteration depth witnesses for the refinement family — both `m_depth` (finite-valued, Diakrisis T-2f*, used by baseline `K-Refine`) and `m_depth_omega` (ordinal-valued via Cantor-normal-form prefix below ε₀, Theorem 136.T transfinite stratification, used by `K-Refine-omega`). |
 
 ### 7a. The `soundness/` submodule
 
@@ -196,11 +196,11 @@ codegen pass's per-pass invariant.
 
 | Module | Role |
 |--------|------|
-| `tactic_elaborator` | Tactic-DSL elaborator: `proof { ... }` block → `CoreTerm`. |
-| `tactics_industrial` | Industrial-strength tactic library (the 56-tactic stdlib's kernel-side dispatch). |
-| `proof_tree` | `KernelProofNode` — the inference-tree representation. |
-| `proof_view` | Proof-tree presentation (auditor-facing rendering). |
-| `mechanisation_roadmap` | The HTT / Arnold mechanisation roadmap manifests. |
+| `tactic_elaborator` | Tactic-to-proof-term elaboration — connects Verum proof bodies (`proof { ... }` blocks) to kernel-checkable `Certificate` values via `CoreTerm`. |
+| `tactics_industrial` | Industrial-grade tactic infrastructure — production tactics (`lia` / `decide` / `induction` / `congruence` / `eauto` / …) that close subgoals via decision procedures or structural recursion, **not** via SMT delegation. |
+| `proof_tree` | `KernelProofNode` + Phase-2 proof-tree replay foundation for Z3 `(proof …)` and CVC5 ALETHE proof-format consumption. |
+| `proof_view` | Interactive proof-state explorer — current surface for stepping through the kernel's inference tree. |
+| `mechanisation_roadmap` | The HTT + Adámek-Rosický mechanisation roadmap manifests — V0 algorithmic kernel rule pinning the trajectory from cited admits to fully kernel-checked discharges. |
 
 ---
 
@@ -208,8 +208,8 @@ codegen pass's per-pass invariant.
 
 | Module | Role |
 |--------|------|
-| `round_trip` | Proof-export + re-import round-trip verification (`verum audit --round-trip`). |
-| `cross_format_gate` | Cross-format coverage matrix (which proofs export to which prover). |
+| `round_trip` | `K-Round-Trip` kernel rule — OC/DC translation round-trip admission (Theorem 108.T / Theorem 16.10). Surface: `check_round_trip{,_v2}`, `canonical_form`, `enumerate_bridge_admits`. Drives `verum audit --round-trip` (108.T round-trip per theorem). |
+| `cross_format_gate` | Cross-format CI hard gate — coverage matrix tracking which proofs export to which prover, surfacing gaps to the audit pipeline. |
 
 These modules underwrite the [proof-export](./proof-export.md)
 pipeline's soundness claims.
@@ -220,8 +220,8 @@ pipeline's soundness claims.
 
 | Module | Role |
 |--------|------|
-| `normalize_cache` | `StructuralHash` + β-reduction memoisation cache; the `definitional_eq` fast-path. |
-| `ordinal` | Ordinal-arithmetic primitives (used by `NuOrdinal` and the reflection tower). |
+| `normalize_cache` | `NormalizeCache` — DashMap memo for `support::normalize` / `normalize_with_axioms` / `normalize_with_inductives` keyed on a stable structural hash; the `definitional_eq` fast-path. |
+| `ordinal` | Native ordinal arithmetic for the kernel — Cantor normal form with large-cardinal extensions; consumed by the modal-depth machinery (`depth::m_depth_omega`) and the reflection tower. |
 
 (`support` was previously listed here; it is now in Layer A —
 the unified `normalize_core` driver makes it load-bearing for
