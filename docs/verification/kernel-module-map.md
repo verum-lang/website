@@ -37,9 +37,9 @@ The minimum that must be trusted for soundness:
 | `proof_checker_meta` | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). Hosts the canonical `shift_universes` walker + the binding-site-correct `shift_universes_in_context`. |
 | `support` | The shared CoreTerm normaliser (`normalize_core` + `NormaliseCtx`), capture-avoiding `substitute`, definitional equality, the cubical face/interval markers, and the SMT-cert replay surface. Not Layer-A trusted in the Π/Σ/Id sense — but Layer-A trusted for **every** broader kernel rule that consumes a normaliser. |
 | `term` | The `CoreTerm` data type — proof-term representation. 31 constructors covering Π/Σ + cubical (PathTy/Refl/PathOver/HComp/Transp/Glue) + refinement + quotient (Quotient/QuotIntro/QuotElim) + inductive (Inductive/Elim) + SMT-proof + framework axiom + Diakrisis (EpsilonOf/AlphaOf/ModalBox/ModalDiamond/ModalBigAnd/Shape/Flat/Sharp). |
-| `ctx` | Type-checking context with `iter_outer_to_inner` raw-type API. |
+| `ctx` | Typing context (`Context`) + framework-axiom attribution (`FrameworkId`). Surface: `extend` / `lookup` / `depth`; every registered axiom carries a `FrameworkId` so `verum audit --framework-axioms` can enumerate the full external-trust set. |
 | `errors` | `CheckError` / `KernelError` — the kernel's error surface. |
-| `verdict` | `VerificationVerdict` + `DischargeMethod` (ATS-V foundation). |
+| `verdict` | Canonical `VerificationVerdict` type — single source of truth for verification verdicts across the kernel + audit surface (replaces 5 parallel verdict types from earlier revisions). |
 | `canonical_battery` | The 24-cert canonical battery — single source of truth shared by `verum audit --differential-kernel` (in-process N-kernel) and `--differential-lean-checker` (Rust ↔ Lean). Each `CanonicalCert` carries its own `expected_outcome` (no parallel lookup table). |
 
 These ten modules are the **trusted-base TCB**. A reviewer
@@ -103,9 +103,9 @@ For the surface documentation see
 
 | Module | Role |
 |--------|------|
-| `verification_goal` | The verification goal carrier — pure-value obligations. |
-| `separation_logic` | Heap-aware separation-logic primitives ([separation logic](./separation-logic.md)). |
-| `cert` | `Certificate` envelope: schema_version + verum_version + metadata + replay payload. |
+| `verification_goal` | Unified `VerificationGoal` type — the single verification surface covering function contracts, theorem propositions, and refinement-type predicates. |
+| `separation_logic` | Heap-aware separation-logic primitives — the verification surface for stateful programs ([separation logic](./separation-logic.md)). |
+| `cert` | `SmtCertificate` envelope (schema-versioned) carrying a backend-specific proof trace plus obligation hash; the mechanism that takes Z3 / CVC5 / E / Vampire / Alt-Ergo **out of the TCB** — a buggy solver's spurious proof fails replay rather than leaking into accepted theorems. |
 | `intrinsic_dispatch` | Kernel intrinsic registry dispatch (every `kernel_*` audit-time function). |
 | `inductive` | Inductive type registration + strict-positivity walker (`K-Pos`). |
 | `infer` | Type inference machinery for the broader kernel surface. |
