@@ -376,7 +376,7 @@ results — Lurie's HTT, Schreiber's DCCT, Connes's NCG, Joux's
 group lower bound. Each citation is registered:
 
 ```verum
-@framework("lurie_htt", "HTT 6.2.2.7")
+@framework(lurie_htt, "HTT 6.2.2.7")
 @axiom
 public theorem some_external_result : ...;
 ```
