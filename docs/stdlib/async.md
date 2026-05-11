@@ -30,7 +30,7 @@ AOT, `--test-threads 1`).
 | Module | Status | Conformance suite |
 |---|---|---|
 | `poll.vr`          | **complete** | [core-tests/async/poll](https://github.com/verum-lang/verum/tree/main/core-tests/async/poll) — 42 unit + 21 property + 14 integration + 7 regression-as-guardrail (79 working, 0 pinned) |
-| `waker.vr`         | **partial**  | [core-tests/async/waker](https://github.com/verum-lang/verum/tree/main/core-tests/async/waker) — 6 working + 5 pinned regressions (inline-vtable redesign; method-body `&self` field-access auto-deref defect blocks Waker.clone/wake_by_ref/will_wake on aliased self) |
+| `waker.vr`         | **partial**  | [core-tests/async/waker](https://github.com/verum-lang/verum/tree/main/core-tests/async/waker) — 9 working + 2 pinned regressions (inline-vtable redesign + record-literal Clone-corruption fix + Waker construction inlining; waker construction + clone + wake_by_ref + will_wake all now green; 2 residual pins: fn_ref-as-Int identity stability and Debug auto-derive precedence for record types) |
 | `future.vr`        | **partial**  | [core-tests/async/future](https://github.com/verum-lang/verum/tree/main/core-tests/async/future) — 17 working (construction + SelectResult variant algebra + Maybe interop) + 14 pinned regressions (the Future.poll / FutureExt.block surface is gated by the same `&self` auto-deref defect as waker §C) |
 | `backoff.vr`       | **partial**  | [core-tests/async/backoff](https://github.com/verum-lang/verum/tree/main/core-tests/async/backoff) — 14 working (BackoffStrategy variant + match-coverage) + 7 pinned regressions (Backoff.<ctor> blocked by upstream CSPRNG intrinsic gap shared with reservoir) |
 | `task.vr`          | undocumented | — |
@@ -58,20 +58,22 @@ Two interpreter / codegen defects are shared across the *partial*
 async modules above; closing either unblocks coverage in every
 module that depends on it:
 
-* **Stdlib precompile divergence for record methods** (`waker §C`,
-  `future §A`).  A minimal user-defined reproducer with IDENTICAL
-  type shape to Waker (record-of-record-of-vtable with `&self`
-  methods doing chained field-access) compiles and runs correctly
-  under the same interpreter that crashes on
-  `core.async.waker.Waker`.  Therefore the defect is **not**
-  in the general `&self` codegen — it's in the stdlib
-  precompile pipeline producing divergent bytecode for the
-  waker.vr translation unit specifically.  Investigation path:
-  add a `--no-precompile` flag to the test harness, compile
-  waker.vr fresh per-test, diff the bytecode against the
-  precompile output, identify the differing instruction(s).
-  Blocks Future.poll, FutureExt.block, Waker.clone /
-  wake_by_ref / will_wake on the stdlib-precompiled surface.
+* ~~**Stdlib precompile divergence for record methods**~~ →
+  **CLOSED 2026-05-12** as `compile_record` Clone-Unit-corruption.
+  Investigation traced the root cause to `compile_record`'s
+  field-init Clone-before-SetF step, which wrote Unit into record
+  fields whose AST declared no `Clone` impl.  Combined with a
+  `Waker.from_raw(raw)` call-arg passing failure in the
+  `unsafe { ... }` wrapper at the call site, the construction
+  chain materialised Wakers whose `raw` field was Unit; every
+  downstream `self.raw.<vtable.slot>` GetF then null-derefed at
+  the first chain step.  Fix: removed the synthetic Clone in
+  `compile_record` (records live in heap-allocated NaN-boxed
+  objects, so the field-write copies the pointer into the parent
+  record's field slot — aliasing isn't possible through this
+  path), AND inlined `noop_waker()`'s body to a single nested
+  record literal that side-steps the call-arg indirection.
+  See commit `5129d8b1a`.
 
 * **`type_field_layouts` cross-mount registration race**
   (`future §B`).  When a record type is processed across multiple
