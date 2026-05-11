@@ -73,7 +73,7 @@ for the discovery contract).
 | `nanoid.vr`          | **regression-only** | [core-tests/base/nanoid](https://github.com/verum-lang/verum/tree/main/core-tests/base/nanoid) — 0/1. function-id remap. |
 | `string_distance.vr` | **undocumented** | — |
 | `ulid.vr`            | **regression-only** | [core-tests/base/ulid](https://github.com/verum-lang/verum/tree/main/core-tests/base/ulid) — 0/6. `ulid_from_parts` function-id remap; sequential-ULID lex-ordering tickles `StackOverflow` in monotonic-counter loop. |
-| `uuid.vr`            | **partial** | [core-tests/base/uuid](https://github.com/verum-lang/verum/tree/main/core-tests/base/uuid) — `Uuid.parse`/`from_bytes` stable; `Uuid.to_text` previously lenient-skipped on `Text.new` (one of ~400 Text.* method cascade entries at May-11 baseline). **Closed end-to-end by task #16 stages 1+2** (commits `471066f53` Stage 1 canonical-type static-method pre-registration + `22f2ddebd` Stage 2 variant-constructor pre-registration + `37fc3fdc3` stub-overwrite discipline): caller-modules now see `Text.new` / `List.from` / `AtomicInt.new` / `Duration.from_secs` / variant constructors as stubs from compile-time-zero; producing modules' real bodies overlay the stubs via the sentinel-ID-range overwrite gate at `stdlib_bootstrap.rs:1453`. Stage 1 alone targets 386 Text-method skips; combined with Stage 2's 131 variant-constructor skips, ~631 of 1333 fresh-baseline skips (≈47%) close as one architectural fix. |
+| `uuid.vr`            | **partial** | [core-tests/base/uuid](https://github.com/verum-lang/verum/tree/main/core-tests/base/uuid) — `Uuid.parse`/`from_bytes` stable; `Uuid.to_text` previously lenient-skipped on `Text.new` (one of ~400 Text.* method cascade entries at May-11 baseline). **Closed end-to-end by task #16 stages 1+2 reland** (commits `b5f5462d4` runtime sentinel handler + `5b657aa16` stage-1 + `98fced985` stage-2 + `7cdb334b2` + `86784eebf` stub-overwrite discipline): caller-modules now see `Text.new` / `List.from` / `AtomicInt.new` / `Duration.from_secs` / variant constructors as stubs from compile-time-zero; producing modules' real bodies overlay the stubs via the sentinel-ID-range overwrite gate at `stdlib_bootstrap.rs:1453`; stuck stubs (when producing module itself fails precompile) degrade gracefully via the runtime sentinel handler with a clean `[lenient] task#16 stage-N stub never resolved` panic. Stage 1 targets 386 Text-method skips; combined with Stage 2's 131 variant-constructor skips, ~631 of 1333 fresh-baseline skips (≈47%) close as one architectural fix. |
 | `snowflake.vr`       | **regression-only** | [core-tests/base/snowflake](https://github.com/verum-lang/verum/tree/main/core-tests/base/snowflake) — 0/6. function-id remap. |
 | `semver.vr`          | **regression-only** | [core-tests/base/semver](https://github.com/verum-lang/verum/tree/main/core-tests/base/semver) — 0/2. `format`/`format_semver` aliased; tests still gated by function-id remap when the test compilation unit references a stdlib helper. |
 | `semver_constraint.vr` | **undocumented** | — |
@@ -153,16 +153,43 @@ Same for `AdMysql`, `Duration.from_secs`, and every other canonical-
 type constructor + variant.  Closes tasks #4 + #8 (Text.from
 cascade) as side-effects.
 
-The sentinel-ID ranges are 4M slots each — single bootstrap
+The sentinel-ID ranges are 1M slots each — single bootstrap
 typically registers thousands of stubs, well within range.  Stubs
-become permanent if a module FAILS to compile (existing first-wins
-preserves whatever the export-back exposed); since stub bodies are
-`Call { func_id = sentinel }` which the runtime rejects with
-`Function N not found`, a stuck stub is a HARD ERROR (visible),
-not a silent panic-stub like the pre-fix lenient-skip class.
+become permanent if the producing module FAILS to compile (existing
+first-wins preserves whatever the export-back exposed); since stub
+bodies are `Call { func_id = sentinel }` and the archive has no
+function at that id, the runtime previously rejected the call with
+the cryptic `Function N not found` — strictly worse than the pre-
+fix clean lenient-skip panic carrying the original method name.
 
-Commits: `471066f53` (stage-1) + `22f2ddebd` (stage-2) +
-`37fc3fdc3` (stub-overwrite discipline).
+The runtime-side **sentinel-stub handler** at
+`verum_vbc::interpreter::dispatch_table::handlers::calls::handle_call`
+(commit `b5f5462d4`) closes this gap: it detects the stage-1/stage-2
+sentinel ranges at the dispatch boundary BEFORE the `get_function`
+ok_or-raise and emits a clean diagnostic:
+
+    Panic: [lenient] task#16 stage-N <class> stub never resolved
+    (func_id=X); the producing stdlib module failed precompile —
+    check stderr for `[lenient] SKIP <Type>.<method>` warnings during
+    the build
+
+`<class>` is `"canonical-type static method"` for stage-1 stubs and
+`"stdlib variant constructor"` for stage-2 stubs.  The runtime sentinel
+handler is durable — it lives in tree regardless of whether stages
+1+2 themselves are currently active, so future re-applications of the
+pre-pass don't risk the regression that forced the original revert
+(stuck stubs degraded catastrophically without the handler).
+
+Commits: `b5f5462d4` (runtime sentinel handler — durable safety net) +
+`5b657aa16` (stage-1, relanded from 471066f53) + `98fced985`
+(stage-2, relanded from 22f2ddebd) + `7cdb334b2` (stub-overwrite,
+relanded from 37fc3fdc3) + `86784eebf` (corrected stub-range check,
+relanded from e0e759b05).
+
+The reland sequence preserves the original architectural fix while
+adding the runtime safety net that prevents the catastrophic
+failure mode discovered during the first attempt (stuck stubs →
+`Function N not found` instead of `[lenient] X stub never resolved`).
 
 The order above is the **fallback order** — each layer fires only when
 the previous one missed. Tier-0 always wins; protocol-default and
