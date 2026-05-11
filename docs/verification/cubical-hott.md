@@ -191,21 +191,38 @@ full speed; the types are a compile-time tool.
 
 ## `Equiv<A, B>`
 
-An equivalence is a function `A -> B` together with a two-sided
-inverse:
+An equivalence is a function `A → B` paired with a two-sided
+inverse plus the full HoTT coherence package. The stdlib's
+`core/math/hott.vr` declares the type as:
 
 ```verum
-type Equiv<A, B> is {
-    to:       fn(A) -> B,
-    from:     fn(B) -> A,
-    left_id:  (x: A) -> HottPath<A>(from(to(x)), x),
-    right_id: (y: B) -> HottPath<B>(to(from(y)), y),
-    coh:      /* coherence condition */,
+public type Equiv<A, B> is {
+    forward:  fn(A) -> B,
+    backward: fn(B) -> A,
+    fwd:      fn(A) -> B,
+    bwd:      fn(B) -> A,
+    proof:    IsEquiv<A, B>,
 };
 ```
 
-Constructing an `Equiv` is non-trivial; tactics (`by equiv`) handle
-common cases.
+`forward` / `backward` are the canonical pair; `fwd` / `bwd` are
+short aliases the cubical-tactic dispatcher pattern-matches on. The
+`proof` field carries the full quasi-inverse witness `IsEquiv<A, B>`:
+
+```verum
+public type IsEquiv<A, B> is {
+    forward:    fn(A) -> B,
+    inverse:    fn(B) -> A,
+    section:    fn(b: B) -> HottPath<B>(forward(inverse(b)), b),
+    retraction: fn(a: A) -> HottPath<A>(inverse(forward(a)), a),
+    coherence:  /* HoTT coherence — the two ways of showing
+                   f(g(f(a))) = f(a) agree */
+};
+```
+
+All four function fields must be supplied at construction so the
+struct layout stays predictable. Constructing an `Equiv` is
+non-trivial; the `by cubical` tactic handles common cases.
 
 ## Tactics for cubical
 
