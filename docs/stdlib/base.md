@@ -51,35 +51,63 @@ for the discovery contract).
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `maybe.vr`           | **partial** | [core-tests/base/maybe](https://github.com/verum-lang/verum/tree/main/core-tests/base/maybe) — 53 unit + property + integration tests pass; 10 gated by archive-driven default-method dispatch (`Maybe.unwrap` on already-unwrapped `Int` receivers, `Maybe`-protocol StackOverflow, CBGR `MaybeUninit` use-after-free). |
-| `result.vr`          | **partial** | [core-tests/base/result](https://github.com/verum-lang/verum/tree/main/core-tests/base/result) — 55/66 pass; 11 gated by variant-payload field-index drift between `Result<T, E>` and user error types, plus closure dispatch in `retry_with_result_list_accumulation`. |
-| `ordering.vr`        | **stable** | [core-tests/base/ordering](https://github.com/verum-lang/verum/tree/main/core-tests/base/ordering) — Tier-0 dispatcher inlines `Int.cmp`, `Float.cmp` (NaN-as-Equal), `Bool.cmp` (false &lt; true), `Text.cmp`. |
-| `ops.vr`             | **regression-only** | [core-tests/base/ops](https://github.com/verum-lang/verum/tree/main/core-tests/base/ops) — closure-dispatch cluster: `take_while_stops_at_first_false`, `levenshtein_bounded_stops_early` blocked by `non-pointer / call_closure` type-mismatch in higher-order iteration. |
-| `protocols.vr`       | **stable** | [core-tests/base/protocols](https://github.com/verum-lang/verum/tree/main/core-tests/base/protocols) — 2/2 conformance; `Display`/`Debug`/`Eq`/`Ord` shape pinned. |
-| `iterator.vr`        | **partial** | [core-tests/base/iterator](https://github.com/verum-lang/verum/tree/main/core-tests/base/iterator) — 11/19 pass; remaining failures gated by protocol-default-method dispatch on object-tagged receivers (`Range.collect`, `Range.map`, `ListIter.next`). |
-| `cell.vr`            | **partial** | [core-tests/base/cell](https://github.com/verum-lang/verum/tree/main/core-tests/base/cell) — 15/28 (`Cell` family stable; `RefCell` borrow-machinery + `LazyCell.force` gated by interior-mutability codegen lowering). |
+| `maybe.vr`           | **partial** | [core-tests/base/maybe](https://github.com/verum-lang/verum/tree/main/core-tests/base/maybe) — 65/75 pass. Remaining 10 gated by `MaybeUninit.assume_init` StackOverflow via `forget`/`ptr_read` unsafe primitives + CBGR generation tracking. |
+| `result.vr`          | **partial** | [core-tests/base/result](https://github.com/verum-lang/verum/tree/main/core-tests/base/result) — 78/90 pass. Remaining gated by variant-payload field-index drift on user error types + closure dispatch in `retry_with_result_list_accumulation`. |
+| `ordering.vr`        | **partial** | [core-tests/base/ordering](https://github.com/verum-lang/verum/tree/main/core-tests/base/ordering) — 18/23 pass. Tier-0 dispatcher inlines `Int.cmp`, `Float.cmp` (NaN-as-Equal), `Bool.cmp` (false &lt; true), `Text.cmp`. Remaining failures cluster on `Text.cmp` CBGR-ref deref path under `apple.cmp(&banana)` argument shape. |
+| `ops.vr`             | **partial** | [core-tests/base/ops](https://github.com/verum-lang/verum/tree/main/core-tests/base/ops) — 3/7. closure-dispatch cluster blocked. |
+| `protocols.vr`       | **stable** | [core-tests/base/protocols](https://github.com/verum-lang/verum/tree/main/core-tests/base/protocols) — 2/2 conformance. |
+| `iterator.vr`        | **partial** | [core-tests/base/iterator](https://github.com/verum-lang/verum/tree/main/core-tests/base/iterator) — 11/19. `Range.collect`/`map`/`inspect` and `iter().find/next` blocked on transitive module loading (Iterator default-method bodies in core.base.iterator not in user `wanted_module_prefixes`). |
+| `cell.vr`            | **partial** | [core-tests/base/cell](https://github.com/verum-lang/verum/tree/main/core-tests/base/cell) — 15/28. `Cell` family stable; `RefCell` Ref/RefMut Deref auto-deref landed in commit `170820255` but `LazyCell.force` still gates on `RefMut` being in transitive `wanted` set. |
 | `memory.vr`          | **undocumented** | — |
-| `panic.vr`           | **partial** | [core-tests/base/panic](https://github.com/verum-lang/verum/tree/main/core-tests/base/panic) — `panic`/`assert`/`unreachable` stable; `catch_unwind` ↔ `PanicInfo.location` gated by CBGR use-after-free in `&Text` return-references. |
+| `panic.vr`           | **partial** | [core-tests/base/panic](https://github.com/verum-lang/verum/tree/main/core-tests/base/panic) — `panic`/`assert`/`unreachable` stable; `catch_unwind` ↔ `PanicInfo.location` gated by CBGR use-after-free in `&Text` return-refs. |
 | `env.vr`             | **stable** | [core-tests/base/env](https://github.com/verum-lang/verum/tree/main/core-tests/base/env) — `args`/`var`/`home_dir`/`os_name`/`arch`/`exit` exercised under interp + AOT. |
-| `data.vr`            | **partial** | [core-tests/base/data](https://github.com/verum-lang/verum/tree/main/core-tests/base/data) — 27/33; remaining gated by `pattern_data_pipeline` assertion drift and the `Maybe.is_err` ↔ `Result.is_err` mis-dispatch under polymorphic alias resolution. |
-| `serde.vr`           | **partial** | [core-tests/base/serde](https://github.com/verum-lang/verum/tree/main/core-tests/base/serde) — 15/17; `SerdeResult.map_err` polymorphic dispatch and `collect_multiple_serde_errors` blocked. |
-| `error.vr`           | **partial** | [core-tests/base/error](https://github.com/verum-lang/verum/tree/main/core-tests/base/error) — `StackFrame.new` / Eq / format stable; Display / Debug interpolation blocked by formatter-protocol dispatch when called via `f"{frame}"` syntax. |
-| `log.vr`             | **partial** | [core-tests/base/log](https://github.com/verum-lang/verum/tree/main/core-tests/base/log) — `LogLevel`, `LogRecord`, builders, `level_trace`/`debug`/`info`/`warn`/`error` constructors all green. Field-iteration tests are gated by archive-driven `iter().find(...)` default-method dispatch. |
+| `data.vr`            | **partial** | [core-tests/base/data](https://github.com/verum-lang/verum/tree/main/core-tests/base/data) — 27/33. Remaining gated by `pattern_data_pipeline` assertion drift. |
+| `serde.vr`           | **partial** | [core-tests/base/serde](https://github.com/verum-lang/verum/tree/main/core-tests/base/serde) — 16/17. Only `collect_multiple_serde_errors` blocked. |
+| `error.vr`           | **partial** | [core-tests/base/error](https://github.com/verum-lang/verum/tree/main/core-tests/base/error) — 54/89. `StackFrame.new` / Eq / format stable; remaining failures span variant-payload drift + Display/Debug formatter dispatch via `f"{...}"`. |
+| `log.vr`             | **partial** | [core-tests/base/log](https://github.com/verum-lang/verum/tree/main/core-tests/base/log) — 14/19. `LogLevel`, `LogRecord`, builders, `level_trace`/`debug`/`info`/`warn`/`error` constructors all green. Field-iteration tests gated by archive-driven `iter().find(...)` default-method dispatch. |
 | `coinductive.vr`     | **undocumented** | — |
-| `primitives.vr`      | **partial** | [core-tests/base/primitives](https://github.com/verum-lang/verum/tree/main/core-tests/base/primitives) — `Int` / `Float` / `Bool` / `Char` arithmetic + comparison stable; `parse_object_with_primitives` blocked. |
-| `glob.vr`            | **partial** | [core-tests/base/glob](https://github.com/verum-lang/verum/tree/main/core-tests/base/glob) — POSIX class + literal matching; globstar (`**`) cross-separator gated by `str.as_bytes` archive load. |
-| `coercion.vr`        | **partial** | [core-tests/base/coercion](https://github.com/verum-lang/verum/tree/main/core-tests/base/coercion) — IntCoercible / Indexable / RangeLike / TensorLike / BytewiseFfi marker protocols loaded from .vr; `numeric_field_coercion` blocked by field-index drift in nested record layout. |
-| `mod.vr`             | **partial** | [core-tests/base/mod](https://github.com/verum-lang/verum/tree/main/core-tests/base/mod) — VERSION constants exposed; `Range.inspect` default method gated. |
-| `nanoid.vr`          | **regression-only** | [core-tests/base/nanoid](https://github.com/verum-lang/verum/tree/main/core-tests/base/nanoid) — function-id remap. |
+| `primitives.vr`      | **partial** | [core-tests/base/primitives](https://github.com/verum-lang/verum/tree/main/core-tests/base/primitives) — 1/2. `Int` / `Float` / `Bool` / `Char` arithmetic + comparison stable; `parse_object_with_primitives` blocked. |
+| `glob.vr`            | **partial** | [core-tests/base/glob](https://github.com/verum-lang/verum/tree/main/core-tests/base/glob) — 1/3. POSIX class + literal matching; globstar (`**`) cross-separator gated by `str.as_bytes` archive load. |
+| `coercion.vr`        | **partial** | [core-tests/base/coercion](https://github.com/verum-lang/verum/tree/main/core-tests/base/coercion) — 1/2. IntCoercible / Indexable / RangeLike / TensorLike / BytewiseFfi marker protocols loaded from .vr; `numeric_field_coercion` blocked by field-index drift. |
+| `mod.vr`             | **partial** | [core-tests/base/mod](https://github.com/verum-lang/verum/tree/main/core-tests/base/mod) — 1/4. VERSION constants exposed; `Range.inspect` default method gated. |
+| `nanoid.vr`          | **regression-only** | [core-tests/base/nanoid](https://github.com/verum-lang/verum/tree/main/core-tests/base/nanoid) — 0/1. function-id remap. |
 | `string_distance.vr` | **undocumented** | — |
-| `ulid.vr`            | **regression-only** | [core-tests/base/ulid](https://github.com/verum-lang/verum/tree/main/core-tests/base/ulid) — `ulid_from_parts` function-id remap; sequential-ULID lex-ordering tickles `StackOverflow` in monotonic-counter loop. |
-| `uuid.vr`            | **partial** | [core-tests/base/uuid](https://github.com/verum-lang/verum/tree/main/core-tests/base/uuid) — `Uuid.parse`/`from_bytes` stable; `Uuid.to_text` lenient-skipped because archive walker can't reach `Text.new` from `core.base.uuid`. |
-| `snowflake.vr`       | **regression-only** | [core-tests/base/snowflake](https://github.com/verum-lang/verum/tree/main/core-tests/base/snowflake) — function-id remap. |
-| `semver.vr`          | **regression-only** | [core-tests/base/semver](https://github.com/verum-lang/verum/tree/main/core-tests/base/semver) — `format`/`format_semver` aliased; tests still gated by per-module function-id assignment when the test compilation unit references a stdlib helper. |
+| `ulid.vr`            | **regression-only** | [core-tests/base/ulid](https://github.com/verum-lang/verum/tree/main/core-tests/base/ulid) — 0/6. `ulid_from_parts` function-id remap; sequential-ULID lex-ordering tickles `StackOverflow` in monotonic-counter loop. |
+| `uuid.vr`            | **partial** | [core-tests/base/uuid](https://github.com/verum-lang/verum/tree/main/core-tests/base/uuid) — 1/5. `Uuid.parse`/`from_bytes` stable; `Uuid.to_text` lenient-skipped because archive walker can't reach `Text.new` from `core.base.uuid`. |
+| `snowflake.vr`       | **regression-only** | [core-tests/base/snowflake](https://github.com/verum-lang/verum/tree/main/core-tests/base/snowflake) — 0/6. function-id remap. |
+| `semver.vr`          | **regression-only** | [core-tests/base/semver](https://github.com/verum-lang/verum/tree/main/core-tests/base/semver) — 0/2. `format`/`format_semver` aliased; tests still gated by function-id remap when the test compilation unit references a stdlib helper. |
 | `semver_constraint.vr` | **undocumented** | — |
-| `retry.vr`           | **regression-only** | [core-tests/base/retry](https://github.com/verum-lang/verum/tree/main/core-tests/base/retry) — closure receiver lowered as non-pointer at the `call_closure` site; `RetryStrategy` builder API stable, `retry()` blocked. |
+| `retry.vr`           | **regression-only** | [core-tests/base/retry](https://github.com/verum-lang/verum/tree/main/core-tests/base/retry) — 3/14. Closure receiver lowered as non-pointer at the `call_closure` site; `RetryStrategy` builder API stable, `retry()` itself blocked. |
 
 The status table is the runtime truth, not the file's `lifecycle` annotation — `lifecycle: Lifecycle.Theorem("v0.1")` is the *spec* lifecycle (what the contract promises), while the table above is the *implementation* lifecycle (what the runtime currently delivers). When the two diverge, the table is the source of truth for callers.
+
+## Method-dispatch surface
+
+The runtime's method-dispatch flow combines several mechanisms — each
+contributes a class of behaviours that user code relies on. Knowing
+which mechanism fires for a given call site helps narrow runtime
+"method not found" diagnostics.
+
+| Layer | What it dispatches | Example |
+|---|---|---|
+| **Tier-0 inline** | Built-in primitive methods (`Int.cmp`, `Bool.lt`, `Float.partial_cmp`, `Text.eq`, `List.len`, `Map.get`, ...) compiled into the Rust dispatcher for zero overhead. | `42.cmp(&43) == Less` |
+| **Receiver-type qualified lookup** | `<TypeName>.<method>` against the function table; uses the receiver heap-header's TypeId to recover the type name. | `MyError.message(&err)` |
+| **Built-in TypeId → canonical-name fallback** | When the receiver carries a hardcoded built-in TypeId (Range/List/Map/Set/Maybe/Result/...) but no `TypeDescriptor` exists in `self.types`, the dispatcher maps the TypeId to the canonical name (`Range` for `TypeId(517)` etc.) and retries the lookup. | `range.collect()` where `range` has TypeId::RANGE |
+| **Receiver-type override (qualified mismatch)** | When codegen emits `T.method` but the runtime receiver is actually a different type (alias/inference drift), the dispatcher retries with `<actual>.<bare>`. | `r.is_err()` codegen'd as `Text.is_err` on a `Result` receiver |
+| **Protocol-default-method fallback** | Walks the receiver's `TypeDescriptor.protocols`; for each impl, tries the protocol's default body (`<ProtocolName>.<method>`). | `err.message()` on a user `MyError` that `implement ErrorProtocol` without overriding `message` |
+| **Deref-protocol auto-deref** | When method dispatch fails on a heap receiver, walks the Deref chain (bounded depth 4) calling `deref()` to unwrap inner values, then retries dispatch by qualified name. | `refmut.push(item)` on `RefMut<List<T>>` |
+| **Target-type-aware `.into()` rewrite** | At codegen time, `let x: T = expr.into()` rewrites to `T::from(expr)` when `T.from` exists in the function table. | `let opt: Maybe<Int> = 42.into()` → `Some(42)` |
+| **Unique bare-suffix match** | Last resort when bare-name method is unique across the function table (single function ending in `.<name>`); skipped on ambiguity. | unqualified `it.next()` resolving to a unique `*.next` |
+
+The order above is the **fallback order** — each layer fires only when
+the previous one missed. Tier-0 always wins; protocol-default and
+Deref auto-deref are last-mile safety nets. Diagnostics like "method
+'X' not found on receiver of runtime kind `Y`" mean every layer
+exhausted itself — typically the cause is either (a) the carrier
+module is not in the lazy-load `wanted_module_prefixes` (transitive
+load gap), (b) the receiver's TypeDescriptor genuinely lacks the
+protocol, or (c) the method name has drifted between source and the
+archive's compiled body.
 
 ---
 
