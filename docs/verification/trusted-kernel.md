@@ -382,14 +382,18 @@ public theorem some_external_result : ...;
 ```
 
 The `verum audit --framework-axioms` gate enumerates every
-citation reachable from a module's public API. The gate's
-output IS the project's external trust boundary — there is no
-implicit framework dependency.
+citation reachable from a module's public API and walks every
+`.vr` file under the project root, skipping `target/`, hidden
+directories, and `node_modules/`. The gate's output IS the
+project's external trust boundary — there is no implicit
+framework dependency.
 
-[`AP-014 UndisclosedDependency`](../architecture-types/anti-patterns/articulation.md#ap-014)
-fires when a proof uses an axiom not registered via
-`@framework`. The discipline ensures auditors can enumerate
-the project's complete external trust.
+A malformed `@framework(...)` attribute (missing identifier or
+missing citation string) makes the gate exit non-zero, so CI
+can hard-fail on shape errors before the trust boundary diverges.
+The discipline ensures auditors can enumerate the project's
+complete external trust by reading the audit-gate output rather
+than searching the codebase.
 
 ---
 
