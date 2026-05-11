@@ -271,27 +271,31 @@ the rule rests on:
 
 | Rule | ZFC axioms | Inaccessibles | Citation |
 |------|-----------|---------------|----------|
-| K-Refine | Separation, Replacement | — | Comprehension is Separation |
-| K-Univ | Replacement | κ_1 + κ_2 | Type_1 ↪ κ_1, Type_2 ↪ κ_2 |
-| K-Pos | Foundation, Separation | — | Berardi 1998 |
-| K-Norm | Foundation, Replacement | κ_1 | Huber 2019 + transfinite induction |
-| K-FwAx | Pairing, Union, Separation | — | Prop-only side condition |
-| K-Adj-Unit | Replacement | κ_1 | Adjunction lives in (∞,1)-Cat ↪ U_{κ_1} |
-| K-Adj-Counit | Replacement | κ_1 | Same as Unit |
+| K-Refine | Separation, Replacement, Foundation | — | Depth-stratification over comprehension (Yanofsky 2003) |
+| K-Univ | Replacement, Pairing, Union, PowerSet | κ_1 + κ_2 | Grothendieck-universe model: κ_1 ⇒ Type_1, κ_2 ⇒ Type_2 (host for ∞-cat classifier) |
+| K-Pos | Foundation, Separation | — | Berardi 1998: non-positive recursion ⇒ ⊥; blocking proof uses ∈-induction (Foundation) |
+| K-Norm | Foundation, Replacement, Separation | κ_1 | Huber 2019 + K-FwAx side-condition; transfinite SN model lives in U_κ_1 |
+| K-FwAx | Pairing, Union, Separation | — | Prop-only admission; Pairing+Union build the axiom set, Separation gates the body type |
+| K-Adj-Unit | Replacement, Pairing, Union | κ_1 | α ⊣ ε unit (Diakrisis 108.T); (∞,1)-categorical adjunction modelled in U_κ_1 |
+| K-Adj-Counit | Replacement, Pairing, Union | κ_1 | α ⊣ ε counit (Diakrisis 108.T); same adjunction shape as Unit |
 
-Together, the seven rules' union requires the **9 ZFC axioms**
-(Extensionality, Pairing, Union, PowerSet, Infinity, Separation,
-Replacement, Foundation, Choice) plus **2 strongly-inaccessible
-cardinals** (κ_1 and κ_2) — the canonical
-"ZFC + 2-inaccessibles" base.
+Taking the union across all seven rules, the kernel reaches into
+**6 of the 9 ZFC axioms** — Pairing, Union, Separation,
+Replacement, Foundation, PowerSet — plus **2 strongly-inaccessible
+cardinals** (κ_1 and κ_2). Extensionality, Infinity, and Choice
+are unused by any current kernel rule. The seven-rule union is
+therefore a strict subset of the canonical "ZFC + 2-inaccessibles"
+base, which is what makes the meta-soundness verdict
+(see [§4.1](#41-the-kernel-meta-soundness-predicate)) holdable.
 
 ### 4.1 The kernel-meta-soundness predicate
 
 `zfc_self_recognition` exposes a `kernel_meta_soundness_holds()`
 predicate that walks every kernel rule's `required_meta_theory()`
-and confirms each requirement is bounded by ZFC + 2-inaccessibles.
-For the current rule set this holds vacuously — the seven rules'
-union *is* ZFC + 2-inacc.
+and confirms each requirement is **bounded by** ZFC + 2-inaccessibles
+(set inclusion, not equality). The full nine-axiom + two-inaccessible
+base is the headroom the kernel commits to; the actual six-axiom
++ two-inaccessible footprint is what the audit accumulator reports.
 
 This predicate is the **base discharge** for the
 [reflection tower](./reflection-tower.md)'s `REF^0` stage. The
