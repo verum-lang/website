@@ -58,12 +58,20 @@ Two interpreter / codegen defects are shared across the *partial*
 async modules above; closing either unblocks coverage in every
 module that depends on it:
 
-* **`&self` field-access auto-deref gap** (`waker §B/§C`, `future
-  §A`).  Method bodies with `self: &Self` crash at the first
-  `self.<field>` GetF — the interpreter doesn't auto-deref the
-  reference before the field access, treating the `&Self` value as
-  the target object directly.  Blocks every `Future.poll` body
-  and every Waker method.
+* **Stdlib precompile divergence for record methods** (`waker §C`,
+  `future §A`).  A minimal user-defined reproducer with IDENTICAL
+  type shape to Waker (record-of-record-of-vtable with `&self`
+  methods doing chained field-access) compiles and runs correctly
+  under the same interpreter that crashes on
+  `core.async.waker.Waker`.  Therefore the defect is **not**
+  in the general `&self` codegen — it's in the stdlib
+  precompile pipeline producing divergent bytecode for the
+  waker.vr translation unit specifically.  Investigation path:
+  add a `--no-precompile` flag to the test harness, compile
+  waker.vr fresh per-test, diff the bytecode against the
+  precompile output, identify the differing instruction(s).
+  Blocks Future.poll, FutureExt.block, Waker.clone /
+  wake_by_ref / will_wake on the stdlib-precompiled surface.
 
 * **`type_field_layouts` cross-mount registration race**
   (`future §B`).  When a record type is processed across multiple
