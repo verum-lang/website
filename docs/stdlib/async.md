@@ -29,9 +29,10 @@ AOT, `--test-threads 1`).
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `poll.vr`          | **complete** | [core-tests/async/poll](https://github.com/verum-lang/verum/tree/main/core-tests/async/poll) — 42 unit + 21 property + 14 integration + 7 regression-as-guardrail |
-| `waker.vr`         | undocumented | — |
-| `future.vr`        | undocumented | — |
+| `poll.vr`          | **complete** | [core-tests/async/poll](https://github.com/verum-lang/verum/tree/main/core-tests/async/poll) — 42 unit + 21 property + 14 integration + 7 regression-as-guardrail (79 working, 0 pinned) |
+| `waker.vr`         | **partial**  | [core-tests/async/waker](https://github.com/verum-lang/verum/tree/main/core-tests/async/waker) — 6 working + 5 pinned regressions (inline-vtable redesign; method-body `&self` field-access auto-deref defect blocks Waker.clone/wake_by_ref/will_wake on aliased self) |
+| `future.vr`        | **partial**  | [core-tests/async/future](https://github.com/verum-lang/verum/tree/main/core-tests/async/future) — 17 working (construction + SelectResult variant algebra + Maybe interop) + 14 pinned regressions (the Future.poll / FutureExt.block surface is gated by the same `&self` auto-deref defect as waker §C) |
+| `backoff.vr`       | **partial**  | [core-tests/async/backoff](https://github.com/verum-lang/verum/tree/main/core-tests/async/backoff) — 14 working (BackoffStrategy variant + match-coverage) + 7 pinned regressions (Backoff.<ctor> blocked by upstream CSPRNG intrinsic gap shared with reservoir) |
 | `task.vr`          | undocumented | — |
 | `channel.vr`       | undocumented | — |
 | `broadcast.vr`     | undocumented | — |
@@ -47,10 +48,31 @@ AOT, `--test-threads 1`).
 | `cancellation.vr`  | undocumented | — |
 | `panic_fence.vr`   | undocumented | — |
 | `semaphore.vr`     | undocumented | — |
-| `backoff.vr`       | undocumented | — |
 | `diagnostics.vr`   | undocumented | — |
 | `async_iterator.vr`| undocumented | — |
 | `intrinsics.vr`    | undocumented | — |
+
+### Cross-module language defects
+
+Two interpreter / codegen defects are shared across the *partial*
+async modules above; closing either unblocks coverage in every
+module that depends on it:
+
+* **`&self` field-access auto-deref gap** (`waker §B/§C`, `future
+  §A`).  Method bodies with `self: &Self` crash at the first
+  `self.<field>` GetF — the interpreter doesn't auto-deref the
+  reference before the field access, treating the `&Self` value as
+  the target object directly.  Blocks every `Future.poll` body
+  and every Waker method.
+
+* **`type_field_layouts` cross-mount registration race**
+  (`future §B`).  When a record type is processed across multiple
+  compilation passes (user-phase + stdlib-phase + cross-module
+  mount), the field-type map could be left partial; the field
+  resolver then falls into a global-scan path that picks a
+  wrong-index match.  Partially mitigated by an unconditional
+  `type_field_type_names` population in
+  `verum_vbc::codegen::mod::register_record_fields`.
 
 ---
 
