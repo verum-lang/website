@@ -105,14 +105,30 @@ that depends on it:
   record literal that side-steps the call-arg indirection.
   See commit `5129d8b1a`.
 
-* **`type_field_layouts` cross-mount registration race**
-  (`future §B`).  When a record type is processed across multiple
-  compilation passes (user-phase + stdlib-phase + cross-module
-  mount), the field-type map could be left partial; the field
-  resolver then falls into a global-scan path that picks a
-  wrong-index match.  Partially mitigated by an unconditional
-  `type_field_type_names` population in
-  `verum_vbc::codegen::mod::register_record_fields`.
+* ~~**`type_field_layouts` cross-mount registration race**~~ →
+  **CLOSED 2026-05-13** (task #9) by extending `register_archive_type`
+  (`crates/verum_vbc/src/codegen/mod.rs:3944`) to unconditionally
+  populate `type_field_type_names` for every archive-loaded record
+  type — mirrors the `register_record_fields` invariant established
+  by commit `ab768e5d8` for user-phase declarations.  Pre-fix the
+  archive-side path only populated `type_field_layouts` and left
+  `type_field_type_names` empty; downstream `field_type_name`
+  returned `None` and `resolve_field_index` fell through to the
+  "pick the type with the most fields" global-scan heuristic —
+  silently routing record-construction field writes to wrong
+  offsets when a sibling type with same-named field was in scope.
+  Added `type_ref_to_field_name` helper that mirrors
+  `extract_type_name_from_ast`'s prefix-preservation invariants
+  (`&unsafe T` / `*const T` / `*mut T` keep their prefix so the
+  raw-pointer marker at `compile_field_access` line 14372 still
+  fires); pinned the built-in-`TypeId → name` discipline via the
+  new `primitive_type_id_to_name` source-of-truth (third site
+  consistent with `type_ref_to_name` codegen-side and
+  `primitive_typeid_name` archive_ctx_loader-side).  4
+  newly-passing regression tests at
+  `core-tests/async/future/regression_test.vr §C`
+  (ReadyFuture.value / Join2.{fut1,fut2,result1,result2} /
+  Select2.{fut1,fut2} / Lazy.f field-access under `List` mount).
 
 * ~~**Free-function name collision in mount resolution**~~ →
   **CLOSED 2026-05-12** by `register_function_authoritative` +
