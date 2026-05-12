@@ -54,9 +54,9 @@ AOT, `--test-threads 1`).
 
 ### Cross-module language defects
 
-Two interpreter / codegen defects are shared across the *partial*
-async modules above; closing either unblocks coverage in every
-module that depends on it:
+Four interpreter / codegen defects are shared across the *partial*
+async modules above; closing any unblocks coverage in every module
+that depends on it:
 
 * ~~**Stdlib precompile divergence for record methods**~~ →
   **CLOSED 2026-05-12** as `compile_record` Clone-Unit-corruption.
@@ -83,6 +83,48 @@ module that depends on it:
   wrong-index match.  Partially mitigated by an unconditional
   `type_field_type_names` population in
   `verum_vbc::codegen::mod::register_record_fields`.
+
+* **Free-function name collision in mount resolution**
+  (`future §C` — task #21).  When multiple stdlib modules define
+  free functions with the same simple name (e.g. `select` appears
+  in 7 modules including `core.async.future`, `core.shell.interactive`,
+  `core.database.sqlite.native.set_authorizer_codes.codes`,
+  `core.concurrency.session`; `join` appears in 10), the
+  call-site `mount path.{name}` does not consistently bind to the
+  path-qualified definition.  Dispatch picks based on bootstrap
+  ordering rather than the user-written import path — manifesting
+  as "method not found on receiver of runtime kind X", "wrong
+  argument count: expected 0, found 2", or runtime panic with an
+  unrelated `.expect(...)` context message.  Worked around in
+  `core-tests/async/future/unit_test.vr §4-5` via direct `Join2` /
+  `Join3` / `Select2` record-literal construction — semantically
+  equivalent because the free-function wrappers project arguments
+  through `Some(_)` into the same record shape.  Fundamental fix:
+  mount-import resolver must produce a per-callsite path-qualified
+  binding that survives codegen lowering rather than collapsing to
+  a single global symbol.
+
+* **Constrained-implement-block method dispatch on `Poll<Result<T, E>>`**
+  (`poll §H` — task #22).  Methods defined inside
+  `implement<T, E> Poll<Result<T, E>>` (at `core/async/poll.vr:100`
+  onward — including `map_ok` / `map_err` / `ready_ok` /
+  `ready_err`) are dispatched but the closure argument is bound
+  incorrectly.  Concretely: `Poll.Ready(Err(7)).map_err(|e| e+1)`
+  returns `Poll.Ready(Err(7))` rather than `Poll.Ready(Err(8))` —
+  the closure body is never invoked, producing a structural
+  no-op.  The dispatcher resolves the method (no panic, no
+  argument-count mismatch) but either: (a) closure ends up in the
+  wrong slot; (b) dispatch falls through to the generic
+  `implement<T> Poll<T>` block's `map` and elides the inner
+  transformation; or (c) the Ready(Err(_)) destructuring recurses
+  back through Ready(_) without extracting the Err payload.  The
+  `_preserves_ok` / `_preserves_pending` test cases pass
+  *despite* the bug, because their pinned outcomes (Ok / Pending
+  arms) are preserved trivially by the no-op fallback.  Worked
+  around in `core-tests/async/poll/{unit,property,integration}_test.vr`
+  via direct `match q { Poll.Ready(Err(e)) => e, _ => ... }`
+  projection — the Poll/Result algebraic identity is pinned
+  without crossing the broken dispatcher.
 
 ---
 
