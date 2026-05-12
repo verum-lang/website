@@ -54,9 +54,39 @@ AOT, `--test-threads 1`).
 
 ### Cross-module language defects
 
-Four interpreter / codegen defects are shared across the *partial*
+Five interpreter / codegen defects are shared across the *partial*
 async modules above; closing any unblocks coverage in every module
 that depends on it:
+
+* ~~**Protocol default-method dispatch via blanket impl**~~ →
+  **CLOSED 2026-05-12** (task #11) by a focused blanket-impl
+  pre-pass in `collect_all_declarations` + a generic-param
+  materialisation skip in the main `collect_declarations` arm.
+  Stdlib pattern: `implement<F: Future> FutureExt for F {}` declared
+  AFTER concrete `implement Future for ReadyFuture<T>` (source-order
+  in `core/async/future.vr`).  Single-pass collection observed
+  `self.blanket_impls = [Future→IntoFuture]` only at ReadyFuture's
+  collection point — `Future→FutureExt` had not yet been visited,
+  so FutureExt's default bodies (`block` / `map` / `and_then`)
+  never monomorphised onto ReadyFuture and runtime `r.block()`
+  panicked.  Fix: pre-pass populates `blanket_impls` from a single
+  linear scan; the main pass's `already_present` guard
+  short-circuits duplicate registration.  Generic-param skip
+  suppresses spurious `F.block` / `F.map` / `F.and_then`
+  registration when the blanket impl itself is observed (the
+  generic-param's bare name was leaking phantom FunctionIds via
+  the bare-name fanout).  Critical invariant: the pre-pass NEVER
+  calls `generate_default_protocol_methods` — only seeds
+  `blanket_impls` — so the Poll-suite invariant (protocol-registry
+  empty-entry guard at line 1455) stays intact and the
+  default-method materialisation runs exactly once per
+  (concrete impl × derived protocol) pair.  Repro fixed at
+  `core-tests/async/future/regression_test.vr §A` — 6 newly-passing
+  tests across `block` / payload round-trip / `lazy.invokes` / `map`
+  / `map_composes` / `and_then`.  §B (4 tests on Join2/Join3/Select2
+  combinator receivers) remains pinned as task #24 — separate
+  dispatch defect surfaces only when the receiver itself is a
+  generic combinator wrapping inner Futures.
 
 * ~~**Stdlib precompile divergence for record methods**~~ →
   **CLOSED 2026-05-12** as `compile_record` Clone-Unit-corruption.
