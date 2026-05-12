@@ -84,25 +84,55 @@ that depends on it:
   `type_field_type_names` population in
   `verum_vbc::codegen::mod::register_record_fields`.
 
-* **Free-function name collision in mount resolution**
-  (`future §C` — task #21).  When multiple stdlib modules define
-  free functions with the same simple name (e.g. `select` appears
-  in 7 modules including `core.async.future`, `core.shell.interactive`,
-  `core.database.sqlite.native.set_authorizer_codes.codes`,
-  `core.concurrency.session`; `join` appears in 10), the
-  call-site `mount path.{name}` does not consistently bind to the
-  path-qualified definition.  Dispatch picks based on bootstrap
-  ordering rather than the user-written import path — manifesting
-  as "method not found on receiver of runtime kind X", "wrong
-  argument count: expected 0, found 2", or runtime panic with an
-  unrelated `.expect(...)` context message.  Worked around in
-  `core-tests/async/future/unit_test.vr §4-5` via direct `Join2` /
-  `Join3` / `Select2` record-literal construction — semantically
-  equivalent because the free-function wrappers project arguments
-  through `Some(_)` into the same record shape.  Fundamental fix:
-  mount-import resolver must produce a per-callsite path-qualified
-  binding that survives codegen lowering rather than collapsing to
-  a single global symbol.
+* ~~**Free-function name collision in mount resolution**~~ →
+  **CLOSED 2026-05-12** by `register_function_authoritative` +
+  archive cross-pollination guard + qualified-key path-doubling fix
+  in `register_module_filtered`.  When multiple stdlib modules
+  exported free functions with the same simple name (e.g. `select`
+  appears in 7 modules; `join` in 10), the call-site `mount
+  path.{name}` previously bound to whichever overload won the
+  bootstrap-order first-wins race.  Three layered defects, all
+  closed:
+
+  1. **Codegen first-wins discipline** swallowed explicit user
+     mounts: `register_function`'s `entry().or_insert()` under
+     `prefer_existing_functions=true` rejected the user's
+     authoritative binding when a passive archive-load had already
+     claimed the bare-name slot.  Lifted via
+     `register_function_authoritative` (writes both `name` and
+     `name#arity` keys, no first-wins gate, no arity-collision
+     shadowing) — invoked exclusively at the explicit-mount
+     `process_import_tree::Path` branch.  Glob mounts (`mount X.*`)
+     keep first-wins to protect the FFI-raw / safe-wrapper
+     precedence rule.
+
+  2. **Archive cross-pollination guard** matched only the first
+     path segment, so every stdlib `core.X.Y.<leaf>` path passed
+     the gate against every other `core.A.B.<leaf>` (the `w_prefix`
+     was always `core` for stdlib keys).  Two unrelated functions
+     sharing a simple name collapsed onto the same `FunctionInfo`,
+     leaking the wrong FunctionId through the canonical qualified
+     key.  Tightened: when both keys are qualified, the FULL
+     path-before-leaf must match.
+
+  3. **Path-doubling in `register_module_filtered`** built the
+     qualified key as `format!("{}.{}", module_name,
+     simple_name_str)` without checking whether `simple_name_str`
+     already carried the module path (the precompiler's
+     descriptor-name promotion sets `fn_desc.name` to the full
+     source-module-qualified form).  Result:
+     `core.async.future.ready` got registered as
+     `core.async.core.async.future.ready`; the canonical-form probe
+     missed, and the user-side mount's lookup fell through to the
+     cross-pollinated entry under the *un-doubled* key.  Mirrors
+     the detection rule from `populate_ctx_from_archive` line ~326:
+     when `simple_name` already contains a dot, treat it as the
+     qualified shape directly.
+
+  Repro pinned at `core-tests/async/future/unit_test.vr §4-5`:
+  `mount core.async.future.{join, select, join3}; let _ = join(f1,
+  f2);` now dispatches to `core.async.future.join` (was:
+  `core.io.path.join` / `core.security.labels.join` / etc.).
 
 * **Constrained-implement-block method dispatch on `Poll<Result<T, E>>`**
   (`poll §H` — task #22).  Methods defined inside
