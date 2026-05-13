@@ -3,7 +3,7 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: 121/218 Text + 75/86 Char + 25/30 case_fold + 4/23 builder + 39/41 format + 8/31 regex + 1/29 tagged_literals + 27/45 decimal unit tests pass on 2026-05-13. See per-module audit.md for defect classes and tracking.
+status_detail: §C (Iterator.next dispatch) closed 2026-05-13 in commit 48a76117f — 8 iterator tests flipped to green. Remaining defects span KMP find (§F), function-id collision (§D), Char.encode_utf8 receiver-kind (§B), Text.truncate NullPointer (§E). See per-module audit.md.
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -12,14 +12,15 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="121/218 Text + 75/86 Char + 25/30 case_fold + 4/23 builder + 39/41 format + 8/31 regex + 1/29 tagged_literals + 27/45 decimal unit tests pass on 2026-05-13."
+  detail="§C (Iterator.next dispatch) closed 2026-05-13 — 8 iterator tests flipped green. Remaining defects span KMP find / function-id collision / Char.encode_utf8 receiver-kind / Text.truncate NullPointer."
   defects={[
-    {area: 'text', summary: '~18 defect classes — KMP find, Iterator.next dispatch, function-id collision, Char.encode_utf8 receiver-kind, Text.truncate NullPointer'},
-    {area: 'char', summary: '5 defect classes — &mut Char mutation, eq_ignore_ascii_case, from_digit hex, general_category misroute, AnyChar.matches'},
+    {area: 'text', summary: '§A rfind dispatch / §B Char.encode_utf8 receiver-kind / §D function-id collision / §E truncate NullPointer / §F KMP find byte-indexing — see audit §C closed.'},
+    {area: 'char', summary: '5 defect classes — &mut Char mutation, eq_ignore_ascii_case, from_digit hex, general_category misroute, AnyChar.matches (§E now closes via shared root with text/text §C)'},
     {area: 'builder', summary: 'Int.BAnd / Int.BNeq dispatch broken — every push fails'},
     {area: 'regex', summary: 'Verum/Rust intrinsic ABI bridge defects — find_all SetIdx NullPointer, Maybe<Text> shape mismatch'},
     {area: 'tagged_literals', summary: 'Runtime dispatcher reads CallM key from wrong register slot — random Text values surface as missing method names'},
   ]}
+  sweepDate="2026-05-13"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
