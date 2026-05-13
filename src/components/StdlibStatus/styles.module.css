@@ -1,0 +1,94 @@
+.container {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  border-left: 4px solid var(--ifm-color-emphasis-400);
+  padding-left: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  color: white;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.badge strong {
+  font-weight: 700;
+}
+
+.tagline {
+  font-size: 0.95rem;
+  color: var(--ifm-color-content-secondary);
+  flex: 1 1 250px;
+  min-width: 200px;
+}
+
+.detail {
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.detailText {
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.sweepDate {
+  font-size: 0.85rem;
+  color: var(--ifm-color-content-secondary);
+  margin: 0;
+}
+
+.defects {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  padding-top: 0.5rem;
+}
+
+.defectsSummary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.defectsTable {
+  width: 100%;
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.defectsTable th,
+.defectsTable td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.defectsTable th {
+  background-color: var(--ifm-color-emphasis-200);
+  font-weight: 600;
+}
+
+.defectsTable code {
+  background-color: var(--ifm-color-emphasis-200);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}

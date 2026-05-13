@@ -149,3 +149,85 @@ $ verum api --signature "fn map"       # query by signature
 ```
 
 Source lives at `core/`.
+
+## Stdlib status badge system
+
+Every stdlib module page carries a **conformance status badge** at the
+top, rendered by the `<StdlibStatus />` component. The badge tells
+readers, at a glance, how thoroughly the module's API contract has
+been pinned by the conformance suite at `core-tests/`, and which
+defect classes (if any) are still open.
+
+### Status keywords
+
+The four-level status taxonomy is shared between
+`core-tests/INVENTORY.md` (the per-module inventory) and the website
+(the public-facing API reference). Renaming a status anywhere requires
+the same rename in both places.
+
+| Status | Emoji | Meaning |
+|---|---|---|
+| `complete` | ✅ | All public APIs covered by unit tests; algebraic laws pinned by property tests; cross-stdlib integration verified; audit findings landed or routed. The module's contract is fully exercised end-to-end on both the interpreter (Tier 0) and AOT (Tier 1) paths. |
+| `partial` | ⚠️ | A subset of the API surface is covered. The reasons for partial coverage are cited in the module's `audit.md`. Typically: the module sits on top of an upstream defect class (e.g. Iterator.next dispatch) that gates entire feature areas. |
+| `regression-only` | ⛔ | The module is **gated** by upstream defects. Few or no public-API tests pass yet — only `@ignore`d regression pins exist (plus a small set of PASS-GUARDs for the bits that work). When the upstream defect closes, removing the `@ignore` on the regression test should turn the suite green automatically. |
+| `unaudited` | ❔ | No `core-tests/<module>/` folder exists yet. The module surface is undocumented in conformance terms. New modules start here; aim to graduate to `regression-only` (write the tests, even if they all `@ignore`) before merging. |
+
+### Frontmatter
+
+Each module page declares its status in the YAML frontmatter so
+search / sidebar widgets can read it without parsing the body:
+
+```markdown
+---
+sidebar_position: 3
+title: text
+description: ...
+status: partial
+status_detail: 121/218 Text + 75/86 Char + ... unit tests pass on YYYY-MM-DD.
+---
+```
+
+`status_detail` is a one-line summary of the conformance numbers.
+The badge component reads `status` directly; `status_detail` is
+mirrored into the visible badge.
+
+### Component usage
+
+```mdx
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
+<StdlibStatus
+  status="partial"
+  detail="121/218 Text + 75/86 Char + … unit tests pass on 2026-05-13."
+  defects={[
+    {area: 'text', summary: '~18 defect classes — KMP find, Iterator.next dispatch, ...'},
+    {area: 'char', summary: '5 defect classes — &mut Char mutation, ...'},
+  ]}
+  sweepDate="2026-05-13"
+/>
+```
+
+Props:
+
+- **`status`** — one of `complete | partial | regression-only | unaudited`.
+- **`detail`** *(optional)* — string mirroring the
+  `status_detail` frontmatter; rendered in the badge body.
+- **`defects`** *(optional)* — list of `{area, summary}` rows shown in
+  a collapsible defect-class table.
+- **`sweepDate`** *(optional)* — last conformance-sweep date.
+
+### Updating status
+
+When a module's conformance numbers change:
+
+1. Update the per-module `core-tests/<...>/audit.md`.
+2. Append the new sweep numbers to `core-tests/INVENTORY.md`
+   (single-line row; do not restructure the table).
+3. Update the module's website page frontmatter (`status`,
+   `status_detail`) to reflect the new sweep.
+4. Refresh the `<StdlibStatus />` props (`detail`, `defects`).
+
+The same status keywords appear in three places — `INVENTORY.md`, the
+module page frontmatter, and the `<StdlibStatus />` `status` prop — to
+let parallel agents run audits without coordinating on a single source
+of truth.
