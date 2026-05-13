@@ -180,8 +180,32 @@ that depends on it:
   f2);` now dispatches to `core.async.future.join` (was:
   `core.io.path.join` / `core.security.labels.join` / etc.).
 
-* **Constrained-implement-block method dispatch on `Poll<Result<T, E>>`**
-  (`poll §H` — task #22).  Methods defined inside
+* ~~**Variant-tag stability under per-file test compilation**~~ →
+  **CLOSED 2026-05-13** (task #22) across 4 architectural defect
+  classes via commits `90b94e68b` + `3f14510b8` + `485a230c6` +
+  `f1dd6fd19`.  (1) Nested-variant destructure scrutinee-type leak —
+  stash i-th `variant_payload_types` into `match_scrutinee_type`
+  before recursing.  (2) Flat-variant tag drift — scrutinee-aware
+  lookup tier BEFORE bare `lookup_function(name).variant_tag` at
+  both construction (`compile_variant_constructor_hinted`) and
+  destructure (`compile_pattern_test`) sites.  (3) Nested
+  construction payload propagation — symmetric to (1) at
+  construction site via new helper
+  `find_variant_payload_types_by_type_and_name`.  (4) Generic-param
+  substitution — when payload type is bare generic-param shape
+  (`"T"` / `"E"` / `"Self"`), substitute the i-th generic arg from
+  the outer `receiver_type<...>` instantiation using TypeDescriptor's
+  `type_params` index.  Closes round-trip for `Poll.Ready(Err(7)) →
+  match → 2007` deterministically across precompile cycles.  Mirror
+  of tasks #9 / #11 / #21 discipline: context-aware canonical
+  resolution wins over passive bare-name race.  The constrained-
+  implement-block dispatch issue (closure body in
+  `implement<T,E> Poll<Result<T,E>> { fn map_err(...) { ... } }`
+  not invoking the closure arg) is a DISTINCT defect tracked
+  separately as task #25.
+
+* **Closure dispatch in constrained-implement-block bodies**
+  (task #25, distinct from #22).  Methods defined inside
   `implement<T, E> Poll<Result<T, E>>` (at `core/async/poll.vr:100`
   onward — including `map_ok` / `map_err` / `ready_ok` /
   `ready_err`) are dispatched but the closure argument is bound
