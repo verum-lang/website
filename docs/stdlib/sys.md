@@ -266,6 +266,70 @@ fn set_panic_handler(h: fn(&PanicInfo) -> !)
 
 ---
 
+## Time operations — `sys.time_ops`
+
+`core.sys.time_ops` is the syscall-level layer that
+[`core.time`](/docs/stdlib/time) sits on top of. Two record types and a
+small free-function surface route into three @intrinsic-decorated raw
+functions (`__time_monotonic_nanos_raw`, `__time_sleep_nanos_raw`,
+`__time_now_ms_raw`) whose runtime is implemented in
+`crates/verum_vbc/src/interpreter/dispatch_table/handlers/calls.rs:1492-1514`
+(interpreter / Tier 0) and `crates/verum_codegen/src/llvm/platform_ir.rs:15605-15732`
+(AOT / Tier 1).
+
+```verum
+type SysTimeOpsInstant is { nanos: Int };
+type SysTimeOpsDuration is { nanos: Int };
+```
+
+### `SysTimeOpsInstant`
+
+| Method | Returns | Semantics |
+|---|---|---|
+| `SysTimeOpsInstant.now()` | `SysTimeOpsInstant` | Monotonic clock read — non-negative, non-decreasing across sequential calls. POSIX `clock_gettime(CLOCK_MONOTONIC)` / equivalent. |
+| `t.elapsed()` | `SysTimeOpsDuration` | `now() - t.nanos`, expressed as Duration. |
+| `t.duration_since(earlier)` | `SysTimeOpsDuration` | `t.nanos - earlier.nanos`. |
+
+### `SysTimeOpsDuration`
+
+| Constructor | Returns |
+|---|---|
+| `SysTimeOpsDuration.from_nanos(n: Int)` | `SysTimeOpsDuration` |
+| `SysTimeOpsDuration.from_micros(n: Int)` | `n * 1_000` ns |
+| `SysTimeOpsDuration.from_millis(n: Int)` | `n * 1_000_000` ns |
+| `SysTimeOpsDuration.from_secs(n: Int)` | `n * 1_000_000_000` ns |
+| `SysTimeOpsDuration.zero()` | `0` ns |
+
+| Accessor | Returns |
+|---|---|
+| `d.as_nanos()` | `d.nanos` (identity) |
+| `d.as_micros()` | `d.nanos / 1_000` (integer truncation toward zero) |
+| `d.as_millis()` | `d.nanos / 1_000_000` |
+| `d.as_secs()` | `d.nanos / 1_000_000_000` |
+
+The accessor chain forms a refinement: `d.as_secs() <= d.as_millis() / 1000 <= d.as_micros() / 1000 <= d.as_nanos() / 1000`.
+
+### Free functions
+
+```verum
+public fn sleep(d: SysTimeOpsDuration)   // sleep for d.nanos
+public fn sleep_ms(ms: Int)              // sleep for ms milliseconds
+public fn sleep_secs(s: Int)             // sleep for s seconds
+public fn wall_clock_ms() -> Int         // milliseconds since Unix epoch (wall clock)
+```
+
+### Conformance & open defects
+
+See [the module-status table below](#module-status) for the current
+green-test count and the gating defects. Arithmetic API surface
+(`SysTimeOpsDuration.from_*` / `as_*` / `zero`) is stable in both
+interpreter and AOT. Every clock-touching API (`SysTimeOpsInstant.now`,
+`sleep_*`, `wall_clock_ms`) is currently gated by **task #5** —
+the intrinsic-mount propagation defect surfaced by this module's
+suite, audited in `core-tests/sys/time_ops/audit.md`.
+
+---
+
 ## Module status
 
 Each `core.sys.*` module carries an explicit conformance status so you
@@ -288,7 +352,7 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 | `bitfield.vr`      | **regression-only** | [core-tests/sys/bitfield](https://github.com/verum-lang/verum/tree/main/core-tests/sys/bitfield) — 56 unit + 3 pinned regressions (gated by cross-module free-fn dispatch defect) |
 | `mmio.vr`          | **partial** | [core-tests/sys/mmio](https://github.com/verum-lang/verum/tree/main/core-tests/sys/mmio) — 8/8 BarrierKind + compiler_barrier/dmb green. MemoryFlags const access + MemoryRegion methods consuming MemoryFlags const gated by typechecker `__newtype_inner_X` gap (same as FileDesc.STDIN). MmioRegister<T, MODE> generic + VerifiedRegister ghost-state deferred — require runtime MMIO fixture. |
 | `interrupt.vr`     | undocumented | — |
-| `time_ops.vr`      | undocumented | — |
+| `time_ops.vr`      | **regression-only** | [core-tests/sys/time_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/time_ops) — 9 unit + 7 property + 1 integration + 2 regression GREEN (arithmetic API: `SysTimeOpsDuration.from_{nanos,micros,millis,secs}`, `as_{nanos,micros,millis,secs}`, `zero`, scale-invariance laws, refinement chain, negative-second round-trip). 14 tests gated `@ignore` for task #5 — stale `mount super.raw.*` in `core/sys/time_ops.vr` migrated to canonical `mount core.intrinsics.runtime.os.{__time_*_raw}` form in this branch (matches working pattern in `core/mem/arena.vr` / `core/net/tcp.vr` / `core/base/panic.vr` / `core/async/generator.vr`), but the @intrinsic propagation does NOT reach the precompile pipeline — every wrapper (`SysTimeOpsInstant.now` / `sleep` / `wall_clock_ms`) still compiles to lenient panic-stub `undefined function: __time_*_raw`. Tracked in `core-tests/sys/time_ops/audit.md §3.1`. Same defect class blocks context_ops/file_ops/net_ops/process_ops migrations. |
 | `file_ops.vr`      | undocumented | — |
 | `net_ops.vr`       | undocumented | — |
 | `process_ops.vr`   | undocumented | — |
