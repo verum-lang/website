@@ -15,7 +15,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
   detail="128/130 protocol-conformance tests pass on 2026-05-14.  Closed this session: §A (rfind — LLVM SmallVectorBase::grow_pod SIGSEGV closed transitively when the broken `for x in slice` patterns left the stdlib precompile chain), §T (Text.capacity), §U (Text.join), §V (DefaultHasher + canonical indexed-while slice iter in Hasher.write / Formatter.write_bytes), §I (cmp), §R (count_matches), §C from_digit hex (char).  Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice)."
   defects={[
     {area: 'text', summary: '§B Char.encode_utf8 receiver-kind / §D function-id collision / §N List.extend_from_slice.  Closed: §A / §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §O / §P / §Q / §R / §T / §U / §V.'},
-    {area: 'char', summary: '4 defect classes — &mut Char mutation, eq_ignore_ascii_case, general_category misroute, AnyChar.matches (§E now closes via shared root with text/text §C).  §C (from_digit hex case) closed 2026-05-14.'},
+    {area: 'char', summary: '2 remaining defect classes — §B eq_ignore_ascii_case false-negative, §D general_category misroute.  Closed 2026-05-14: §A (`make_ascii_upper/lowercase` via char_runtime intercept), §C (from_digit hex case), §E (AnyChar.matches via shared root with text/text §C).'},
     {area: 'builder', summary: 'Int.BAnd / Int.BNeq dispatch broken — every push fails'},
     {area: 'regex', summary: 'Verum/Rust intrinsic ABI bridge defects — find_all SetIdx NullPointer, Maybe<Text> shape mismatch'},
     {area: 'tagged_literals', summary: 'Runtime dispatcher reads CallM key from wrong register slot — random Text values surface as missing method names'},
