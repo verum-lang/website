@@ -16,7 +16,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
   defects={[
     {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
     {area: 'panic_fence', summary: '**CLOSED:** task #11 (`Maybe.take()` &mut self writeback round-trip) — three-layer fix: precompiler self-shape encoding + archive-loader decoding + field-receiver `SetF` writeback in `compile_method_call`'},
-    {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain; task #13 — `is`-operator returns false for the only variant of a single-variant sum'},
+    {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain. **CLOSED:** #13 (`is`-operator on single-variant sum) — parser fix at `crates/verum_fast_parser/src/decl.rs:3384` distinguishes `is`-form sum declarations from `=`-form aliases per grammar §2.4'},
     {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver (now re-characterised as archive-precompiled wrapper-fn return-register corruption — see audit); task #16 — `Timeout<F>` field-layout write OOB. **CLOSED:** #14 (`timeout_ms` cross-module name collision) — strict-arity filter + path-suffix narrowing probe; **#17** (`TimerInterval.period()` field-vs-method-name shadowing) — closed indirectly by parallel codegen disambiguators; user-side getter-shadowing reproducer now stable in both `t.period` and `t.period()` forms'},
   ]}
   sweepDate="2026-05-14"
@@ -64,7 +64,7 @@ AOT, `--test-threads 1`).
 | `timer.vr`         | **partial**  | [core-tests/async/timer](https://github.com/verum-lang/verum/tree/main/core-tests/async/timer) — 29 working (Sleep/SleepUntil/Delay construction surface + TimerInterval new/immediate next_tick partition + Debounce/Throttle state-machine round-trip + monotonic refusal + reset-then-acquire across 4 representative intervals + TimeoutError Eq reflexivity) + 6 pinned regressions for tasks #14 / #15 / #16 / #17. Pre-fix landed in this branch: `pub async fn acquire` → `public async fn acquire` (line 535). |
 | `parallel.vr`      | **complete** (interp) | [core-tests/async/parallel](https://github.com/verum-lang/verum/tree/main/core-tests/async/parallel) — 38 working covering parallel_map, parallel_filter_map, parallel_for_each, parallel_reduce, and the Blelloch parallel_scan_exclusive. Pinned properties: worker-count invariance over {1,2,4,8,16}, Blelloch-vs-reference exclusive-prefix-scan identity for `+` and `max`, parallel_reduce ≡ left-fold₁, filter_map index-subset-of-map. AOT validation gated by task #10. |
 | `panic_fence.vr`   | **partial**  | [core-tests/async/panic_fence](https://github.com/verum-lang/verum/tree/main/core-tests/async/panic_fence) — 12 working (panic_safe factory + record-literal Some/None inner + Ready(Ok) Int/Text round-trip + fence outcome→tag classification + List<fenced ReadyFuture> sequential consumption summing 15) + 1 pinned (task #11: `Maybe.take()` mutation through `&mut self` on a generic record field; gates the fence's documented "inner=None after Ready" lifecycle invariant). Panic-arm coverage deferred pending a panicking-Future test bed. |
-| `semaphore.vr`     | **regression-only** outside variant algebra | [core-tests/async/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/async/semaphore) — 7 working (SemaphoreError single-variant algebra + Result/Maybe wrapping integration) + 10 pinned regressions (9 lifecycle tests blocked by task #12: AsyncSemaphore.new null-derefs through AtomicInt.swap in Mutex/AtomicBool init; 1 single-variant `is`-operator test blocked by task #13). |
+| `semaphore.vr`     | **regression-only** outside variant algebra | [core-tests/async/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/async/semaphore) — 8 working (SemaphoreError single-variant algebra including the natural `e is SemaphoreError.Closed` form + Result/Maybe wrapping integration) + 9 pinned regressions for #12 (lifecycle tests blocked by `AsyncSemaphore.new` null-derefs through AtomicInt.swap in Mutex/AtomicBool init).  **#13 CLOSED** 2026-05-15 via single-line architectural fix in the parser — `type X is Y;` is now correctly parsed as a single-variant sum (was incorrectly downgraded to alias), closing the entire `SemaphoreError` / `ChannelError` / single-variant marker idiom across stdlib. |
 | `async_iterator.vr`| unaudited    | — protocol-only; the testable surface is the blanket `IntoAsyncIterator for A`, exercised transitively through stream/channel/broadcast concrete impls (deferred pending those test beds) |
 | `intrinsics.vr`    | **partial**  | [core-tests/async/intrinsics](https://github.com/verum-lang/verum/tree/main/core-tests/async/intrinsics) — 19 working (Executor.current/in_async_context coherence + future_poll_sync ReadyFuture round-trip across Int/Text/Bool payloads + IntrinsicsYieldNow two-state lifecycle Pending→Ready with exactly-one-Pending tightness). Spawn family + sleep family @intrinsics deferred pending the live-executor test-bed. |
 
@@ -126,13 +126,30 @@ that depends on it.
   VBC interpreter atomic-primitive dispatch on a freshly-allocated
   atomic cell. Pinned in `core-tests/async/semaphore/regression_test.vr §A`.
 
-* **Task #13 — `is`-operator returns false on a single-variant sum
-  type.** `let e: SemaphoreError = SemaphoreError.Closed;
-  e is SemaphoreError.Closed` evaluates to `false`, even though the
-  same value routes correctly through `match e { SemaphoreError.Closed =>
-  ... }` and through `a.eq(&a)`. Likely shares root cause with the
-  task #22 variant-tag stability cluster for the degenerate
-  single-variant case. Pinned in `core-tests/async/semaphore/regression_test.vr §B`.
+* ~~**Task #13 — `is`-operator returns false on a single-variant sum
+  type**~~ → **CLOSED 2026-05-15** by a single-line architectural
+  fix at `crates/verum_fast_parser/src/decl.rs:3384`.  **Root cause
+  (architectural)**: per `grammar/verum.ebnf` §2.4 the `is` / `=`
+  sigils in type declarations are NEVER interchangeable —
+  `type X = Y;` (with `=`) is an alias, `type X is Y;` (with `is`)
+  is a single-variant sum.  Pre-fix the parser collapsed
+  `type X is OnlyVariant;` (bare identifier, no payload, no
+  leading `|`) into `TypeDeclBody::Alias(OnlyVariant)`, silently
+  turning a single-variant sum into an alias to a non-existent
+  type.  Downstream the typechecker's `is`-operator
+  pattern-resolution at `crates/verum_types/src/infer/patterns.rs:1485`
+  strictly required a `Type::Variant`, so `e is X.Closed` returned
+  false — while `match e { X.Closed => … }` and `Eq.eq` still
+  worked because their paths tolerated alias resolution.  The fix
+  emits `TypeDeclBody::Variant(vec![first_variant])` for any
+  `is`-form RHS that `looks_like_variant()` accepted.  Both
+  `type X is | Closed;` and `type X is Closed;` now produce
+  identical AST.  Closes the SemaphoreError / ChannelError / every
+  single-variant marker error idiom across stdlib without a
+  stdlib-source change.  Architectural rule pinned: the `is` /
+  `=` sigils in type declarations are NEVER interchangeable; any
+  future "is-form RHS looks like a type alias" optimisation MUST
+  go through `=`, not `is`.
 
 * ~~**Task #14 — `timeout_ms` cross-module name collision**~~ →
   **CLOSED 2026-05-14** by two layered fixes in `crates/verum_vbc/src/codegen/`:
