@@ -17,7 +17,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
     {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
     {area: 'panic_fence', summary: '**CLOSED:** task #11 (`Maybe.take()` &mut self writeback round-trip) — three-layer fix: precompiler self-shape encoding + archive-loader decoding + field-receiver `SetF` writeback in `compile_method_call`'},
     {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain; task #13 — `is`-operator returns false for the only variant of a single-variant sum'},
-    {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver; task #16 — `Timeout<F>` field-layout write OOB; task #17 — `TimerInterval.period()` recursion. **CLOSED:** #14 (`timeout_ms` cross-module name collision) — strict-arity filter in `type_aware_lookup` + path-suffix narrowing probe in `process_import_tree::Path`'},
+    {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver (now re-characterised as archive-precompiled wrapper-fn return-register corruption — see audit); task #16 — `Timeout<F>` field-layout write OOB. **CLOSED:** #14 (`timeout_ms` cross-module name collision) — strict-arity filter + path-suffix narrowing probe; **#17** (`TimerInterval.period()` field-vs-method-name shadowing) — closed indirectly by parallel codegen disambiguators; user-side getter-shadowing reproducer now stable in both `t.period` and `t.period()` forms'},
   ]}
   sweepDate="2026-05-14"
 />
@@ -180,14 +180,26 @@ that depends on it.
   wrapper carrying an inner Sleep field. Pinned in
   `core-tests/async/timer/regression_test.vr §C`.
 
-* **Task #17 — `TimerInterval.period()` field-vs-method-name
-  shadowing causes StackOverflow.** The getter method body
-  `self.period` dispatches as `self.period()` recursively. Workaround:
-  read the field directly (`it.period`) — which works. Cleanest fix:
-  stdlib rename `TimerInterval.period()` getter to
-  `TimerInterval.duration()`, OR fix the language to give field
-  access precedence over method-name resolution for bare `self.X`
-  syntax. Pinned in `core-tests/async/timer/regression_test.vr §B`.
+* ~~**Task #17 — `TimerInterval.period()` field-vs-method-name
+  shadowing causes StackOverflow**~~ → **CLOSED 2026-05-15**.
+  The originally-pinned defect — where the getter method body
+  `self.period` inside `period(&self) -> Duration` was
+  dispatching as a recursive `self.period()` method call (blowing
+  the stack) — no longer reproduces.  Verified by both the
+  user-side reproducer (`type T is { period: Int }; implement T
+  { fn period(&self) -> Int { self.period } }` — both `t.period`
+  field access and `t.period()` method call now stable) and the
+  stdlib `TimerInterval.period()` regression test (flipped from
+  `@ignore` to active).  Closed indirectly by parallel codegen
+  disambiguators landed by other agents and/or by task #11's
+  field-receiver writeback work that consolidated the
+  field-vs-method path in `compile_method_call`.  Architectural
+  rule pinned in the regression-test comment: bare `self.X` (no
+  parens) inside a method body MUST resolve to field access when
+  X names a field of the impl's parent type — even when X also
+  names a method on the same type.  Only `self.X()` (with parens)
+  resolves to a method call.  The pattern is canonical for getter
+  idioms (Duration, Instant, Throttle, Debounce, TimerInterval).
 
 #### Closed
 
