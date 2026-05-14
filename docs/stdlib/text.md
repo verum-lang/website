@@ -3,7 +3,7 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: §C (Iterator.next dispatch) closed 2026-05-13 in commit 48a76117f — 8 iterator tests flipped to green. Remaining defects span KMP find (§F), function-id collision (§D), Char.encode_utf8 receiver-kind (§B), Text.truncate NullPointer (§E). See per-module audit.md.
+status_detail: 63/67 protocol-conformance tests pass on 2026-05-14 (Iterator, IntoIterator, Default, Length, Eq, Clone, From, AddAssign, Add, AsRef, FromStr, try_with_capacity, encode_utf16, Utf8Error). §C closed 2026-05-13. Remaining defects span Text.capacity tracking (task #5), KMP find (§F), function-id collision (§D), Char.encode_utf8 receiver-kind (§B), Text.truncate NullPointer (§E).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -12,15 +12,15 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="§C (Iterator.next dispatch) closed 2026-05-13 — 8 iterator tests flipped green. Remaining defects span KMP find / function-id collision / Char.encode_utf8 receiver-kind / Text.truncate NullPointer."
+  detail="63/67 protocol-conformance tests pass on 2026-05-14. §C (Iterator.next dispatch) closed 2026-05-13. Remaining defects span Text.capacity tracking (task #5), KMP find, function-id collision, Char.encode_utf8 receiver-kind, Text.truncate NullPointer."
   defects={[
-    {area: 'text', summary: '§A rfind dispatch / §B Char.encode_utf8 receiver-kind / §D function-id collision / §E truncate NullPointer / §F KMP find byte-indexing — see audit §C closed.'},
+    {area: 'text', summary: 'Task #5: Text.capacity() lost cap field through small-string materialisation in with_capacity/try_with_capacity. §A rfind dispatch / §B Char.encode_utf8 receiver-kind / §D function-id collision / §E truncate NullPointer / §F KMP find byte-indexing — see audit §C closed.'},
     {area: 'char', summary: '5 defect classes — &mut Char mutation, eq_ignore_ascii_case, from_digit hex, general_category misroute, AnyChar.matches (§E now closes via shared root with text/text §C)'},
     {area: 'builder', summary: 'Int.BAnd / Int.BNeq dispatch broken — every push fails'},
     {area: 'regex', summary: 'Verum/Rust intrinsic ABI bridge defects — find_all SetIdx NullPointer, Maybe<Text> shape mismatch'},
     {area: 'tagged_literals', summary: 'Runtime dispatcher reads CallM key from wrong register slot — random Text values surface as missing method names'},
   ]}
-  sweepDate="2026-05-13"
+  sweepDate="2026-05-14"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -67,6 +67,7 @@ let s2 = Text.new();                   // empty
 let s3 = Text.with_capacity(64);       // pre-allocate; len() == 0
 let s4 = Text.try_with_capacity(1024); // fallible counterpart
 let s5 = Text.from_utf8(bytes)?;       // Result<Text, Utf8Error>
+let s5a = Text.from_bytes(bytes)?;     // alias for from_utf8 (compat alias)
 let s6 = Text.from_utf8_lossy(bytes);  // replaces invalid bytes with U+FFFD
 let s7 = Text.from_utf16(units)?;      // Result<Text, Utf16Error>
 let s8 = Text.from_utf16_lossy(units); // U+FFFD on unpaired surrogates
@@ -83,11 +84,35 @@ let sd = f"x={x}, y={y + 1}";          // format literal
 s.len()              -> Int            // byte length
 s.is_empty()         -> Bool
 s.char_count()       -> Int            // Unicode-scalar count (iterates)
-s.capacity()         -> Int            // heap capacity (cap field)
+s.capacity()         -> Int            // capacity (see "Capacity tracking" below)
 s.as_str()           -> &Text          // borrow as &Text
 s.as_bytes()         -> &[Byte]        // raw UTF-8 byte view
 s.as_ptr()           -> &unsafe Byte   // raw pointer (unsafe APIs)
 ```
+
+#### Capacity tracking
+
+`capacity()` reports the byte budget the buffer can hold without
+reallocating. The semantics differ by underlying representation:
+
+| Representation | `capacity()` |
+|----------------|--------------|
+| Static literal `"..."` (cap = 0, immutable) | `len()` |
+| Small-string (NaN-boxed inline, ≤6 bytes) | `len()` |
+| Heap-allocated flat `[hdr][len:u64][bytes…]` | `len()` |
+| Builder layout `{ptr, len, cap}` (from `with_capacity` / `try_with_capacity` / `reserve`) | the `cap` field |
+
+The first three are immutable views — pushing past `len()` requires
+migrating to a builder layout, so the reported capacity equals the
+current byte length. Only the builder layout carries a separate `cap`
+field that can exceed `len()`.
+
+**Tier-0 caveat (open — task #5):** the Tier-0 interpreter materialises
+`Text.with_capacity` / `try_with_capacity` results into a representation
+that preserves the cap field, but earlier revisions of the runtime
+collapsed them to a small-string and reported capacity == 0. Tests pin
+the contract at `core-tests/text/text/regression_test.vr::
+regression_with_capacity_reports_capacity` (+ siblings).
 
 ### Indexing (byte- and char-based)
 
