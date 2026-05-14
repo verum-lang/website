@@ -3,7 +3,7 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: 63/67 protocol-conformance tests pass on 2026-05-14 (Iterator, IntoIterator, Default, Length, Eq, Clone, From, AddAssign, Add, AsRef, FromStr, try_with_capacity, encode_utf16, Utf8Error). §C closed 2026-05-13. Remaining defects span Text.capacity tracking (task #5), KMP find (§F), function-id collision (§D), Char.encode_utf8 receiver-kind (§B), Text.truncate NullPointer (§E).
+status_detail: 124/127 protocol-conformance tests pass on 2026-05-14 (Iterator, IntoIterator, Default, Length, Eq, Clone, From, AddAssign, Add, AsRef, FromStr, capacity, mutation, truncate/clear/pop, repeat/reverse, predicates, trim, starts_with/ends_with, from_int/bool, concat/join, padding, count_matches, cmp). §T (capacity) + §U (join) closed this session. §I + §R pinned closed.  Remaining open: §A (rfind — compiler SIGSEGV, see task #9), §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -12,9 +12,9 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="63/67 protocol-conformance tests pass on 2026-05-14. §C (Iterator.next dispatch) closed 2026-05-13. Remaining defects span Text.capacity tracking (task #5), KMP find, function-id collision, Char.encode_utf8 receiver-kind, Text.truncate NullPointer."
+  detail="124/127 protocol-conformance tests pass on 2026-05-14.  Closed this session: §T (Text.capacity), §U (Text.join), §I (cmp), §R (count_matches).  Remaining open: §A (rfind triggers LLVM SIGSEGV — task #9), §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice)."
   defects={[
-    {area: 'text', summary: 'Task #5: Text.capacity() lost cap field through small-string materialisation in with_capacity/try_with_capacity. §A rfind dispatch / §B Char.encode_utf8 receiver-kind / §D function-id collision / §E truncate NullPointer / §F KMP find byte-indexing — see audit §C closed.'},
+    {area: 'text', summary: '§A rfind triggers LLVM SmallVectorBase::grow_pod SIGSEGV (task #9) / §B Char.encode_utf8 receiver-kind / §D function-id collision / §N List.extend_from_slice.  Closed: §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §O / §P / §Q / §R / §T / §U.'},
     {area: 'char', summary: '5 defect classes — &mut Char mutation, eq_ignore_ascii_case, from_digit hex, general_category misroute, AnyChar.matches (§E now closes via shared root with text/text §C)'},
     {area: 'builder', summary: 'Int.BAnd / Int.BNeq dispatch broken — every push fails'},
     {area: 'regex', summary: 'Verum/Rust intrinsic ABI bridge defects — find_all SetIdx NullPointer, Maybe<Text> shape mismatch'},

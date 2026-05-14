@@ -283,10 +283,10 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `common.vr`        | undocumented | — |
-| `cabi.vr`          | undocumented | — |
+| `common.vr`        | **partial** | [core-tests/sys/common](https://github.com/verum-lang/verum/tree/main/core-tests/sys/common) — 50+ type-level tests green: PAGE_SIZE / page_align_* / OSError / FileDesc / IOVec / MemProt / MapFlags / SysContextError / FcntlLockKind / ACCESS_* / SEEK_SET / F_*LCK / MAX_CONTEXT_SLOTS / CONTEXT_STACK_DEPTH. Mount re-export defect (`mount core.sys.{PAGE_SIZE}` resolving to wrong sibling) closed by parent-prefix scan in `process_import_tree`. FileDesc.STDIN/INVALID const-method access deferred (typechecker __newtype_inner_X gap for archive-loaded transparent-wrapper records). FFI-adjacent surface (os_alloc / pread / pwrite / fsync / try_lock_region / file_size / access / random_bytes / init_process_args) deferred to per-platform integration. |
+| `cabi.vr`          | **complete** | [core-tests/sys/cabi](https://github.com/verum-lang/verum/tree/main/core-tests/sys/cabi) — 22 unit + 9 property + 5 regression all green. Every alias (CInt / CUInt / CLong / CULong / CSize / CSSize / COff / CMode / CPid / CUid / CGid / CClockId / CSockLen / CFd) round-trips through tuple-newtype construction; CFD_STDIN / CFD_STDOUT / CFD_STDERR sentinel triple pinned. Transparent-wrapper newtype constructor registration fix in `archive_ctx_loader.rs` Pass 5 closed every CFD_* / direct-CFd-construction test. |
 | `bitfield.vr`      | **regression-only** | [core-tests/sys/bitfield](https://github.com/verum-lang/verum/tree/main/core-tests/sys/bitfield) — 56 unit + 3 pinned regressions (gated by cross-module free-fn dispatch defect) |
-| `mmio.vr`          | undocumented | — |
+| `mmio.vr`          | **partial** | [core-tests/sys/mmio](https://github.com/verum-lang/verum/tree/main/core-tests/sys/mmio) — 8/8 BarrierKind + compiler_barrier/dmb green. MemoryFlags const access + MemoryRegion methods consuming MemoryFlags const gated by typechecker `__newtype_inner_X` gap (same as FileDesc.STDIN). MmioRegister<T, MODE> generic + VerifiedRegister ghost-state deferred — require runtime MMIO fixture. |
 | `interrupt.vr`     | undocumented | — |
 | `time_ops.vr`      | undocumented | — |
 | `file_ops.vr`      | undocumented | — |
@@ -294,7 +294,7 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 | `process_ops.vr`   | undocumented | — |
 | `process_native.vr`| undocumented | — |
 | `context_ops.vr`   | undocumented | — |
-| `signal.vr`        | undocumented | — |
+| `signal.vr`        | **regression-only** | [core-tests/sys/signal](https://github.com/verum-lang/verum/tree/main/core-tests/sys/signal) — 14/52 green. Pre-existing stdlib defects in Signal: variant-tag drift on @cfg-aware match arms, `atomic_load`/`atomic_store` intrinsic registration missing for SignalFlag. Architectural — drift is in stdlib Signal implementation, not test infrastructure. |
 | `fs_watch.vr`      | undocumented | — |
 | `io_engine.vr`     | undocumented | — |
 | `init.vr`          | undocumented | — |
