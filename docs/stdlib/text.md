@@ -3,7 +3,7 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: 124/127 protocol-conformance tests pass on 2026-05-14 (Iterator, IntoIterator, Default, Length, Eq, Clone, From, AddAssign, Add, AsRef, FromStr, capacity, mutation, truncate/clear/pop, repeat/reverse, predicates, trim, starts_with/ends_with, from_int/bool, concat/join, padding, count_matches, cmp). §T (capacity) + §U (join) closed this session. §I + §R pinned closed.  Remaining open: §A (rfind — compiler SIGSEGV, see task #9), §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice).
+status_detail: 125/127 protocol-conformance tests pass on 2026-05-14 (Iterator, IntoIterator, Default, Length, Eq, Clone, From, AddAssign, Add, AsRef, FromStr, capacity, mutation, truncate/clear/pop, repeat/reverse, predicates, trim, starts_with/ends_with, from_int/bool, concat/join, padding, count_matches, cmp, Hash). §T (capacity) + §U (join) + §V (Hash via hasher_runtime intercept) closed this session. §I + §R pinned closed. Remaining open: §A (rfind — LLVM SmallVectorBase::grow_pod SIGSEGV, task #9), §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice), task #11 (precompiled-body SetF on &mut self with slice arg — sidestepped by hasher_runtime).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -12,10 +12,10 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="124/127 protocol-conformance tests pass on 2026-05-14.  Closed this session: §T (Text.capacity), §U (Text.join), §I (cmp), §R (count_matches).  Remaining open: §A (rfind triggers LLVM SIGSEGV — task #9), §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice)."
+  detail="125/127 protocol-conformance tests pass on 2026-05-14.  Closed this session: §T (Text.capacity), §U (Text.join), §V (DefaultHasher), §I (cmp), §R (count_matches), §C from_digit hex (char).  Remaining open: §A (rfind triggers LLVM SIGSEGV — task #9), §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice), task #11 (precompiled-body SetF on slice-arg methods, sidestepped by hasher_runtime)."
   defects={[
-    {area: 'text', summary: '§A rfind triggers LLVM SmallVectorBase::grow_pod SIGSEGV (task #9) / §B Char.encode_utf8 receiver-kind / §D function-id collision / §N List.extend_from_slice.  Closed: §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §O / §P / §Q / §R / §T / §U.'},
-    {area: 'char', summary: '5 defect classes — &mut Char mutation, eq_ignore_ascii_case, from_digit hex, general_category misroute, AnyChar.matches (§E now closes via shared root with text/text §C)'},
+    {area: 'text', summary: '§A rfind triggers LLVM SmallVectorBase::grow_pod SIGSEGV (task #9) / §B Char.encode_utf8 receiver-kind / §D function-id collision / §N List.extend_from_slice.  Closed: §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §O / §P / §Q / §R / §T / §U / §V.'},
+    {area: 'char', summary: '4 defect classes — &mut Char mutation, eq_ignore_ascii_case, general_category misroute, AnyChar.matches (§E now closes via shared root with text/text §C).  §C (from_digit hex case) closed 2026-05-14.'},
     {area: 'builder', summary: 'Int.BAnd / Int.BNeq dispatch broken — every push fails'},
     {area: 'regex', summary: 'Verum/Rust intrinsic ABI bridge defects — find_all SetIdx NullPointer, Maybe<Text> shape mismatch'},
     {area: 'tagged_literals', summary: 'Runtime dispatcher reads CallM key from wrong register slot — random Text values surface as missing method names'},
