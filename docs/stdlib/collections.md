@@ -26,12 +26,12 @@ by `core-tests/collections/<module>/` under both `verum test --interp`
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `list.vr`           | undocumented | — |
-| `map.vr`            | undocumented | — |
-| `set.vr`            | undocumented | — |
+| `list.vr`           | **partial** | [core-tests/collections/list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/list) — 49 unit + 11 property + 8 integration + 9 pinned regressions. 4 runtime intercepts added (contains-needle CBGR deref, set, get_or, swap_remove, truncate); layout-drift defects pinned. |
+| `map.vr`            | **partial** | [core-tests/collections/map](https://github.com/verum-lang/verum/tree/main/core-tests/collections/map) — 14 unit + 6 property + 5 integration + 5 pinned regressions. Cap=0 bootstrap guard added on insert; remove / contains_key / get now empty-map-safe. |
+| `set.vr`            | **partial** | [core-tests/collections/set](https://github.com/verum-lang/verum/tree/main/core-tests/collections/set) — 23 unit + 10 property + 5 integration + 4 pinned regressions. Set.insert returns Bool (was Unit); Set.union / Set.intersection auto-deref CBGR ref needle. |
 | `multiset.vr`       | undocumented | — |
-| `deque.vr`          | undocumented | — |
-| `heap.vr`           | undocumented | — |
+| `deque.vr`          | **partial** | [core-tests/collections/deque](https://github.com/verum-lang/verum/tree/main/core-tests/collections/deque) — 22 unit + 8 property + 5 integration + 2 pinned regressions. Stdlib type-decl field order matches runtime intercept allocation. |
+| `heap.vr`           | **partial** | [core-tests/collections/heap](https://github.com/verum-lang/verum/tree/main/core-tests/collections/heap) — 12 unit + 5 property + 4 integration + 2 pinned regressions (BinaryHeap.with_capacity / .from_list cross-module name resolution). |
 | `btree.vr`          | undocumented | — |
 | `slice.vr`          | undocumented | — |
 | `lru.vr`            | undocumented | — |
