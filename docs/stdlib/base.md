@@ -58,7 +58,7 @@ for the discovery contract).
 | `protocols.vr`       | **stable** | [core-tests/base/protocols](https://github.com/verum-lang/verum/tree/main/core-tests/base/protocols) — 2/2 conformance. |
 | `iterator.vr`        | **partial** | [core-tests/base/iterator](https://github.com/verum-lang/verum/tree/main/core-tests/base/iterator) — 11/19. `Range.collect`/`map`/`inspect` and `iter().find/next` blocked on transitive module loading (Iterator default-method bodies in core.base.iterator not in user `wanted_module_prefixes`). |
 | `cell.vr`            | **partial** | [core-tests/base/cell](https://github.com/verum-lang/verum/tree/main/core-tests/base/cell) — 15/28. `Cell` family stable; `RefCell` Ref/RefMut Deref auto-deref landed in commit `170820255` but `LazyCell.force` still gates on `RefMut` being in transitive `wanted` set. |
-| `memory.vr`          | **undocumented** | — |
+| `memory.vr`          | **partial** | [core-tests/base/memory](https://github.com/verum-lang/verum/tree/main/core-tests/base/memory) — `Heap.new` / `Heap.into_inner` / `Heap.try_new` / nested-heap round-trips stable in both interpreter and AOT. CBGR introspection surface (`is_valid`, `is_allocated`, `is_freed`, `generation`, `epoch`, `header_generation`, `current_epoch`, `header_epoch`, `capabilities`, `header_size`) exposed and round-trip-tested under `cbgr_test.vr` — 4/18 pass in interp baseline. Remaining 14 fail on `assertion failed: left != right` (incl. `test_heap_default`, `test_heap_cbgr_after_modification`); root-cause hypothesis is `T.default()` primitive-protocol-default dispatch resolving to non-zero sentinel in interpreter. Stdlib companion fix landed in this branch: duplicate `Heap.is_freed` definition removed; language-level dup-method check added (see Open defects below). |
 | `panic.vr`           | **partial** | [core-tests/base/panic](https://github.com/verum-lang/verum/tree/main/core-tests/base/panic) — `panic`/`assert`/`unreachable` stable; `catch_unwind` ↔ `PanicInfo.location` gated by CBGR use-after-free in `&Text` return-refs. |
 | `env.vr`             | **stable** | [core-tests/base/env](https://github.com/verum-lang/verum/tree/main/core-tests/base/env) — `args`/`var`/`home_dir`/`os_name`/`arch`/`exit` exercised under interp + AOT. |
 | `data.vr`            | **partial** | [core-tests/base/data](https://github.com/verum-lang/verum/tree/main/core-tests/base/data) — 27/33. Remaining gated by `pattern_data_pipeline` assertion drift. |
@@ -847,22 +847,77 @@ For thread-safe equivalents, see [`sync`](/docs/stdlib/sync) (`AtomicCell`,
 
 ### `Heap<T>`
 
+`Heap<T>` is the unique-ownership heap allocation. Each `Heap` carries a
+16-byte `(ptr, generation: UInt32, epoch: UInt16)` triple; deref-time
+CBGR validation re-reads the allocation header's atomic generation and
+epoch and panics on mismatch — that is how use-after-free is detected
+at Tier 0 with ~15ns overhead. Tier 1 elides the check when the
+compiler proves the reference cannot outlive the allocation.
+
+**Construction**
+
 ```verum
-Heap.new(value) -> Heap<T>            // panics on OOM
-Heap.new_default() -> Heap<T>         // T: Default
-Heap.new_zeroed() -> Heap<T>
-Heap.try_new(value) -> Result<Heap<T>, AllocError>
-
-h.as_ref() / h.as_mut()       // CBGR-checked deref
-h.into_inner() -> T
-h.into_raw() -> &unsafe T     // leaks; pair with from_raw
-Heap.from_raw(p) -> Heap<T>  // unsafe
-h.leak() -> &mut T
-
-h.generation() / h.epoch() / h.is_valid()       // CBGR introspection
-h.is_allocated() / h.is_freed()
-h.capabilities()                                // capability bits
+Heap.new(value: T) -> Heap<T>                          // panics on OOM
+Heap.new_default() -> Heap<T>                          // T: Default
+Heap.new_zeroed() -> Heap<T>                           // bit-pattern 0
+Heap.try_new(value: T) -> Result<Heap<T>, AllocError>  // non-panicking
 ```
+
+**Deref (CBGR-checked)**
+
+```verum
+h.as_ref() -> &T
+h.as_mut() -> &mut T
+*h            // implicit deref via Deref protocol — same CBGR check
+```
+
+**Move / leak / round-trip**
+
+```verum
+h.into_inner() -> T                  // free header, return value
+h.into_raw()   -> &unsafe T          // intentional leak; pair with from_raw
+unsafe Heap.from_raw(p: &unsafe T) -> Heap<T>
+h.leak()       -> &mut T             // 'static-lifetime reference
+```
+
+**CBGR introspection** — read the underlying allocation header directly,
+skipping the cached `(generation, epoch)` triple stored on the `Heap`.
+Use these for diagnostics and conformance tests; in production code the
+implicit deref handles validation for you.
+
+```verum
+h.generation()         -> UInt32     // cached value from construction
+h.epoch()              -> UInt16     // cached value from construction
+h.is_valid()           -> Bool       // both gen + epoch agree with header
+h.is_allocated()       -> Bool       // header.generation != 0
+h.is_freed()           -> Bool       // header.generation != h.generation
+h.header_generation()  -> UInt32     // re-read header atomically (Acquire)
+h.current_epoch()      -> UInt16     // re-read epoch from header
+h.header_epoch()       -> UInt32     // alias of current_epoch (UInt32 shape)
+h.capabilities()       -> UInt16     // header capability bits
+h.header_size()        -> Int        // CBGR header byte size — currently 32
+```
+
+All introspection methods use atomic loads with `ORDERING_ACQUIRE`, so
+they synchronise correctly across threads. `header_size()` returns the
+constant `32`; if the allocator's `AllocationHeader` ever changes size,
+**this constant must update in lockstep with `verum_runtime::cbgr::HEADER_SIZE`** —
+the inline `- 32` offset is repeated at six sites inside
+`core/base/memory.vr` and is tracked as a hoist-to-constant audit item.
+
+**Protocol implementations**
+
+| Protocol | Bound | Behaviour |
+|---|---|---|
+| `Deref` / `DerefMut` | always | `*h` calls `as_ref` / `as_mut` (CBGR-checked) |
+| `Drop` | always | runs `drop_in_place` on `*self.ptr`, then `cbgr_dealloc` (header generation increment for CBGR invalidation) |
+| `Clone` | `T: Clone` | `Heap.new((**self).clone())` — independent allocation |
+| `Debug` | `T: Debug` | wraps as `Heap(<inner>)` |
+| `Display` | `T: Display` | transparent — delegates to `T.fmt`, wrapper invisible |
+| `Eq` | `T: Eq` | `**self == **other` |
+| `Ord` | `T: Ord` | `(**self).cmp(&**other)` |
+| `Hash` | `T: Hash` | `(**self).hash(hasher)` |
+| `Default` | `T: Default` | `Heap.new_default()` |
 
 ### `Shared<T>` and `Weak<T>`
 
