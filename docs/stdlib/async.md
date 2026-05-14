@@ -15,7 +15,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
   detail="12 of 23 async modules carry full conformance suites; 7 fundamental compiler/stdlib defects pinned. Variant-algebra + construction-surface backbone is interpreter-green; runtime poll-path coverage waits on the executor test-bed."
   defects={[
     {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
-    {area: 'panic_fence', summary: 'task #11 — `Maybe.take()` mutation through `&mut self` does not flow back to a generic record field — gates the fence lifecycle invariant'},
+    {area: 'panic_fence', summary: '**CLOSED:** task #11 (`Maybe.take()` &mut self writeback round-trip) — three-layer fix: precompiler self-shape encoding + archive-loader decoding + field-receiver `SetF` writeback in `compile_method_call`'},
     {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain; task #13 — `is`-operator returns false for the only variant of a single-variant sum'},
     {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver; task #16 — `Timeout<F>` field-layout write OOB; task #17 — `TimerInterval.period()` recursion. **CLOSED:** #14 (`timeout_ms` cross-module name collision) — strict-arity filter in `type_aware_lookup` + path-suffix narrowing probe in `process_import_tree::Path`'},
   ]}
@@ -84,15 +84,39 @@ that depends on it.
   contract. Repro: `verum test --aot --filter test_none_construction`
   from `core/`.
 
-* **Task #11 — `Maybe.take()` mutation through `&mut self` does not
-  flow back to a generic record field.** Repro: `PanicFence<F>::poll`
-  does `self.inner.take()` (where `inner: Maybe<F>`); after a Ready
-  poll, `fence.inner` is still `Some(f)`. The fence's documented
-  "inner=None after Ready" lifecycle invariant is observably broken,
-  so the "polled after completion" panic guard cannot fire. Defect
-  lives in the CBGR-ref writeback path for `*self = None` inside a
-  generic-typed Maybe field. Pinned in
-  `core-tests/async/panic_fence/regression_test.vr §A`.
+* ~~**Task #11 — `Maybe.take()` mutation through `&mut self` does not
+  flow back to a generic record field**~~ → **CLOSED 2026-05-14**
+  via three layered architectural fixes:
+  (1) **Precompiler self-shape encoding** (`crates/verum_vbc/src/codegen/mod.rs::compile_function`) —
+  pre-fix every non-`Regular` `FunctionParamKind` (the entire
+  `SelfValue` / `SelfRef` / `SelfRefMut` / checked / unsafe / own
+  family) serialised into the archive as
+  `TypeRef::Concrete(TypeId::UNIT)`, erasing reference + mutability
+  + tier info at the serialisation boundary. Now each variant
+  encodes its proper `TypeRef::Reference { inner, mutability, tier }`
+  shape (or `Concrete(parent_tid)` for value receivers).
+  (2) **Archive-loader self-shape decoding**
+  (`crates/verum_compiler/src/archive_ctx_loader.rs`) — every site
+  hardcoded `takes_self_mut_ref: false`. New `fn_takes_self_mut_ref`
+  predicate inspects the first param's TypeRef: if `Reference {
+  Mutability::Mutable, .. }` with name `self`, sets flag true.
+  (3) **Field-receiver writeback** in `compile_method_call`
+  (`crates/verum_vbc/src/codegen/expressions.rs`) — even with (1)+(2)
+  wired, `b.inner.take()` still failed because `RefMut` creates a
+  CBGR ref to the *temporary* register holding the extracted field,
+  not to the field slot. The fix captures `(base_reg, field_idx)`
+  upfront for `Field` receivers and emits a `SetF` after the
+  method body returns, committing the (potentially mutated)
+  receiver_reg back to the field slot — only when the method
+  actually takes `&mut self`.
+  Architectural rule pinned: the `FunctionParamKind` self-shape
+  taxonomy MUST round-trip through the archive losslessly; the
+  user-side method-call dispatch MUST honour the resulting
+  `takes_self_mut_ref` flag with both `RefMut` to wrap the receiver
+  AND the field-writeback `SetF` for chained-field receivers.
+  Blast radius: every `&mut self` stdlib method (Maybe.take /
+  Maybe.replace / Maybe.insert / Text.push_str / every mutator) now
+  mutates correctly through user code.
 
 * **Task #12 — `AsyncSemaphore.new` null-derefs through
   `AtomicInt.swap`.** Every `AsyncSemaphore.new(N)` for any N panics
