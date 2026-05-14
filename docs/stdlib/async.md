@@ -17,7 +17,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
     {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
     {area: 'panic_fence', summary: 'task #11 — `Maybe.take()` mutation through `&mut self` does not flow back to a generic record field — gates the fence lifecycle invariant'},
     {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain; task #13 — `is`-operator returns false for the only variant of a single-variant sum'},
-    {area: 'timer', summary: 'task #14 — `timeout_ms` cross-module name collision; task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver; task #16 — `Timeout<F>` field-layout write OOB; task #17 — `TimerInterval.period()` recursion'},
+    {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver; task #16 — `Timeout<F>` field-layout write OOB; task #17 — `TimerInterval.period()` recursion. **CLOSED:** #14 (`timeout_ms` cross-module name collision) — strict-arity filter in `type_aware_lookup` + path-suffix narrowing probe in `process_import_tree::Path`'},
   ]}
   sweepDate="2026-05-14"
 />
@@ -110,15 +110,32 @@ that depends on it.
   task #22 variant-tag stability cluster for the degenerate
   single-variant case. Pinned in `core-tests/async/semaphore/regression_test.vr §B`.
 
-* **Task #14 — `timeout_ms` cross-module name collision.** Selective
-  mount `mount core.async.timer.{timeout_ms}` plus `timeout_ms(500,
-  ready(7))` fails to compile with `WrongArgumentCount expected:1
-  found:2` — the codegen routes to one of the same-named symbols in
-  `core.net.dns` (instance method), `core.runtime.supervisor`
-  (instance method), or `core.meta.contexts` (protocol method).
-  Defect class: free-function vs method-with-self name collision in
-  the dispatch resolution table. Pinned in
-  `core-tests/async/timer/regression_test.vr §D`.
+* ~~**Task #14 — `timeout_ms` cross-module name collision**~~ →
+  **CLOSED 2026-05-14** by two layered fixes in `crates/verum_vbc/src/codegen/`:
+  (1) **path-suffix narrowing probe** in `process_import_tree::Path` —
+  the existing lookup chain probed only `core.async.timer.timeout_ms`
+  (verbatim) and `async.timer.timeout_ms` (core-stripped); neither
+  matched because `core/async/timer.vr` declares `module timer;`
+  (single-segment), so the archive_ctx_loader installs functions
+  under `timer.timeout_ms`. The new probe iterates parent-path tails
+  from longest to shortest (longest-prefix-match routing-table
+  discipline), anchoring on `func_name`, and the first hit wins;
+  `[timer].timeout_ms` now resolves cleanly. (2) **strict-arity filter
+  in `type_aware_lookup`** — the cross-module disambiguation closure
+  built `arity_matches` via the lenient `lookup_function_with_arity`
+  helper, which returns the primary registration even for wrong
+  arity. Wrong-arity candidates polluted the set, and the downstream
+  `param_type_names.iter().zip(arg_type_names)` truncated to the
+  shorter sequence — letting a 1-param method-with-self
+  (`ShutdownStrategy.timeout_ms(&self)`) "type-match" a 2-arg call by
+  only inspecting `arg[0]`. The strict-arity filter
+  (`info.param_count == args.len()`) eliminates this collision class
+  structurally: type-based disambiguation now runs ONLY between
+  candidates that already agree on parameter count. Architectural
+  rule pinned: every code path that filters function candidates by
+  arity MUST use strict equality — lenient arity helpers stay
+  available for "report-this-as-error" surfaces, but they MUST NOT
+  seed disambiguation tiers.
 
 * **Task #15 — `Duration.from_millis` dispatch routes `from_nanos`
   to an Int receiver.** `sleep(Duration.from_millis(N))` panics:
