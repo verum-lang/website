@@ -2,9 +2,25 @@
 sidebar_position: 1
 title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
+status: partial
+status_detail: 17 modules; 12 audited via core-tests/async/; 7 fundamental defects pinned (tasks #10 – #17); the variant-algebra + construction-surface backbone is fully exercised under interpreter, the runtime poll-path coverage waits on the executor test-bed.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.async` — Asynchronous execution
+
+<StdlibStatus
+  status="partial"
+  detail="12 of 23 async modules carry full conformance suites; 7 fundamental compiler/stdlib defects pinned. Variant-algebra + construction-surface backbone is interpreter-green; runtime poll-path coverage waits on the executor test-bed."
+  defects={[
+    {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
+    {area: 'panic_fence', summary: 'task #11 — `Maybe.take()` mutation through `&mut self` does not flow back to a generic record field — gates the fence lifecycle invariant'},
+    {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain; task #13 — `is`-operator returns false for the only variant of a single-variant sum'},
+    {area: 'timer', summary: 'task #14 — `timeout_ms` cross-module name collision; task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver; task #16 — `Timeout<F>` field-layout write OOB; task #17 — `TimerInterval.period()` recursion'},
+  ]}
+  sweepDate="2026-05-14"
+/>
 
 Full async toolkit: `Future` protocol, executors, channels, async
 streams, timers, structured concurrency (`nursery`), racing (`select`),
@@ -42,21 +58,100 @@ AOT, `--test-threads 1`).
 | `nursery.vr`       | **partial**  | [core-tests/async/nursery](https://github.com/verum-lang/verum/tree/main/core-tests/async/nursery) — 8 working (NurseryErrorBehavior 3-policy + priority/severity ordering). |
 | `spawn_config.vr`  | **partial**  | [core-tests/async/spawn_config](https://github.com/verum-lang/verum/tree/main/core-tests/async/spawn_config) — 21 working (RestartPolicy + IsolationLevel + Priority 4-rank ordering + will-restart classification). |
 | `spawn_with.vr`    | **partial**  | [core-tests/async/spawn_with](https://github.com/verum-lang/verum/tree/main/core-tests/async/spawn_with) — 10 working (CircuitState 3-variant breaker lifecycle Closed → Open → HalfOpen → Closed + can-attempt classification). |
-| `executor.vr`      | undocumented | — (depends on extern FFI symbols not callable under interp) |
-| `stream.vr`        | undocumented | — (StreamExt depends on Future protocol; deferred until #11 closes) |
-| `generator.vr`     | undocumented | — (runtime-bound) |
-| `timer.vr`         | undocumented | — (Future-bound types only) |
-| `parallel.vr`      | undocumented | — (function-only, no data types) |
-| `panic_fence.vr`   | undocumented | — (Future-bound) |
-| `semaphore.vr`     | undocumented | — (single-variant SemaphoreError + Future-bound) |
-| `async_iterator.vr`| undocumented | — (protocol-only) |
-| `intrinsics.vr`    | undocumented | — (Future-bound, extern FFI) |
+| `executor.vr`      | unaudited    | — depends on extern FFI symbols not callable under interp; deferred pending executor test-bed |
+| `stream.vr`        | unaudited    | — StreamExt depends on Future protocol; deferred pending the executor test-bed and tasks #11 + #25 |
+| `generator.vr`     | unaudited    | — runtime-bound; deferred pending the executor test-bed |
+| `timer.vr`         | **partial**  | [core-tests/async/timer](https://github.com/verum-lang/verum/tree/main/core-tests/async/timer) — 29 working (Sleep/SleepUntil/Delay construction surface + TimerInterval new/immediate next_tick partition + Debounce/Throttle state-machine round-trip + monotonic refusal + reset-then-acquire across 4 representative intervals + TimeoutError Eq reflexivity) + 6 pinned regressions for tasks #14 / #15 / #16 / #17. Pre-fix landed in this branch: `pub async fn acquire` → `public async fn acquire` (line 535). |
+| `parallel.vr`      | **complete** (interp) | [core-tests/async/parallel](https://github.com/verum-lang/verum/tree/main/core-tests/async/parallel) — 38 working covering parallel_map, parallel_filter_map, parallel_for_each, parallel_reduce, and the Blelloch parallel_scan_exclusive. Pinned properties: worker-count invariance over {1,2,4,8,16}, Blelloch-vs-reference exclusive-prefix-scan identity for `+` and `max`, parallel_reduce ≡ left-fold₁, filter_map index-subset-of-map. AOT validation gated by task #10. |
+| `panic_fence.vr`   | **partial**  | [core-tests/async/panic_fence](https://github.com/verum-lang/verum/tree/main/core-tests/async/panic_fence) — 12 working (panic_safe factory + record-literal Some/None inner + Ready(Ok) Int/Text round-trip + fence outcome→tag classification + List<fenced ReadyFuture> sequential consumption summing 15) + 1 pinned (task #11: `Maybe.take()` mutation through `&mut self` on a generic record field; gates the fence's documented "inner=None after Ready" lifecycle invariant). Panic-arm coverage deferred pending a panicking-Future test bed. |
+| `semaphore.vr`     | **regression-only** outside variant algebra | [core-tests/async/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/async/semaphore) — 7 working (SemaphoreError single-variant algebra + Result/Maybe wrapping integration) + 10 pinned regressions (9 lifecycle tests blocked by task #12: AsyncSemaphore.new null-derefs through AtomicInt.swap in Mutex/AtomicBool init; 1 single-variant `is`-operator test blocked by task #13). |
+| `async_iterator.vr`| unaudited    | — protocol-only; the testable surface is the blanket `IntoAsyncIterator for A`, exercised transitively through stream/channel/broadcast concrete impls (deferred pending those test beds) |
+| `intrinsics.vr`    | **partial**  | [core-tests/async/intrinsics](https://github.com/verum-lang/verum/tree/main/core-tests/async/intrinsics) — 19 working (Executor.current/in_async_context coherence + future_poll_sync ReadyFuture round-trip across Int/Text/Bool payloads + IntrinsicsYieldNow two-state lifecycle Pending→Ready with exactly-one-Pending tightness). Spawn family + sleep family @intrinsics deferred pending the live-executor test-bed. |
 
 ### Cross-module language defects
 
-Five interpreter / codegen defects are shared across the *partial*
+Multiple interpreter / codegen defects are shared across the *partial*
 async modules above; closing any unblocks coverage in every module
-that depends on it:
+that depends on it.
+
+#### Active (2026-05-14)
+
+* **Task #10 — global AOT `generate_native` SIGABRT.** Every test
+  under `--aot` crashes with `__pthread_cond_wait` →
+  `llvm::SmallVectorBase::grow_pod` at the native-gen worker pool.
+  Affects every async test (and every base/maybe test too); not
+  async-specific. Blocks the AOT half of the cross-tier conformance
+  contract. Repro: `verum test --aot --filter test_none_construction`
+  from `core/`.
+
+* **Task #11 — `Maybe.take()` mutation through `&mut self` does not
+  flow back to a generic record field.** Repro: `PanicFence<F>::poll`
+  does `self.inner.take()` (where `inner: Maybe<F>`); after a Ready
+  poll, `fence.inner` is still `Some(f)`. The fence's documented
+  "inner=None after Ready" lifecycle invariant is observably broken,
+  so the "polled after completion" panic guard cannot fire. Defect
+  lives in the CBGR-ref writeback path for `*self = None` inside a
+  generic-typed Maybe field. Pinned in
+  `core-tests/async/panic_fence/regression_test.vr §A`.
+
+* **Task #12 — `AsyncSemaphore.new` null-derefs through
+  `AtomicInt.swap`.** Every `AsyncSemaphore.new(N)` for any N panics
+  with `NullPointerAt { op: "opcode 0xe5", site: "AtomicInt.swap" }`.
+  Construction chain: `AsyncSemaphore.new` → `Shared.new(Mutex.new(...))`
+  → `AtomicBool.new(false)` → `AtomicInt.swap` NULL. Defect class:
+  VBC interpreter atomic-primitive dispatch on a freshly-allocated
+  atomic cell. Pinned in `core-tests/async/semaphore/regression_test.vr §A`.
+
+* **Task #13 — `is`-operator returns false on a single-variant sum
+  type.** `let e: SemaphoreError = SemaphoreError.Closed;
+  e is SemaphoreError.Closed` evaluates to `false`, even though the
+  same value routes correctly through `match e { SemaphoreError.Closed =>
+  ... }` and through `a.eq(&a)`. Likely shares root cause with the
+  task #22 variant-tag stability cluster for the degenerate
+  single-variant case. Pinned in `core-tests/async/semaphore/regression_test.vr §B`.
+
+* **Task #14 — `timeout_ms` cross-module name collision.** Selective
+  mount `mount core.async.timer.{timeout_ms}` plus `timeout_ms(500,
+  ready(7))` fails to compile with `WrongArgumentCount expected:1
+  found:2` — the codegen routes to one of the same-named symbols in
+  `core.net.dns` (instance method), `core.runtime.supervisor`
+  (instance method), or `core.meta.contexts` (protocol method).
+  Defect class: free-function vs method-with-self name collision in
+  the dispatch resolution table. Pinned in
+  `core-tests/async/timer/regression_test.vr §D`.
+
+* **Task #15 — `Duration.from_millis` dispatch routes `from_nanos`
+  to an Int receiver.** `sleep(Duration.from_millis(N))` panics:
+  "method 'from_nanos' not found on receiver of runtime kind Int".
+  Chain `Duration.from_millis → Duration.from_nanos(int*1_000_000)` is
+  dispatching `from_nanos` as a method on the Int multiplied result
+  instead of as a static Duration constructor. Also surfaces through
+  `sleep(Duration.from_secs(1))` via the `@inline(always)` factory
+  expansion, but NOT through `Sleep.new(Duration.from_secs(1))`.
+  Pinned in `core-tests/async/timer/regression_test.vr §A`.
+
+* **Task #16 — `Timeout<F>` field-layout write out of bounds.**
+  `Timeout.new(Duration, future)` panics: "field write out of bounds:
+  field index 5 (offset 40+8=48) exceeds object data size 8". The
+  `Timeout<F>` record declares 3 fields {future, sleep, completed}
+  but codegen writes to field index 5 (off by 2). Defect class: same
+  family as task #9 (field-layout cross-mount race) but for a generic
+  wrapper carrying an inner Sleep field. Pinned in
+  `core-tests/async/timer/regression_test.vr §C`.
+
+* **Task #17 — `TimerInterval.period()` field-vs-method-name
+  shadowing causes StackOverflow.** The getter method body
+  `self.period` dispatches as `self.period()` recursively. Workaround:
+  read the field directly (`it.period`) — which works. Cleanest fix:
+  stdlib rename `TimerInterval.period()` getter to
+  `TimerInterval.duration()`, OR fix the language to give field
+  access precedence over method-name resolution for bare `self.X`
+  syntax. Pinned in `core-tests/async/timer/regression_test.vr §B`.
+
+#### Closed
+
+Five interpreter / codegen defects previously gated the *partial*
+async modules; closing them unblocked coverage:
 
 * ~~**Protocol default-method dispatch via blanket impl**~~ →
   **CLOSED 2026-05-12** (task #11) by a focused blanket-impl
