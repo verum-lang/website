@@ -17,7 +17,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
     {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
     {area: 'panic_fence', summary: '**CLOSED:** task #11 (`Maybe.take()` &mut self writeback round-trip) — three-layer fix: precompiler self-shape encoding + archive-loader decoding + field-receiver `SetF` writeback in `compile_method_call`'},
     {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain. **CLOSED:** #13 (`is`-operator on single-variant sum) — parser fix at `crates/verum_fast_parser/src/decl.rs:3384` distinguishes `is`-form sum declarations from `=`-form aliases per grammar §2.4'},
-    {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver (now re-characterised as archive-precompiled wrapper-fn return-register corruption — see audit); task #16 — `Timeout<F>` field-layout write OOB. **CLOSED:** #14 (`timeout_ms` cross-module name collision) — strict-arity filter + path-suffix narrowing probe; **#17** (`TimerInterval.period()` field-vs-method-name shadowing) — closed indirectly by parallel codegen disambiguators; user-side getter-shadowing reproducer now stable in both `t.period` and `t.period()` forms'},
+    {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver (archive-precompiled wrapper-fn return-register corruption — see audit). **CLOSED:** #14 (cross-module `timeout_ms` collision); #17 (getter-shadowing); **#16 (`Timeout<F>` field-layout write OOB)** — two-layer consumer-side fix that prefers `TypeDescriptor.fields` over the polluted simple-name `type_field_layouts` cache, eliminating the entire "record-type-name collides with sum-type variant payload" defect class universe-wide'},
   ]}
   sweepDate="2026-05-14"
 />
@@ -188,14 +188,41 @@ that depends on it.
   expansion, but NOT through `Sleep.new(Duration.from_secs(1))`.
   Pinned in `core-tests/async/timer/regression_test.vr §A`.
 
-* **Task #16 — `Timeout<F>` field-layout write out of bounds.**
-  `Timeout.new(Duration, future)` panics: "field write out of bounds:
-  field index 5 (offset 40+8=48) exceeds object data size 8". The
-  `Timeout<F>` record declares 3 fields {future, sleep, completed}
-  but codegen writes to field index 5 (off by 2). Defect class: same
-  family as task #9 (field-layout cross-mount race) but for a generic
-  wrapper carrying an inner Sleep field. Pinned in
-  `core-tests/async/timer/regression_test.vr §C`.
+* ~~**Task #16 — `Timeout<F>` field-layout write out of bounds**~~ →
+  **CLOSED 2026-05-15** by a two-layer consumer-side architectural
+  fix in `crates/verum_vbc/src/codegen/`:
+  (1) **`compile_record`'s `alloc_slots` resolution** — emits
+  `Instruction::New { field_count }` from
+  `TypeDescriptor.fields.len()` via `type_name_to_id → types[]` BEFORE
+  falling back to the polluted simple-name `type_field_layouts` cache.
+  (2) **`resolve_field_index`'s field-idx resolution** — strips
+  generic args (`Timeout<ReadyFuture>` → `Timeout`), looks up the
+  descriptor, scans its `fields` for the field-name match; returns the
+  descriptor-canonical index.
+  **Root cause (architectural)**: the flat `type_field_layouts:
+  HashMap<String, Vec<String>>` cache is keyed by SIMPLE type name and
+  was polluted by record-style variant constructors that share a
+  simple name with a standalone record type — canonical case:
+  `core.sys.io_engine.CompletionOp.Timeout { ts: &TimeSpec }`
+  (1-field variant payload) registered `type_field_layouts["Timeout"]
+  = ["ts"]` before `core.async.timer.Timeout<F>` (3-field record)
+  could claim the simple-name slot.  Under first-wins, the host
+  record's 3-field layout was silently shadowed.  `Timeout.new`'s
+  precompiled body then emitted `Instruction::New { field_count: 1 }`
+  (one slot, 8 bytes of data) and the subsequent SetF for field index
+  2 (or 5 after Sleep nested allocation) wrote past the allocation.
+  **Architectural rule pinned**: the `TypeDescriptor` (one per type,
+  owned by the type's own declaration site) is the canonical source
+  of truth for field-layout information; flat caches are convenience
+  indices that may suffer simple-name collisions from sibling sum
+  types' record-style variants; every consumer that needs declared
+  field count or field index MUST query the descriptor FIRST and fall
+  back to the cache ONLY when the descriptor lookup misses.  Blast
+  radius: closes the entire "record type whose simple name collides
+  with a sum type's record-style variant payload" defect class
+  universe-wide — `Timeout<F>` is the canonical case but the same
+  pattern applies to `NurseryError.Timeout`, `ShellError.Timeout`,
+  every record-style variant payload across stdlib.
 
 * ~~**Task #17 — `TimerInterval.period()` field-vs-method-name
   shadowing causes StackOverflow**~~ → **CLOSED 2026-05-15**.
