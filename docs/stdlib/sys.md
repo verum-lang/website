@@ -22,8 +22,8 @@ authors, driver writers, and kernel engineers.
 | Area | Files |
 |---|---|
 | Common types | `common.vr` |
-| Raw syscall bindings | `raw.vr` |
-| Wrapped operations | `file_ops.vr`, `time_ops.vr`, `net_ops.vr`, `process_ops.vr`, `context_ops.vr` |
+| Raw syscall bindings | `core/intrinsics/runtime/os.vr` (post-migration canonical home; `core/sys/raw.vr` no longer exists). |
+| Wrapped operations | `file_ops.vr`, `time_ops.vr`, `net_ops.vr`, `process_ops.vr`, `context_ops.vr` (each mounts the raw intrinsics from `core.intrinsics.runtime.os.{...}`). |
 | I/O abstraction | `io_engine.vr` |
 | Initialization | `init.vr` |
 | Signals | `signal.vr` |
@@ -202,6 +202,103 @@ fn ctx_pop_frame() -> Result<(), ContextError>
 User code interacts with this via `provide` / `using` — see
 [Language → context system](/docs/language/context-system).
 
+### `core.sys.context_ops` — raw V-LLSI TLS + DI surface
+
+The thin wrappers in `core.sys.context_ops` sit one layer below the
+typed `ctx_*` API above. They take a raw `Int`-keyed slot or type_id
+and pass it straight through to the underlying interpreter / AOT
+intrinsic. Use this surface only from runtime-implementation code;
+user code should reach for the typed `ctx_*` family instead.
+
+```verum
+public let TLS_SLOT_COUNT: Int = 256;                  // V-LLSI per-thread arena ceiling
+
+public fn tls_get(slot: Int) -> Int                    // read TLS slot
+public fn tls_set(slot: Int, value: Int)               // write TLS slot
+
+public fn context_provide(type_id: Int, value: Int)    // push DI value
+public fn context_get(type_id: Int) -> Int             // most-recent provide for type_id
+public fn context_end(type_id: Int)                    // pop the most-recent provide
+
+public fn defer_register(cleanup_fn: fn(Int) -> Int, arg: Int)
+public fn defer_execute()                              // pop top (Tier-1 invokes callback)
+public fn defer_depth() -> Int
+public fn defer_run_to(depth: Int)                     // truncate stack to depth
+```
+
+#### Tier-0 vs Tier-1 contract
+
+| Operation | Tier 0 (interpreter) | Tier 1 (AOT) |
+|---|---|---|
+| `tls_set` / `tls_get` | round-trip via `state.context_stack` | round-trip via per-thread TCB |
+| `context_provide` / `context_get` / `context_end` | round-trip via `state.context_stack` | round-trip via per-thread TCB |
+| `defer_register` / `defer_run_to` / `defer_depth` | maintains `(fn_id, arg)` stack — depth tracking accurate | maintains stack + cleanup-callback dispatch |
+| `defer_execute` (callback invocation) | **not invoked** — interpreter cannot synthesise indirect `fn(Int) -> Int` dispatch | invoked via call-frame machinery |
+
+The interpreter wiring closed in this branch — pre-fix every raw
+intrinsic above returned constant 0/nil, leaving the V-LLSI context
+arena entirely inert under Tier 0. See
+`core-tests/sys/context_ops/audit.md` for the conformance report.
+
+---
+
+## Value types — `sys.io_engine`
+
+Refinement-typed value types used by the I/O engine protocol below.
+
+```verum
+public type Port is UInt16
+public type BoundPort is Port where |p| p > 0
+
+public type EngineDuration is (UInt64)            // always non-negative
+public type NonZeroDuration is EngineDuration where |d| d.0 > 0
+
+public type TimeSpec is { tv_sec: Int64, tv_nsec: Int64 }
+
+public type Fd is (Int32)
+public type ValidFd is Fd where |fd| fd.0 >= 0
+```
+
+### `EngineDuration` constructors and accessors
+
+| Constructor | Returns |
+|---|---|
+| `EngineDuration.from_nanos(n: UInt64)` | `EngineDuration` |
+| `EngineDuration.from_micros(n: UInt64)` | `n * 1_000` ns |
+| `EngineDuration.from_millis(n: UInt64)` | `n * 1_000_000` ns |
+| `EngineDuration.from_secs(n: UInt64)` | `n * 1_000_000_000` ns |
+| `EngineDuration.ZERO` | `0` ns |
+| `EngineDuration.MAX` | `UInt64.MAX` ns (≈ 584 years) |
+| `MAX_PRACTICAL_DURATION` | `365 * 86400 * 1_000_000_000` (1 year cap) |
+
+| Accessor | Returns |
+|---|---|
+| `d.as_nanos()` | `d.0` (identity) |
+| `d.as_millis()` | `d.0 / 1_000_000` |
+| `d.as_secs()` | `d.0 / 1_000_000_000` |
+| `d.is_zero()` | `d.0 == 0` |
+| `d.saturating_add(other)` | caps at `EngineDuration.MAX` |
+| `d.saturating_sub(other)` | floors at `EngineDuration.ZERO` |
+| `d.to_timespec()` | POSIX `timespec` projection |
+
+### `Fd` predicates
+
+| Method | Semantics |
+|---|---|
+| `Fd.INVALID` | sentinel `Fd(-1)` |
+| `f.as_raw()` | `Int32` accessor |
+| `f.is_valid()` | `f.0 >= 0` |
+| `f.try_as_valid()` | `Maybe<ValidFd>` |
+| `f.as_valid()` | `ValidFd` (panics on invalid) |
+
+### Standard descriptors
+
+```verum
+public const STDIN_FD: ValidFd = Fd(0) as ValidFd
+public const STDOUT_FD: ValidFd = Fd(1) as ValidFd
+public const STDERR_FD: ValidFd = Fd(2) as ValidFd
+```
+
 ---
 
 ## I/O engine
@@ -237,6 +334,98 @@ Platform picks:
 - **Linux**: `IoUringDriver` (fallback: `EpollDriver`)
 - **macOS**: `KqueueDriver`
 - **Windows**: `IocpDriver`
+
+---
+
+## Filesystem watcher — `sys.fs_watch`
+
+Native, event-driven filesystem monitoring on top of the per-platform
+kernel facility:
+
+| Platform | Backend |
+|---|---|
+| macOS | kqueue `EVFILT_VNODE` |
+| Linux | inotify (`inotify_init1` + `inotify_add_watch` direct syscalls) |
+| Windows | `ReadDirectoryChangesW` (overlapped + WaitForMultipleObjects) |
+
+Sub-millisecond latency, kernel-driven; no polling overhead.
+
+```verum
+public type FsEventKind is
+    | Created
+    | Modified
+    | Deleted
+    | Renamed
+    | AttribChanged;
+
+public type FsEvent is {
+    path: Text,
+    kind: FsEventKind,
+}
+
+@must_consume
+public type FsWatcher is { inner: FsWatcherImpl }
+
+implement FsWatcher {
+    public fn new() -> Result<FsWatcher, Text>
+    // .watch(path) — add a target to the watcher
+    // .recv()      — block for the next FsEvent
+    // .recv_with_timeout(d) — bounded wait
+}
+```
+
+---
+
+## Byte-range file locks — `sys.locking`
+
+High-level, typed wrapper around the per-platform fcntl /
+`LockFileEx` primitives in `sys.common`. The user-facing surface
+expresses the lifecycle through an affine `LockHandle` that consumes
+its receiver on `.unlock()` — releasing without explicit unlock is
+also safe (handled by `Drop`).
+
+```verum
+public type FileLockKind is Shared | Exclusive
+
+public type LockRegion is {
+    start: Int,
+    length: Int,    // -1 = "from start to EOF"
+}
+
+public type LockError is
+    | Conflict(owner_pid: Maybe<Int>)
+    | IoError(err: OSError)
+```
+
+The 5-state SQLite locking protocol (SHARED / RESERVED / PENDING /
+EXCLUSIVE) is built on top of these primitives in
+`core.database.sqlite.native.l0_vfs.locking`.  Advisory-only on
+POSIX; mandatory on Windows; NFS not supported.
+
+---
+
+## Crash-safe persistence — `sys.durability`
+
+Intent-named re-export surface over the durability primitives in
+`sys.common`. Callers prefer `mount core.sys.durability.{full_fsync,
+sync_directory}` over reaching into the catch-all common namespace,
+so the intent is visible at the import site.
+
+```verum
+public mount core.sys.common.full_fsync
+public mount core.sys.common.data_only_fsync
+public mount core.sys.common.sync_directory
+public mount core.sys.common.pread
+public mount core.sys.common.pwrite
+```
+
+Per-platform backends:
+
+| Platform | `full_fsync` | `sync_directory` |
+|---|---|---|
+| Linux | `fsync(fd)` direct syscall | `fsync(dirfd)` |
+| macOS | `fcntl(fd, F_FULLFSYNC)` (stronger than `fsync`) | `fsync(dirfd)` |
+| Windows | `FlushFileBuffers(handle)` | no-op (NTFS journals dir updates) |
 
 ---
 
@@ -330,6 +519,107 @@ suite, audited in `core-tests/sys/time_ops/audit.md`.
 
 ---
 
+## File operations — `sys.file_ops`
+
+Thin Verum-side shim over the canonical POSIX file syscalls. The
+`OpenMode` newtype packs the canonical `O_*` flag bit-patterns so
+callers don't have to import platform-specific constants directly.
+
+```verum
+public type OpenMode is { flags: Int };
+
+implement OpenMode {
+    public fn read() -> OpenMode        // O_RDONLY = 0
+    public fn write() -> OpenMode       // O_WRONLY | O_CREAT | O_TRUNC = 0x301
+    public fn read_write() -> OpenMode  // O_RDWR = 2
+    public fn append() -> OpenMode      // O_WRONLY | O_CREAT | O_APPEND = 0x409
+    public fn create() -> OpenMode      // O_WRONLY | O_CREAT | O_EXCL = 0x241
+}
+
+public fn read_file(path: Text) -> Maybe<Text>           // None on ENOENT
+public fn write_file(path: Text, content: Text) -> Bool  // true on success
+public fn append_file(path: Text, content: Text) -> Bool
+public fn delete_file(path: Text) -> Bool                // false on missing
+public fn file_exists(path: Text) -> Bool
+public fn file_size(path: Text) -> Int                   // -1 sentinel
+```
+
+The error contract is intentionally lossy at this layer — the caller
+gets a `Maybe` or `Bool` and is expected to consult `errno` separately
+if structured error propagation is required. `core.io.fs` is the
+higher-level shape that funnels through `Result<T, OSError>`.
+
+---
+
+## Process operations — `sys.process_ops`
+
+```verum
+public type ProcessExitStatus is { code: Int };
+implement ProcessExitStatus {
+    public fn success(&self) -> Bool   // code == 0
+    public fn code(&self) -> Int
+}
+
+public type Child is { pid: Int, stdout_fd: Int, stderr_fd: Int };
+implement Child {
+    public fn wait(&self) -> ProcessExitStatus
+    public fn read_stdout(&self) -> Text  // "" when stdout_fd < 0
+}
+
+public fn spawn(program: Text, args: List<Text>) -> Maybe<Child>
+public fn run(program: Text, args: List<Text>) -> ProcessExitStatus
+public fn args() -> List<Text>
+public fn arg_count() -> Int
+public fn arg_unchecked(index: Int) -> Text
+```
+
+The `arg_unchecked(i)` form is the canonical path for `core.cli.*`'s
+argv parser — user code should reach for `core.base.env.arg(i) -> Maybe<Text>`
+which performs the bounds check internally.
+
+---
+
+## Raw TCP / UDP — `sys.net_ops`
+
+FFI-only fallback socket types. The user-facing rich API lives in
+[`core.net.tcp` / `core.net.udp`](/docs/stdlib/net) — `RawTcpStream`,
+`RawTcpListener`, `RawUdpSocket` here are the raw shapes user code
+should NOT reach for unless explicitly working around the IoEngine
+async boundary (e.g. in low-level test harnesses).
+
+```verum
+public type RawTcpStream is { fd: Int };
+implement RawTcpStream {
+    public fn connect(host: Text, port: Int) -> Maybe<RawTcpStream>
+    public fn send(&self, data: Text) -> Int
+    public fn recv(&self, max_len: Int) -> Text
+    public fn close(&self)
+    public fn raw_fd(&self) -> Int
+}
+
+public type RawTcpListener is { fd: Int };
+implement RawTcpListener {
+    public fn bind(port: Int) -> Maybe<RawTcpListener>
+    public fn accept(&self) -> Maybe<RawTcpStream>
+    public fn close(&self)
+    public fn raw_fd(&self) -> Int
+}
+
+public type RawUdpSocket is { fd: Int };
+implement RawUdpSocket {
+    public fn bind(port: Int) -> Maybe<RawUdpSocket>
+    public fn send_to(&self, data: Text, host: Text, port: Int) -> Int
+    public fn recv(&self, max_len: Int) -> Text
+    public fn close(&self)
+}
+```
+
+The `Raw*` name prefix is mandatory (#75) — pre-rename the bare
+`TcpStream` / `TcpListener` / `UdpSocket` names silently shadowed
+the rich `core.net.*` API and broke `addr.port()` method lookup.
+
+---
+
 ## Module status
 
 Each `core.sys.*` module carries an explicit conformance status so you
@@ -347,23 +637,23 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `common.vr`        | **partial** | [core-tests/sys/common](https://github.com/verum-lang/verum/tree/main/core-tests/sys/common) — 50+ type-level tests green: PAGE_SIZE / page_align_* / OSError / FileDesc / IOVec / MemProt / MapFlags / SysContextError / FcntlLockKind / ACCESS_* / SEEK_SET / F_*LCK / MAX_CONTEXT_SLOTS / CONTEXT_STACK_DEPTH. Mount re-export defect (`mount core.sys.{PAGE_SIZE}` resolving to wrong sibling) closed by parent-prefix scan in `process_import_tree`. FileDesc.STDIN/INVALID const-method access deferred (typechecker __newtype_inner_X gap for archive-loaded transparent-wrapper records). FFI-adjacent surface (os_alloc / pread / pwrite / fsync / try_lock_region / file_size / access / random_bytes / init_process_args) deferred to per-platform integration. |
+| `common.vr`        | **partial** | [core-tests/sys/common](https://github.com/verum-lang/verum/tree/main/core-tests/sys/common) — 70+ type-level tests green: PAGE_SIZE / page_align_* / OSError / FileDesc / IOVec / MemProt / MapFlags / SysContextError / FcntlLockKind / ACCESS_* / SEEK_SET / F_*LCK / MAX_CONTEXT_SLOTS / CONTEXT_STACK_DEPTH. Mount re-export defect (`mount core.sys.{PAGE_SIZE}` resolving to wrong sibling) closed by parent-prefix scan in `process_import_tree`. **Two fundamental fixes landed 2026-05-16** (commits `0b17c7579` + `c8e39850c`): (a) sized-integer `==/!=` (Int8/Int16/Int32/Int64/UInt8..UInt128/USize/ISize/Byte) on cross-module-const operands no longer infinite-recurses through method dispatch — `compile_binary`'s `is_primitive` extended to consult `is_numeric_type` registry + `extract_expr_type_name(Path)` propagates const declared types; (b) `EqG protocol_id=0` (blanket-impl `<T: Eq>` Eq dispatch like `Maybe<OSError>.eq`) now reads runtime `ObjectHeader.type_id` and dispatches through `<TypeName>.eq` instead of falling through to structural `deep_value_eq` (`OSError.eq` compares only `code`, so structural pre-fix returned false for two same-code different-message records). FileDesc.STDIN/INVALID const-method access deferred (typechecker `__newtype_inner_X` gap for archive-loaded transparent-wrapper records). FFI-adjacent surface (os_alloc / pread / pwrite / fsync / try_lock_region / file_size / access / random_bytes / init_process_args) deferred to per-platform integration. |
 | `cabi.vr`          | **complete** | [core-tests/sys/cabi](https://github.com/verum-lang/verum/tree/main/core-tests/sys/cabi) — 22 unit + 9 property + 5 regression all green. Every alias (CInt / CUInt / CLong / CULong / CSize / CSSize / COff / CMode / CPid / CUid / CGid / CClockId / CSockLen / CFd) round-trips through tuple-newtype construction; CFD_STDIN / CFD_STDOUT / CFD_STDERR sentinel triple pinned. Transparent-wrapper newtype constructor registration fix in `archive_ctx_loader.rs` Pass 5 closed every CFD_* / direct-CFd-construction test. |
 | `bitfield.vr`      | **regression-only** | [core-tests/sys/bitfield](https://github.com/verum-lang/verum/tree/main/core-tests/sys/bitfield) — 56 unit + 3 pinned regressions (gated by cross-module free-fn dispatch defect) |
 | `mmio.vr`          | **partial** | [core-tests/sys/mmio](https://github.com/verum-lang/verum/tree/main/core-tests/sys/mmio) — 8/8 BarrierKind + compiler_barrier/dmb green. MemoryFlags const access + MemoryRegion methods consuming MemoryFlags const gated by typechecker `__newtype_inner_X` gap (same as FileDesc.STDIN). MmioRegister<T, MODE> generic + VerifiedRegister ghost-state deferred — require runtime MMIO fixture. |
-| `interrupt.vr`     | undocumented | — |
+| `interrupt.vr`     | **regression-only** | [core-tests/sys/interrupt](https://github.com/verum-lang/verum/tree/main/core-tests/sys/interrupt) — Kernel-mode surface (CriticalSection / InterruptCell\<T\> / disable_interrupts / context_switch); the in-process `verum test` harness can only pin the user-side type-shape (CriticalSection.is_active returns Bool, InterruptCell\<T\>.new construction). Full surface exercised by VCS specs under `L0-critical/` and the embedded runtime integration suite. |
 | `time_ops.vr`      | **partial** | [core-tests/sys/time_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/time_ops) — Arithmetic API (`SysTimeOpsDuration.from_*/as_*/zero`) GREEN in both `--interp` and `--aot`. Clock API (`SysTimeOpsInstant.now/elapsed/duration_since`) GREEN post-fix. **Task #5 CLOSED in commit `51ecc3bc9`** — fundamental architectural fix: replaced the hardcoded dependency-graph HashMap in `core_compiler.rs` with `augment_dependencies_from_mounts` — a regex-based mount scan that auto-derives the implied module dep edges from every stdlib `.vr` file's `mount <path>` declarations. A `FOUNDATION_DEPS_TO_FORCE` const force-orders `core.intrinsics` + `core.intrinsics.runtime` before their 20+ consumers (sys/base/mem/async/io/text/runtime/net/sync subdirs). The fix transitively closes the panic-stub class across the entire stdlib — every `@intrinsic`-decorated raw-syscall declaration is now reliably visible to its consumers' mount-resolution path at codegen time. 2 residual defects: §C `Child.read_stdout` silent-empty data-loss (separate stub-body class); §D `wall_clock_ms()` returns < post-2000 ms (runtime SystemTime dispatch — exposed by §A close, distinct defect). |
-| `file_ops.vr`      | undocumented | — |
-| `net_ops.vr`       | undocumented | — |
-| `process_ops.vr`   | undocumented | — |
+| `file_ops.vr`      | **partial** | [core-tests/sys/file_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/file_ops) — OpenMode bit-patterns (read=0 / write=0x301 / append=0x409 / create=0x241 / read_write=2) + error-sentinel paths (missing path → None / -1 / false) pinned end-to-end. **Task #FUNDAMENTAL-SYS-RAW CLOSED in this branch** — replaced stale `mount super.raw.*` (pointed at deleted `core/sys/raw.vr` post-migration) with canonical `mount core.intrinsics.runtime.os.{__file_*_raw}`. Pre-fix every `__file_*_raw` call silently compiled to a lenient panic-stub. Happy-path round-trip (write→read of same content) deferred to integration suite with tmpdir fixture. |
+| `net_ops.vr`       | **partial** | [core-tests/sys/net_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/net_ops) — Raw\* canonical-name (RawTcpStream / RawTcpListener / RawUdpSocket; #75 shadow-break) + fd round-trip + connect→None on unroutable-port sweep pinned. **Task #FUNDAMENTAL-SYS-RAW CLOSED** — same architectural fix as file_ops. Live socket round-trip deferred (needs fixture pair). |
+| `process_ops.vr`   | **partial** | [core-tests/sys/process_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/process_ops) — ProcessExitStatus.success ↔ code==0 + Child invalid-fd short-circuit + args/arg_count coherence pinned. **Task #FUNDAMENTAL-SYS-RAW CLOSED** — same architectural fix. spawn / run happy path deferred (needs CI-portable fixture). |
 | `process_native.vr`| undocumented | — |
-| `context_ops.vr`   | undocumented | — |
+| `context_ops.vr`   | **partial** | [core-tests/sys/context_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/context_ops) — TLS_SLOT_COUNT=256 + tls_set/get round-trip + context_provide/get/end DI scope + defer_depth tracking pinned end-to-end. **Two fundamental fixes landed in this branch**: (a) **Task #FUNDAMENTAL-SYS-RAW** — replaced stale `mount super.raw.*` with canonical `mount core.intrinsics.runtime.os.{__ctx_*_raw, __defer_*_raw}`; (b) **Task #FUNDAMENTAL-CTX-INTRINSICS** — wired interpreter `__ctx_get_raw` / `__ctx_provide_raw` / `__ctx_end_raw` / `__defer_*_raw` to the real `state.context_stack` + new `state.defer_stack` (pre-fix every TLS/DI/defer raw intrinsic returned constant 0/nil; the interpreter's existing ContextStack opcode-level wiring at 0xB0/0xB1/0xB2 was correct but the raw-function dispatch arm was completely inert). `defer_execute` callback invocation deferred to Tier-1 (interpreter can't synthesise indirect `fn(Int)->Int` dispatch). |
 | `signal.vr`        | **regression-only** | [core-tests/sys/signal](https://github.com/verum-lang/verum/tree/main/core-tests/sys/signal) — 14/52 green. Pre-existing stdlib defects in Signal: variant-tag drift on @cfg-aware match arms, `atomic_load`/`atomic_store` intrinsic registration missing for SignalFlag. Architectural — drift is in stdlib Signal implementation, not test infrastructure. |
-| `fs_watch.vr`      | undocumented | — |
-| `io_engine.vr`     | undocumented | — |
-| `init.vr`          | undocumented | — |
-| `durability.vr`    | undocumented | — |
-| `locking/mod.vr`   | undocumented | — |
+| `fs_watch.vr`      | **partial** | [core-tests/sys/fs_watch](https://github.com/verum-lang/verum/tree/main/core-tests/sys/fs_watch) — FsEventKind 5-variant (Created/Modified/Deleted/Renamed/AttribChanged) + Clone impl + FsEvent record round-trip pinned. FsWatcher.new() / .watch() / event-stream surface deferred (needs per-platform fixture). |
+| `io_engine.vr`     | **partial** | [core-tests/sys/io_engine](https://github.com/verum-lang/verum/tree/main/core-tests/sys/io_engine) — EngineDuration ring algebra (from/as scaling, saturating add/sub, identity laws) + Fd partition (valid ↔ raw >= 0) + Fd.INVALID = -1 + TimeSpec record pinned end-to-end. IOEngine protocol round-trip + CompletionOp 18-variant + Port/BoundPort refinement validation + RawSocketAddr V4/V6 deferred. |
+| `init.vr`          | **partial** | [core-tests/sys/init](https://github.com/verum-lang/verum/tree/main/core-tests/sys/init) — InitError 6-variant (TlsFailed/ContextFailed/AllocatorFailed/PanicHandlerFailed/AlreadyInitialized/NotInitialized) + Eq laws (reflexivity / symmetry / payload-aware) + .message contents pinned. `verum_init` / `verum_shutdown` / `panic_impl` deferred (bootstrap-time + termination-time; out of scope for in-process tests). |
+| `durability.vr`    | **partial** | [core-tests/sys/durability](https://github.com/verum-lang/verum/tree/main/core-tests/sys/durability) — Intent-named re-exports (`full_fsync` / `data_only_fsync` / `sync_directory` / `pread` / `pwrite`) resolve via the `public mount core.sys.common.X` chain. Error-funnel (`Result<(), OSError>` on invalid fd) pinned across full_fsync + data_only_fsync with the invalid-fd sweep. Happy-path round-trip + pread/pwrite/sync_directory CBGR-byte-slice deferred. |
+| `locking/mod.vr`   | **partial** | [core-tests/sys/locking](https://github.com/verum-lang/verum/tree/main/core-tests/sys/locking) — FileLockKind Shared/Exclusive (#160 rename from `LockKind` to avoid SQLite VFS shadow) + LockRegion start/length with -1 EOF sentinel + LockError Conflict(Maybe\<Int\>)/IoError(OSError) variant payload shapes pinned. try_lock / unlock live round-trip deferred (needs fd fixture). |
 | `embedded.vr`      | undocumented | — |
 | `no_runtime.vr`    | undocumented | — |
 

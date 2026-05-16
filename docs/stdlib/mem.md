@@ -4,6 +4,12 @@ title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 ---
 
+import ModuleStatus, {
+  LifecycleBadge,
+  TierBadge,
+  TestCovBadge,
+} from '@site/src/components/StdlibBadge';
+
 # `core.mem` — Memory management
 
 The implementation of CBGR (Capability-Based Generational References),
@@ -12,20 +18,72 @@ typically interacts with `Heap`, `Shared`, and references via
 [`base`](/docs/stdlib/base); this page documents the full `mem` API
 for systems programmers.
 
+## Module status
+
+Each stdlib module declares its maturity via the `@arch_module(...,
+lifecycle: Lifecycle.X("vN.M"))` directive at the top of its source.
+The four lifecycle states are:
+
+| Status | Meaning | API stability |
+|---|---|---|
+| **🟢 Theorem(v0.1+)** | Implementation complete, mechanised proof attached, tier-aligned test suite green on both `--interp` and `--aot`. | Stable — additions only, no breaking changes inside the major version. |
+| **🟡 Conjecture(v0.1)** | Implementation complete; proof in progress; tests passing in at least one tier. | Stable in spirit — may receive bug-fix breakage if a defect surface forces a rename. |
+| **🟠 Draft(vX)** | Implementation incomplete or partially gated behind feature flags; API may still shift. | Unstable — pin a specific Verum version. |
+| **⚫ Deprecated** | Superseded by another module; kept for source-level compatibility until next major version. | Will be removed — migrate per the deprecation note. |
+
+Orthogonal coverage axes:
+
+| Axis | Symbols | Meaning |
+|---|---|---|
+| **Tier** | `--interp` ✓ / `--aot` ✓ | Both tiers exercise the module's public surface; `--interp` is mandatory, `--aot` is "tier-aligned" gate. |
+| **Test coverage** | 🟢 full / 🟡 partial / 🔴 none | "Full" requires `core-tests/<x>/<y>/{unit,property,integration,regression}_test.vr` + `audit.md`. |
+
+### `core.mem` per-module status
+
+The table reflects `@arch_module(... lifecycle: ...)` declared in each
+source file PLUS the test-coverage state in `core-tests/mem/`.
+
+| File | Lifecycle | Tier | Tests | Notes |
+|---|---|---|---|---|
+| `capability.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/capability/` — 4 files + audit |
+| `header.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/header/` — 4 files + audit |
+| `size_class.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/size_class/` — 4 files + audit; uncovered `clz_u64 → ctlz` + PAGE_HEADER_SIZE drift defects (both closed) |
+| `thin_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/thin_ref/` — 4 files + audit (static-shape only) |
+| `fat_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/fat_ref/` — 4 files + audit (static-shape only) |
+| `hazard.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/hazard/` — static-shape suite; concurrent-safety proofs pending |
+| `epoch.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — read-only surface; write-surface API now landed (`reset_for_tests` / `increment_epoch_for_tests`) |
+| `allocator.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/allocator/` — static-shape suite; live-alloc round-trip in `core-tests/base/memory/cbgr_test.vr` |
+| `arena.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/arena/` — static-shape suite |
+| `segment.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/segment/` — Mimalloc-style 32 MiB chunks |
+| `heap.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/heap/` — thread-local fast path; PAGE_HEADER_SIZE drift closed |
+| `diagnostics.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/diagnostics/` — read-only observer surface |
+| `cap_audit.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit/` — capability transition events |
+| `cap_audit_ring.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
+| `mem_raw.vr` (re-exported) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy`/`memmove`/`memset`/`memcmp`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
+
+The dedicated-suite-pending modules are tracked in
+`core-tests/INVENTORY.md`; new modules graduate to 🟢 once all four
+test files are landed and pass both tiers.
+
+## File-by-file API surface
+
 | File | What's in it |
 |---|---|
 | `allocator.vr` | `Allocator` protocol, `cbgr_alloc`/`cbgr_dealloc`/`cbgr_realloc`, `Layout`, `AllocError` |
-| `header.vr` | `AllocationHeader` (32-byte CBGR metadata) |
+| `header.vr` | `AllocationHeader` (32-byte CBGR metadata), `MemValidationError` / `ValidationError` alias, FLAG_* bits |
 | `thin_ref.vr` | `ThinRef<T>` (16 bytes) |
 | `fat_ref.vr` | `FatRef<T>` (32 bytes) |
 | `hazard.vr` | `HazardGuard<T>` — concurrent-safe deref protection |
 | `epoch.vr` | `EpochManager` — generation wraparound safety |
-| `capability.vr` | `Capability` bits — read/write/admin/etc. |
+| `capability.vr` | `Capability` bits — read/write/execute/delegate/revoke/borrowed/mutable/no-escape; `pack_epoch_caps` / `unpack_*` |
 | `arena.vr` | `GenerationalArena<T>` — O(1) mass invalidation |
-| `segment.vr` | `Segment` — 32 MiB virtual regions |
-| `size_class.vr` | 73-bin size class table (Mimalloc-style) |
+| `segment.vr` | `Segment` — 32 MiB virtual regions, mimalloc-style |
+| `size_class.vr` | 73-bin size class table (Mimalloc-style); `size_to_bin` / `bin_to_size` / `aligned_size` |
 | `heap.vr` | `LocalHeap` — thread-local allocation |
-| `raw_ops.vr` | `memcpy`, `memmove`, `memset`, `memcmp`, `strlen`, `strcmp` |
+| `diagnostics.vr` | Read-only `MemHeaderView` observer surface; `live_allocations` |
+| `cap_audit.vr` | `CapEvent` capability-transition event type |
+| `cap_audit_ring.vr` | Lock-free SPMC ring buffer for `CapEvent`; `record_revoke` / `record_attenuate` / `record_ref_*` / `record_gen_bump` |
+| `mem_raw.vr` (re-exported via `core.intrinsics.runtime.mem_raw.*`) | `memcpy`, `memmove`, `memset`, `memcmp`, `strlen`, `strcmp` |
 
 ---
 
