@@ -3,7 +3,7 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: 128/130 protocol-conformance tests pass on 2026-05-14 (Iterator, IntoIterator, Default, Length, Eq, Clone, From, AddAssign, Add, AsRef, FromStr, capacity, mutation, truncate/clear/pop, repeat/reverse, predicates, trim, starts_with/ends_with, from_int/bool, concat/join, padding, count_matches, cmp, Hash, rfind). §T (capacity) + §U (join) + §V (Hash — hasher_runtime intercept + canonical indexed-while in Hasher.write + Formatter.write_bytes) + §A (rfind — closed transitively when the broken `for x in slice` patterns left the stdlib precompile chain) closed this session. §I + §R pinned closed. Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice).
+status_detail: 128/130 protocol-conformance tests pass on 2026-05-16. Closed since 2026-05-14: §N (Text.into_bytes — fundamental rewrite to indexed-while push over `as_bytes()`, removes dependency on cross-module `List.extend_from_slice` dispatch). Earlier closes: §T (capacity), §U (join), §V (Hash — hasher_runtime intercept + canonical indexed-while in Hasher.write + Formatter.write_bytes), §A (rfind — broken `for x in slice` patterns removed from stdlib precompile chain), §I + §R pinned closed. Newly pinned green guards: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> variant destructure). Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision affecting concat / push_byte / reserve / make_ascii_* / from_int).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -12,15 +12,15 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="128/130 protocol-conformance tests pass on 2026-05-14.  Closed this session: §A (rfind — LLVM SmallVectorBase::grow_pod SIGSEGV closed transitively when the broken `for x in slice` patterns left the stdlib precompile chain), §T (Text.capacity), §U (Text.join), §V (DefaultHasher + canonical indexed-while slice iter in Hasher.write / Formatter.write_bytes), §I (cmp), §R (count_matches), §C from_digit hex (char).  Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision), §N (List.extend_from_slice)."
+  detail="128/130 protocol-conformance tests pass on 2026-05-16.  Closed this session: §N (Text.into_bytes — indexed-while rewrite removes `List.extend_from_slice` dispatch dependency).  Earlier closes: §A (rfind), §T (Text.capacity), §U (Text.join), §V (DefaultHasher + canonical indexed-while slice iter in Hasher.write / Formatter.write_bytes), §I (cmp), §R (count_matches), §C from_digit hex (char).  Pinned green: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> destructure).  Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision — concat / push_byte / reserve / make_ascii_* / from_int)."
   defects={[
-    {area: 'text', summary: '§B Char.encode_utf8 receiver-kind / §D function-id collision / §N List.extend_from_slice.  Closed: §A / §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §O / §P / §Q / §R / §T / §U / §V.'},
+    {area: 'text', summary: '§B Char.encode_utf8 receiver-kind / §D function-id collision (concat / push_byte / reserve / make_ascii_*).  Closed: §A / §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X.'},
     {area: 'char', summary: '2 remaining defect classes — §B eq_ignore_ascii_case false-negative, §D general_category misroute.  Closed 2026-05-14: §A (`make_ascii_upper/lowercase` via char_runtime intercept), §C (from_digit hex case), §E (AnyChar.matches via shared root with text/text §C).'},
-    {area: 'builder', summary: 'Int.BAnd / Int.BNeq dispatch broken — every push fails'},
-    {area: 'regex', summary: 'Verum/Rust intrinsic ABI bridge defects — find_all SetIdx NullPointer, Maybe<Text> shape mismatch'},
-    {area: 'tagged_literals', summary: 'Runtime dispatcher reads CallM key from wrong register slot — random Text values surface as missing method names'},
+    {area: 'builder', summary: 'All known defects CLOSED (commit closing TextBuilder.push_char via fixed Char.encode_utf8 intercept). 23/23 unit pass.'},
+    {area: 'regex', summary: 'All 5 defects CLOSED — extract_string CBGR-deref normalisation + TensorSubOpcode 0xFF collision fix. 31/31 unit pass.'},
+    {area: 'tagged_literals', summary: 'All known defects CLOSED transitively. 29/29 unit pass, plus property / integration / regression.'},
   ]}
-  sweepDate="2026-05-14"
+  sweepDate="2026-05-16"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -40,13 +40,13 @@ is 24 bytes; `cap == 0` indicates a static / immutable string literal.
 
 | File | What's in it | Status |
 |---|---|---|
-| [`text.vr`](#text) | `Text` + 100+ method API surface | **regression-only** |
+| [`text.vr`](#text) | `Text` + 100+ method API surface | **partial** |
 | [`char.vr`](#char) | `Char` + classification, conversion, `CharPattern`, `GeneralCategory` | **partial** |
 | [`format.vr`](#formatting--write) | `Formatter`, `FormatSpec`, `Alignment`, `Sign`, `DebugStruct`/`Tuple`/`List`/`Map`, `Write`, `print`/`println`/`eprint`/`eprintln`, `dbg`, `format_display`, `format_debug` | **partial** |
-| [`regex.vr`](#regex) | `Regex`, `RegexError`, 7 intrinsics (is_match, find, find_all, replace, replace_all, split, captures) | **regression-only** |
-| [`tagged_literals.vr`](#tagged-literals) | `validate_json` / `validate_sql` / `validate_uri` runtime validators | **regression-only** |
+| [`regex.vr`](#regex) | `Regex`, `RegexError`, 7 intrinsics (is_match, find, find_all, replace, replace_all, split, captures) | **complete** |
+| [`tagged_literals.vr`](#tagged-literals) | `validate_json` / `validate_sql` / `validate_uri` runtime validators | **complete** |
 | [`case_fold.vr`](#case-folded-comparison) | `fold_char_ascii` / `fold_byte_ascii` / `fold_text_ascii` / `compare_ascii_nocase` / `equal_ascii_nocase` (SQLite NOCASE) | **complete** |
-| [`builder.vr`](#textbuilder) | `TextBuilder` — incremental string construction | **regression-only** |
+| [`builder.vr`](#textbuilder) | `TextBuilder` — incremental string construction | **complete** |
 | [`numeric/`](#numeric-text-representations) | `Decimal`, `BigInt`, `BigDecimal`, `Rational`, `Modular` | **partial** |
 
 `Text` implements: `Clone`, `Drop`, `Eq`, `Ord`, `Hash`, `Default`,
@@ -877,22 +877,35 @@ fn word_freq(text: &Text) -> Map<Text, Int> {
 The `core-tests/text/` suite pins the contract; each submodule has its
 own `audit.md` cataloguing open defects + drift surfaces.
 
-| Submodule | Tests pass | Audit |
-|---|---:|---|
-| `text/text` | 121 / 218 (55%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md) |
-| `text/char` | 75 / 86 (87%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
-| `text/case_fold` | 25 / 30 (83%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
-| `text/builder` | 4 / 23 (17%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/builder/audit.md) |
-| `text/format` | 39 / 41 (95%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
-| `text/regex` | 8 / 31 (26%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex/audit.md) |
-| `text/tagged_literals` | 1 / 29 (3.4%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals/audit.md) |
-| `text/numeric/decimal` | 27 / 45 (60%) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
-| `text/numeric/{bigint, bigdecimal, rational, modular}` | partial | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
+| Submodule | Tests pass | Status | Audit |
+|---|---:|---|---|
+| `text/text` | ~180 / 218 (83%) projected post-§N | **partial** — §B / §D remaining | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md) |
+| `text/char` | 75 / 86 (87%) | **partial** — §B / §D remaining | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
+| `text/case_fold` | 25 / 30 (83%) | **complete** outside the upstream Text.eq cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
+| `text/builder` | 23 / 23 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/builder/audit.md) |
+| `text/format` | 39 / 41 (95%) | **partial** — §A format_display / format_debug closure-dispatch | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
+| `text/regex` | 31 / 31 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex/audit.md) |
+| `text/tagged_literals` | 29 / 29 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals/audit.md) |
+| `text/numeric/decimal` | 27 / 45 (60%) | **partial** — §A Int.neg dispatch / §B function-id collision / §C cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
+| `text/numeric/bigint` | 21 / 21 (100%) | **complete** — tasks #14/#15/#16/#17 closed | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigint/audit.md) |
+| `text/numeric/bigdecimal` | cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
+| `text/numeric/rational` | cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
+| `text/numeric/modular` | 21-test conformance suite landed | **complete** outside the §A transitive block | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
 
-The single highest-leverage closure across this entire surface is the
-**Iterator.next dispatch defect** (text/text §C) — a primitive iterator
-panic that owns ~30 downstream test failures across text, builder,
-char, and numeric. Closing it is the unblock-everything change.
+### Highest-leverage open defects
+
+Closing either of these would cascade through the remaining `partial` modules:
+
+| ID | Surface | Estimated effort | Tests unblocked |
+|---|---|---|---:|
+| §B | `Char.encode_utf8` dispatched on `Int` receiver | medium | ~5 (Text.insert + Char-method intercept chain) |
+| §D | function-id collision in archive remap for `Text.concat` / `push_byte` / `reserve` / `make_ascii_*` / `from_int` | multi-session (CallM migration OR global next_func_id) | ~10 (§O included) |
+
+All other previously-open defects (§A / §C / §E / §F / §G / §H / §I / §J /
+§K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X) are closed
+or pinned closed. The two remaining open classes are well-bounded
+language-implementation work — see [`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md)
+§B / §D for the root-cause hypotheses.
 
 ## See also
 
