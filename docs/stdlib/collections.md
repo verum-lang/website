@@ -33,7 +33,7 @@ by `core-tests/collections/<module>/` under both `verum test --interp`
 | `deque.vr`          | **partial** | [core-tests/collections/deque](https://github.com/verum-lang/verum/tree/main/core-tests/collections/deque) — 22 unit + 8 property + 5 integration + 2 pinned regressions. Stdlib type-decl field order matches runtime intercept allocation. |
 | `heap.vr`           | **partial** | [core-tests/collections/heap](https://github.com/verum-lang/verum/tree/main/core-tests/collections/heap) — 12 unit + 5 property + 4 integration + 2 pinned regressions (BinaryHeap.with_capacity / .from_list cross-module name resolution). |
 | `btree.vr`          | undocumented | — |
-| `slice.vr`          | undocumented | — |
+| `slice.vr`          | **regression-only** | [core-tests/collections/slice](https://github.com/verum-lang/verum/tree/main/core-tests/collections/slice) — 32 unit + 10 property + 5 integration + 17 regressions (5 PASS-GUARDs + 12 defect-pins). Working surface: len/is_empty/first/last/get/slice(a,b)/split_at/min/max/contains/iter (every method that has a parallel List impl). Slice-only methods (eq_slice/cmp_slice/to_list/binary_search/partition_point/position/chunks/windows) are unreachable via CallM because `&[T]` shares the `List` runtime kind. |
 | `lru.vr`            | undocumented | — |
 | `ttl_cache.vr`      | undocumented | — |
 | `bloom.vr`          | undocumented | — |
@@ -660,6 +660,31 @@ let recent_total: Float = last_minute.iter().map(|m| m.value).sum();
 ---
 
 ## Slice utilities (`slice.vr`)
+
+> **Status: regression-only**.
+> `&[T]` is the source-level type for "borrowed view of a contiguous
+> run of `T`", but at the VBC runtime slice receivers carry a `List`
+> kind, so methods declared in `implement<T> [T] { ... }` that are
+> not ALSO present on `List<T>` dispatch through CallM and panic with
+> `method 'List.<name>' not found`. The working surface — methods
+> with a parallel `List<T>` implementation — is conformance-tested
+> on `--interp`:
+>
+> | Method | Conformance |
+> |---|---|
+> | `len`, `is_empty`, `first`, `last`, `get` | green |
+> | `slice(a,b)`, `slice_from`, `slice_to`, `split_at` | green |
+> | `min`, `max`, `contains` | green |
+> | `iter()` → `SliceIter::next()` | green |
+>
+> The slice-only surface — `eq_slice`, `cmp_slice`, `to_list`,
+> `binary_search`, `partition_point`, `position` / `rposition`,
+> `is_sorted`, `starts_with` / `ends_with`, `chunks`, `windows` —
+> is gated on the architectural fix to give `&[T]` a distinct
+> runtime kind (or to teach codegen to emit `Call(Slice.<m>_fid)`
+> rather than `CallM` when the receiver's static type is `&[T]`).
+> Defects pinned in
+> `core-tests/collections/slice/regression_test.vr` §A–§E.
 
 `&[T]` is the shared type for "borrowed view of a contiguous run of
 `T`". All collections' `.iter()` and indexing yield slices where it
