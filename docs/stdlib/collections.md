@@ -34,7 +34,7 @@ by `core-tests/collections/<module>/` under both `verum test --interp`
 | `heap.vr`           | **partial** | [core-tests/collections/heap](https://github.com/verum-lang/verum/tree/main/core-tests/collections/heap) — 12 unit + 5 property + 4 integration + 2 pinned regressions (BinaryHeap.with_capacity / .from_list cross-module name resolution). |
 | `btree.vr`          | undocumented | — |
 | `slice.vr`          | **regression-only** | [core-tests/collections/slice](https://github.com/verum-lang/verum/tree/main/core-tests/collections/slice) — 32 unit + 10 property + 5 integration + 17 regressions (5 PASS-GUARDs + 12 defect-pins). Working surface: len/is_empty/first/last/get/slice(a,b)/split_at/min/max/contains/iter (every method that has a parallel List impl). Slice-only methods (eq_slice/cmp_slice/to_list/binary_search/partition_point/position/chunks/windows) are unreachable via CallM because `&[T]` shares the `List` runtime kind. |
-| `lru.vr`            | undocumented | — |
+| `lru.vr`            | **stable**  | [core-tests/collections/lru](https://github.com/verum-lang/verum/tree/main/core-tests/collections/lru) — 21 unit + 9 property + 5 integration + 5 PASS-GUARDs (40/40 green on `--interp`). Construction with capacity clamp, insert prior-value return, get/peek/remove/contains, clear, capacity-pressure eviction, LRU order tracking via touch-on-get, stats (size/hits/misses/evicted), peek-no-touch invariant — all conformance-tested. |
 | `ttl_cache.vr`      | undocumented | — |
 | `bloom.vr`          | undocumented | — |
 | `hyperloglog.vr`    | undocumented | — |
