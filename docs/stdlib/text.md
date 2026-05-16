@@ -3,7 +3,7 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: 128/130 protocol-conformance tests pass on 2026-05-16. Closed since 2026-05-14: §N (Text.into_bytes — fundamental rewrite to indexed-while push over `as_bytes()`, removes dependency on cross-module `List.extend_from_slice` dispatch). Earlier closes: §T (capacity), §U (join), §V (Hash — hasher_runtime intercept + canonical indexed-while in Hasher.write + Formatter.write_bytes), §A (rfind — broken `for x in slice` patterns removed from stdlib precompile chain), §I + §R pinned closed. Newly pinned green guards: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> variant destructure). Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision affecting concat / push_byte / reserve / make_ascii_* / from_int).
+status_detail: 128/130 protocol-conformance tests pass on 2026-05-16. Closed this session: §B (Char.encode_utf8 / encode_utf16 CallM intercept — fundamental dispatch fix for Char NaN-boxed as Int) + §N (Text.into_bytes — indexed-while push over as_bytes(), removes cross-module List.extend_from_slice dispatch dependency). Earlier closes: §T (capacity), §U (join), §V (Hash — hasher_runtime intercept + canonical indexed-while in Hasher.write + Formatter.write_bytes), §A (rfind), §I + §R pinned closed. Newly pinned green guards: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> variant destructure). Remaining open: §D (function-id collision affecting concat / push_byte / reserve / make_ascii_* / from_int). Newly tracked: §Y (AOT typechecker mount-scoped name resolution for ParseError — cli/text collision).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -12,11 +12,11 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="128/130 protocol-conformance tests pass on 2026-05-16.  Closed this session: §N (Text.into_bytes — indexed-while rewrite removes `List.extend_from_slice` dispatch dependency).  Earlier closes: §A (rfind), §T (Text.capacity), §U (Text.join), §V (DefaultHasher + canonical indexed-while slice iter in Hasher.write / Formatter.write_bytes), §I (cmp), §R (count_matches), §C from_digit hex (char).  Pinned green: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> destructure).  Remaining open: §B (Char.encode_utf8 receiver-kind), §D (function-id collision — concat / push_byte / reserve / make_ascii_* / from_int)."
+  detail="128/130 protocol-conformance tests pass on 2026-05-16.  Closed this session: §B (Char.encode_utf8 / encode_utf16 CallM intercept — fundamental dispatch fix for Char NaN-boxed as Int) + §N (Text.into_bytes — indexed-while rewrite removes `List.extend_from_slice` dispatch dependency).  Earlier closes: §A (rfind), §T (Text.capacity), §U (Text.join), §V (DefaultHasher + canonical indexed-while slice iter in Hasher.write / Formatter.write_bytes), §I (cmp), §R (count_matches), §C from_digit hex (char).  Pinned green: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> destructure).  Remaining open: §D (function-id collision — concat / push_byte / reserve / make_ascii_* / from_int).  Newly tracked: §Y (AOT typechecker mount-scoped name resolution — `core.cli.error.ParseError` shadows `core.text.ParseError` in AOT pass; workaround via `ParseError.new` constructor)."
   defects={[
-    {area: 'text', summary: '§B Char.encode_utf8 receiver-kind / §D function-id collision (concat / push_byte / reserve / make_ascii_*).  Closed: §A / §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X.'},
-    {area: 'char', summary: '2 remaining defect classes — §B eq_ignore_ascii_case false-negative, §D general_category misroute.  Closed 2026-05-14: §A (`make_ascii_upper/lowercase` via char_runtime intercept), §C (from_digit hex case), §E (AnyChar.matches via shared root with text/text §C).'},
-    {area: 'builder', summary: 'All known defects CLOSED (commit closing TextBuilder.push_char via fixed Char.encode_utf8 intercept). 23/23 unit pass.'},
+    {area: 'text', summary: '§D function-id collision (concat / push_byte / reserve / make_ascii_* / from_int).  Closed: §A / §B / §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X.'},
+    {area: 'char', summary: '2 remaining defect classes — §B eq_ignore_ascii_case false-negative, §D general_category misroute.  Closed 2026-05-14: §A (`make_ascii_upper/lowercase` via char_runtime intercept), §C (from_digit hex case), §E (AnyChar.matches via shared root with text/text §C).  Encode-UTF8 dispatch via new Char.encode_utf8 / encode_utf16 CallM intercept closes the upstream Text.insert / Text.push_char / TextBuilder.push_char surface (text/text §B).'},
+    {area: 'builder', summary: 'All known defects CLOSED. 23/23 unit pass.'},
     {area: 'regex', summary: 'All 5 defects CLOSED — extract_string CBGR-deref normalisation + TensorSubOpcode 0xFF collision fix. 31/31 unit pass.'},
     {area: 'tagged_literals', summary: 'All known defects CLOSED transitively. 29/29 unit pass, plus property / integration / regression.'},
   ]}
@@ -898,14 +898,31 @@ Closing either of these would cascade through the remaining `partial` modules:
 
 | ID | Surface | Estimated effort | Tests unblocked |
 |---|---|---|---:|
-| §B | `Char.encode_utf8` dispatched on `Int` receiver | medium | ~5 (Text.insert + Char-method intercept chain) |
 | §D | function-id collision in archive remap for `Text.concat` / `push_byte` / `reserve` / `make_ascii_*` / `from_int` | multi-session (CallM migration OR global next_func_id) | ~10 (§O included) |
+| §Y | AOT typechecker honours mount-scoped names so `core.text.ParseError` wins over `core.cli.error.ParseError` in user code | medium (`crates/verum_types/src/infer/modules.rs`) | 1 + unknown others |
 
-All other previously-open defects (§A / §C / §E / §F / §G / §H / §I / §J /
-§K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X) are closed
-or pinned closed. The two remaining open classes are well-bounded
-language-implementation work — see [`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md)
-§B / §D for the root-cause hypotheses.
+All previously-open text/text defects (§A / §B / §C / §E / §F / §G / §H /
+§I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X)
+are closed or pinned closed.  The two remaining open classes are
+well-bounded language-implementation work — see
+[`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md)
+§D / §Y for the root-cause hypotheses.
+
+#### Architectural rule pinned by the §B close
+
+Every primitive type that NaN-boxes to a foreign-kind `Value` (`Char →
+Int`, `Byte → Int`, `Float32 → Float`, …) MUST have a `CallM`-path
+intercept registered for every `&mut`-arg method whose intrinsic-
+opcode lowering does NOT fire from regular user-side method-call
+sites.  The CharSubOpcode / ByteSubOpcode / … intrinsic paths cover
+the inline-lowered call shape (`@intrinsic("…")` declarations), but
+plain user-side `ch.encode_utf8(...)` lowers to CallM, which is keyed
+on the receiver's runtime kind — and Char's runtime kind is Int.
+Without an intercept, every such call panics with "method '…' not
+found on receiver of runtime kind 'Int'".  Pin: grep for every
+`<Foreign>SubOpcode::<Method>` arm in `crates/verum_vbc/src/interpreter/dispatch_table/handlers/`
+and ensure its sibling sits in the `method_dispatch::handle_call_method`
+intercept chain.
 
 ## See also
 
