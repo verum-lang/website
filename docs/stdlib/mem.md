@@ -50,20 +50,34 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 | `size_class.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/size_class/` — 4 files + audit; uncovered `clz_u64 → ctlz` + PAGE_HEADER_SIZE drift defects (both closed) |
 | `thin_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/thin_ref/` — 4 files + audit (static-shape only) |
 | `fat_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/fat_ref/` — 4 files + audit (static-shape only) |
-| `hazard.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/hazard/` — static-shape suite; concurrent-safety proofs pending |
-| `epoch.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — read-only surface; write-surface API now landed (`reset_for_tests` / `increment_epoch_for_tests`) |
-| `allocator.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/allocator/` — static-shape + live cbgr_alloc round-trip via public `Heap<T>` / `Shared<T>` (audit §A closed); §B realloc-cross-boundary + §C ctx-allocator + §D protocol-impls + §E AllocStats + §F AOT sweep open |
-| `arena.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="partial" /> | `core-tests/mem/arena/` — static-shape complete; **9 live-lifecycle tests pinned `@ignore` on task #8** (GenerationalArena.new returns non-pointer Value; precompiled-stdlib MakeRecord step broken; diagnostic isolation in `integration_test.vr §0` probes) |
-| `segment.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/segment/` — Mimalloc-style 32 MiB chunks |
-| `heap.vr` | <LifecycleBadge lifecycle="conjecture" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/heap/` — thread-local fast path; live heap_alloc lifted via public `Heap.new` (audit §B closed); HeapError 7-variant + HeapStats 8-field surface exhausted (audit §D closed) |
+| `hazard.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="partial" /> | <TestCovBadge cov="full" /> | `core-tests/mem/hazard/` — `HazardStats` algebra surface complete: 3-field round-trip + `needs_reclaim()` boundary sweep + `estimated_retired_bytes` product invariant. `hazard_stats()` live call pinned via `@ignore` (audit §3.3 — record-typed `static mut` has no cell backing) |
+| `epoch.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — read-only surface; write-surface API now landed (`reset_for_tests` / `increment_epoch_for_tests`); task #9 pin for `&mut static_mut.scalar_field` cell-backing gap |
+| `allocator.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/allocator/` — static-shape + live cbgr_alloc round-trip via public `Heap<T>` / `Shared<T>` (audit §A closed); §B realloc-cross-boundary + §C ctx-allocator + §D protocol-impls + §E AllocStats + §F AOT sweep open |
+| `arena.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="partial" /> | <TestCovBadge cov="full" /> | `core-tests/mem/arena/` — constants + `ArenaConfig.{default,fixed,custom}` constructors + `ArenaError` 4-variant `is`-disjoint sweep + per-variant `.message()` payload-content assertions all green; **9 live-lifecycle tests pinned `@ignore` on task #8** (precompiled-stdlib `GenerationalArena.new` MakeRecord step broken) |
+| `segment.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/segment/` — Mimalloc-style 32 MiB chunks |
+| `heap.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/heap/` — thread-local fast path; live heap_alloc lifted via public `Heap.new` (audit §B closed); HeapError 7-variant + HeapStats 8-field surface exhausted + From&lt;SegmentError&gt; lift covered (audit §D closed) |
 | `diagnostics.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/diagnostics/` — read-only observer surface |
 | `cap_audit.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit/` — capability transition events |
 | `cap_audit_ring.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
 | `mem_raw.vr` (re-exported) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy`/`memmove`/`memset`/`memcmp`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
 
 The dedicated-suite-pending modules are tracked in
-`core-tests/INVENTORY.md`; new modules graduate to 🟢 once all four
-test files are landed and pass both tiers.
+`core-tests/INVENTORY.md`; new modules graduate to <TierBadge tier="both" />
+once all four test files land **and** the audit deferrals all close on both
+tiers.
+
+### Cross-tier validation status
+
+The `Tier` column reflects validated status under `verum test --interp`
+(Tier 0 VBC interpreter) as of the latest mem-suite sweep.  Tier 2
+(`verum test --aot`, LLVM AOT) verification of the full suite is blocked
+at the time of writing by a separate pre-existing build defect in the
+precompiled-stdlib WinSock alias — the `winsock_read(fd, buf)` body
+invokes `recv` with three arguments but a two-argument `recv` resolves
+first across glob mounts, producing a "wrong number of arguments for
+recv: expected 2, found 3" error from `vbc_lowering` for every AOT test
+artefact.  Closing that defect unblocks the entire `--aot` channel of
+the mem suite at once.
 
 ## File-by-file API surface
 
@@ -260,14 +274,45 @@ fn is_aligned(x: Int, align: Int) -> Bool
 ## Hazard pointers
 
 ```verum
-type HazardGuard<T> is { ... };
-HazardGuard.acquire(slot: Int, ptr: *const T) -> HazardGuard<T>
+type HazardGuard is { ... };
+acquire_hazard(ptr: &unsafe Byte) -> HazardGuard
 guard.release()                       // explicit drop also works
+force_reclaim_all()                   // scan + reclaim retired nodes
+cleanup_thread_hazards()              // called on thread exit
 ```
 
 Used internally to keep reads safe against a concurrent `free`. A
 reader installs its target in a hazard slot before the CBGR check; a
 freer scans all hazard slots before returning memory to the pool.
+
+### Observability — `HazardStats`
+
+```verum
+type HazardStats is {
+    protected_count: Int,    // currently protected pointers across all threads
+    retired_count:   Int,    // retired nodes awaiting reclamation
+    thread_count:    Int,    // registered threads
+};
+
+hazard_stats() -> HazardStats
+
+impl HazardStats {
+    fn needs_reclaim(&self) -> Bool {
+        self.retired_count >= RETIRED_THRESHOLD
+    }
+    fn estimated_retired_bytes(&self, avg_size: Int) -> Int {
+        self.retired_count * avg_size
+    }
+}
+```
+
+### Constants
+
+```verum
+const HAZARD_POINTERS_PER_THREAD: Int = 8;      // per-thread slot count
+const RETIRED_THRESHOLD:          Int = 64;     // amortises scan cost
+const MAX_THREADS:                Int = 256;    // global cap
+```
 
 ---
 
@@ -329,27 +374,88 @@ Arenas are the idiomatic choice for:
 - Game engine objects (frame-scoped)
 - Request-scoped data (web-server tasks)
 
+### Configuration — `ArenaConfig`
+
+```verum
+type ArenaConfig is {
+    initial_capacity: Int,    // bytes
+    max_capacity:     Int,    // bytes; 0 = no limit
+    growth_factor:    Int,    // percentage; 200 = double on growth
+};
+
+ArenaConfig.default()               // 64 KiB / 256 MiB / 2×
+ArenaConfig.fixed(capacity: Int)    // capacity / capacity / no-grow (100%)
+ArenaConfig.custom(initial, max, growth)
+```
+
+### Errors — `ArenaError`
+
+```verum
+type ArenaError is
+    | OutOfMemory       { requested: Int, available: Int }
+    | ExceedsMaxCapacity { requested: Int, max: Int }
+    | InvalidAlignment   { alignment: Int }
+    | AlreadyDestroyed
+    ;
+
+e.message() -> Text                  // human-readable formatter
+```
+
+Implements `Display` (routes via `.message()`) and `Debug` (renders the
+variant + payload braces).
+
+### Constants
+
+```verum
+const DEFAULT_ARENA_CAPACITY: Int = 65_536;       // 64 KiB
+const MAX_ARENA_CAPACITY:     Int = 268_435_456;  // 256 MiB
+const DEFAULT_GROWTH_FACTOR:  Int = 200;          // 200% = double
+const ARENA_ALIGNMENT:        Int = 8;            // 64-bit word
+const ARENA_GEN_INITIAL:      Int = 1;            // matches CBGR GEN_INITIAL
+```
+
 ---
 
 ## Segment allocator (internal)
 
 ```verum
-const SEGMENT_SIZE:  Int = 32 * 1024 * 1024;   // 32 MiB
-const SLICE_SIZE:    Int = 512 * 1024;         // 512 KiB
-const BIN_COUNT:     Int = 73;                 // size classes
+// Partitioning constants
+const SEGMENT_SIZE:           Int = 32 * 1024 * 1024;   // 32 MiB
+const SLICE_SIZE:             Int = 64 * 1024;          // 64 KiB
+const SLICES_PER_SEGMENT:     Int = 512;                // 32 MiB ÷ 64 KiB
+const SEGMENT_ALIGN:          Int = SEGMENT_SIZE;
+const SMALL_PAGE_SIZE:        Int = SLICE_SIZE;
+const MEDIUM_PAGE_SIZE:       Int = 8 * SLICE_SIZE;     // 512 KiB
+const LARGE_PAGE_THRESHOLD:   Int = MEDIUM_PAGE_SIZE;
 
-type Segment is { ... };
-type PageKind is Small | Medium | Large | Huge;
-type SizeClass is { bin: Int, size: Int };
+// Slice state bytes
+const SLICE_FREE:             UInt8 = 0;
+const SLICE_USED:             UInt8 = 1;
+const SLICE_SPAN_START:       UInt8 = 2;
+const SLICE_SPAN_CONTINUE:    UInt8 = 3;
 
-fn size_to_bin(size: Int) -> Int
-fn bin_to_size(bin: Int) -> Int
-fn size_class(size: Int) -> SizeClass
+// Segment kinds
+const SEGMENT_NORMAL:         UInt8 = 0;
+const SEGMENT_HUGE:           UInt8 = 1;
+
+type Segment is MemSegment;             // alias
+type SegmentError is
+    | MmapFailed   { code: Int }
+    | MunmapFailed { code: Int }
+    | OutOfMemory
+    | UnsupportedOs { op: Text }
+    ;
+
+fn segment_alloc(thread_id: UInt64) -> Result<&mut MemSegment, SegmentError>
+fn segment_free(seg: &mut MemSegment)
+fn segment_abandon(seg: &mut MemSegment)
+fn ptr_to_segment(ptr: &unsafe Byte) -> &MemSegment
 ```
 
 Allocations are grouped into 73 size classes spaced at ~12.5%
-intervals. Small objects (< 8 KiB) come from thread-local segments;
-medium / large allocations are bookkept separately.
+intervals (see `size_class.vr`). Small objects come from thread-local
+segments via `segment_alloc`; medium / large allocations are bookkept
+separately.
 
 ---
 
@@ -358,14 +464,199 @@ medium / large allocations are bookkept separately.
 ```verum
 type LocalHeap is { ... };
 
-LocalHeap.current() -> &LocalHeap
-heap.alloc(layout) -> Result<*mut Byte, AllocError>
-heap.free(ptr, layout)
-heap.stats() -> AllocStats
+// Lifecycle
+init_thread_heap() -> Result<(), HeapError>
+shutdown_thread_heap()
+get_heap() -> &mut LocalHeap        // lazy-init on first call
+
+// Allocation (Tier-0: through CBGR `cbgr_alloc` rather than directly)
+heap_alloc(size: Int) -> Result<(&unsafe Byte, UInt32, UInt16), HeapError>
+heap_alloc_zeroed(size: Int) -> Result<(&unsafe Byte, UInt32, UInt16), HeapError>
+heap_free(ptr: &unsafe Byte) -> Result<(), HeapError>
+heap_free_validated(ptr: &unsafe Byte, gen: UInt32, caps: UInt16)
+    -> Result<(), HeapError>
+
+// Observability
+get_heap_stats() -> HeapStats
+```
+
+`heap_alloc` returns `(ptr, generation, capabilities)` — the generation
+is the CBGR `header.generation` at allocation time, and the capabilities
+are the bitflags the allocator deemed safe for the slot.  Callers
+typically don't invoke this directly: the public `Heap<T>` /
+`Shared<T>` constructors are the user-facing API.
+
+### `HeapStats`
+
+```verum
+type HeapStats is {
+    alloc_count:     UInt64,
+    dealloc_count:   UInt64,
+    bytes_allocated: UInt64,
+    bytes_freed:     UInt64,
+    live_count:      UInt64,
+    live_bytes:      UInt64,
+    pages_in_use:    UInt32,
+    segments_owned:  UInt32,
+};
+
+HeapStats.new() -> HeapStats   // every field zero — bootstrap initialiser
+```
+
+### Errors — `HeapError`
+
+```verum
+type HeapError is
+    | OutOfMemory
+    | PageExhausted
+    | InvalidPointer
+    | InvalidSize        { size: Int }
+    | InvalidAlignment   { alignment: Int }
+    | SegmentError       { inner: SegmentError }    // From<SegmentError>
+    | UseAfterFree
+    ;
+
+e.message() -> Text                                  // human-readable
+HeapError.from(seg_err: SegmentError) -> HeapError   // From impl
+```
+
+Implements `Display` (routes via `.message()`), `Debug`, and `Eq`
+(per-variant; payload-bearing variants compare payloads).
+
+### Constants
+
+```verum
+const DIRECT_LOOKUP_SIZE:        Int    = 129;   // wsize 0..128 (lock-free fast path)
+const PAGE_HEADER_SIZE:          Int    = 128;   // cache-line aligned
+
+const PAGE_FLAG_IN_FULL_QUEUE:   UInt16 = 0x0001;
+const PAGE_FLAG_HAS_ALIGNED:     UInt16 = 0x0002;
+const PAGE_FLAG_ZERO_INIT:       UInt16 = 0x0004;
 ```
 
 Thread-local heap. Lock-free fast path; spills into the global heap
 for cross-thread frees.
+
+---
+
+## Capability audit ring
+
+The CBGR system records every capability-state transition as a
+`CapEvent` and commits it into a lock-free single-producer / multi-
+consumer ring (`cap_audit_ring.vr`).  Observers — panic post-mortem
+handlers, runtime monitors, future debugger UIs — read recent events
+via `recent(n)`.
+
+### `CapEventKind` — 6-variant tag
+
+```verum
+type CapEventKind is
+    | Revoke         // capability revoked (e.g., write→read)
+    | Attenuate      // capability narrowed (subset retained)
+    | RefIncr        // reference count increment
+    | RefDecr        // reference count decrement
+    | GenBump        // generation field bumped (free path)
+    | EpochAdvance   // wraparound-safety epoch bump
+    ;
+```
+
+### `CapEvent` — 8-field record
+
+```verum
+type CapEvent is {
+    seq:                UInt64,     // ring-assigned commit sequence; 0 = un-committed
+    kind:               CapEventKind,
+    target_ptr:         UInt64,     // address of the affected allocation
+    generation_before:  UInt32,
+    generation_after:   UInt32,
+    capabilities_before: UInt16,
+    capabilities_after:  UInt16,
+    epoch_at_event:     UInt32,
+};
+
+CapEvent.new(kind, target_ptr, gen_before, gen_after, caps_before,
+             caps_after, epoch) -> CapEvent      // returns seq=0
+event.bumped_generation() -> Bool                // true for Revoke + GenBump
+```
+
+`bumped_generation()` is **kind-driven**, not diff-driven: it returns
+`true` iff the kind is `Revoke` or `GenBump`, regardless of whether
+the before/after generation values happen to differ.  This intent-based
+semantics matches the doc-comment contract and pinned in the audit
+suite.
+
+### Ring API
+
+```verum
+const CAP_AUDIT_RING_CAPACITY: Int = 256;       // power of 2 for efficient mod
+
+is_enabled() -> Bool
+enable()                                         // idempotent
+disable()
+count() -> UInt64                                // total commits since enable
+recent(n: Int) -> List<CapEvent>                 // bounded by min(n, ring fill)
+
+record_revoke(target_ptr: UInt64, gen_before, gen_after, caps_before, caps_after, epoch)
+record_attenuate(target_ptr, gen_before, gen_after, caps_before, caps_after, epoch)
+record_ref_incr(target_ptr, ..., epoch)
+record_ref_decr(target_ptr, ..., epoch)
+record_gen_bump(target_ptr, ..., epoch)
+record_epoch_advance(target_ptr, ..., epoch)
+```
+
+When the ring is disabled, every `record_*` writer is a short-circuit
+no-op — `count()` does not advance, no allocation, no atomic.  This
+keeps audit-disabled production builds zero-overhead.
+
+---
+
+## Read-only diagnostics
+
+`core.mem.diagnostics` is the introspection surface — no mutating
+operations.  Used by panic post-mortem handlers, runtime monitors,
+and future debugger integrations.
+
+### `MemHeaderView` — snapshot of an allocation header
+
+```verum
+type MemHeaderView is {
+    generation: UInt32,
+    epoch:      UInt32,
+    caps:       UInt16,
+    size:       UInt32,
+    align:      UInt32,
+    type_id:    UInt32,
+    flags:      UInt32,
+    ref_count:  UInt32,
+};
+
+MemHeaderView.from_header(h: &AllocationHeader) -> MemHeaderView
+```
+
+### `CallFrame` — stack-trace entry
+
+```verum
+type CallFrame is {
+    function:            Text,
+    file:                Text,
+    line:                UInt32,
+    column:              UInt32,
+    instruction_pointer: UInt64,
+};
+```
+
+### Functions
+
+```verum
+live_allocations() -> List<MemHeaderView>
+live_allocation_count() -> UInt64
+current_call_stack(skip: UInt32) -> List<CallFrame>
+```
+
+The producer-side wiring (writing `MemHeaderView` snapshots from the
+allocator on each cbgr_alloc, populating the call-stack from VBC
+debug info) is owned by the CBGR allocator and the interpreter
+debugger — those are tested separately.
 
 ---
 
