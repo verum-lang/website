@@ -2,6 +2,8 @@
 sidebar_position: 2
 title: time
 description: Duration, Instant, SystemTime, Interval — monotonic and wall-clock time.
+status: partial
+status_detail: Submodules covered (cron / duration / duration_parse / instant / interval / julian / rfc3339 / system_time) in `core-tests/time/` — most stable under `--interp` with §C process_ops silent-empty data-loss and §D wall_clock_ms < post-2000ms residuals (audit deferred items in `core-tests/INVENTORY.md::sys/time_ops`).
 ---
 
 # `core.time` — Durations, instants, timers

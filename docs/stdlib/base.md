@@ -2,6 +2,8 @@
 sidebar_position: 1
 title: base
 description: The Verum prelude — Maybe, Result, Iterator, operator protocols, panic, env, cells.
+status: partial
+status_detail: 7 complete (maybe / result / cell / coercion / error / uuid / primitives 60/60), 18 partial, 4 regression-only, 3 undocumented as of 2026-05-23. See per-module status table below for the truth-table over each `core.base.*` submodule.
 ---
 
 # `core.base` — Foundational types and protocols

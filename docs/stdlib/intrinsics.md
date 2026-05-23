@@ -2,6 +2,8 @@
 sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
+status: undocumented
+status_detail: Underlying intrinsic dispatch table is exercised transitively through `base.primitives` (60/60), `mem.allocator`, and 25 fixture files in `vcs/specs/stdlib/sys/intrinsics/`. Standalone `core-tests/intrinsics/` folder is empty; status remains `undocumented` until a per-intrinsic conformance surface lands.
 ---
 
 # `core.intrinsics` — Compiler intrinsics

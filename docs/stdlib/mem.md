@@ -2,6 +2,8 @@
 sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
+status: complete
+status_detail: 14/14 submodules complete under `--interp` (capability / size_class / header / thin_ref / fat_ref / epoch / cap_audit / cap_audit_ring / diagnostics / segment / arena / allocator / heap / hazard); AOT verification pending. Per-submodule rows in `core-tests/INVENTORY.md`.
 ---
 
 import ModuleStatus, {

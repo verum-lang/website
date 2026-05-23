@@ -2,6 +2,8 @@
 sidebar_position: 2
 title: security
 description: The security stdlib — cryptographic primitives, information-flow control, workload identity, secrets, and regions.
+status: regression-only
+status_detail: `core-tests/security/` exists but most crypto primitives gated by `core.sys.common.random_bytes` intrinsic missing from VBC dispatch table (same defect class blocks `collections.bloom` / `hyperloglog` / `count_min` / `reservoir`). Bloom/HLL surface 0/8 active under `--interp`; SHA / HMAC / AES bound by precompile-time collisions on `BLOCK_SIZE` per-module. See `core-tests/INVENTORY.md::collections/bloom` for cross-module shape.
 ---
 
 # `core.security`

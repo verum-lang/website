@@ -2,6 +2,8 @@
 sidebar_position: 2
 title: collections
 description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every semantic-honest collection.
+status: partial
+status_detail: 2 complete (lru / heap), ~13 partial (list / slice / map / set / deque / multiset / consistent_hash / adjacency_list / union_find / reservoir / toposort), 7 regression-only (ttl_cache / bloom / btree / trie / count_min / hyperloglog / alias_sampler — CSPRNG- or precompile-gated) as of 2026-05-22. See per-submodule rows in `core-tests/INVENTORY.md`.
 ---
 
 # `core.collections` — Lists, Maps, Sets, Deques

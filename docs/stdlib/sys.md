@@ -2,6 +2,8 @@
 sidebar_position: 3
 title: sys
 description: V-LLSI kernel bootstrap — direct syscalls, I/O engine, platform abstractions.
+status: partial
+status_detail: 3 complete (bitfield / cabi / init), ~10 partial (common / mmio / context_ops / file_ops / process_ops / net_ops / durability / fs_watch / io_engine / locking / time_ops), 2 regression-only (signal — variant-tag drift; interrupt — kernel-mode surface). See per-submodule rows in `core-tests/INVENTORY.md`.
 ---
 
 # `core.sys` — V-LLSI kernel bootstrap
