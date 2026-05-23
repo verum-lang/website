@@ -227,10 +227,55 @@ type Allocator is protocol {
     fn realloc(&self, ptr: *mut Byte, old: Layout, new: Layout)
         -> Result<*mut Byte, AllocError>;
 }
-
-type Layout is { size: Int, align: Int };
-type AllocError is OutOfMemory | InvalidLayout | Refused;
 ```
+
+### `Layout`
+
+```verum
+type Layout is {
+    size_:  Int,   // bytes
+    align_: Int,   // bytes (power of 2)
+};
+
+impl Layout {
+    fn new<T>() -> Layout                                   // T.size, T.alignment
+    fn from_size_align(size: Int, align: Int) -> Layout     // panics on bad input
+    fn try_from_size_align(size: Int, align: Int)
+        -> Result<Layout, AllocError>                        // fallible
+    fn from_size(size: Int) -> Layout                       // natural alignment
+    fn size(&self) -> Int
+    fn align(&self) -> Int
+    fn repeat(&self, n: Int) -> Layout                      // [T; N] layout
+    fn try_repeat(&self, n: Int) -> Result<Layout, AllocError>
+    fn extend(&self, other: Layout) -> Layout               // sequential layout
+    fn try_extend(&self, other: Layout) -> Result<Layout, AllocError>
+}
+```
+
+`from_size_align` panics on invalid alignment (non-positive or
+non-power-of-2) or negative size — use `try_from_size_align` at any
+trust boundary (FFI, deserialised input).
+
+### `AllocError`
+
+```verum
+type AllocError is
+    | OutOfMemory      { requested: Int }
+    | InvalidSize      { size: Int }
+    | InvalidAlignment { alignment: Int }
+    | MmapFailed       { code: Int }
+    | MunmapFailed     { code: Int }
+    | PageExhausted
+    | InvalidPointer
+    | CapacityOverflow { requested: Int }
+    | UnsupportedOs    { op: Text }
+    ;
+
+e.message() -> Text          // human-readable
+```
+
+Implements `Display` (routes via `.message()`), `Debug`, and `Eq`
+(per-variant; payload-bearing variants compare payloads).
 
 ### Default allocator — `cbgr_alloc`
 
@@ -536,6 +581,56 @@ const PAGE_FLAG_ZERO_INIT:       UInt16 = 0x0004;
 
 Thread-local heap. Lock-free fast path; spills into the global heap
 for cross-thread frees.
+
+---
+
+## CBGR error types
+
+The reference-validation surface returns two error sum types:
+
+### `UseAfterFreeError` — 5-field record
+
+```verum
+type UseAfterFreeError is {
+    expected_gen:   UInt32,
+    actual_gen:     UInt32,
+    expected_epoch: UInt16,
+    actual_epoch:   UInt16,
+    type_name:      Text,
+};
+
+impl UseAfterFreeError {
+    fn new(eg: UInt32, ag: UInt32, ee: UInt16, ae: UInt16,
+           tn: Text) -> UseAfterFreeError
+    fn null_pointer(type_name: Text) -> UseAfterFreeError
+        // sets both gens to GEN_UNALLOCATED — `.message()` routes
+        // through the "null pointer" branch.
+    fn capability_violation(capability: Text, type_name: Text)
+        -> UseAfterFreeError
+    fn message(&self) -> Text   // null-pointer / use-after-free branches
+}
+```
+
+Implements `Display` (routes via `.message()`), `Debug`, and `Eq`
+(field-by-field compare).
+
+### `RevocationError` — 4-variant sum
+
+```verum
+type RevocationError is
+    | NullPointer          { type_name: Text }
+    | CapabilityViolation  { type_name: Text }
+    | AlreadyRevoked       { type_name: Text }
+    | Internal             { type_name: Text, reason: Text }
+    ;
+
+impl RevocationError {
+    fn null_pointer(type_name: Text) -> RevocationError
+    fn capability_violation(type_name: Text) -> RevocationError
+    fn already_revoked(type_name: Text) -> RevocationError
+    fn internal_error(type_name: Text, reason: Text) -> RevocationError
+}
+```
 
 ---
 
