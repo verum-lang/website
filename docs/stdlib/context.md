@@ -2,6 +2,8 @@
 sidebar_position: 1
 title: context
 description: Scopes, providers, layers, 10 standard contexts, async propagation — the runtime side of `using` / `provide`.
+status: regression-only
+status_detail: First conformance suite landed in `core-tests/context/` (commit 1b69f9d22). Surface is fully tested on the source side — pinned regressions block the runtime tests on (a) bare-name cross-module collisions (task #17/#39), (b) bare-variant method-dispatch corruption, and (c) the task #47 stage-3 stub `global_ctors` cascade. AOT pipeline blocked stdlib-wide on unrelated `sync_connect_binlog` + `translate` arity defects.
 ---
 
 # `core.context` — Dependency injection primitives
@@ -13,16 +15,73 @@ building providers, layers, and scopes.
 
 | File | Lines | What's in it |
 |---|---:|---|
-| `mod.vr` | 80 | re-exports and module-level docs |
-| `scope.vr` | 170 | `Scope` (Singleton / Request / Transient), `ContextScope`, scope rules |
-| `provider.vr` | 233 | `Provider<T>`, `ScopedProvider<T>`, `get_context`, `has_context` |
-| `layer.vr` | 64 | `Layer` — declarative composition of multiple context providers |
-| `error.vr` | 51 | `ContextError` (5 variants with error codes) |
-| `standard.vr` | 662 | 10 standard context types with full method signatures |
+| `mod.vr` | 108 | re-exports and module-level docs |
+| `scope.vr` | 200 | `Scope` (Singleton / Request / Transient), `ContextScope`, scope rules |
+| `provider.vr` | 318 | `Provider<T>`, `ScopedProvider<T>`, `get_context`, `has_context` |
+| `layer.vr` | 82 | `Layer` — declarative composition of multiple context providers (doc-only; compiler-side implementation) |
+| `error.vr` | 103 | `ContextError` (5 variants with error codes) |
+| `standard.vr` | 696 | 10 standard context types with full method signatures |
 
 See **[Language → context system](/docs/language/context-system)** for
 the user-facing guide. For compile-time meta contexts, see
 **[stdlib → meta](/docs/stdlib/meta)**.
+
+## Module status
+
+Each `core.context.*` module carries an explicit conformance status — same
+contract as [`core.base`](./base.md#module-status),
+[`core.time`](./time.md#module-status), and
+[`core.collections`](./collections.md#module-status). The status row is
+the truth-table over the module's public API exercised by
+`core-tests/context/<module>/` under both Tier 0 (interpreter) and Tier 2
+(AOT). Disagreement between tiers is itself a test failure.
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
+| **partial** | Subset stable; remainder gated by upstream defects, documented per-module. |
+| **regression-only** | Tests gate on language-level defects (cross-module name collision, stage-3 stub `global_ctors` cascade, AOT-pipeline blockers). |
+| **undocumented** | Snapshot from source; no runtime conformance pin yet. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `scope.vr`     | **regression-only** | [core-tests/context/scope](https://github.com/verum-lang/verum/tree/main/core-tests/context/scope) — `Scope` ADT + `ContextScope` depth chain. ~30 unit tests + ~20 properties + integration + regression. Runtime gates on the cross-module `Transient` / `Request` collision (audit §3.1) and the bare-variant method-dispatch corruption (audit §3.2). Workaround: always qualify as `Scope.<Variant>`. |
+| `error.vr`     | **regression-only** | [core-tests/context/error](https://github.com/verum-lang/verum/tree/main/core-tests/context/error) — `ContextError` 5-variant ADT. ~24 unit tests + ~15 properties + integration + regression. Same global_ctors gate as scope. |
+| `provider.vr`  | **regression-only** | [core-tests/context/provider](https://github.com/verum-lang/verum/tree/main/core-tests/context/provider) — `Provider<T>` lazy factory + `ScopedProvider` + `has_context`. ~15 unit tests + ~8 properties. Same gate. `ScopedProvider.run` is bytecode-tested but the `@bitcast` payload-size hazard (audit §3.4) deferred. |
+| `standard.vr`  | **regression-only** | [core-tests/context/standard](https://github.com/verum-lang/verum/tree/main/core-tests/context/standard) — `ContextLogLevel` + `Row` / `QueryResult` / `AuthUser` data types. ~35 unit tests + ~11 properties + integration. The 10 `context Logger {} / Database {} / …` protocols themselves require compiler `provide`/`using` infrastructure and are tested at the language level in [`vcs/specs/L2-standard/contexts/`](https://github.com/verum-lang/verum/tree/main/vcs/specs/L2-standard/contexts). |
+| `layer.vr`     | **undocumented** | `layer.vr` is doc-only — the layer composition is implemented compiler-side in `crates/verum_compiler`. No standalone runtime surface; no conformance suite. See [audit](https://github.com/verum-lang/verum/tree/main/core-tests/context/mod/audit.md) §3.2. |
+| `mod.vr`       | **regression-only** | [core-tests/context/mod](https://github.com/verum-lang/verum/tree/main/core-tests/context/mod) — re-export verification via `mount core.context.*`. Same gate as submodules. |
+
+The status table is the runtime truth, not the file's `lifecycle`
+annotation: `lifecycle: Lifecycle.Theorem("v0.1")` is the *spec*
+lifecycle (what the contract promises); the table above is the
+*conformance* lifecycle (what the implementation delivers under
+test today). They are aligned only when the status reads **stable**.
+
+### Open upstream defects gating context test runs
+
+* **Task #17/#39** — mount-scope-aware function/variant lookup.
+  Bare-name resolution today is first-wins across all loaded
+  modules; collisions on names like `Transient` (5 modules) and
+  `Request` (2 modules including `core.net.http`) silently route
+  to the wrong target. **Workaround**: always qualify variants
+  (`Scope.Transient`, `ContextError.NotFound { … }`).
+* **Task #47 stage-3 stub propagation** — `global_function_registry`
+  pre-registers uniquely-named public free fns with sentinel IDs
+  in the `0xFEFFFFFF - 0x100_0000` band. When the producing module's
+  real body lands, the registry entry is overwritten but bytecode
+  already emitted in consumer modules still holds the stub ID.
+  `archive_id_to_name` doesn't carry stub IDs → `ArchiveBodyRemap`
+  falls through to identity → runtime hits `FunctionNotFound`.
+  Partial mitigation: `crates/verum_vbc/src/interpreter/mod.rs::
+  run_global_ctors` now skips stub-range IDs gracefully (commit
+  f98fba2be). Architectural close-out via
+  `emit_stage3_stub_descriptors` is the upstream fix.
+* **AOT stdlib build broken** — `undefined function:
+  sync_connect_binlog` + `translate` arity mismatch + parse error
+  in `core/math/tactics.vr:839`. Blocks every `--aot` test
+  including baselines like `test_ordering_less_construction`.
+  Unrelated to `context/` but prevents cross-tier validation.
 
 ---
 
