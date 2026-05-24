@@ -2,6 +2,8 @@
 sidebar_position: 27
 title: storage
 description: Abstract object-store subsystem — ObjectStore protocol + concrete adapters (S3-compatible today; GCS / Azure Blob / local-filesystem future).
+status: regression-only
+status_detail: Conformance suites landed in core-tests/storage/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 # `core.storage` — Abstract object-storage subsystem

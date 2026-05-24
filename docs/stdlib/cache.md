@@ -2,6 +2,8 @@
 sidebar_position: 7
 title: cache
 description: Abstract cache subsystem — CacheBackend protocol + concrete adapters (Redis, future LRU/Memcached).
+status: regression-only
+status_detail: Conformance suites landed in core-tests/cache/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 # `core.cache` — Abstract cache subsystem

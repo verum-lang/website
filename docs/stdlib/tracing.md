@@ -1,6 +1,8 @@
 ---
 title: core.tracing — distributed tracing (OpenTelemetry-compatible)
 description: Identifiers, contexts, spans, samplers, processors, exporters, and W3C Trace Context propagation — the substrate every Verum framework instruments against.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/tracing/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 # `core.tracing` — distributed tracing

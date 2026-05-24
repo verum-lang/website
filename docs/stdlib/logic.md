@@ -2,6 +2,8 @@
 sidebar_position: 6
 title: logic
 description: Modal logic (Kripke) and linear logic — the metatheory behind session types, capabilities, and affine modifiers.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/logic/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 # `core.logic` — Modal and linear logic

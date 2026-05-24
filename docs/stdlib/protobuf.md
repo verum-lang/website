@@ -1,6 +1,8 @@
 ---
 title: core.protobuf — Protocol Buffers wire-format codec
 description: Low-level encoder / decoder for the canonical Protocol Buffers wire format (Google's google.protobuf). Tag / varint / fixed / length-delimited encoding with a streaming Cursor reader and zero-copy view helpers.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/protobuf/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 # `core.protobuf` — Protocol Buffers wire-format codec
