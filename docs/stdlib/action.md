@@ -2,6 +2,8 @@
 sidebar_position: 25
 title: "core.action — DC-side Diakrisis enactments"
 description: "The Dependency-Centric half of the AC/OC duality. Articulations, enactments, ε-primitives, monads, ludics, and the gauge canonicalisation."
+status: regression-only
+status_detail: Conformance suites landed in core-tests/action/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes.
 slug: /stdlib/action
 ---
 

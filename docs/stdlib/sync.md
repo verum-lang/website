@@ -2,6 +2,8 @@
 sidebar_position: 2
 title: sync
 description: Atomics, Mutex, RwLock, Once, Semaphore, Condvar, Barrier, WaitGroup.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/sync/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes.
 ---
 
 # `core.sync` — Synchronisation primitives

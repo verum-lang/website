@@ -2,6 +2,8 @@
 sidebar_position: 1
 title: net
 description: TCP, UDP, HTTP, TLS, DNS — V-LLSI-native networking with zero FFI.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/net/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes.
 ---
 
 # `core.net` — Networking
