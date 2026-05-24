@@ -2,6 +2,8 @@
 sidebar_position: 4
 title: control
 description: Delimited continuations — shift / reset term algebra.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/control/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect.
 ---
 
 # `core.control` — Delimited Continuations

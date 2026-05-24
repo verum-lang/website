@@ -2,6 +2,8 @@
 sidebar_position: 26
 title: "core.shell — typed shell scripting"
 description: "Verum's shell-scripting framework — sh#\"...\" tagged literals, typed Pipeline / Transducer, GitCmd / DockerCmd DSLs, CBGR-managed FDs, permission-typed shell context."
+status: regression-only
+status_detail: Conformance suites landed in core-tests/shell/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect.
 slug: /stdlib/shell
 ---
 

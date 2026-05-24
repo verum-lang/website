@@ -2,6 +2,8 @@
 sidebar_position: 3
 title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
+status: regression-only
+status_detail: Conformance suites landed in core-tests/runtime/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect.
 ---
 
 # `core.runtime`
