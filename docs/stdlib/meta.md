@@ -3,7 +3,7 @@ sidebar_position: 1
 title: meta
 description: Compile-time programming — tokens, AST, reflection, quote, capability contexts.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/meta/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect.
+status_detail: Full conformance suite for all 10 meta submodules landed in core-tests/meta/<submodule>/ on 2026-05-25 round 9 (commit 5d3fb44bf). ~340 unit tests + 26 property tests + 5 regression pins. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect; new defect classes pinned for cross-module record-return field-access OOB (meta/span §3.1) + quote.vr variant-name drift (meta/quote §3.1) + diakrisis_attrs.vr AttributeArg schema drift (meta/diakrisis_attrs §3.1).
 ---
 
 # `core.meta` — Compile-time programming
@@ -27,6 +27,76 @@ types. ~335 methods across all contexts.
 User-level syntax (`meta fn`, `quote { … }`, `@derive(…)`, `lift(x)`)
 is in **[Language → Metaprogramming](/docs/language/meta/overview)**.
 This page enumerates the types and contexts those constructs map to.
+
+---
+
+## Module status
+
+Each `core.meta.*` module carries an explicit conformance status — same
+contract as [`core.base`](./base.md#module-status),
+[`core.time`](./time.md#module-status), and
+[`core.context`](./context.md#module-status). The status row is the
+truth-table over the module's public API exercised by
+`core-tests/meta/<module>/` under both Tier 0 (interpreter) and Tier 2
+(AOT). Disagreement between tiers is itself a test failure.
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
+| **partial** | Subset stable; remainder gated by upstream defects, documented per-module. |
+| **regression-only** | Tests gate on language-level defects (cross-module record-return field-access OOB, AOT-pipeline blockers, etc). |
+| **undocumented** | Snapshot from source; no runtime conformance pin yet. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `span.vr`              | **regression-only** | [core-tests/meta/span](https://github.com/verum-lang/verum/tree/main/core-tests/meta/span) — `MetaSpan` + `Span` alias + `SourceLocation` + `SpanRange` + `MultiSpan` + `SpanFlags`. 25 unit tests via **direct record literal at the test site** (never the cross-module `.new(...)` ctor, which panics with field-access OOB — see audit §3.1). 5 regressions pinned. Compiler-intrinsic ctors (`.call_site` / `.def_site` / `.mixed_site` / `.synthetic`) covered at verum_compiler test layer. |
+| `token.vr`             | **regression-only** | [core-tests/meta/token](https://github.com/verum-lang/verum/tree/main/core-tests/meta/token) — `Delimiter` 4-variant + `Spacing` 2-variant + `Keyword` 38-variant + `StringKind` 4-variant + `TokenKind` 6-variant + `Literal` 6-variant + ctors + `Token` / `TokenTree` / `TokenStream` / `Group` / `LexError` records. 56 unit tests via direct record-literal construction. Variant-name drift in `core/meta/quote.vr` documented in audit §3.1-3.2 (blocks consumer side). |
+| `reflection.vr`        | **regression-only** | [core-tests/meta/reflection](https://github.com/verum-lang/verum/tree/main/core-tests/meta/reflection) — `TypeKind` 17-variant + `Visibility` 5-variant + `GenericParamKind` / `VariantKind` / `SelfKind` / `MethodSource` 3-/3-/3-/4-variant + `PrimitiveType` 18-variant + `FieldOffset` / `OwnershipInfo` records. 58 unit tests. Span/Attribute-dependent records (FieldInfo/VariantInfo/GenericParam/ProtocolInfo/FunctionInfo/TraitBound/LifetimeParam/MethodResolution/ParamInfo/AssociatedTypeInfo) deferred until span-§3.1 cross-module fix lands. |
+| `quote.vr`             | **regression-only** | [core-tests/meta/quote](https://github.com/verum-lang/verum/tree/main/core-tests/meta/quote) — `QuotePart` 3-variant only. 4 unit tests. **Most of `QuoteBuilder` is currently un-callable** due to `TokenTree.Token` (correct: `Leaf`) and `TokenKind.Keyword` (correct: `Kw`) variant-name drift in `core/meta/quote.vr` — 5-minute rename unlocks the entire 24-method chain ctor surface. Audit §3.1. |
+| `attribute.vr`         | **regression-only** | [core-tests/meta/attribute](https://github.com/verum-lang/verum/tree/main/core-tests/meta/attribute) — `AttributeStyle` + `MetaAttributeValue` 8-variant + ctors + `AttributeArg` + `CfgPredicate` 5-variant + `ReprKind` 4-variant. 31 unit tests; 8 `@ignore` pins for `AttributeArg.positional` static-method dispatch defect (task #17/#39). |
+| `diakrisis_attrs.vr`   | **regression-only** | [core-tests/meta/diakrisis_attrs](https://github.com/verum-lang/verum/tree/main/core-tests/meta/diakrisis_attrs) — VVA Part B advisory attribute parsers. 38 unit tests over `DiakrisisEffectKind` 7-variant + `.from_ident` case-insensitive + `.as_str` + `InfinityLevel` 3-variant + all five validated-attribute record types + `CUT_ELIMINATION_DEFAULT_BOUND`. The `parse_*` functions are blocked by `AttributeArg` schema drift (audit §3.1, 1-2h fix). |
+| `framework_hygiene.vr` | **regression-only** | [core-tests/meta/framework_hygiene](https://github.com/verum-lang/verum/tree/main/core-tests/meta/framework_hygiene) — `HygieneSeverity` 3-variant + `severity_as_text` + `HygieneDiagnostic` + `name_has_brand_prefix` 5 banned prefixes (diakrisis_/actic_/msfs_/uhm_/noesis_) + `validate_foundation_neutral_name` (R1) + `validate_meta_classifier_uniqueness` (R3). 27 unit tests. R2 (`validate_epsilon_canonicalisable`) is currently a no-op (audit §3.1, 1h fix). |
+| `oracle.vr`            | **regression-only** | [core-tests/meta/oracle](https://github.com/verum-lang/verum/tree/main/core-tests/meta/oracle) — LLM Oracle Tactic (Phase D.5). `OracleConfig` + `OracleCandidate` + `OracleResponse` + `OracleOutcome` 5-variant + `default_oracle_config` + `aggressive_oracle_config` + `has_viable_candidate` + `filter_by_confidence` + `candidate_count_above`. 25 unit + 13 property tests (filter monotonicity / count monotonicity / count==filter.len / has_viable iff count>0 / default-vs-aggressive axes). |
+| `tactic.vr`            | **regression-only** | [core-tests/meta/tactic](https://github.com/verum-lang/verum/tree/main/core-tests/meta/tactic) — tactic-meta abstract algebra. `MetaTerm` 6-variant + smart ctors + `is_meta_value` + `references_elaborator` + `beta_cancel` + `meta_normalise` + `meta_is_normal`. 35 unit + 13 property tests (β-cancellation + normalise-idempotent + collapse-double-/triple-splice + seq-first-value-reduces + references-monotone-under-Seq + references-descends-Splice). **Cleanest meta submodule** — no intrinsics, no cross-module record returns. Custom-elaborator dispatch + Reflect caching are analyzer-side. |
+| `contexts.vr`          | **regression-only** | [core-tests/meta/contexts](https://github.com/verum-lang/verum/tree/main/core-tests/meta/contexts) — payload data for the 14 capability contexts. `DiagnosticSeverity` + `SuggestionKind` + `UsageContext` + `ItemKind` + `SchemaErrorSeverity` + `BraceStyle` (4-/3-/6-/7-/3-/3-variant). 26 unit tests. The 14 context dispatchers themselves are `@compiler_provided` / `@compiler_intrinsic` and live at the verum_compiler test layer. Payload records (CacheStats / FunctionSearchResult / TypeSearchResult / UsageInfo / DependencyInfo / FormatOptions / BenchResult etc.) deferred until cross-module record-ctor return defect closes. |
+| `mod.vr`               | **regression-only** | [core-tests/meta/mod](https://github.com/verum-lang/verum/tree/main/core-tests/meta/mod) — `MetaError` 13-variant + default constants (recursion=256, iteration=1M, memory=64MiB, timeout=30s) + `VERSION_INFO`. 20 unit tests. |
+
+The status table is the runtime truth, not the file's `lifecycle`
+annotation. They align only when the status reads **stable**.
+
+### Open upstream defects gating meta test runs
+
+* **Cross-module record-return field-access OOB** — `let x = Foo.new(...); x.field`
+  panics at runtime with `field access out of bounds: field index N
+  (offset M+8 = K) exceeds object data size S`. Field index N is the
+  global-intern position of the field-name literal (typically &gt; 10),
+  not the actual struct field index. Same defect class as
+  `[[enactment_field_access_oob_2026-05-24]]` and
+  `[[btree_pattern_match_ref_generic_class]]`. Fix in
+  `verum_vbc/src/codegen/expressions.rs::compile_field_access` +
+  `compile_method_call` to propagate the receiver type through
+  cross-module fn returns. Multi-day VBC work. Workaround discipline
+  pinned at every meta test header: **direct record literal at the
+  test site, never the cross-module `.new(...)` ctor**.
+* **`core/meta/quote.vr` variant-name drift** — references
+  `TokenTree.Token` (correct: `Leaf`) and `TokenKind.Keyword`
+  (correct: `Kw`). 5-minute rename unlocks the entire programmatic
+  QuoteBuilder API for testing.
+* **`core/meta/diakrisis_attrs.vr` `AttributeArg` schema drift** —
+  matches as enum but the type is a record. 1-2h source-side fix.
+  Detailed in meta/diakrisis_attrs audit §3.1.
+* **`core/meta/framework_hygiene.vr` R2 is a no-op** — the loop body
+  in `validate_epsilon_canonicalisable` never updates
+  `all_admissible`. 1h port of the AST canonicaliser predicate.
+* **Task #17/#39** — mount-scope-aware `lookup_function`. Bare-name
+  static-method dispatch first-wins collisions. `AttributeArg.positional`
+  is the meta/attribute manifestation (8 `@ignore` pins). The
+  architectural close-out unblocks ~25 sister regressions across
+  every meta submodule that constructs payload records via static
+  helpers.
+* **AOT stdlib build broken** — same gate as
+  [`core.context`](./context.md). Blocks cross-tier validation
+  for every meta test until task #7 closes.
 
 ---
 
