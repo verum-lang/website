@@ -3,7 +3,7 @@ sidebar_position: 2
 title: time
 description: Duration, Instant, SystemTime, Interval — monotonic and wall-clock time.
 status: partial
-status_detail: Submodules covered (cron / duration / duration_parse / instant / interval / julian / rfc3339 / system_time) in `core-tests/time/` — most stable under `--interp` with §C process_ops silent-empty data-loss and §D wall_clock_ms < post-2000ms residuals (audit deferred items in `core-tests/INVENTORY.md::sys/time_ops`).
+status_detail: Round 13 (2026-05-27) registered all 8 submodules in `core-tests/INVENTORY.md` with per-module `audit.md` (3722 LOC of tests, 384 `@test` entries). 7/8 submodules **stable** under `--interp`; `duration` is **partial** — 1 surfaced defect class §A constructor-clamping inconsistency (LOCK-IN regression file pinning the current behaviour split between Verum-body clamping in short-form constructors and runtime-intrinsic identity in long-form constructors). Sister-module defect: `core-tests/sys/time_ops` retains §C/§D residuals tracked under `sys/time_ops` row in INVENTORY.
 ---
 
 # `core.time` — Durations, instants, timers
@@ -41,14 +41,14 @@ the truth-table over the module's public API exercised by
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 5/32 (regressed from 12 by parallel changes to the typechecker's primitive `inherent_methods` table — separate timeline, not a Tier-0 dispatch issue). Arithmetic, accessors, equality green on the source side; runtime gates hit cross-module helper resolution. |
-| `duration_parse.vr` | **undocumented** | Documented below; no `core-tests/time/duration_parse/` suite yet. |
-| `instant.vr`        | **regression-only** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — 0/8. Every test fails on `FunctionNotFound(FunctionId(N))` — the `monotonic_nanos` syscall helper lives in `core.sys.linux.time` (or darwin/windows equivalents) which the user-test's lazy-load `wanted_module_prefixes` never reaches. Closes when the transitive module loader (#118) lands. |
-| `system_time.vr`    | **partial** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — 1/3. `SystemTime.now`/`as_unix_nanos` stable; `duration_since` blocked. |
-| `interval.vr`       | **undocumented** | Documented below; no conformance suite. |
-| `rfc3339.vr`        | **undocumented** | Documented below; no `core-tests/time/rfc3339/` suite yet. |
-| `cron.vr`           | **undocumented** | Documented below; no `core-tests/time/cron/` suite yet. |
-| `julian.vr`         | **partial** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — 9/19. Round-trip fixtures and Gregorian-day-of-week tables pass. Failures cluster on the same cross-module dispatch class as `instant.vr`. |
+| `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 46 unit + 13 property + 11 integration + 6 regression (audit §A surfaced 2026-05-27 — constructor-clamping inconsistency between Verum-body short-form `Duration.nanos(-1)→0` and runtime-intrinsic long-form `Duration.from_nanos(-1)→-1`; 5 LOCK-IN regression pins document the current behaviour split). Full coverage map in [`core-tests/time/duration/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration/audit.md). |
+| `duration_parse.vr` | **stable** | [core-tests/time/duration_parse](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration_parse) — 31 unit + 20 property + 14 integration. Negative-input contract (`parse("-15m").as_nanos() < 0`) GATED on duration §A intrinsic identity. Audit defers ISO 8601 negative-sign / UTF-8 µ / Overflow positive-test / variant-tight InputTooLong pins. |
+| `instant.vr`        | **stable** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — 13 unit + 9 property + 7 integration. `monotonic_nanos()` intrinsic-backed; `Instant.elapsed()` directionality verified post-bug-fix. |
+| `system_time.vr`    | **stable** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — 23 unit + 9 property + 10 integration. Audit defers: year-2262 overflow guard + `SystemTimeError.Overflow` variant + `now_unix_ns` docstring note. |
+| `interval.vr`       | **stable** | [core-tests/time/interval](https://github.com/verum-lang/verum/tree/main/core-tests/time/interval) — 13 unit + 8 property + 12 integration. Construction + data-shape only; live-blocking `tick()` and `AsyncInterval.poll_next` live-poll gated on `@slow` marker + executor harness. |
+| `rfc3339.vr`        | **stable** | [core-tests/time/rfc3339](https://github.com/verum-lang/verum/tree/main/core-tests/time/rfc3339) — 25 unit + 10 property + 11 integration. Audit defers: empty-fraction pin, 10+ fractional digit truncation pin, out-of-range offset boundary, `format_rfc3339` convenience round-trip, `now_utc()` integration. |
+| `cron.vr`           | **stable** | [core-tests/time/cron](https://github.com/verum-lang/verum/tree/main/core-tests/time/cron) — 23 unit + 10 property + 9 integration. Audit defers: vixie-cron extensions (`@hourly`/`W`/`L`/`#n`), `Display for CronExpr` + format-direction round-trip, leap-year edge-case `next_after` pin. |
+| `julian.vr`         | **stable** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — 26 unit + 9 property + 13 integration. Howard Hinnant civil_from_days + Richards (1998) integer arithmetic + Float64 fractional path. Audit defers: Float64 ±80M-year cliff regression pin, half-away-from-zero rounding pin, carry-rollover guard pin. |
 | `mod.vr`            | **stable** | Re-export surface only — every name lifts to the originating module's status row above. |
 
 The status table is the runtime truth, not the file's `lifecycle`
@@ -412,6 +412,17 @@ is integer arithmetic; only the fractional time-of-day uses
 losslessly for ±80 million years around 1970.
 
 ---
+
+## Open defects
+
+| ID | Module | Surface | Resolution path |
+|---|---|---|---|
+| `duration §A` | `duration.vr` | `Duration.nanos(-1).as_nanos() == 0` (Verum body clamps via `n.max(0)`) but `Duration.from_nanos(-1).as_nanos() == -1` (runtime intrinsic `time_duration_from_nanos` is pure identity). Same split for the 4 scale-tier constructor pairs. | Two options. **A** — update VBC inline sequences (`DurationFromNanos`/`FromMicros`/`FromMillis`/`FromSecs`) to clamp; breaks `duration_parse` negative-input contract. **B** — drop `.max(0)` from Verum body + Sub/Mul impls; Duration becomes signed; aligns with Go/Java/C++ + duration_parse "-15m" surface. Author preference: B. |
+| `duration_parse §A` | `duration_parse.vr` | `parse("-15m").as_nanos() < 0` relies on duration §A intrinsic identity. | Gated on duration §A resolution. |
+| `system_time §A` | `system_time.vr` | `duration_since` arithmetic `secs * NANOS_PER_SEC + nanos` overflows Int64 around `secs ≈ 9.2e9` ≈ year 2262. | Add `SystemTimeError.Overflow` variant + boundary guard + property pin. ~30 min. |
+| `cron §A` | `cron.vr` | No support for vixie-cron extensions (`@hourly`/`W`/`L`/`#n`). | Documented feature gap; ~3h to land behind `extensions: bool` constructor flag. |
+| `rfc3339 §A/§B/§C` | `rfc3339.vr` | Empty fraction / 10+ digit truncation / out-of-range offset pins missing. | ~20 min total for 3 unit tests + 1 boundary guard. |
+| `interval §A/§B` | `interval.vr` | Blocking `Interval.tick()` and `AsyncInterval.poll_next` live-poll tests gated on `@slow` marker + executor harness. | Pin in `vcs/specs/L2-standard/async/` once executor harness lands. |
 
 ## See also
 
