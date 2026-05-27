@@ -68,6 +68,53 @@ The dedicated-suite-pending modules are tracked in
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 
+### Round-14 expansion (2026-05-27) — +26 new integration tests
+
+The latest expansion landed 26 new integration tests across 4 mem
+submodules under `--interp`:
+
+| Submodule | New tests | Sections covered |
+|---|---:|---|
+| `capability` | +9 | §7 composition with `GEN_*` lifecycle; §8 capability lattice ordering (top/bottom/idempotence/associativity); §9 `has_capability` bit-mask invariants (monotone-under-or, zero-mask, has_all_capabilities-universal-self) |
+| `size_class` | +6 | §9 `aligned_size` semantic (passthrough for align ≤ `MAX_ALIGN_SIZE`, overhead for oversized); §10 round-trip law `size_to_bin · bin_to_size` + monotone-over-doubling; §11 blocks-per-page lower bound |
+| `header` | +6 | §6 9-flag power-of-two layout + 6 pairwise-distinctness; §7 `GEN_UNALLOCATED < GEN_INITIAL < GEN_MAX < UInt32.MAX` chained inequality + headroom > 2^31; §8 compound flag operations (OR/XOR) |
+| `heap` | +5 | §4 HeapStats zero-state invariants (8-field baseline + live-count + bytes-outstanding + page-and-cache activity); §5 DIRECT_LOOKUP_SIZE + PAGE_HEADER_SIZE drift pins |
+
+All 26 tests pass under `--interp` (~28-30s each).  Test budget for
+full round-14 sweep: ~13 minutes wall-clock.
+
+### Known open defect — cross-module record-return field-access shift
+
+The `UseAfterFreeError.new(...)` (5-arg static constructor) returns a
+record whose field reads at the test site shift by +2 indices.  The
+constructor body writes fields at correct offsets; the test-side
+field READS land on wrong slots because `compile_field_access` falls
+through `resolve_field_index`'s type-aware lookups and lands on the
+global `intern_field_name(field_name)` fallback.
+
+**Affected sites**: every cross-module `Type.new(...)` (5+ args) call
+where the test expects to read distinct field values back.  Workaround
+pinned in `core-tests/mem/thin_ref/unit_test.vr §5`: construct via
+direct record literal at the test site, NOT via the cross-module
+`.new(...)` constructor.
+
+**Attempted fix**: a defensive `self.types`-by-name fallback in
+`resolve_field_index` (commit `ab8e707f4`) regressed 3 previously-GREEN
+record-literal tests; reverted in commit `585728904`.  The correct
+fundamental fix must preserve the 4-way cache consistency
+`(type_name_to_id, self.types, type_field_layouts,
+type_field_type_names)` holistically — likely at the archive-load
+path (`import_archive_type_with_protocol_remap` in
+`crates/verum_vbc/src/codegen/mod.rs:15771-15820`) rather than at
+downstream consumers.
+
+Pinned by memory entry `use_after_free_error_field_shift_2026-05-27.md`,
+audit `core-tests/mem/thin_ref/audit.md §6-§7`, and the corresponding
+`@ignore` pins in `unit_test.vr §6` (3 tests in thin_ref + 1 in
+diagnostics).  Same defect class as
+`[[btree_pattern_match_ref_generic_class]]` and
+`[[enactment_field_access_oob_2026-05-24]]`.
+
 ### Cross-tier validation status
 
 The `Tier` column reflects validated status under `verum test --interp`
