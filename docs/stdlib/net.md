@@ -2,8 +2,8 @@
 sidebar_position: 1
 title: net
 description: TCP, UDP, HTTP, TLS, DNS — V-LLSI-native networking with zero FFI.
-status: regression-only
-status_detail: Conformance suites landed in core-tests/net/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes.
+status: partial
+status_detail: Round 16 (2026-05-27) — full per-submodule conformance audit. 22 submodule rows registered in `core-tests/INVENTORY.md` with 4019+ test-file LOC + 17 audit.md files. **Stable** (data-surface + algebraic invariants exhaustively pinned): addr, unix. **Partial** (subset stable, defect-pinned remainder): cidr (CIDR-1 parse-path SIGSEGV), dns (live-network paths gated on mock harness), http (client/server harness pending), tls (backend pluggability pending), url (URL-1 Text.slice pointer-corruption workaround pinned). **Regression-only** (data-surface only — functional surface gated on harnesses): tcp, udp, h3, http2, http3, http_cache, http_parser, http_range, ipv6_canonical, link_header, proxy, quic, tls13, uri_template, websocket, weft, shutdown, content_negotiation. Cross-tier `--aot` validation deferred until task #7 (AOT stdlib build cascade) closes.
 ---
 
 # `core.net` — Networking
@@ -11,6 +11,57 @@ status_detail: Conformance suites landed in core-tests/net/ on 2026-05-24. Subse
 Full network stack built directly on V-LLSI syscalls (no libc
 dependency). RFC-conformant DNS, TLS 1.0–1.3 with platform-native
 certificate stores, HTTP types, TCP/UDP sockets with async I/O.
+
+## Module status
+
+Each `core.net.*` module carries an explicit conformance status — same
+contract as [`core.base`](./base.md#module-status),
+[`core.collections`](./collections.md#module-status), and
+[`core.time`](./time.md#module-status). The status row is the truth-table
+over the module's public API exercised by `core-tests/net/<module>/`
+under both Tier 0 (interpreter) and Tier 2 (AOT). Disagreement between
+tiers is itself a test failure.
+
+| Status | Meaning |
+|---|---|
+| **stable** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
+| **partial** | Subset stable; remainder gated by upstream defects, documented per-module. |
+| **regression-only** | Tests gate on language-level defects (precompile-cascade, codegen, harness gaps), pinned by `@ignore`'d LOCK-IN regressions. |
+| **undocumented** | Snapshot from source; no runtime conformance pin yet. |
+
+| Module | Status | Conformance suite |
+|---|---|---|
+| `addr.vr`           | **stable**           | [core-tests/net/addr](https://github.com/verum-lang/verum/tree/main/core-tests/net/addr) — 92 unit + 22 property. Ipv4Addr/Ipv6Addr/IpAddr/SocketAddrV4/SocketAddrV6/SocketAddr full surface + RFC 5735/1918/5771/4291 predicates + parse happy + error paths + AddrParseError 3-variant disjointness. Property suite pins predicate-disjointness lattice + RFC 1918 172.{15..32} boundary + multicast 224..239 boundaries + IPv6 link-local vs unique-local disjoint + port 4096-stride sweep. |
+| `cidr.vr`           | **partial**          | [core-tests/net/cidr](https://github.com/verum-lang/verum/tree/main/core-tests/net/cidr) — 40 unit + 26 property + 5 regression. Contains-lattice monotonicity v4 /32→/0 + v6 /128→/0, num_addresses exhaustive, cross-family rejection, CidrError disjointness, CidrSet contains lattice. **CIDR-1 @ignore'd** — `cidr.parse(&Text)` SIGSEGVs in LLVM SmallVector during precompile cascade; 5 regression pins lock in the defect-shape; see [`cidr/audit.md §3.1`](https://github.com/verum-lang/verum/tree/main/core-tests/net/cidr/audit.md). |
+| `dns.vr`            | **partial**          | [core-tests/net/dns](https://github.com/verum-lang/verum/tree/main/core-tests/net/dns) — 45 unit + 41 property + 14 regression. RFC 1035 §3.2.2 wire constants + DnsRecordType 10-variant disjointness + DnsRecord 9-variant payload preservation + DnsError 13-variant + DnsRecordEntry TTL boundary. **DNS-1..6 @ignore'd** — live `lookup_host*`/`resolve`/`Resolver.query` need mock-resolver harness; data-surface fully covered. 45/45 unit + 45/45 property GREEN under `--interp` 2026-05-27. |
+| `tcp.vr`            | **regression-only**  | [core-tests/net/tcp](https://github.com/verum-lang/verum/tree/main/core-tests/net/tcp) — 6 unit + 12 property + 7 regression. Shutdown 3-variant lattice + 9-cell pairwise disjointness via `is` (no Eq impl). **TCP-1..4 @ignore'd** — TcpStream.connect / TcpListener.accept / AsyncRead-AsyncWrite / socket options need loopback harness; SOCKADDR_IN_SIZE/SOCKADDR_IN6_SIZE pinned indirectly via `core.net.addr` round-trip. |
+| `udp.vr`            | **regression-only**  | [core-tests/net/udp](https://github.com/verum-lang/verum/tree/main/core-tests/net/udp) — 2 unit + 6 regression. **UDP-1..4 + UDP-6 @ignore'd** — bind/send_to/recv_from/multicast need socket-fixture harness; UDP-5 active mount-resolution smoke. |
+| `unix.vr`           | **stable**           | [core-tests/net/unix](https://github.com/verum-lang/verum/tree/main/core-tests/net/unix) — 22 unit + 33 property + 13 regression. UnixError 7-variant Eq + payload preservation + ShutdownKind via `is` + PeerCred 3-axis field independence (pid/uid/gid sentinel -1) + FdPassingError.NotImplemented stub. **UNIX-1..5 @ignore'd** — bind/connect/AsyncRead-AsyncWrite/PeerCred-query/SCM_RIGHTS need fixture harness. 13/13 unit GREEN under `--interp` 2026-05-27. |
+| `tls.vr`            | **partial**          | [core-tests/net/tls](https://github.com/verum-lang/verum/tree/main/core-tests/net/tls) — 31 unit + 38 property + 10 regression. TlsVersion 4-variant + wire_version (3,1)/(3,2)/(3,3)/(3,4) per RFC 2246/4346/5246/8446 + is_secure (Tls12/Tls13 only) + KeyType 3-variant + CertVerifyMode + Certificate/PrivateKey from_der. **TLS-1..5 @ignore'd** — TlsConnector/TlsAcceptor + Certificate/PrivateKey from_pem + ALPN backend not yet implemented; 5 active LOCK-IN RFC-stable wire constants. 19/19 unit GREEN under `--interp` 2026-05-27. |
+| `tls13.vr`          | **regression-only**  | [core-tests/net/tls13](https://github.com/verum-lang/verum/tree/main/core-tests/net/tls13) — 32 unit. Pure-Verum TLS 1.3 reference impl scaffolding — content-type/alert/named-group/signature-scheme/extension-type IDs per RFC 8446. Live handshake gated on the algorithmic primitives landing. |
+| `http.vr`           | **partial**          | [core-tests/net/http](https://github.com/verum-lang/verum/tree/main/core-tests/net/http) — 116 unit (incl. status_test) + 60 property + 19 regression. HTTP Method 9-variant + is_safe/is_idempotent/has_body truth tables (RFC 7231/7230) + StatusCode 1xx/2xx/3xx/4xx/5xx classification + Version 4-variant. **HTTP-5..7 @ignore'd** — HttpClient.get / HttpServer.bind / wire round-trip need transport harness. |
+| `url.vr`            | **partial**          | [core-tests/net/url](https://github.com/verum-lang/verum/tree/main/core-tests/net/url) — 54 unit + 45 property + 8 regression. Url.parse for http/https/ftp/file + scheme lowercase canonicalisation per RFC 3986 §3.1, percent_encode/decode RFC 3986 §2.1 over alphanum + reserved + UTF-8 multi-byte, UrlErrorKind 6-variant Eq + 15 pairwise-disjoint pairs, MAX_URL_LENGTH_BYTES=65536 DoS guard. **URL-1 @ignore'd** — `Text.slice` produces pointer-corrupted view, workaround `==` literal comparison everywhere; **URL-2** UTF-32 percent_encode sweep gated. |
+| `http_parser.vr`    | **regression-only**  | [core-tests/net/http_parser](https://github.com/verum-lang/verum/tree/main/core-tests/net/http_parser) — 36 unit. RFC 7230 HTTP/1.1 wire parser state machine + ParseError variants + DoS guards (max-headers/max-header-len/max-line-len) + body-framing resolution (§3.3.3) + chunked decoder. Live parser-against-wire-fixtures gated on fixture model. |
+| `http_cache.vr`     | **regression-only**  | [core-tests/net/http_cache](https://github.com/verum-lang/verum/tree/main/core-tests/net/http_cache) — 23 unit + 6 regression. Cache-Control directive parser + revalidation (If-Modified-Since/ETag) + stale-while-revalidate per RFC 7234. |
+| `http_range.vr`     | **regression-only**  | [core-tests/net/http_range](https://github.com/verum-lang/verum/tree/main/core-tests/net/http_range) — 19 unit + 9 regression. RFC 7233 Range header parsing + 206 Partial Content + RangeError variants. |
+| `content_negotiation.vr` | **regression-only** | [core-tests/net/content_negotiation](https://github.com/verum-lang/verum/tree/main/core-tests/net/content_negotiation) — 13 unit + 8 regression. RFC 7231 §5.3.2 Accept header parsing + q-value precedence + media-range matching + wildcard vs concrete precedence. |
+| `link_header.vr`    | **regression-only**  | [core-tests/net/link_header](https://github.com/verum-lang/verum/tree/main/core-tests/net/link_header) — 12 unit + 8 regression. RFC 8288 Link header parsing + uri-reference + rel + title + media + type + hreflang link-extension parameters. |
+| `uri_template.vr`   | **regression-only**  | [core-tests/net/uri_template](https://github.com/verum-lang/verum/tree/main/core-tests/net/uri_template) — 10 unit + 7 regression. RFC 6570 URI Template Level 1 (`{var}`) + Level 2 (`{+var}`/`{#var}`) + Level 3 (`{?var}`) expansion + reverse-match. |
+| `ipv6_canonical.vr` | **regression-only**  | [core-tests/net/ipv6_canonical](https://github.com/verum-lang/verum/tree/main/core-tests/net/ipv6_canonical) — 21 unit + 3 regression. RFC 5952 canonical IPv6 text-representation (lowercase hex, longest-zero-run compression with `::`, leading-zero suppression, no-double-`::`). |
+| `http2/*`           | **regression-only**  | [core-tests/net/http2](https://github.com/verum-lang/verum/tree/main/core-tests/net/http2) — 57 unit. RFC 7540 / RFC 9113 FrameType + FrameFlags + SettingId + Settings + ErrorCode + FRAME_HEADER_SIZE=9 + PREFACE 24-byte. **HTTP2-1..4 @ignore'd** — full frame encode/decode + HPACK static/dynamic table + CONTINUATION fragmentation + stream multiplexing. |
+| `http3/*` + `h3/*` | **regression-only**  | [core-tests/net/http3](https://github.com/verum-lang/verum/tree/main/core-tests/net/http3) — 11 unit + [core-tests/net/h3](https://github.com/verum-lang/verum/tree/main/core-tests/net/h3) — 13 unit. RFC 9114 frame-type constants + QPACK error codes per RFC 9204. Live H3 transport gated. |
+| `quic/*`            | **regression-only**  | [core-tests/net/quic](https://github.com/verum-lang/verum/tree/main/core-tests/net/quic) — 24 unit. RFC 9000 frame-type constants + TransportParameterId + CongestionControl variants. Live QUIC handshake gated. |
+| `websocket.vr`      | **regression-only**  | [core-tests/net/websocket](https://github.com/verum-lang/verum/tree/main/core-tests/net/websocket) — 38 unit + 16 regression. WebSocket opcode constants per RFC 6455 §5.2 (CONT=0x0/TEXT=0x1/BINARY=0x2/CLOSE=0x8/PING=0x9/PONG=0xA) + CloseCode pairwise-disjoint + Sec-WebSocket-Accept GUID per §4.2.2. **WS-3..5 @ignore'd** — handshake / permessage-deflate / fragmented Continuation need transport harness. |
+| `proxy/*`           | **regression-only**  | [core-tests/net/proxy](https://github.com/verum-lang/verum/tree/main/core-tests/net/proxy) — 8 unit. LoadBalancer 3-variant + rate-limit cost constants. Umbrella covers circuit_breaker / health_check / loadbalancer / rate_limit / retry / upstream_pool. |
+| `weft/*`            | **regression-only**  | [core-tests/net/weft](https://github.com/verum-lang/verum/tree/main/core-tests/net/weft) — 20 unit. Server middleware umbrella (CORS / request-ID injector / trust-IP allow-list / body-size limiter / gzip codec). Live server gated on TcpListener harness. |
+| `shutdown.vr`       | **regression-only**  | [core-tests/net/shutdown](https://github.com/verum-lang/verum/tree/main/core-tests/net/shutdown) — 8 unit. Graceful-shutdown coordinator + 3-variant Drainability ADT. |
+| `mod.vr`            | **stable**           | Re-export surface only — every name lifts to the originating module's status row above. |
+
+The status table is the runtime truth, not the file's `lifecycle`
+annotation. When the two diverge, the table is the source of truth for
+callers.
+
+---
 
 | File | What's in it |
 |---|---|
