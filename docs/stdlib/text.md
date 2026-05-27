@@ -2,8 +2,8 @@
 sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
-status: partial
-status_detail: 128/130 protocol-conformance tests pass on 2026-05-17. Closed this session: §B (Char.encode_utf8 / encode_utf16 CallM intercept — fundamental dispatch fix for Char NaN-boxed as Int), §N (Text.into_bytes — indexed-while push), §H (index_of alias + 3 boundary guards), §J parser (f"{x:?}" routes to format_debug(&x)), §Y architectural (lookup_type_mount_scoped helper threaded through 5 probe sites), 9 stale @ignored regressions (6 regex + 3 case_fold) un-ignored after transitive closure. Earlier closes: §T (capacity), §U (join), §V (Hash + canonical indexed-while), §A (rfind), §I + §R pinned closed. Newly pinned green guards: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> variant destructure). Remaining open: §D (function-id collision), §J runtime (format_debug → fmt_debug Text-writeback dispatch defect), §Y AOT path (helper not reached by AOT typechecker), prelude-shadowing (explicit mounts suppress auto-import in some contexts).
+status: regression-only
+status_detail: Sweep on 2026-05-27. All §A-§G + §I-§U regression classes CLOSED under --interp. §D (function-id collision for Text.from_int / concat / push_byte / reserve / make_ascii_*) CLOSED transitively via task #47 stage-3 stub remap (commits 962f44ed0 + 1528fd0a5 + d724554f2) — all 7 §D regression tests pass. §H (NEW 2026-05-27) auto-deref defect for (&Primitive).value_self_method() surfaced via format_hex/binary/octal; fundamental workaround landed in core/text/format.vr (let-binding deref discipline) — 9/9 unit + 4/4 PASS-GUARD GREEN; underlying codegen fix pinned @ignore. text/format extended +67 unit tests (commit aebc0cd8f) covering FormatSpec advanced builders + int_to_text + module-level format_hex/binary/octal/lower_exp/upper_exp + TextFormatter direct API + sign handling. AOT-path validation gated on pre-existing stdlib AOT blockers (sync_connect_binlog + translate arity).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -11,16 +11,23 @@ status_detail: 128/130 protocol-conformance tests pass on 2026-05-17. Closed thi
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
-  status="partial"
-  detail="128/130 protocol-conformance tests pass on 2026-05-16.  Closed this session: §B (Char.encode_utf8 / encode_utf16 CallM intercept — fundamental dispatch fix for Char NaN-boxed as Int) + §N (Text.into_bytes — indexed-while rewrite removes `List.extend_from_slice` dispatch dependency).  Earlier closes: §A (rfind), §T (Text.capacity), §U (Text.join), §V (DefaultHasher + canonical indexed-while slice iter in Hasher.write / Formatter.write_bytes), §I (cmp), §R (count_matches), §C from_digit hex (char).  Pinned green: §W (Char method dispatch via &Char auto-deref), §X (Result<Bool, Text> destructure).  Remaining open: §D (function-id collision — concat / push_byte / reserve / make_ascii_* / from_int).  Newly tracked: §Y (AOT typechecker mount-scoped name resolution — `core.cli.error.ParseError` shadows `core.text.ParseError` in AOT pass; workaround via `ParseError.new` constructor)."
+  status="regression-only"
+  detail="Sweep on 2026-05-27.  Under --interp every documented §-class is either closed (active green guard) or pinned with a regression test.  Closed since the 2026-05-17 sweep: §D (function-id collision for Text.from_int / concat / push_byte / reserve / make_ascii_*) — transitively closed via task #47 stage-3 stub remap (commits 962f44ed0 + 1528fd0a5 + d724554f2), all 7 §D regression tests pass.  Surfaced + closed 2026-05-27: §H (auto-deref defect for `(&Primitive).value_self_method()`) — surfaced by the new module-level format_hex / format_binary / format_octal wrappers which silently returned hex-of-pointer-bits; fundamental workaround landed in core/text/format.vr (let-binding-deref discipline); 9/9 unit + 4/4 PASS-GUARD GREEN; underlying codegen fix `@ignore`d for follow-up.  text/format suite extended +67 unit tests in commit aebc0cd8f covering FormatSpec advanced builders + int_to_text + module-level format_hex / format_binary / format_octal / format_lower_exp / format_upper_exp + TextFormatter direct API (write_str / write_char / write_int / write_int_base / accessors / padding-under-all-alignments / precision-truncation / custom fill / type-spec dispatch / alternate-form prefix emission) + sign handling.  AOT-path validation gated on pre-existing stdlib AOT blockers (sync_connect_binlog + translate arity); same gate as adjacent stdlib modules."
   defects={[
-    {area: 'text', summary: '§D function-id collision (concat / push_byte / reserve / make_ascii_* / from_int).  Closed: §A / §B / §C / §E / §F / §G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X.'},
-    {area: 'char', summary: '2 remaining defect classes — §B eq_ignore_ascii_case false-negative, §D general_category misroute.  Closed 2026-05-14: §A (`make_ascii_upper/lowercase` via char_runtime intercept), §C (from_digit hex case), §E (AnyChar.matches via shared root with text/text §C).  Encode-UTF8 dispatch via new Char.encode_utf8 / encode_utf16 CallM intercept closes the upstream Text.insert / Text.push_char / TextBuilder.push_char surface (text/text §B).'},
+    {area: 'text', summary: 'All previously-open defects CLOSED or pinned.  §D function-id collision closed transitively via task #47 stage-3 stub remap.  Remaining open: §Y (AOT typechecker mount-scoped name resolution — `core.cli.error.ParseError` shadows `core.text.ParseError` in AOT pass; workaround via `ParseError.new` constructor).'},
+    {area: 'char', summary: '§A (make_ascii_upper/lowercase) + §C (from_digit hex case) + §E (AnyChar.matches) CLOSED 2026-05-14.  §B (encode_utf8 / encode_utf16 CallM intercept) CLOSED 2026-05-16 — pinned architectural rule: every primitive NaN-boxing to foreign-kind Value MUST have CallM-path intercept for &mut-arg methods.  2 minor remaining defect probes pinned @ignore: §B residual eq_ignore_ascii_case false-negative + §D general_category misroute.'},
+    {area: 'format', summary: 'All known defects CLOSED.  §A (format_display / format_debug closure-dispatch) CLOSED 2026-05-15 transitively.  §H (auto-deref defect class) surfaced + workaround landed 2026-05-27 (commit aebc0cd8f).  108/108 unit tests + 12/12 PASS-GUARDs GREEN.'},
     {area: 'builder', summary: 'All known defects CLOSED. 23/23 unit pass.'},
     {area: 'regex', summary: 'All 5 defects CLOSED — extract_string CBGR-deref normalisation + TensorSubOpcode 0xFF collision fix. 31/31 unit pass.'},
     {area: 'tagged_literals', summary: 'All known defects CLOSED transitively. 29/29 unit pass, plus property / integration / regression.'},
+    {area: 'case_fold', summary: 'Fold + compare/equal under ASCII-NOCASE complete.  Property + regression suites GREEN.'},
+    {area: 'numeric/decimal', summary: 'Cascading from bigint close — §A Int.neg dispatch / §B function-id collision / §C cascade. Full re-validation pending.'},
+    {area: 'numeric/bigint', summary: '21/21 unit GREEN.  All tasks #14/#15/#16/#17 closed.'},
+    {area: 'numeric/bigdecimal', summary: 'Cascading from bigint close.  Constructor + sign guards GREEN.  Add/mul body re-validation pending (2 @ignore regression pins).'},
+    {area: 'numeric/rational', summary: 'Cascading from bigint close — full re-validation pending.'},
+    {area: 'numeric/modular', summary: '21-test conformance suite landed; complete outside the §A transitive block.'},
   ]}
-  sweepDate="2026-05-16"
+  sweepDate="2026-05-27"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -879,34 +886,63 @@ own `audit.md` cataloguing open defects + drift surfaces.
 
 | Submodule | Tests pass | Status | Audit |
 |---|---:|---|---|
-| `text/text` | ~180 / 218 (83%) projected post-§N | **partial** — §B / §D remaining | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md) |
-| `text/char` | 75 / 86 (87%) | **partial** — §B / §D remaining | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
-| `text/case_fold` | 25 / 30 (83%) | **complete** outside the upstream Text.eq cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
+| `text/text` | 49 / 52 regression GREEN (§A 27/27, §B 13/13, §C 4/4, §D 7/7, §E 4/5, §F/§G/§O 3/3) | **regression-only** — §Y AOT remaining | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md) |
+| `text/char` | 75 / 86 (87%) | **regression-only** — 2 minor `@ignore` pins (§B residual + §D probe) | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
+| `text/case_fold` | 25 / 30 (83%) | **regression-only** outside the upstream Text.eq cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
 | `text/builder` | 23 / 23 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/builder/audit.md) |
-| `text/format` | 39 / 41 (95%) | **partial** — §A format_display / format_debug closure-dispatch | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
+| `text/format` | **108 / 108** (100%) unit + 12/12 PASS-GUARDs | **complete** — §H workaround landed 2026-05-27, codegen fix `@ignore` for follow-up | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
 | `text/regex` | 31 / 31 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex/audit.md) |
 | `text/tagged_literals` | 29 / 29 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals/audit.md) |
-| `text/numeric/decimal` | 27 / 45 (60%) | **partial** — §A Int.neg dispatch / §B function-id collision / §C cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
+| `text/numeric/decimal` | 27 / 45 (60%) | **partial** — §A Int.neg dispatch / §B / §C cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
 | `text/numeric/bigint` | 21 / 21 (100%) | **complete** — tasks #14/#15/#16/#17 closed | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigint/audit.md) |
-| `text/numeric/bigdecimal` | cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
+| `text/numeric/bigdecimal` | constructor + sign guards GREEN; add/mul cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
 | `text/numeric/rational` | cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
 | `text/numeric/modular` | 21-test conformance suite landed | **complete** outside the §A transitive block | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
 
 ### Highest-leverage open defects
 
-Closing either of these would cascade through the remaining `partial` modules:
+Closing the AOT mount-scope defect would cascade through the remaining
+test gaps on the AOT path:
 
 | ID | Surface | Estimated effort | Tests unblocked |
 |---|---|---|---:|
-| §D | function-id collision in archive remap for `Text.concat` / `push_byte` / `reserve` / `make_ascii_*` / `from_int` | multi-session (CallM migration OR global next_func_id) | ~10 (§O included) |
-| §Y | AOT typechecker honours mount-scoped names so `core.text.ParseError` wins over `core.cli.error.ParseError` in user code | medium (`crates/verum_types/src/infer/modules.rs`) | 1 + unknown others |
+| §Y | AOT typechecker honours mount-scoped names so `core.text.ParseError` wins over `core.cli.error.ParseError` in user code | medium (`crates/verum_types/src/infer/modules.rs`) | 1 + unknown others (AOT path) |
+| §H | Fundamental `(&Primitive).value_self_method()` auto-deref in `compile_method_call` (workaround landed in stdlib; codegen fix `@ignore`d as `regression_h_ref_int_to_hex_auto_deref_pinned`) | multi-session VBC codegen | 1 (and removes the let-binding-deref discipline obligation across the stdlib) |
 
-All previously-open text/text defects (§A / §B / §C / §E / §F / §G / §H /
-§I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U / §V / §W / §X)
-are closed or pinned closed.  The two remaining open classes are
-well-bounded language-implementation work — see
+All previously-open text/text defects (§A / §B / §C / §D / §E / §F /
+§G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U /
+§V / §W / §X) are closed or pinned closed under `--interp`.  §D
+(function-id collision) closed transitively via task #47 stage-3 stub
+remap (commits `962f44ed0` + `1528fd0a5` + `d724554f2`).  §H (auto-
+deref) closed via let-binding-deref workaround in stdlib (commit
+`460508d8f`).  The two remaining open classes are well-bounded
+language-implementation work — see
 [`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md)
-§D / §Y for the root-cause hypotheses.
+§Y for the AOT root-cause hypothesis, and
+[`core-tests/text/format/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md)
+§H for the codegen-side fundamental.
+
+#### Architectural rule pinned by the §H close (2026-05-27)
+
+Every stdlib free function of shape `public fn f(value: &Primitive)`
+that calls a value-self method on `value` MUST materialise the deref
+via local binding:
+
+```verum
+public fn format_hex(value: &Int) -> Text {
+    let v: Int = *value;   // materialises into a fresh Int register
+    v.to_hex()
+}
+```
+
+The bare `value.to_hex()` form silently passes the CBGR pointer bits
+as the `self: Int` arg (the dispatcher treats the reference register
+as the value register) and produces garbage — `format_hex(&255)`
+returned `"-6c00000002"` instead of `"ff"`.  The `(*value).to_hex()`
+shorthand is folded back into the bare-receiver dispatch by current
+Tier-0 codegen and does NOT survive.  Sibling pattern already
+established by `format_lower_exp` / `format_upper_exp` (which use
+`float_to_exp(*value, 6, false)`).
 
 #### Architectural rule pinned by the §B close
 
