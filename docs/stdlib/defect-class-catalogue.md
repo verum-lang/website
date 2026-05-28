@@ -88,6 +88,18 @@ suite itself when it identifies new failure modes.
 | Examples | Sha1.compress_block (commit `92a85244b`), Sha256.compress_block (commit `400dccb78`), Sha512.compress_block (commit `400dccb78`). |
 | Residual | Workaround is partial — applied broadly but WS-6 (websocket accept_key) still stack-overflows post-rebuild; the actual dispatch defect is in a different code path within Sha1 (candidate: `[0; 64]` array initialization producing SkipWhileIter, or hot-loop array indexing). Multi-day VBC codegen investigation required for the underlying defect. |
 
+## 7. `for x in slice` lowering SIGSEGV (CLOSED 2026-05-14)
+
+| Field | Value |
+|---|---|
+| Defect class id | **SLICEITER-1** |
+| Status | **CLOSED** at compiler layer 2026-05-14 (commit `7cbd0585d`). Discipline pinned for stdlib contributors. |
+| Stable trigger | `for x in slice` where `slice` is a bare `&[T]` slice value (NOT `slice.iter()`). The `for x in &[T]` lowering tripped an LLVM `SmallVectorBase::grow_pod` SIGSEGV at codegen time. |
+| Manifestation | LLVM SmallVector SIGSEGV during precompile cascade — same surface as EXTSLICE-1 but rooted in IR-emission for slice-iter lowering rather than List.extend_from_slice intrinsic dispatch. |
+| Probe | `grep -rn "for [a-z_]+ in [a-z_]+\.as_bytes()\|for [a-z_]+ in bytes\b" core/` MUST return zero broken patterns at every commit. |
+| Fix discipline | Use indexed-while: `let n = slice.len(); let mut i: Int = 0; while i < n { let x = slice[i]; ... ; i = i + 1; }`. Routing through `for x in slice.iter()` is also safe because it goes through the custom-iterator path (has_next/next CallM). |
+| Examples | `Hasher.write` + `Formatter.write_bytes` migrated to indexed-while pattern (commit `7cbd0585d`) — closed the `Text.rfind` family transitively. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
@@ -98,6 +110,7 @@ suite itself when it identifies new failure modes.
 | QUALRESULT-1 | `core-tests/net/url/audit.md §3.4` | `8cf21a8be`, `74c074176` |
 | TRANSIENTMUT-1 | `core-tests/net/cidr/audit.md §3.4` | `92480c76b` |
 | CHAINMETHOD-1 | `core-tests/net/websocket/audit.md §3.6` | `92a85244b`, `400dccb78` (partial) |
+| SLICEITER-1 (CLOSED 2026-05-14) | `core-tests/text/text/audit.md §A` | `8650a56ba`, `7cbd0585d` |
 
 ## See also
 
