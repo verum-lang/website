@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: complete
-status_detail: 14/14 submodules complete under `--interp` (capability / size_class / header / thin_ref / fat_ref / epoch / cap_audit / cap_audit_ring / diagnostics / segment / arena / allocator / heap / hazard); AOT verification pending. Per-submodule rows in `core-tests/INVENTORY.md`.
+status_detail: 14/14 submodules complete under `--interp` (capability / size_class / header / thin_ref / fat_ref / epoch / cap_audit / cap_audit_ring / diagnostics / segment / arena / allocator / heap / hazard) PLUS 1 module-root (mod). AOT verification pending. Per-submodule rows in `core-tests/INVENTORY.md`.
 ---
 
 import ModuleStatus, {
@@ -62,11 +62,115 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 | `cap_audit.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit/` — capability transition events |
 | `cap_audit_ring.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
 | `mem_raw.vr` (re-exported) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy`/`memmove`/`memset`/`memcmp`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
+| `mod.vr` (module root) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/mod/` — 4 files + audit. Module-root surface: `UseAfterFreeError` (5-field record + 3 ctors + message + Debug + Display + Eq) + `RevocationError` (4-variant sum + 4 ctors + message + Debug + Display + Eq) + `CbgrTier` (4-variant sum) + `get/set_execution_tier` global accessor. 41 unit + 19 property + 18 integration + 9 regression tests cover module-root types + the umbrella re-export contract (every submodule symbol resolves via `mount core.mem.{Name}`). **4 pinned `@ignore`'d tests**: 3 on cross-module instance-method-body field-access shift defect (`UseAfterFreeError.message()` / `.eq()` body field-reads drift), 1 on umbrella-mount dispatch collision (`has_capability(flags, cap)` routed to `AllocationHeader.has_capability(&self, cap)`) — see `audit.md §3.1` and `§3.4`. |
 
 The dedicated-suite-pending modules are tracked in
 `core-tests/INVENTORY.md`; new modules graduate to <TierBadge tier="both" />
 once all four test files land **and** the audit deferrals all close on both
 tiers.
+
+### Round-17 expansion (2026-05-28) — `core.mem.mod/` first-pass + foundation-layer property law sweeps
+
+Three commits landed:
+
+**1. `mem/mod/` 4-file conformance suite** (commit `8efa39d08`) —
+   first coverage of the `core/mem/mod.vr` umbrella manifest. 41
+   active unit + 19 property + 18 integration + 9 regression tests +
+   `audit.md` covering the 3 module-root types (`UseAfterFreeError`,
+   `RevocationError`, `CbgrTier`) and the umbrella re-export contract.
+
+**2. `mem/epoch/` + `mem/hazard/` property sweep** (commit `84a329253`)
+   — epoch property 85→250 LOC (4→13 laws); hazard property 38→235 LOC
+   (3→17 laws); hazard integration 41→200 LOC (2→11 tests). Closes
+   foundation-layer algebraic-law gaps for EpochCache 3-field
+   isolation, `needs_reclaim` threshold sweep,
+   `estimated_retired_bytes` 5×5 Cartesian product law,
+   MAX_THREADS / RETIRED_THRESHOLD power-of-two pins, and footprint
+   analysis composed with HEADER_SIZE / SEGMENT_SIZE /
+   DEFAULT_ARENA_CAPACITY.
+
+**3. `mem/heap/` + `mem/arena/` property sweep** (commit `d533408b7`)
+   — heap property 53→300 LOC (3→16 laws); arena property 40→230 LOC
+   (4→18 laws). HeapStats 8-field isolation + balance algebra
+   (`alloc_count == dealloc_count + live_count` no-leak invariant +
+   bytes balance + monotonicity); ArenaConfig
+   `.default()`/`.fixed()`/`.custom()` constructor invariants +
+   ArenaError 4-variant disjointness + payload-conjunctive Eq laws.
+
+#### NEW defects surfaced
+
+##### §1. Cross-module instance-method-body field-access shift
+
+`UseAfterFreeError.message()` body reads `self.<field>` at the WRONG
+offsets when invoked on instances constructed in test code, because
+the method body's compilation context is `core/mem/mod.vr` and the
+precompiled-archive's field layout for `UseAfterFreeError` isn't
+fully threaded into `compile_field_access` at the method-body
+codegen site.
+
+Demonstration (interpolated output under `--interp` 2026-05-28):
+
+```text
+let e: UseAfterFreeError = UseAfterFreeError {
+    expected_gen:   5,    actual_gen:     6,
+    expected_epoch: 1,    actual_epoch:   2,
+    type_name:      "Shared<Int>",
+};
+print(e.message());
+// Output: "use-after-free detected for 1: expected gen=5 epoch=5,
+//                                         actual gen=6 epoch=6"
+```
+
+Decoded shift:
+
+| Field | Logical slot | `.message()` reads slot |
+|---|---:|---:|
+| `expected_gen`   | 0 | 0 ✓ |
+| `actual_gen`     | 1 | 1 ✓ |
+| `expected_epoch` | 2 | 0 ❌ (reads expected_gen) |
+| `actual_epoch`   | 3 | 1 ❌ (reads actual_gen) |
+| `type_name`      | 4 | 2 ❌ (reads expected_epoch) |
+
+Same root cause class as the existing
+`use_after_free_error_field_shift_2026-05-27` defect (see below) but
+surfaced at the instance-method-body codegen site rather than the
+cross-module static-method return path. Pinned `@ignore`'d in
+`core-tests/mem/mod/unit_test.vr §1-§2`.
+
+##### §2. Umbrella-mount dispatch collision: `has_capability`
+
+When `has_capability` is mounted via the umbrella
+(`mount core.mem.{has_capability}` routing through `mod.vr`'s
+`public mount .capability.{has_capability}` re-export), a 2-arg call
+`has_capability(flags, cap)` is dispatched to the SAME-NAME 2-arg
+method `AllocationHeader.has_capability(&self, cap)` defined at
+`core/mem/header.vr:636`.
+
+```text
+let flags: UInt16 = CAP_OWNED;
+assert(has_capability(flags, CAP_READ));
+// Runtime: NullPointerAt { op: "opcode 0x78",
+//                          site: "AllocationHeader.load_capabilities",
+//                          pc: 0 }
+```
+
+The first UInt16 argument (CAP_OWNED) is re-interpreted as a
+`&AllocationHeader` pointer (= null), faulting on the first
+`self.load_capabilities()` call.
+
+**Direct submodule mount works**: `mount core.mem.capability.{has_capability}`
+resolves to the free function correctly (29 GREEN tests in
+`core-tests/mem/capability/`). The defect is specific to
+umbrella-mount dispatch, not bare-name dispatch.
+
+**Fundamental fix surface**:
+1. The dispatcher's bare-name lookup must distinguish free-fn-arity-N
+   from impl-block-method-arity-(N-1)-plus-receiver dispatch.
+2. Or — umbrella-re-exported free fns must carry their canonical
+   source-module identity in their function-id key.
+
+Pinned `@ignore`'d in `core-tests/mem/mod/unit_test.vr §8` +
+`regression_test.vr §H`.
 
 ### Round-14 expansion (2026-05-27) — +26 new integration tests
 
