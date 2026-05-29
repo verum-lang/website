@@ -152,15 +152,43 @@ suite itself when it identifies new failure modes.
 | Fix surface | Range-validate suffixed integer literals at parse/type-check time and emit a diagnostic (`E`-class) on overflow, mirroring Rust/Swift. Contained but touches the literal→type-check path; needs a stdlib-wide validation pass (some constants rely on two's-complement forms like `0xFFFFFFF6_u32` which *do* fit their suffix and must keep compiling). |
 | Examples | `core-tests/sys/windows/tls/unit_test.vr:47` + `core-tests/sys/windows/mod/unit_test.vr:130` asserted `TCB_MAGIC` against an 18-hex-digit typo'd literal; both tests were silently *failing* (the wrong literal wrapped to a value ≠ the real 16-digit `TCB_MAGIC`). Fixed the test typo; the language defect remains. |
 
+## 12. Single-field-newtype method-return / arithmetic-return unboxing (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **NEWTYPE-UNBOX-1** |
+| Status | **OPEN** — tracked. Source-side working idiom keeps the suite green. |
+| Stable trigger | A value of a single-field newtype (`type NtStatus is (Int32)`, `type WindowsDuration is (UInt64)`) produced by a **method/operator body** (e.g. `IoStatusBlock.status()` returning `NtStatus(...)`, or `d1.add(d2)` returning a `WindowsDuration`), then immediately consumed by a chained method (`.is_success()`, `.as_millis()`). |
+| Manifestation | The freshly-produced newtype value is heap-boxed (or unboxed) inconsistently with what the consuming method/intrinsic expects: method dispatch fails (`NtStatus.is_success not found on receiver of runtime kind Int`) or an intrinsic accessor mis-reads (`add(...).as_millis()` returns the raw nanos instead of the millis). Direct newtype values (e.g. `STATUS_*` consts) dispatch fine — only method/operator-produced ones drift. |
+| Probe | `IoStatusBlock.new().status().is_success()` panics; `STATUS_SUCCESS.is_success()` works. `d1.add(d2).as_millis()` mis-reads; `d.as_nanos()` (reads `.0`) works. |
+| Fix discipline | Avoid the method-return-then-chain on single-field newtypes: read the inner field directly (`.0` / `as_nanos`), or bind the produced value to a `let` of the explicit newtype type before chaining. |
+| Deep fix | VBC codegen newtype boxing/unboxing parity so method/operator returns carry the same representation the consumer expects. |
+| Examples | `core-tests/sys/windows/ntdll` (IoStatusBlock.status().is_success), `core-tests/sys/windows/time` (WindowsDuration.add().as_millis); same class as the core `Duration` unboxing defect (2026-05-27). |
+
+## 13. Inline `&`-payload-variant arg clobbers `&mut self` field writeback (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **MUTSELF-MATCH-1** |
+| Status | **OPEN** — tracked. Multi-step FSM tests `@ignore`'d; single-step (return-value) coverage stays green. |
+| Stable trigger | A `&mut self` method (`fn step(&mut self, event: &E)`) called with an **inline-constructed payload-bearing variant** argument (`fsm.step(&E.SendHeaders { end_stream: false })`), where the method later writes a field (`self.state = next`). |
+| Manifestation | The method computes and **returns** the correct value, but the trailing `self.<field> = …` writeback **does not persist** to the caller — the object never advances across calls. Tests that check the *return value* pass; tests that read the object's field after the call fail. |
+| Probe | `let mut fsm = StreamFsm.new(1); let _ = fsm.step(&StreamEvent.SendHeaders { end_stream: false }); assert_eq(fsm.state(), StreamState.Open);` — fails (state still `Idle`). The **parameter-passed** event variant (`fn helper(setup: &E) { fsm.step(setup); … }`) persists correctly, isolating the trigger to the inline `&`-constructed payload-variant argument aliasing the `&mut self` receiver storage. |
+| Not the cause | A stdlib reformulation binding `let cur = self.state;` before `match (cur, event)` did **not** fix it — the defect is at the call site (inline `&`-arg vs `&mut self`), not the match shape. Unit (payload-free) variant args and direct field-write methods (`Http2DynamicTable.insert`) persist fine. |
+| Fix surface | VBC codegen: an inline `&`-constructed argument must be materialised in storage that does not alias / clobber the `&mut self` receiver, so the post-call field writeback survives. |
+| Examples | `core/net/http2/stream.vr::StreamFsm.step`; characterised in `core-tests/net/http2/stream/audit.md §3.1`. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
 | INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
 | BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
 | DEFERRED-INIT-1 (CLOSED 2026-05-29) | `core-tests/net/http2/hpack/audit.md §3.4` | (this branch) |
-| DEFERRED-INIT-1 (CLOSED 2026-05-29) | `core-tests/net/http2/hpack/audit.md §3.4` | (this branch) |
 | TEXT-SMALLSTR-ASBYTES-1 (OPEN) | `core-tests/net/http2/hpack/audit.md §3.3` | — |
+| ENCSTR-LOOP-1 (OPEN) | `core-tests/net/http2/hpack/audit.md §3.5` | — |
+| MUTSELF-MATCH-1 (OPEN) | `core-tests/net/http2/stream/audit.md §3.1` | — |
 | EXTSLICE-1 | `core-tests/net/cidr/audit.md §3.1`, `core-tests/net/http_range/audit.md §3.1`, `core-tests/encoding/base58/audit.md §A`, `core-tests/encoding/msgpack/audit.md §C`, `core-tests/encoding/value/audit.md §C` | `be64f4e1e`, `a60025262`, `b30e71f92`, `abf1033b1`, `ab9ec931b`, `41882e63b` |
 | BSTRLIT-1 | `core-tests/net/ipv6_canonical/audit.md §3.1` | `8233fad28`, `abf1033b1` |
 | CLOSURE-RESULT-1 | `core-tests/net/cidr/audit.md §3.1`, `core-tests/net/ipv6_canonical/audit.md §3.1` | `f649312c6` |
