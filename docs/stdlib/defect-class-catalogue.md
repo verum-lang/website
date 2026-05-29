@@ -100,10 +100,67 @@ suite itself when it identifies new failure modes.
 | Fix discipline | Use indexed-while: `let n = slice.len(); let mut i: Int = 0; while i < n { let x = slice[i]; ... ; i = i + 1; }`. Routing through `for x in slice.iter()` is also safe because it goes through the custom-iterator path (has_next/next CallM). |
 | Examples | `Hasher.write` + `Formatter.write_bytes` migrated to indexed-while pattern (commit `7cbd0585d`) — closed the `Text.rfind` family transitively. |
 
+## 8. Deferred-init `let x: T;` assigned in branch arms (CLOSED 2026-05-29)
+
+| Field | Value |
+|---|---|
+| Defect class id | **DEFERRED-INIT-1** |
+| Status | **CLOSED** at compiler layer 2026-05-29. |
+| Stable trigger | A binding declared without an initializer (`let x: T;`) and then assigned in **more than one** mutually-exclusive control-flow arm (both legs of an `if`/`else`, or several `match` arms). |
+| Manifestation | The function is lenient-compiled to a panic-stub; at runtime: `runtime: Panic { message: "[lenient] <fn> compiled to panic-stub: cannot assign to immutable variable: <name>" }`. |
+| Root cause | VBC codegen tracked definite-assignment with a single flat `is_initialized` flag that was not branch-scoped. The first arm's assignment flipped it `true`; the sibling arm's assignment then tripped the immutable-reassignment guard. |
+| Fix | Added a `declared_uninit` flag to `RegisterInfo` (`crates/verum_vbc/src/codegen/registers.rs`), set at the deferred-init declaration in `compile_let` (`statements.rs`). The guard in `expressions.rs` now reads `!is_mutable && is_initialized && !declared_uninit`, exempting deferred-init bindings while still rejecting reassignment of a normal `let x = v;` immutable. |
+| Examples | `core/net/http2/hpack.vr::HpackDecoder.decode_literal` (`let name: Text;` / `let start: Int;`); also unblocks `core/database/mysql/wkb_decoder.vr` (3 sites). Pinned by `core-tests/net/http2/hpack/{unit_test,regression_test}.vr`. |
+
+## 9. Small-string `Text.as_bytes()` across a call boundary SIGSEGV (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **TEXT-SMALLSTR-ASBYTES-1** |
+| Status | **OPEN** — tracked. Encode-path tests gated as `@ignore` "ENCODE-1". |
+| Stable trigger | `Text.as_bytes()` on a **small** (NaN-box-inline, ≤ 6 byte) Text, where the resulting `&[Byte]` is passed as an argument to another function. |
+| Manifestation | `verum: internal compiler error — fatal signal SIGSEGV (11)`. |
+| Probe | `let f = HeaderField.new("x","y"); encode_string(f.name.as_bytes(), false, &mut out);` — SIGSEGV. The heap-backed analogue `encode_string(list.as_slice(), …)` is fine. |
+| Root cause (hypothesis) | `Text.as_bytes()` on an inline small string returns a slice into ephemeral value storage with no backing heap buffer; the slice dangles once it escapes the current frame. |
+| Sibling | `let t: Text = "xy".into(); t.as_bytes()` mis-dispatches to `USize.as_bytes` (receiver-type tracking drift through `.into()`-bound bindings). |
+| Fix surface | VBC codegen/runtime for `Text.as_bytes()` must materialise a heap-backed byte view (or copy) for small-string Texts before the slice escapes the frame. |
+| Examples | `core/net/http2/hpack.vr::HpackEncoder.encode_one`; characterised in `core-tests/net/http2/hpack/audit.md §3.3`. |
+
+## 10. Bare-variant first-wins collision for archive-loaded payload ADTs (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **BAREVAR-ADT-1** |
+| Status | **OPEN** — tracked (compiler task #17/#39). Source-side qualified-form discipline keeps the suite green. |
+| Stable trigger | A payload-carrying user ADT defined in `core/` writes its **constructors or match-arm patterns in bare form** (`NotFound { .. }`, `Other { .. }`) inside its own `impl` / `Eq` / `Display` / `Debug`, AND the variant name is **not globally unique** across the stdlib. |
+| Manifestation | When the ADT is loaded from the precompiled core archive, the bare variant name resolves **first-wins** to the *first* sibling-module variant registered under that name. The match arm then never fires on a real value of the intended type → `Eq.eq` falls to `_ => false`, `match` falls to `_`, `from_*` constructors return a mis-tagged value. Payload-free (unit) variants are unaffected. |
+| Probe | `let a = T.Pay { x: 1 }; let b = T.Pay { x: 1 }; assert(a == b);` for an archive-resident `T` with a colliding variant name → fails. Same construction+match **in the same fresh-compiled file** passes (proves it is archive-load-specific). |
+| Fix discipline | Qualify **every** constructor and match-arm pattern to `T.<Variant>` form in the ADT's own impls. (`Result`/`Maybe`/`Ordering` are type-checker-special-cased and exempt — see QUALRESULT-1.) Because the stdlib is embedded in the `verum` binary at `cargo build` time (`crates/verum_compiler/build.rs`), a `cargo build --release --bin verum` rebuild is required for the source edit to take effect. |
+| Deep fix | Type-directed resolution of bare variant names when the enclosing expression's type is known, so the bare form binds to the correct ADT. Multi-day VBC codegen work. |
+| Examples | `core/context/error.vr::ContextError` Eq (prior), `core/sys/windows/io.vr::WindowsIoDriverError`, `core/sys/windows/tls.vr::WindowsTlsError`, `core/sys/windows/thread.vr::WindowsThreadError` (this branch, 2026-05-29). |
+
+## 11. Silent over-wide integer-literal truncation (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **INTLIT-OVERFLOW-1** |
+| Status | **OPEN** — tracked. No silent-corruption guard yet; surfaces as wrong test values rather than a diagnostic. |
+| Stable trigger | An integer literal whose magnitude exceeds its declared/suffixed type — e.g. an 18-hex-digit `0x5645525545_4D5F_5443_u64` (72 bits) assigned to a `UInt64`. |
+| Manifestation | **No diagnostic.** The literal is parsed to `i128` (`verum_fast_parser/src/expr.rs:3304`, via `i128::from_str_radix(..).unwrap_or(0)`) and then **silently narrowed mod 2⁶⁴** to the runtime value. The 72-bit literal above becomes `4995148692846498883` (its low 64 bits) with no error. Literals exceeding `i128` silently become `0` (the `unwrap_or(0)`). |
+| Probe | `let b: UInt64 = 0x5645525545_4D5F_5443_u64; print(f"{b}")` → prints the wrapped value, not an error. |
+| Root cause | The lexer correctly stores the raw digits (`IntegerLiteral::as_u64` returns `None` on overflow), but lowering neither (a) range-checks the literal against its suffix/inferred type nor (b) rejects values exceeding `i128`. |
+| Fix surface | Range-validate suffixed integer literals at parse/type-check time and emit a diagnostic (`E`-class) on overflow, mirroring Rust/Swift. Contained but touches the literal→type-check path; needs a stdlib-wide validation pass (some constants rely on two's-complement forms like `0xFFFFFFF6_u32` which *do* fit their suffix and must keep compiling). |
+| Examples | `core-tests/sys/windows/tls/unit_test.vr:47` + `core-tests/sys/windows/mod/unit_test.vr:130` asserted `TCB_MAGIC` against an 18-hex-digit typo'd literal; both tests were silently *failing* (the wrong literal wrapped to a value ≠ the real 16-digit `TCB_MAGIC`). Fixed the test typo; the language defect remains. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
+| BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
+| DEFERRED-INIT-1 (CLOSED 2026-05-29) | `core-tests/net/http2/hpack/audit.md §3.4` | (this branch) |
+| DEFERRED-INIT-1 (CLOSED 2026-05-29) | `core-tests/net/http2/hpack/audit.md §3.4` | (this branch) |
+| TEXT-SMALLSTR-ASBYTES-1 (OPEN) | `core-tests/net/http2/hpack/audit.md §3.3` | — |
 | EXTSLICE-1 | `core-tests/net/cidr/audit.md §3.1`, `core-tests/net/http_range/audit.md §3.1`, `core-tests/encoding/base58/audit.md §A`, `core-tests/encoding/msgpack/audit.md §C`, `core-tests/encoding/value/audit.md §C` | `be64f4e1e`, `a60025262`, `b30e71f92`, `abf1033b1`, `ab9ec931b`, `41882e63b` |
 | BSTRLIT-1 | `core-tests/net/ipv6_canonical/audit.md §3.1` | `8233fad28`, `abf1033b1` |
 | CLOSURE-RESULT-1 | `core-tests/net/cidr/audit.md §3.1`, `core-tests/net/ipv6_canonical/audit.md §3.1` | `f649312c6` |
