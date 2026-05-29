@@ -2,8 +2,8 @@
 sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
-status: complete
-status_detail: 14/14 submodules complete under `--interp` (capability / size_class / header / thin_ref / fat_ref / epoch / cap_audit / cap_audit_ring / diagnostics / segment / arena / allocator / heap / hazard) PLUS 1 module-root (mod). AOT verification pending. Per-submodule rows in `core-tests/INVENTORY.md`.
+status: partial
+status_detail: 15 submodules (capability / size_class / header / thin_ref / fat_ref / epoch / cap_audit / cap_audit_ring / diagnostics / segment / arena / allocator / heap / hazard / mod) green under `--interp`; ~22 `@ignore`'d tests pin open language-level defect classes (D2 cross-module field-index disagreement — thin_ref/mod; epoch task #9 static-mut struct.field cell-backing; arena task #8 + hazard §3.3 record-typed static-mut). AOT (Tier 1) verification pending. Per status-convention `complete` requires AOT + all findings closed — held at `partial` until then. Per-submodule rows in `core-tests/INVENTORY.md`.
 ---
 
 import ModuleStatus, {
