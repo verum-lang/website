@@ -207,6 +207,20 @@ suite itself when it identifies new failure modes.
 | Validation | `--interp`, 83 GREEN, 0 regressions: `UseAfterFreeError` 13/13 (`.message()` body field reads + `.new()` / `.null_pointer()` cross-module constructors + record-literal canary), epoch D1 2/2, `RevocationError` 19/19, `thin_ref` 10/10, `epoch_cache` 5/5, `http2/error` 29/29, hpack `HeaderField` 5/5. Full `core/*.vr` re-precompile clean. Un-ignores the D2/CLASS-9 pins in `core-tests/mem/{mod,thin_ref,epoch}`. |
 | Examples | `core/mem/mod.vr::UseAfterFreeError.message`, `core/mem/thin_ref.vr::UseAfterFreeError.new` / `.null_pointer`; pinned by `core-tests/mem/{mod,thin_ref,epoch}/unit_test.vr`. |
 
+## 16. `List<T>` equality compares ObjectHeader bytes (CLOSED 2026-05-30)
+
+| Field | Value |
+|---|---|
+| Defect class id | **LISTEQ-1** |
+| Status | **CLOSED** at the stdlib layer 2026-05-30. |
+| Stable trigger | `==` / `!=` / `assert_eq` between two **non-empty** `List<T>` values. |
+| Manifestation | Returns *not-equal* for two **equal** non-empty lists — `assert_eq([1, 2, 3], [1, 2, 3])` fails, `[5] == [5]` is `false`. **Empty** lists compare equal (the comparison loop is skipped), which is what made the bug latent. |
+| Root cause | `implement<T: Eq> Eq for List<T>` read elements via an inline `unsafe { &*self.ptr.offset(i) }`. In a method body codegen resolves `self.ptr` to the heap-object **START** (not past `OBJECT_HEADER_SIZE`), so the comparison read `ObjectHeader` bytes instead of elements and mismatched for every non-empty list. `List.get(i)` avoids this because it is **runtime-intercepted** to the canonical `[len@0, cap@1, backing_ptr@2]` layout; the inline `ptr.offset` is not. Same defect family as the documented `List.append` raw-pointer note. |
+| Why it stayed latent | The 145-test `core-tests/collections/list` suite asserts element-wise / by index / by length — it never used `assert_eq(list, list)`. `core-tests/base/ordering` `in_map` / `in_filter` were among the few call sites that compared whole lists. |
+| Fix | Route `eq` / `ne` through `self.get(i)` / `other.get(i)` (the §B.2 defensive accessor) instead of inline `self.ptr.offset(i)`. |
+| Validation | `--interp`: `assert_eq([1,2,3],[1,2,3])`, negatives, `[5]==[5]`, `!=` all green; `base/ordering` 9/9 (`in_map`/`in_filter` fixed); list suite regression green. |
+| Examples | `core/collections/list.vr` `Eq for List<T>` (eq/ne); surfaced by `core-tests/base/ordering/unit_test.vr` (`test_ordering_in_map` / `_in_filter`). |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
@@ -215,6 +229,7 @@ suite itself when it identifies new failure modes.
 | INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
 | BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
 | CROSS-MODULE-FIELDSHIFT-1 / CLASS-9 (CLOSED 2026-05-30) | `core-tests/mem/{mod,thin_ref,epoch}/unit_test.vr` | `64607bb8e` |
+| LISTEQ-1 (CLOSED 2026-05-30) | `core-tests/base/ordering/unit_test.vr` (`test_ordering_in_map`/`_in_filter`) | `core/collections/list.vr` `Eq for List` via `.get(i)` |
 | DEFERRED-INIT-1 (CLOSED 2026-05-29) | `core-tests/net/http2/hpack/audit.md §3.4` | (this branch) |
 | TEXT-SMALLSTR-ASBYTES-1 / ENCODE-1 (CLOSED 2026-05-30) | `core-tests/net/http2/hpack/audit.md §3.3` | `core/collections/list.vr::extend_from_slice` index-loop rewrite |
 | ENCSTR-LOOP-1 (CLOSED 2026-05-30) | `core-tests/net/http2/hpack/audit.md §3.5` | string-codec loop SIGABRT gone (EXTSLICE byte-copy + this branch) |
