@@ -112,19 +112,19 @@ suite itself when it identifies new failure modes.
 | Fix | Added a `declared_uninit` flag to `RegisterInfo` (`crates/verum_vbc/src/codegen/registers.rs`), set at the deferred-init declaration in `compile_let` (`statements.rs`). The guard in `expressions.rs` now reads `!is_mutable && is_initialized && !declared_uninit`, exempting deferred-init bindings while still rejecting reassignment of a normal `let x = v;` immutable. |
 | Examples | `core/net/http2/hpack.vr::HpackDecoder.decode_literal` (`let name: Text;` / `let start: Int;`); also unblocks `core/database/mysql/wkb_decoder.vr` (3 sites). Pinned by `core-tests/net/http2/hpack/{unit_test,regression_test}.vr`. |
 
-## 9. Small-string `Text.as_bytes()` across a call boundary SIGSEGV (OPEN)
+## 9. `Text.as_bytes()` slice passed across a call boundary SIGSEGV (CLOSED 2026-05-30)
 
 | Field | Value |
 |---|---|
-| Defect class id | **TEXT-SMALLSTR-ASBYTES-1** |
-| Status | **OPEN** — tracked. Encode-path tests gated as `@ignore` "ENCODE-1". |
-| Stable trigger | `Text.as_bytes()` on a **small** (NaN-box-inline, ≤ 6 byte) Text, where the resulting `&[Byte]` is passed as an argument to another function. |
-| Manifestation | `verum: internal compiler error — fatal signal SIGSEGV (11)`. |
-| Probe | `let f = HeaderField.new("x","y"); encode_string(f.name.as_bytes(), false, &mut out);` — SIGSEGV. The heap-backed analogue `encode_string(list.as_slice(), …)` is fine. |
-| Root cause (hypothesis) | `Text.as_bytes()` on an inline small string returns a slice into ephemeral value storage with no backing heap buffer; the slice dangles once it escapes the current frame. |
-| Sibling | `let t: Text = "xy".into(); t.as_bytes()` mis-dispatches to `USize.as_bytes` (receiver-type tracking drift through `.into()`-bound bindings). |
-| Fix surface | VBC codegen/runtime for `Text.as_bytes()` must materialise a heap-backed byte view (or copy) for small-string Texts before the slice escapes the frame. |
-| Examples | `core/net/http2/hpack.vr::HpackEncoder.encode_one`; characterised in `core-tests/net/http2/hpack/audit.md §3.3`. |
+| Defect class id | **TEXT-SMALLSTR-ASBYTES-1** (ENCODE-1) |
+| Status | **CLOSED** at the stdlib layer 2026-05-30. The original "small-string slice dangles" framing was a **misdiagnosis** — corrected below. |
+| Stable trigger | A `&[Byte]` produced by `Text.as_bytes()` passed as a function argument and then **iterated** by the callee via `slice.iter()` — canonically `encode_string(field.name.as_bytes(), false, &mut out)` → `out.extend_from_slice(input)`. |
+| Manifestation | `verum: internal compiler error — fatal signal SIGSEGV (11)` at runtime under `--interp`. |
+| Root cause (corrected) | NOT a dangling small-string slice. `Text.as_bytes()`'s FatRef is valid — `.len()` and index `[i]` read correct bytes for **both** small (NaN-box-inline) and heap Text (the `AsBytes` handler already heap-copies small strings). The crash is `List.extend_from_slice`'s `for item in slice.iter()`: a `SliceIter` stores the parameter slice in a struct field and yields elements via `&self.slice[front]`, and that stored-slice element-**reference** derivation is wrong for a FatRef whose provenance is not a List backing array. `slice.get(i)` (also `&self[idx]`) shares the flaw; only **index-by-value** (`slice[i]`) is provenance-safe. |
+| Fix | Rewrote `core/collections/list.vr::extend_from_slice` from `for item in slice.iter() { push(item.clone()) }` to an index loop `while i < n { push(slice[i].clone()) }` — provenance-agnostic, clone-preserving, same defensive rationale as the `.get(i)` routing in `slice.vr` §B.2. |
+| Validation | `--interp`: `encode_string(field.name.as_bytes(), false, …)` round-trips with correct content (small + heap); full `HpackEncoder.encode`→`decode` **raw** round-trip (single + multi) green; hpack suite 51/51. Un-ignores `core-tests/net/http2/hpack/unit_test.vr §7`. |
+| Residual | (1) The deeper `SliceIter` element-reference derivation for non-List FatRef provenances is unfixed — any `for x in <as_bytes-slice>.iter()` still trips it. (2) The `HpackEncoder` Huffman default (`huffman_enabled: true`) round-trip mismatches — separate defect **HPACK-HUFFMAN-1**. |
+| Examples | `core/collections/list.vr::extend_from_slice` (fix site), `core/net/http2/hpack.vr::HpackEncoder.encode_one` (trigger); characterised in `core-tests/net/http2/hpack/audit.md §3.3`. |
 
 ## 10. Bare-variant first-wins collision for archive-loaded payload ADTs (OPEN)
 
@@ -193,6 +193,20 @@ suite itself when it identifies new failure modes.
 | Fix discipline | Declare `Float` consts with the `_f64` suffix: `public const X: Float = 0.7_f64;`. |
 | Examples | `core/net/quic/recovery/cc/cubic.vr` (CUBIC_C/BETA/FAST_CONV); characterised in `core-tests/net/quic/recovery/cc/cubic/audit.md §3.1`. |
 
+## 15. Cross-module record field-index shift (CLASS-9 / D2b, CLOSED 2026-05-30)
+
+| Field | Value |
+|---|---|
+| Defect class id | **CROSS-MODULE-FIELDSHIFT-1** (CLASS-9 / D2b) |
+| Status | **CLOSED** at the compiler layer 2026-05-30 (commit `64607bb8e`). |
+| Stable trigger | A record type declared in one stdlib module is constructed or read (`self.<field>` in an instance-method body, or a field write in a `.new()` / `.null_pointer()` static constructor) from a body compiled in a **different** module — i.e. the accessing module did not itself declare the type, so it has no local `TypeDescriptor` for it. |
+| Manifestation | `self.<field>` reads and constructor field writes land on **wrong slot offsets** (e.g. reading `self.type_name` returns slot 2 = `expected_epoch`). Downstream this surfaces as wrong field values, `Eq` mismatches, and — when a mis-read slot is interpreted as a pointer and dereferenced — SIGSEGV. The long-standing CLASS-9 / field-shift family. |
+| Root cause | `resolve_field_index` resolves a locally-declared type via its string-authoritative `TypeDescriptor`, then falls back to the positional `type_field_layouts` map, then to a non-positional **global-intern** fallback. For a record declared in another (earlier-compiled) module the accessing codegen had neither a local descriptor nor a `type_field_layouts` entry, so it hit the global-intern fallback and wrote non-positional indices. |
+| Fix | A **TypeId-free** type-layout registry threaded through the stdlib bootstrap (`verum_compiler/src/pipeline/stdlib_bootstrap.rs` + `pipeline.rs`): each module exports its record field layouts (type-name → declared-field-names, declaration order) into a global registry; every subsequently-compiled module imports them (additive, first-wins) via `import_type_layouts` (`verum_vbc/src/codegen/mod.rs`). `resolve_field_index`'s positional `type_field_layouts` path now resolves cross-module record fields instead of the global-intern fallback. |
+| Why it is safe | **Descriptor-first** — a module's own `TypeDescriptor` still resolves locally-declared types first, so an imported layout can never shadow a local declaration. **TypeId-free** — the registry carries pure name→field-name lists and cannot perturb TypeId allocation or descriptor tables; this is precisely why it succeeds where the reverted `type_name_to_id` backfill (`ab8e707f4` → `585728904`) regressed `UseAfterFreeError` record-literal field writes. Payload-less sum types never enter the registry, so variant dispatch is structurally unaffected. |
+| Validation | `--interp`, 83 GREEN, 0 regressions: `UseAfterFreeError` 13/13 (`.message()` body field reads + `.new()` / `.null_pointer()` cross-module constructors + record-literal canary), epoch D1 2/2, `RevocationError` 19/19, `thin_ref` 10/10, `epoch_cache` 5/5, `http2/error` 29/29, hpack `HeaderField` 5/5. Full `core/*.vr` re-precompile clean. Un-ignores the D2/CLASS-9 pins in `core-tests/mem/{mod,thin_ref,epoch}`. |
+| Examples | `core/mem/mod.vr::UseAfterFreeError.message`, `core/mem/thin_ref.vr::UseAfterFreeError.new` / `.null_pointer`; pinned by `core-tests/mem/{mod,thin_ref,epoch}/unit_test.vr`. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
@@ -200,9 +214,11 @@ suite itself when it identifies new failure modes.
 | NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
 | INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
 | BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
+| CROSS-MODULE-FIELDSHIFT-1 / CLASS-9 (CLOSED 2026-05-30) | `core-tests/mem/{mod,thin_ref,epoch}/unit_test.vr` | `64607bb8e` |
 | DEFERRED-INIT-1 (CLOSED 2026-05-29) | `core-tests/net/http2/hpack/audit.md §3.4` | (this branch) |
-| TEXT-SMALLSTR-ASBYTES-1 (OPEN) | `core-tests/net/http2/hpack/audit.md §3.3` | — |
-| ENCSTR-LOOP-1 (OPEN) | `core-tests/net/http2/hpack/audit.md §3.5` | — |
+| TEXT-SMALLSTR-ASBYTES-1 / ENCODE-1 (CLOSED 2026-05-30) | `core-tests/net/http2/hpack/audit.md §3.3` | `core/collections/list.vr::extend_from_slice` index-loop rewrite |
+| ENCSTR-LOOP-1 (CLOSED 2026-05-30) | `core-tests/net/http2/hpack/audit.md §3.5` | string-codec loop SIGABRT gone (EXTSLICE byte-copy + this branch) |
+| HPACK-HUFFMAN-1 (OPEN) | `core-tests/net/http2/hpack/audit.md §3.3` | — (raw path green; Huffman codec round-trip mismatch) |
 | MUTSELF-MATCH-1 (OPEN) | `core-tests/net/http2/stream/audit.md §3.1` | — |
 | EXTSLICE-1 | `core-tests/net/cidr/audit.md §3.1`, `core-tests/net/http_range/audit.md §3.1`, `core-tests/encoding/base58/audit.md §A`, `core-tests/encoding/msgpack/audit.md §C`, `core-tests/encoding/value/audit.md §C` | `be64f4e1e`, `a60025262`, `b30e71f92`, `abf1033b1`, `ab9ec931b`, `41882e63b` |
 | BSTRLIT-1 | `core-tests/net/ipv6_canonical/audit.md §3.1` | `8233fad28`, `abf1033b1` |
