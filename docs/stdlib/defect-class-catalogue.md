@@ -170,7 +170,8 @@ suite itself when it identifies new failure modes.
 | Field | Value |
 |---|---|
 | Defect class id | **MUTSELF-MATCH-1** |
-| Status | **OPEN** — tracked. Multi-step FSM tests `@ignore`'d; single-step (return-value) coverage stays green. |
+| Status | **OPEN** at the codegen layer — tracked. **Source-side fix discipline keeps the suite green:** bind payload-bearing variant args to a local before passing to a `&mut self` method (`let e = E.X { … }; fsm.step(&e)`). With this discipline the full multi-step FSM suite is GREEN; only two explicit inline-event probes stay `@ignore`'d to pin the defect. |
+| Fix discipline | `let e = StreamEvent.X { … }; fsm.step(&e)` — bind first, never pass an inline `&E.X { … }` payload variant to a `&mut self` method. Inline **unit** variants (`&E.SendRstStream`) are safe; only **payload-bearing** inline variants trip it. |
 | Stable trigger | A `&mut self` method (`fn step(&mut self, event: &E)`) called with an **inline-constructed payload-bearing variant** argument (`fsm.step(&E.SendHeaders { end_stream: false })`), where the method later writes a field (`self.state = next`). |
 | Manifestation | The method computes and **returns** the correct value, but the trailing `self.<field> = …` writeback **does not persist** to the caller — the object never advances across calls. Tests that check the *return value* pass; tests that read the object's field after the call fail. |
 | Probe | `let mut fsm = StreamFsm.new(1); let _ = fsm.step(&StreamEvent.SendHeaders { end_stream: false }); assert_eq(fsm.state(), StreamState.Open);` — fails (state still `Idle`). The **parameter-passed** event variant (`fn helper(setup: &E) { fsm.step(setup); … }`) persists correctly, isolating the trigger to the inline `&`-constructed payload-variant argument aliasing the `&mut self` receiver storage. |
