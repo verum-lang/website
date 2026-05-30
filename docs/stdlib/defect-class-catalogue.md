@@ -180,12 +180,12 @@ suite itself when it identifies new failure modes.
 | Fix surface | VBC codegen: an inline `&`-constructed argument must be materialised in storage that does not alias / clobber the `&mut self` receiver, so the post-call field writeback survives. |
 | Examples | `core/net/http2/stream.vr::StreamFsm.step`; characterised in `core-tests/net/http2/stream/audit.md §3.1`. |
 
-## 14. `<` between two no-suffix-declared `Float` consts mis-compares (OPEN)
+## 14. `<` between two no-suffix-declared `Float` consts mis-compares (CLOSED 2026-05-30)
 
 | Field | Value |
 |---|---|
 | Defect class id | **FLOATCONST-CMP-1** |
-| Status | **OPEN** — tracked. Source-side discipline (declare `Float` consts with the `_f64` suffix) keeps comparisons correct. |
+| Status | **CLOSED** at the codegen layer 2026-05-30 (commit `e0ac5220a`). `infer_expr_type_kind` now resolves a cross-module Float const's type via its const-FunctionInfo `return_type_name`, so ordered compares select `CmpF`. |
 | Stable trigger | An **ordered** comparison (`<` / `>`) between two `public const`s of type `Float` declared **without** a `_f64` literal suffix (`public const X: Float = 0.7;`). |
 | Manifestation | The ordered compare returns the wrong result (`0.7 < 0.85` → `false`), even though `assert_eq(X, 0.7_f64)` and `assert_eq(Y, 0.85_f64)` both pass and `Y < 1.0_f64` (const-vs-literal) passes. The value compares **equal** via `EqF` but **mis-orders** via `LtF`/`CmpF`. |
 | Probe | `assert(CUBIC_BETA < CUBIC_FAST_CONV_FACTOR)` (0.7 < 0.85) fails; `assert(CUBIC_FAST_CONV_FACTOR < 1.0_f64)` passes; `_f64`-suffixed consts (`core/net/quic/recovery/cc/bbr.vr`) compare fine const-vs-const. |
