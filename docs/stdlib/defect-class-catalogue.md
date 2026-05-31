@@ -221,10 +221,37 @@ suite itself when it identifies new failure modes.
 | Validation | `--interp`: `assert_eq([1,2,3],[1,2,3])`, negatives, `[5]==[5]`, `!=` all green; `base/ordering` 9/9 (`in_map`/`in_filter` fixed); list suite regression green. |
 | Examples | `core/collections/list.vr` `Eq for List<T>` (eq/ne); surfaced by `core-tests/base/ordering/unit_test.vr` (`test_ordering_in_map` / `_in_filter`). |
 
+## 17. AOT `verum_internal_memcpy` no-op stub — int/float f-string renders empty (CLOSED 2026-05-31)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-MEMCPY-1** |
+| Status | **CLOSED** at the codegen layer 2026-05-31 (commit `89604fe94`). |
+| Stable trigger | Any AOT (Tier-1 native) program that interpolates an **Int or Float** into an f-string: `f"x={5}"`, `f"{2+3}"`, `f"{3.5}"`. |
+| Manifestation | The interpolated number renders **EMPTY** under AOT (`f"x={5}"` → `x=`) while `--interp` is correct — a silent cross-tier soundness divergence. `Text`-only interpolation (`f"{some_text}"`) was unaffected, masking it. |
+| Probe | `print(f"x={5}")` → AOT prints `x=`, interp prints `x=5`. Confirmed by `otool -tV` disassembly: `_verum_internal_memcpy` was `mov x0,#0; ret`. |
+| Root cause | `verum_int_to_text` / `verum_float_to_text` copy their decimal digits via `verum_internal_memcpy`. `define_text_ir_helpers` pre-declares that symbol **bodyless**; `get_or_declare_memcpy` early-returned on *any* existing function and never emitted the body, so the linker lowered the bodyless internal function to a no-op stub → 0 bytes copied → fresh Text buffer stayed zeroed → `strlen()==0` → empty. (`Text.Concat` uses `llvm.memcpy` directly, so literal concatenation worked.) |
+| Fix | `get_or_declare_memcpy` (`verum_codegen/llvm/runtime.rs`) only early-returns when the function already has a body (`count_basic_blocks() > 0`); otherwise it fills the existing bodyless forward declaration with the real `llvm.memcpy`-wrapping body. |
+| Validation | `--interp` ≡ AOT for `f"{int}"` (incl. negatives / large), multi-placeholder, and `f"{float}"`; exit 0. |
+
+## 18. AOT `for x in list.iter()` SIGSEGV (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-ITER-1** |
+| Status | **OPEN** — tracked. Found 2026-05-31 while validating AOT-MEMCPY-1. |
+| Stable trigger | AOT-compiled `for v in xs.iter() { … }` over a `List<T>` (List construction + `.len()` work; the iterator drive crashes). |
+| Manifestation | Native binary **SIGSEGVs** (exit 139) on entering the for-loop; `len=…` prints first, the loop body never runs. `--interp` is correct. |
+| Probe | `let xs: List<Int> = [1,2,3]; for v in xs.iter() { … }` → AOT exit 139. |
+| Not related to AOT-MEMCPY-1 | The iterator path does not call `verum_internal_memcpy` (its only callers are text-construction helpers); the memcpy fix is validated independently. |
+| Likely surface | AOT lowering of `List.iter()` / the for-loop iterator-drive (sibling of SLICEITER-1, which was closed for bare `for x in &[T]` but not `.iter()` adaptors under AOT). Part of the broader "AOT largely unvalidated" gap. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| AOT-MEMCPY-1 (CLOSED 2026-05-31) | this catalogue §17 | `89604fe94` |
+| AOT-ITER-1 (OPEN) | this catalogue §18 | — |
 | NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
 | INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
 | BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
