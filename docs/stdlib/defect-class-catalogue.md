@@ -239,19 +239,19 @@ suite itself when it identifies new failure modes.
 | Field | Value |
 |---|---|
 | Defect class id | **AOT-ITER-1** |
-| Status | **OPEN** — tracked. Found 2026-05-31 while validating AOT-MEMCPY-1. |
-| Stable trigger | AOT-compiled `for v in xs.iter() { … }` over a `List<T>` (List construction + `.len()` work; the iterator drive crashes). |
-| Manifestation | Native binary **SIGSEGVs** (exit 139) on entering the for-loop; `len=…` prints first, the loop body never runs. `--interp` is correct. |
-| Probe | `let xs: List<Int> = [1,2,3]; for v in xs.iter() { … }` → AOT exit 139. |
-| Not related to AOT-MEMCPY-1 | The iterator path does not call `verum_internal_memcpy` (its only callers are text-construction helpers); the memcpy fix is validated independently. |
-| Likely surface | AOT lowering of `List.iter()` / the for-loop iterator-drive (sibling of SLICEITER-1, which was closed for bare `for x in &[T]` but not `.iter()` adaptors under AOT). Part of the broader "AOT largely unvalidated" gap. |
+| Status | **OPEN** (one of two sub-bugs CLOSED 2026-05-31, commit `5bb3b83f8`). Found while validating AOT-MEMCPY-1. |
+| Stable trigger | AOT-compiled `for v in xs.iter()` (or `it.next()`) over a `List<T>`. List construction, `.len()`, and indexing (`xs[i]`) all work; the iterator deref crashes. `--interp` is correct. |
+| Manifestation | Native binary **SIGSEGVs** (exit 139) on the first `next()`. |
+| Root-cause (via `otool -tV` disassembly) | Two distinct sub-bugs. **(1) generic_eq deref of the sentinel — FIXED:** `next()`/`next_back()` guarded with `self.ptr == self.end` on raw `&unsafe T` pointers; AOT lowered `==` to `verum_generic_eq`, which **dereferences** operands to compare contents, and `self.end` is the one-past-the-end sentinel → deref past array → segv. **(2) raw backing-pointer deref — OPEN:** after fix (1), `&*self.ptr` still faults even though `xs[i]` works. `OBJECT_HEADER_SIZE=24`, so `iter()`'s offsets (`len@0x18`=slot0, `ptr@0x28`=slot2) are *correct*; indexing reads the same slot2 fine via the runtime intercept. So the raw `&unsafe T` backing pointer is **not directly dereferenceable** the way the intercepted `xs[i]` accessor reads it — a pointer-representation difference (likely a CBGR-managed/tagged backing ptr the intercept normalises and raw `&*ptr` does not). Same family as **LISTEQ-1** ("raw `self.ptr` in method bodies"). |
+| Fix (1), landed | Compare bounds by address: `(self.ptr as Int) == (self.end as Int)` (the `as Int` form `size_hint`/`len` already use). `next()` now emits `subs` instead of `bl verum_generic_eq`; interp unaffected. |
+| Fix (2), pending | Either (A) redesign `ListIter` index-based over an **AOT-safe `&T`-yielding** accessor (note `List.get` returns `Maybe<T>` *by value*, but the iterator's `Item=&T` and for-loop bodies use `*v`, so a `get_ref`-style intercepted accessor is required), or (B) make raw `&unsafe T` field deref normalise the backing pointer like the intercept. Both deep; part of the "AOT largely unvalidated" gap. |
 
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
 | AOT-MEMCPY-1 (CLOSED 2026-05-31) | this catalogue §17 | `89604fe94` |
-| AOT-ITER-1 (OPEN) | this catalogue §18 | — |
+| AOT-ITER-1 (sub-bug 1 CLOSED / sub-bug 2 OPEN) | this catalogue §18 | `5bb3b83f8` (bounds-by-address) |
 | NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
 | INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
 | BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
