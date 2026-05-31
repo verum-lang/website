@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: 15 submodules green under `--interp`. CLOSED 2026-05-29 — D2/CLASS-9 cross-module field-index shift (resolve_field_index string-authoritative descriptor resolution; 4 thin_ref/mod tests un-ignored) + D1 epoch write-surface (scalar-shadow routing; 3 tests un-ignored). OPEN — D2b stdlib-wide 'type-not-registered-at-write' global-intern subclass (~5210 precompile sites); D3 single-field-record-variant unboxing (arena task #8 / Duration class); D-AOT-1 AOT typechecker types `Enum.Variant {}` as the variant not the parent enum (blocks Tier-1). Held at `partial` until AOT verified + D2b/D3 closed. Per-submodule rows in `core-tests/INVENTORY.md`.
+status_detail: 15 submodules green under `--interp`. CLOSED 2026-05-29/31 — D2/CLASS-9 cross-module field-index shift (resolve_field_index string-authoritative descriptor resolution; 4 thin_ref/mod tests un-ignored); D1 epoch write-surface (scalar-shadow routing; 3 tests un-ignored); D2b stdlib-wide global-intern field-layout subclass (global_type_layout_registry — precompile global-intern 5210→225, −96%, fixes the cross-module field-shift class platform-wide, not just mem). OPEN — D3 single-field-record-variant unboxing (arena task #8 / Duration class); D-AOT-1 AOT typechecker types `Enum.Variant {}` as the variant not the parent enum (blocks Tier-1); ~225 intra-module forward-ref global-intern tail. Held at `partial` until AOT verified + D3 closed. Per-submodule rows in `core-tests/INVENTORY.md`.
 ---
 
 import ModuleStatus, {
