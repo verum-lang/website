@@ -270,12 +270,56 @@ suite itself when it identifies new failure modes.
 | Mitigation | Write `let x = Type.Variant; f"{x}"` in tests. Broken form pinned `@ignore`'d (`core-tests/context/standard/regression_test.vr §3.6`); live bound-var companion keeps the Display contract covered. |
 | Fix (pending) | Thread the variant-ctor's type into the interpolation Display-dispatch detection. Needs a rebuild. |
 
+## 21. AOT umbrella re-export of free functions unresolved (CLOSED 2026-06-01)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-UMBRELLA-REEXPORT-1** (a.k.a. D1) |
+| Status | **CLOSED** at the compiler layer 2026-06-01 (`crates/verum_types/src/infer/modules.rs`). Found while bringing `core-tests/sys/linux/bpf` + `bitfield` to the AOT tier. |
+| Stable trigger | `mount <umbrella>.{free_fn}` where `<umbrella>/mod.vr` re-exports the fn from a submodule via `public mount .sub.{free_fn}` — e.g. `mount core.sys.{extract_bits}` (declared in `core.sys.bitfield`). The DIRECT mount (`mount core.sys.bitfield.{extract_bits}`) always worked. |
+| Manifestation | Strict compile (`verum check` / `verum build` / `verum run --interp` / `verum test --aot`) failed `E100 unbound variable: extract_bits` at the use site. The Tier-0 **test harness** masked it via a lenient global function table, so `verum test --interp` passed — a cross-tier divergence that hid the bug across many sessions ("AOT pending"). |
+| Root-cause (traced via `VERUM_TRACE_TASK20`) | Embedded-stdlib import resolution (`import_item_from_module_body`) resolves a re-exported fn through three fallbacks: AST-direct, AST-reexport-walk, then `resolve_function_via_metadata_reexports`. For the umbrella case the first two miss (the registry's `mod.vr` AST is a synthetic stub) and the metadata fallback found the correct source via `metadata.module_reexports["core.sys"]` (311 leaves, `extract_bits → core.sys.bitfield` — `scan_module_reexports` is correct) BUT then `metadata.functions["core.sys.bitfield.extract_bits"]` was **absent** — the precompiled function table is keyed by declaring module and omits some `pure` leaf functions. With no 4th fallback the name was left unbound. |
+| Fix (landed) | Added `reexport_source_module_for(module, item)` (reads `metadata.module_reexports`) and a 4th fallback in the `ExportKind::Function` arm: when the metadata function-descriptor is absent but the re-export source module IS known, recurse `import_item_from_module_inner(source_module, item, …)` against the **live `ModuleRegistry`**, whose AST resolves the fn via the same "AST direct" path a direct submodule mount uses. Cycle-guarded by `imports_in_progress` on the distinct `(source_module, item)` key. Fully general — no hardcoded stdlib knowledge. Collapsed the sys AOT failure histogram's single largest class (~2000 `unbound variable` instances across the bitfield/errno-helper re-exports). |
+| Probe | `mount core.sys.{extract_bits}; extract_bits(0xAB0,4,8) == 0xAB` — `verum run --interp` prints `r=171`; `verum check` clean. Trace: `[task20] registry recurse: mod='core.sys' item='extract_bits' -> source='core.sys.bitfield'`. |
+| Examples | `core-tests/sys/bitfield`, `core-tests/sys/linux/bpf/mod` (umbrella re-export regression pins). |
+
+## 22. AOT bitwise-NOT on `USize`/`ISize` rejected (CLOSED 2026-06-01)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-NOT-USIZE-1** (a.k.a. D7) |
+| Status | **CLOSED** at the compiler layer 2026-06-01 (`crates/verum_types/src/infer/expr.rs`). |
+| Stable trigger | Bitwise complement `!x` where `x: USize` (or `ISize` / lowercase `usize`/`u32`/… spellings). The stdlib `core.sys.bitfield` uses `value & !field_mask(...)` to clear bit ranges, with `mask: USize`. |
+| Manifestation | Strict (AOT) typecheck: `Cannot apply NOT operator to type: USize. Expected Bool or integer type` (147 instances across the bitfield suite). `--interp` accepted it — another cross-tier divergence. |
+| Root-cause | The unary-NOT type-inference arm (`infer/expr.rs`, `Type::Named`) enumerated integer type names but listed only `UIntSize`/`IntSize` — the idiomatic canonical names `USize`/`ISize` (and the lowercase `usize`/`u8`…`u128`/`i8`…`i128` aliases) were absent, so `!` on a `USize` fell through to the error arm. |
+| Fix (landed) | Added the canonical pointer-width names + lowercase aliases to the accepted-type match, mirroring the alias matrix used by `dispatch_primitive_method`. |
+| Examples | `core-tests/sys/bitfield` (the full module's `clear_bit`/`clear_bits`/`set_bits` paths). |
+
+## 23. Parallel `verum test --aot` aborts the whole run with a compiler SIGSEGV (CLOSED 2026-06-01)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-PARALLEL-1** (two independent root causes) |
+| Status | **CLOSED 2026-06-01**. Bug A (artifact-path collision) commit `f1c0510e3`; Bug B (LLVM backend race) follow-up commit. |
+| Stable trigger | `verum test --aot` with `[test].parallel = true` (the DEFAULT) over more than a handful of test files. Crashes ~2–7 min into a large run. `--interp` and `--test-threads 1` are unaffected. |
+| Manifestation | The ENTIRE run aborts with an in-process compiler `SIGSEGV` during `compiler.phase.generate_native` — 0 test results out of N. Backtrace deep in LLVM (`run_passes` / `OuterAnalysisManagerProxy::invalidate` / `CallBase::getParamAttrOnCalledFunction` / `IntervalMap::deleteNode`). Non-deterministic timing. This is why every `core-tests/*` module sat at `--interp`-only (no module had ever reached `complete`, which requires both tiers green). |
+| Root cause A — colliding artifact paths | The runner keyed every per-test build artifact on the test file's `file_stem`, which REPEATS across modules (every `unit_test.vr`/`property_test.vr`/… → stem `"unit_test"`/…): merged source `target/test/test_<stem>.merged.vr` (and its content differs per `@test`), output binary `test_<stem>`, the derived `<stem>.o`/`.ll`, and the fixed `verum_runtime_stubs.c`/`.o`. `par_iter` workers wrote / compiled / `remove`d the SAME files at once → corrupt merged source → malformed VBC/LLVM IR → SIGSEGV in the backend. (The LLVM backtrace was a SYMPTOM of bad input.) `--interp` is immune: it compiles in-process via `compiled_test_module` memoised by `test.file` (unique), with no disk artifacts. |
+| Root cause B — LLVM backend not thread-safe | Even with unique artifacts (valid IR), the run still SIGSEGVs in `Module::run_passes`. LLVM's per-process state — the global pass registry, target subtarget caches, and `cl::opt` command-line globals — is not safe to drive from multiple threads concurrently, even when each owns its `LLVMContext`/`Module`/`TargetMachine`. Two `par_iter` workers in the optimisation/codegen pipeline at once race that global state. |
+| Fix A | `unique_merged_stem(test_file, test_fn, stem)` (fixed-key `DefaultHasher` over the source path + test fn) feeds the merged-file stem (`crates/verum_cli/src/commands/test.rs`), the output binary name (`run_test_aot`), and the runtime-stub `tag` (`native_codegen.rs::generate_runtime_stubs`); `.o`/`.ll` inherit it. Every concurrent compile targets its own files. |
+| Fix B | Process-global `llvm_backend_lock()` (`native_codegen.rs`) held across the ENTIRE LLVM window of `phase_generate_native` — from `Context::create` through IR lowering, `run_passes`, and object emission — released before the parallel-safe link subprocess. NOTE: a first attempt scoped the lock to only optimisation+emit; that was insufficient because one thread building IR (`lower_module`) still raced another thread's `run_passes` in LLVM global state. The VBC frontend (parse/typecheck/VBC/mono/escape) and the link subprocess stay parallel. |
+| Performance follow-up | Fix B serialises native codegen, so `verum test --aot` over a large suite is codegen-bound (the conformance gate runs occasionally, so correctness-first is acceptable). The parallel-throughput fix is to compile each test in its OWN process (`verum build <merged>` per test → isolated LLVM globals → no shared state to race), which keeps full parallelism. Concept validated (`verum build` compiles a single merged `.vr` to a runnable binary); tracked as a runner follow-up. |
+| Why it matters | Unblocks the `--aot` channel for the WHOLE conformance suite — the prerequisite for promoting any stdlib module to `complete`. |
+| Companion (harness) | `module_qualified_prefix()` (commit `993679a01`) — test names are now `mem/capability/unit_test::fn` (were colliding `unit_test::fn` across directories), so `--filter mem/` scopes a subtree and the README-documented `--filter module::` works. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| AOT-UMBRELLA-REEXPORT-1 / D1 (CLOSED 2026-06-01) | `core-tests/sys/linux/bpf/mod/audit.md`, `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/modules.rs` registry-recursion fallback) |
+| AOT-NOT-USIZE-1 / D7 (CLOSED 2026-06-01) | `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/expr.rs` integer-alias list) |
 | ARCHIVE-METHOD-MAYBEREF-1 / CLASS-9 residual (OPEN) | `core-tests/context/standard/audit.md §3.5/§3.7`, `core-tests/context/mod/audit.md §3.3` | — (codegen fix + rebuild pending) |
 | FSTRING-CTOR-DISPLAY-1 (OPEN) | `core-tests/context/standard/audit.md §3.6` | — (codegen fix + rebuild pending) |
+| AOT-PARALLEL-1 (CLOSED 2026-06-01) | this catalogue §23 | `f1c0510e3` (artifact paths) + LLVM-lock follow-up; harness `993679a01` |
 | AOT-MEMCPY-1 (CLOSED 2026-05-31) | this catalogue §17 | `89604fe94` |
 | AOT-ITER-1 (sub-bug 1 CLOSED / sub-bug 2 OPEN) | this catalogue §18 | `5bb3b83f8` (bounds-by-address) |
 | NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
