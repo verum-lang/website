@@ -246,10 +246,36 @@ suite itself when it identifies new failure modes.
 | Fix (1), landed | Compare bounds by address: `(self.ptr as Int) == (self.end as Int)` (the `as Int` form `size_hint`/`len` already use). `next()` now emits `subs` instead of `bl verum_generic_eq`; interp unaffected. |
 | Fix (2), pending | Either (A) redesign `ListIter` index-based over an **AOT-safe `&T`-yielding** accessor (note `List.get` returns `Maybe<T>` *by value*, but the iterator's `Item=&T` and for-loop bodies use `*v`, so a `get_ref`-style intercepted accessor is required), or (B) make raw `&unsafe T` field deref normalise the backing pointer like the intercept. Both deep; part of the "AOT largely unvalidated" gap. |
 
+## 19. Archive-loaded record ref-returning method SIGSEGV + field-shift (CLASS-9 residual, OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **ARCHIVE-METHOD-MAYBEREF-1** (CLASS-9 residual) |
+| Status | **OPEN**. Found 2026-06-01 building `core-tests/context/`. Shows CROSS-MODULE-FIELDSHIFT-1 / CLASS-9 (§15, marked CLOSED 2026-05-30) still has residual cases for record layouts with `List<Maybe<T>>` fields and reference-returning methods. |
+| Stable trigger | Calling a method on an **archive-loaded** (stdlib / cross-module) record that returns `Maybe<&T>` borrowed from `self.<List-field>[i].as_ref()`, then consuming it — e.g. `core.context.standard.Row.get_index(0) is Maybe.Some` (or via `match`). Also: reading that record's own fields from USER code (`r.columns` / `r.values`). |
+| Manifestation | (a) **SIGSEGV** during execution-compile (signal 11, hard corruption) for the ref-returning method; (b) `field access out of bounds: field index 4 ... type='List'` for direct field reads. |
+| Triangulation | `Maybe.as_ref()` on a local Maybe → OK; `List<Maybe<Text>>[i].as_ref()` → OK; a **locally-defined** record with the byte-identical method+field → OK; only the archive-loaded `Row` crashes. So the trigger is the cross-module/archive method-return of a reference-bearing ADT + the archive record's field-index resolution from user code — NOT `Maybe<&T>`, List-of-Maybe, or the consumer form. |
+| Mitigation | Affected tests `@ignore`'d with minimal repros (`core-tests/context/standard/regression_test.vr §3.5`); coverage preserved via `QueryResult.rows` (which round-trips) instead of `Row` field reads. An `@ignore`'d test is never execution-compiled, so it does not trip the crash. |
+| Fix (pending) | VBC codegen of archive-method ref-ADT returns + the archive type-layout registry (same surface as §15's `64607bb8e` / `1e75b40ad`). Needs a compiler rebuild. |
+
+## 20. `f"{Type.Variant}"` direct-ctor interpolation skips Display (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **FSTRING-CTOR-DISPLAY-1** |
+| Status | **OPEN**. Found 2026-06-01 building `core-tests/context/`; refines the general "enum-Display under --interp" symptom. |
+| Stable trigger | A **direct variant constructor** in an interpolation placeholder: `f"{ContextLogLevel.Info}"`. |
+| Manifestation | Renders the variant name (`"Info"`) instead of dispatching the user `Display` impl (`"INFO"`). Binding first — `let l = ContextLogLevel.Info; f"{l}"` — dispatches correctly. `Debug` (`:?`) works in both forms. |
+| Root-cause | Codegen `try_emit_display_dispatch` for interpolations (cf. §9-family, base/ordering regression task #9) detects `<TypeName>.fmt` at compile time, but for a placeholder whose expr is a bare variant constructor the receiver type isn't threaded through → emits the generic ToString fast path (variant name). |
+| Mitigation | Write `let x = Type.Variant; f"{x}"` in tests. Broken form pinned `@ignore`'d (`core-tests/context/standard/regression_test.vr §3.6`); live bound-var companion keeps the Display contract covered. |
+| Fix (pending) | Thread the variant-ctor's type into the interpolation Display-dispatch detection. Needs a rebuild. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| ARCHIVE-METHOD-MAYBEREF-1 / CLASS-9 residual (OPEN) | `core-tests/context/standard/audit.md §3.5/§3.7`, `core-tests/context/mod/audit.md §3.3` | — (codegen fix + rebuild pending) |
+| FSTRING-CTOR-DISPLAY-1 (OPEN) | `core-tests/context/standard/audit.md §3.6` | — (codegen fix + rebuild pending) |
 | AOT-MEMCPY-1 (CLOSED 2026-05-31) | this catalogue §17 | `89604fe94` |
 | AOT-ITER-1 (sub-bug 1 CLOSED / sub-bug 2 OPEN) | this catalogue §18 | `5bb3b83f8` (bounds-by-address) |
 | NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
