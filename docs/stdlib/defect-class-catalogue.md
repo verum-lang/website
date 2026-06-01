@@ -322,6 +322,27 @@ suite itself when it identifies new failure modes.
 | Triangulation | An identically-declared NON-gated newtype — `core.sys.cabi.CInt` (`type CInt is (Int32)`) — works on both tiers (cabi is "complete"). So it is not the declaration form nor the `is_transparent_wrapper` mechanism (CInt relies on it). The interpreter registers the ctor via the full-stdlib bootstrap's in-source `resolve_type_definition` (Tuple arm, `infer/decls.rs`); the AOT per-test compile loads the stdlib from precompiled `core_metadata`, where the ctor is never bound. A minimal repro (`mount core.sys.darwin.mach.KernReturn` alone) fails on BOTH tiers — so full mount context matters; the real divergence is full-context-interp vs per-test-AOT. |
 | Attempts (reverted) | Registering the ctor in the eager (`load_stdlib_from_metadata`) + lazy (`ensure_stdlib_type_loaded`) `verum_types` metadata loaders did NOT fix it: a `VERUM_TRACE_D3` build showed the lazy ctor-bind DID fire for `KernReturn`, but the binding was then overwritten by a type-binding from the import path — hence the use-site fix above instead of chasing every binding site. |
 
+## 25. AOT integer ↔ raw-pointer cast rejected (CLOSED 2026-06-01)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-INT-PTR-CAST-1** (a.k.a. D5-cast) |
+| Status | **CLOSED 2026-06-01** (commit `719ecc42a`, `verum_types/infer/types.rs`). |
+| Stable trigger | `as` between an integer (`Int` / `USize` / `ISize` / sized aliases) and a RAW pointer (`*const T` / `*mut T` / volatile) — e.g. `core.sys.mmio` `MemoryRegion.start: *const ()` constructed as `0x1000 as *const ()`, and `self.start as USize` in `.contains`. |
+| Manifestation | `--interp` passed (lenient VBC cast) but `--aot` failed `E401: types are not compatible for casting` (40 instances in the mmio suite). |
+| Root cause | The cast-validity checker had an `(Int, Reference/CheckedReference/UnsafeReference)` arm (int→managed reference) but NO arm for int↔raw `Pointer`/`VolatilePointer`, so `usize as *const ()` fell to the reject fallback. |
+| Fix (landed) | Add `(Int | Named, Pointer | VolatilePointer)` and the reverse to the allowed casts, with the same address-safety warning as the int→reference arm when outside `@unsafe`. The `as` keyword is the explicit opt-in; valid in Verum's no-libc systems layer. |
+
+## 26. AOT raw-pointer record-field type collapses to Unit (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-PTRFIELD-UNIT-1** (a.k.a. D5-ptrfield) |
+| Status | **OPEN** (surfaced 2026-06-01 after AOT-INT-PTR-CAST-1 closed the E401). Affects `core.sys.mmio` (`MemoryRegion.start: *const ()`) AOT only. |
+| Manifestation | Constructing `MemoryRegion { start: 0x1000 as *const () }` under `--aot` fails `E400: Type mismatch: expected 'Unit', found '*const Unit'` — the RHS is correctly `*const Unit` (post-cast-fix) but the FIELD type resolves to `Unit`: the `*const ()` raw-pointer field type collapsed to its inner `()` somewhere in the metadata round-trip. |
+| Suspected root | `verum_types/infer/helpers.rs::parse_descriptor_type_string` handles `&T` / `&mut T` (references) and `fn(...)` but NOT raw `*const T` / `*mut T` — and `verum_compiler/archive_metadata.rs::type_ref_to_text` has no Pointer arm. So a `*const ()` field descriptor likely serializes to / parses as `Unit`. Fix needs BOTH a raw-pointer serializer (archive side, precompile rebuild — cache bust) and a `*const`/`*mut` parser (verum_types side), OR the VBC type system may not represent `*const ()` distinctly (info lost at the VBC level). |
+| Pragmatic alternative | `MemoryRegion.start` is used exclusively as an address (`self.start as USize` in `.contains`/`.end`); declaring it `USize` instead of `*const ()` would sidestep the raw-pointer-field round-trip entirely (a small stdlib API change + precompile rebuild). |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
