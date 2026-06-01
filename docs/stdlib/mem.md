@@ -223,14 +223,43 @@ diagnostics).  Same defect class as
 
 The `Tier` column reflects validated status under `verum test --interp`
 (Tier 0 VBC interpreter) as of the latest mem-suite sweep.  Tier 2
-(`verum test --aot`, LLVM AOT) verification of the full suite is blocked
-at the time of writing by a separate pre-existing build defect in the
-precompiled-stdlib WinSock alias — the `winsock_read(fd, buf)` body
-invokes `recv` with three arguments but a two-argument `recv` resolves
-first across glob mounts, producing a "wrong number of arguments for
-recv: expected 2, found 3" error from `vbc_lowering` for every AOT test
-artefact.  Closing that defect unblocks the entire `--aot` channel of
-the mem suite at once.
+(`verum test --aot`, LLVM AOT) verification of the full suite was, until
+2026-06-01, blocked at the **runner level**: `verum test --aot` runs
+with `[test].parallel = true` by default, and the runner contained two
+independent parallelism bugs that crashed the *whole* run with an
+in-process compiler `SIGSEGV` during `generate_native` (see
+[defect-class catalogue §23 — AOT-PARALLEL-1](/docs/stdlib/defect-class-catalogue)):
+
+1. **Colliding artifact paths.**  Per-test build artifacts (the merged
+   `target/test/test_<stem>.merged.vr`, the output binary, the derived
+   `.o`/`.ll`, and the shared `verum_runtime_stubs.c`/`.o`) were keyed on
+   the test file's `file_stem`, which repeats across every module (all
+   `unit_test.vr` → stem `"unit_test"`).  Parallel workers clobbered each
+   other's files → corrupt source → malformed IR → SIGSEGV.  Fixed by
+   `unique_merged_stem` (folds the source path + test fn into every
+   artifact name).
+2. **LLVM backend not thread-safe.**  Even with unique artifacts, LLVM's
+   per-process pass registry / subtarget caches / `cl::opt` globals are
+   not safe to drive from multiple threads at once.  Fixed by a
+   process-global `llvm_backend_lock()` around the optimisation + object
+   emission window.
+
+(The earlier "WinSock `recv` arity" hypothesis was disproved — a single
+`--aot` test compiles and passes; the blocker was the *parallel* runner,
+not a stdlib symbol.)  With both fixed, `verum test --aot` completes.
+
+**First post-fix `--aot` baseline** (mem `capability` + `cap_audit` +
+`cap_audit_ring`, 173 tests, 0 compiler SIGSEGV): **125 pass / 48 fail**.
+Every failure is the same per-test defect — **AOT-ITER-1** (catalogue
+§18): tests whose bodies iterate `for x in …iter()` (the exhaustive
+property laws and integration scenarios) crash at *runtime*
+("process terminated by signal") on the raw `&unsafe T` iterator
+backing-pointer deref. Pure-data tests (constants, ADT construct/match,
+field round-trips) pass `--aot` cleanly. So the `Tier` column stays
+`--interp` per-module until AOT-ITER-1 §18 closes — that single codegen
+fix un-crashes the for-loop tests suite-wide and lets the mem modules
+promote to `--interp ✓ / --aot ✓`. (Record-variant construction,
+catalogue §-pending, is a smaller secondary surface.)
 
 ## File-by-file API surface
 
