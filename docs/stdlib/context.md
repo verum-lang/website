@@ -91,14 +91,16 @@ accessors and direct-constructor `Display` interpolation, both of which
 are pinned with minimal repros and worked around to preserve coverage.
 
 **Cross-tier (AOT) status**: the `--interp` numbers above are validated;
-`--aot` is currently blocked stdlib-wide by in-flight compiler work, so
-the `partial` status reflects the interpreter tier only. Two AOT blockers
-are being addressed at the codegen layer: a parallel-codegen LLVM SIGSEGV
-(`verum test --aot` default `parallel=true` is not thread-safe across
-per-test native compilation), and a `MakeVariantTyped` field-count ABI
-mismatch that miscompiles even unit-variant ADTs (`Scope.Singleton.name()`
-returns the wrong value under `--aot`). Promotion to **complete** requires
-the same suite GREEN on both tiers once those land.
+`--aot` is currently blocked stdlib-wide by in-flight codegen work, so the
+`partial` status reflects the interpreter tier only. Of the two AOT
+blockers: the parallel-codegen LLVM SIGSEGV (`verum test --aot` default
+`parallel=true` was not thread-safe across per-test native compilation) is
+**fixed** (unique per-test artifact paths, commit `f1c0510e3`); the
+remaining blocker is a `MakeVariantTyped` field-count / tag ABI mismatch
+that miscompiles ADT construction — `Scope.Singleton.name()` still returns
+the wrong value under `--aot` (verified 2026-06-01). Promotion to
+**complete** requires that mismatch fixed and the suite GREEN on both
+tiers.
 
 ---
 
@@ -239,10 +241,21 @@ implement Provider<T> {
     fn new(factory: fn() -> T) -> Self;   // create from factory
     fn of(value: T) -> Self;              // create from pre-computed value
     fn get(&mut self) -> T;               // resolve (lazy; caches result)
+    fn get_ref(&mut self) -> &T;          // resolve + borrow without cloning
     fn is_resolved(&self) -> Bool;
     fn reset(&mut self);                  // clear cache, next get() re-runs factory
+
+    // Functor / monad composition (eager: resolve self, then apply f).
+    fn map<U, F: fn(T) -> U>(&mut self, f: F) -> Provider<U>;
+    fn flat_map<U, F: fn(T) -> Provider<U>>(&mut self, f: F) -> Provider<U>;
 }
 ```
+
+`map` / `flat_map` are **eager**: they resolve `self` (running its
+factory) and apply `f` immediately, returning an already-resolved
+`Provider<U>`. A lazy variant that defers `f` until the derived provider
+is first accessed needs environment-capturing closures and is tracked as
+a follow-up.
 
 ### `ScopedProvider<T>` — provides and cleans up in a scope
 
@@ -252,6 +265,9 @@ type ScopedProvider<T> is { slot_id: Int, value: T };
 implement ScopedProvider<T> {
     fn new(slot_id: Int, value: T) -> Self;
     fn run<R>(&self, body: fn() -> R) -> R;  // installs value for the duration of body
+    // Fallible body: the slot is popped BEFORE the Result is returned,
+    // so cleanup happens on both Ok and Err (safe to `?`-propagate).
+    fn try_run<R, E>(&self, body: fn() -> Result<R, E>) -> Result<R, E>;
 }
 ```
 
@@ -341,6 +357,20 @@ context Logger {
 Info | Warn | Error | Fatal`) — distinct from `core.base.log.LogLevel`
 (which has no `Fatal`). The duplication is intentional: different
 audiences, different variant sets.
+
+```verum
+implement ContextLogLevel {
+    fn severity(&self) -> Int;                          // 0=Trace .. 5=Fatal
+    fn name(&self) -> Text;                             // "TRACE" .. "FATAL"
+    fn is_enabled(&self, min: ContextLogLevel) -> Bool; // severity >= min
+    fn from_severity(n: Int) -> Maybe<ContextLogLevel>; // inverse of severity()
+}
+```
+
+`from_severity` round-trips with `severity()` on `0..=5`
+(`from_severity(l.severity()) == Some(l)`), and returns `Maybe.None` for
+any out-of-range ordinal — handy for serializing a level as its ordinal
+(e.g. a Prometheus label).
 
 ### `Database` — relational access (6 methods)
 
