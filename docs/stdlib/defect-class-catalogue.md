@@ -310,17 +310,17 @@ suite itself when it identifies new failure modes.
 | Why it matters | Unblocks the `--aot` channel for the WHOLE conformance suite — the prerequisite for promoting any stdlib module to `complete`. |
 | Companion (harness) | `module_qualified_prefix()` (commit `993679a01`) — test names are now `mem/capability/unit_test::fn` (were colliding `unit_test::fn` across directories), so `--filter mem/` scopes a subtree and the README-documented `--filter module::` works. |
 
-## 24. AOT newtype tuple-constructor unregistered for cfg-gated modules (OPEN)
+## 24. AOT newtype tuple-constructor unregistered for cfg-gated modules (CLOSED 2026-06-01)
 
 | Field | Value |
 |---|---|
 | Defect class id | **AOT-NEWTYPE-CTOR-1** (a.k.a. D3) |
-| Status | **OPEN** (root-caused 2026-06-01; two `verum_types` fix attempts did not crack it — reverted). |
+| Status | **CLOSED 2026-06-01** (commit `d329cbf62`, `verum_types/infer/expr.rs`). Validated: `core-tests/sys/darwin/mach` unit AOT 20/20 (was 0/20), interp 20/20 (no regression). |
+| Fix (landed) | A Call-inference `func_ty` match arm: when the callee resolves to a `Type::Named` that is a transparent-wrapper newtype (has a `__newtype_inner_<X>` binding — always registered alongside the type, also powering `<X>.0` access), treat `X(v)` as construction — check the single arg against the inner type and yield the newtype. Recovers the ctor UNIFORMLY at the use site, independent of which stdlib-load path bound `env[X]` (lazy / eager / import). Non-newtype Named types lack the key and correctly fall through to `NotAFunction`. Two earlier `verum_types` *loader* fix attempts (register the ctor in the eager + lazy metadata loaders) were reverted — the ctor binding was overwritten by a later type-binding from the import path (the binding-site whack-a-mole is why the call-site fix is the robust one). |
 | Stable trigger | A single-field tuple-newtype constructor in expression position — `KernReturn(7 as Int32)` / `VmProt(...)` (`type X is (Int32)` in the `@cfg(target_os="macos")`-gated `core.sys.darwin.mach`) — under `verum test --aot`. |
 | Manifestation | **`--interp` PASSES** (mach unit test 20/20 GREEN) but **`--aot` FAILS** every test: `not a function: KernReturn` / `not a function: VmProt` at the construction site. Const-value field access (`KERN_SUCCESS.0`) works on both tiers — so the inner-type binding IS registered; only the CONSTRUCTOR is missing under AOT. |
 | Triangulation | An identically-declared NON-gated newtype — `core.sys.cabi.CInt` (`type CInt is (Int32)`) — works on both tiers (cabi is "complete"). So it is not the declaration form nor the `is_transparent_wrapper` mechanism (CInt relies on it). The interpreter registers the ctor via the full-stdlib bootstrap's in-source `resolve_type_definition` (Tuple arm, `infer/decls.rs`); the AOT per-test compile loads the stdlib from precompiled `core_metadata`, where the ctor is never bound. A minimal repro (`mount core.sys.darwin.mach.KernReturn` alone) fails on BOTH tiers — so full mount context matters; the real divergence is full-context-interp vs per-test-AOT. |
-| Attempts (reverted) | Registering the ctor in BOTH the eager (`load_stdlib_from_metadata`) and lazy (`ensure_stdlib_type_loaded`) `verum_types` metadata loaders — mirroring the in-source path — did NOT fix it. Both gate on `is_transparent_wrapper`; either it did not fire for KernReturn on that path, or the call site resolved before the lazy load registered the ctor. |
-| Fix (pending) | Needs instrumented builds to pin the exact AOT-typecheck stdlib-load path for cfg-gated-module newtypes (is the flag set on that metadata? which loader runs? call-site ordering?), then register the ctor at that layer — likely `verum_compiler` archive/AOT-load rather than the `verum_types` metadata loaders. Affects darwin/mach (and analogous cfg-gated) newtype AOT tests only. |
+| Attempts (reverted) | Registering the ctor in the eager (`load_stdlib_from_metadata`) + lazy (`ensure_stdlib_type_loaded`) `verum_types` metadata loaders did NOT fix it: a `VERUM_TRACE_D3` build showed the lazy ctor-bind DID fire for `KernReturn`, but the binding was then overwritten by a type-binding from the import path — hence the use-site fix above instead of chasing every binding site. |
 
 ## Cross-reference
 
