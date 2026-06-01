@@ -310,6 +310,18 @@ suite itself when it identifies new failure modes.
 | Why it matters | Unblocks the `--aot` channel for the WHOLE conformance suite — the prerequisite for promoting any stdlib module to `complete`. |
 | Companion (harness) | `module_qualified_prefix()` (commit `993679a01`) — test names are now `mem/capability/unit_test::fn` (were colliding `unit_test::fn` across directories), so `--filter mem/` scopes a subtree and the README-documented `--filter module::` works. |
 
+## 24. AOT newtype tuple-constructor unregistered for cfg-gated modules (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **AOT-NEWTYPE-CTOR-1** (a.k.a. D3) |
+| Status | **OPEN** (root-caused 2026-06-01; two `verum_types` fix attempts did not crack it — reverted). |
+| Stable trigger | A single-field tuple-newtype constructor in expression position — `KernReturn(7 as Int32)` / `VmProt(...)` (`type X is (Int32)` in the `@cfg(target_os="macos")`-gated `core.sys.darwin.mach`) — under `verum test --aot`. |
+| Manifestation | **`--interp` PASSES** (mach unit test 20/20 GREEN) but **`--aot` FAILS** every test: `not a function: KernReturn` / `not a function: VmProt` at the construction site. Const-value field access (`KERN_SUCCESS.0`) works on both tiers — so the inner-type binding IS registered; only the CONSTRUCTOR is missing under AOT. |
+| Triangulation | An identically-declared NON-gated newtype — `core.sys.cabi.CInt` (`type CInt is (Int32)`) — works on both tiers (cabi is "complete"). So it is not the declaration form nor the `is_transparent_wrapper` mechanism (CInt relies on it). The interpreter registers the ctor via the full-stdlib bootstrap's in-source `resolve_type_definition` (Tuple arm, `infer/decls.rs`); the AOT per-test compile loads the stdlib from precompiled `core_metadata`, where the ctor is never bound. A minimal repro (`mount core.sys.darwin.mach.KernReturn` alone) fails on BOTH tiers — so full mount context matters; the real divergence is full-context-interp vs per-test-AOT. |
+| Attempts (reverted) | Registering the ctor in BOTH the eager (`load_stdlib_from_metadata`) and lazy (`ensure_stdlib_type_loaded`) `verum_types` metadata loaders — mirroring the in-source path — did NOT fix it. Both gate on `is_transparent_wrapper`; either it did not fire for KernReturn on that path, or the call site resolved before the lazy load registered the ctor. |
+| Fix (pending) | Needs instrumented builds to pin the exact AOT-typecheck stdlib-load path for cfg-gated-module newtypes (is the flag set on that metadata? which loader runs? call-site ordering?), then register the ctor at that layer — likely `verum_compiler` archive/AOT-load rather than the `verum_types` metadata loaders. Affects darwin/mach (and analogous cfg-gated) newtype AOT tests only. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
