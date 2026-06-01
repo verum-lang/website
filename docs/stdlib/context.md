@@ -2,8 +2,8 @@
 sidebar_position: 1
 title: context
 description: Scopes, providers, layers, 10 standard contexts, async propagation — the runtime side of `using` / `provide`.
-status: regression-only
-status_detail: First conformance suite landed in `core-tests/context/` (commit 1b69f9d22). Surface is fully tested on the source side — pinned regressions block the runtime tests on (a) bare-name cross-module collisions (task #17/#39), (b) bare-variant method-dispatch corruption, and (c) the task #47 stage-3 stub `global_ctors` cascade. AOT pipeline blocked stdlib-wide on unrelated `sync_connect_binlog` + `translate` arity defects.
+status: partial
+status_detail: 2026-06-01 — scope / error / provider / standard(ContextLogLevel,AuthUser,QueryResult) / mod conformance-tested GREEN under `--interp --test-threads 1`. Three rebuild-blocked codegen defects (CLASS-9 family) are pinned + `@ignore`'d: archive-method `Maybe<&T>` return SIGSEGV (`Row.get_index`), `f"{Type.Variant}"` Display non-dispatch, archive-record field-shift on `Row` direct field reads. The bare-variant collision (task #17/#39) and `global_ctors` cascade that previously gated the suite are resolved.
 ---
 
 # `core.context` — Dependency injection primitives
@@ -38,19 +38,19 @@ the truth-table over the module's public API exercised by
 
 | Status | Meaning |
 |---|---|
-| **stable** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
-| **partial** | Subset stable; remainder gated by upstream defects, documented per-module. |
-| **regression-only** | Tests gate on language-level defects (cross-module name collision, stage-3 stub `global_ctors` cascade, AOT-pipeline blockers). |
+| **complete** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
+| **partial** | Subset conformance-tested + stable; remainder gated by upstream defects, documented per-module. |
+| **regression-only** | Tests gate on language-level defects; few/no public-API tests pass yet. |
 | **undocumented** | Snapshot from source; no runtime conformance pin yet. |
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `scope.vr`     | **regression-only** | [core-tests/context/scope](https://github.com/verum-lang/verum/tree/main/core-tests/context/scope) — `Scope` ADT + `ContextScope` depth chain. ~30 unit tests + ~20 properties + integration + regression. Runtime gates on the cross-module `Transient` / `Request` collision (audit §3.1) and the bare-variant method-dispatch corruption (audit §3.2). Workaround: always qualify as `Scope.<Variant>`. |
-| `error.vr`     | **regression-only** | [core-tests/context/error](https://github.com/verum-lang/verum/tree/main/core-tests/context/error) — `ContextError` 5-variant ADT. ~24 unit tests + ~15 properties + integration + regression. Same global_ctors gate as scope. |
-| `provider.vr`  | **regression-only** | [core-tests/context/provider](https://github.com/verum-lang/verum/tree/main/core-tests/context/provider) — `Provider<T>` lazy factory + `ScopedProvider` + `has_context`. ~15 unit tests + ~8 properties. Same gate. `ScopedProvider.run` is bytecode-tested but the `@bitcast` payload-size hazard (audit §3.4) deferred. |
-| `standard.vr`  | **regression-only** | [core-tests/context/standard](https://github.com/verum-lang/verum/tree/main/core-tests/context/standard) — `ContextLogLevel` + `Row` / `QueryResult` / `AuthUser` data types. ~35 unit tests + ~11 properties + integration. The 10 `context Logger {} / Database {} / …` protocols themselves require compiler `provide`/`using` infrastructure and are tested at the language level in [`vcs/specs/L2-standard/contexts/`](https://github.com/verum-lang/verum/tree/main/vcs/specs/L2-standard/contexts). |
-| `layer.vr`     | **undocumented** | `layer.vr` is doc-only — the layer composition is implemented compiler-side in `crates/verum_compiler`. No standalone runtime surface; no conformance suite. See [audit](https://github.com/verum-lang/verum/tree/main/core-tests/context/mod/audit.md) §3.2. |
-| `mod.vr`       | **regression-only** | [core-tests/context/mod](https://github.com/verum-lang/verum/tree/main/core-tests/context/mod) — re-export verification via `mount core.context.*`. Same gate as submodules. |
+| `scope.vr`     | **partial** | [core-tests/context/scope](https://github.com/verum-lang/verum/tree/main/core-tests/context/scope) — `Scope` ADT (variants / `name` / `rank` / 3×3 `can_depend_on`) + `ContextScope` depth chain. ~30 unit + ~20 property + integration + regression, GREEN under `--interp`. The cross-module `Transient`/`Request` collision is handled by qualifying as `Scope.<Variant>` (the established discipline). |
+| `error.vr`     | **partial** | [core-tests/context/error](https://github.com/verum-lang/verum/tree/main/core-tests/context/error) — `ContextError` 5-variant ADT: construction, `message()`, `Display`/`Debug`, full `Eq` matrix. ~24 unit + ~15 property + integration + regression, GREEN under `--interp`. |
+| `provider.vr`  | **partial** | [core-tests/context/provider](https://github.com/verum-lang/verum/tree/main/core-tests/context/provider) — `Provider<T>` lazy factory + `ScopedProvider.run` (TLS install/pop) + `get_context`/`has_context`. unit + property + **integration** (Text/List/Maybe/tuple/ContextLogLevel carriers) + **regression** (the `Maybe<T>` field-tracking + `Provider.of` soundness fixes) — all GREEN under `--interp`. Enhancements `map`/`flat_map`/`try_run` deferred (audit §3.1–3.2). |
+| `standard.vr`  | **partial** | [core-tests/context/standard](https://github.com/verum-lang/verum/tree/main/core-tests/context/standard) — `ContextLogLevel` (severity/name/is_enabled/Eq/Ord/Clone/Debug + Display via bound-var) + `AuthUser` + `QueryResult` GREEN. Pinned `@ignore`'d: `Row.get`/`Row.get_index`/`Row` direct field read (CLASS-9 archive field-shift + `Maybe<&T>` archive-method SIGSEGV, audit §3.5/§3.7) and `f"{Type.Variant}"` Display non-dispatch (§3.6). The 10 `context Logger {} / …` protocols need `provide`/`using` runtime and are tested at the language level in [`vcs/specs/L2-standard/contexts/`](https://github.com/verum-lang/verum/tree/main/vcs/specs/L2-standard/contexts). |
+| `layer.vr`     | **undocumented** | `layer.vr` is doc-only — layer composition is a compiler construct (`grammar/verum.ebnf` `layer_def`/`layer_expr`), lowered in `crates/verum_compiler`. No runtime Verum surface; behaviour is tested at the language level. See [core-tests/context/layer/audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/context/layer/audit.md). |
+| `mod.vr`       | **partial** | [core-tests/context/mod](https://github.com/verum-lang/verum/tree/main/core-tests/context/mod) — umbrella re-export reachability (`mount core.context.*`) + re-exported-type laws + re-export regressions, GREEN under `--interp`. |
 
 The status table is the runtime truth, not the file's `lifecycle`
 annotation: `lifecycle: Lifecycle.Theorem("v0.1")` is the *spec*
@@ -58,30 +58,47 @@ lifecycle (what the contract promises); the table above is the
 *conformance* lifecycle (what the implementation delivers under
 test today). They are aligned only when the status reads **stable**.
 
-### Open upstream defects gating context test runs
+### Open upstream defects gating context test runs (2026-06-01)
 
-* **Task #17/#39** — mount-scope-aware function/variant lookup.
-  Bare-name resolution today is first-wins across all loaded
-  modules; collisions on names like `Transient` (5 modules) and
-  `Request` (2 modules including `core.net.http`) silently route
-  to the wrong target. **Workaround**: always qualify variants
-  (`Scope.Transient`, `ContextError.NotFound { … }`).
-* **Task #47 stage-3 stub propagation** — `global_function_registry`
-  pre-registers uniquely-named public free fns with sentinel IDs
-  in the `0xFEFFFFFF - 0x100_0000` band. When the producing module's
-  real body lands, the registry entry is overwritten but bytecode
-  already emitted in consumer modules still holds the stub ID.
-  `archive_id_to_name` doesn't carry stub IDs → `ArchiveBodyRemap`
-  falls through to identity → runtime hits `FunctionNotFound`.
-  Partial mitigation: `crates/verum_vbc/src/interpreter/mod.rs::
-  run_global_ctors` now skips stub-range IDs gracefully (commit
-  f98fba2be). Architectural close-out via
-  `emit_stage3_stub_descriptors` is the upstream fix.
-* **AOT stdlib build broken** — `undefined function:
-  sync_connect_binlog` + `translate` arity mismatch + parse error
-  in `core/math/tactics.vr:839`. Blocks every `--aot` test
-  including baselines like `test_ordering_less_construction`.
-  Unrelated to `context/` but prevents cross-tier validation.
+The bare-variant collision (task #17/#39) and the `global_ctors` stage-3
+stub cascade (task #47) that previously gated the whole suite are
+**resolved** — `scope` / `error` / `provider` / `mod` and most of
+`standard` are GREEN under `--interp`. Three codegen defects remain,
+all in the cross-module / archive-loaded **CLASS-9** family, all needing a
+compiler rebuild to fix:
+
+* **Archive-method `Maybe<&T>` return SIGSEGV** — calling a stdlib
+  (archive-loaded) record method that returns `Maybe<&T>` borrowed from a
+  `self.<List-field>[i].as_ref()` element, then consuming it, SIGSEGVs the
+  compiler during execution-compile. A byte-identical *locally-defined*
+  record works. Blocks `Row.get` / `Row.get_index` / `Display for Row`.
+  Pinned `@ignore`'d in
+  [standard/regression_test.vr](https://github.com/verum-lang/verum/tree/main/core-tests/context/standard) §3.5.
+* **`f"{Type.Variant}"` Display non-dispatch** — a direct variant
+  constructor in an interpolation placeholder renders the variant name
+  instead of dispatching the user `Display` impl; `let x = …; f"{x}"`
+  (bound variable) dispatches correctly, and `:?` Debug works in both
+  forms. Coverage uses the bound-var idiom; the broken form is pinned
+  `@ignore`'d (§3.6).
+* **Archive-record field-shift on direct field read** — reading an
+  archive-loaded record's own fields from user code (`r.columns` /
+  `r.values` on `Row`) mis-resolves the field index. The residual of the
+  CLASS-9 field-shift family for record layouts with `List<Maybe<T>>`
+  fields (§3.7).
+
+These do not gate the bulk of the suite — they constrain only the `Row`
+accessors and direct-constructor `Display` interpolation, both of which
+are pinned with minimal repros and worked around to preserve coverage.
+
+**Cross-tier (AOT) status**: the `--interp` numbers above are validated;
+`--aot` is currently blocked stdlib-wide by in-flight compiler work, so
+the `partial` status reflects the interpreter tier only. Two AOT blockers
+are being addressed at the codegen layer: a parallel-codegen LLVM SIGSEGV
+(`verum test --aot` default `parallel=true` is not thread-safe across
+per-test native compilation), and a `MakeVariantTyped` field-count ABI
+mismatch that miscompiles even unit-variant ADTs (`Scope.Singleton.name()`
+returns the wrong value under `--aot`). Promotion to **complete** requires
+the same suite GREEN on both tiers once those land.
 
 ---
 
@@ -159,12 +176,15 @@ implement Scope {
     fn rank(&self) -> Int;        // Singleton=0, Request=1, Transient=2
 }
 
-type ContextScope is { scope: Scope, key: Text };
+// Runtime depth-tracking record for `provide ... in { ... }` lexical
+// nesting. `root()` is depth 0; `enter()` returns a NEW scope at depth+1
+// (it does not mutate the receiver).
+type ContextScope is { depth: Int, parent_depth: Int };
 implement ContextScope {
-    fn root() -> Self;
-    fn enter(&self) -> Self;
+    fn root() -> Self;            // depth 0, parent 0
+    fn enter(&self) -> Self;      // depth+1, parent = self.depth
     fn current_depth(&self) -> Int;
-    fn parent(&self) -> Int;
+    fn parent(&self) -> Int;      // parent depth (for LIFO cleanup)
 }
 ```
 
@@ -184,13 +204,24 @@ type ContextError is
                        dependent_scope: Text, dependency_scope: Text };
 ```
 
-| Error | Code | When |
-|---|---|---|
-| `NotFound` | — | context not in the environment |
-| `NotProvided` | E3050 | `using [X]` declared but no `provide X` on any call path |
-| `TypeMismatch` | — | provided value doesn't match the declared context type |
-| `CircularDependency` | E805 | static DI graph has a cycle |
-| `ScopeViolation` | E806 | long-lived scope depends on short-lived |
+`ContextError` is the **runtime** error type (returned/propagated when a
+context cannot be resolved or provided):
+
+| Variant | When |
+|---|---|
+| `NotFound` | context not present in the current environment |
+| `NotProvided` | `using [X]` declared but no `provide X` reached this call |
+| `TypeMismatch` | provided value's type doesn't match the declared context type |
+| `CircularDependency` | dependency graph among providers has a cycle |
+| `ScopeViolation` | a longer-lived scope depends on a shorter-lived one |
+
+These are distinct from the **compile-time** diagnostic codes the type
+checker emits for the static `@injectable` / `using` analysis (in
+`crates/verum_types`): **E3050 / E3051 / E3052** (direct / transitive /
+conflicting *negative-context* `!Ctx` violations) and **E808** (duplicate
+`provide` for the same context in one scope). There is no 1:1 mapping
+between the runtime `ContextError` variants and these compile-time codes —
+they live at different layers.
 
 ---
 
@@ -260,31 +291,27 @@ layer LoggingLayer {
 }
 ```
 
-Compose and run:
+Compose with `+` (left-to-right; the compiler resolves the dependency
+order and detects cycles at compile time):
 
 ```verum
-let app_layer = Layer.new()
-    .with_singleton<Logger>(ConsoleLogger.new(LogLevel.Info))
-    .with_singleton<Clock>(SystemClock.new())
-    .with_request<Database>(|| connect_db())
-    .with_request<Metrics>(|| Metrics.tagged("req_id"))
-    .with_transient<Random>(|| Rng.from_os());
+layer AppLayer = DatabaseLayer + LoggingLayer;
 
-app_layer.run(async {
-    let mut server = HttpServer.bind(&":8080").await?;
-    server.serve(|req| handle(req)).await?;
-    Result.Ok<(), Error>(())
-}).await.expect("server");
+fn main() {
+    provide AppLayer;   // expands every `provide` in dependency order
+    run_server();
+}
 ```
 
-Layer merging:
-
-```verum
-let full = Layer.new()
-    .merge(logging_layer)
-    .merge(db_layer)
-    .merge(metrics_layer);
-```
+:::note Doc-only module
+`core/context/layer.vr` ships **no Verum types** — `layer { … }` and
+`layer A = B + C;` are *compiler* constructs (grammar `layer_def` /
+`layer_expr`), lowered in `crates/verum_compiler`. There is no runtime
+`Layer.new().with_singleton(...).run(...)` builder type in the stdlib;
+earlier revisions of this page advertised one that does not exist. A
+value-level `Layer` builder is tracked as a deferred enhancement
+([core-tests/context/layer/audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/context/layer/audit.md) §4.1).
+:::
 
 ---
 
@@ -298,9 +325,9 @@ declare with `using [Name]`, provide with `provide Name = impl`.
 
 ```verum
 context Logger {
-    fn log(level: LogLevel, message: Text);
-    fn log_record(record: LogRecord);
-    fn is_enabled(level: LogLevel) -> Bool;
+    fn log(level: ContextLogLevel, message: Text);
+    fn log_record(record: ContextLogRecord);
+    fn is_enabled(level: ContextLogLevel) -> Bool;
     fn trace(message: Text);
     fn debug(message: Text);
     fn info(message: Text);
@@ -309,6 +336,11 @@ context Logger {
     fn fatal(message: Text);
 }
 ```
+
+`ContextLogLevel` is the context-system log severity (`Trace | Debug |
+Info | Warn | Error | Fatal`) — distinct from `core.base.log.LogLevel`
+(which has no `Fatal`). The duplication is intentional: different
+audiences, different variant sets.
 
 ### `Database` — relational access (6 methods)
 
@@ -388,6 +420,7 @@ context Tracer {
 context Clock {
     fn now() -> Instant;
     fn system_time() -> SystemTime;
+    fn sleep(duration: Duration);
 }
 ```
 
