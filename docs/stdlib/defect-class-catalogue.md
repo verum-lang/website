@@ -258,17 +258,17 @@ suite itself when it identifies new failure modes.
 | Mitigation | Affected tests `@ignore`'d with minimal repros (`core-tests/context/standard/regression_test.vr §3.5`); coverage preserved via `QueryResult.rows` (which round-trips) instead of `Row` field reads. An `@ignore`'d test is never execution-compiled, so it does not trip the crash. |
 | Fix (pending) | VBC codegen of archive-method ref-ADT returns + the archive type-layout registry (same surface as §15's `64607bb8e` / `1e75b40ad`). Needs a compiler rebuild. |
 
-## 20. `f"{Type.Variant}"` direct-ctor interpolation skips Display (OPEN)
+## 20. `f"{Type.Variant}"` direct-ctor interpolation skips Display (CLOSED 2026-06-01)
 
 | Field | Value |
 |---|---|
 | Defect class id | **FSTRING-CTOR-DISPLAY-1** |
-| Status | **OPEN**. Found 2026-06-01 building `core-tests/context/`; refines the general "enum-Display under --interp" symptom. |
+| Status | **CLOSED** 2026-06-01 by commit `19bb51b3a` (`fix(vbc/codegen): … qualified-variant Display`). Found building `core-tests/context/`; refined the general "enum-Display under --interp" symptom. |
 | Stable trigger | A **direct variant constructor** in an interpolation placeholder: `f"{ContextLogLevel.Info}"`. |
-| Manifestation | Renders the variant name (`"Info"`) instead of dispatching the user `Display` impl (`"INFO"`). Binding first — `let l = ContextLogLevel.Info; f"{l}"` — dispatches correctly. `Debug` (`:?`) works in both forms. |
-| Root-cause | Codegen `try_emit_display_dispatch` for interpolations (cf. §9-family, base/ordering regression task #9) detects `<TypeName>.fmt` at compile time, but for a placeholder whose expr is a bare variant constructor the receiver type isn't threaded through → emits the generic ToString fast path (variant name). |
-| Mitigation | Write `let x = Type.Variant; f"{x}"` in tests. Broken form pinned `@ignore`'d (`core-tests/context/standard/regression_test.vr §3.6`); live bound-var companion keeps the Display contract covered. |
-| Fix (pending) | Thread the variant-ctor's type into the interpolation Display-dispatch detection. Needs a rebuild. |
+| Manifestation (pre-fix) | Rendered the variant name (`"Info"`) instead of dispatching the user `Display` impl (`"INFO"`). Binding first — `let l = ContextLogLevel.Info; f"{l}"` — dispatched correctly. `Debug` (`:?`) worked in both forms. |
+| Root-cause | Codegen `try_emit_display_dispatch` for interpolations (cf. §9-family) detected `<TypeName>.fmt` at compile time, but for a placeholder whose expr is a bare variant constructor the receiver type wasn't threaded through → emitted the generic ToString fast path (variant name). |
+| Fix (landed) | `infer_expr_type_name` now recognises `Field{Path(Type), Variant}` and returns `<Type>` when it declares that variant, so the interpolation routes through `<Type>.fmt`. Verified on a clean worktree build of the fix commit: `f"{ContextLogLevel.Trace}"` → `"TRACE"`; standard module 69/0/4 GREEN on the post-fix shared binary. The pin `regression_display_direct_ctor_renders_uppercase_name` was un-`@ignore`'d. |
+| Residual (separate, OPEN) | The **record-variant** case — `f"{err}"` for `ContextError` via a **bound var** — still renders the default `NotFound(...)` instead of `Display`→`message()`. That is a distinct gate-detection path NOT closed by `19bb51b3a`; the 5 error Display pins stay `@ignore`'d (`core-tests/context/error/audit.md §3.4`). |
 
 ## 21. AOT umbrella re-export of free functions unresolved (CLOSED 2026-06-01)
 
@@ -350,7 +350,7 @@ suite itself when it identifies new failure modes.
 | AOT-UMBRELLA-REEXPORT-1 / D1 (CLOSED 2026-06-01) | `core-tests/sys/linux/bpf/mod/audit.md`, `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/modules.rs` registry-recursion fallback) |
 | AOT-NOT-USIZE-1 / D7 (CLOSED 2026-06-01) | `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/expr.rs` integer-alias list) |
 | ARCHIVE-METHOD-MAYBEREF-1 / CLASS-9 residual (OPEN) | `core-tests/context/standard/audit.md §3.5/§3.7`, `core-tests/context/mod/audit.md §3.3` | — (codegen fix + rebuild pending) |
-| FSTRING-CTOR-DISPLAY-1 (OPEN) | `core-tests/context/standard/audit.md §3.6` | — (codegen fix + rebuild pending) |
+| FSTRING-CTOR-DISPLAY-1 (CLOSED 2026-06-01) | `core-tests/context/standard/audit.md §3.6` + `regression_test.vr::regression_display_direct_ctor_renders_uppercase_name` | `19bb51b3a` |
 | AOT-PARALLEL-1 (CLOSED 2026-06-01) | this catalogue §23 | `f1c0510e3` (artifact paths) + LLVM-lock follow-up; harness `993679a01` |
 | AOT-MEMCPY-1 (CLOSED 2026-05-31) | this catalogue §17 | `89604fe94` |
 | AOT-ITER-1 (sub-bug 1 CLOSED / sub-bug 2 OPEN) | this catalogue §18 | `5bb3b83f8` (bounds-by-address) |
