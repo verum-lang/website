@@ -245,6 +245,8 @@ suite itself when it identifies new failure modes.
 | Root-cause (via `otool -tV` disassembly) | Two distinct sub-bugs. **(1) generic_eq deref of the sentinel — FIXED:** `next()`/`next_back()` guarded with `self.ptr == self.end` on raw `&unsafe T` pointers; AOT lowered `==` to `verum_generic_eq`, which **dereferences** operands to compare contents, and `self.end` is the one-past-the-end sentinel → deref past array → segv. **(2) raw backing-pointer deref — OPEN:** after fix (1), `&*self.ptr` still faults even though `xs[i]` works. `OBJECT_HEADER_SIZE=24`, so `iter()`'s offsets (`len@0x18`=slot0, `ptr@0x28`=slot2) are *correct*; indexing reads the same slot2 fine via the runtime intercept. So the raw `&unsafe T` backing pointer is **not directly dereferenceable** the way the intercepted `xs[i]` accessor reads it — a pointer-representation difference (likely a CBGR-managed/tagged backing ptr the intercept normalises and raw `&*ptr` does not). Same family as **LISTEQ-1** ("raw `self.ptr` in method bodies"). |
 | Fix (1), landed | Compare bounds by address: `(self.ptr as Int) == (self.end as Int)` (the `as Int` form `size_hint`/`len` already use). `next()` now emits `subs` instead of `bl verum_generic_eq`; interp unaffected. |
 | Fix (2), pending | Either (A) redesign `ListIter` index-based over an **AOT-safe `&T`-yielding** accessor (note `List.get` returns `Maybe<T>` *by value*, but the iterator's `Item=&T` and for-loop bodies use `*v`, so a `get_ref`-style intercepted accessor is required), or (B) make raw `&unsafe T` field deref normalise the backing pointer like the intercept. Both deep; part of the "AOT largely unvalidated" gap. |
+| Investigation 2026-06-03 (mono ruled out) | The hypothesis that the mono specializer fails to substitute `ListIter<T>.ptr`'s field type was **disproven as the fix site**. `specializer.rs:960-961` (`get_or_create_instantiated_type`) does clone base `fields`/`variants` without substituting type params, but that function has exactly **one** caller — `specialize_new_g` (line 638), the generic *construction* path — and is not consulted for iterator field-type resolution. The deref pass-through decision is `is_value_type_ptr` at `verum_codegen/src/llvm/instruction.rs:4010`, gated on `set_obj_register_type`/`mark_struct_register` calls in `vbc_lowering.rs:2762-3378`; the concrete element type is never propagated onto `self.ptr`'s register for a generic `ListIter`. **Real fix surface = propagate the List's element type onto `ListIter.ptr` during `.iter()`/`.next()` lowering** so the Deref marks pass-through with correct stride (confirms fix-path B). Requires embedded rebuild + full AOT re-run; gated on a low-contention window so the 528 passing AOT tests aren't put at risk. |
+| Mitigation (in progress 2026-06-03) | `core-tests/mem/*` for-iter tests are being converted to the **verified AOT-safe index form** — `let mut i=0; while i<xs.len() { let v = xs[i]; …; i=i+1; }` with `*v`→`v` (indexing yields the value through the runtime intercept). Range-iters (`for i in 0..n`) are already AOT-safe and left unchanged. This keeps the mem suite green on **both** tiers while Fix (2) is gated. 53 sites across 24 files; `cap_audit` done first as the worked reference. |
 
 ## 19. Archive-loaded record ref-returning method SIGSEGV + field-shift (CLASS-9 residual, OPEN)
 
@@ -343,6 +345,41 @@ suite itself when it identifies new failure modes.
 | Root cause (confirmed) | The VBC `TypeRef` enum (`verum_vbc/src/types.rs:335`) has NO raw-pointer variant — only Concrete / Generic / Instantiated / Function / Rank2Function / Reference / Tuple / Array / Slice. So a `*const ()` record field is stored as `Concrete(TypeId::UNIT)` (the default), DROPPING the pointer — the info is lost at the VBC level, before any metadata serialization. `parse_descriptor_type_string` also lacks `*const`/`*mut` parsing, but fixing that alone cannot help while the VBC layer can't carry the type. A full fix requires extending VBC `TypeRef` with a `Pointer { inner, mutable }` variant and threading it through codegen + serde (deep, in `verum_vbc` core infra). |
 | Pragmatic alternative | `MemoryRegion.start` is used exclusively as an address (`self.start as USize` in `.contains`/`.end`); declaring it `USize` instead of `*const ()` would sidestep the raw-pointer-field round-trip entirely (a small stdlib API change + precompile rebuild). |
 
+## 27. `cases` reserved keyword rejected in for-range upper bound (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **CASES-KEYWORD-1** |
+| Status | **OPEN** (surfaced 2026-06-03 during the mem AOT-iter conversion). Parser-level, affects both tiers. |
+| Stable trigger | `for i in 0..cases.len() { … }` where `cases` is a local variable. |
+| Manifestation | `parse: unexpected keyword 'cases', expected '{'` — the for-range-bound parser, after `0..`, treats `cases` as the keyword `TokenKind::Cases` (lexer `verum_lexer/src/token.rs:894` `#[token("cases")]`, the proof-by-case-analysis construct) instead of an identifier. |
+| Scope | NARROW. `cases` works fine as an identifier everywhere else tested: `let cases = …`, `cases[i]`, `cases.len()`, and `while i < cases.len()`. ONLY the for-range upper-bound expression position rejects it. |
+| Workaround | Rename the local (`cases` → `case_list`). Applied in `core-tests/mem/thin_ref/property_test.vr::law_pack_injective_pinned`. |
+| Fix, pending | In `verum_fast_parser`, the for-range bound-expression parser must accept contextual keywords as identifiers in primary position (the same leniency let-binding / index / while-condition parsing already applies). Parser change + rebuild + parse regression test. |
+
+## 28. AOT types qualified variant record-construction as the variant, not the enum (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **QUALVAR-CONSTRUCT-1** |
+| Status | **OPEN** (surfaced 2026-06-03). AOT only; `--interp` correct. Same family as the bare-vs-qualified ADT defects (BAREVAR-ADT-1). |
+| Stable trigger | `let e: E = E.Variant { f1: …, f2: … };` — annotated binding from a qualified variant record-construction. |
+| Manifestation | `error<E400>: Type mismatch: expected 'RevocationError', found 'RevocationError.Internal'`. The record-construction expression is typed as the VARIANT (`E.Variant`), not widened to the ENUM (`E`), so it fails to unify with the `: E` annotation. |
+| Surfaced by | `core-tests/mem/thin_ref/unit_test.vr::test_revocation_error_internal_construction_via_record` (`RevocationError` def `core/mem/mod.vr:355`). Blocks the whole file's AOT compile. |
+| Fix, pending | Variant record-construction must yield the enclosing enum type (or unify with the binding annotation) in the AOT type path. Deep; rebuild + full-AOT-validate gated. |
+
+## 29. AOT lowers record-style enum variant payload as a tuple (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **RECVAR-TUPLE-1** |
+| Status | **OPEN** (surfaced 2026-06-03). AOT only; `--interp` correct. |
+| Stable trigger | A record-style enum variant — `type E is | V { a: T, b: U }` — used with a record-style pattern (`V { a, b } =>`) or alias constructor under AOT. |
+| Manifestation | `error: Variant 'GenerationMismatch' has payload type (UInt32, UInt32), which is not a record. Cannot use record-style pattern`. AOT sees the record payload as a positional tuple, losing field names; record-style patterns + the `generation_mismatch(...)` alias round-trip fail. |
+| Note | NOT a test bug — the stdlib's own `Display`/`Debug` impls (`core/mem/header.vr:208-219`) use the same record-style patterns. A genuine AOT representation gap for record-style variant payloads. |
+| Surfaced by | `core-tests/mem/header/integration_test.vr` (lines 128, 146; `MemValidationError` def `core/mem/header.vr:187`). Blocks the whole file's AOT compile. |
+| Fix, pending | Preserve record-style variant payload field metadata through AOT lowering so record patterns/construction resolve by field name (not positional tuple). Deep; rebuild + validate gated. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
@@ -353,7 +390,11 @@ suite itself when it identifies new failure modes.
 | FSTRING-CTOR-DISPLAY-1 (CLOSED 2026-06-01) | `core-tests/context/standard/audit.md §3.6` + `regression_test.vr::regression_display_direct_ctor_renders_uppercase_name` | `19bb51b3a` |
 | AOT-PARALLEL-1 (CLOSED 2026-06-01) | this catalogue §23 | `f1c0510e3` (artifact paths) + LLVM-lock follow-up; harness `993679a01` |
 | AOT-MEMCPY-1 (CLOSED 2026-05-31) | this catalogue §17 | `89604fe94` |
-| AOT-ITER-1 (sub-bug 1 CLOSED / sub-bug 2 OPEN) | this catalogue §18 | `5bb3b83f8` (bounds-by-address) |
+| AOT-ITER-1 (sub-bug 1 CLOSED / sub-bug 2 OPEN; mem suite mitigated 2026-06-03 via index-iter) | this catalogue §18 | `5bb3b83f8` (bounds-by-address); mem index-iter `15bfeaceb`, `c321cde54` |
+| CASES-KEYWORD-1 (OPEN 2026-06-03) | this catalogue §27; `core-tests/mem/thin_ref/property_test.vr` | source workaround (`case_list` rename) |
+| QUALVAR-CONSTRUCT-1 (OPEN 2026-06-03) | this catalogue §28; `core-tests/mem/thin_ref/unit_test.vr` | — (AOT type-path fix + rebuild pending) |
+| RECVAR-TUPLE-1 (OPEN 2026-06-03) | this catalogue §29; `core-tests/mem/header/integration_test.vr` | — (AOT lowering fix + rebuild pending) |
+| LAYOUT-FIELD-TESTBUG (test fix 2026-06-03) | `core-tests/mem/allocator/unit_test.vr::test_layout_record_construction` | `b4df86697` (size_/align_ field names; interp leniency had masked it) |
 | NEWTYPE-UNBOX-1 (OPEN) | `core-tests/sys/windows/ntdll/audit.md §B`, `core-tests/sys/windows/time/audit.md` | — (working idiom in tests; codegen fix pending) |
 | INTLIT-OVERFLOW-1 (OPEN) | `core-tests/sys/windows/tls/audit.md` | — (test typo fixed; language guard pending) |
 | BAREVAR-ADT-1 (OPEN) | `core-tests/sys/windows/io/audit.md §A` | source qualified-form fix (this branch) |
