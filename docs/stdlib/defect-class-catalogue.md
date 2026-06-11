@@ -402,17 +402,30 @@ suite itself when it identifies new failure modes.
 | Fix | `compile_record`: when a plain-record literal names a type whose LAYOUT is known but whose id is not, allocate a fresh module-local `TypeId` + push a `Record` descriptor under the SAME simple name. The archive body-merge remaps type ids **BY NAME** (`merge_archive_function_bodies`, `codegen/mod.rs:16697`), so the local id resolves to the canonical descriptor at load — no `external_type_names`/linker machinery needed (that was a red herring; the by-NAME archive-load remap, not the linker's id→id map, is what matters). Validated: `xs.iter().map(...)` for-loops yield correct `2/4/6`; regression-safe. |
 | Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.2). |
 
-## 32. `self.iter.next()?` in generic adapters yields `None` (OPEN)
+## 32. `self.iter.next()?` in generic adapters yields `None` (CLOSED 2026-06-12)
 
 | Field | Value |
 |---|---|
 | Defect class id | **ADAPTER-TRY-NEXT-1** |
-| Status | **OPEN** (root-caused 2026-06-11). Both tiers. |
-| Stable trigger | The `?` (try) operator on a method call whose receiver is a generic-type-param field — the universal Iterator-adapter idiom `let item = self.iter.next()?;`. Reproduces in pure user code: `implement<I> Wrap<I> { fn step(&mut self) -> Maybe<Int> { let x = self.inner.next()?; Some(x) } }` returns `None` on the first call for `Counter{n:0,max:3}`; the SAME body with explicit `match` works (`Some(0)`). |
-| Manifestation | Adapter `.next()` chains (and `for`-loops routed to the custom `.next()` path) yield nothing. `.collect()`/`.fold()` and native `for x in xs.iter()` work. |
-| Root cause | Three layered defects (compare `?` vs `match` VBC of the identical `next()` call): (1) `compile_try` (`expressions.rs:17938`) classifies via `extract_expr_type_name`, which returns `None` for `self.inner.next()` (receiver type is generic param `I`; `I.next` unregistered) → `success_tag` defaults to **0** = the `Maybe` *None* tag → `?` tests "is None?" not "is Some?". (2) `?` success path emits `AS_VAR val, tag=0` (None payload) vs `match`'s `GET_VDATA val.0`. (3) A paradoxical interpreter-level divergence — identical `next()` bytecode yet `r2` differs Some-vs-None between `?` and `match` — needs instruction-level tracing. |
-| Fix, pending | (1) classify the generic `next()`/`next_back()` return as `Maybe` WITHOUT regressing `Result`-returning `next()?` (a blanket force-Maybe regressed result/property 26→25); (2) success-path `GET_VDATA`; (3) trace the interpreter `?`-vs-`match` execution divergence (lldb). Multi-part. |
-| Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.3). |
+| Status | **CLOSED** (`3858edf52`). Both tiers. |
+| Stable trigger | The `?` (try) operator on a method call whose receiver is a generic-type-param field — the universal Iterator-adapter idiom `let item = self.iter.next()?;`. Reproduced in pure user code: `implement<I> Wrap<I> { fn step(&mut self) -> Maybe<Int> { let x = self.inner.next()?; Some(x) } }` returned `None` on the first call for `Counter{n:0,max:3}`; the SAME body with explicit `match` worked. |
+| Manifestation | Adapter `.next()` chains yielded nothing — the entire iterator-adapter family was inert through manual `.next()`. |
+| Root cause | `compile_try`'s `extract_expr_type_name` returns no Maybe-classifiable base for `self.iter.next()` (receiver is generic param `I`; `I.next` unregistered) → `success_tag` defaults to **0**, which for `Maybe` is the *None* tag → `?` tests "is None?" not "is Some?", so every `Some(x)` takes the failure path → `None`. (Confirmed via `VERUM_TRACE_MATCHTAG`: `expected_tag=0` on a value with `variant_tag=1`. The earlier "byte-identical bytecode, different result" lead was a false trail caused by the stale **script-cache** — see ARCHIVE/script-cache note.) |
+| Fix | In `compile_try`, force `Maybe` classification when `?` is applied directly to a `next`/`next_back` MethodCall. Every `fn next`/`fn next_back` in `core/` that can appear under `?` returns a top-level `Maybe` (the only non-Maybe `next`s are RNG `-> UInt64`, never `?`-applied), so the override is sound and overrides a mis-resolved Result-shaped base. `AsVar` extracts the success payload positionally (field 0), correct for both Maybe-Some and Result-Ok — no payload change needed. |
+| Validated | stdlib `xs.iter().enumerate()` manual `.next()` loop yields `0:10/1:20/2:30`; regression-safe (maybe/property 21/9→22/8, result 26/5, ordering 23/3). |
+
+## 33. for-loop over non-intercepted iterator adapters → native `IterNew` SIGSEGV (CLOSED 2026-06-12)
+
+| Field | Value |
+|---|---|
+| Defect class id | **ADAPTER-FORLOOP-NATIVE-1** |
+| Status | **CLOSED** (`ae4b3d22a`). Both tiers. |
+| Stable trigger | `for x in xs.iter().enumerate()` (and `.take`/`.skip`/`.zip`/`.chain`/…). |
+| Manifestation | SIGSEGV (null-deref at offset 0x18). `map`/`filter`/`fold` for-loops worked (they're runtime-intercepted onto the native blob — eager-collect). |
+| Root cause | The interpreter has two iterator systems — native `IterNew`/`IterNext` blobs (List/Map/Set/Array/Range) and stdlib `Iterator` protocol RECORDS (EnumerateIter/TakeIter/…). `is_custom_iterator_type` uses `infer_expr_type_name` (no MethodCall arm), so an adapter-chain iterator resolves to None → the loop falls to native `IterNew`, which maps every non-builtin `type_id` to `ITER_TYPE_LIST` and reads the adapter record's fields as a `List [count,cap,entries_ptr]` header → SIGSEGV. |
+| Fix | `is_custom_iterator_type` recognizes the non-intercepted adapter methods (enumerate/take/skip/take_while/skip_while/zip/chain/flat_map/flatten/scan/step_by/peekable/rev/fuse/cycle/dedup/windows/chunks/intersperse/map_while/inspect/copied/cloned) in the for-loop iterator position and routes them to `compile_for_custom_iterator` (`loop { match it.next() {...} }`), which calls the record's `.next()` (correct after §32). `map`/`filter`/`fold` stay on the fast native blob path. |
+| Validated | Iterator suite (`--interp`): property **SIGSEGV→13/9**, protocol_agnostic **SIGSEGV→20/2** (≈33 tests recovered from whole-file crashes). |
+| Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.4). |
 
 ## Cross-reference
 
@@ -420,6 +433,8 @@ suite itself when it identifies new failure modes.
 |---|---|---|
 | ARCHIVE-FANOUT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.1`; this catalogue §30 | `946f3d787` |
 | XMOD-RECNEW-UNIT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.2`; this catalogue §31 | `8d8214d83` |
+| ADAPTER-TRY-NEXT-1 (CLOSED 2026-06-12) | `core-tests/base/iterator/audit.md §4.3`; this catalogue §32 | `3858edf52` |
+| ADAPTER-FORLOOP-NATIVE-1 (CLOSED 2026-06-12) | `core-tests/base/iterator/audit.md §4.4`; this catalogue §33 | `ae4b3d22a` |
 | ADAPTER-TRY-NEXT-1 (OPEN 2026-06-11) | `core-tests/base/iterator/audit.md §4.3`; this catalogue §32 | — (compile_try classify + GET_VDATA + interp trace) |
 | AOT-UMBRELLA-REEXPORT-1 / D1 (CLOSED 2026-06-01) | `core-tests/sys/linux/bpf/mod/audit.md`, `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/modules.rs` registry-recursion fallback) |
 | AOT-NOT-USIZE-1 / D7 (CLOSED 2026-06-01) | `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/expr.rs` integer-alias list) |
