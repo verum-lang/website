@@ -379,10 +379,35 @@ suite itself when it identifies new failure modes.
 | Surfaced by | `core-tests/mem/header/integration_test.vr` (lines 128, 146; `MemValidationError` def `core/mem/header.vr:187`). Blocks the whole file's AOT compile. |
 | Fix, pending | Preserve record-style variant payload field metadata through AOT lowering so record patterns/construction resolve by field name (not positional tuple). Deep; rebuild + validate gated. |
 
+## 30. Archive lazy-apply bare-leaf fanout explosion (CLOSED 2026-06-11)
+
+| Field | Value |
+|---|---|
+| Defect class id | **ARCHIVE-FANOUT-1** |
+| Status | **CLOSED** (`946f3d787`). |
+| Stable trigger | ANY user/test code that calls a method named like a common stdlib method (`next`, `map`, `get`, `len`, …). |
+| Manifestation | ~84-second COMPILE (not execution) for a trivial program; `core-tests/base/iterator/*` timed out (rc=124) under `--interp`. |
+| Root cause | `ArchiveCtxCache::apply_lazy_with_types` → `SymbolGraph::reachable` seeds its transitive-closure BFS with bare method names harvested from user code. A bare leaf `next` resolves via `leaf_to_qualified` to EVERY type's same-named impl (172 distinct `*.next` in the archive); each iterator next's body calls `self.iter.next()` (another bare `next` `CallM` edge) and re-fans transitively → the closure pulled in ~most of the 585 archive modules → decoding them was the 84s. |
+| Fix | Cap the per-callee bare-leaf fanout in `reachable` (`crates/verum_compiler/src/archive_ctx_loader.rs`, `MAX_BARE_LEAF_FANOUT=24`, overridable `VERUM_LEAF_FANOUT_CAP`). A high-fanout bare name is a polymorphic protocol method resolved at runtime by the receiver's concrete type — whose module loads independently — so blanket leaf-fanning is redundant for correctness and catastrophic for cost. 84730ms→3979ms (21×); regression-safe. |
+
+## 31. Cross-module record construction bakes `NEW ()` (untyped) (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **XMOD-RECNEW-UNIT-1** |
+| Status | **OPEN** (root-caused 2026-06-11). Both tiers. |
+| Stable trigger | A record literal of a type defined in ANOTHER module, constructed in a body monomorphised across the module boundary — canonical: the `Iterator` protocol default combinators (`map`/`filter`/`take`/`enumerate`/…) construct `EnumerateIter<Self>` etc. monomorphised onto a concrete iterator (`TextMatches.enumerate`, `ListIter.enumerate`). |
+| Manifestation | `compile_record` emits `NEW () (fields=2)` (type_id 0, untyped). The heap object carries no concrete type → later `.next()` dispatch can't recover the receiver type → routes to the lowest-id same-named method (`SignalStream.next`) → infinite recursion → stack overflow / SIGSEGV. `xs.iter().enumerate()` + `.next()`/`for` crash; `.collect()`/`.fold()`/native `for x in xs.iter()` work. |
+| Root cause | The bootstrap shares a type's FIELD LAYOUT cross-module (`import_type_layouts`, `crates/verum_vbc/src/codegen/mod.rs:3056`) but is deliberately TypeId-free, so `type_name_to_id`/`self.types` lack the cross-module type → `type_id=0`. Confirmed via `VERUM_TRACE_RECNEW` (`in_name_to_id=false in_field_layouts=true`). 2814 sites archive-wide. |
+| Fix, pending | Add an `external_type_names` cross-module type-reference table mirroring `external_function_names`: codegen records `NEW <cross-module-type>` by NAME; the linker resolves external type names to the canonical descriptor at merge. Consumer-side recovery is impossible (no descriptor present; linker remaps TypeIds by source-id map, not name). Spans codegen + archive format + linker (multi-session). |
+| Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.2). |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| ARCHIVE-FANOUT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.1`; this catalogue §30 | `946f3d787` |
+| XMOD-RECNEW-UNIT-1 (OPEN 2026-06-11) | `core-tests/base/iterator/audit.md §4.2`; this catalogue §31 | — (external_type_names codegen+linker, pending) |
 | AOT-UMBRELLA-REEXPORT-1 / D1 (CLOSED 2026-06-01) | `core-tests/sys/linux/bpf/mod/audit.md`, `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/modules.rs` registry-recursion fallback) |
 | AOT-NOT-USIZE-1 / D7 (CLOSED 2026-06-01) | `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/expr.rs` integer-alias list) |
 | ARCHIVE-METHOD-MAYBEREF-1 / CLASS-9 residual (OPEN) | `core-tests/context/standard/audit.md §3.5/§3.7`, `core-tests/context/mod/audit.md §3.3` | — (codegen fix + rebuild pending) |
