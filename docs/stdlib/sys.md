@@ -3,7 +3,7 @@ sidebar_position: 3
 title: sys
 description: V-LLSI kernel bootstrap — direct syscalls, I/O engine, platform abstractions.
 status: partial
-status_detail: "Interp baseline 2026-06-11 (full per-module sweep, ~2010/2150 @test pass): 37 of 51 leaf modules fully green; 14 fail + 2 hang. Green: cabi, common, context_ops, darwin/{errno,mach,thread,time}, embedded, interrupt, all linux/* (except linux/time hang), mmio, mod, net_ops, process_native, process_ops, time_ops, windows/{io,kernel32,mod,ntdll,thread,time,winsock2}. Failing (FFI/platform cluster — Bug A/B): durability (8), darwin/mod (30, umbrella re-exports), signal (10), locking (2), darwin/io (1), darwin/tls (1), file_ops (1), fs_watch (1), init (1), io_engine (1). Failing (codegen cluster): bitfield (5), no_runtime (6), windows/ntstatus (3), windows/tls (1). Hangs: darwin/libsystem, linux/time. AOT is blocked suite-wide (E402 module core.sys.common not found on any stdlib mount). Two live root causes drive the FFI cluster — Bug A (stdlib→stdlib cross-module calls stubbed to LOAD_NIL at precompile) and Bug B (archive FFI symbols not carried into the consuming module on body-merge). Full analysis + reproductions in core-tests/sys/SYS_SPECTRUM_AUDIT.md."
+status_detail: "Interp 2026-06-11 (post Bug A+B fix): 39 of 51 leaf modules fully green. Bug A (cee79ec03 — rooted stdlib→stdlib cross-module call stubbed to LOAD_NIL at precompile) and Bug B (08ede3518 — archive FFI symbols not carried into the consuming module on body-merge) are CLOSED: durability 3/8-fail→11/11, darwin/libsystem TIMEOUT(hang)→51/0, linux/time TIMEOUT→20/0, signal 10→9; no regressions. Remaining (heterogeneous, NOT one cluster): darwin/mod (30) = Bug C umbrella specific-item re-export under archive lazy-load (OPEN, in the lazy-reachability subsystem); io_engine (1) = method-on-newtype dispatch; darwin/io / darwin/tls / fs_watch / windows/tls / locking (2) / signal (9) / file_ops / init = assorted runtime AssertionFailed; bitfield (5) / no_runtime (6) / windows/ntstatus (3) = codegen/data cluster. AOT still blocked suite-wide (E402 module core.sys.common not found on any stdlib mount). Full analysis + reproductions in core-tests/sys/SYS_SPECTRUM_AUDIT.md."
 ---
 
 # `core.sys` — V-LLSI kernel bootstrap
@@ -40,6 +40,16 @@ authors, driver writers, and kernel engineers.
 ---
 
 ## Conformance baseline (2026-06-11)
+
+> **✅ Update (later same day): Bug A and Bug B below are CLOSED**
+> (`cee79ec03`, `08ede3518`). On the fixed build: `durability`
+> 3/8-fail → **11/11**, `darwin/libsystem` TIMEOUT(hang) → **51/0**,
+> `linux/time` TIMEOUT → **20/0**, no regressions — **39/51 leaf
+> modules now fully green**. Remaining failures are a heterogeneous tail
+> (umbrella re-export `Bug C`, method-on-newtype dispatch, assorted
+> assertion failures, codegen/data cluster), tracked in
+> `core-tests/sys/SYS_SPECTRUM_AUDIT.md` §F. The original root-cause
+> writeup is kept below as the fix record.
 
 A full per-module `--interp` sweep (one process per leaf module, so a
 single interpreter hang/crash isolates instead of aborting the suite)
