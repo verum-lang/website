@@ -3,7 +3,7 @@ sidebar_position: 3
 title: sys
 description: V-LLSI kernel bootstrap — direct syscalls, I/O engine, platform abstractions.
 status: partial
-status_detail: 14 complete (bitfield / cabi / init / interrupt / no_runtime / mod-umbrella / darwin-errno / darwin-mod / linux-errno / linux-mem / linux-auxv / linux-bpf-error / windows-ntstatus / windows-mod), 36 partial (~14 sys submodules + 8 darwin/* + 8 linux/* + 3 linux-bpf/* + 7 windows/* platform modules), 1 regression-only (signal — variant-tag drift). See per-submodule rows in `core-tests/INVENTORY.md`. **NEW (this branch)**: 13 new conformance suites for `core/sys/windows/{ntstatus,kernel32,ntdll,tls,time,thread,winsock2,io,mod}` + `core/sys/linux/bpf/{error,map,program,mod}` covering ~310 new @test entries. NT_SUCCESS bit-31 fix landed in `core/sys/windows/ntstatus.vr` to close VBC UInt32→Int32 signedness drift in the affected caller. **NEW 2026-06-01**: property/integration/regression triads filled for `linux/bpf/{map,mod,program}` + `linux/mod` (131 GREEN `--interp`), and **two fundamental AOT compiler fixes** landed in `verum_types` — **D1** (umbrella re-export of free functions resolves under strict/AOT compilation, not just the lenient interpreter) and **D7** (bitwise-NOT on `USize`/`ISize`) — collapsing the two largest sys AOT failure classes (umbrella `unbound variable` + `NOT on USize`). See defect-class-catalogue §21/§22.
+status_detail: "Interp baseline 2026-06-11 (full per-module sweep, ~2010/2150 @test pass): 37 of 51 leaf modules fully green; 14 fail + 2 hang. Green: cabi, common, context_ops, darwin/{errno,mach,thread,time}, embedded, interrupt, all linux/* (except linux/time hang), mmio, mod, net_ops, process_native, process_ops, time_ops, windows/{io,kernel32,mod,ntdll,thread,time,winsock2}. Failing (FFI/platform cluster — Bug A/B): durability (8), darwin/mod (30, umbrella re-exports), signal (10), locking (2), darwin/io (1), darwin/tls (1), file_ops (1), fs_watch (1), init (1), io_engine (1). Failing (codegen cluster): bitfield (5), no_runtime (6), windows/ntstatus (3), windows/tls (1). Hangs: darwin/libsystem, linux/time. AOT is blocked suite-wide (E402 module core.sys.common not found on any stdlib mount). Two live root causes drive the FFI cluster — Bug A (stdlib→stdlib cross-module calls stubbed to LOAD_NIL at precompile) and Bug B (archive FFI symbols not carried into the consuming module on body-merge). Full analysis + reproductions in core-tests/sys/SYS_SPECTRUM_AUDIT.md."
 ---
 
 # `core.sys` — V-LLSI kernel bootstrap
@@ -36,6 +36,53 @@ authors, driver writers, and kernel engineers.
 | Linux (`@cfg(target_os="linux")`) | `syscall.vr`, `arch.vr`, `errno.vr`, `auxv.vr`, `io.vr`, `mem.vr`, `thread.vr`, `time.vr`, `tls.vr`, `bpf/` (eBPF map+program loader). Supports both x86_64 and aarch64 — architecture-specific syscall numbers live in `arch.vr` and are re-exported by `syscall.vr`; x86_64-only legacy syscalls (`open`, `stat`, `mkdir`, …) are gated behind `@cfg(target_arch="x86_64")`, with the portable `*at` variants (`openat`, `newfstatat`, `mkdirat`, …) available on both. |
 | macOS (`@cfg(target_os="macos")`) | `libsystem.vr`, `mach.vr`, `io.vr`, `errno.vr`, `thread.vr`, `time.vr`, `tls.vr` |
 | Windows (`@cfg(target_os="windows")`) | `kernel32.vr`, `ntdll.vr`, `io.vr`, `errno.vr`, `thread.vr`, `time.vr`, `tls.vr`, `ntstatus.vr`, `winsock2.vr` |
+
+---
+
+## Conformance baseline (2026-06-11)
+
+A full per-module `--interp` sweep (one process per leaf module, so a
+single interpreter hang/crash isolates instead of aborting the suite)
+puts **37 of 51 `core/sys` leaf modules fully green** (~2010 of ~2150
+`@test`). Every pure-data module — constants, ADTs, bit layouts, error
+enums — passes on both the native (Linux/macOS) and cross-target
+(Windows-on-host) data surfaces. The remaining failures concentrate
+**entirely** in modules that drive real platform/FFI operations, and
+trace to two live compiler defects in the stdlib precompile + archive
+path:
+
+- **Bug A — cross-module stdlib calls stubbed to nil at precompile.**
+  A call from one stdlib module into another (e.g.
+  `sys.common.full_fsync` → `sys.darwin.libsystem.safe_full_fsync`) is
+  silently replaced with a `LOAD_NIL; RET` stub during the stdlib
+  bootstrap precompile (function-id ordering / two-pass gap). The
+  wrapper then returns `Ok(())`/nil for every input — it never reports
+  `Err` on an invalid fd, and umbrella re-exports of non-zero constants
+  collapse to `0`. This is the dominant cause: `durability` (8),
+  `darwin/mod` umbrella (30), and the FFI-routed single-test failures in
+  `locking`/`darwin/io`/`file_ops`/`fs_watch`/`init`/`io_engine`/`signal`.
+  A *fresh user compile* of the same call resolves correctly, so the
+  defect is confined to the archive precompile.
+
+- **Bug B — archive FFI symbols not carried into the consuming module.**
+  `merge_archive_function_bodies` remaps `func_id` / `type_id` /
+  `const_id` / `string_id` references in copied archive bodies but not
+  the `ffi_symbols` table or the `CallFfiC` symbol-index operand, so a
+  body that *does* reach an FFI call indexes the wrong symbol table
+  (`FFI symbol not found: FfiSymbolId(N)`).
+
+- **AOT is blocked suite-wide** by a separate pre-existing defect:
+  `verum build --aot` reports `E402: module core.sys.common not found`
+  for any program that mounts a stdlib submodule, so the `--aot` half of
+  the interp+aot CI contract cannot yet be met for `sys` (or any
+  module).
+
+Full per-module table, VBC evidence, reproductions, and fix surfaces:
+**`core-tests/sys/SYS_SPECTRUM_AUDIT.md`**. The single highest-leverage
+fix is Bug A (two-pass precompile cross-module resolution): it alone
+clears the `durability` + `darwin/mod` clusters (38 tests) plus most of
+the single-test FFI failures; Bug B is the necessary follow-on so the
+un-stubbed calls execute.
 
 ---
 
