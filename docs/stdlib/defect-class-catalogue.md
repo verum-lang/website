@@ -390,24 +390,37 @@ suite itself when it identifies new failure modes.
 | Root cause | `ArchiveCtxCache::apply_lazy_with_types` → `SymbolGraph::reachable` seeds its transitive-closure BFS with bare method names harvested from user code. A bare leaf `next` resolves via `leaf_to_qualified` to EVERY type's same-named impl (172 distinct `*.next` in the archive); each iterator next's body calls `self.iter.next()` (another bare `next` `CallM` edge) and re-fans transitively → the closure pulled in ~most of the 585 archive modules → decoding them was the 84s. |
 | Fix | Cap the per-callee bare-leaf fanout in `reachable` (`crates/verum_compiler/src/archive_ctx_loader.rs`, `MAX_BARE_LEAF_FANOUT=24`, overridable `VERUM_LEAF_FANOUT_CAP`). A high-fanout bare name is a polymorphic protocol method resolved at runtime by the receiver's concrete type — whose module loads independently — so blanket leaf-fanning is redundant for correctness and catastrophic for cost. 84730ms→3979ms (21×); regression-safe. |
 
-## 31. Cross-module record construction bakes `NEW ()` (untyped) (OPEN)
+## 31. Cross-module record construction bakes `NEW ()` (untyped) (CLOSED 2026-06-11)
 
 | Field | Value |
 |---|---|
 | Defect class id | **XMOD-RECNEW-UNIT-1** |
-| Status | **OPEN** (root-caused 2026-06-11). Both tiers. |
+| Status | **CLOSED** (`8d8214d83`). Both tiers. |
 | Stable trigger | A record literal of a type defined in ANOTHER module, constructed in a body monomorphised across the module boundary — canonical: the `Iterator` protocol default combinators (`map`/`filter`/`take`/`enumerate`/…) construct `EnumerateIter<Self>` etc. monomorphised onto a concrete iterator (`TextMatches.enumerate`, `ListIter.enumerate`). |
-| Manifestation | `compile_record` emits `NEW () (fields=2)` (type_id 0, untyped). The heap object carries no concrete type → later `.next()` dispatch can't recover the receiver type → routes to the lowest-id same-named method (`SignalStream.next`) → infinite recursion → stack overflow / SIGSEGV. `xs.iter().enumerate()` + `.next()`/`for` crash; `.collect()`/`.fold()`/native `for x in xs.iter()` work. |
-| Root cause | The bootstrap shares a type's FIELD LAYOUT cross-module (`import_type_layouts`, `crates/verum_vbc/src/codegen/mod.rs:3056`) but is deliberately TypeId-free, so `type_name_to_id`/`self.types` lack the cross-module type → `type_id=0`. Confirmed via `VERUM_TRACE_RECNEW` (`in_name_to_id=false in_field_layouts=true`). 2814 sites archive-wide. |
-| Fix, pending | Add an `external_type_names` cross-module type-reference table mirroring `external_function_names`: codegen records `NEW <cross-module-type>` by NAME; the linker resolves external type names to the canonical descriptor at merge. Consumer-side recovery is impossible (no descriptor present; linker remaps TypeIds by source-id map, not name). Spans codegen + archive format + linker (multi-session). |
+| Manifestation | `compile_record` emitted `NEW () (fields=2)` (type_id 0, untyped). The heap object carried no concrete type → later `.next()` dispatch couldn't recover the receiver type → routed to the lowest-id same-named method (`SignalStream.next`) → infinite recursion → stack overflow / SIGSEGV. |
+| Root cause | The bootstrap shares a type's FIELD LAYOUT cross-module (`import_type_layouts`, `crates/verum_vbc/src/codegen/mod.rs:3056`) but is deliberately TypeId-free, so `type_name_to_id`/`self.types` lacked the cross-module type → `type_id=0`. Confirmed via `VERUM_TRACE_RECNEW` (`in_name_to_id=false in_field_layouts=true`). 2814 sites archive-wide. |
+| Fix | `compile_record`: when a plain-record literal names a type whose LAYOUT is known but whose id is not, allocate a fresh module-local `TypeId` + push a `Record` descriptor under the SAME simple name. The archive body-merge remaps type ids **BY NAME** (`merge_archive_function_bodies`, `codegen/mod.rs:16697`), so the local id resolves to the canonical descriptor at load — no `external_type_names`/linker machinery needed (that was a red herring; the by-NAME archive-load remap, not the linker's id→id map, is what matters). Validated: `xs.iter().map(...)` for-loops yield correct `2/4/6`; regression-safe. |
 | Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.2). |
+
+## 32. `self.iter.next()?` in generic adapters yields `None` (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **ADAPTER-TRY-NEXT-1** |
+| Status | **OPEN** (root-caused 2026-06-11). Both tiers. |
+| Stable trigger | The `?` (try) operator on a method call whose receiver is a generic-type-param field — the universal Iterator-adapter idiom `let item = self.iter.next()?;`. Reproduces in pure user code: `implement<I> Wrap<I> { fn step(&mut self) -> Maybe<Int> { let x = self.inner.next()?; Some(x) } }` returns `None` on the first call for `Counter{n:0,max:3}`; the SAME body with explicit `match` works (`Some(0)`). |
+| Manifestation | Adapter `.next()` chains (and `for`-loops routed to the custom `.next()` path) yield nothing. `.collect()`/`.fold()` and native `for x in xs.iter()` work. |
+| Root cause | Three layered defects (compare `?` vs `match` VBC of the identical `next()` call): (1) `compile_try` (`expressions.rs:17938`) classifies via `extract_expr_type_name`, which returns `None` for `self.inner.next()` (receiver type is generic param `I`; `I.next` unregistered) → `success_tag` defaults to **0** = the `Maybe` *None* tag → `?` tests "is None?" not "is Some?". (2) `?` success path emits `AS_VAR val, tag=0` (None payload) vs `match`'s `GET_VDATA val.0`. (3) A paradoxical interpreter-level divergence — identical `next()` bytecode yet `r2` differs Some-vs-None between `?` and `match` — needs instruction-level tracing. |
+| Fix, pending | (1) classify the generic `next()`/`next_back()` return as `Maybe` WITHOUT regressing `Result`-returning `next()?` (a blanket force-Maybe regressed result/property 26→25); (2) success-path `GET_VDATA`; (3) trace the interpreter `?`-vs-`match` execution divergence (lldb). Multi-part. |
+| Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.3). |
 
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
 | ARCHIVE-FANOUT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.1`; this catalogue §30 | `946f3d787` |
-| XMOD-RECNEW-UNIT-1 (OPEN 2026-06-11) | `core-tests/base/iterator/audit.md §4.2`; this catalogue §31 | — (external_type_names codegen+linker, pending) |
+| XMOD-RECNEW-UNIT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.2`; this catalogue §31 | `8d8214d83` |
+| ADAPTER-TRY-NEXT-1 (OPEN 2026-06-11) | `core-tests/base/iterator/audit.md §4.3`; this catalogue §32 | — (compile_try classify + GET_VDATA + interp trace) |
 | AOT-UMBRELLA-REEXPORT-1 / D1 (CLOSED 2026-06-01) | `core-tests/sys/linux/bpf/mod/audit.md`, `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/modules.rs` registry-recursion fallback) |
 | AOT-NOT-USIZE-1 / D7 (CLOSED 2026-06-01) | `core-tests/sys/bitfield/audit.md` | this branch (`verum_types/infer/expr.rs` integer-alias list) |
 | ARCHIVE-METHOD-MAYBEREF-1 / CLASS-9 residual (OPEN) | `core-tests/context/standard/audit.md §3.5/§3.7`, `core-tests/context/mod/audit.md §3.3` | — (codegen fix + rebuild pending) |
