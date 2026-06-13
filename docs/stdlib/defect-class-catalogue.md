@@ -451,16 +451,17 @@ suite itself when it identifies new failure modes.
 | Fix | In the method path, before instance dispatch and gated on the first chain step (`!skip_static_lookup`), recognise `Path(TypeName).Variant(args)` via the existing arity-aware `try_resolve_variant_constructor_with_arity`, scoped to the receiver type (`parent_matches` guard) so a sibling type sharing the variant simple-name cannot capture it. Stdlib-agnostic; reuses the bare-name ctor machinery. |
 | Validated | `core-tests/sys/cabi --aot` 32→35/50; `--interp` held 50/50; `base/primitives` 279→281; no `no method named Some/Ok/Err/None` regressions in `base/maybe`/`base/result`. |
 
-## 36. Umbrella re-export under archive load drops a type's impl block (OPEN)
+## 36. Umbrella re-export under archive load drops a type's impl block (CLOSED 2026-06-13)
 
 | Field | Value |
 |---|---|
 | Defect class id | **UMBRELLA-REEXPORT-IMPL-1** (Bug C, type facet) |
-| Status | **OPEN** (localised 2026-06-13). `--aot` (and strict `--interp`); the lenient harness masks it. Same root as the §F `darwin/mod` Bug C and the `sys/mod` `Fd`-ctor failure. |
+| Status | **CLOSED** (2026-06-13). `--aot` (and strict `--interp`); the lenient harness masked it. Same root as the §F `darwin/mod` Bug C and the `sys/mod` `Fd`-ctor failure. |
 | Stable trigger | `mount core.sys.{MemProt}` — a type re-exported through an UMBRELLA module (`core/sys/mod.vr` does `public mount .common.{MemProt}`) — then using its impl-block items. The DIRECT `mount core.sys.common.{MemProt}` always works. |
 | Manifestation | Associated const `MemProt.NONE` synthesises to `Unit` → `error<E103>: Cannot access field 'read' on non-record type: Unit`; method `to_unix_flags()` → `error<E400>: no method named 'to_unix_flags' found for type 'Unit'`. 325+ instances in `sys/common --aot`. |
-| Root cause | The type's STRUCT FIELDS are carried under the umbrella (literal construction + annotated return type both type-check), but its **impl block** (associated consts + methods) is NOT. `core.sys` is archive/metadata-loaded, so `import_type_export`'s impl-block import (`find_type_declaration_with_source_module` → `import_impl_blocks_for_type_in_module`) goes through the metadata path, which doesn't follow the re-export to the defining module's (`core.sys.common`) impl blocks. |
-| Fix, pending | Metadata-path type import must, after resolving a re-exported type to its defining module, import that module's impl-block associated consts + methods for the type. Deep archive-metadata work; repro `/tmp/mp4.vr`. |
+| Root cause | The type's STRUCT FIELDS are carried under the umbrella (literal construction + annotated return type both type-check), but its **impl block** (associated consts + methods) is NOT. The registry's umbrella `mod.vr` AST is a synthetic stub (§21 / D1), so `import_type_export`'s AST-based impl-block import (`find_type_declaration_with_source_module` → `import_impl_blocks_for_type_in_module`) finds nothing — it never reaches the defining module's (`core.sys.common`) impl blocks. |
+| Fix | `import_item_from_module_body`'s `ExportKind::Type \| Protocol` arm: after `import_type_export`, resolve the canonical source module via the precompiled `module_reexports` metadata (`reexport_source_module_for`) and, when it differs from the umbrella, recurse `import_item_from_module_inner` into it against the live registry — the same path a direct `mount <source>.{Type}` uses, which carries the full impl block. Mirrors the §21 D1 free-function fix; idempotent; cycle-guarded by `imports_in_progress`. |
+| Validated | `core-tests/sys/common --aot` 6→72/115 (the 325+ `field on Unit` cluster cleared); `sys/mod --aot` 21→38/39 (the `Fd` ctor resolves; +2 test-bug fixes); `--interp` held (common 115/0, mod 39/0); `base/primitives` 281/51, `sys/cabi` 50/0 (no regressions). |
 | Surfaced by | `core-tests/sys/common` (`MemProt`/`SysContextError` impl items), `core-tests/sys/mod` (`Fd` ctor, `InitError` variant). |
 
 ## Cross-reference
