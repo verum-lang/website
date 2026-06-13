@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: '2026-06-13 --interp re-baseline (per-module): header 67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class 88/0, arena 59/0, diagnostics 28/0 GREEN. OPEN codegen defects — epoch 3 (record-shaped `static mut` not cell-backed: THREAD_EPOCH_CACHE.get()); allocator 7 (4× `SIZE_CLASSES` array-const name-collision vs size_class.vr; 3× Heap/Shared generic smart-ptr dispatch resolves to inner type); segment 1 / heap 1 / cap_audit 2 / mod 2 (CBGR-ring/static-mut/field-access); cap_audit_ring SIGSEGV (256-elem static-mut record-array init). FIXED this round — suite-wide @property compile now loads the stdlib archive (was bare VbcCodegen::compile_module → CAP_EXECUTE/pack_epoch_caps UndefinedVariable) + canonical UInt8/16/32/64+USize / Int8/../ISize property generators (commit 0349a6cb8); size_class fragmentation law corrected to the table''s true 4-per-octave ~20% worst-case bound (0ba1262c4). Held at `partial` pending the open codegen fixes (need compiler rebuild). Per-submodule rows in `core-tests/INVENTORY.md`; per-defect root causes in each `core-tests/mem/<mod>/audit.md`.'
+status_detail: '2026-06-13: header/thin_ref/fat_ref/capability/size_class/arena/diagnostics GREEN; epoch 43/0, mod 86/0, allocator 61/2 after the branch fixes. LANDED main: @property stdlib-archive-load bypass + canonical-int property generators (0349a6cb8), size_class fragmentation bound (0ba1262c4). FIXED on validated branch mem-codegen-fixes (awaiting merge): epoch thread-local cache scalar-shadow; cap_audit_ring static-mut-array field-access (SIGSEGV→27/9); SIZE_CLASSES cross-module const dedup; Heap/Shared wrapper-method dispatch; HEADER_SIZE umbrella module-vs-type tie-break. OPEN (deeper): heap/hazard global-record static-mut write-persistence (cell-backing); segment tuple-return null-deref; cap_audit_ring InvalidOpcode-29 PC-desync; cap_audit field contamination; 2 allocator tail (Shared.strong_count int-literal inner, Heap.into_raw by-value self). Held at `partial`. Per-defect detail in the "Defect status" section + each `core-tests/mem/<mod>/audit.md`.'
 ---
 
 import ModuleStatus, {
@@ -69,26 +69,32 @@ The dedicated-suite-pending modules are tracked in
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 
-### Open defects (2026-06-13 `--interp` re-baseline)
+### Defect status (2026-06-13 `--interp`)
 
-A fresh re-baseline at HEAD pins the current honest state. The
-static-shape and algebraic-law surfaces are **green** (header 67/0,
-thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class 88/0, arena
-59/0, diagnostics 28/0). The remaining failures are all **language /
-codegen** gaps (not stdlib-logic bugs), each precisely root-caused:
+A deep root-cause + fix pass landed **five codegen fixes** on the
+validated branch `mem-codegen-fixes` (isolated worktree build; awaiting
+merge into `main`). The static-shape and algebraic-law surfaces remain
+**green** (header 67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0,
+size_class 88/0, arena 59/0, diagnostics 28/0).
+
+**Resolved (branch `mem-codegen-fixes`):**
+
+| Was | Now | Root cause → fix |
+|---|---|---|
+| `epoch` 40/3 | **43/0** | `@thread_local` **record** `static mut` (`THREAD_EPOCH_CACHE`) is not cell-backed (its `&mut self` method read garbage); `@thread_local` **scalar** static-mut IS. → `cached_epoch`/`invalidate_epoch_cache` rerouted to thread-local scalar shadows, mirroring `GLOBAL_EPOCH_COUNTER`. |
+| `cap_audit_ring` SIGSEGV | **27/9** | `extract_type_name_from_ast` had no `Array` arm → `static mut R:[T;N]` got a garbage type-name → `R[i].field` resolved against the global field interner (wrong slot; `slot.state` read garbage → SIGSEGV). → added the `Array` arm + `extract_element_type` strips `[T]`/`[T;N]`. |
+| `allocator` 56/7 | **61/2** | (a) **array-const name-collision** `allocator.SIZE_CLASSES:[Int;11]` vs `size_class.SIZE_CLASSES:[Int;73]` — `compile_pending_constants` looked the pending const up by bare name so both shared one `FunctionId` and dedup dropped one (loser's qualified archive descriptor vanished) → now looks up by source-module-qualified name. (b) **Heap/Shared wrapper-method dispatch** — `let b = Heap.new(rec)` was typed as the inner `T`, so `b.is_valid()` dispatched to `T` → type the binding as the wrapper `Heap<T>`/`Shared<T>` + auto-deref field access to the inner `T`. |
+| `mod` 84/2 | **86/0** | `HEADER_SIZE` umbrella re-export tie-break was pure-alphabetical, so the type-associated `core.mem.MemSegment.HEADER_SIZE` beat the module `core.mem.header.HEADER_SIZE`. → prefer a **module** parent (lower_snake) over a **type** parent (CapitalCase). |
+
+**Still open** (deeper; tracked):
 
 | Module(s) | Defect | Root cause | Fix locus |
 |---|---|---|---|
-| `epoch` (3) | `cached_epoch()` > `current_epoch()` | Record-shaped `static mut` (`THREAD_EPOCH_CACHE: EpochCache`) is **not cell-backed** — a `&mut self` method call on a static-mut struct operates on a non-persistent copy. The scalar shadows (`GLOBAL_EPOCH_COUNTER`) work around the read/write surface but the cache record does not. | VBC codegen: extend `static mut` cell-backing (today scalar-only, see `StaticMutAddr`) to record-shaped statics + field writes. |
-| `cap_audit_ring` (SIGSEGV) | whole test process crashes | `public static mut CAP_AUDIT_RING: [CapAuditSlot; 256] = [CapAuditSlot{…}; 256]` — large static-mut **record-array** initializer crashes codegen. | VBC codegen: record-array static-mut initializer lowering. |
-| `allocator` (4) | `SIZE_CLASSES[0]` = 8 not 16 | **Array-const name-collision**: `allocator.vr SIZE_CLASSES:[Int;11]` vs `size_class.vr SIZE_CLASSES:[Int;73]`. The mount-authoritative override (`register_import_aliases`, which already resolves the scalar `PAGE_SIZE` collision) operates on `ctx.functions`; array consts aren't registered there, so the bare name stays first-wins. | VBC codegen: route array consts through scoped/authoritative mount resolution. |
-| `allocator` (3) | `Heap.new(x).is_valid()` → "MediumPayload.is_valid not found"; `Shared.strong_count` not found; `Heap.into_raw` field-OOB | Generic smart-pointer record (`Heap<T>`/`Shared<T>`) constructed via a stdlib generic method loses/mismatches its monomorphised `type_id`, so method dispatch falls through to the inner payload type (CLASS-9 / cross-module untyped-`NEW()` family). | VBC codegen: preserve the wrapper `type_id` through generic stdlib construction. |
-| `segment` (1) / `heap` (1) / `cap_audit` (2) / `mod` (2) | field-OOB / unwrap-None / `left != right` | CBGR-ring + static-mut + cross-module field-access interactions (shares roots with the static-mut and dispatch classes above). | per-module `audit.md`. |
-
-> **Note (`hazard`)**: a transient hard SIGSEGV observed in this
-> re-baseline traces to in-flight CBGR interpreter work outside this
-> module's surface, not to `hazard.vr`; its previously-pinned
-> `HazardStats` algebra surface is green. Re-measure once that lands.
+| `heap` (1) / `hazard` (CRASH) | `unwrap()` on None / SIGSEGV | **Global RECORD `static mut` write-persistence** — `CURRENT_HEAP: Maybe<LocalHeap>` / `GLOBAL_HAZARD_DOMAIN` writes don't persist (record static-mut still not cell-backed; epoch's fix was scalar-only). | VBC codegen/interpreter: cell-back record-shaped `static mut`. |
+| `segment` (1) | `NullPointerAt` in `lock_segments` | `result.1` of `atomic_compare_exchange_u32` (a tuple return) mis-accessed. | tuple-return field-access codegen. |
+| `cap_audit_ring` (9) | `InvalidOpcode 29` | bytecode PC desync (mis-sized operand) in the `record_*`/`commit` archive bodies. | VBC codegen + archive regen. |
+| `cap_audit` (2) | `left != right` | `CapEvent` 8-field record field-read contamination. | field-index resolution. |
+| `allocator` (2 of the former 3) | `Shared.strong_count` not found; `Heap.into_raw` field-OOB | `Shared.new(99)` infers no inner type from an unsuffixed int literal (binding falls back); `into_raw` by-value `self`. | literal→`Int` default; by-value-self handling. |
 
 ### Round-17 expansion (2026-05-28) — `core.mem.mod/` first-pass + foundation-layer property law sweeps
 
