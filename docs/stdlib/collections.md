@@ -3,7 +3,7 @@ sidebar_position: 2
 title: collections
 description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every semantic-honest collection.
 status: partial
-status_detail: 2 complete (lru / deque), ~13 partial (list / slice / map / set / heap / multiset / consistent_hash / adjacency_list / union_find / reservoir / toposort), 6 regression-only (btree / trie / bloom / hyperloglog / count_min / alias_sampler) as of 2026-05-23. Six regression-only modules are blocked by **task #47** (cross-module Call name-encoding bytecode-format change) or **BTreeMap record-storage corruption** (`SetF` on `Maybe<Heap<T>>` field). See per-submodule rows in `core-tests/INVENTORY.md`.
+status_detail: 'Tier-0 interpreter — GREEN across all 20 submodules as of 2026-06-13 (≈790 active @test pass; only @ignore''d pins remain). Tier-1 AOT — partial: alias_sampler / hyperloglog / consistent_hash / count_min fully green; large mutable collections (deque / heap / lru / map / btree / adjacency_list) fail under --aot because their stdlib mutation bodies (push/insert/grow → realloc of a self pointer field) null-deref at Tier-1 (cross-tier defect, not interp). Two fundamental AOT fixes landed on branch collections-aot-fixes: Text.from_utf8_unchecked/lossy LLVM intercept (unblocked every Text-payload error ctor; count_min 2→6, consistent_hash 19→23) and honouring List.with_capacity(n) in both tiers. See core-tests/INVENTORY.md.'
 ---
 
 # `core.collections` — Lists, Maps, Sets, Deques
@@ -18,6 +18,49 @@ so you know what you can rely on today versus what is still in flight.
 The status is the truth-table over the module's API surface as exercised
 by `core-tests/collections/<module>/` under both `verum test --interp`
 (Tier 0 VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
+
+:::note Current conformance snapshot — 2026-06-13
+
+The per-module rows further down carry detailed *historical* notes
+(2026-05) and may lag the current numbers. The live state:
+
+- **Tier-0 interpreter — GREEN across all 20 submodules.** Roughly 790
+  active `@test` pass; the only non-passing tests are `@ignore`'d pins
+  that lock specific cross-tier / stdlib defects (see below). The
+  earlier `regression-only` gates (CSPRNG-keyed construction for
+  `bloom` / `count_min` / `hyperloglog`, the cross-module name table,
+  the BTreeMap record-storage corruption) are **resolved** on the
+  interpreter path.
+- **Tier-1 AOT — partial.** Fully green: `alias_sampler`,
+  `hyperloglog`, `consistent_hash`, `count_min`. The large *mutable*
+  collections (`deque`, `heap`, `lru`, `map`, `btree`,
+  `adjacency_list`) still fail under `--aot`: their compiled stdlib
+  mutation bodies (`push` / `insert` / `grow` → `realloc` of a `self`
+  pointer field) **null-deref at Tier-1**. This is a cross-tier codegen
+  defect, *not* an interpreter or API problem — the same sources pass
+  on Tier-0.
+
+**Two fundamental AOT fixes** (branch `collections-aot-fixes`):
+
+1. `Text.from_utf8_unchecked` / `Text.from_utf8_lossy` were empty VBC
+   stubs intercepted by name on the interpreter but **not** at LLVM
+   lowering, so every AOT caller of `Text.from(text)` trapped
+   (`brk #1`). The LLVM intercept now routes the byte slice through the
+   canonical `verum_text_alloc`. This unblocked AOT construction of
+   every error / value type carrying a `Text` payload —
+   `count_min` AOT 2→6, `consistent_hash` 19→23, `bloom` 11→12.
+2. `List.with_capacity(n)` now **honours its argument** as a capacity
+   guarantee in both tiers (it previously dropped the hint, so
+   `capacity()` reported the runtime default). The interpreter already
+   honoured the hint; AOT gained a capacity-aware `NewList` lowering.
+
+The `with_capacity` fix correctly surfaced a pre-existing
+`resize_buffer` realloc-`self.ptr` SIGABRT on the List
+`reserve` / `shrink_to` / `shrink_to_fit` path (previously masked
+because `with_capacity` never reserved); those four tests are `@ignore`'d
+together pending the realloc fix.
+
+:::
 
 | Status | Meaning |
 |---|---|
