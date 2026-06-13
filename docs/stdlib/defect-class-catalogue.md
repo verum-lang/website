@@ -427,6 +427,42 @@ suite itself when it identifies new failure modes.
 | Validated | Iterator suite (`--interp`): property **SIGSEGV→13/9**, protocol_agnostic **SIGSEGV→20/2** (≈33 tests recovered from whole-file crashes). |
 | Surfaced by | `core-tests/base/iterator/{unit,property,protocol_agnostic}_test.vr` (audit.md §4.4). |
 
+## 34. Bare `UInt` registered as `Type::Generic`, not an integer (CLOSED 2026-06-13)
+
+| Field | Value |
+|---|---|
+| Defect class id | **UINT-AS-GENERIC-1** |
+| Status | **CLOSED** (2026-06-13). Reproduced under strict `--interp` AND `--aot`; the lenient test harness masked it. |
+| Stable trigger | `let v: UInt = 100 as UInt;` — any cast to the canonical 64-bit unsigned integer `UInt`. Pervasive at the FFI boundary (`CULong is (UInt)`, `core/sys/cabi.vr`). `as UInt64` / `as USize` always worked. |
+| Manifestation | `error<E401>: Cannot assign value of type 'Int' to variable of type 'UInt'` — `X as UInt` → `check_cast(Int, …)` matched no arm and fell to the final catch-all. |
+| Root cause | `register_primitives()` (`crates/verum_types/src/infer/env.rs`) registered `UInt` as `Type::Generic { name: "UInt" }` inside the META-CONTEXT block (grouped with `TokenStream`/`Ident`/`TypeInfo`/`Bytes`), NOT as a real integer `Type::Named` like `UInt64`/`USize`. So `extract_integer_kind` (Named-only) and `IntegerKind::from_name` (lacked bare `"UInt"`) both missed it, and `check_cast`'s `(Int \| Named, Int \| Named)` arm never matched a `Generic`-shaped `UInt`. Codegen + `well_known_types` already mapped `"UInt"` → u64 everywhere; env.rs was the lone outlier. |
+| Fix | Register `UInt` as `Type::Named{path:UInt}` (mirrors `UInt64`/`USize`) and add `IntegerKind::from_name("UInt") => UInt64`. |
+| Validated | `core-tests/sys/cabi --aot` 6→32/50; `--interp` held 50/50; `base/primitives` 279→281 (no regressions). |
+
+## 35. Qualified variant construction `T.Variant(args)` fails under generic-signature functions (CLOSED 2026-06-13)
+
+| Field | Value |
+|---|---|
+| Defect class id | **QUALVAR-METHODCALL-1** |
+| Status | **CLOSED** (2026-06-13). Reproduced under strict `--interp` AND `--aot`; the lenient harness masked it. Sibling of §28 (QUALVAR-CONSTRUCT-1, the annotated-record form). |
+| Stable trigger | `Maybe.Some(x)` / `Result.Ok(v)` / any `T.Variant(args)` **inside a function whose signature carries ANY generic type** (param or return: `List<Int>`, `Maybe<T>`, `Result<_,_>`). Bare `Some(x)` always worked; the same `T.Variant(args)` in a non-generic-signature function worked. |
+| Manifestation | `error<E400>: no method named 'Some' found for type 'None(Unit) \| Some(T)'`. The bare receiver `T` synthesised to its raw `Variant(...)` shape → routed to instance-method dispatch in `infer_method_call_inner_impl`, which has no variant-constructor recognition for `Variant`-typed receivers → `MethodNotFound`. |
+| Root cause | `infer_method_call_inner_impl` (`crates/verum_types/src/infer/modules.rs`) had no recognition that `Path(TypeName).Variant(args)` is qualified variant CONSTRUCTION, not instance dispatch. It only worked incidentally when the receiver synth didn't produce a bare `Variant` — which a generic enclosing signature changes. |
+| Fix | In the method path, before instance dispatch and gated on the first chain step (`!skip_static_lookup`), recognise `Path(TypeName).Variant(args)` via the existing arity-aware `try_resolve_variant_constructor_with_arity`, scoped to the receiver type (`parent_matches` guard) so a sibling type sharing the variant simple-name cannot capture it. Stdlib-agnostic; reuses the bare-name ctor machinery. |
+| Validated | `core-tests/sys/cabi --aot` 32→35/50; `--interp` held 50/50; `base/primitives` 279→281; no `no method named Some/Ok/Err/None` regressions in `base/maybe`/`base/result`. |
+
+## 36. Umbrella re-export under archive load drops a type's impl block (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **UMBRELLA-REEXPORT-IMPL-1** (Bug C, type facet) |
+| Status | **OPEN** (localised 2026-06-13). `--aot` (and strict `--interp`); the lenient harness masks it. Same root as the §F `darwin/mod` Bug C and the `sys/mod` `Fd`-ctor failure. |
+| Stable trigger | `mount core.sys.{MemProt}` — a type re-exported through an UMBRELLA module (`core/sys/mod.vr` does `public mount .common.{MemProt}`) — then using its impl-block items. The DIRECT `mount core.sys.common.{MemProt}` always works. |
+| Manifestation | Associated const `MemProt.NONE` synthesises to `Unit` → `error<E103>: Cannot access field 'read' on non-record type: Unit`; method `to_unix_flags()` → `error<E400>: no method named 'to_unix_flags' found for type 'Unit'`. 325+ instances in `sys/common --aot`. |
+| Root cause | The type's STRUCT FIELDS are carried under the umbrella (literal construction + annotated return type both type-check), but its **impl block** (associated consts + methods) is NOT. `core.sys` is archive/metadata-loaded, so `import_type_export`'s impl-block import (`find_type_declaration_with_source_module` → `import_impl_blocks_for_type_in_module`) goes through the metadata path, which doesn't follow the re-export to the defining module's (`core.sys.common`) impl blocks. |
+| Fix, pending | Metadata-path type import must, after resolving a re-exported type to its defining module, import that module's impl-block associated consts + methods for the type. Deep archive-metadata work; repro `/tmp/mp4.vr`. |
+| Surfaced by | `core-tests/sys/common` (`MemProt`/`SysContextError` impl items), `core-tests/sys/mod` (`Fd` ctor, `InitError` variant). |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
