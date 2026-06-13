@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: 15 submodules green under `--interp`. CLOSED 2026-05-29/31 — D2/CLASS-9 cross-module field-index shift (resolve_field_index string-authoritative descriptor resolution; 4 thin_ref/mod tests un-ignored); D1 epoch write-surface (scalar-shadow routing; 3 tests un-ignored); D2b stdlib-wide global-intern field-layout subclass (global_type_layout_registry — precompile global-intern 5210→225, −96%, fixes the cross-module field-shift class platform-wide, not just mem). OPEN — D3 single-field-record-variant unboxing (arena task #8 / Duration class); D-AOT-1 AOT typechecker types `Enum.Variant {}` as the variant not the parent enum (blocks Tier-1); ~225 intra-module forward-ref global-intern tail. **AOT 2026-06-03**: the for-iter AOT crash (AOT-ITER-1) that blocked every for-loop test under `--aot` is now mitigated suite-wide — ~36 non-range `for x in coll.iter()` loops across 22 mem test files converted to index form (`while i<len { let x=coll[i]; … }`); ~20/23 converted files validated AOT-green (allocator, arena, segment, capability, diagnostics×3, header/property, heap, thin_ref/property+regression, fat_ref, hazard, mod, size_class/property, cap_audit×2, cap_audit_ring×2). 3 files stay AOT-blocked, each by ONE distinct tracked deep defect: `size_class/integration` (D3 / MakeVariantTyped type-id collision — `PathError` descriptor field_count mismatch), `thin_ref/unit` (QUALVAR-CONSTRUCT-1 / D-AOT-1, catalogue §28), `header/integration` (RECVAR-TUPLE-1, §29). The underlying AOT-ITER-1 codegen root cause is confirmed at `register_types.rs:451` (transparent-ref struct-field-layout collapse, §18). Also fixed 3 interp-masked test-bugs surfaced by AOT strictness (Layout `size_`/`align_`, array-literal `.to_list()`, `record_revoke` arity) + the `cases` reserved-keyword parser defect (§27). Held at `partial` until those AOT deep fixes land + D3 closed. Per-submodule rows in `core-tests/INVENTORY.md`.
+status_detail: '2026-06-13 --interp re-baseline (per-module): header 67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class 88/0, arena 59/0, diagnostics 28/0 GREEN. OPEN codegen defects — epoch 3 (record-shaped `static mut` not cell-backed: THREAD_EPOCH_CACHE.get()); allocator 7 (4× `SIZE_CLASSES` array-const name-collision vs size_class.vr; 3× Heap/Shared generic smart-ptr dispatch resolves to inner type); segment 1 / heap 1 / cap_audit 2 / mod 2 (CBGR-ring/static-mut/field-access); cap_audit_ring SIGSEGV (256-elem static-mut record-array init). FIXED this round — suite-wide @property compile now loads the stdlib archive (was bare VbcCodegen::compile_module → CAP_EXECUTE/pack_epoch_caps UndefinedVariable) + canonical UInt8/16/32/64+USize / Int8/../ISize property generators (commit 0349a6cb8); size_class fragmentation law corrected to the table''s true 4-per-octave ~20% worst-case bound (0ba1262c4). Held at `partial` pending the open codegen fixes (need compiler rebuild). Per-submodule rows in `core-tests/INVENTORY.md`; per-defect root causes in each `core-tests/mem/<mod>/audit.md`.'
 ---
 
 import ModuleStatus, {
@@ -68,6 +68,27 @@ The dedicated-suite-pending modules are tracked in
 `core-tests/INVENTORY.md`; new modules graduate to <TierBadge tier="both" />
 once all four test files land **and** the audit deferrals all close on both
 tiers.
+
+### Open defects (2026-06-13 `--interp` re-baseline)
+
+A fresh re-baseline at HEAD pins the current honest state. The
+static-shape and algebraic-law surfaces are **green** (header 67/0,
+thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class 88/0, arena
+59/0, diagnostics 28/0). The remaining failures are all **language /
+codegen** gaps (not stdlib-logic bugs), each precisely root-caused:
+
+| Module(s) | Defect | Root cause | Fix locus |
+|---|---|---|---|
+| `epoch` (3) | `cached_epoch()` > `current_epoch()` | Record-shaped `static mut` (`THREAD_EPOCH_CACHE: EpochCache`) is **not cell-backed** — a `&mut self` method call on a static-mut struct operates on a non-persistent copy. The scalar shadows (`GLOBAL_EPOCH_COUNTER`) work around the read/write surface but the cache record does not. | VBC codegen: extend `static mut` cell-backing (today scalar-only, see `StaticMutAddr`) to record-shaped statics + field writes. |
+| `cap_audit_ring` (SIGSEGV) | whole test process crashes | `public static mut CAP_AUDIT_RING: [CapAuditSlot; 256] = [CapAuditSlot{…}; 256]` — large static-mut **record-array** initializer crashes codegen. | VBC codegen: record-array static-mut initializer lowering. |
+| `allocator` (4) | `SIZE_CLASSES[0]` = 8 not 16 | **Array-const name-collision**: `allocator.vr SIZE_CLASSES:[Int;11]` vs `size_class.vr SIZE_CLASSES:[Int;73]`. The mount-authoritative override (`register_import_aliases`, which already resolves the scalar `PAGE_SIZE` collision) operates on `ctx.functions`; array consts aren't registered there, so the bare name stays first-wins. | VBC codegen: route array consts through scoped/authoritative mount resolution. |
+| `allocator` (3) | `Heap.new(x).is_valid()` → "MediumPayload.is_valid not found"; `Shared.strong_count` not found; `Heap.into_raw` field-OOB | Generic smart-pointer record (`Heap<T>`/`Shared<T>`) constructed via a stdlib generic method loses/mismatches its monomorphised `type_id`, so method dispatch falls through to the inner payload type (CLASS-9 / cross-module untyped-`NEW()` family). | VBC codegen: preserve the wrapper `type_id` through generic stdlib construction. |
+| `segment` (1) / `heap` (1) / `cap_audit` (2) / `mod` (2) | field-OOB / unwrap-None / `left != right` | CBGR-ring + static-mut + cross-module field-access interactions (shares roots with the static-mut and dispatch classes above). | per-module `audit.md`. |
+
+> **Note (`hazard`)**: a transient hard SIGSEGV observed in this
+> re-baseline traces to in-flight CBGR interpreter work outside this
+> module's surface, not to `hazard.vr`; its previously-pinned
+> `HazardStats` algebra surface is green. Re-measure once that lands.
 
 ### Round-17 expansion (2026-05-28) — `core.mem.mod/` first-pass + foundation-layer property law sweeps
 
