@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: '2026-06-13: header/thin_ref/fat_ref/capability/size_class/arena/diagnostics GREEN; epoch 43/0, mod 86/0, allocator 61/2 after the branch fixes. LANDED main: @property stdlib-archive-load bypass + canonical-int property generators (0349a6cb8), size_class fragmentation bound (0ba1262c4). FIXED on validated branch mem-codegen-fixes (awaiting merge): epoch thread-local cache scalar-shadow; cap_audit_ring static-mut-array field-access (SIGSEGV→27/9); SIZE_CLASSES cross-module const dedup; Heap/Shared wrapper-method dispatch; HEADER_SIZE umbrella module-vs-type tie-break. OPEN (deeper): heap/hazard global-record static-mut write-persistence (cell-backing); segment tuple-return null-deref; cap_audit_ring InvalidOpcode-29 PC-desync; cap_audit field contamination; 2 allocator tail (Shared.strong_count int-literal inner, Heap.into_raw by-value self). Held at `partial`. Per-defect detail in the "Defect status" section + each `core-tests/mem/<mod>/audit.md`.'
+status_detail: '2026-06-19 (interp): 11/15 modules GREEN — capability 97/0, header 67/0, thin_ref 39/0, fat_ref 42/0, epoch 43/0, arena 59/0, size_class 88/0, diagnostics 28/0, cap_audit 40/0, mod 86/0, (+1 @ignore each on arena/diagnostics/mod). PARTIAL: allocator 61/2, cap_audit_ring 27/9, hazard 40/7, segment 44/1, heap 51/1. CONSOLIDATED + VALIDATED this cycle (branch mem-conformance-work, awaiting merge): the unmerged mem-codegen-fixes pair (epoch thread-local cache scalar-shadow → epoch 43/0; cap_audit_ring static-mut-array field-resolution → SIGSEGV-crash gone, 27/9; SIZE_CLASSES cross-module const dedup; Heap/Shared wrapper-method dispatch; HEADER_SIZE umbrella tie-break → mod 86/0) + cap_audit epoch_at_event→timestamp_ns test-bug fix → cap_audit 40/0. The 18 of 20 remaining failures cluster in the non-scalar `static mut` STORAGE family (record/enum/array) — distinct manifestations of one architectural gap: a `static mut` whose type is a record/enum/array lives as a COPIED TLS-slot Value, not a stable heap cell, so any `&mut`/`&`/`match ref` into-or-of it (and `&mut ARR[idx]` element address-of) is non-heap-anchored. Manifests as: get_heap `unwrap()` on None (hazard 7, heap 1, segment 1 — record static write doesn`t persist); cap_audit_ring `InvalidOpcode 29` PC-desync in the archive `commit`/`recent` bodies (9 — static-mut-array element address-of emits mis-sized operands). The remaining 2 are an allocator dispatch tail (Shared.strong_count unsuffixed-int-literal inner, Heap.into_raw by-value self). AOT-ITER-1 (ListIter native SIGSEGV) still open upstream; mem tests use AOT-safe index-iter. Held at `partial`. Detail: "Defect status" section + each `core-tests/mem/<mod>/audit.md`.'
 ---
 
 import ModuleStatus, {
@@ -69,13 +69,17 @@ The dedicated-suite-pending modules are tracked in
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 
-### Defect status (2026-06-13 `--interp`)
+### Defect status (2026-06-19 `--interp`)
 
-A deep root-cause + fix pass landed **five codegen fixes** on the
-validated branch `mem-codegen-fixes` (isolated worktree build; awaiting
-merge into `main`). The static-shape and algebraic-law surfaces remain
-**green** (header 67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0,
-size_class 88/0, arena 59/0, diagnostics 28/0).
+The five `mem-codegen-fixes` codegen fixes (table below) were
+**consolidated and re-validated** this cycle on branch
+`mem-conformance-work` (isolated worktree, dedicated `CARGO_TARGET_DIR`,
+archive regenerated). **11 of 15 modules are now fully green**: header
+67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class 88/0,
+arena 59/0, diagnostics 28/0, **epoch 43/0**, **cap_audit 40/0**, **mod
+86/0**, and the static-shape baselines. The 4 partial modules
+(allocator 61/2, cap_audit_ring 27/9, hazard 40/7, segment 44/1, heap
+51/1) all live in the non-scalar `static mut` storage family below.
 
 **Resolved (branch `mem-codegen-fixes`):**
 
@@ -86,15 +90,23 @@ size_class 88/0, arena 59/0, diagnostics 28/0).
 | `allocator` 56/7 | **61/2** | (a) **array-const name-collision** `allocator.SIZE_CLASSES:[Int;11]` vs `size_class.SIZE_CLASSES:[Int;73]` — `compile_pending_constants` looked the pending const up by bare name so both shared one `FunctionId` and dedup dropped one (loser's qualified archive descriptor vanished) → now looks up by source-module-qualified name. (b) **Heap/Shared wrapper-method dispatch** — `let b = Heap.new(rec)` was typed as the inner `T`, so `b.is_valid()` dispatched to `T` → type the binding as the wrapper `Heap<T>`/`Shared<T>` + auto-deref field access to the inner `T`. |
 | `mod` 84/2 | **86/0** | `HEADER_SIZE` umbrella re-export tie-break was pure-alphabetical, so the type-associated `core.mem.MemSegment.HEADER_SIZE` beat the module `core.mem.header.HEADER_SIZE`. → prefer a **module** parent (lower_snake) over a **type** parent (CapitalCase). |
 
-**Still open** (deeper; tracked):
+**Closed this cycle:** `cap_audit` 38/2 → **40/0**. The two failures
+were a **test bug**, not field contamination: the tests read
+`event.epoch_at_event`, which is not a field of `CapEvent` (the field
+is `timestamp_ns`). The bare name resolved *leniently* to a wrong slot
+(returning a contaminated value) instead of erroring, so the
+field-independence asserts compared garbage. Pointed at the real field.
+(The lenient unknown-field resolution that returns a wrong slot instead
+of a hard error is itself a language defect — tracked.)
+
+**Still open** (all in the non-scalar `static mut` storage family,
+except the allocator tail; deeper, tracked as one fundamental fix):
 
 | Module(s) | Defect | Root cause | Fix locus |
 |---|---|---|---|
-| `heap` (1) / `hazard` (CRASH) | `unwrap()` on None / SIGSEGV | **Global RECORD `static mut` write-persistence** — `CURRENT_HEAP: Maybe<LocalHeap>` / `GLOBAL_HAZARD_DOMAIN` writes don't persist (record static-mut still not cell-backed; epoch's fix was scalar-only). | VBC codegen/interpreter: cell-back record-shaped `static mut`. |
-| `segment` (1) | `NullPointerAt` in `lock_segments` | `result.1` of `atomic_compare_exchange_u32` (a tuple return) mis-accessed. | tuple-return field-access codegen. |
-| `cap_audit_ring` (9) | `InvalidOpcode 29` | bytecode PC desync (mis-sized operand) in the `record_*`/`commit` archive bodies. | VBC codegen + archive regen. |
-| `cap_audit` (2) | `left != right` | `CapEvent` 8-field record field-read contamination. | field-index resolution. |
-| `allocator` (2 of the former 3) | `Shared.strong_count` not found; `Heap.into_raw` field-OOB | `Shared.new(99)` infers no inner type from an unsuffixed int literal (binding falls back); `into_raw` by-value `self`. | literal→`Int` default; by-value-self handling. |
+| `heap` (1) / `hazard` (7) / `segment` (1) | `unwrap()` on None | **Record/enum `static mut` write-persistence** — `get_heap()` returns `&mut LocalHeap` into `CURRENT_HEAP: Maybe<LocalHeap>`; the write `CURRENT_HEAP = Some(..)` and the returned ref do not persist because the static lives as a copied TLS-slot `Value`, not a stable heap cell. Confirmed minimal: `&mut`/`match ref mut` into-or-of a `static mut` record dangles (data size 0) or SIGSEGVs even within one function. | VBC codegen/interpreter: cell-back record/enum `static mut` + heap-anchor refs into it. |
+| `cap_audit_ring` (9) | `InvalidOpcode 29` (pc 254) | static-mut **array** element address-of `&mut CAP_AUDIT_RING[idx]` in the `commit`/`recent` archive bodies emits mis-sized operands → PC desync. Same family (non-scalar static-mut storage). | VBC codegen + archive regen. |
+| `allocator` (2) | `Shared.strong_count` not found on `Object`; `Heap.into_raw` field-OOB | `Shared.new(99)` infers no inner type from an unsuffixed int literal (binding falls back to `Object`, method-table lookup fails between `Shared`/`Weak` candidates); `into_raw` by-value `self`. | literal→`Int` default; by-value-self dispatch. |
 
 ### Round-17 expansion (2026-05-28) — `core.mem.mod/` first-pass + foundation-layer property law sweeps
 
