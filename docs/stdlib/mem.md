@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: '2026-06-19 (interp): 11/15 modules GREEN — capability 97/0, header 67/0, thin_ref 39/0, fat_ref 42/0, epoch 43/0, arena 59/0, size_class 88/0, diagnostics 28/0, cap_audit 40/0, mod 86/0, (+1 @ignore each on arena/diagnostics/mod). PARTIAL: allocator 61/2, cap_audit_ring 27/9, hazard 40/7, segment 44/1, heap 51/1. CONSOLIDATED + VALIDATED this cycle (branch mem-conformance-work, awaiting merge): the unmerged mem-codegen-fixes pair (epoch thread-local cache scalar-shadow → epoch 43/0; cap_audit_ring static-mut-array field-resolution → SIGSEGV-crash gone, 27/9; SIZE_CLASSES cross-module const dedup; Heap/Shared wrapper-method dispatch; HEADER_SIZE umbrella tie-break → mod 86/0) + cap_audit epoch_at_event→timestamp_ns test-bug fix → cap_audit 40/0. The 18 of 20 remaining failures cluster in the non-scalar `static mut` STORAGE family (record/enum/array) — distinct manifestations of one architectural gap: a `static mut` whose type is a record/enum/array lives as a COPIED TLS-slot Value, not a stable heap cell, so any `&mut`/`&`/`match ref` into-or-of it (and `&mut ARR[idx]` element address-of) is non-heap-anchored. Manifests as: get_heap `unwrap()` on None (hazard 7, heap 1, segment 1 — record static write doesn`t persist); cap_audit_ring `InvalidOpcode 29` PC-desync in the archive `commit`/`recent` bodies (9 — static-mut-array element address-of emits mis-sized operands). The remaining 2 are an allocator dispatch tail (Shared.strong_count unsuffixed-int-literal inner, Heap.into_raw by-value self). AOT-ITER-1 (ListIter native SIGSEGV) still open upstream; mem tests use AOT-safe index-iter. Held at `partial`. Detail: "Defect status" section + each `core-tests/mem/<mod>/audit.md`.'
+status_detail: '2026-06-19 (interp): 12/15 modules GREEN — capability 97/0, header 67/0, thin_ref 39/0, fat_ref 42/0, epoch 43/0, arena 59/0, size_class 88/0, diagnostics 28/0, cap_audit 40/0, mod 86/0, heap 52/0, (+1 @ignore each on arena/diagnostics/mod). PARTIAL: allocator 61/2, cap_audit_ring 27/9, hazard 40/7, segment 44/1. CONSOLIDATED + VALIDATED this cycle (branch mem-conformance-work, awaiting merge): the unmerged mem-codegen-fixes pair (epoch thread-local cache scalar-shadow → epoch 43/0; cap_audit_ring static-mut-array field-resolution → SIGSEGV-crash gone, 27/9; SIZE_CLASSES cross-module const dedup; Heap/Shared wrapper-method dispatch; HEADER_SIZE umbrella tie-break → mod 86/0) + cap_audit epoch_at_event→timestamp_ns test-bug fix → cap_audit 40/0. LANDED this cycle (commit on `mem-conformance-work`): **method-call on a static-mut/thread-local receiver** was mis-classified as a static TYPE namespace — the value-receiver gate in `try_resolve_static_method` only consulted the register file, not the TLS-slot table — so `CURRENT_HEAP.as_mut()` / `GLOBAL_HAZARD_DOMAIN.scan_hazards()` emitted the receiver name as a STRING and failed at runtime with "method not found on Text<small>". Fixed at all three receiver-classification sites (provably a no-op without static-mut receivers). → **heap 51/1 → 52/0** (get_heap_stats); hazard/segment advanced past the `as_mut` wall into deeper issues. The 12 remaining failures are now THREE distinct defects: (a) cap_audit_ring (9) — `&mut CAP_AUDIT_RING[idx]` static-mut-ARRAY element address-of → `InvalidOpcode 29` PC-desync in the archive `commit`/`recent` bodies; (b) segment (1) — `lock_segments`'s `result.1` tuple-return field-access mis-dispatches to `LocalHeap.release_segment` (tuple-projection codegen); (c) hazard (7) — record-static-mut field/list walk (`THREAD_HAZARD_RECORD.retired`, `GLOBAL_HAZARD_DOMAIN`) null-derefs. Plus the allocator dispatch tail (2 — Shared.strong_count unsuffixed-int inner, Heap.into_raw by-value self). AOT-ITER-1 (ListIter native SIGSEGV) still open upstream; mem tests use AOT-safe index-iter. Held at `partial`. Detail: "Defect status" section + each `core-tests/mem/<mod>/audit.md`.'
 ---
 
 import ModuleStatus, {
@@ -74,12 +74,13 @@ tiers.
 The five `mem-codegen-fixes` codegen fixes (table below) were
 **consolidated and re-validated** this cycle on branch
 `mem-conformance-work` (isolated worktree, dedicated `CARGO_TARGET_DIR`,
-archive regenerated). **11 of 15 modules are now fully green**: header
-67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class 88/0,
-arena 59/0, diagnostics 28/0, **epoch 43/0**, **cap_audit 40/0**, **mod
-86/0**, and the static-shape baselines. The 4 partial modules
-(allocator 61/2, cap_audit_ring 27/9, hazard 40/7, segment 44/1, heap
-51/1) all live in the non-scalar `static mut` storage family below.
+archive regenerated), PLUS a new **static-mut method-receiver fix**
+(commit on this branch). **12 of 15 modules are now fully green**:
+header 67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class
+88/0, arena 59/0, diagnostics 28/0, **epoch 43/0**, **cap_audit 40/0**,
+**mod 86/0**, **heap 52/0**. The 4 partial modules (allocator 61/2,
+cap_audit_ring 27/9, hazard 40/7, segment 44/1) are now THREE distinct
+codegen defects (see the "Still open" table below), not one family.
 
 **Resolved (branch `mem-codegen-fixes`):**
 
@@ -99,14 +100,26 @@ field-independence asserts compared garbage. Pointed at the real field.
 (The lenient unknown-field resolution that returns a wrong slot instead
 of a hard error is itself a language defect — tracked.)
 
-**Still open** (all in the non-scalar `static mut` storage family,
-except the allocator tail; deeper, tracked as one fundamental fix):
+**Closed this cycle (#2):** `heap` 51/1 → **52/0** via the static-mut
+method-receiver fix above (`get_heap_stats` → `get_heap()` →
+`CURRENT_HEAP.as_mut()`).
+
+**Still open** (now three DISTINCT defects, not one family):
 
 | Module(s) | Defect | Root cause | Fix locus |
 |---|---|---|---|
-| `heap` (1) / `hazard` (7) / `segment` (1) | `unwrap()` on None | **Record/enum `static mut` write-persistence** — `get_heap()` returns `&mut LocalHeap` into `CURRENT_HEAP: Maybe<LocalHeap>`; the write `CURRENT_HEAP = Some(..)` and the returned ref do not persist because the static lives as a copied TLS-slot `Value`, not a stable heap cell. Confirmed minimal: `&mut`/`match ref mut` into-or-of a `static mut` record dangles (data size 0) or SIGSEGVs even within one function. | VBC codegen/interpreter: cell-back record/enum `static mut` + heap-anchor refs into it. |
-| `cap_audit_ring` (9) | `InvalidOpcode 29` (pc 254) | static-mut **array** element address-of `&mut CAP_AUDIT_RING[idx]` in the `commit`/`recent` archive bodies emits mis-sized operands → PC desync. Same family (non-scalar static-mut storage). | VBC codegen + archive regen. |
+| `cap_audit_ring` (9) | `InvalidOpcode 29` (pc 254) | static-mut **array** element address-of `&mut CAP_AUDIT_RING[idx]` in the `commit`/`recent` archive bodies emits mis-sized operands → PC desync. (Standalone repro: `&mut ARR[idx]` on a `static mut [Rec; N]` → null deref / `RefListElement` on non-List backing.) | VBC codegen: static-mut array element address-of + archive regen. |
+| `segment` (1) | `field access OOB type_id=0` in `lock_segments` | `result.1` of `atomic_compare_exchange_u32` (a **tuple** return) mis-dispatches to `LocalHeap.release_segment` instead of projecting tuple field 1. | tuple-projection field-access codegen. |
+| `hazard` (7) | `NullPointerAt 0x62` in `LocalHeap.free_local` | record-static-mut field / list walk (`THREAD_HAZARD_RECORD.retired`, `GLOBAL_HAZARD_DOMAIN`) reaches a null interior — the method-receiver fix cleared the `.scan_hazards()` dispatch but the record-field reads underneath still null-deref. | record-static-mut field read backing. |
 | `allocator` (2) | `Shared.strong_count` not found on `Object`; `Heap.into_raw` field-OOB | `Shared.new(99)` infers no inner type from an unsuffixed int literal (binding falls back to `Object`, method-table lookup fails between `Shared`/`Weak` candidates); `into_raw` by-value `self`. | literal→`Int` default; by-value-self dispatch. |
+
+**Root-cause correction (2026-06-19):** the earlier hypothesis that
+hazard/heap/segment shared a "record `static mut` write-persistence /
+cell-backing" defect was **disproved** by minimal repros — heap-object
+lifetime across frames is fine (`static mut Maybe<Rec>` whole read/write
+and cross-frame reads pass). heap was actually the method-receiver
+mis-dispatch (now fixed); hazard/segment are the two distinct codegen
+issues above.
 
 ### Round-17 expansion (2026-05-28) — `core.mem.mod/` first-pass + foundation-layer property law sweeps
 
