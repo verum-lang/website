@@ -464,10 +464,48 @@ suite itself when it identifies new failure modes.
 | Validated | `core-tests/sys/common --aot` 6→72/115 (the 325+ `field on Unit` cluster cleared); `sys/mod --aot` 21→38/39 (the `Fd` ctor resolves; +2 test-bug fixes); `--interp` held (common 115/0, mod 39/0); `base/primitives` 281/51, `sys/cabi` 50/0 (no regressions). |
 | Surfaced by | `core-tests/sys/common` (`MemProt`/`SysContextError` impl items), `core-tests/sys/mod` (`Fd` ctor, `InitError` variant). |
 
+## 37. `&*p` on a raw pointer creates an escaping register-ref → CBGR use-after-free (CLOSED 2026-06-19)
+
+| Field | Value |
+|---|---|
+| Defect class id | **REFDEREF-ESCAPE-UAF-1** |
+| Status | **CLOSED** (2026-06-19, interp). `ListIter::next` and every by-reference combinator (`find`/`fold`/`position`/`min_by_key`) over a manual `while let Some(x)=it.next()` loop. |
+| Stable trigger | A method returning `&*self.ptr` where `self.ptr: &unsafe T` (the canonical `ListIter::next` shape: `let item = &*self.ptr; self.ptr = self.ptr.offset(1); Maybe.Some(item)`). |
+| Manifestation | `Panic: CBGR use-after-free detected: expected generation 2, found 4` on the 2nd `next()`; the gen-2 ref pointed into a recycled stack slot. |
+| Root cause | `compile_unary` compiled the inner `*self.ptr` to a register holding a COPY of the loaded pointee, then wrapped that ephemeral stack temp in a CBGR register-ref encoding `next`'s frame `abs_index`. `pop_frame`/`push_frame` bump slot generations directly (`registers.rs` `try_push_frame`/`pop_frame`, NOT `bump_generation`), so on the next call the slot's generation advanced and the escaped ref dangled. Traced with `VERUM_TRACE_CBGRGEN`: the fail slot lived in `next`'s OWN frame and was bumped by frame push/pop, NOT by `DropRef` — the DropRef-over-bump hypothesis was wrong. |
+| Fix | `compile_unary` folds `&*p` / `&mut *p` to `p` when `p` is a raw pointer (`&unsafe T` / `*const T` / `*mut T`), returning the heap-anchored pointer directly. Gated on side-effect-free `Path`/`Field` operands so the non-pointer fall-through (`&*heap_box`, cbgr-ref reborrow, which rely on the generic Deref emitting `cbgr_deref_source`) recompiles idempotently. |
+| Validated | `base/iterator --interp`: property 13→19 pass, regression 8→9, integration 4→6; basic 13/13 + protocol_agnostic 20/22 unchanged; zero regressions. Manual `while let Some(x)=it.next()` loops now correct. |
+
+## 38. `iter.collect()` return-type-directed `FromIterator` mis-dispatches to `FFIAbi.from_iter` (OPEN 2026-06-19)
+
+| Field | Value |
+|---|---|
+| Defect class id | **COLLECT-FROMITER-RESOLVE-1** |
+| Status | **OPEN** — root-caused; a call-site-rewrite fix was tried and REVERTED (introduced a worse silent-empty regression). |
+| Stable trigger | `let x: List<Int> = some_iter.chain(…)/zip(…)/range.collect();` — context-dependent: simple `arr.iter().map(\|x\| *x*2).collect()` resolves correctly TODAY (`protocol_agnostic::test_collect_to_list` passes), chain/zip/range shapes do not. |
+| Manifestation | `Panic: method 'FFIAbi.from_iter' not found on receiver of runtime kind Object … 8 candidate(s): Text/List/Map/Set/Deque/BinaryHeap/BTreeMap/BTreeSet.from_iter`. `FFIAbi` has NO `FromIterator` impl — it is a fabricated fallback for the unbound type-param-as-namespace `C` in `collect<C: FromIterator>(self) -> C { C.from_iter(self) }`. |
+| Root cause | The return-type-directed binding of `C` (from the `let x: T =` annotation) is not threaded into the generic `collect` body's `C.from_iter` dispatch for all shapes. Works only where monomorphisation happens to bind `C` correctly. |
+| Why call-site rewrite FAILS | Rewriting `iter.collect()` → `<Base>.from_iter(iter)` via `Instruction::Call{func_id}` bypasses monomorphisation — the generic `from_iter`'s inner `for item in iter` over the generic param `I` then fails to dispatch `MapIter<ListIter>::next` and silently yields a 0-length list (only `MapIter<ListIter>` collapses; `MapIter<Chain/Rev>` iterate fine). Net was property 19→21, integration 6→12, BUT protocol_agnostic 20→19 (regressed the common `list.iter().map().collect()` pattern). Silent-empty < loud-panic → reverted. |
+| Real fix surface | (a) resolve `C` from the return-type-directed expected type at `collect` monomorphisation time so `C.from_iter` binds for ALL shapes; and/or (b) close the `for item in iter` over generic `I=MapIter<ListIter>` → 0 monomorphisation-keying collision (distinct from §33's adapter-for-loop routing). |
+| Surfaced by | `core-tests/base/iterator/{property,integration}` (~12 tests); documented `audit.md §4.6`. |
+
+## 39. Range arithmetic / inclusive-count `collect`+fold assertions (OPEN 2026-06-19)
+
+| Field | Value |
+|---|---|
+| Defect class id | **RANGE-ARITH-ASSERT-1** |
+| Status | **OPEN** — likely tied to the documented `RangeInclusive::next` field-layout intercept (`NewRange{inclusive:true}` heap layout `[current,end,inclusive]` vs declared `{current,end,done}`). |
+| Stable trigger | `integration_range_sum`, `integration_range_product_for_factorial`, `law_range_inclusive_count_includes_endpoint`, `law_take_plus_skip_recovers_original`. |
+| Manifestation | `AssertionFailed: left != right` (wrong arithmetic result, not a panic). |
+| Surfaced by | `core-tests/base/iterator/{integration,property}`; `audit.md §4.7`. |
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
 |---|---|---|
+| REFDEREF-ESCAPE-UAF-1 (CLOSED 2026-06-19) | `core-tests/base/iterator/audit.md §4.5`; this catalogue §37 | (main HEAD — `&*p ≡ p` fold) |
+| COLLECT-FROMITER-RESOLVE-1 (OPEN 2026-06-19) | `core-tests/base/iterator/audit.md §4.6`; this catalogue §38 | — (generic-body C-resolution / monomorphisation; call-site rewrite reverted) |
+| RANGE-ARITH-ASSERT-1 (OPEN 2026-06-19) | `core-tests/base/iterator/audit.md §4.7`; this catalogue §39 | — |
 | ARCHIVE-FANOUT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.1`; this catalogue §30 | `946f3d787` |
 | XMOD-RECNEW-UNIT-1 (CLOSED 2026-06-11) | `core-tests/base/iterator/audit.md §4.2`; this catalogue §31 | `8d8214d83` |
 | ADAPTER-TRY-NEXT-1 (CLOSED 2026-06-12) | `core-tests/base/iterator/audit.md §4.3`; this catalogue §32 | `3858edf52` |
