@@ -127,31 +127,40 @@ the property suite.
 
 **Source fixes landed this branch:**
 
-- **`checked_neg` / `checked_abs` width** — the generic forms now emit
-  the `width=64, signed=1` bytes the interpreter's `CheckedNeg`/`CheckedAbs`
-  handlers read; previously they fell through a codegen fallback that emitted
-  no width bytes, so `checked_neg(Int.MIN)` wrongly returned `Some` instead of
-  `None`. Correct on the AOT path and for direct `@intrinsic` / fresh
-  user-defined wrappers.
+- **Comparison wrappers `eq/ne/lt/le/gt/ge`** — `emit_intrinsic_direct_opcode`
+  had no arm for the `EqI/NeI/LtI/LeI/GtI/GeI` DirectOpcodes, so these
+  Bool-returning wrappers fell through to a `LoadNil` fallback (nil stub). Now
+  emit `CmpI`. GREEN.
 - **`overflowing_add/sub/mul`** — added the missing registry aliases (they had
-  no entry and silently lowered to `nil`).
+  no entry and silently lowered to `nil`). GREEN.
+- **`checked_neg` / `checked_abs` width** — the generic forms now emit the
+  `width=64, signed=1` bytes the interpreter's `CheckedNeg`/`CheckedAbs`
+  handlers read (correct for AOT + direct `@intrinsic` + fresh user wrapper).
+  Still gated under the stdlib wrapper by the name-collision below.
 
-**Open defects (pinned `@ignore`):**
+**Open defects (pinned `@ignore`), root-caused into four buckets:**
 
-- **`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1` (CRITICAL).** The generic intrinsic
-  free-function *wrappers* are unreliable when called via the precompiled
-  stdlib archive — `eq/ne/lt/le/gt/ge`, `is_power_of_two`, `checked_rem`,
-  `saturating_add/sub` (binary), `checked_neg/abs(Int.MIN)` and nested
-  `mul`/`add` return `nil` or wrong values, while a direct `@intrinsic(…)` and
-  a fresh user-defined generic wrapper compute correctly. Use the operator
-  forms (`==`, `<`, `+`, `*`, …) and the width-specific intrinsics until this
-  precompile/monomorphization defect is fixed.
+- **(A) Bare-name collision — `checked_neg`, `checked_abs`.** Despite an
+  explicit `mount core.intrinsics.arithmetic.{checked_neg}`, the call resolves
+  to `core.math.checked.checked_neg(a: Int64) -> CheckedResult<Int64>` (returns
+  `CheckedResult.Overflow`, not `Maybe.None`). The explicit mount does not win.
+- **(B) Missing registry entries — `is_power_of_two`, `checked_rem`.** No
+  `lookup_intrinsic` entry → archived body is a `LoadNil` stub.
+- **(C) Operand-framing — `saturating_add` / `saturating_sub` (binary).** The
+  archived body is correct (`SaturatingAdd [.,.,.,64,1]`) yet the *called*
+  wrapper returns `nil`, while a direct `@intrinsic` with the byte-identical
+  instruction is correct.
+- **(D) Nested-call dispatch — `mul(a, add(b,c))`.** The outer intrinsic is
+  mis-computed as the inner one (`a + b + c` instead of `a·(b+c)`).
 - **`ARITH-MISSING-INTRINSICS-1`.** `overflowing_neg/shl/shr`,
   `wrapping_div/rem/abs`, `wrapping_next_power_of_two`, `widening_mul[_signed]`,
   `carrying_add`, `borrowing_sub`, `checked_shl/shr`,
   `checked_next_power_of_two`, `ilog10`, `leading_sign_bits`, `saturating_div`
-  have no registry/dispatch implementation yet (resolve to `nil` even via a
-  direct `@intrinsic`).
+  have no registry/dispatch implementation yet.
+
+Until (A)–(D) are fixed, prefer operator forms (`==`, `<`, `+`, `*`, …) and the
+width-specific intrinsics (`saturating_add_u32`, …) over the generic free
+functions.
 
 ---
 
