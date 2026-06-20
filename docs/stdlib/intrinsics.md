@@ -2,8 +2,8 @@
 sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
-status: undocumented
-status_detail: Underlying intrinsic dispatch table is exercised transitively through `base.primitives` (60/60), `mem.allocator`, and 25 fixture files in `vcs/specs/stdlib/sys/intrinsics/`. Standalone `core-tests/intrinsics/` folder is empty; status remains `undocumented` until a per-intrinsic conformance surface lands.
+status: partial
+status_detail: Per-intrinsic conformance surface now landing under `core-tests/intrinsics/`. `arithmetic` (106 live / 42 @ignore, --interp, 2026-06-20), `type_info` (47/47), `atomic`, `bitwise`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Open blocker** (CRITICAL): generic intrinsic free-function wrappers are unreliable when invoked via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`) — see the Arithmetic conformance note below.
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -109,6 +109,49 @@ without panicking.
 NaN it returns NaN. `add` / `sub` / `mul` on unsigned T are the
 ordinary modular operations on bit widths and never panic from
 overflow.
+
+### Conformance status — arithmetic ⚠️ partial
+
+Suite: `core-tests/intrinsics/arithmetic/`
+(unit + property + integration + regression + `audit.md`).
+**106 live tests GREEN under `--interp`; 42 `@ignore` pins.**
+
+**Verified (interp):** `add` `sub` `mul` `div` `rem` `neg` `abs`
+`abs_signed` `signum`; `checked_add/sub/mul/div` (+ `_u64`);
+`add_overflow` `sub_overflow` `mul_overflow` **and the
+`overflowing_add/sub/mul` aliases**; `wrapping_add/sub/mul/neg/shl/shr`
+(Int) and the width-specific `wrapping_*_u8/_i8/_u32`;
+`saturating_mul/neg/abs` and `saturating_*_u8/_u16/_u32/_i32`;
+`min` `max` `clamp`; `ilog2`. Ring/order algebraic laws pinned by
+the property suite.
+
+**Source fixes landed this branch:**
+
+- **`checked_neg` / `checked_abs` width** — the generic forms now emit
+  the `width=64, signed=1` bytes the interpreter's `CheckedNeg`/`CheckedAbs`
+  handlers read; previously they fell through a codegen fallback that emitted
+  no width bytes, so `checked_neg(Int.MIN)` wrongly returned `Some` instead of
+  `None`. Correct on the AOT path and for direct `@intrinsic` / fresh
+  user-defined wrappers.
+- **`overflowing_add/sub/mul`** — added the missing registry aliases (they had
+  no entry and silently lowered to `nil`).
+
+**Open defects (pinned `@ignore`):**
+
+- **`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1` (CRITICAL).** The generic intrinsic
+  free-function *wrappers* are unreliable when called via the precompiled
+  stdlib archive — `eq/ne/lt/le/gt/ge`, `is_power_of_two`, `checked_rem`,
+  `saturating_add/sub` (binary), `checked_neg/abs(Int.MIN)` and nested
+  `mul`/`add` return `nil` or wrong values, while a direct `@intrinsic(…)` and
+  a fresh user-defined generic wrapper compute correctly. Use the operator
+  forms (`==`, `<`, `+`, `*`, …) and the width-specific intrinsics until this
+  precompile/monomorphization defect is fixed.
+- **`ARITH-MISSING-INTRINSICS-1`.** `overflowing_neg/shl/shr`,
+  `wrapping_div/rem/abs`, `wrapping_next_power_of_two`, `widening_mul[_signed]`,
+  `carrying_add`, `borrowing_sub`, `checked_shl/shr`,
+  `checked_next_power_of_two`, `ilog10`, `leading_sign_bits`, `saturating_div`
+  have no registry/dispatch implementation yet (resolve to `nil` even via a
+  direct `@intrinsic`).
 
 ---
 
