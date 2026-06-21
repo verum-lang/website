@@ -138,18 +138,21 @@ the property suite.
   handlers read (correct for AOT + direct `@intrinsic` + fresh user wrapper).
   Still gated under the stdlib wrapper by the name-collision below.
 
-**Open defects (pinned `@ignore`), root-caused into four buckets:**
+**Additional fixes (2026-06-21):**
 
-- **(A) Bare-name collision — `checked_neg`, `checked_abs`.** Despite an
-  explicit `mount core.intrinsics.arithmetic.{checked_neg}`, the call resolves
-  to `core.math.checked.checked_neg(a: Int64) -> CheckedResult<Int64>` (returns
-  `CheckedResult.Overflow`, not `Maybe.None`). The explicit mount does not win.
+- **`checked_neg`/`checked_abs` + `saturating_add/sub/neg/abs` — bare-name
+  collision FIXED.** These were resolving to the unmounted
+  `core.math.checked.*` overloads (returning `CheckedResult`/`nil`) instead of
+  the explicitly-mounted intrinsics versions, because resolution ranked
+  candidates by argument type and a typed `Int` arg (`Int.MAX`) matched the
+  concrete `Int64` signature. An explicit `mount X.{name}` now owns the bare
+  name. `SaturatingNeg`/`SaturatingAbs` width-byte emission was also fixed
+  (exposed once the collision stopped masking it).
+
+**Open defects (pinned `@ignore`):**
+
 - **(B) Missing registry entries — `is_power_of_two`, `checked_rem`.** No
   `lookup_intrinsic` entry → archived body is a `LoadNil` stub.
-- **(C) Operand-framing — `saturating_add` / `saturating_sub` (binary).** The
-  archived body is correct (`SaturatingAdd [.,.,.,64,1]`) yet the *called*
-  wrapper returns `nil`, while a direct `@intrinsic` with the byte-identical
-  instruction is correct.
 - **(D) Nested-call dispatch — `mul(a, add(b,c))`.** The outer intrinsic is
   mis-computed as the inner one (`a + b + c` instead of `a·(b+c)`).
 - **`ARITH-MISSING-INTRINSICS-1`.** `overflowing_neg/shl/shr`,
