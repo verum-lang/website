@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `memory` (value-level interp 11/11 + AOT 11/11; 1 fix; raw-pointer surface deferred to an allocation harness, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -416,6 +416,24 @@ volatile_copy<T>(dst, src, count)                  volatile_set<T>(dst, v, count
 ptr_to_ref<T>(p: *const T) -> &T                   // UB if null
 ptr_to_mut_ref<T>(p: *mut T) -> &mut T
 ```
+
+### Conformance status — memory ⚠️ partial
+
+Suite: `core-tests/intrinsics/memory/` (unit + regression + `audit.md`).
+**Value-level subset GREEN on BOTH tiers (interp 11/11 + AOT 11/11):**
+`swap`, `replace`, `transmute`, `null_ptr`/`null_ptr_mut`/`ptr_is_null`,
+`zeroed`.
+
+**Fix landed:** `null_ptr`/`ptr_is_null` returned `nil` — their registry
+strategies (`DirectOpcode(LoadI)` with no immediate; `DirectOpcode(EqI)` with a
+single operand) fell through to `LoadNil`. Now dedicated inline sequences
+(`LoadI 0` / `LoadI 0` + `CmpI eq`).
+
+**Deferred:** the raw-pointer surface — `ptr_read`/`write`/`offset`,
+`memcpy`/`memset`/`memcmp`, `slice_*`, `ptr_is_aligned`, `ptr_to_ref` — requires
+a live allocation to exercise and needs a dedicated allocation-based harness
+(`MEM-RAWPTR-HARNESS-1`). It is partly covered today by the
+[`mem`](/docs/stdlib/mem) and `base/memory` suites (the CBGR safety layer).
 
 ---
 
