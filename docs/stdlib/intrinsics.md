@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes + 2 pre-existing AOT-codegen defects revealed, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -278,6 +278,37 @@ f64_infinity() / f64_neg_infinity() / f64_nan()
 infinity<T>() -> T        nan<T>() -> T         epsilon<T>() -> T
 min_positive<T>() -> T    max_float<T>() -> T
 ```
+
+Runtime model: VBC floats are IEEE **f64** (Float32 widens to f64 at runtime);
+the generic forms are f64-natural and `_f32`/`_f64` carry their width. Most
+functions dispatch via a `MathExtended` opcode (~2 ns).
+
+### Conformance status — float ⚠️ partial
+
+Suite: `core-tests/intrinsics/float/`
+(unit + property + integration + regression + `audit.md`).
+**Interp 85/85 GREEN (7 `@ignore`); AOT 70/85.**
+
+**Fixes landed:**
+
+- **`trunc` returned its input unchanged** — float `trunc<T>` shared the bare
+  `@intrinsic("trunc")` name with integer `conversion.itrunc` (which is a no-op
+  `Mov` at i64/f64 width). Routed float `trunc` to its dedicated `trunc_f64`
+  (round toward zero).
+- **`fneg` → `nil` (and `fms` garbage)** — `fneg` had no registry entry; aliased
+  it to the polymorphic `neg` (`PolyNeg`, float-aware). Closes `fneg` + `fms`.
+- **`epsilon`/`min_positive`/`max_float` → `nil`** — used unregistered
+  `@intrinsic` names; now plain IEEE-754 literals.
+
+**Open — interp (need new opcodes):**
+
+- `FLOAT-ROUNDMODES-1` — `roundeven`/`rint`/`nearbyint` (round-half-to-even).
+- `FLOAT-MINMAX-1` — `minimum`/`maximum` (IEEE 754-2019, NaN-propagating).
+- `FLOAT-CLASSIFY-1` — `is_subnormal`/`is_sign_negative`/`is_sign_positive`.
+
+**Open — AOT only (`FLOAT-AOT-LIBM-1`, interp green):** `fneg`/`fms` (the
+`PolyNeg` AOT path doesn't negate floats) and the libm-backed
+`hypot`/`cbrt`/`expm1`/`log1p`/`powi` (AOT lowering).
 
 ---
 
