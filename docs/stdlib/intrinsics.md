@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface now landing under `core-tests/intrinsics/`. `arithmetic` (106 live / 42 @ignore, --interp, 2026-06-20), `type_info` (47/47), `atomic`, `bitwise`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Open blocker** (CRITICAL): generic intrinsic free-function wrappers are unreliable when invoked via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`) — see the Arithmetic conformance note below.
+status_detail: Per-intrinsic conformance surface now landing under `core-tests/intrinsics/`. `arithmetic` (129 live / 19 @ignore, --interp), `bitwise` (127 live / 0 @ignore, --interp; 4 fundamental fixes, AOT module-validated 2026-06-25), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Open blockers**: (1) `verum test --aot` compiles the whole `core` crate and trips on undefined stdlib leaf functions — blocks harness-level AOT for every suite (modules themselves compile under `verum run/build --aot`); (2) generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -187,6 +187,45 @@ byte_swap_bits<T>(a) -> T
 ```
 
 Sized variants: `clz_u32`, `ctz_u64`, `popcnt_u64`, etc.
+
+All generic forms operate at **64-bit width** (VBC integer Values are i64 at
+runtime — same model as [arithmetic](#arithmetic)).  The `_u32` count
+variants are width-correct: `clz_u32` subtracts the 32-bit carrier slack
+(`clz64(x) - 32`) and `ctz_u32` sets a guard bit (`ctz64(x | 1<<32)`) so an
+all-zero word yields `32`, not `64`.
+
+`byte_swap_bits` reverses the bit order *within* each byte (byte positions
+unchanged) — the identity `byte_swap_bits = bswap ∘ bitreverse`.  `ashr`
+sign-extends; `lshr` zero-fills; the bare `shr` is arithmetic.
+
+### Conformance status — bitwise ⚠️ partial
+
+Suite: `core-tests/intrinsics/bitwise/`
+(unit + property + integration + regression + `audit.md`).
+**127 live tests GREEN under `--interp`; 0 `@ignore`.**  Every public function
+is exercised; Boolean-algebra laws (commutativity, associativity, De Morgan,
+distributivity, idempotence) and bit-manip invariants (involutions,
+popcnt-preservation, rotate-inverse) are pinned by the property suite.
+
+**Source / crate fixes landed this branch** (all at registry + codegen +
+interp + LLVM):
+
+- **`bitnot` / `lshr` / `ashr` returned `nil`.** The registry held only the
+  semantic *wrapper* names (`bitand` …); the authoritative `@intrinsic` body
+  names (`and`/`or`/`xor`/`not`) and the logical/arithmetic right shifts were
+  unregistered.  Now `and`/`or`/`xor`/`not` → `Band`/`Bor`/`Bxor`/`Bnot`,
+  `lshr` → `Ushr`, `ashr` → `Shr`; the missing `Ushr` emit arm was added.
+- **`clz_u32`/`ctz_u32` ignored width** (`clz_u32(1)` was `63`, not `31`).
+  New width-correct inline sequences.
+- **`byte_swap_bits` was unregistered.** New `bswap ∘ bitreverse` inline
+  sequence.
+
+**Tier-1 (AOT):** the bitwise opcodes + inline sequences compile and run
+correctly under AOT — verified via `verum run --aot` and `verum build`.  The
+`verum test --aot` *harness* is currently blocked for every `core-tests`
+suite by a systemic issue (it compiles the whole `core` crate and trips on
+undefined stdlib leaf functions); this is unrelated to the bitwise contract
+and tracked separately.
 
 ---
 
