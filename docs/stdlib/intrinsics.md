@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface now landing under `core-tests/intrinsics/`. `arithmetic` (129 live / 19 @ignore, --interp), `bitwise` (127 live / 0 @ignore, --interp; 4 fundamental fixes, AOT module-validated 2026-06-25), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Open blockers**: (1) `verum test --aot` compiles the whole `core` crate and trips on undefined stdlib leaf functions — blocks harness-level AOT for every suite (modules themselves compile under `verum run/build --aot`); (2) generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -198,14 +198,15 @@ all-zero word yields `32`, not `64`.
 unchanged) — the identity `byte_swap_bits = bswap ∘ bitreverse`.  `ashr`
 sign-extends; `lshr` zero-fills; the bare `shr` is arithmetic.
 
-### Conformance status — bitwise ⚠️ partial
+### Conformance status — bitwise ✅ complete
 
 Suite: `core-tests/intrinsics/bitwise/`
 (unit + property + integration + regression + `audit.md`).
-**127 live tests GREEN under `--interp`; 0 `@ignore`.**  Every public function
-is exercised; Boolean-algebra laws (commutativity, associativity, De Morgan,
-distributivity, idempotence) and bit-manip invariants (involutions,
-popcnt-preservation, rotate-inverse) are pinned by the property suite.
+**Both tiers GREEN via `verum test`: interp 127/127, AOT 127/127; 0 `@ignore`.**
+Every public function is exercised; Boolean-algebra laws (commutativity,
+associativity, De Morgan, distributivity, idempotence) and bit-manip invariants
+(involutions, popcnt-preservation, rotate-inverse) are pinned by the property
+suite.
 
 **Source / crate fixes landed this branch** (all at registry + codegen +
 interp + LLVM):
@@ -220,12 +221,15 @@ interp + LLVM):
 - **`byte_swap_bits` was unregistered.** New `bswap ∘ bitreverse` inline
   sequence.
 
-**Tier-1 (AOT):** the bitwise opcodes + inline sequences compile and run
-correctly under AOT — verified via `verum run --aot` and `verum build`.  The
-`verum test --aot` *harness* is currently blocked for every `core-tests`
-suite by a systemic issue (it compiles the whole `core` crate and trips on
-undefined stdlib leaf functions); this is unrelated to the bitwise contract
-and tracked separately.
+**Tier-1 (AOT):** the bitwise suite passes **127/127 under `verum test --aot`**.
+This required a systemic compiler fix (`SYSTEMIC-AOT-EAGER-CORE-1`): the test
+harness writes its merged file inside the `core` cog, and
+`load_project_modules` was eager-loading the *whole* `core` crate as a project
+— pulling unreachable stdlib modules into native codegen and aborting on
+undefined leaf functions.  In `Normal` build mode the stdlib `core` cog is now
+served exclusively from the embedded precompiled archive and never
+eager-compiled as a project, which unblocks AOT for **every** `core-tests`
+suite.
 
 ---
 
