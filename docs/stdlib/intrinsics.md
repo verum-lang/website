@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `memory` (value-level interp 11/11 + AOT 11/11; 1 fix; raw-pointer surface deferred to an allocation harness, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `memory` (value-level interp 11/11 + AOT 11/11; 1 fix; raw-pointer surface deferred, 2026-06-25), `atomic` (interp 30/30 + AOT 16/30; operational suite, AOT raw-ptr path tracked, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -355,6 +355,31 @@ atomic_exchange_u32/u64/i32(ptr, new, order) -> T
 atomic_load_int / atomic_store_int
 atomic_cmpxchg_int / atomic_fetch_add_int
 ```
+
+`atomic_cas_*` returns a `(observed_value, succeeded)` pair: on success
+`observed == expected` and the new value is installed; on failure `observed` is
+the current value and the cell is untouched. The `ORDERING_*` constants are the
+`UInt8` strength ladder (`Relaxed`=0 … `SeqCst`=4) the width-typed intrinsics
+consume; the `MemoryOrder` ADT is the typed surface over them.
+
+### Conformance status — atomic ⚠️ partial
+
+Suite: `core-tests/intrinsics/atomic/`
+(unit + property + integration + regression + `audit.md`).
+**Interp 30/30 GREEN; AOT 16/30.**
+
+A single-threaded conformance test pins each operation's **value semantics**
+(read-modify-write result + returned previous value) over a live atomic cell,
+not inter-thread ordering. **No atomic-intrinsic fix was needed** — the full
+operational surface (load/store, `fetch_add/sub/and/or/xor`, `exchange`,
+compare-and-swap, fences) is correct under interp.
+
+**Open — AOT only (`ATOMIC-AOT-RAWPTR-1`):** the 14 operational tests drive
+atomic ops through a `List.as_mut_ptr()` raw pointer; that AOT raw-pointer /
+`List`-backing path fails (even `store`/`load`), so it's the same family as the
+byte-array AOT defect, not the atomic ops. The `MemoryOrder` ADT + ORDERING
+constants + fences pass on both tiers. Inter-thread ordering semantics belong to
+a concurrency suite (out of scope here).
 
 ---
 
