@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes + 2 pre-existing AOT-codegen defects revealed, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `atomic`, `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -441,6 +441,46 @@ int_to_bytes<T, const N>(x: T) -> [Byte; N]
 f32_to_bits(f) -> UInt32             f32_from_bits(b) -> Float32
 f64_to_bits(f) -> UInt64             f64_from_bits(b) -> Float64
 ```
+
+Runtime model: integer/float **width is static-only** (i64/f64 at runtime), so
+the widening conversions (`sext`/`zext`/`fpext`) and narrowing ones
+(`itrunc`/`fptrunc`) are value-preserving no-ops. The float↔int **bit
+reinterpretation** is a real opcode (it is *not* a move in the Tier-0 NaN-boxed
+representation), so use the size-typed `f{32,64}_{to,from}_bits` wrappers rather
+than the generic `unsafe bitcast<S, D>`. `to_le`/`from_le` are no-ops on a
+little-endian target; `to_be`/`from_be` byte-swap.
+
+### Conformance status — conversion ⚠️ partial
+
+Suite: `core-tests/intrinsics/conversion/`
+(unit + property + integration + regression + `audit.md`).
+**Interp 60/60 GREEN, 0 `@ignore`; AOT 41/60.**
+
+**Wiring fixes landed (data-only — the codegen/interp/LLVM implementations
+already existed but were unreachable from the intrinsic surface):**
+
+- **`sext`/`zext`/`itrunc`/`fpext`/`fptrunc` returned `nil`** — the generic
+  names aliased to registry names that don't exist (the real entries are
+  width-typed: `i32_to_i64`, `u32_to_u64`, `f32_to_f64`, `f64_to_f32`,
+  `i64_to_i32`). Repointed the aliases.
+- **`f{32,64}_{to,from}_bits` returned `nil`** — the wrappers called the
+  unregistered generic `bitcast` instead of their dedicated bit-reinterpret
+  intrinsics. Routed them correctly.
+- **`to_le`/`to_be`/`from_le`/`from_be` returned a byte array** — they were
+  aliased to `to_le_bytes`/`to_be_bytes`. Now return the endianness-converted
+  `T` (identity / `bswap`).
+
+**Open (pre-existing AOT-codegen defects, revealed by the new tests — not the
+wiring above):**
+
+- **`CONV-AOT-F32BITS-1`** — `f32_to_bits`/`f32_from_bits` return `0` under AOT
+  (deep Float32 cast/parameter handling; the f64 forms are correct on both
+  tiers).
+- **`CONV-AOT-BYTEARRAY-1`** — the `to/from_*_bytes` `[Byte; N]` intrinsics
+  SIGSEGV under AOT (fixed-size byte-array codegen).
+
+Prefer interp, or the f64-bits / endianness / int↔float surface (green on both
+tiers), until the two AOT defects land.
 
 ---
 
