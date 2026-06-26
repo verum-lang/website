@@ -528,7 +528,7 @@ little-endian target; `to_be`/`from_be` byte-swap.
 
 Suite: `core-tests/intrinsics/conversion/`
 (unit + property + integration + regression + `audit.md`).
-**Interp 60/60 GREEN, 0 `@ignore`; AOT 41/60.**
+**Interp 60/60 GREEN, 0 `@ignore`; AOT 52/60.**
 
 **Wiring fixes landed (data-only — the codegen/interp/LLVM implementations
 already existed but were unreachable from the intrinsic surface):**
@@ -544,17 +544,19 @@ already existed but were unreachable from the intrinsic surface):**
   aliased to `to_le_bytes`/`to_be_bytes`. Now return the endianness-converted
   `T` (identity / `bswap`).
 
-**Open (pre-existing AOT-codegen defects, revealed by the new tests — not the
-wiring above):**
+**AOT-codegen fix landed (`CONV-AOT-BYTEARRAY-1`):** the `to/from_*_bytes`
+`[Byte; N]` intrinsics SIGSEGV'd under AOT.  Root cause was general — AOT `GetE`
+mis-classified a byte-element collection that crossed a function boundary
+(`List<U8>`/`List<I8>` marked as a *slice*; `[T; N]` left unmarked), so it used
+the wrong stride / dereferenced the list header.  A `List<U8>`/`[Byte; N]` is an
+i64-strided list object; true `&[U8]` slices are a distinct representation.
+Fixed in both the return-type and parameter register-marking paths
+(`verum_codegen/llvm`) — this also unblocks every `fn … -> [T; N]` and
+`fn(List<U8>)` under AOT.
 
-- **`CONV-AOT-F32BITS-1`** — `f32_to_bits`/`f32_from_bits` return `0` under AOT
-  (deep Float32 cast/parameter handling; the f64 forms are correct on both
-  tiers).
-- **`CONV-AOT-BYTEARRAY-1`** — the `to/from_*_bytes` `[Byte; N]` intrinsics
-  SIGSEGV under AOT (fixed-size byte-array codegen).
-
-Prefer interp, or the f64-bits / endianness / int↔float surface (green on both
-tiers), until the two AOT defects land.
+**Open (separate, pre-existing):** `CONV-AOT-F32BITS-1` — `f32_to_bits`/
+`f32_from_bits` return `0` under AOT (Float32 cast/parameter handling; the f64
+forms are correct on both tiers).
 
 ---
 
