@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `memory` (value-level interp 11/11 + AOT 11/11; 1 fix; raw-pointer surface deferred, 2026-06-25), `atomic` (interp 30/30 + AOT 16/30; operational suite, AOT raw-ptr path tracked, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `control`, `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 41/60; 3 wiring fixes, 2026-06-25), `float` (interp 85/85 + AOT 70/85; 3 fixes + 4 defect clusters tracked, 2026-06-25), `memory` (value-level interp 11/11 + AOT 11/11; 1 fix; raw-pointer surface deferred, 2026-06-25), `atomic` (interp 30/30 + AOT 16/30; operational suite, AOT raw-ptr path tracked, 2026-06-25), `arithmetic` (129 live / 19 @ignore, --interp), `type_info` (47/47), `control` (interp 36/36 + AOT 36/36; CONTROL-EXPECT-NIL fixed — likely/unlikely/expect were nil; 1 @ignore for generic-expect arithmetic, 2026-06-27), `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -586,6 +586,38 @@ catch_unwind<T, F>(f: F) -> Result<T, PanicInfo>
 random_float() -> Float               // OS RNG
 random_u64() -> UInt64
 ```
+
+### Conformance status — control ✅ value surface (both tiers)
+
+**36/36 GREEN on BOTH interp and AOT** (1 `@ignore`), via
+`core-tests/intrinsics/control/` (`verum test`).
+
+The **branch-hint** intrinsics are semantically transparent — they steer the
+optimiser but must return their primary operand unchanged: `likely(c)` /
+`unlikely(c)` return `c`, and `expect<T>(v, hint)` returns `v` (the hint is
+advisory only).
+
+**Fix landed (`CONTROL-EXPECT-NIL`):** `likely` / `unlikely` / `expect` all
+lower to `@intrinsic("expect", value, hint)`, which had **no registry entry** —
+so the name resolved to `LoadNil` and every branch-hint call returned `nil`.
+Registered `expect` with the identity-`Mov`-of-first-argument inline sequence
+(it returns the value and ignores the hint operand). Fixed on both tiers.
+
+Verified green: branch-hint identity (Int / Bool / Text), `nop()` /
+`assume(true)` / `debug_assert(true)` callable no-ops, `random_float()` ∈
+`[0.0, 1.0)`, `random_u64()` non-constant, and hints embedded in realistic
+control flow (a `likely` hot loop, an `unlikely` rare branch) computing
+identical results to the un-hinted form.
+
+**Known residual (`@ignore`d):** generic `expect<T>` returns the value with a
+mis-tagged (boxed) representation — correct for compare/print/assign but
+**arithmetic on the result yields garbage** (`acc + expect(i*i, 0)`); the
+non-generic `likely` / `unlikely` are unaffected.
+
+**Not value-tested:** the diverging `Never`-typed intrinsics (`trap`,
+`unreachable`, `panic`, `abort`, `unreachable_unchecked`, `panic_impl`) and the
+`catch_unwind` / `prefetch_*` surfaces (raw-pointer + unwinding harness) — see
+`core-tests/intrinsics/control/audit.md`.
 
 ---
 
