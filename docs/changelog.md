@@ -16,6 +16,37 @@ as historical record. The first public version is **0.1.0**.
 
 ## [Unreleased]
 
+### Fixed — arithmetic intrinsics AOT conformance: 129/129 both tiers (2026-06-29)
+
+`core-tests/intrinsics/arithmetic` now passes **129/129 under both the
+VBC interpreter and AOT** (`verum test --aot`), up from interp-only.
+Four fundamental AOT-codegen fixes:
+
+* **Phi-predecessor blocks in `build_maybe_int_wrap`** — the AOT lowering
+  of `checked_add/sub/mul/div` added the merge `phi` using block labels
+  captured *before* `lower_make_variant`, whose `malloc` + null-check
+  SPLITS the block (the real edge into the merge comes from `variant_ok`).
+  The stale labels made LLVM phi-elimination — even at `-O0` — write the
+  value into a dead predecessor, so the function returned the inner
+  payload instead of the `Maybe` pointer and `match checked_add(2,3) {
+  Some(v) … }` dereferenced the value-as-pointer → crash. Fixed by
+  capturing the true predecessor via `get_insert_block()` after the
+  variant allocation. The same defect was eradicated in `checked_neg/abs`
+  and `List.first` / `List.last`.
+
+* **`checked_neg` / `checked_abs` return `Maybe`** — they had returned the
+  raw wrapping result and panicked on `i64::MIN`, instead of `None` /
+  `Some(result)`.
+
+* **`wrapping_*_i8` narrow return uses the i64 register model** — a signed
+  narrow (`Int8`) return was truncated to `i8` then zero-extended by the
+  caller, losing the sign (`-128` read back as `128`). Narrow integer
+  return types now lower to `i64`.
+
+* **Width-aware overflow arithmetic** — `saturating` / `wrapping` /
+  `overflowing` / `div`-`rem`-`abs` now honour the per-op width +
+  signedness operands instead of always computing at `i64`.
+
 ### Refactored — kernel drift-defect collapse pass (2026-05-09)
 
 Four cohesive single-source-of-truth refactors landed across the
