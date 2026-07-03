@@ -3,7 +3,7 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 59/60 [2026-06-29; was 41/60]; 1 residual = `f32`_bits round-trip on a LET-BOUND `List<Float32>` — `law_f64_bits_round_trip` FIXED via the iter-float Deref float-mark fix [the AOT Deref dropped the float register mark, so `*x` of a `List<Float>` element read as raw i64; it now propagates `is_float_register(ref_reg)` → f64, like Mov/GradStop]; the let-bound element-type stamp doesn't survive the variable store/reload before `.iter()` — deep follow-up), `float` (interp 85/85 + AOT 91/92 [2026-06-29; was 70/85]; 1 residual = `law_fma_zero_addend` signed-zero — `assert_eq`→CmpG bit-compares floats so the fma's `+0.0` ≠ the mul's `-0.0`; a CmpG float-Eq branch is regression-prone [plain fcmp OEQ breaks NaN, oeq‖bit_eq breaks conversion] — deep follow-up needing the interpreter's exact float-Eq), `platform` ✅ complete (AOT 19/19, 2026-06-29), `runtime` ✅ complete (AOT 4/4, 2026-06-29), `memory` (value-level interp 11/11 + AOT 11/11; raw-pointer surface: **`ptr_offset`/`ptr_add`/`ptr_sub` element-scaling FIXED both tiers 2026-07-01** — they were byte-indexed, so `ptr_offset(p,1)` advanced 1 byte not 1 8-byte NaN-boxed slot [AOT `lower_ptr_add`/`sub` i8→i64 GEP; interp `offset×8`]; AOT validated v0=99 v1=20 v2=30, no regression; remaining: interp `ptr_read` identity-deref on a calloc'd List-backing ptr + broader memcpy/slice/uninit harness), `atomic` ✅ complete (interp 30/30 + AOT 30/30 [2026-06-29 re-measure, was 16/30]), `arithmetic` ✅ complete (interp 129/129 + AOT 129/129 via `verum test`, 19 @ignore; 4 fundamental AOT-codegen fixes 2026-06-29 — build_maybe_int_wrap phi-predecessor blocks [`checked_add/sub/mul/div` returned the inner value, not Maybe], `checked_neg/abs` now build Maybe instead of raw-value+panic, `wrapping_*_i8` narrow return uses the i64 register model, width-aware `saturating/wrapping/overflowing/div-rem-abs`), `type_info` (47/47), `control` (interp 36/36 + AOT 36/36; CONTROL-EXPECT-NIL fixed — likely/unlikely/expect were nil; 1 @ignore for generic-expect arithmetic, 2026-06-27), `runtime/tier` covered. Aggregate stays `partial` until the remaining submodules (float, memory, conversion, simd, tensor, gpu, runtime/*, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+status_detail: Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. **2026-07-03 runtime wave**: `type_info` suite completed (102 tests — exhaustive 17-primitive laws, 120-pair `T.id` distinctness, `T.min`/`T.max` bounds; interp 101/102, 1 pinned red = user-record `T.size` silent-8, task #8) + NEW suites `runtime/tier` (rewritten tier-agnostic — the old suite asserted `is_interpreted()==true`, unsatisfiable under --aot; 13/13), `runtime/time` (19/20; sleep/realtime were UNWIRED — sleeps returned instantly), `runtime/text` (48/48 after fixing GHOST FFI symbols `verum_char_*`/`verum_text_*` — emissions called symbols that exist nowhere while complete CharExtended/TextExtended handlers sat unused — and rewriting the small-string-only handler stubs that truncated `int_to_text` to 6 chars), `runtime/mem_raw` (35/35 — allocation-backed harness; the leaf `load/store_byte/i32/i64` had `{ 0 }` stub bodies that beat the dispatch table, so the whole Tier-0 raw byte/word surface was INERT), `runtime/cbgr` (23/23 — the public bridge `cbgr_allocate`/`cbgr_deallocate`/`cbgr_realloc` was link-surface only: no registry entries, nil results, and the realloc inline sequence emitted sub-op 0x63 = PtrAdd, i.e. reallocation computed `ptr+old_size`; now wired both tiers with interpreter AllocationHeader parity). Cross-cutting fixes in the same commit (`d31878ee8`): `List.as_mut_ptr` returned the LEN-FIELD address on the interpreter (the atomic suite had been atomically mutating the list length — self-consistent round-trips masked it), and the `PtrAdd`/`PtrSub`/`PtrDiff`/`PtrIsNull` family decoded int-tagged addresses as NULL. Interp aggregate 763/787 (+22 @ignore pins); AOT re-sweep in flight. `bitwise` ✅ complete (interp 127/127 + AOT 127/127 via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp 60/60 + AOT 59/60 [2026-06-29; was 41/60]; 1 residual = `f32`_bits round-trip on a LET-BOUND `List<Float32>` — `law_f64_bits_round_trip` FIXED via the iter-float Deref float-mark fix [the AOT Deref dropped the float register mark, so `*x` of a `List<Float>` element read as raw i64; it now propagates `is_float_register(ref_reg)` → f64, like Mov/GradStop]; the let-bound element-type stamp doesn't survive the variable store/reload before `.iter()` — deep follow-up), `float` (interp 85/85 + AOT 91/92 [2026-06-29; was 70/85]; 1 residual = `law_fma_zero_addend` signed-zero — `assert_eq`→CmpG bit-compares floats so the fma's `+0.0` ≠ the mul's `-0.0`; a CmpG float-Eq branch is regression-prone [plain fcmp OEQ breaks NaN, oeq‖bit_eq breaks conversion] — deep follow-up needing the interpreter's exact float-Eq), `platform` ✅ complete (AOT 19/19, 2026-06-29), `runtime` ✅ complete (AOT 4/4, 2026-06-29), `memory` (value-level interp 11/11 + AOT 11/11; raw-pointer surface: **`ptr_offset`/`ptr_add`/`ptr_sub` element-scaling FIXED both tiers 2026-07-01** — they were byte-indexed, so `ptr_offset(p,1)` advanced 1 byte not 1 8-byte NaN-boxed slot [AOT `lower_ptr_add`/`sub` i8→i64 GEP; interp `offset×8`]; AOT validated v0=99 v1=20 v2=30, no regression; remaining: interp `ptr_read` identity-deref on a calloc'd List-backing ptr + broader memcpy/slice/uninit harness), `atomic` ✅ complete (interp 30/30 + AOT 30/30 [2026-06-29 re-measure, was 16/30]), `arithmetic` ✅ complete (interp 129/129 + AOT 129/129 via `verum test`, 19 @ignore; 4 fundamental AOT-codegen fixes 2026-06-29 — build_maybe_int_wrap phi-predecessor blocks [`checked_add/sub/mul/div` returned the inner value, not Maybe], `checked_neg/abs` now build Maybe instead of raw-value+panic, `wrapping_*_i8` narrow return uses the i64 register model, width-aware `saturating/wrapping/overflowing/div-rem-abs`), `control` (interp 36/36 + AOT 36/36; CONTROL-EXPECT-NIL fixed — likely/unlikely/expect were nil; 1 @ignore for generic-expect arithmetic, 2026-06-27). Aggregate stays `partial` until the remaining submodules (float/memory/conversion residuals, simd, tensor, gpu, runtime/{os,tls,sync,io,syscall,async_ops}, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -837,7 +837,7 @@ type RecoveryError is
 
 ```verum
 tls_get_base() -> *mut Byte
-tls_slot_get(slot) -> Maybe<Int>   tls_slot_set(slot, value)
+tls_slot_get(slot: UInt8) -> *const Byte   tls_slot_set(slot: UInt8, value: *const Byte)
 tls_slot_clear(slot)               tls_slot_has(slot) -> Bool
 tls_frame_push() / tls_frame_pop()
 
@@ -867,6 +867,31 @@ num_cpus() -> Int
 sleep_ms(ms) / sleep_ns(ns)
 ```
 
+### Raw memory (`runtime/mem_raw.vr`)
+
+Raw-address (`Int`-pointer) memory operations — the byte-granular layer
+under `core/intrinsics/memory.vr`'s typed pointers.  Addresses are plain
+integers (obtain one from `cbgr_allocate` or FFI); all offsets are BYTES.
+
+```verum
+memcpy(dst: Int, src: Int, n: Int) -> Int      // non-overlapping
+memmove(dst: Int, src: Int, n: Int) -> Int     // overlap-safe
+memset(dst: Int, value: Int, n: Int) -> Int    // fills value % 256
+memzero(dst: Int, n: Int) -> Int
+memcmp(a: Int, b: Int, n: Int) -> Int          // 0 / <0 / >0
+
+strlen(s: Int) -> Int                          // to first NUL
+strcmp(a: Int, b: Int) -> Int
+
+load_byte(addr: Int) -> Int      store_byte(addr: Int, value: Int) -> Int
+load_i32(addr: Int) -> Int       store_i32(addr: Int, value: Int) -> Int
+load_i64(addr: Int) -> Int       store_i64(addr: Int, value: Int) -> Int
+```
+
+Conformance: `core-tests/intrinsics/runtime/mem_raw/` (overlap laws both
+directions, first-NUL strlen, byte-granular addressing, platform-endianness
+cross-check), driven over live `cbgr_allocate` blocks on both tiers.
+
 ### Sync (`runtime/sync.vr`)
 
 ```verum
@@ -884,10 +909,21 @@ memory_fence(order)  compiler_fence(order)
 ### CBGR (`runtime/cbgr.vr`)
 
 ```verum
-cbgr_validate<T>(ptr: *const T) -> Bool
+// Validation — non-trapping (returns the verdict; ChkRef-style traps are
+// the deref-site checks, not this API)
+cbgr_validate<T>(reference: &T) -> Bool
 cbgr_current_epoch() -> UInt64
 cbgr_advance_epoch()
-cbgr_get_generation(ptr) -> UInt32
+cbgr_get_generation(ptr: *const Byte) -> UInt32
+
+// Public allocation bridge — user-pointer API over the 32-byte
+// AllocationHeader model (size@0, align@4, generation@8, epoch@12,
+// flags@20).  Both tiers share the layout: AOT via the verum_cbgr_*
+// runtime, the interpreter via a bit-identical implementation.
+// Alignment is honoured up to 32 (power of two); 0 = failure.
+cbgr_allocate(size: Int, align: Int) -> Int
+cbgr_deallocate(user_ptr: Int)            // no-op on 0
+cbgr_realloc(user_ptr: Int, new_size: Int) -> Int  // preserves min(old,new)
 ```
 
 ### Text (`runtime/text.vr`)
