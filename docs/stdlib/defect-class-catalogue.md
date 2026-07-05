@@ -499,6 +499,115 @@ suite itself when it identifies new failure modes.
 | Manifestation | `AssertionFailed: left != right` (wrong arithmetic result, not a panic). |
 | Surfaced by | `core-tests/base/iterator/{integration,property}`; `audit.md §4.7`. |
 
+## 40. Type-name inference gaps mis-lower stdlib bodies at precompile (CLOSED 2026-07-05)
+
+**Class**: TYPE-NAME-INFERENCE-1.  Four sibling gaps in
+`extract_expr_type_name` / `infer_expr_type_name` each produced a
+silently-wrong lowering decision downstream: (a) the **Cast arm**
+resolved only single-ident `Path` targets, so `x as *mut CapAuditSlot`
+reported no type and a later `(*x).field` write resolved with
+`type_name=None` → global-intern slot index (wrote `CapAuditSlot.event`
+at slot 4 of a 2-field record — `commit`/`recent` corruption); (b) the
+**Deref arms** did not strip `*mut `/`*const `/`*volatile ` carriers,
+and wrapper carriers (`Heap<T>`/`Shared<T>`) must unwrap-or-report-
+UNKNOWN — a degenerate `Heap<>`/bare `Heap` name routes f-string
+Display dispatch to `Heap.fmt` against the unwrapped runtime value;
+(c) **SCREAMING_CASE static-mut receivers** hit the is-uppercase
+TYPE-namespace heuristic whose miss-fallback returned the static's
+NAME as the "type" (`let p = GLOBAL_HAZARD_DOMAIN.scan_hazards()`
+typed `p: "GLOBAL_HAZARD_DOMAIN"` → sibling calls qualified as
+`GLOBAL_HAZARD_DOMAIN.binary_search`); (d) **instance-method
+return-type resolution** handled only Path receivers, so
+`self.field.method()` chains resolved None.  Fixes: Cast → full
+`extract_type_name_from_ast`; Deref strips pointer carriers +
+wrapper-unwrap-or-None; static-mut receivers consult
+`static_mut_type_names` and never fall through; receiver resolution is
+recursive.  Fixed in `799cff9b2`; pinned by `core-tests/mem/hazard/`
++ `core-tests/mem/cap_audit_ring/` audits.
+
+## 41. Native IterNew reads unknown records as List headers (CLOSED interp 2026-07-05; AOT twin OPEN)
+
+**Class**: PROTOCOL-ITER-1.  The interpreter's `IterNew` type
+discrimination mapped every non-builtin `type_id` to
+`ITER_TYPE_LIST`, and `IterNext` then read the record's slots as a
+List `[len, cap, ptr]` header — memory-unsafe, value-dependent: an
+iterator record whose slot-0 value happened to decode `len <= 0`
+"worked" (silent empty loop), anything else walked garbage pointers
+(the hazard `reclaim` SIGSEGV that killed every parallel test run).
+Fix: `ITER_TYPE_PROTOCOL` — `IterNew` resolves a 1-arg `<Type>.next`
+with a real body (exact-name discipline) and `IterNext` dispatches the
+Iterator protocol via `call_function_sync`, unpacking the returned
+`Maybe`.  Codegen-side classification (`is_custom_iterator_type`)
+remains the preferred lowering; the runtime path is the safety net
+that makes the native lowering semantically identical.  The AOT
+custom-iterator leg exists but depends on obj-register type marking —
+the archive-body case is the open twin.  Fixed (interp) in
+`799cff9b2`; pinned by `core-tests/mem/hazard/audit.md §8`.
+
+## 42. `call_function_sync` clobbered the caller's r0 (`self`) (CLOSED 2026-07-05)
+
+**Class**: CALLSYNC-R0-CLOBBER-1.  The synchronous nested-call helper
+pushed frames with `return_reg=Reg(0)`; `do_return` unconditionally
+writes the callee's result into the caller frame's `return_reg`, so
+every consumer whose r0 was live — `self` in ANY method frame — had it
+silently replaced by the callee's return value.  Surfaced the moment
+ITER_TYPE_PROTOCOL called `Drain.next` from inside
+`ThreadHazardRecord.reclaim` (`self` became the returned `Maybe`;
+`self.retired = …` panicked "field write out of bounds …
+type='Maybe'").  Fix: save caller r0 before the nested dispatch,
+restore after (guarded on the stack returning to entry depth).  Fixed
+in `799cff9b2`.
+
+## 43. 8-byte atomic CAS vs raw-zero fresh static-mut cells (CLOSED 2026-07-05)
+
+**Class**: ATOMIC-CAS-ZEROINIT-1.  Size-8 atomics store NaN-boxed
+Value bit-patterns (task #39 contract), but `static_mut_cell_addr`
+allocates cells as RAW zero — payload-equivalent to boxed 0 for LOADS,
+bit-distinct for CAS.  A caller CAS-ing `expected == 0` against a
+never-stored cell could never take the first transition; since the
+inlined `fetch_add` lowering is a single-shot `AtomicLoad + Add +
+AtomicCas` (no retry loop), `cap_audit_ring`'s `NEXT_SEQ` silently
+lost every increment (`commit` returned seq=1 forever, `count()`
+stayed 0).  Fix: on CAS failure with `old_raw == 0 && expected == 0`,
+retry once against the raw-zero pattern.  NOTE: the missing CAS retry
+loop in the inlined fetch_add lowering is itself a latent
+correctness gap under real thread contention — tracked for the
+threading era.  Fixed in `799cff9b2`.
+
+## 44. Cross-module call ids overlapped module-local ids in archives (CLOSED 2026-07-05)
+
+**Class**: XMOD-CALL-ID-BAND-1.  Archive bytecode kept ctx-GLOBAL ids
+for cross-module `Call`-family references while module-local calls
+were remapped to contiguous `[0, N)`.  The id-keyed
+`external_function_names` map over overlapping id spaces is
+structurally ambiguous in EITHER priority order: external-first
+hijacked local calls (heap's local `get_heap` id 461 == the recorded
+cross-module id of `atomic_fetch_add_int` → `get_heap_stats`
+NullPointer whenever `core.mem.segment` was mounted); local-first had
+broken cross-module calls (`Deque.reallocate`'s `realloc` at foreign
+id 4 vs local `AdjacencyList.add_edge`).  Fix: cross-module ids
+re-home into the reserved band `[0x2000_0000, 0x4000_0000)`
+(`module::XMOD_CALL_ID_BAND_BASE`) at precompile — the id spaces are
+disjoint by construction and the name-based Tier-0 resolution is
+sound.  Fixed in `799cff9b2`; pinned by `core-tests/mem/heap/audit.md`.
+
+## 45. Allocating-wrapper runtime reprs vs compiled stdlib bodies (CLOSED interp 2026-07-05)
+
+**Class**: HEAP-INTORAW-1 / SHARED-STRONGCOUNT-1.  The Tier-0 runtime
+representations of the allocating wrappers (`Heap<T>` = CBGR data
+pointer past a 32-byte AllocationHeader; `Shared<T>` =
+`[ObjectHeader][refcount][value]`) do not match the source-level
+records in `core/base/memory.vr`, so any wrapper method whose compiled
+body reaches execution misreads memory (`Heap.into_raw`'s `self.ptr`
+surfaced the stored payload as a bogus type_id).  The intercept
+surface must cover BOTH dispatch paths — statically-resolved `Call`
+(`wrapper_runtime.rs`) and runtime `CallM` — and `clone` must bump the
+refcount on ALL THREE clone dispatch arms (SHARED block,
+universal-clone catch-all, cbgr-ref clone) with the binding-drop
+decrement in `DropRef` and `*shared` deref-to-inner in
+`handle_deref`.  Fixed in `799cff9b2`; pinned by
+`core-tests/mem/allocator/integration_test.vr §4/§5`.
+
 ## Cross-reference
 
 | Defect | Audit references | Close commits |
