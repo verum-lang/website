@@ -3,7 +3,7 @@ sidebar_position: 1
 title: net
 description: TCP, UDP, HTTP, TLS, DNS — V-LLSI-native networking with zero FFI.
 status: partial
-status_detail: Round 18 (2026-06-20) — first cross-tier `--aot` validation of a net module: `addr` is Tier-0 138/138, Tier-1 103/138 after the TUPLE-EQ-AOT codegen fix (tuple `==`/`!=` now lowered element-wise; was always-true under AOT). Remaining gap root-caused to DISP-EMPTY-AOT + PARSE-AOT (+ PRELUDE-FREEFN gating `:?` Debug) — see `addr/audit.md §3.5`. `addr` reclassified **stable→partial** to reflect the Tier-1 surface. Round 17d (2026-05-28) — URL-8 + WS-6 root causes isolated + source-side workarounds landed (qualified Result.* arms stripped + Sha1 chain broken). Round 17c (2026-05-28) — 10-defect SIGSEGV + cross-module-field close-out via byte-push + closure-free + qualified-arm + transitive-mutation-inline stdlib discipline. CIDR-1 + CIDR-2 + IPV6CAN-1 + URL-1 + URL-7 + URITPL-1 + HTTPRNG-1 + HTTPCACHE-1 + CONNEG-1 + LINKHDR-1 all CLOSED; 50+ regression tests transitioned from @ignore'd to GREEN under `--interp`. **Stable**: cidr, unix, url, ipv6_canonical, uri_template, http_range, http_cache, content_negotiation, link_header. **Partial**: addr (Tier-1 103/138 — TUPLE-EQ-AOT fixed; DISP-EMPTY + PARSE remain), dns (mock-resolver gated), http (transport harness gated), tls (backend pluggability gated). **Regression-only** (data-surface only — functional surface gated on harnesses): tcp, udp, h3, http2, http3, http_parser, proxy, quic, tls13, websocket (WS-6 stack-overflow pinned), weft, shutdown. Cross-tier `--aot` validation deferred until task #7 (AOT stdlib build cascade) closes.
+status_detail: Round 19 (2026-07-05) — **PRELUDE-FREEFN CLOSED end-to-end**: `f"{x:?}"` now binds `format_debug` implicitly (scanner keyed inline-prelude concrete mounts under `core` instead of `core.prelude`; consumer replay had no metadata fallback for unloaded source modules; the pipeline never injected the implicit prelude glob — all three fixed). **Cross-module `collection[i].field` OOB CLOSED**: archive dropped free-fn nested return generics (`Result<List<T>,E>`→bare `List`), so `let m=f().unwrap(); m[i].field` fell to the global field-interner — now composes `return_type_inner` with full nesting. `net/mod` umbrella suite added (26 GREEN); `cidr` block-boundary API (network_address/last_address/broadcast_address/normalize + Eq/Display) → 102 GREEN; `uri_template` RFC 6570 §3.2.2 list-comma + §3.2.8 empty-string fixed → 41 GREEN; `http_range` 51 GREEN (Index-field); `http_cache` 46 GREEN. New property/integration suites for 8 modules. Deep codegen defects pinned (@ignore'd LOCK-INs): TUPLE-DESTRUCTURE-INDEXED, INLINE-AGG-REF-ARG, HTTPPARSE-1 (feed compile-crash), select_best_media/coding codegen crash, v4-mapped dotted parse. Round 18 (2026-06-20) — first cross-tier `--aot` validation of a net module: `addr` is Tier-0 138/138, Tier-1 103/138 after the TUPLE-EQ-AOT codegen fix (tuple `==`/`!=` now lowered element-wise; was always-true under AOT). Remaining gap root-caused to DISP-EMPTY-AOT + PARSE-AOT (+ PRELUDE-FREEFN gating `:?` Debug) — see `addr/audit.md §3.5`. `addr` reclassified **stable→partial** to reflect the Tier-1 surface. Round 17d (2026-05-28) — URL-8 + WS-6 root causes isolated + source-side workarounds landed (qualified Result.* arms stripped + Sha1 chain broken). Round 17c (2026-05-28) — 10-defect SIGSEGV + cross-module-field close-out via byte-push + closure-free + qualified-arm + transitive-mutation-inline stdlib discipline. CIDR-1 + CIDR-2 + IPV6CAN-1 + URL-1 + URL-7 + URITPL-1 + HTTPRNG-1 + HTTPCACHE-1 + CONNEG-1 + LINKHDR-1 all CLOSED; 50+ regression tests transitioned from @ignore'd to GREEN under `--interp`. **Stable**: cidr, unix, url, ipv6_canonical, uri_template, http_range, http_cache, content_negotiation, link_header. **Partial**: addr (Tier-1 103/138 — TUPLE-EQ-AOT fixed; DISP-EMPTY + PARSE remain), dns (mock-resolver gated), http (transport harness gated), tls (backend pluggability gated). **Regression-only** (data-surface only — functional surface gated on harnesses): tcp, udp, h3, http2, http3, http_parser, proxy, quic, tls13, websocket (WS-6 stack-overflow pinned), weft, shutdown. Cross-tier `--aot` validation deferred until task #7 (AOT stdlib build cascade) closes.
 ---
 
 # `core.net` — Networking
@@ -55,11 +55,50 @@ tiers is itself a test failure.
 | `proxy/*`           | **regression-only**  | [core-tests/net/proxy](https://github.com/verum-lang/verum/tree/main/core-tests/net/proxy) — 8 unit. LoadBalancer 3-variant + rate-limit cost constants. Umbrella covers circuit_breaker / health_check / loadbalancer / rate_limit / retry / upstream_pool. |
 | `weft/*`            | **regression-only**  | [core-tests/net/weft](https://github.com/verum-lang/verum/tree/main/core-tests/net/weft) — 20 unit. Server middleware umbrella (CORS / request-ID injector / trust-IP allow-list / body-size limiter / gzip codec). Live server gated on TcpListener harness. |
 | `shutdown.vr`       | **regression-only**  | [core-tests/net/shutdown](https://github.com/verum-lang/verum/tree/main/core-tests/net/shutdown) — 8 unit. Graceful-shutdown coordinator + 3-variant Drainability ADT. |
-| `mod.vr`            | **stable**           | Re-export surface only — every name lifts to the originating module's status row above. |
+| `mod.vr`            | **stable**           | [core-tests/net/mod](https://github.com/verum-lang/verum/tree/main/core-tests/net/mod) — 26 tests (Round 19). The umbrella re-export contract: every test constructs a value through `mount core.net.{...}` (and the `core.net.prelude.*` glob) AND calls an impl method on it, so a dropped impl block re-manifests as a suite-wide failure (pins the umbrella-reexport-impl class, cf. `core.sys.{MemProt}`). addr / http / tls / dns / unix surfaces + prelude double-hop. |
 
 The status table is the runtime truth, not the file's `lifecycle`
 annotation. When the two diverge, the table is the source of truth for
 callers.
+
+### Round 19 (2026-07-05) — language-level fixes surfaced by the net suite
+
+Two fixes here are not net-specific — they are language-level defects the
+net conformance suite exposed, fixed once for **all** user code:
+
+* **PRELUDE-FREEFN — `f"{x:?}"` bound an unbound `format_debug`.** The
+  f-string Debug lowering targets the prelude free fn `format_debug`, but
+  it never resolved: (1) the precompile scanner keyed the inline prelude's
+  concrete named mounts (`super.text.format.format_debug`, `super.io.print`,
+  `super.math.{sin,…}`) under the *file's* module (`core`) instead of
+  `core.prelude`; (2) the consumer's glob-replay had a metadata fallback
+  only when the source module loaded as a `ModuleInfo` — an unmounted
+  source (`core.text.format` under a bare `mount core.prelude.*`) silently
+  no-op'd; (3) the pipeline compile path never injected the implicit
+  prelude glob at all. All three fixed — bare `range`, `format_display`,
+  and `f"{x:?}"` now resolve implicitly.
+
+* **Cross-module `collection[i].field` out-of-bounds.** `let m =
+  free_fn().unwrap(); m[i].field` on a cross-module record element baked a
+  wrong field index via the global `intern_field_name` fallback, because
+  the archive rendered a free fn's nested return generics
+  (`Result<List<ResolvedRange>, E>`) down to the bare base (`List`), losing
+  the element type. Fixed by rendering `return_type_inner` with full
+  nesting (`archive_ctx_loader::type_ref_full_name`) and composing it in
+  the `Call` arm of `infer_expr_type_name`. This flipped the `http_range`
+  and `link_header` resolve/lookup suites.
+
+**Deep codegen defects the suite pinned** (each an `@ignore`'d LOCK-IN —
+compile-time crashers must skip compilation):
+
+| Defect | Shape | Status |
+|---|---|---|
+| TUPLE-DESTRUCTURE-INDEXED | `let (a, b) = &list[i]` reads garbage; `list[i].0`/`.1` works | worked around in `link_header` |
+| RECORD-LET-REF-TYPE-LOSS | `let e = &list[i]; e.field[j].0.as_bytes()` fails method resolution; direct `list[i].field[j].0` works | worked around in `link_header` |
+| INLINE-AGG-REF-ARG | inline `&Aggregate { … }` as a call argument crashes codegen; `let x = …; &x` works | worked around in `http_range` |
+| HTTPPARSE-1 | `HttpParser.feed()` compile-crashes | `http_parser` feed laws pinned |
+| SELECTBESTMEDIA-CODEGEN | `select_best_media` / some `select_best_coding` calls crash codegen | `content_negotiation` select laws pinned |
+| IPV6-V4MAPPED-PARSE | `Ipv6Addr.parse("::ffff:1.2.3.4")` returns Err (no dotted-quad tail) | 2 `ipv6_canonical` laws pinned |
 
 ---
 
