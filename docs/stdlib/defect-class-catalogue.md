@@ -731,3 +731,52 @@ decrement in `DropRef` and `*shared` deref-to-inner in
 | Root cause (working) | A ctor-resolution path reachable from assignment-RHS synthesis carries a PERSISTENT registration-time TypeVar into call-site unification; the first use binds it, later uses collide. Instantiation-boundary freshening landed in `try_resolve_variant_constructor_with_arity`, but the leaking path is elsewhere (VERUM_TRACE_CTOR diagnostics landed to pin it). |
 | Workaround | Bind through an annotated `let` (`let d: Maybe<Int> = Maybe.Some(3); depth = d;`) or reorder so same-payload ctors group. |
 | Repro | 5-line `tup5.vr` (session scratchpad; to be promoted into `core-tests/base/maybe/regression_test.vr`). |
+
+## §53 — PACK-HEADER-STAMP-1 (uninitialized Pack headers → runtime-indistinguishable layouts) — CLOSED 2026-07-06
+
+| | |
+|---|---|
+| Class | AOT heap-object identity / nondeterminism |
+| Stable trigger | A slice/tuple Pack crossing any boundary that loses compile-time register marks: stored in a record field (`Chars { bytes: s.as_bytes() }`), passed as a `&[Byte]` param, returned from a fn — then consumed by `.len()` / element reads. |
+| Manifestation | `.len()` returns the Pack's PTR word (ASLR-floating garbage like 4309396287); `utf8_decode_char_len` NULL-derefs; every AOT text iterator collapses to zero iterations; run-to-run failing-set drift (headers were raw-malloc UNINITIALIZED — a genuine nondeterminism source). |
+| Root cause | `emit_checked_malloc` never initialized the 24-byte ObjectHeader; AOT lists zero theirs; so no runtime consumer could distinguish Pack `{ptr@24,len@32}` from List `{len@24,cap@32,ptr@40}` once compile-time marks were lost. |
+| Fix | `lower_pack` zeroes the header and stamps the canonical TUPLE TypeId (521); `lower_len` (hint-1 + list-marked arms), `lower_get_element` (runtime branch, phi merge) and `verum_generic_len` (521-check first) discriminate by the stamp. Strictly narrower: only stamped packs divert; every other tid keeps pre-fix reads. Commit 75ed5dc20. |
+| Guards | `slicefield.vr`, `charsnext.vr`, `loopdiff.vr` while-let leg; meta AOT sweep. |
+
+## §54 — FLOAT-FIELD-COMPOUND-1 (`obj.f += v` on Float fields = integer add over NaN-boxed bits) — CLOSED 2026-07-06
+
+| | |
+|---|---|
+| Class | VBC codegen operator selection |
+| Stable trigger | Compound assignment on a FLOAT record field: `p.a += 0.25`. Locals were fine; the Field arm never had a float branch. |
+| Manifestation | Field reads back 0/garbage (int add over IEEE bit patterns). Silent data corruption — found on DAY ONE by the new refined-field runtime assert catching the garbage in an in-range test (§55). |
+| Fix | Field-decl-type-driven `BinaryF` routing in `compile_compound_assignment`'s Field arm (`strip_refinement`-aware, so refined `Float{…}` fields classify too). Commit b1498acb6. Guard: `base/refinement` compound test + `fcomp.vr` both tiers. |
+
+## §55 — REFINE-FIELD-DYNAMIC-BYPASS-1 (refined record fields unchecked for DYNAMIC values) — PHASE 1 CLOSED 2026-07-06
+
+| | |
+|---|---|
+| Class | Refinement enforcement hole (red-team find) |
+| Stable trigger | `Conf { level: nan_val() }` where `fn nan_val() -> Float { 0.0/0.0 }` into `level: Float{it >= 0.0, it <= 1.0}` — or any out-of-range value arriving through a call/variable rather than a literal. |
+| Manifestation | Constructs successfully; field reads back NaN/out-of-range. Literals were E500-rejected by SMT; params/returns had runtime asserts (T1-F); FIELDS had neither for dynamic values. |
+| Fix (phase 1) | `(type, field) → predicate` map captured at decl AST; runtime Assert emitted at all four field-write shapes (record literal, ctor-form, assignment, compound) with a conservative free-var guard, fail-open on key miss. Ordered float compares make NaN fail `>= 0.0` in BOTH tiers. Message: `refinement violation: field 'Type.field'`. Commit b1498acb6; trap specs `vcs/specs/L1-core/refinement/`. |
+| Phase 2 (open) | Bake-wide predicate export/import + archive `FieldDescriptor` predicate carriage (format-versioned) so ARCHIVE-loaded types (OracleConfig) trap in user cogs; variant record-fields; documented holes: writes through `&mut` refs, `SetE`, unsafe. |
+
+## §56 — AOT-DEVIRT-NIL-FALLBACK-1 (bare method + untyped receiver + suffix collision → silent nil) — OPEN (channel fix designed)
+
+| | |
+|---|---|
+| Class | AOT devirtualization |
+| Stable trigger | `for ch in s.chars() { … }` under `--aot` (any for-loop over a custom iterator OBTAINED FROM A METHOD CALL — method-call results carry no register type: the reg_types fixpoint has no CallM arm). |
+| Manifestation | Loop body executes ZERO times (interp: correct). The bare `next` on the untyped `__for_iter` has 171 same-suffix candidates; every devirt strategy rejects; `lower_call_method`'s terminal fallback silently sets the dst register to nil (const_zero) — read as `Maybe.None`. |
+| Failed fixes (evidence) | (1) VBC-side qualified-emit at the for-desugar — regressed interp 720→678 (qualified CallM changes interp dispatch for adapter/protocol iterables); (2) runtime type_id switch at the nil terminal — over-fired 2407×/compile (the gate matches the ENTIRE stdlib polymorphic-dispatch class: size_hint 163 candidates …) → LLVM SIGSEGV. Both reverted. |
+| Designed fix | VBC→AOT register-type CHANNEL: per-function `register_type_hints` side-table in FunctionDescriptor (format minor 0→1), populated at `compile_for_custom_iterator` (the classifier KNOWS the type), consumed by the AOT reg_types pass so the EXISTING owner-equality resolves statically. Opt-in by construction — cannot over-fire. Implementation in flight. |
+
+## §57 — COLLECT-FROMITER-2 (adapter-chain `.collect()` → bogus-owner from_iter panic) — RUNTIME LEG CLOSED 2026-07-06
+
+| | |
+|---|---|
+| Class | Generic-body type-param erasure (interp dispatch) |
+| Stable trigger | `.map(...).collect()` / `.chain(...).collect()` — any collect whose receiver is an adapter RECORD rather than an eagerly-intercepted List. |
+| Manifestation | Panic `method 'FFIAbi.from_iter' not found …` listing the 8 real implementors. Root: generic `collect` body `C.from_iter(self)` compiles with target C ERASED into an instance-form call; runtime owner recovery reads a colliding type-id. |
+| Fix (runtime leg) | `handle_call_method` intercept on the from_iter shape: locates the iterator among {receiver, arg0} (BOTH miscompile layouts observed), gated on candidate's own type having `.next`, drains via `call_function_sync(<Type>.next)` until `Maybe.None`. Erased target defaults to List (the entire pinned surface); Set/Map targets = codegen leg (open). Commit 928f6cd75; guard `collx.vr` + meta 835/0/41. |
