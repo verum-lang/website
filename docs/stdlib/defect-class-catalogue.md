@@ -654,3 +654,80 @@ decrement in `DropRef` and `*shared` deref-to-inner in
 - [`core-tests/INVENTORY.md`](https://github.com/verum-lang/verum/tree/main/core-tests/INVENTORY.md) — full conformance suite inventory + per-round session markers.
 - [`net.md` status table](/docs/stdlib/net) — current per-submodule status with CLOSED markers.
 - [`status-convention.md`](/docs/stdlib/status-convention) — how to interpret the status keywords.
+
+## 46. Cross-module simple-name type-registry collision (CLOSED 2026-07-06)
+
+| Field | Value |
+|---|---|
+| Defect class id | **META-GROUP-XMODULE-1** |
+| Stable trigger | Two stdlib modules declare types with the same SIMPLE name and both reach the lazy archive loader's walk (`meta.token.Group` record vs `math.algebra.Group` protocol vs `cli.spec.Group` record). |
+| Manifestation | `field write out of bounds: field index N … type='X'` at record construction, load-order dependent (adding test files to a folder flips the failing set); AOT: `llvm::SmallVectorBase::grow_pod` SIGSEGV cascades + non-deterministic per-run failing sets. |
+| Root cause | `type_name_to_id` / `type_field_layouts` / `type_field_type_names` were simple-name keyed with first-wins across every loaded archive module; the protocol-stub pass claimed the name first and `import_archive_type_with_protocol_remap` silently DROPPED later same-named types; record literals of a dropped type resolved field indices via the global-intern fallback. |
+| Fix (landed) | Module-qualified registry keys (`"core.meta.Group"`) registered unconditionally alongside the first-wins simple key; mount-aware re-keying (`resolve_record_type_key` + `CodegenContext.mounted_types`); qualified-first type-id remap in `merge_archive_function_bodies`; benign-homonym downgrade in the type-table health checker; simple-name side tables ownership-gated. Commits `bfca381db` + `fe1d0b4ba`. |
+| Pinned by | `core-tests/meta/token/regression_test.vr` (canary — validate across multiple suite compositions). |
+
+## 47. Bare `type X is Y;` single-ident classification (CLOSED 2026-07-06)
+
+| Field | Value |
+|---|---|
+| Defect class id | **META-SPAN-ALIAS-1** |
+| Stable trigger | `type Span is MetaSpan;` — a bare known-type identifier after `is` (55+ alias-intent declarations across `core/`). |
+| Manifestation | Alias-annotated lets of record literals compiled as VARIANT constructions (`MakeVariant` + payload-slot writes) while reads used record `GetF` — one-slot shift, `s.id` reading back heap-pointer bit patterns, `NullPointerAt` in methods. |
+| Root cause | The grammar form is ambiguous (`type_expr ;` vs single-variant `variant_list ;`); the parser committed to the VARIANT reading for every bare identifier (task #13's marker-enum idiom), silently turning every alias into a bogus enum. |
+| Fix (landed) | Module-level deferred classification at the parse funnel (`verum_fast_parser/src/normalize.rs`): single bare nullary variant re-classifies to `TypeDeclBody::Alias` when the name resolves to a known type (module-local decl, explicit mount, well-known primitive); marker idiom (`type E is Closed;`) and the leading-pipe form stay enums. Upstream of typecheck/VBC/AOT/metadata/LSP. |
+| Pinned by | `core-tests/meta/span/unit_test.vr::test_span_alias_accepts_meta_span_value` + `tests/type_alias_test.vr`. |
+
+## 48. Refinement-typed record fields lose runtime-representation classification (CLOSED 2026-07-06)
+
+| Field | Value |
+|---|---|
+| Defect class id | **META-REFINED-FIELD-FLOATCMP-1** |
+| Stable trigger | Record fields typed `Float{>= 0.0, <= 1.0}` / `Int{…}` (oracle.OracleConfig), compared or arithmetic'd at a call site. |
+| Manifestation | `a.conf < b.conf` returns false for 0.4 < 0.7 — the compare lowered to a SIGNED-INT compare over raw IEEE-754 bits; f-strings printed values correctly (the value itself was fine). |
+| Root cause | Three legs: `extract_type_name_from_ast` had no `Refined` arm (field-type names stored as a truncated debug dump), the canonical `well_known_types::type_names` classifiers matched exact names only, and `resolve_field_type_ref` had no `Refined` arm (baked descriptors carried no usable TypeRef). |
+| Fix (landed) | `strip_refinement` in `verum_common::well_known_types::type_names` (all classifiers see the base); `Refined` arms in both AST-name extraction and descriptor TypeRef resolution. Refinement predicates unaffected (assert emission reads the AST). |
+| Pinned by | `core-tests/meta/oracle/unit_test.vr` config-compare tests + property monotonicity laws. |
+
+## 49. Interp test harness ran no type checker (CLOSED 2026-07-06)
+
+| Field | Value |
+|---|---|
+| Defect class id | **META-TEST-TYPECHECK-1** |
+| Stable trigger | Any type error inside a `core-tests/` file under `verum test --interp` (canonical: `candidates: List.of(a).append(List.of(b))` — `append` returns `()` into a `List<T>` field). |
+| Manifestation | Test compiles, then dies at runtime far from the mistake: `NullPointerAt opcode 0x66`, `method '().append' not found on receiver of runtime kind ()`. Interp-vs-AOT "divergence" that was really the missing checker. |
+| Root cause | `compile_module_with_stdlib` (the interp/property harness path) contains NO `verum_types` phase — strictly more lenient than both `verum run --interp` (validate_module) and `verum test --aot` (full pipeline). |
+| Fix (landed) | `build_stdlib_test_module` preflights each standalone test file through `run_check_only` (the `verum check` entry), per-file cached. Escape hatch for triage sweeps: `VERUM_TEST_LENIENT_TYPES=1`. |
+| Pinned by | The rewritten oracle/hygiene/diakrisis suites (list literals) — a reintroduced `()`-into-`List<T>` now fails compile. |
+
+## 50. Dotted wanted keys squatted by bare-name descriptors (CLOSED 2026-07-06)
+
+| Field | Value |
+|---|---|
+| Defect class id | **DELIM-FANOUT-SQUAT-1** |
+| Stable trigger | A method call `x.m()` on a typed receiver harvests `Type.m` into the lazy loader's wanted set while ANY earlier-walked archive module exports a bare function named `m` (`close`, `open`, `read`, …). |
+| Manifestation | Compile-time devirtualization binds `Type.m` to the unrelated bare function — `Delimiter.close()` dispatched to an io-driver `close(fd) -> ()`; result Unit flowed into `Maybe` matches (`method '().unwrap' not found`). Composition-dependent (which module walks first). |
+| Root cause | The wanted-key suffix fanout registered a descriptor under ANY wanted key with a matching leaf; the (dotted-wanted, bare-descriptor) arm had no parent-type check. |
+| Fix (landed) | That arm now requires the descriptor's own `parent_type_name` to equal the wanted key's type segment. |
+| Pinned by | `core-tests/meta/token/unit_test.vr` Delimiter open/close tests + property pair-matching laws. |
+
+## 51. `for x in &record.list_field` iterates zero times (CLOSED 2026-07-06)
+
+| Field | Value |
+|---|---|
+| Defect class id | **REFFIELD-LIST-FORITER-EMPTY-1** |
+| Stable trigger | `for arg in &attr.args { … }` — iterating a List FIELD through a `&record` receiver (stdlib parse_autopoietic; any user code with the same shape). |
+| Manifestation | Loop body never runs (3-element list, zero iterations) — functions silently return their fall-through value; post-classifier-fix the interp SIGSEGV'd instead (field-ref address read as a List header). |
+| Root cause | Two legs: the for-loop iterable classifier missed `&`-prefixed collection type names (routed to the custom `.next()` lowering whose CallM against a CBGR ref silently yields None); interp `IterNew` deref'd only the register-ref encoding, not field ThinRefs. |
+| Fix (landed) | Classifier strips reference prefixes before the builtin-collection match; `IterNew` derefs via `resolve_arg_value` (all three reference shapes). |
+| Pinned by | `core-tests/meta/diakrisis_attrs/integration_test.vr` parse_autopoietic both-present/order-independent. |
+
+## 52. Generic-ctor instantiation staleness in the checker (OPEN)
+
+| Field | Value |
+|---|---|
+| Defect class id | **GENERIC-CTOR-FRESHNESS-1** |
+| Stable trigger | Two assignments of the same generic variant ctor with DIFFERENT payload types in one function: `epsilon = Maybe.Some(Text…); depth = Maybe.Some(3);`. |
+| Manifestation | E400 `expected 'Int', found 'Text'` on the SECOND assignment (order-symmetric — swapping flips the error). `verum run`/`verum check` reject valid code; the interp test harness now surfaces it too (post §49). |
+| Root cause (working) | A ctor-resolution path reachable from assignment-RHS synthesis carries a PERSISTENT registration-time TypeVar into call-site unification; the first use binds it, later uses collide. Instantiation-boundary freshening landed in `try_resolve_variant_constructor_with_arity`, but the leaking path is elsewhere (VERUM_TRACE_CTOR diagnostics landed to pin it). |
+| Workaround | Bind through an annotated `let` (`let d: Maybe<Int> = Maybe.Some(3); depth = d;`) or reorder so same-payload ctors group. |
+| Repro | 5-line `tup5.vr` (session scratchpad; to be promoted into `core-tests/base/maybe/regression_test.vr`). |
