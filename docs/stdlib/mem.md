@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: '2026-07-05 (interp): ALL 15 modules GREEN - 861 passed / 0 failed / 0 ignored at --test-threads 4 (was: hazard whole-module SIGSEGV, cap_audit_ring 27/9, allocator 61/2, +3 @ignore pins). Five fundamental verum_vbc defect classes fixed in 799cff9b2; pins closed in c3e4236bb. Held at partial pending the --aot sweep (in flight).'
+status_detail: '2026-07-06: interp 861/861/0 (all 15 modules). AOT: failures 123 -> 48 after six fundamental codegen classes (53e13bf29+72d2a9578); fully green both tiers: size_class 88, capability 97, fat_ref 42, cap_audit 40, epoch 43, diagnostics 29. Residual 48 = concurrent-wave text-AOT .message() class + Shared-AOT + 4 singletons (attributed on pure HEAD; repros filed). Held at partial.'
 ---
 
 import ModuleStatus, {
@@ -68,6 +68,34 @@ The dedicated-suite-pending modules are tracked in
 `core-tests/INVENTORY.md`; new modules graduate to <TierBadge tier="both" />
 once all four test files land **and** the audit deferrals all close on both
 tiers.
+
+### Defect status (2026-07-06 `--aot`) — 123 → 48 failures; 6 modules green both tiers
+
+Six fundamental classes landed (`53e13bf29` + `72d2a9578`; the second
+re-lands the interp handler batch dropped by a concurrent branch
+reset).  Post-fix per-module `--aot` (was → now): size_class 50/38 →
+**88/0**, capability 93/4 → **97/0**, fat_ref 40/2 → **42/0**,
+cap_audit 39/1 → **40/0**, epoch **43/0**, diagnostics **29/0**,
+hazard 44/3 → 46/1, header 58/9 → 65/2, cap_audit_ring 27/9 → 34/2,
+allocator 40/23 → 50/13, arena 51/9 → 53/7, segment 38/7 → 39/6, heap
+45/7 → 46/6, thin_ref 38/1 → 38/1, mod 77/10 → 77/10.  Interp gate
+re-validated on the same binary: **861/861/0**.
+
+| Class | One line |
+|---|---|
+| CONST-ARRAY-RETTYPE-1 | Composite-typed consts archived `return_type=Unit` → AOT `GetE` indexed the zeroed object header (`SIZE_CLASSES[0]`=0). Declared TypeRef now rides into the descriptor. |
+| DEREF-INTERIOR-1 | `Deref` of a `RefListElement` result double-dereferenced (record element's zero header word as an address — ring `commit` EXC 0x18); interior marks pass through `Deref` and survive `Mov`. |
+| CLONE-AOT-ALIAS-1 | AOT `Clone` pointer-aliased heap objects (`[Slot{…}; 256]` = 256 aliases of one slot); now `checked_malloc+memcpy` with statically-tracked sizes, cleared on register reuse. |
+| HEAP-INTORAW-1 (AOT twin) | Transparent-Heap identity for `into_raw`/`from_raw` + statically-true `is_valid` on both dispatch forms. |
+| SIGNATURE-PREPASS-1 | Stage-1 method stubs carry declared return types — the for-in classifier now sees `List.drain → Drain<T>` regardless of module order; `reclaim` compiles to the protocol loop on BOTH tiers. |
+| PRECOMPILE-TARGET-SWEEP-1 | Stdlib walkers skip `target/` — harness residue was compiled as stdlib (355 of 580 field-intern fallbacks) and thrashed the precompile hash. |
+
+Residual 48, attributed on **pure HEAD** (`d1c721f36..14007a8a1`
+window, minimal repros filed): the archive f-string-of-int
+`.message()` memmove crash under `--aot` (every error-variant message
+test across segment/arena/heap/allocator/mod), `Shared.strong_count`
+AOT, ring `recent()` slot-0 skip, and 4 singletons — the concurrent
+text/float-AOT wave's frontier; coordination data handed over.
 
 ### Defect status (2026-07-05 `--interp`) — frontier CLOSED
 
