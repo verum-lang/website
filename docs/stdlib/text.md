@@ -2,8 +2,8 @@
 sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
-status: regression-only
-status_detail: Sweep on 2026-05-27. All §A-§G + §I-§U regression classes CLOSED under --interp. §D (function-id collision for Text.from_int / concat / push_byte / reserve / make_ascii_*) CLOSED transitively via task #47 stage-3 stub remap (commits 962f44ed0 + 1528fd0a5 + d724554f2) — all 7 §D regression tests pass. §H (NEW 2026-05-27) auto-deref defect for (&Primitive).value_self_method() surfaced via format_hex/binary/octal; fundamental workaround landed in core/text/format.vr (let-binding deref discipline) — 9/9 unit + 4/4 PASS-GUARD GREEN; underlying codegen fix pinned @ignore. text/format extended +67 unit tests (commit aebc0cd8f) covering FormatSpec advanced builders + int_to_text + module-level format_hex/binary/octal/lower_exp/upper_exp + TextFormatter direct API + sign handling. AOT-path validation gated on pre-existing stdlib AOT blockers (sync_connect_binlog + translate arity).
+status: partial
+status_detail: Sweep 2026-07-11 (dual-tier campaign round 1). INTERP 1213/1222 (99.3%) — 8 root-caused classes, 6 closed fundamentally (RETNAME-CARRY-1/VBC v2.6 carried return-type names; TUPLE-TYPE-TRACK-1; CALLM-KEEP-CLOSURE-1 prune fix; SET_E-FATREF write parity; SELF-MUT-RECV-COHERENCE-1; NEVER-ABSORB-1; RSPLIT-ORDER-1 + MAKE-ASCII-INPLACE-1 stdlib contracts). Parked with pins: builder Display + rational RefField-through-ref-param (reference-model pillar), 2 in-suite-only flakes, 2 peer-regressed deref-mut persists (task #45). AOT leg is the NEXT round (slice: case_fold 36/64, bigint 60/77).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -11,23 +11,19 @@ status_detail: Sweep on 2026-05-27. All §A-§G + §I-§U regression classes CLO
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
-  status="regression-only"
-  detail="Sweep on 2026-05-27.  Under --interp every documented §-class is either closed (active green guard) or pinned with a regression test.  Closed since the 2026-05-17 sweep: §D (function-id collision for Text.from_int / concat / push_byte / reserve / make_ascii_*) — transitively closed via task #47 stage-3 stub remap (commits 962f44ed0 + 1528fd0a5 + d724554f2), all 7 §D regression tests pass.  Surfaced + closed 2026-05-27: §H (auto-deref defect for `(&Primitive).value_self_method()`) — surfaced by the new module-level format_hex / format_binary / format_octal wrappers which silently returned hex-of-pointer-bits; fundamental workaround landed in core/text/format.vr (let-binding-deref discipline); 9/9 unit + 4/4 PASS-GUARD GREEN; underlying codegen fix `@ignore`d for follow-up.  text/format suite extended +67 unit tests in commit aebc0cd8f covering FormatSpec advanced builders + int_to_text + module-level format_hex / format_binary / format_octal / format_lower_exp / format_upper_exp + TextFormatter direct API (write_str / write_char / write_int / write_int_base / accessors / padding-under-all-alignments / precision-truncation / custom fill / type-spec dispatch / alternate-form prefix emission) + sign handling.  AOT-path validation gated on pre-existing stdlib AOT blockers (sync_connect_binlog + translate arity); same gate as adjacent stdlib modules."
+  status="partial"
+  detail="Sweep 2026-07-11 — dual-tier campaign round 1. INTERP: 1213/1222 (99.3%) across the text/ tree; every module except three pinned islands is fully green (text/text 462/465, char 130/130, case_fold 64/64, builder 51/52, format 146/146, regex 59/59, tagged_literals 49/49, bytes/cow/storage green, numeric 222/234 with 10 historical @ignores, NEW mod/ umbrella suite 18/19). Six defect classes were closed at the fundamental level this round: RETNAME-CARRY-1 (VBC format v2.6 — function descriptors carry the source-level return-type name verbatim; retires the PTR-carrier→USize→Int-dispatch class and base-only generic loss), TUPLE-TYPE-TRACK-1 (tuple-aware type splitting/projection through match payloads and TupleIndex), CALLM-KEEP-CLOSURE-1 (archive mount-prune follows CallM method edges + always keeps primitive impls), SET_E-FATREF-1/SLICE-ELEM-WRITE-1/ADDI-RESOLVE-1 (interpreter write-side representation parity on slices), SELF-MUT-RECV-COHERENCE-1 (runtime honors callee-declared &mut self regardless of call-site registry timing), RSPLIT-ORDER-1 + MAKE-ASCII-INPLACE-1 (stdlib contract corrections). AOT parity is the NEXT round (representative slice: case_fold 36/64, bigint 60/77) — tracked in task #41."
   defects={[
-    {area: 'text', summary: 'All previously-open defects CLOSED or pinned.  §D function-id collision closed transitively via task #47 stage-3 stub remap.  Remaining open: §Y (AOT typechecker mount-scoped name resolution — `core.cli.error.ParseError` shadows `core.text.ParseError` in AOT pass; workaround via `ParseError.new` constructor).'},
-    {area: 'char', summary: '§A (make_ascii_upper/lowercase) + §C (from_digit hex case) + §E (AnyChar.matches) CLOSED 2026-05-14.  §B (encode_utf8 / encode_utf16 CallM intercept) CLOSED 2026-05-16 — pinned architectural rule: every primitive NaN-boxing to foreign-kind Value MUST have CallM-path intercept for &mut-arg methods.  2 minor remaining defect probes pinned @ignore: §B residual eq_ignore_ascii_case false-negative + §D general_category misroute.'},
-    {area: 'format', summary: 'All known defects CLOSED.  §A (format_display / format_debug closure-dispatch) CLOSED 2026-05-15 transitively.  §H (auto-deref defect class) surfaced + workaround landed 2026-05-27 (commit aebc0cd8f).  108/108 unit tests + 12/12 PASS-GUARDs GREEN.'},
-    {area: 'builder', summary: 'All known defects CLOSED. 23/23 unit pass.'},
-    {area: 'regex', summary: 'All 5 defects CLOSED — extract_string CBGR-deref normalisation + TensorSubOpcode 0xFF collision fix. 31/31 unit pass.'},
-    {area: 'tagged_literals', summary: 'All known defects CLOSED transitively. 29/29 unit pass, plus property / integration / regression.'},
-    {area: 'case_fold', summary: 'Fold + compare/equal under ASCII-NOCASE complete.  Property + regression suites GREEN.'},
-    {area: 'numeric/decimal', summary: 'Cascading from bigint close — §A Int.neg dispatch / §B function-id collision / §C cascade. Full re-validation pending.'},
-    {area: 'numeric/bigint', summary: '21/21 unit GREEN.  All tasks #14/#15/#16/#17 closed.'},
-    {area: 'numeric/bigdecimal', summary: 'Cascading from bigint close.  Constructor + sign guards GREEN.  Add/mul body re-validation pending (2 @ignore regression pins).'},
-    {area: 'numeric/rational', summary: 'Cascading from bigint close — full re-validation pending.'},
-    {area: 'numeric/modular', summary: '21-test conformance suite landed; complete outside the §A transitive block.'},
+    {area: 'text', summary: '462/465. Parked pins: sort-via-cmp ==Less + fold_build_format pipeline (in-suite-only manifestation — runner-context class, task #40); 2 deref-mut persists regressed by peer commit 0ec4bfbe4 (task #45). All §A-§Z campaign classes otherwise CLOSED.'},
+    {area: 'char', summary: '130/130 green; 2 historical @ignore probes retained (§B eq_ignore_ascii_case residual, §D general_category misroute).'},
+    {area: 'format', summary: '146/146 green — CALLM-KEEP-CLOSURE-1 closed the mount-dependent f-spec debug poisoning (f\"{n:?}\" silently ran Text.fmt_debug on Int receivers).'},
+    {area: 'builder', summary: '51/52 — Display through f-string parked: RefField-through-ref-param inside baked fmt (write_str(&self.buf)) renders the raw pointer; reference-model pillar work.'},
+    {area: 'case_fold', summary: '64/64 green — RETNAME-CARRY-1 closed the Ordering→USize→Int.reverse dispatch class.'},
+    {area: 'regex + tagged_literals + bytes + cow + storage', summary: 'All green.'},
+    {area: 'numeric', summary: '222/234: bigint 76/77 wave-green (div_rem tuple projection closed by TUPLE-TYPE-TRACK-1); rational 2 parked (&other.numerator RefField-through-ref-param — same class as builder); 10 historical @ignores across decimal/bigdecimal/modular.'},
+    {area: 'mod (NEW)', summary: 'Umbrella manifest suite: re-export reachability + prelude legs + SSO/UTF8/replacement-char constant pins; 18/19 (fold_build pipeline parked with text).'},
   ]}
-  sweepDate="2026-05-27"
+  sweepDate="2026-07-11"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -192,8 +188,9 @@ s.count_matches(pattern: &Text) -> Int         // alias of count
 ```verum
 s.split(sep: &Text) -> List<Text>
 s.splitn(n: Int, sep: &Text) -> List<Text>
-s.rsplit(sep: &Text) -> List<Text>
-s.rsplitn(n: Int, sep: &Text) -> List<Text>
+s.rsplit(sep: &Text) -> List<Text>        // parts RIGHTMOST-FIRST
+s.rsplitn(n: Int, sep: &Text) -> List<Text> // rightmost-first; unsplit
+                                            //   remainder is the LAST element
 s.split_whitespace() -> List<Text>
 s.split_ascii_whitespace() -> List<Text>
 s.split_inclusive(sep: &Text) -> List<Text>    // keep separator
@@ -202,6 +199,14 @@ s.rsplit_once(sep: &Text) -> Maybe<(Text, Text)>
 s.words() -> List<Text>                        // split_whitespace alias
 s.lines() -> Lines
 ```
+
+> **`rsplit` order contract (fixed 2026-07-10, RSPLIT-ORDER-1).**
+> `"a,b,c".rsplit(",")` → `["c", "b", "a"]` and
+> `"a,b,c,d".rsplitn(2, ",")` → `["d", "a,b,c"]` — the industry-standard
+> rightmost-first order (Rust `str::rsplit`). Before the fix both
+> returned left-to-right parts, making full `rsplit` observably
+> identical to `split`. Pinned by
+> `core-tests/text/text/regression_test.vr::regression_z_rsplit*`.
 
 ### Trimming & Stripping
 
@@ -235,6 +240,14 @@ s.eq_ignore_case(other: &Text) -> Bool
 s.make_ascii_uppercase()                       // in-place, &mut self
 s.make_ascii_lowercase()
 ```
+
+> **In-place case conversion is representation-correct (fixed
+> 2026-07-10, MAKE-ASCII-INPLACE-1).** `make_ascii_*` is implemented as
+> rebuild-and-assign (`*self = self.to_ascii_*()`), which is correct
+> for every Text form (SSO-inline value, static literal, heap record).
+> The previous raw-pointer byte-mutation silently no-oped on SSO/built
+> texts and corrupted heap literals at value-stride offsets. Pinned by
+> `regression_z_make_ascii_*` (one guard per representation class).
 
 ### Replacement
 
