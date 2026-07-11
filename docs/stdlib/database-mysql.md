@@ -1,6 +1,8 @@
 ---
 title: core.database.mysql — pure-Verum MySQL 8 driver
 description: Pure-Verum implementation of the MySQL 8 binary protocol — no libmysqlclient, no FFI shim. Affine transactions, COM_STMT_PREPARE/EXECUTE prepared statements, caching_sha2_password authentication, REPEATABLE READ default isolation.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.database.mysql` — pure-Verum MySQL 8 driver

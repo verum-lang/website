@@ -3,7 +3,7 @@ sidebar_position: 3
 title: eval
 description: Call-by-push-value term algebra — foundations for effects and evaluation strategies.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/eval/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect.
+status_detail: Conformance suites landed in core-tests/eval/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. Several @ignore pins flag a tracked toolchain task static-method dispatch defect.
 ---
 
 # `core.eval` — Call-by-Push-Value

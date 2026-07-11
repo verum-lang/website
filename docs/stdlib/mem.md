@@ -3,7 +3,7 @@ sidebar_position: 4
 title: mem
 description: Capability-Based Generational References — Heap, Shared, allocator, raw ops.
 status: partial
-status_detail: '2026-07-06: interp 861/861/0 (all 15 modules). AOT: failures 123 -> 48 after six fundamental codegen classes (53e13bf29+72d2a9578); fully green both tiers: size_class 88, capability 97, fat_ref 42, cap_audit 40, epoch 43, diagnostics 29. Residual 48 = concurrent-wave text-AOT .message() class + Shared-AOT + 4 singletons (attributed on pure HEAD; repros filed). Held at partial.'
+status_detail: '2026-07-06: interp the covered subset/0 (all 15 modules). AOT: failures 123 -> 48 after six fundamental codegen classes (a landed fix+a landed fix); fully green both tiers: size_class 88, capability 97, fat_ref 42, cap_audit 40, epoch 43, diagnostics 29. Residual 48 = concurrent-wave text-AOT .message() class + Shared-AOT + 4 singletons (attributed on pure HEAD; repros filed). Held at partial.'
 ---
 
 import ModuleStatus, {

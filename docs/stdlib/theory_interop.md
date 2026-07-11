@@ -2,6 +2,8 @@
 sidebar_position: 30
 title: theory_interop
 description: ∞-Topos of Formally Represented Theories — Yoneda loading, Kan-extension translation, descent coherence, JSON-RPC protocol for IDE/prover/LLM bridges.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.theory_interop` — Theory interoperation layer

@@ -3,7 +3,7 @@ sidebar_position: 18
 title: "Money — currency-aware monetary value"
 description: "Currency type with ISO 4217 minor units, Money type with currency-correct arithmetic, fair-split, and cross-currency rejection at the type level."
 status: regression-only
-status_detail: Conformance suites landed in core-tests/money/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
+status_detail: Conformance suites landed in core-tests/money/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 slug: /stdlib/money
 ---
 

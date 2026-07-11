@@ -2,6 +2,8 @@
 sidebar_position: 17
 title: "core.text.numeric.decimal — fixed-precision decimal arithmetic"
 description: "Foundational fixed-precision Decimal type for monetary, financial, and lossless-numeric workloads. Parse / render / add / sub / mul / div / compare with banker's-rounding semantics."
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 slug: /stdlib/decimal
 ---
 

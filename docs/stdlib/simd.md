@@ -2,6 +2,8 @@
 sidebar_position: 2
 title: simd
 description: Portable SIMD — Vec<T,N>, Mask<N>, arithmetic, reduction, shuffle, gather/scatter, GPU.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.simd` — Portable SIMD

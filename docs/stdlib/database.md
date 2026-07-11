@@ -1,6 +1,8 @@
 ---
 title: core.database — native SQLite (codename "loom")
 description: Pure-Verum reimplementation of SQLite 3.x — an 8-layer storage stack (L0 VFS through L7 API) with actor-based pager, CBGR arena page cache, WAL + rollback journal, and SMT-verified B-tree and WAL invariants.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.database` — native SQLite ("loom")

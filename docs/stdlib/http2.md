@@ -1,6 +1,8 @@
 ---
 title: core.net.http2 — RFC 7540 HTTP/2 + RFC 7541 HPACK
 description: Pure-Verum HTTP/2 wire protocol (frame layer, SETTINGS, stream FSM) and HPACK header compression (static/dynamic tables, Huffman, literal forms). The substrate for any HTTP/2 client, server, or proxy.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.net.http2` — HTTP/2 + HPACK

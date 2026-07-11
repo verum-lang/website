@@ -2,6 +2,8 @@
 sidebar_position: 3
 title: theory interop
 description: Theory registry, translation, coherence audit, JSON-RPC interchange protocol.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.theory_interop` — theory interchange primitives

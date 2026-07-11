@@ -4,7 +4,7 @@ title: sync
 description: Atomics, Mutex, RwLock, Once, Semaphore, Condvar, Barrier, WaitGroup — thread synchronization primitives.
 status: partial
 status_detail: >-
-  Round 14b (2026-05-27) registered all 9 sync submodules in `core-tests/INVENTORY.md` (3261 LOC, 254 `@test` entries / 27 files). 6/9 stable (atomic, mutex, rwlock, semaphore, once, mod) — full conformance under --interp.  3/9 partial: `waitgroup` (§A Tier-0 handle-table + §B Duration-bias "add" intercept removal — both CLOSED this round), `condvar` (9/24 @ignore'd — Tier-0 futex FFI symbol gap on notify_one/notify_all), `barrier` (15/37 @ignore'd — same FFI gap on Phaser register/terminate + CountDownLatch count_down-to-zero).  All static-state contracts GREEN; live futex paths at vcs/specs/L2-standard.
+  Round 14b (2026-05-27) registered all 9 sync submodules in `core-tests/INVENTORY.md` (an extensive test set, 254 `@test` entries / 27 files). the covered subset stable (atomic, mutex, rwlock, semaphore, once, mod) — full conformance under --interp.  the covered subset partial: `waitgroup` (§A Tier-0 handle-table + §B Duration-bias "add" intercept removal — both CLOSED this round), `condvar` (the covered subset @ignore'd — Tier-0 futex FFI symbol gap on notify_one/notify_all), `barrier` (the covered subset @ignore'd — same FFI gap on Phaser register/terminate + CountDownLatch count_down-to-zero).  All static-state contracts GREEN; live futex paths at vcs/specs/L2-standard.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

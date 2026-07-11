@@ -3,7 +3,7 @@ sidebar_position: 30
 title: "core.cli — declarative CLI framework"
 description: "Build command-line tools the Verum way: typed argument protocols (FromArg / ValueEnum), fluent App.new builder, combinator-based parser, did-you-mean diagnostics, sysexits-aligned exit codes, and (Phase 1) declarative @command derive."
 status: regression-only
-status_detail: Conformance suites landed in core-tests/cli/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. Several @ignore pins flag task #17/#39 static-method dispatch defect.
+status_detail: Conformance suites landed in core-tests/cli/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. Several @ignore pins flag a tracked toolchain task static-method dispatch defect.
 slug: /stdlib/cli
 ---
 

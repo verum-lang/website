@@ -3,7 +3,7 @@ sidebar_position: 1
 title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 status: partial
-status_detail: 22 modules; 15 audited via core-tests/async/; 11 fundamental defects pinned (tasks #6, #7, #8, #9 CLOSED 2026-05-24; #10, #12, #15, #17, #22, #25, #47 cascade tracked). Variant-algebra + construction-surface backbone + stream factory + protocol-mountability surface + executor configuration surface + generic T.clone fallback are all interpreter-green; runtime poll-path coverage waits on AOT executor test-bed.
+status_detail: 22 modules; 15 audited via core-tests/async/; 11 fundamental defects pinned (tasks a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task CLOSED 2026-05-24; a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task cascade tracked). Variant-algebra + construction-surface backbone + stream factory + protocol-mountability surface + executor configuration surface + generic T.clone fallback are all interpreter-green; runtime poll-path coverage waits on AOT executor test-bed.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

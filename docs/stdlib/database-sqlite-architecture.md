@@ -1,6 +1,8 @@
 ---
 title: Loom — SQLite engine deep-dive
 description: Per-layer architecture of core.database.sqlite.native — VFS through public API, with module-level breakdown, data flow, invariants, and links to spec sections.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 sidebar_position: 2
 ---
 

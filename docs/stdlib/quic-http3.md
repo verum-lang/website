@@ -1,6 +1,8 @@
 ---
 title: QUIC and HTTP/3 — redirect
-description: The pure-Verum QUIC v1 (RFC 9000/9001/9002) + HTTP/3 (RFC 9114) + QPACK (RFC 9204) stack now lives under dedicated sections.
+description: The pure-Verum QUIC v1 (RFC the covered subset/9002) + HTTP/3 (RFC 9114) + QPACK (RFC 9204) stack now lives under dedicated sections.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # QUIC and HTTP/3

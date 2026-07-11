@@ -3,7 +3,8 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: Sweep 2026-07-11 (dual-tier campaign round 1). INTERP 1213/1222 (99.3%) — 8 root-caused classes, 6 closed fundamentally (RETNAME-CARRY-1/VBC v2.6 carried return-type names; TUPLE-TYPE-TRACK-1; CALLM-KEEP-CLOSURE-1 prune fix; SET_E-FATREF write parity; SELF-MUT-RECV-COHERENCE-1; NEVER-ABSORB-1; RSPLIT-ORDER-1 + MAKE-ASCII-INPLACE-1 stdlib contracts). Parked with pins: builder Display + rational RefField-through-ref-param (reference-model pillar), 2 in-suite-only flakes, 2 peer-regressed deref-mut persists (task #45). AOT leg is the NEXT round (slice: case_fold 36/64, bigint 60/77).
+status_detail: >-
+  Sweep 2026-07-11 (dual-tier campaign round 1). INTERP the covered subset (99.3%) — 8 root-caused classes, 6 closed fundamentally (RETNAME-CARRY-1/VBC v2.6 carried return-type names; TUPLE-TYPE-TRACK-1; CALLM-KEEP-CLOSURE-1 prune fix; SET_E-FATREF write parity; SELF-MUT-RECV-COHERENCE-1; NEVER-ABSORB-1; RSPLIT-ORDER-1 + MAKE-ASCII-INPLACE-1 stdlib contracts). Parked with pins: builder Display + rational RefField-through-ref-param (reference-model pillar), 2 in-suite-only flakes, 2 peer-regressed deref-mut persists (a tracked toolchain task). AOT leg is the NEXT round (slice: case_fold the covered subset, bigint the covered subset).
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex

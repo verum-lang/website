@@ -2,7 +2,7 @@
 title: core.compress — compression codecs
 description: Unified Codec protocol over gzip, raw deflate, zlib, brotli, zstd, and lz4. Used by HTTP Content-Encoding, WebSocket permessage-deflate, TLS certificate-compression, and QUIC / RDMA payload paths.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/compress/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
+status_detail: Conformance suites landed in core-tests/compress/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 # `core.compress` — compression codecs

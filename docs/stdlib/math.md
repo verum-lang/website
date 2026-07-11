@@ -2,8 +2,12 @@
 sidebar_position: 1
 title: math
 description: Layered mathematics stack — libm, linalg, calculus, tensors, autodiff, NN, SSM, agents, pure math.
-status: regression-only
-status_detail: Conformance suites landed in core-tests/math/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes.
+status: partial
+status_detail: >-
+  Majority of submodules carry complete conformance suites (checked
+  arithmetic, constants, tactics families among them); a small residue
+  remains regression-only pending toolchain classes. See the
+  conformance inventory for per-submodule truth.
 ---
 
 # `core.math` — Mathematics

@@ -3,7 +3,7 @@ sidebar_position: 4
 title: architecture
 description: ATS-V Architectural Type System library — canonical types + 32-pattern anti-patterns + MTAC + counterfactual / adjunction / Yoneda / composition / corpus / phase orchestration.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/architecture/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 closes. @ignore pins flag surfaced defects with task attribution.
+status_detail: Conformance suites landed in core-tests/architecture/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task closes. @ignore pins flag surfaced defects with task attribution.
 ---
 
 # `core.architecture` — ATS-V Architectural Type System

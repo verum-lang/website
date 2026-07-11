@@ -1,6 +1,8 @@
 ---
 title: core.database.postgres — pure-Verum PostgreSQL driver
 description: Pure-Verum implementation of the PostgreSQL v3 wire protocol — no libpq, no FFI shim. Affine transactions, query cancellation, LISTEN/NOTIFY, COPY streaming, SCRAM-SHA-256 auth, extended protocol with prepared-statement cache.
+status: undocumented
+status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 # `core.database.postgres` — pure-Verum PostgreSQL driver

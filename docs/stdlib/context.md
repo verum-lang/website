@@ -4,7 +4,7 @@ title: context
 description: Scopes, providers, layers, 10 standard contexts, async propagation — the runtime side of `using` / `provide`.
 status: partial
 status_detail: >-
-  2026-06-01 — scope / error / provider / standard(ContextLogLevel,AuthUser,QueryResult) / mod conformance-tested GREEN under `--interp --test-threads 1`. Three rebuild-blocked codegen defects (CLASS-9 family) are pinned + `@ignore`'d: archive-method `Maybe<&T>` return SIGSEGV (`Row.get_index`), `f"{Type.Variant}"` Display non-dispatch, archive-record field-shift on `Row` direct field reads. The bare-variant collision (task #17/#39) and `global_ctors` cascade that previously gated the suite are resolved.
+  2026-06-01 — scope / error / provider / standard(ContextLogLevel,AuthUser,QueryResult) / mod conformance-tested GREEN under `--interp --test-threads 1`. Three rebuild-blocked codegen defects (CLASS-9 family) are pinned + `@ignore`'d: archive-method `Maybe<&T>` return SIGSEGV (`Row.get_index`), `f"{Type.Variant}"` Display non-dispatch, archive-record field-shift on `Row` direct field reads. The bare-variant collision (a tracked toolchain task) and `global_ctors` cascade that previously gated the suite are resolved.
 ---
 
 # `core.context` — Dependency injection primitives

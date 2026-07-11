@@ -3,7 +3,7 @@ sidebar_position: 32
 title: verify
 description: First-class verification API for user code — embed compiler-internal verification into Verum programs as ergonomic types + macros + queries.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/verify/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 closes. @ignore pins flag surfaced defects with task attribution.
+status_detail: Conformance suites landed in core-tests/verify/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task closes. @ignore pins flag surfaced defects with task attribution.
 ---
 
 # `core.verify` — Verification embedding API

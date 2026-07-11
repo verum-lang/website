@@ -1,8 +1,8 @@
 ---
 title: encoding
-description: Data encoding and serialization (JSON, CBOR, MessagePack, Base64/32/58, hex, PEM, JCS, JSON Pointer, varint, DER)
+description: Data encoding and serialization (JSON, CBOR, MessagePack, Base64/the covered subset, hex, PEM, JCS, JSON Pointer, varint, DER)
 status: regression-only
-status_detail: Conformance suites landed in core-tests/encoding/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until task #7 (AOT stdlib build cascade) closes.
+status_detail: Conformance suites landed in core-tests/encoding/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes.
 ---
 
 # `core.encoding`
