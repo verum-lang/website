@@ -47,7 +47,7 @@ is 24 bytes; `cap == 0` indicates a static / immutable string literal.
 | [`text.vr`](#text) | `Text` + 100+ method API surface | **partial** |
 | [`char.vr`](#char) | `Char` + classification, conversion, `CharPattern`, `GeneralCategory` | **partial** |
 | [`format.vr`](#formatting--write) | `Formatter`, `FormatSpec`, `Alignment`, `Sign`, `DebugStruct`/`Tuple`/`List`/`Map`, `Write`, `print`/`println`/`eprint`/`eprintln`, `dbg`, `format_display`, `format_debug` | **partial** |
-| [`regex.vr`](#regex) | `Regex`, `RegexError`, 7 intrinsics (is_match, find, find_all, replace, replace_all, split, captures) | **complete** |
+| [`regex.vr`](#regex) | `Regex`, `RegexError` — 7 operations on the pure-Verum engine (`regex_engine.vr`), tier-agnostic | **complete** |
 | [`tagged_literals.vr`](#tagged-literals) | `validate_json` / `validate_sql` / `validate_uri` runtime validators | **complete** |
 | [`case_fold.vr`](#case-folded-comparison) | `fold_char_ascii` / `fold_byte_ascii` / `fold_text_ascii` / `compare_ascii_nocase` / `equal_ascii_nocase` (SQLite NOCASE) | **complete** |
 | [`builder.vr`](#textbuilder) | `TextBuilder` — incremental string construction | **complete** |
@@ -609,7 +609,8 @@ public type RegexError is { message: Text };
 
 ```verum
 Regex.new(pattern: Text) -> Result<Regex, RegexError>
-                                       // today: always Ok (compile is deferred)
+                       // REAL validation: Err on unclosed group/class,
+                       // dangling quantifier, stray ')'
 
 r.is_match(text: Text) -> Bool                    // any match
 r.find(text: Text) -> Maybe<Text>                 // first match
@@ -623,31 +624,43 @@ r.captures(text: Text) -> Maybe<List<Text>>       // ordered capture groups,
 r.as_str() -> Text                                // recover raw pattern
 ```
 
-All seven runtime ops are wired end-to-end through the VBC interpreter
-and the AOT MLIR lowering path:
+### Engine
 
-| Surface | Intrinsic | Sub-opcode |
-|---------|-----------|------------|
-| `is_match` | `regex_is_match` | `TensorSubOpcode 0xE2` |
-| `find_all` | `regex_find_all` | `TensorSubOpcode 0xE0` |
-| `replace_all` | `regex_replace_all` | `TensorSubOpcode 0xE1` |
-| `split` | `regex_split` | `TensorSubOpcode 0xE3` |
-| `find` | `regex_find` | `TensorExtSubOpcode 0x0A` |
-| `replace` | `regex_replace` | `TensorExtSubOpcode 0x0B` |
-| `captures` | `regex_captures` | `TensorExtSubOpcode 0x0C` |
+All seven operations execute on the **pure-Verum engine** in
+[`core/text/regex_engine.vr`](https://github.com/verum-lang/verum/tree/main/core/text/regex_engine.vr)
+— ONE implementation compiled like any other stdlib code, byte-identical
+in behaviour on the Tier-0 interpreter and Tier-1 AOT binaries (the
+previous design forwarded to interpreter-only Rust intrinsics with no
+Tier-1 runtime; the intrinsic declarations are retired).
 
-The single-match / capture variants live in the ext-extended opcode space
-because the bulk variants pre-empted the regex-dedicated `0xE0..=0xE3`
-slot before they landed.
+Supported pattern surface (malformed constructs are rejected by
+`Regex.new`, never mis-accepted):
+
+| Feature | Notes |
+|---------|-------|
+| literals, `\.` `\$` `\\` `\n` `\t` `\r` | escaped literals |
+| `[a-z]`, `[^…]` | ranges + in-class escapes |
+| `\d \w \s` / `\D \W \S` | ASCII semantics (v1) |
+| `.` | any byte except `\n` |
+| `*` `+` `?` `{m}` `{m,}` `{m,n}` | greedy, over ANY atom incl. groups |
+| `(…)` | positional captures; group quantifiers use last-repetition capture |
+| `a\|b` (top level and grouped) | leftmost-first alternation |
+| `^` `$` | anchors |
+
+Complexity is backtracking worst-case; typical validation patterns are
+linear-ish. A lazy-DFA can replace the matcher core behind the same
+search surface.
 
 ### Replacement syntax
 
-`replace` / `replace_all` honour the `regex` crate's
-[replacement syntax](https://docs.rs/regex/latest/regex/struct.Regex.html#replacement-string-syntax):
+`replace` / `replace_all` support numbered back-references:
 
 - `$0` — whole match
-- `$1`, `$2`, … — numbered capture groups
-- `${name}` — named groups (when the pattern uses `(?<name>…)`)
+- `$1`, `$2`, … — numbered capture groups (non-participating groups
+  substitute as empty)
+
+Named groups (`(?<name>…)` / `${name}`) are not in the v2 surface —
+the parser rejects them loudly rather than mis-matching.
 - `$$` — literal `$`
 
 ### Capture groups
