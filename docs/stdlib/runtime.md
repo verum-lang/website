@@ -2,9 +2,9 @@
 sidebar_position: 3
 title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
-status: regression-only
+status: partial
 status_detail: >-
-  2026-06-01 — recovery/env/config expanded to property+integration+regression coverage (recovery property the covered subset + integration the covered subset; env property the covered subset + regression the covered subset; config property the covered subset + integration the covered subset GREEN). 3 NEW defect classes surfaced — §F RecoveryRetryPolicy.new/InlineRetryPolicy.default field-write-OOB (type_id=0 field-shift, a REGRESSION: prior "all GREEN" unit tests now RED, a tracked toolchain task); §H nullary-variant Display dispatch falls through, breaking recovery.is_transient_error on nullary RuntimeIoError (a tracked toolchain task). Prior Round-16 (2026-05-27): 17 submodules; primary cluster is the `verum.runtime.*` intrinsic-stub family (cbgr_*/num_cpus/tls_slot_*/pool_*/text_parse_*/char_is_*) not registered in the VBC dispatch table. Compiler fixes gated on a rebuild (concurrent sessions + precompile-poisoning hazard). Cross-tier --aot validation gated on a tracked toolchain task.
+  2026-07-14 full-hierarchy campaign — interp 460/532 GREEN (8 pool value-leg in flight, 64 @ignore pinned on 6 filed language classes); AOT 449/532 (23 cross-tier divergences tracked as RUNTIME-AOT-LEG-1). 7 language-level fixes landed this sweep: POOL-INTERP-STUB-1 + THREAD-EAGER-TIER0-1, REEXPORT-QUALIFIED-KEY-1 (schema v19), MOUNTED-UNIT-VALUE-1, SELF-NEWTYPE-CTOR-1, FFI-CREATECALLBACK-SIGIDX-1, INVALIDATE-OPERAND-SHAPE-1, POOL-AWAIT-NAME-1 (join rename). stack_alloc ungated; cbgr/time/tls/text shims canonical.
 ---
 
 # `core.runtime`
@@ -12,29 +12,19 @@ status_detail: >-
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
-  status="regression-only"
-  detail="Round-16 conformance sweep 2026-05-27. 17 submodules tested under `core-tests/runtime/` (295 tests total: 284 unit + 11 integration; ~250 GREEN + ~45 @ignore'd on surfaced defect classes).  **Primary defect class: §A intrinsic-stub family** — `verum.runtime.cbgr_*` / `num_cpus` / `tls_slot_*` / `pool_*` / `text_parse_int` / `char_is_*` idents are forward-declared at `core/runtime/<sub>.vr` but NOT registered in `crates/verum_vbc/src/interpreter/dispatch_table/handlers/`. Calls succeed with default-zero stub returns. Higher-level user-facing surfaces (`Text.parse_int`, `Char.is_alphabetic`, `cbgr_check` via ThinRef header inline) DO work because they route through DIFFERENT dispatch paths keyed on type-method shape, NOT on the free-fn intrinsic ident. **Secondary defect class: §F cross-module ctor field-write OOB** — `InlineContextStorage.new()` and `SupervisorSpawnConfig.new()` panic with `field write out of bounds: field index 9 (offset 72+8 = 80) exceeds object data size 24` because the `[InlineContextEntry; 4]` array field (96 bytes inline) is mis-sized to 24 bytes at the codegen ctor-return path. Same root as `btree_pattern_match_ref_generic_class` / `enactment_field_access_oob_2026-05-24` / `use_after_free_error_field_shift_2026-05-27` — multi-day VBC codegen work at `compile_field_access` / `populate_types_from_archive`. AOT-path validation gated on pre-existing stdlib AOT blockers (task #7)."
+  status="partial"
+  detail="2026-07-14 full-hierarchy sweep: 532 tests across all 18 submodule folders. Interpreter 460 GREEN / 64 @ignore (every pin carries its defect-class name; 6 classes filed as tasks) / 8 pool value-leg in flight. AOT 449 GREEN / 23 divergences (RUNTIME-AOT-LEG-1). The 2026-05 'intrinsic-stub family' is CLOSED: runtime leaves are thin re-exports of the canonical wired core.intrinsics.runtime.* modules, and the re-export chain itself was made loadable (REEXPORT-QUALIFIED-KEY-1: qualified keys + carried target names through mount_aliases, schema v19)."
   defects={[
-    {area: 'env', summary: '2026-06-01: property 10/10 + regression 3/3 GREEN added (tier epoch⟹generation + zero-overhead⟺unchecked cross-invariants, RestartStrategy 3-variant, RuntimeRestartPolicy/ParallelismConfig round-trips, CpuAffinity.Explicit mask preservation, CBGR overhead contract lock-in). §A EnvTaskId.main() static-method dispatches to wider-record sibling (task #17/#39 root, 5 @ignore pins incl. regression). unit 23 GREEN on ExecutionTier 4-variant + .overhead_ns CBGR cost (15/8/3/0 ns) + .requires_generation/.requires_epoch + EnvIsolationLevel + CpuAffinity.'},
-    {area: 'cbgr', summary: '§A `verum.runtime.cbgr_*` not dispatch-bound — `cbgr_check(fresh_gen, fresh_epoch)` returns false; real CBGR machinery lives at the per-ThinRef header inline in the interpreter, NOT through these user-callable free fns. §B drift between `cbgr_check(gen, epoch)` 2-arg user surface and `verum_cbgr_check(void*)` 1-arg AOT C-fallback. 7/10 GREEN (surface + monotonicity); 3 @ignore on §A.'},
-    {area: 'sync', summary: '§A `spin_loop_hint` not registered in VBC dispatch — under --interp no-op (correct by accident); under --aot falls to LLVM `llvm.donothing` indirect call defeating the spin-wait optimization. 3/3 GREEN (callable + zero-iteration + unit return).'},
-    {area: 'syscall', summary: 'Pure surface-pinning (no kernel calls in this folder). 2/2 GREEN. §A `verum.runtime.syscall6` dispatch binding audit deferred. §B per-arch live syscall tests at vcs/specs/L2-standard/sys/.'},
-    {area: 'time', summary: '§A `num_cpus()` returns 0 under --interp (intrinsic stub). Empirical probe: monotonic_nanos / realtime_secs / realtime_nanos / sleep_ms(0) / sleep_ns(0) BOUND; num_cpus NOT bound. §B realtime non-monotone under NTP correction. §C sleep_* granularity. 12/13 GREEN; 1 @ignore on §A.'},
-    {area: 'tls', summary: '§A `tls_slot_*` not dispatch-bound — `tls_slot_set(s, V); tls_slot_get(s) == 0`. §B DRIFT: two parallel TLS-slot APIs (`core.runtime.tls.tls_slot_*` unbound vs `core.sys.common.ctx_*` bound via ContextSlots vector). 11/16 GREEN; 5 @ignore on §A.'},
-    {area: 'text', summary: '§A char_is_* / text_parse_int / text_parse_float not dispatch-bound at runtime layer. Higher-level user-facing surface (`Char.is_*` / `Text.parse_*`) DOES work via separate dispatch path. §B text_parse_int overflow contract. §C drift between user-side Text.parse_int and runtime text_parse_int. 14/31 GREEN; 17 @ignore on §A.'},
-    {area: 'async_ops', summary: '2026-06-01: property 7/10 GREEN added (AsyncRecoveryError Eq reflexive/symmetric/payload-sensitive + record Display==message + Debug — confirms §H Display gap is nullary-enum-specific). §D NEW transparent opaque-newtype inner extraction gap — match JoinHandleOpaque(42){X(v)=>v} yields v≠42 (__newtype_inner gap, opaque-by-design, task #7), 3 @ignore. §A opaque handles typechecker-only distinct; §B AsyncRecoveryError lacks error-kind discriminator; §C live spawn/poll gated on task #7. unit 23/23 GREEN.'},
-    {area: 'ctx_bridge', summary: '§A `env_ctx_set`/`env_ctx_get` round-trip drops bits under --interp (delegates to sys.common via Int→`&unsafe Byte`→Int cast); live `provide ... in { }` works because codegen routes against ContextSlots directly. §B-§D deferred. 15/19 GREEN (out-of-range guards via source early-returns); 4 @ignore on §A.'},
-    {area: 'pool', summary: '§A `pool_*` intrinsics not bound under --interp; §B num_workers<=0 silent default-to-4; §C submit() only accepts fn(Int)->Int (Int-only task shape); §D Drop-on-unawaited-handle swallows error. 6/6 GREEN on record surface.'},
-    {area: 'thread', summary: '2026-06-01: property 6/6 GREEN added (ThreadId Eq reflexive/symmetric/distinguishing + Copy-value; ThreadError 4-variant exhaustiveness + Debug strings). §A `sys.get_thread_id()` gates live tests; §B Thread.spawn panics vs ThreadBuilder.spawn Result; §C `Thread.unpark` futex_wait targets caller PARK_FLAG not target — SOUNDNESS DEFECT; §D yield_now only x86_64/aarch64 Linux; §E StackTrace.capture frame-pointer brittle. unit 22/22 GREEN.'},
-    {area: 'config', summary: '2026-06-01: property 9/11 + integration 7/8 GREEN added (message() exact strings, Display(payload), Debug, Eq algebra, IoCompletion, cross-module transient-classifier contract w/ recovery). §H NEW nullary-variant Display dispatch falls through — f"{RuntimeIoError.WouldBlock}" yields the Debug form not "operation would block" (payload variants Display fine); DOWNSTREAM: breaks recovery.is_transient_error on nullary RuntimeIoError so the retry layer abandons transient I/O errors (task #6). §A no `@cfg_must_be_exclusive(runtime)`; §B NoopDriver magic `Other(-1)`; §C `AlreadyInitialized` race not atomic; §D Eq on RuntimeIoError.Other payload-sensitive. unit 30/30 GREEN.'},
-    {area: 'stack_alloc', summary: 'Audit-only (4 deferred). Module is `@cfg(any(runtime = "no_heap", runtime = "embedded"))` — under default `runtime = "full"` the mount fails. Full suite at future core-tests/runtime-noheap/stack_alloc/. §A split data-only types into non-cfg-gated submodule.'},
-    {area: 'recovery', summary: '2026-06-01: property 20/20 GREEN (backoff Fixed/None/Linear/Exponential schedules + jitter bounds + is_transient_error classifier + CircuitState Eq); integration 13/20 GREEN. §F NEW RecoveryRetryPolicy.new field-write-OOB (type_id=0 unregistered-type field-shift) — REGRESSION: the 4 existing RecoveryRetryPolicy.new unit tests now RED on the May-31 binary (prior "all GREEN" stale), pinned @ignore (task #5). §G NEW InlineRetryPolicy.default field-OOB same class (sibling InlineCircuitBreaker.default OK). §H NEW nullary-variant Display dispatch falls through (task #6). §A RetryPredicate.Custom inspects Text only; §B BackoffStrategy.None/JitterConfig.None bare-variant discipline; §C CircuitState.from_u8 fail-open; §D Composed recursion depth bound; §E PRNG modulo bias.'},
-    {area: 'spawn', summary: '§A `to_u8` → scheduling_weight rename; §B from_u8 lossy round-trip; §C contexts_overflow owned-list discipline; §D errors/warnings split; §E push returns Result; §F NEW: InlineContextStorage.new() / SupervisorSpawnConfig.new() field-write-OOB at codegen — cross-module ctor return record-layout loss. 16/28 GREEN (PriorityLevel 5-variant + .to_u8 + .from_u8); 12 @ignore on §F.'},
-    {area: 'task_queue', summary: '2026-06-01: property 8/8 + integration 4/4 GREEN added (StealResult exhaustiveness/mutual-exclusion, into_option⟺is_success, round-trip over Int/Text/Bool/List payloads, batch aggregate, take/skip decision). §A `into_option` discards Retry signal (add into_result); §B RingBuffer.new os_alloc-null panic; §C `grow` ownership hazard; §D BoundedQueue Eq; §E CBGR opt-out by-design. unit 13/13 GREEN. Live work-stealing deque deferred.'},
-    {area: 'supervisor', summary: '2026-06-01: property 13/13 + integration 8/8 GREEN added (should_restart truth-table LAW over 7×3, is_abnormal classification, ChildStatus u8 round-trip + is_active, descriptions, ShutdownStrategy timeouts, restart-decision scenarios). §G NEW chained-method-on-by-value-temporary mis-dispatch — SupervisionStrategy.OneForOne.description() / graceful().timeout_ms() return wrong, `let s=...; s.m()` fixes (task #8); also assert_eq(uint32, 4294967295_u32) fails on the decimal literal, use UInt32.MAX. §A FailureReason.Manual treated abnormal; §B RestartIntensity decay doc; §C Child/SupervisorId wraparound; §D EscalationReason cycle detection; §E reason_code table; §F TooManyRestarts loses last_failure. unit 41/41 GREEN.'},
-    {area: 'mod', summary: '§A try_current_env() non-panic surface; §B double-init guard in init(); §C try_shutdown() Result; §D atomic ENV_ID_COUNTER (currently non-atomic increment); §E Runtime.current_epoch() returns 0 stub (shared root with cbgr §A); §F Runtime.memory_usage() returns 0 stub; §G Bencher warmup + outlier elimination. 11/11 GREEN on umbrella re-exports + cross-submodule identity.'},
+    {area: 'pool', summary: 'POOL-INTERP-STUB-1 CLOSED (Tier-0 submit/join actually run tasks, eager execution); PoolTaskHandle.await renamed join() — the await name was uncallable (postfix .await is async syntax). Remaining: eager-result value normalization (in flight) + AOT native-pool leg.'},
+    {area: 'thread', summary: 'THREAD-EAGER-TIER0-1: Thread.spawn/join live under --interp (pthread intercepts, trampoline→fn-id reverse resolve). Pinned: spawn generic-arg inference in merged-suite compiles (#11 family), sleep/parallelism sys-delegator self-recursion (QUALIFIED-CALL-FIRST-MATCH-1 #12).'},
+    {area: 'time / tls / text / sync / syscall / cbgr', summary: 'Stub-era §A CLOSED across all six leaves — thin re-exports of the wired canonical intrinsics; suites assert live semantics. cbgr shim widened to the full canonical surface; cbgr_invalidate operand-shape desync fixed both tiers (INVALIDATE-OPERAND-SHAPE-1).'},
+    {area: 'config', summary: 'GREEN 30/30 interp. Unit-type construction fixed at TWO roots (MOUNTED-UNIT-VALUE-1: unit types never had TypeDescriptors; bare-value fallback keyed on the wrong kind). Two suite-only Display legs pinned on STUB-STAGE-INSUITE-1 (#11).'},
+    {area: 'supervisor', summary: 'GREEN 74/74 interp. SELF-NEWTYPE-CTOR-1 closed: Self(v) in a newtype impl (SupervisorId.root() returned Variant(138,0)) — typecheck + codegen legs.'},
+    {area: 'stack_alloc', summary: 'cfg-gate REMOVED (self-contained allocators; the gate made the surface untestable). Suites written (accounting/savepoints/OOM/alignment laws) and pinned on CONST-GENERIC-IMPL-METHODS-1 (#10): implement<const N> methods unresolvable on archive-loaded types.'},
+    {area: 'ctx_bridge', summary: 'CTX-STORE-AUTHORITY-1 (#8): two parallel context stores — sys.<os>.tls ctx_get/set dead under interp (TCB uninitialized; raw-nil Maybe panics .is_some()). Overflow-guard test bug fixed ((Int.MAX-8)/16 threshold); its wild load_i64 previously SIGSEGV\'d the WHOLE runner (TEST-RUNNER-ISOLATION-1 #7 filed).'},
+    {area: 'recovery / env / spawn / task_queue / mod / async_ops', summary: 'recovery: DROP-GLUE-TYPEID-1 (#9) pins (foreign Drop impl on scope exit). env §A pins retired (EnvTaskId.main fixed upstream). spawn: ctor-chain stub leaks pinned on #11. mod: new unit suite (reserved slots ABI, Bencher laws); Runtime-accessor receiver resolution pinned (#11 + rename-mount typecheck gap). async_ops: integration suite (global handles + sleep).'},
   ]}
-  sweepDate="2026-06-01"
+  sweepDate="2026-07-14"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -59,29 +49,32 @@ The table below mirrors the per-submodule audit findings at
 `core-tests/runtime/<sub>/audit.md`. Click each row's audit link
 for the full open-defects list + deferred-action ranking.
 
-| Submodule | LOC | Status | Tests (GREEN/total) | Primary open defect |
-|-----------|----:|--------|--------------------:|---------------------|
-| `runtime.env` | 1016 | regression-only | 23/26 | §A EnvTaskId.main() static-method dispatch (task #17/#39 root) |
-| `runtime.cbgr` | 22 | regression-only | 7/10 | §A `verum.runtime.cbgr_*` not dispatch-bound (real CBGR is per-ThinRef header inline) |
-| `runtime.sync` | 10 | regression-only | 3/3 | §A `spin_loop_hint` not registered (correct-by-accident under interp) |
-| `runtime.syscall` | 10 | regression-only | 2/2 | §A surface-pinning only; live syscall tests at L2-standard |
-| `runtime.time` | 30 | regression-only | 12/13 | §A `num_cpus()` returns 0 (intrinsic stub) |
-| `runtime.tls` | 58 | regression-only | 11/16 | §A `tls_slot_*` not dispatch-bound + §B parallel-API drift |
-| `runtime.text` | 78 | regression-only | 14/31 | §A char_is_* / text_parse_* not dispatch-bound at runtime layer |
-| `runtime.async_ops` | 136 | regression-only | 23/23 | §A opaque-handle FFI distinctness; §B AsyncRecoveryError kind discriminator |
-| `runtime.ctx_bridge` | 122 | regression-only | 15/19 | §A env_ctx_set/get round-trip drops bits under interp |
-| `runtime.pool` | 153 | regression-only | 6/6 | §A `pool_*` intrinsics not bound (record surface tested) |
-| `runtime.thread` | 600 | regression-only | 22/22 | §C `Thread.unpark` targets caller PARK_FLAG not target — SOUNDNESS DEFECT |
-| `runtime.config` | 1208 | regression-only | 30/30 | §B NoopDriver magic `Other(-1)` sentinel |
-| `runtime.stack_alloc` | 822 | audit-only | — | cfg-gated (no_heap / embedded); §A split data-only types |
-| `runtime.recovery` | 1083 | regression-only | 30/30 | §C CircuitState.from_u8 fail-open coercion (Maybe&lt;State&gt; recommended) |
-| `runtime.spawn` | 1086 | regression-only | 16/28 | §F InlineContextStorage.new() field-write-OOB at codegen (cross-module ctor return) |
-| `runtime.task_queue` | 1051 | regression-only | 13/13 | §A `into_option` discards Retry signal |
-| `runtime.supervisor` | 1679 | regression-only | 41/41 | §C SupervisorId/ChildId wraparound at 2^64 |
-| `runtime.mod` | 643 | regression-only | 11/11 | §E `Runtime.current_epoch()` stub returns 0 unconditionally |
+| Submodule | LOC | Status | Interp (GREEN/total) | Primary open item |
+|-----------|----:|--------|---------------------:|-------------------|
+| `runtime.env` | 1016 | partial | 41/41 | §A pins retired 2026-07-14 (EnvTaskId.main fixed upstream) |
+| `runtime.cbgr` | 24 | complete (interp) | 10/10 | canonical re-export shim; INVALIDATE-OPERAND-SHAPE-1 closed both tiers |
+| `runtime.sync` | 16 | complete (interp) | 3/3 | thin canonical re-export |
+| `runtime.syscall` | 16 | complete (interp) | 2/2 | thin canonical re-export |
+| `runtime.time` | 30 | complete (interp) | 13/13 | REEXPORT-QUALIFIED-KEY-1 closed the misbinding roots |
+| `runtime.tls` | 27 | complete (interp) | 16/16 | live round-trips; canonical 0-arg frame-pop contract |
+| `runtime.text` | 32 | partial | 30/31 | one Lu≠Ll category pin (known §D misroute family) |
+| `runtime.async_ops` | 136 | partial | 38/39 | sleep-elapsed probe pinned on #12 (sys-delegator recursion) |
+| `runtime.ctx_bridge` | 122 | partial | 12/19 | CTX-STORE-AUTHORITY-1 (#8): parallel context stores |
+| `runtime.pool` | 155 | partial | value-leg in flight | POOL-INTERP-STUB-1 closed; join() rename; eager-result normalization landing |
+| `runtime.thread` | 600 | partial | 30/37 | #11 in-suite generic/stub pins + #12 sys-delegator pins |
+| `runtime.config` | 1208 | partial | 44/46 | 2 suite-only Display legs on #11 |
+| `runtime.stack_alloc` | 822 | regression-only | 0/27 (pinned) | CONST-GENERIC-IMPL-METHODS-1 (#10) |
+| `runtime.recovery` | 1083 | partial | 49/51 | DROP-GLUE-TYPEID-1 (#9) pins |
+| `runtime.spawn` | 1086 | partial | 25/38 | ctor-chain stub leaks on #11 |
+| `runtime.task_queue` | 1051 | complete (interp) | 25/25 | — |
+| `runtime.supervisor` | 1688 | complete (interp) | 74/74 | SELF-NEWTYPE-CTOR-1 closed |
+| `runtime.mod` | 643 | partial | 18/24 | Runtime-accessor receiver resolution (#11 + rename-mount gap) |
 
-**Cumulative:** 295 tests across 17 folders, ~250 GREEN + ~45 @ignore'd
-on the surfaced defect classes.
+**Cumulative (2026-07-14):** 532 tests across all 18 folders — interp
+460 GREEN / 64 `@ignore` (every pin names its defect class; classes
+filed as tasks #7-#12) / 8 in flight; AOT 449 GREEN / 23 divergences
+(RUNTIME-AOT-LEG-1, task #13).  Both-tier green is the merge gate for
+every future change to `core/runtime/`.
 
 ## Module map
 
@@ -415,60 +408,125 @@ public type StackTrace is {
 
 ## Thread pool — `runtime.pool`
 
-A simple work-stealing `ThreadPool` for CPU-bound tasks that do
-not need the full async scheduler:
+A fixed-size thread pool for CPU-bound tasks that do not need the
+full async scheduler.  The task shape is deliberately minimal —
+`fn(Int) -> Int` — matching the native `verum_pool_*` runtime ABI;
+richer task shapes ride the async executor instead.
 
 ```verum
-public type ThreadPool is { /* private */ };
-public type TaskHandle is { /* private */ };
+public type ThreadPool is { handle: Int };
+public type PoolTaskHandle is { handle: Int, awaited: Bool };
 
 implement ThreadPool {
-    public fn new(size: Int) -> Self;
-    public fn submit<F, T>(&self, f: F) -> TaskHandle
-        where F: fn() -> T + Send, T: Send;
-    public fn shutdown(self);
-    public fn size(&self) -> Int;
-    public fn active_count(&self) -> Int;
+    /// num_workers <= 0 defaults to 4.
+    public fn new(num_workers: Int) -> ThreadPool;
+    public fn submit(&self, func: fn(Int) -> Int, arg: Int) -> PoolTaskHandle;
+    /// Static: submit to the lazily-initialized global pool.
+    public fn global_submit(func: fn(Int) -> Int, arg: Int) -> PoolTaskHandle;
+    /// RAII: Drop releases the pool; explicit destroy for early release.
+    public fn destroy(&self);
+}
+
+implement PoolTaskHandle {
+    /// Block until the task completes and return its result.
+    /// Named `join` (NOT `await`): postfix `.await` is async-expression
+    /// syntax, so a method named `await` is uncallable — the historical
+    /// `await()` name shipped uncalled (POOL-AWAIT-NAME-1, fixed
+    /// 2026-07-14).  Drop drains an un-joined handle.
+    public fn join(&mut self) -> Int;
 }
 ```
+
+**Tier semantics.** Tier-1 (AOT) runs tasks on real native worker
+threads (`verum_pool_*`).  Tier-0 (interpreter) executes each task
+EAGERLY at the submit point on the interpreter thread and parks the
+result in a slot-recycling handle table — observable `join()` results
+are identical for any result-observing program; only the interleaving
+differs, which the language does not promise.  (Before 2026-07-14 the
+Tier-0 handlers were constant-zero stubs that never ran the task —
+POOL-INTERP-STUB-1; pinned by `core-tests/runtime/pool/`.)
 
 ## Time — `runtime.time`
 
-```verum
-public type Instant  is { /* monotonic */ };
-public type Duration is { /* nanoseconds */ };
+`runtime.time` is a THIN RE-EXPORT of the canonical, wired
+declarations in `core.intrinsics.runtime.time` — one source of truth
+for both tiers (RUNTIME-DUPLICATE-TREE-1 discipline).  `Instant` /
+`Duration` and the calendar surface live in
+[`core.time`](/docs/stdlib/time), not here.
 
-public fn now() -> Instant;
-public fn monotonic_nanos() -> UInt64;
-public fn wall_time() -> Result<WallTime, TimeError>;
-public async fn sleep(d: Duration);
-public fn elapsed_since(i: Instant) -> Duration;
+```verum
+public mount core.intrinsics.runtime.time.{
+    monotonic_nanos,   // fn() -> Int — monotone, both tiers
+    realtime_secs,     // fn() -> Int — Unix seconds
+    realtime_nanos,    // fn() -> Int — Unix nanoseconds
+    num_cpus,          // fn() -> Int — logical CPU count
+    sleep_ms,          // fn(Int)
+    sleep_ns,          // fn(Int)
+};
 ```
 
-All durations are nanoseconds underneath; the `Duration` type's
-constructors (`seconds`, `millis`, `micros`, `nanos`) and operators
-enforce unit correctness at compile time.
+Consumer mounts of this shim resolve through the qualified-key +
+carried-target-name machinery (REEXPORT-QUALIFIED-KEY-1, schema v19);
+before 2026-07-14 the bare-name first-wins table bound
+`monotonic_nanos` to the darwin mach path (DivisionByZero under
+`--interp`) and `num_cpus` to a self-recursive delegator
+(StackOverflow) — pinned by `core-tests/runtime/time/`.
 
 ## Thread-local storage — `runtime.tls`
 
-`runtime.tls` provides a typed, `@thread_local` static primitive.
-Profile-dependent: profiles without threads degrade to a single
-cell per program.
+`runtime.tls` is a thin re-export of `core.intrinsics.runtime.tls` —
+the raw slot API over a DEDICATED `user_tls_slots` store (opcodes
+0x59-0x5D; the context system populates separate high slots and
+cannot collide).
 
 ```verum
-public type TlsSlot<T> is { /* private */ };
+public mount core.intrinsics.runtime.tls.{
+    tls_get_base,      // fn() -> *mut Byte
+    tls_slot_get,      // fn(UInt8) -> *const Byte
+    tls_slot_set,      // fn(UInt8, *const Byte)
+    tls_slot_clear,    // fn(UInt8)
+    tls_slot_has,      // fn(UInt8) -> Bool
+    tls_frame_push,    // fn() -> *const Byte   — balanced pair:
+    tls_frame_pop,     // fn()                  — pops the TOP frame
+    tls_read_ptr, tls_write_ptr,      // <T> raw offset access
+    tls_read_i32, tls_write_i32,
+    tls_read_usize, tls_write_usize,
+};
+```
 
-implement<T> TlsSlot<T> {
-    public fn new(init: fn() -> T) -> Self;
-    public fn with<R>(&self, f: fn(&T) -> R) -> R;
-    public fn with_mut<R>(&self, f: fn(&mut T) -> R) -> R;
+Note the frame discipline: `tls_frame_pop()` takes NO argument — it is
+a balanced-stack pop, not a token-addressed restore.
+
+## Stack / arena / pool allocators — `runtime.stack_alloc`
+
+Deterministic-latency allocators over fixed `[Byte; SIZE]` buffers.
+PRIMARY use is the `no_heap` / `embedded` profiles (EmbeddedRuntime's
+allocator), but since 2026-07-14 the module is NOT cfg-gated: the
+implementations are self-contained and equally useful on the full
+runtime (request arenas, connection pools).  The real API surface:
+
+```verum
+public type StackAllocator<const SIZE: Int> is { /* buffer + bump top + watermark */ };
+public type StackSavepoint is { top: Int, alloc_count: Int };
+public type ArenaAllocator<const CHUNK_SIZE: Int, const MAX_CHUNKS: Int> is { /* chunked */ };
+public type PoolAllocator<const BLOCK_SIZE: Int, const BLOCK_COUNT: Int> is { /* freelist */ };
+// Presets: TinyStackAllocator (1 KiB) / Small (4) / Medium (16) / Large (64)
+
+implement<const SIZE: Int> StackAllocator<SIZE> {
+    public fn new() -> Self;
+    public fn alloc(&mut self, layout: Layout) -> Result<*mut Byte, AllocError>;
+    public fn dealloc(&mut self, ptr: *mut Byte, layout: Layout);   // LIFO only
+    public fn save(&self) -> StackSavepoint;
+    public fn restore(&mut self, savepoint: StackSavepoint);
+    public fn capacity(&self) / used() / remaining() / watermark() / alloc_count() -> Int;
+    public fn reset(&mut self);       // keeps the lifetime watermark
+    public fn reset_all(&mut self);   // clears the watermark too
 }
 ```
 
-## Stack-only allocator — `runtime.stack_alloc`
-
-The `no_heap` profile replaces the global allocator with a
-stack-bounded one. `stack_alloc.Arena` carves a fixed-size buffer:
+**Known gap:** methods of `implement<const N>` blocks are currently
+unresolvable on archive-loaded types (CONST-GENERIC-IMPL-METHODS-1) —
+the conformance suites are written and pinned on that task.
 
 ```verum
 public type Arena is { /* stack-backed */ };
