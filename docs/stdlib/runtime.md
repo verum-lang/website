@@ -4,7 +4,7 @@ title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 status: partial
 status_detail: >-
-  2026-07-14 full-hierarchy campaign — interp 460/532 GREEN (8 pool value-leg in flight, 64 @ignore pinned on 6 filed language classes); AOT 449/532 (23 cross-tier divergences tracked as RUNTIME-AOT-LEG-1). 7 language-level fixes landed this sweep: POOL-INTERP-STUB-1 + THREAD-EAGER-TIER0-1, REEXPORT-QUALIFIED-KEY-1 (schema v19), MOUNTED-UNIT-VALUE-1, SELF-NEWTYPE-CTOR-1, FFI-CREATECALLBACK-SIGIDX-1, INVALIDATE-OPERAND-SHAPE-1, POOL-AWAIT-NAME-1 (join rename). stack_alloc ungated; cbgr/time/tls/text shims canonical.
+  2026-07-15 close-out — interp 463/536 GREEN (9 = SYNC-SYSCALL-CTORS-REGRESSION-1 peer-window XMOD binds, task-tracked; 64 @ignore each naming its class); AOT 454/536 (18 = Text-iter &-pattern third-path ×6 + mod/integration LLVM SIGABRT ×11 + known §D ×1 — all task-tracked). 14 language-fix classes landed across 21 build rounds: pool/thread Tier-0 eager execution, mount re-export qualified keys (schema v19), unit-type descriptors, Self-newtype ctor, dotted-call scope authority, drop-glue raw-pointer discipline + layout gate, ctx one-store-per-tier + @cfg-tail-value root, const-generic impl gate (Meta), fn-local static once-init hoist, AOT intercept bare-name (narrowed to __*_raw) + helper-signature authority ×2, CreateCallback sigidx, invalidate operand shape, Deref value-fact propagation, per-file interp quarantine + ignored-fn merge-strip.
 ---
 
 # `core.runtime`
@@ -24,7 +24,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
     {area: 'ctx_bridge', summary: 'CTX-STORE-AUTHORITY-1 (#8): two parallel context stores — sys.<os>.tls ctx_get/set dead under interp (TCB uninitialized; raw-nil Maybe panics .is_some()). Overflow-guard test bug fixed ((Int.MAX-8)/16 threshold); its wild load_i64 previously SIGSEGV\'d the WHOLE runner (TEST-RUNNER-ISOLATION-1 #7 filed).'},
     {area: 'recovery / env / spawn / task_queue / mod / async_ops', summary: 'recovery: DROP-GLUE-TYPEID-1 (#9) pins (foreign Drop impl on scope exit). env §A pins retired (EnvTaskId.main fixed upstream). spawn: ctor-chain stub leaks pinned on #11. mod: new unit suite (reserved slots ABI, Bencher laws); Runtime-accessor receiver resolution pinned (#11 + rename-mount typecheck gap). async_ops: integration suite (global handles + sleep).'},
   ]}
-  sweepDate="2026-07-14"
+  sweepDate="2026-07-15"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
