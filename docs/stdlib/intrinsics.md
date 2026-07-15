@@ -4,7 +4,7 @@ title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
 status_detail: >-
-  Per-intrinsic conformance surface landing under `core-tests/intrinsics/`. **2026-07-03 runtime wave**: `type_info` suite completed (an extensive test set — exhaustive 17-primitive laws, 120-pair `T.id` distinctness, `T.min`/`T.max` bounds; interp the covered subset, 1 pinned red = user-record `T.size` silent-8, a tracked toolchain task) + NEW suites `runtime/tier` (rewritten tier-agnostic — the old suite asserted `is_interpreted()==true`, unsatisfiable under --aot; the covered subset), `runtime/time` (the covered subset; sleep/realtime were UNWIRED — sleeps returned instantly), `runtime/text` (the covered subset after fixing GHOST FFI symbols `verum_char_*`/`verum_text_*` — emissions called symbols that exist nowhere while complete CharExtended/TextExtended handlers sat unused — and rewriting the small-string-only handler stubs that truncated `int_to_text` to 6 chars), `runtime/mem_raw` (the covered subset — allocation-backed harness; the leaf `load/store_byte/i32/i64` had `{ 0 }` stub bodies that beat the dispatch table, so the whole Tier-0 raw byte/word surface was INERT), `runtime/cbgr` (the covered subset — the public bridge `cbgr_allocate`/`cbgr_deallocate`/`cbgr_realloc` was link-surface only: no registry entries, nil results, and the realloc inline sequence emitted sub-op 0x63 = PtrAdd, i.e. reallocation computed `ptr+old_size`; now wired both tiers with interpreter AllocationHeader parity). Cross-cutting fixes in the same commit (`a landed fix`): `List.as_mut_ptr` returned the LEN-FIELD address on the interpreter (the atomic suite had been atomically mutating the list length — self-consistent round-trips masked it), and the `PtrAdd`/`PtrSub`/`PtrDiff`/`PtrIsNull` family decoded int-tagged addresses as NULL. Interp aggregate the covered subset (+22 @ignore pins); AOT re-sweep in flight. `bitwise` ✅ complete (interp the covered subset + AOT the covered subset via `verum test`, 4 fundamental fixes, 2026-06-25), `conversion` (interp the covered subset + AOT the covered subset [2026-06-29; was the covered subset]; 1 residual = `f32`_bits round-trip on a LET-BOUND `List<Float32>` — `law_f64_bits_round_trip` FIXED via the iter-float Deref float-mark fix [the AOT Deref dropped the float register mark, so `*x` of a `List<Float>` element read as raw i64; it now propagates `is_float_register(ref_reg)` → f64, like Mov/GradStop]; the let-bound element-type stamp doesn't survive the variable store/reload before `.iter()` — deep follow-up), `float` (interp the covered subset + AOT the covered subset [2026-06-29; was the covered subset]; 1 residual = `law_fma_zero_addend` signed-zero — `assert_eq`→CmpG bit-compares floats so the fma's `+0.0` ≠ the mul's `-0.0`; a CmpG float-Eq branch is regression-prone [plain fcmp OEQ breaks NaN, oeq‖bit_eq breaks conversion] — deep follow-up needing the interpreter's exact float-Eq), `platform` ✅ complete (AOT the covered subset, 2026-06-29), `runtime` ✅ complete (AOT the covered subset, 2026-06-29), `memory` (value-level interp the covered subset + AOT the covered subset; raw-pointer surface: **`ptr_offset`/`ptr_add`/`ptr_sub` element-scaling FIXED both tiers 2026-07-01** — they were byte-indexed, so `ptr_offset(p,1)` advanced 1 byte not 1 8-byte NaN-boxed slot [AOT `lower_ptr_add`/`sub` i8→i64 GEP; interp `offset×8`]; AOT validated v0=99 v1=20 v2=30, no regression; remaining: interp `ptr_read` identity-deref on a calloc'd List-backing ptr + broader memcpy/slice/uninit harness), `atomic` ✅ complete (interp the covered subset + AOT the covered subset [2026-06-29 re-measure, was the covered subset]), `arithmetic` ✅ complete (interp the covered subset + AOT the covered subset via `verum test`, 19 @ignore; 4 fundamental AOT-codegen fixes 2026-06-29 — build_maybe_int_wrap phi-predecessor blocks [`checked_add/sub/mul/div` returned the inner value, not Maybe], `checked_neg/abs` now build Maybe instead of raw-value+panic, `wrapping_*_i8` narrow return uses the i64 register model, width-aware `saturating/wrapping/overflowing/div-rem-abs`), `control` (interp the covered subset + AOT the covered subset; CONTROL-EXPECT-NIL fixed — likely/unlikely/expect were nil; 1 @ignore for generic-expect arithmetic, 2026-06-27). Aggregate stays `partial` until the remaining submodules (float/memory/conversion residuals, simd, tensor, gpu, runtime/{os,tls,sync,io,syscall,async_ops}, lowlevel/*) are routed. **Systemic AOT unblocked 2026-06-25** (SYSTEMIC-AOT-EAGER-CORE-1): `verum test --aot` no longer eager-compiles the whole `core` crate, so harness-level AOT now works for every suite. Remaining: generic intrinsic free-function wrappers can be unreliable via the precompiled-stdlib archive (`INTRINSIC-GENERIC-WRAPPER-ARCHIVE-1`).
+  2026-07-15 campaign: 26 live suites under core-tests/intrinsics; memory bulk ops + sync 13/13 + scripting 30/30 landed; largest open: MEM-PTR-DEREF-TIER0-1 (Tier-0 ptr_read/write stubs, AOT correct) + UMBRELLA-REEXPORT-RESOLVE-1 (nondeterministic wildcard re-exports).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -40,6 +40,44 @@ Annotations you will see:
 - `@requires_runtime` — needs a specific runtime feature (threads, etc.).
 - `@inline(always)` — compiler will always inline.
 - `@target_feature("…")` — requires a specific CPU feature.
+
+---
+
+## Conformance status by submodule (2026-07-15)
+
+Statuses follow the [status convention](./status-convention.md); the
+per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
+"Both tiers" means the suite passes under `verum test --interp` AND `--aot`.
+
+| Submodule | Status | State (2026-07-15) |
+|---|---|---|
+| `arithmetic` | ⚠️ partial | Interp green core (129 live). **ARITH-PURE-BODY-1**: the 14 historically-nil intrinsics (`widening_mul`, `carrying_add`, `borrowing_sub`, `checked_shl/shr/rem/next_power_of_two`, `overflowing_neg/shl/shr`, `saturating_div`, `ilog10`, `leading_sign_bits`, `is_power_of_two`) are now pure Verum bodies over the registered primitives — full 14-function battery green on the v20 bake. AOT sweep pending. |
+| `bitwise` | ✅ complete | Both tiers green (127/127). |
+| `float` | ⚠️ partial | Interp 85 live; 7 pins (`roundeven/rint/nearbyint`, `minimum/maximum`, `is_subnormal`/sign classify need opcodes); AOT libm cluster open (`fneg`/`fms`, `hypot`/`cbrt`/`expm1`/`log1p`/`powi`). |
+| `memory` | ⚠️ partial | Value-level + **raw-pointer harness landed** (property/integration over the `cbgr_allocate` bridge). **MEM-BULK-ADDR-DUAL-1 fixed**: `memcpy`/`memmove`/`memset`/`memcmp`/`secure_zero` now honest at Tier-0 (dual int-or-pointer extraction). `ptr_is_aligned_to` registered. Open: MEM-PTR-DEREF-TIER0-1 (`ptr_read` identity / `ptr_write` no-op at Tier-0 — the two-physical-worlds provenance model, task #16), MEM-SLICE-INTRINSIC-FATREF-1 (slice family re-routed to the canonical CbgrExtended ops — verification in flight), MEM-TRANSMUTE-FLOAT-1. |
+| `atomic` | ⚠️ partial | Interp 30/30; AOT 25/30 (compare-and-swap `(observed, succeeded)` tuple under AOT — ATOMIC-CAS-AOT). |
+| `type_info` | ⚠️ partial | `T.size`/`T.bits`/… property surface complete both tiers (102 tests). The legacy meta-fn forms (`size_of<T>()`, `align_of<T>()`) are `@deprecated` and return 0 through every path — use the type-property syntax. |
+| `conversion` | ⚠️ partial | Interp 60 live; AOT 52/60 (f32/f64 bit-reinterpret + endianness round-trip flake). |
+| `control` | ⚠️ partial | Both tiers 36/36; 1 pin (generic `expect<T>` result mis-tag under arithmetic). |
+| `platform` | ✅ complete | Both tiers green. |
+| `simd` / `tensor` / `gpu` | ❔ undocumented | Audit-only by decision (no value-level constructor / needs MLIR-JIT / needs a device lane); crate-level JIT bit-equivalence is the conformance surface. See the audits. |
+| `lowlevel/*` | ⚠️ partial | Arch files (x86_64/aarch64/kernel/mmio) audit-only (privileged/@llvm_only). The umbrella's cross-platform surface (`CpuCapabilities`, `detect_capabilities()`, SIMD width constants) is suite-covered; **CFG-CONST-SELECT-1** pinned (@cfg on const items takes the fallback branch — `MAX_SIMD_WIDTH` = 128 on aarch64). |
+| `runtime/tier,time,text,mem_raw,cbgr` | ⚠️ partial | Full suites, interp green; see audits for per-module AOT residuals. |
+| `runtime/sync` | ⚠️ partial | 13/13 interp (restored 2026-07-15 by **ARCHIVE-REF-TIER-DROP-1** — baked signatures lost `&unsafe`/`&checked`/`mut`); AOT green under `--exact`. |
+| `runtime/os` | ⚠️ partial | Unit + integration + **property laws** (round-trip identity over a UTF-8 domain, seek algebra, delete lifecycle) — 9/9 interp. |
+| `runtime/io` | ⚠️ partial | Unit + **engine-algebra property laws** (fd-free drift probes) — 6/6 interp. Registration surface belongs to the net suites. |
+| `runtime/tls` | ⚠️ partial | Slot algebra + regression pins for the 2026-07-04 slot-trio cluster; **TLS-SLOT-GET-NULL-1 fixed** (absent slot returns the null pointer, not nil). |
+| `runtime/scripting` | ⚠️ partial | **NEW 2026-07-15**: 30/30 interp (outcome taxonomy, sticky `last_error_kind`, globals, sandbox fuel, List marshaling). Tier contract pinned: AOT = failed outcome kind 4 (no compiler hook). Needed **SCRIPT-HOOK-TEST-RUNNER-1** (test runner now installs the hook). |
+| `runtime/async_ops` / `runtime/syscall` | ❔ undocumented | Deliberate audit-only exceptions: async surface is conformance-tested at `core-tests/async/intrinsics/`; raw syscalls are a portability landmine (platform-specific numbers). |
+| `mod` umbrellas | ⚠️ partial | Explicit re-export lists pinned green. **UMBRELLA-REEXPORT-RESOLVE-1**: wildcard re-exports through umbrella brace-mounts resolve NONDETERMINISTICALLY per run (map-walk name index) — acceptance blocks committed in the suites. |
+
+Open cross-cutting classes (2026-07-15): MEM-PTR-DEREF-TIER0-1,
+UMBRELLA-REEXPORT-RESOLVE-1, ARCHIVE-GENERIC-BODY-NIL-1 (baked generic
+bodies vs local twins — fixed by SERIALIZE-STUB-IDENTITY-1/v20 for the
+arithmetic battery; broader sweep pending), LITERAL-SIZED-ALIAS-COERCE-1
+(bare `Int` literals vs `USize`/`ISize` params of baked free fns),
+CFG-CONST-SELECT-1, INTERP-SWEEP-ISOLATION-1 (threads=16 cross-test
+pollution).
 
 ---
 
