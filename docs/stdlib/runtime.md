@@ -4,7 +4,19 @@ title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 status: partial
 status_detail: >-
-  2026-07-15 close-out — interp 463/536 GREEN (9 = SYNC-SYSCALL-CTORS-REGRESSION-1 peer-window XMOD binds, task-tracked; 64 @ignore each naming its class); AOT 454/536 (18 = Text-iter &-pattern third-path ×6 + mod/integration LLVM SIGABRT ×11 + known §D ×1 — all task-tracked). 14 language-fix classes landed across 21 build rounds: pool/thread Tier-0 eager execution, mount re-export qualified keys (schema v19), unit-type descriptors, Self-newtype ctor, dotted-call scope authority, drop-glue raw-pointer discipline + layout gate, ctx one-store-per-tier + @cfg-tail-value root, const-generic impl gate (Meta), fn-local static once-init hoist, AOT intercept bare-name (narrowed to __*_raw) + helper-signature authority ×2, CreateCallback sigidx, invalidate operand shape, Deref value-fact propagation, per-file interp quarantine + ignored-fn merge-strip.
+  2026-07-15 campaign COMPLETE — interp 472/536, ZERO failures (64 @ignore, each naming its
+  defect class and tracking task); AOT 468/536 with 3 failures + 1 tier-1-only pin (pool batch
+  signal, recovery jitter law, char general_category, num_cpus Tier-1 body — each task-owned).
+  Wave-2 root fixes on top of the earlier 14 classes: stub identity survives bake
+  serialization (silent-unit calls structurally impossible; sleep/parallelism delegators bind
+  real bodies), TypeRef::ConstValue const-generic value channel (VBC format 2.8; the 27
+  stack_alloc pins await only the Tier-1 witness leg), context slots on ONE dense per-module
+  table, global-ctor crash discipline on BOTH tiers (interp unwinds to the entry frame; AOT
+  never traps a __tls_init_* at startup), stage-band function references chase by name at AOT
+  lowering, and the monotonic clock now routes through the single runtime intrinsic on both
+  tiers — Tier-0 previously returned raw mach ticks (41.67x slow on Apple Silicon), so every
+  elapsed-vs-bound contract in this module was silently miscalibrated. Sleep lower-bound
+  contracts (Thread.sleep_ms / Time.sleep) now hold GREEN on both tiers.
 ---
 
 # `core.runtime`
@@ -13,15 +25,15 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="2026-07-14 full-hierarchy sweep: 532 tests across all 18 submodule folders. Interpreter 460 GREEN / 64 @ignore (every pin carries its defect-class name; 6 classes filed as tasks) / 8 pool value-leg in flight. AOT 449 GREEN / 23 divergences (RUNTIME-AOT-LEG-1). The 2026-05 'intrinsic-stub family' is CLOSED: runtime leaves are thin re-exports of the canonical wired core.intrinsics.runtime.* modules, and the re-export chain itself was made loadable (REEXPORT-QUALIFIED-KEY-1: qualified keys + carried target names through mount_aliases, schema v19)."
+  detail="2026-07-15 campaign complete: 536 tests across all 18 submodule folders. Interpreter 472 GREEN / ZERO failures / 64 @ignore (every pin carries its defect-class name and tracking task). AOT 468 GREEN / 3 task-owned atoms (pool batch signal, recovery jitter law, char general_category) + 1 tier-1-only pin (num_cpus body). Wave-2 roots landed: stub identity survives bake serialization (silent-unit delegator calls structurally impossible — sleep and available_parallelism bind real bodies), const-generic VALUES ride the witness channel (VBC 2.8), ONE dense per-module context-slot table, global-ctor crash discipline on both tiers, stage-band references chase by name at AOT lowering, and the monotonic clock routes through the single runtime intrinsic — Tier-0 previously returned raw mach ticks (41.67x slow on Apple Silicon), silently miscalibrating every elapsed-vs-bound contract in this module. Sleep lower-bound contracts hold GREEN on both tiers."
   defects={[
     {area: 'pool', summary: 'POOL-INTERP-STUB-1 CLOSED (Tier-0 submit/join actually run tasks, eager execution); PoolTaskHandle.await renamed join() — the await name was uncallable (postfix .await is async syntax). Remaining: eager-result value normalization (in flight) + AOT native-pool leg.'},
-    {area: 'thread', summary: 'THREAD-EAGER-TIER0-1: Thread.spawn/join live under --interp (pthread intercepts, trampoline→fn-id reverse resolve). Pinned: spawn generic-arg inference in merged-suite compiles (#11 family), sleep/parallelism sys-delegator self-recursion (QUALIFIED-CALL-FIRST-MATCH-1 #12).'},
+    {area: 'thread', summary: 'THREAD-EAGER-TIER0-1: Thread.spawn/join live under --interp (pthread intercepts, trampoline→fn-id reverse resolve). QUALIFIED-CALL-2 CLOSED: sleep_ms/sleep_duration lower-bound contracts GREEN on BOTH tiers (stub identity + honest clock); available_parallelism GREEN at interp, Tier-1 num_cpus body pending (AOT-NUM-CPUS-LEG-1). Remaining pins: spawn generic-arg inference in merged-suite compiles (#11 family).'},
     {area: 'time / tls / text / sync / syscall / cbgr', summary: 'Stub-era §A CLOSED across all six leaves — thin re-exports of the wired canonical intrinsics; suites assert live semantics. cbgr shim widened to the full canonical surface; cbgr_invalidate operand-shape desync fixed both tiers (INVALIDATE-OPERAND-SHAPE-1).'},
     {area: 'config', summary: 'GREEN 30/30 interp. Unit-type construction fixed at TWO roots (MOUNTED-UNIT-VALUE-1: unit types never had TypeDescriptors; bare-value fallback keyed on the wrong kind). Two suite-only Display legs pinned on STUB-STAGE-INSUITE-1 (#11).'},
     {area: 'supervisor', summary: 'GREEN 74/74 interp. SELF-NEWTYPE-CTOR-1 closed: Self(v) in a newtype impl (SupervisorId.root() returned Variant(138,0)) — typecheck + codegen legs.'},
-    {area: 'stack_alloc', summary: 'cfg-gate REMOVED (self-contained allocators; the gate made the surface untestable). Suites written (accounting/savepoints/OOM/alignment laws) and pinned on CONST-GENERIC-IMPL-METHODS-1 (#10): implement<const N> methods unresolvable on archive-loaded types.'},
-    {area: 'ctx_bridge', summary: 'CTX-STORE-AUTHORITY-1 (#8): two parallel context stores — sys.<os>.tls ctx_get/set dead under interp (TCB uninitialized; raw-nil Maybe panics .is_some()). Overflow-guard test bug fixed ((Int.MAX-8)/16 threshold); its wild load_i64 previously SIGSEGV\'d the WHOLE runner (TEST-RUNNER-ISOLATION-1 #7 filed).'},
+    {area: 'stack_alloc', summary: 'cfg-gate REMOVED (self-contained allocators). CONST-GENERIC-VALUE-CARRY-1 landed: TypeRef::ConstValue rides the witness channel end-to-end (VBC 2.8) — const params materialize real values at Tier-0 (6/6 e2e: instantiation values, distinct specializations, aliases, i64 MIN/MAX wire round-trip). The 27 suite pins await only the Tier-1 witness leg (CONST-GENERIC-AOT-LEG-1: LoadT{Generic} still lowers null in AOT frames).'},
+    {area: 'ctx_bridge', summary: 'CTX-AOT-INCOHERENCE-1 CLOSED: context slots live on ONE dense per-module table (CONTEXT_DYNAMIC_SLOT_BASE=32, mirrored in core/sys/common.vr); CtxEnd receives the real provided slot (compile-time LIFO pairing, unbalanced = loud error); out-of-range env_ctx_set/end panic loudly. Residuals task-owned: ctx_bridge bake-reachability + Tier-0 store keyed by the same dense table (CTX-BRIDGE-REACHABILITY-1 + CTX-STORE-AUTHORITY-1).'},
     {area: 'recovery / env / spawn / task_queue / mod / async_ops', summary: 'recovery: DROP-GLUE-TYPEID-1 (#9) pins (foreign Drop impl on scope exit). env §A pins retired (EnvTaskId.main fixed upstream). spawn: ctor-chain stub leaks pinned on #11. mod: new unit suite (reserved slots ABI, Bencher laws); Runtime-accessor receiver resolution pinned (#11 + rename-mount typecheck gap). async_ops: integration suite (global handles + sleep).'},
   ]}
   sweepDate="2026-07-15"
