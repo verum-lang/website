@@ -4,9 +4,13 @@ title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 status: partial
 status_detail: >-
-  2026-07-15 campaign COMPLETE — interp 472/536, ZERO failures (64 @ignore, each naming its
-  defect class and tracking task); AOT 468/536 with 3 failures + 1 tier-1-only pin (pool batch
-  signal, recovery jitter law, char general_category, num_cpus Tier-1 body — each task-owned).
+  2026-07-16 wave-3 close-out — TIER-COHERENT ZERO: interpreter 472/536 GREEN == AOT 472/536
+  GREEN, zero failures on BOTH tiers (64 @ignore, each naming its defect class and tracking
+  task; available_parallelism flipped green on both tiers post-run). Every previously failing
+  atom root-caused and closed: pool batch (collection-element obj-type loss — class-wide fix),
+  recovery jitter (unsigned div/rem lowered signed), char categories (three stacked roots up to
+  CmpI structural equality), num_cpus Tier-1 body, const-generic mono seeding, context-slot
+  unification, FFI struct layouts (schema v21), async-sleep semantics.
   Wave-2 root fixes on top of the earlier 14 classes: stub identity survives bake
   serialization (silent-unit calls structurally impossible; sleep/parallelism delegators bind
   real bodies), TypeRef::ConstValue const-generic value channel (VBC format 2.8; the 27
