@@ -4,7 +4,7 @@ title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
 status_detail: >-
-  2026-07-15 campaign: 26 live suites under core-tests/intrinsics; memory bulk ops + sync 13/13 + scripting 30/30 landed; largest open: MEM-PTR-DEREF-TIER0-1 (Tier-0 ptr_read/write stubs, AOT correct) + UMBRELLA-REEXPORT-RESOLVE-1 (nondeterministic wildcard re-exports).
+  2026-07-16: tensor first real suite (T0193 wire-shape campaign) — interp 63/0/2, AOT in triage; 27 live suites under core-tests/intrinsics; largest open: MEM-PTR-DEREF-TIER0-1, UMBRELLA-REEXPORT-RESOLVE-1 (fix in flight, T0175), tensor Tier-1 axis/IR-body staging (T0179/T0201).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -60,7 +60,8 @@ per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
 | `conversion` | ⚠️ partial | Interp 60 live; AOT 52/60 (f32/f64 bit-reinterpret + endianness round-trip flake). |
 | `control` | ⚠️ partial | Both tiers 36/36; 1 pin (generic `expect<T>` result mis-tag under arithmetic). |
 | `platform` | ✅ complete | Both tiers green. |
-| `simd` / `tensor` / `gpu` | ❔ undocumented | Audit-only by decision (no value-level constructor / needs MLIR-JIT / needs a device lane); crate-level JIT bit-equivalence is the conformance surface. See the audits. |
+| `tensor` | ⚠️ partial | **First real suite 2026-07-16 (T0193)** — the old "audit-only, JIT gate covers it" rationale was disproved: the JIT gate exercises kernels, not the intrinsic WIRE, and ~30 of ~70 ops had divergent operand shapes. Wire canon `[dst][mode?][arg-regs]` landed (envelope-authoritative stream advance, dtype-converting writes, axis-aware softmax/argmax, moded Rand/Reduce/Index/Conv/Softmax). Interp 63/0/2 (`@ignore`: T0199 broadcast kernel, T0200 det/trace value channel). Tier-1: core ops (new/fill/from_slice/get/set/binop/unop/matmul/reduce/reshape/transpose/softmax/clone) have real IR bodies — leg in triage; the extended surface panics loudly by design until the T0179 staging lands IR bodies (was: 60 declared-no-body externs). |
+| `simd` / `gpu` | ❔ undocumented | simd: suite blocked by INTRINSIC-RESOLVE-NONDET-1 (T0175, fix in flight) + splat/reduce surface landing under T0116. gpu: wire-shape fix + suites in flight under GPU-OPERAND-SHAPE-1 (T0177). Both owned by an active peer session — see the pool tasks. |
 | `lowlevel/*` | ⚠️ partial | Arch files (x86_64/aarch64/kernel/mmio) audit-only (privileged/@llvm_only). The umbrella's cross-platform surface (`CpuCapabilities`, `detect_capabilities()`, SIMD width constants) is suite-covered; **CFG-CONST-SELECT-1** pinned (@cfg on const items takes the fallback branch — `MAX_SIMD_WIDTH` = 128 on aarch64). |
 | `runtime/tier,time,text,mem_raw,cbgr` | ⚠️ partial | Full suites, interp green; see audits for per-module AOT residuals. |
 | `runtime/sync` | ⚠️ partial | 13/13 interp (restored 2026-07-15 by **ARCHIVE-REF-TIER-DROP-1** — baked signatures lost `&unsafe`/`&checked`/`mut`); AOT green under `--exact`. |
@@ -711,60 +712,143 @@ simd_reduce_xor<V, T>(v: V) -> T
 
 ## Tensor
 
-Backs the high-level `tensor<Shape>T` literals and `math.tensor` API.
-Selected intrinsics:
+Runtime tensor compute over **opaque handles** (`Int` at the surface
+until the dedicated handle type lands — T0179/T0202). Backs
+`math.tensor` and the autodiff stack. The interpreter executes real
+CPU kernels (`interpreter/tensor.rs`; SVD/QR/eig/einsum/conv2d
+included); Tier-1 lowers to `verum_tensor_*` IR bodies.
+
+**Wire contract (T0193).** Every tensor intrinsic emits
+`TensorExtended` with operands `[dst][mode?][arg-registers…]` — all
+values arrive in registers, never as inline immediates, and the
+operand-byte envelope (not the arm's reads) advances the instruction
+stream. This is the single authority shared by the emitter, the
+interpreter arms, and the AOT lowering.
+
+### Element dtypes (`DTYPE_*` constants)
+
+Pass these to `tensor_new` / `tensor_fill` / `tensor_from_slice` /
+`tensor_cast` — they mirror the runtime `DType` byte encoding:
+
+| Constant | Id | | Constant | Id |
+|---|---|---|---|---|
+| `DTYPE_F32` | 0 | | `DTYPE_U64` | 8 |
+| `DTYPE_F64` | 1 | | `DTYPE_U32` | 9 |
+| `DTYPE_F16` | 2 | | `DTYPE_U16` | 10 |
+| `DTYPE_BF16` | 3 | | `DTYPE_U8` | 11 |
+| `DTYPE_I64` | 4 | | `DTYPE_BOOL` | 12 |
+| `DTYPE_I32` | 5 | | `DTYPE_COMPLEX64` | 13 |
+| `DTYPE_I16` | 6 | | `DTYPE_COMPLEX128` | 14 |
+| `DTYPE_I8` | 7 | | | |
+
+Reads (`tensor_get_scalar → Float`) and writes (`tensor_set_scalar`,
+fills, `from_slice` copies) are **dtype-converting** in both
+directions — an F32/int tensor can never silently read back zeros
+(the pre-T0193 write path was F64-only and no-op'd for every other
+dtype).
+
+### Op-code tables (mirror the VBC enums — do not trust older docs)
+
+| `tensor_unop` op | | op | | op |
+|---|---|---|---|---|
+| 0 neg | | 5 sin | | 10 relu |
+| 1 abs | | 6 cos | | 11 gelu |
+| 2 sqrt | | 7 tan | | 12 silu |
+| 3 exp | | 8 tanh | | 13 floor |
+| 4 log | | 9 sigmoid | | 14 ceil |
+
+`tensor_binop`: 0 add · 1 sub · 2 mul · 3 div · 4 pow · 5 mod ·
+6 min · 7 max.
+`tensor_cmp`: 0 eq · 1 ne · 2 lt · 3 le · 4 gt · 5 ge (Bool tensor).
+`tensor_reduce`: 0 sum · 1 **prod** · 2 max · 3 min · 4 **mean** ·
+5 var (axis &lt; 0 reduces all).
+`tensor_cumulative`: 0 sum · 1 prod.
+
+> The 2026-07-16 sweep (T0198) found the previous op listings drifted
+> from the enums — `math.autodiff`'s sigmoid was emitting **tanh**.
+> These tables are verified against `TensorUnaryOp`/`TensorBinaryOp`/
+> `TensorReduceOp`/`CompareOp` byte values.
+
+### Surface by group
 
 ```verum
-// Creation
-tensor_new<const S: Shape, D>()                 tensor_fill<S, V, D>()
-tensor_from_slice<T, S, D>()                    tensor_from_array<T>()
-tensor_arange<S, E, T>()                        tensor_linspace<S, E>()
-tensor_rand<S>()                                tensor_randn<S>()
-tensor_randint<S>()                              tensor_clone()     tensor_eye()
+// Creation                        // Factories
+tensor_new(shape, dtype)           tensor_arange(start, end, step)
+tensor_fill(shape, value, dtype)   tensor_linspace(start, end, steps)
+tensor_from_slice(data, shape, d)  tensor_eye(n)
+tensor_from_array(data)            tensor_rand(shape) / tensor_randn(shape)
+tensor_clone(t)                    tensor_randint(low, high, shape)
 
-// Shape
-tensor_reshape<const S: Shape>()                tensor_transpose()
-tensor_permute<const P>()                        tensor_squeeze()    tensor_unsqueeze()
-tensor_repeat<const R>()                         tensor_contiguous()
+// Shape                           // Indexing
+tensor_reshape(t, shape)           tensor_slice(t, ranges)
+tensor_transpose(t)                tensor_index(t, indices)
+tensor_permute(t, perm)            tensor_index_select(t, dim, idx)
+tensor_squeeze(t)                  tensor_gather(t, dim, indices)
+tensor_unsqueeze(t, dim)           tensor_concat(tensors, dim)  // List of handles
+tensor_repeat(t, times)            tensor_stack(tensors, dim)   // List of handles
+tensor_contiguous(t)               tensor_split(t, chunks, dim) // → List
+tensor_broadcast(t, shape)
 
-// Indexing
-tensor_slice<S>()                                tensor_index<I>()
-tensor_index_select<I>()                         tensor_gather()
-tensor_concat()                                  tensor_stack()
-tensor_split()                                   tensor_broadcast<S>()
+// Element-wise                    // Linear algebra
+tensor_binop(a, b, op)             tensor_matmul / tensor_mm / tensor_mv
+tensor_unop(t, op)                 tensor_bmm(a, b)   tensor_dot(a, b)
+tensor_cmp(a, b, op)               tensor_outer(a, b)
+tensor_where(cond, a, b)           tensor_einsum(expr, tensors)
+tensor_clamp(t, lo, hi)            tensor_solve(a, b) tensor_tri_solve(a, b)
+tensor_cast(t, dtype)              tensor_inverse(t)  tensor_det(t) → Float
+tensor_masked_fill(t, mask, v)     tensor_trace(t) → Float
+tensor_lerp(a, b, w)
 
-// Element-wise
-tensor_binop()    tensor_unop()    tensor_cmp()    tensor_where()
-tensor_clamp()    tensor_cast<D>()  tensor_masked_fill()
-tensor_lerp()
+// Reductions                      // Normalisation
+tensor_reduce(t, op, axis)         tensor_softmax(t, axis)      // per-lane
+tensor_reduce_all(t, op)           tensor_log_softmax(t, axis)  // stable LSE
+tensor_argmax(t, axis)  // → I64 index TENSOR (axis<0 ⇒ flat global)
+tensor_topk(t, k, axis) // → VALUES tensor, sorted desc
+tensor_cumulative(t, op, axis)     tensor_layer_norm(t, ns, w, b)
+                                   tensor_batch_norm(t, mean, var, w, b)
+tensor_norm(t, p, dim)             tensor_rms_norm(t, w)
 
-// Linear algebra
-tensor_matmul()   tensor_mm()   tensor_mv()     tensor_bmm()
-tensor_dot()      tensor_outer()                tensor_einsum<const E>()
-
-// Decompositions
-tensor_svd()      tensor_qr()   tensor_lu()     tensor_cholesky()
-tensor_eig()      tensor_eigh()
-
-// Solvers
-tensor_solve()    tensor_tri_solve()             tensor_inverse()
-tensor_det()       tensor_trace()
-
-// Reduction
-tensor_reduce()   tensor_reduce_all()            tensor_argmax()
-tensor_topk()     tensor_cumulative()
-
-// Normalisation
-tensor_softmax()  tensor_log_softmax()
-tensor_layer_norm() tensor_batch_norm() tensor_rms_norm()
-
-// Convolutions
-tensor_conv()     tensor_conv2d()
+// Convolutions (valid padding, stride 1)
+tensor_conv(input, kernel)     // 1-D operands auto-wrapped to NCHW
+tensor_conv2d(input, kernel)   // NCHW input, OIHW kernel
 
 // Advanced
-tensor_scatter()  tensor_nonzero()               tensor_one_hot()
-tensor_fft()      tensor_flash_attention()       tensor_norm()
+tensor_scatter(t, dim, indices, src)   tensor_nonzero(t)
+tensor_one_hot(indices, classes)       tensor_fft(t)
+tensor_flash_attention(q, k, v)        // softmax(Q·Kᵀ/√dₖ)·V
 ```
+
+### Single-output contracts (until the multi-output surface lands)
+
+The `.vr` surface returns ONE handle, so each decomposition returns
+its documented **primary factor**: `tensor_qr → Q`,
+`tensor_svd → singular values`, `tensor_lu → U`,
+`tensor_eig`/`tensor_eigh → eigenvalues`, `tensor_topk → values`,
+`tensor_split`/`split_at → List of handles`. The full multi-factor
+surface is staged under the T0179 epic.
+
+### Tier contract
+
+* **Interpreter (Tier 0)** — full surface, real kernels;
+  conformance: `core-tests/intrinsics/tensor` (63/0/2).
+* **AOT (Tier 1)** — the core group (`new`/`fill`/`from_slice`/
+  element access/`binop`/`unop`/`matmul`/`reduce`/`reshape`/
+  `transpose`/`softmax`/`clone`) has real IR bodies; every other op
+  currently lowers to a **loud runtime panic** naming the op
+  (`"<op>: no Tier-1 lowering yet"`) instead of the previous
+  declared-but-undefined externs. IR bodies land per-op under T0179;
+  axis-honoring reduce/softmax at Tier-1 is T0201.
+
+### Open defects
+
+| Class | Task |
+|---|---|
+| Broadcast kernel returns nil for the NumPy row-tile | T0199 |
+| `det`/`trace` value channel (0.0 / int-bits-as-double) | T0200 |
+| Tier-1 reduce/softmax ignore `axis` | T0201 |
+| Handles are headerless `Box` ptrs — garbage f-string render, every tensor leaks | T0202 |
+| View strides ignored by element accessors | T0196 |
+| Script-cache survives wire changes (phantom regressions) | T0197 |
 
 ---
 
