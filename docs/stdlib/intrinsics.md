@@ -4,7 +4,7 @@ title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
 status_detail: >-
-  2026-07-16: tensor first real suite (T0193 wire-shape campaign) — interp 63/0/2, AOT in triage; 27 live suites under core-tests/intrinsics; largest open: MEM-PTR-DEREF-TIER0-1, UMBRELLA-REEXPORT-RESOLVE-1 (fix in flight, T0175), tensor Tier-1 axis/IR-body staging (T0179/T0201).
+  2026-07-16: tensor first real suite — interp 65/65 zero-ignore on main (T0193 wire canon; T0199 stale-bake+carrier-gate and T0200 kernel class closed; T0225 restored the AOT tier at HEAD); Tier-1 tensor compiles, values staged under T0179/T0201; largest open: MEM-PTR-DEREF-TIER0-1, UMBRELLA-REEXPORT-RESOLVE-1 (T0175 in flight).
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -60,7 +60,7 @@ per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
 | `conversion` | ⚠️ partial | Interp 60 live; AOT 52/60 (f32/f64 bit-reinterpret + endianness round-trip flake). |
 | `control` | ⚠️ partial | Both tiers 36/36; 1 pin (generic `expect<T>` result mis-tag under arithmetic). |
 | `platform` | ✅ complete | Both tiers green. |
-| `tensor` | ⚠️ partial | **First real suite 2026-07-16 (T0193)** — the old "audit-only, JIT gate covers it" rationale was disproved: the JIT gate exercises kernels, not the intrinsic WIRE, and ~30 of ~70 ops had divergent operand shapes. Wire canon `[dst][mode?][arg-regs]` landed (envelope-authoritative stream advance, dtype-converting writes, axis-aware softmax/argmax, moded Rand/Reduce/Index/Conv/Softmax). Interp 63/0/2 (`@ignore`: T0199 broadcast kernel, T0200 det/trace value channel). Tier-1: core ops (new/fill/from_slice/get/set/binop/unop/matmul/reduce/reshape/transpose/softmax/clone) have real IR bodies — leg in triage; the extended surface panics loudly by design until the T0179 staging lands IR bodies (was: 60 declared-no-body externs). |
+| `tensor` | ⚠️ partial | **First real suite 2026-07-16 (T0193)** — the old "audit-only, JIT gate covers it" rationale was disproved: the JIT gate exercises kernels, not the intrinsic WIRE, and ~30 of ~70 ops had divergent operand shapes. Wire canon `[dst][mode?][arg-regs]` landed (envelope-authoritative stream advance, dtype-converting writes, axis-aware softmax/argmax, moded Rand/Reduce/Index/Conv/Softmax). Interp 65/65 zero-ignore (T0199 closed — stale-bake T0219 + registry-derived carrier gate; T0200 closed — struct-pointer-as-buffer class swept across five kernels). Tier-1: core ops (new/fill/from_slice/get/set/binop/unop/matmul/reduce/reshape/transpose/softmax/clone) have real IR bodies — leg in triage; the extended surface panics loudly by design until the T0179 staging lands IR bodies (was: 60 declared-no-body externs). |
 | `simd` / `gpu` | ❔ undocumented | simd: suite blocked by INTRINSIC-RESOLVE-NONDET-1 (T0175, fix in flight) + splat/reduce surface landing under T0116. gpu: wire-shape fix + suites in flight under GPU-OPERAND-SHAPE-1 (T0177). Both owned by an active peer session — see the pool tasks. |
 | `lowlevel/*` | ⚠️ partial | Arch files (x86_64/aarch64/kernel/mmio) audit-only (privileged/@llvm_only). The umbrella's cross-platform surface (`CpuCapabilities`, `detect_capabilities()`, SIMD width constants) is suite-covered; **CFG-CONST-SELECT-1** pinned (@cfg on const items takes the fallback branch — `MAX_SIMD_WIDTH` = 128 on aarch64). |
 | `runtime/tier,time,text,mem_raw,cbgr` | ⚠️ partial | Full suites, interp green; see audits for per-module AOT residuals. |
