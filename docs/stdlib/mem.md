@@ -333,7 +333,7 @@ The `Tier` column reflects validated status under `verum test --interp`
 with `[test].parallel = true` by default, and the runner contained two
 independent parallelism bugs that crashed the *whole* run with an
 in-process compiler `SIGSEGV` during `generate_native` (see
-[defect-class catalogue §23 — AOT-PARALLEL-1](/docs/stdlib/defect-class-catalogue)):
+defect-class catalogue §23 — AOT-PARALLEL-1 (verum repo, `docs/architecture/defect-class-catalogue.md`)):
 
 1. **Colliding artifact paths.**  Per-test build artifacts (the merged
    `target/test/test_<stem>.merged.vr`, the output binary, the derived

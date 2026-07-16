@@ -779,7 +779,7 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 > resolve `mount core.sys.{extract_bits}` (`E100 unbound variable`); and
 > **D7** (`AOT-NOT-USIZE-1`): bitwise-NOT `!mask` on a `USize` was rejected
 > by the typechecker. Both are fixed in `verum_types`
-> (see [defect-class-catalogue §21/§22](/docs/stdlib/defect-class-catalogue)).
+> (see defect-class-catalogue §21/§22 — verum repo, `docs/architecture/defect-class-catalogue.md`).
 > The AOT failure histogram collapsed from ~2000 `unbound` + 147 `NOT`
 > errors to zero of those classes; a full sustained AOT green run is pending
 > a stable build environment.

@@ -589,7 +589,7 @@ Two CI guardrails enforce the most load-bearing invariants:
   (`MappedFileShm`) for cross-process WAL-index remains pending.
 
 * **File-format parity with C-SQLite** — diagnostic harness in
-  `internal/diag/sqlite-real/` (gitignored) opens real SQLite 3.x
+  a local gitignored diagnostic harness opens real SQLite 3.x
   files end-to-end via the production VFS path; full
   `parse_header → schema_walker → SELECT` ladder is the next
   diagnostic step (DIAG-3..6 in the task queue).

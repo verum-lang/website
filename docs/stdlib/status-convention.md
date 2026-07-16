@@ -6,7 +6,7 @@ description: How the stdlib module pages declare their conformance status — ta
 
 # Stdlib Module Status Convention
 
-Every page under `internal/website/docs/stdlib/` declares a
+Every page under `docs/stdlib/` on this site declares a
 **conformance status** in its YAML frontmatter.  The status tells
 readers, at a glance, how thoroughly the module's API contract has
 been pinned by the conformance suite at `core-tests/`, and which
@@ -23,11 +23,12 @@ each module page's frontmatter (`status` + `status_detail`), and the
 | Status | Emoji | Meaning |
 |---|---|---|
 | `complete` | ✅ | All public APIs covered by unit tests; algebraic laws pinned by property tests; cross-stdlib integration verified; audit findings landed or routed.  The module's contract is fully exercised end-to-end on both the interpreter (Tier 0) and AOT (Tier 1) paths. |
+| `stable` | 🟢 | Suite fully green under `--interp` and the covered surface is trusted for use, but the coverage bar for `complete` (property laws + cross-stdlib integration + routed audit) is not fully met. Graduates to `complete` when those land. |
 | `partial`  | ⚠️ | A subset of the public API is conformance-tested and stable.  The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage.  The non-`@ignore`'d API surface is safe; everything else is documented per-module under "Open defects". |
 | `regression-only` | ⛔ | Module is gated by upstream stdlib / language-level defects (function-id remap, archive-driven default-method dispatch, CBGR generation tracking on returned `&Text`, …).  Few or no public-API tests pass yet — only `@ignore`d regressions exist to lock the bug shapes.  Avoid in production until promoted to `partial` or `complete`. |
 | `undocumented` | ❔ | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite.  The current page is a best-effort snapshot of the source; it may drift from runtime behaviour.  New modules start here; aim to graduate to `regression-only` (write the tests, even if all `@ignore`'d) before merging. |
 
-The four statuses are **mutually exclusive**.  Aggregate modules (`base`,
+The five statuses are **mutually exclusive**.  Aggregate modules (`base`,
 `async`, `collections`, …) carry the **weakest** status across their
 submodules — if any submodule is `regression-only`, the aggregate is at
 most `partial`.
