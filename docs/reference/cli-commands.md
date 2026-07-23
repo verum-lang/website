@@ -228,6 +228,19 @@ Flags:
 - `--no-deps`.
 - `--format <html|markdown|json>` (default `html`).
 
+### `verum doc-render`
+
+The auto-paper documentation generator — renders a corpus of
+cross-referencing `.vr` documents (theorems, citations) into a single
+publishable artefact. Subcommands:
+
+- `render` — render the corpus as a single document.
+- `graph` — export the citation graph (citing → cited).
+- `check-refs` — audit broken cross-references and **exit non-zero** on
+  any dangling citation (CI-friendly).
+
+Common flags: `--verbose` / `--quiet`, `--color <auto|always|never>`.
+
 ### `verum clean`
 
 Flags:
