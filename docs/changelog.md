@@ -25,6 +25,29 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — developer-experience & basic-functionality pass (2026-07-23)
+
+A batch of fixes to the everyday experience of running Verum programs:
+
+* **String → integer parsing works.** `Int.from_str("42")` /
+  `Int.from_str_radix("2a", 16)` (and everything layered on them —
+  `Int8`…`Int128` parsing) were broken at runtime: the primitive treated
+  `char_at`'s `Maybe<Char>` as a `Char` and panicked. Now returns the
+  parsed value (or `None` on bad input) as intended.
+* **No more spurious startup warning.** Every program — even
+  `fn main() { print("hi") }` — printed a scary
+  `[run_global_ctors] WARN: … crashed via lenient-stub panic …` for a
+  benign, self-healing condition. It is now silent by default (set
+  `VERUM_TRACE_CTOR_SKIP` to see it when debugging).
+* **`verum run` reports crash signals honestly.** A child that dies on a
+  signal (e.g. `SIGSEGV`) now exits `128 + signum` with a named message
+  instead of a misleading plain `exit 1`.
+* **A program can define a top-level `module X { … }`.** Previously any
+  inline module made the compiler lose `main` ("No main function found").
+
+Grab a [dev build](/docs/getting-started/installation#dev-builds-rolling-release)
+to try them.
+
 ### Fixed — arithmetic intrinsics AOT conformance: 129/129 both tiers (2026-06-29)
 
 `core-tests/intrinsics/arithmetic` now passes **129/129 under both the
