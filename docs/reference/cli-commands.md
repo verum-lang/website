@@ -691,6 +691,28 @@ Flags:
 Full proof-term export through `verum_kernel` is a follow-up and lands
 per-backend; today's output is statement-only with proofs admitted.
 
+### `verum foreign-import --from <SYSTEM> <FILE>`
+
+The inbound counterpart to `verum export` — pull theorem statements
+*from* another proof system into Verum. Parses a source file from
+`coq` / `rocq`, `lean4` / `lean` / `mathlib`, `mizar`, `isabelle`, or
+`hol`, and renders the declarations it finds.
+
+Flags:
+- `--from <SYSTEM>` — the source system (see the list above).
+- `--out <PATH>` — write the rendered output to a file instead of stdout.
+- `--format <FORMAT>` — `skeleton` (default — emit `.vr` source),
+  `json` (structured payload for tooling), or `summary` (human-readable
+  list).
+
+### `verum import --from <FORMAT> <INPUT>`
+
+Import a knowledge-base format into Verum types. Today the supported
+source is **OWL 2** functional syntax (`--from owl2-fs`, also spelled
+`ofn`); the importer emits a `.vr` file (default `<input>.vr`, override
+with `-o/--output`) modelling the ontology's classes and relations as
+Verum declarations.
+
 ### `verum extract [FILE] [--output DIR]`
 
 Walks `@extract` / `@extract_witness` / `@extract_contract` markers
