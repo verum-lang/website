@@ -41,6 +41,12 @@ before `0.1.0` is cut.
   crashed because the native code generator had no load path for packed
   arrays (only the interpreter did).
 
+* **Float formatting rounds instead of truncating.** `f"{3.9:.0}"`
+  now prints `4` and `f"{3.14159:.4}"` prints `3.1416` (previously `3` /
+  `3.1415`). Rounding is half-up and carries correctly (`f"{9.96:.1}"` →
+  `10.0`); the precision *count* was already right, only the last-digit
+  rounding was off.
+
 ### Fixed — developer-experience & basic-functionality pass (2026-07-23)
 
 A batch of fixes to the everyday experience of running Verum programs:
