@@ -14,6 +14,15 @@ Prior release numbers (0.01.0 → 0.32.0) tracked internal phase
 milestones during the pre-1.0 implementation; they are retained below
 as historical record. The first public version is **0.1.0**.
 
+:::info Dev builds ship daily
+No versioned release is tagged yet, but the
+[rolling `dev` release](/docs/getting-started/installation#dev-builds-rolling-release)
+rebuilds the full six-platform matrix **every day** from the tip of
+`main`. The **[Unreleased]** entries below therefore describe what is
+already runnable in the latest dev build — grab one to try changes
+before `0.1.0` is cut.
+:::
+
 ## [Unreleased]
 
 ### Fixed — arithmetic intrinsics AOT conformance: 129/129 both tiers (2026-06-29)
