@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Installation
-description: Install Verum on Linux or macOS — build from source today, prebuilt binaries when 0.1.0 is tagged.
+description: Install Verum — grab a daily prebuilt dev build for Linux, macOS, or Windows, or build from source.
 ---
 
 # Installation
@@ -11,33 +11,52 @@ compiler, interpreter, LSP server, Playbook TUI, formatter, and test
 runner. There is no separate runtime or toolchain directory: one
 binary on your `$PATH` is the whole install.
 
-:::warning Pre-release status
+There are two ways to get it:
 
-**No tagged release exists yet.** The
-[GitHub Releases page](https://github.com/verum-lang/verum/releases)
-is empty and the prebuilt-archive URLs in older versions of this page
-(`verum-linux-x86_64.tar.gz`, etc.) currently 404. Until `0.1.0` is
-tagged, the only supported install path is **[Build from
-source](#build-from-source)** below.
+- **[Dev builds](#dev-builds-rolling-release)** — prebuilt binaries for
+  all six supported platforms, rebuilt automatically **every day** and
+  published to a rolling `dev` release. This is the fastest way to try
+  Verum; no toolchain, no compile.
+- **[Build from source](#build-from-source)** — compile the toolchain
+  yourself. Needed for platforms outside the prebuilt matrix, or when
+  you want to hack on the compiler.
 
-The release archives _will_ ship from
-[`.github/workflows/release.yml`](https://github.com/verum-lang/verum/blob/main/.github/workflows/release.yml)
-when a `v*` tag lands; the prebuilt-binary section further down is
-kept as forward-looking reference for that flow.
+:::info Pre-release, but prebuilt daily
+
+Verum has not tagged a versioned `0.1.0` release yet — the language is
+still in active development. Instead, a continuous-integration job
+publishes a **rolling `dev` release**: the full platform matrix is
+rebuilt on a daily schedule and the single
+[`dev`](https://github.com/verum-lang/verum/releases/tag/dev) tag is
+force-moved to the freshly-built commit, so its assets always reflect
+one recent `main` commit. These are bleeding-edge builds — expect rapid
+change between days. See **[Dev builds](#dev-builds-rolling-release)**
+below.
+
+Versioned archives (`verum-v0.1.0-<triple>.tar.gz`) will ship from the
+[release workflow](https://github.com/verum-lang/verum/blob/main/.github/workflows/release.yml)
+when the first `v*` tag lands; the
+[Versioned releases](#versioned-releases-once-tagged) section is kept
+as forward-looking reference for that flow.
 :::
 
 ## Supported platforms
 
-| Platform | Target triple | Status |
-|----------|---------------|--------|
-| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | Build from source today; prebuilt at first tag |
-| macOS Apple Silicon | `aarch64-apple-darwin` | Build from source today; prebuilt at first tag |
-| macOS Intel | `x86_64-apple-darwin` | Build from source today; prebuilt at first tag |
-| Linux aarch64 / musl | — | Build from source |
-| Windows | — | Build from source (officially unsupported) |
+The rolling `dev` release builds **six** target triples every day.
+Five are non-experimental; Windows-on-ARM is built best-effort and may
+occasionally be missing from a given day's assets.
 
-The release workflow currently builds the three triples above for
-prebuilt archives. Everything else requires a source build.
+| Platform | Target triple | Dev build |
+|----------|---------------|-----------|
+| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | ✅ daily |
+| Linux aarch64 (glibc) | `aarch64-unknown-linux-gnu` | ✅ daily |
+| macOS Apple Silicon | `aarch64-apple-darwin` | ✅ daily |
+| macOS Intel | `x86_64-apple-darwin` | ✅ daily |
+| Windows x64 | `x86_64-pc-windows-msvc` | ✅ daily |
+| Windows ARM64 | `aarch64-pc-windows-msvc` | ⚠️ experimental |
+| Linux musl / other | — | Build from source |
+
+Anything outside this matrix requires a [source build](#build-from-source).
 
 ### What the `verum` binary itself links against
 
@@ -81,9 +100,97 @@ rather than calling any C wrapper. A minimal Verum
 binary that runs without glibc, without an interpreter, and
 without any runtime the user has to ship alongside it.
 
+## Dev builds (rolling release)
+
+The fastest way to run Verum today: download a prebuilt binary from the
+rolling [`dev`](https://github.com/verum-lang/verum/releases/tag/dev)
+release. No toolchain, no LLVM build, no compile step — just a single
+binary on your `$PATH`.
+
+**How the `dev` release works.** A GitHub Actions job rebuilds the full
+six-triple platform matrix **once a day (06:00 UTC)** — and on demand
+after an important fix — then force-moves the single `dev` tag to the
+built commit and replaces every asset. The release therefore always
+holds exactly one recent `main` commit's binaries, refreshed daily. No
+new release objects pile up while the language is pre-`0.1.0`.
+
+:::caution These are development snapshots
+The `dev` binaries track the tip of `main` and can change behaviour day
+to day. They are ideal for trying the language and following its
+progress, but pin a source build if you need a stable reference point
+for a project. There is no backward-compatibility guarantee between dev
+builds yet.
+:::
+
+Every run publishes, per triple, a `verum-dev-<triple>.tar.gz` (Linux /
+macOS) or `verum-dev-<triple>.zip` (Windows) archive plus a matching
+`.sha256`. The binary inside is the same self-contained `verum` toolchain
+described [above](#what-the-verum-binary-itself-links-against).
+
+### Linux (x86_64)
+
+```bash
+curl -LO https://github.com/verum-lang/verum/releases/download/dev/verum-dev-x86_64-unknown-linux-gnu.tar.gz
+curl -LO https://github.com/verum-lang/verum/releases/download/dev/verum-dev-x86_64-unknown-linux-gnu.tar.gz.sha256
+shasum -a 256 -c verum-dev-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar xzf verum-dev-x86_64-unknown-linux-gnu.tar.gz
+sudo install -Dm755 verum /usr/local/bin/verum
+verum --version
+```
+
+For Linux ARM64, swap `x86_64-unknown-linux-gnu` →
+`aarch64-unknown-linux-gnu` in every URL.
+
+### macOS (Apple Silicon)
+
+```bash
+curl -LO https://github.com/verum-lang/verum/releases/download/dev/verum-dev-aarch64-apple-darwin.tar.gz
+curl -LO https://github.com/verum-lang/verum/releases/download/dev/verum-dev-aarch64-apple-darwin.tar.gz.sha256
+shasum -a 256 -c verum-dev-aarch64-apple-darwin.tar.gz.sha256
+tar xzf verum-dev-aarch64-apple-darwin.tar.gz
+# Gatekeeper quarantines downloaded binaries; clear the xattr:
+xattr -d com.apple.quarantine verum 2>/dev/null || true
+sudo install -m755 verum /usr/local/bin/verum
+verum --version
+```
+
+For Intel macOS, swap `aarch64-apple-darwin` → `x86_64-apple-darwin`.
+
+### Windows (x64)
+
+Download `verum-dev-x86_64-pc-windows-msvc.zip` and its `.sha256` from
+the [`dev` release](https://github.com/verum-lang/verum/releases/tag/dev),
+verify, and put `verum.exe` on your `PATH`:
+
+```powershell
+$base = "https://github.com/verum-lang/verum/releases/download/dev"
+$asset = "verum-dev-x86_64-pc-windows-msvc.zip"
+Invoke-WebRequest "$base/$asset" -OutFile $asset
+Invoke-WebRequest "$base/$asset.sha256" -OutFile "$asset.sha256"
+# Verify (compare the two hashes):
+(Get-FileHash $asset -Algorithm SHA256).Hash.ToLower()
+Get-Content "$asset.sha256"
+Expand-Archive $asset -DestinationPath $env:USERPROFILE\verum
+# Add $env:USERPROFILE\verum to your PATH, then:
+verum --version
+```
+
+Windows-on-ARM (`aarch64-pc-windows-msvc`) is built best-effort and may
+be absent on some days — fall back to a source build (via WSL2) if the
+asset is missing.
+
+### Staying current
+
+There is no `verum upgrade` command. To move to the latest dev build,
+re-download the archive for your platform and replace the binary in
+place — the `dev` URLs above always resolve to the newest daily build.
+Already-running processes keep their old inode open until they restart.
+
 ## Build from source
 
-This is the primary install path today. The Verum compiler is
+This path compiles the toolchain yourself. Use it for platforms outside
+the [prebuilt matrix](#supported-platforms), for a stable pinned
+reference, or to hack on the compiler. The Verum compiler is
 written in the host language and uses unstable features that require the
 **nightly** toolchain. The build is fully self-contained: a single
 `cargo build` clones, configures, and links every native dependency
@@ -265,67 +372,26 @@ feature flag); to skip the LLVM build entirely you currently need
 to point at a prebuilt LLVM via `VERUM_LLVM_DIR` or wait for the
 prebuilt-binary tags.
 
-## Prebuilt binaries (once `0.1.0` is tagged)
+## Versioned releases (once tagged)
 
-The instructions below describe the planned prebuilt-binary install
-flow. **They will start working when the first `v*` tag is pushed
-and the release workflow uploads archives to GitHub Releases.** Until
-then the URLs return 404.
+When the first `v*` tag is pushed, the
+[release workflow](https://github.com/verum-lang/verum/blob/main/.github/workflows/release.yml)
+will publish a normal (non-pre-release) GitHub release with generated
+notes and one archive per triple, using the same six-platform matrix
+and packaging as the dev builds — only the version string in the name
+changes:
 
-Every tagged release publishes three archives to the
-[GitHub Releases page](https://github.com/verum-lang/verum/releases):
-
-| Archive | Contents |
-|---------|----------|
-| `verum-linux-x86_64.tar.gz` | glibc Linux binary |
-| `verum-macos-aarch64.tar.gz` | Apple Silicon binary |
-| `verum-macos-x86_64.tar.gz` | Intel macOS binary |
-
-Alongside each archive a `*.tar.gz.sha256` file carries a SHA-256
-checksum for integrity verification. There is no aggregate
-`SHA256SUMS` file and no minisign signature chain today — verify the
-per-archive checksum and use HTTPS to the GitHub release URL as your
-trust anchor.
-
-### Linux (x86_64)
-
-```bash
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz.sha256
-shasum -a 256 -c verum-linux-x86_64.tar.gz.sha256
-tar xzf verum-linux-x86_64.tar.gz
-sudo install -Dm755 verum /usr/local/bin/verum
-verum --version
+```
+verum-<tag>-<triple>.tar.gz      # Linux / macOS, e.g. verum-v0.1.0-x86_64-unknown-linux-gnu.tar.gz
+verum-<tag>-<triple>.zip         # Windows
 ```
 
-### macOS (Apple Silicon)
-
-```bash
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-macos-aarch64.tar.gz
-curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-macos-aarch64.tar.gz.sha256
-shasum -a 256 -c verum-macos-aarch64.tar.gz.sha256
-tar xzf verum-macos-aarch64.tar.gz
-# Gatekeeper may quarantine the downloaded binary; clear the xattr:
-xattr -d com.apple.quarantine verum 2>/dev/null || true
-sudo install -m755 verum /usr/local/bin/verum
-verum --version
-```
-
-### macOS (Intel)
-
-Replace `aarch64` with `x86_64` in the URLs above; everything else
-is identical.
-
-### Updating
-
-There is no `verum upgrade` command. To update:
-
-1. Download the newer archive from GitHub Releases.
-2. Verify the SHA-256.
-3. Replace the binary in place (`sudo install -m755 verum /usr/local/bin/verum`).
-
-Already-running processes keep the old binary's inode open and are
-unaffected until they restart.
+Each archive ships a matching `.sha256`, and the release additionally
+carries a combined `SHA256SUMS` file. Installation is identical to the
+[dev-build steps](#dev-builds-rolling-release) above — substitute the
+versioned URL (`.../releases/download/<tag>/verum-<tag>-<triple>...`)
+for the `dev` URL. Until that first tag lands, use a dev build or a
+source build; the versioned URLs 404.
 
 ## Verify the install
 
@@ -541,11 +607,17 @@ no binary lives there.
 
 ### `404: Not Found` on the release archive URL
 
-There is no tagged release yet. The `verum-linux-x86_64.tar.gz` /
-`verum-macos-*.tar.gz` archives are produced by the
-[release workflow](https://github.com/verum-lang/verum/blob/main/.github/workflows/release.yml)
-when a `v*` Git tag is pushed; until that happens the URLs 404.
-Use **[Build from source](#build-from-source)** instead.
+If a **versioned** URL (`.../releases/download/v0.1.0/...`) 404s, there
+is no such tag yet — no `v*` release has been cut. Use a
+**[dev build](#dev-builds-rolling-release)** or a
+**[source build](#build-from-source)** instead.
+
+If a **dev** URL (`.../releases/download/dev/verum-dev-<triple>...`)
+404s, check that the triple in the filename exactly matches your
+platform (e.g. `x86_64-unknown-linux-gnu`, not `linux-x86_64`) — the
+asset names use full LLVM target triples. The experimental
+`aarch64-pc-windows-msvc` asset can also be genuinely absent on a day
+its build leg failed; fall back to a source build.
 
 ### `error: failed to download \`rustc nightly-...\``
 
@@ -651,7 +723,7 @@ fn hard_to_prove() { ... }
 
 ```bash
 https_proxy=http://proxy.corp:3128 \
-  curl -LO https://github.com/verum-lang/verum/releases/latest/download/verum-linux-x86_64.tar.gz
+  curl -LO https://github.com/verum-lang/verum/releases/download/dev/verum-dev-x86_64-unknown-linux-gnu.tar.gz
 ```
 
 The same applies to `cargo` / `rustup` — both honour the standard
