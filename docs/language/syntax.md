@@ -136,10 +136,22 @@ Arity rule: the number of `{…}` placeholders must equal the number of
 supplied arguments after `fmt`. A mismatch leaves the call unchanged —
 type-checking will then report `undefined function: format`.
 
-Format specifiers (`{:?}`, `{:x}`, `{:.3}`, `{:b}`, `{:e}`, `{:Nw}`)
-are syntactically accepted and stripped today; the interpolation
-result is identical to a bare `{}` splice. Specifier-aware rendering
-is tracked separately.
+Format specifiers are **rendered**, not stripped. The following forms
+are applied to the interpolated value:
+
+| Specifier | Effect | Example → output |
+|-----------|--------|------------------|
+| `{:?}` | Debug representation | `f"{Some(5):?}"` → `Some(5)` |
+| `{:x}` / `{:X}` | Hex, lower / upper | `f"{255:x}"` → `ff` |
+| `{:b}` | Binary | `f"{5:b}"` → `101` |
+| `{:o}` | Octal | `f"{8:o}"` → `10` |
+| `{:N}` | Minimum width `N` | `f"[{42:6}]"` → `[    42]` |
+| `{:0N}` | Zero-padded width | `f"{42:06}"` → `000042` |
+| `{:<N}` / `{:>N}` | Left / right align | `f"[{42:<6}]"` → `[42    ]` |
+
+Numbers right-align by default; `<`/`>` override. A few forms are still
+being wired up — center alignment (`{:^}`), the explicit `+` sign flag,
+and float precision (`{:.N}`) — and are tracked in the task pool.
 
 The **only** doubled-quote rule for raw multiline:
 
