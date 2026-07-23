@@ -25,6 +25,22 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — type-safety & codegen (2026-07-24)
+
+* **Refinement types are enforced on `let` bindings and destructuring.**
+  `let n: Int{it >= 0, it <= 10} = f();` now traps at runtime —
+  `refinement violation: binding ` `` `n` `` — when the value is out of
+  range. Previously the refinement was decorative on these binding forms
+  while being enforced on function parameters; now tuple/array
+  destructuring also checks each element against its own refinement
+  (`let (a, b): (Int{<= 5}, Int{<= 10}) = …` traps on whichever element
+  is out of range).
+* **Packed typed arrays work under AOT (Tier 1).** Index read, write, and
+  compound-assign on `[Int; N]` / `[Float; N]` — e.g. `xs[2] = xs[1] + 8`
+  — now compute correctly in native builds. Previously the typed *read*
+  crashed because the native code generator had no load path for packed
+  arrays (only the interpreter did).
+
 ### Fixed — developer-experience & basic-functionality pass (2026-07-23)
 
 A batch of fixes to the everyday experience of running Verum programs:
