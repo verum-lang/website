@@ -44,6 +44,11 @@ A batch of fixes to the everyday experience of running Verum programs:
   instead of a misleading plain `exit 1`.
 * **A program can define a top-level `module X { … }`.** Previously any
   inline module made the compiler lose `main` ("No main function found").
+* **`f"{x:.N}"` float precision is honoured.** `f"{3.14159:.2}"` now
+  prints `3.14` (the precision spec was previously ignored). This also
+  fixed the underlying cause — an unannotated `[0_u8; N]` byte buffer now
+  packs correctly instead of null-dereferencing when re-sliced across a
+  call, which had latently broken every such scratch buffer.
 
 Grab a [dev build](/docs/getting-started/installation#dev-builds-rolling-release)
 to try them.

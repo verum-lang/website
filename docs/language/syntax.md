@@ -151,10 +151,12 @@ the interpolated value:
 | `{:N}` | Minimum width `N` | `f"[{42:6}]"` → `[    42]` |
 | `{:0N}` | Zero-padded width | `f"{42:06}"` → `000042` |
 | `{:<N}` / `{:>N}` | Left / right align | `f"[{42:<6}]"` → `[42    ]` |
+| `{:.N}` | Float precision (N fractional digits) | `f"{3.14159:.2}"` → `3.14` |
 
-Numbers right-align by default; `<`/`>` override. A few forms are still
-being wired up — center alignment (`{:^}`), the explicit `+` sign flag,
-and float precision (`{:.N}`) — and are tracked in the task pool.
+Numbers right-align by default; `<`/`>` override. Precision and width
+compose (`f"{3.14159:8.2}"` → `    3.14`). A couple of forms are still
+being wired up — center alignment (`{:^}`) and the explicit `+` sign
+flag — and are tracked in the task pool.
 
 The **only** doubled-quote rule for raw multiline:
 
