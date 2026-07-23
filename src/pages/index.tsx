@@ -367,10 +367,10 @@ function CTA() {
       <div className={styles.ctaInner}>
         <h2>Start where you are. Climb when you need to.</h2>
         <p>
-          Download the <code>verum</code> binary. Write a function. Add a
-          refinement when it pays. Add a contract when it earns its keep. Let
-          the compiler check more of your invariants the moment you decide
-          they are invariants.
+          Download a prebuilt <code>verum</code> binary — rebuilt daily for
+          Linux, macOS, and Windows. Write a function. Add a refinement when it
+          pays. Add a contract when it earns its keep. Let the compiler check
+          more of your invariants the moment you decide they are invariants.
         </p>
         <div className={styles.heroButtons}>
           <Link className="button button--primary button--lg" to="/docs/getting-started/installation">
