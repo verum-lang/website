@@ -136,8 +136,11 @@ Arity rule: the number of `{…}` placeholders must equal the number of
 supplied arguments after `fmt`. A mismatch leaves the call unchanged —
 type-checking will then report `undefined function: format`.
 
-Format specifiers are **rendered**, not stripped. The following forms
-are applied to the interpolated value:
+### Format specifiers in `f"…"`
+
+Unlike the `format(...)` desugar above — which discards specifiers — an
+**f-string literal renders** them. The following forms are applied to
+the interpolated value:
 
 | Specifier | Effect | Example → output |
 |-----------|--------|------------------|
