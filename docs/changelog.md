@@ -49,6 +49,14 @@ A batch of fixes to the everyday experience of running Verum programs:
   fixed the underlying cause — an unannotated `[0_u8; N]` byte buffer now
   packs correctly instead of null-dereferencing when re-sliced across a
   call, which had latently broken every such scratch buffer.
+* **Unsigned 64-bit integers display and compare correctly.** A `UInt64`
+  with the high bit set (anything above `2^63 − 1`, e.g. `UInt64.MAX`)
+  used to print as a negative number — value-to-text fell through to the
+  signed path, so `u64::MAX` showed as `-1`. It now renders as the true
+  unsigned value at both the interpreter and AOT tiers. Direct `UInt64`
+  comparisons (`<`, `<=`, `>`, `>=`, `==`, `!=`) likewise use unsigned
+  semantics, so large values order correctly instead of wrapping to
+  negative.
 
 Grab a [dev build](/docs/getting-started/installation#dev-builds-rolling-release)
 to try them.
