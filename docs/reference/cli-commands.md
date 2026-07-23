@@ -594,6 +594,34 @@ Flags: `--limit <N>` (default 10).
 
 Flags: `--version <version>`.
 
+### `verum cog precompile`
+
+Precompile a local cog to a `.vbca` archive — the same
+global-registration pipeline the stdlib itself is baked with, applied
+to your cog. Reads `Verum.toml` for the cog name + version, walks the
+source tree, and writes the archive to the canonical registry path
+`target/cog-vbca/<name>-<version>-verum-<compiler>.vbca`. Distributing a
+precompiled cog lets consumers skip recompiling its source.
+
+Flags:
+- `--cog-dir <DIR>` — cog directory containing `Verum.toml` (default:
+  current directory).
+- `--out <FILE>` — override the output `.vbca` path.
+- `--target <TRIPLE>` — target triple to compile for (default: host).
+- `--verbose` / `--quiet`, `--color <auto|always|never>`.
+
+### `verum cog reproduce [<name>@<version>]`
+
+Verify a registry-distributed `.vbca` is **byte-identical** to a fresh
+local precompile of its source — a reproducibility / tamper check. Three
+modes:
+
+- **Local:** `--source-dir <DIR> --reference-vbca <FILE>`.
+- **Tarball:** `--source-tar <PATH> --reference-vbca <FILE>`.
+- **Remote:** `<name>@<version> [--registry <URL>]` — fetch both the
+  source tarball and the reference archive from the registry, precompile
+  locally, and byte-compare.
+
 ### `verum tree`
 
 Dependency tree.
