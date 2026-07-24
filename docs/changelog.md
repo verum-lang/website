@@ -47,7 +47,15 @@ before `0.1.0` is cut.
   `10.0`); the precision *count* was already right, only the last-digit
   rounding was off.
 
-### Fixed — developer-experience & basic-functionality pass (2026-07-23)
+* **A getter that returns a reference now formats as its value.** A
+  method returning an interior reference — `fn get(&self) -> &Int {`
+  `&self.val }` — now renders the referenced value in an f-string:
+  `f"{obj.get()}"` prints `42`, not `<object type_id=42>` (nor the raw
+  byte-list an earlier build showed). Only *method-returned* interior
+  `&self.field` references were affected; a direct `&local` reference and
+  an explicit deref (`f"{*obj.get()}"`) always formatted correctly. The
+  formatter now resolves the interior reference the same way method
+  dispatch and `*`-deref already did.
 
 A batch of fixes to the everyday experience of running Verum programs:
 
