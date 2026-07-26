@@ -60,11 +60,18 @@ Because host and script run on one interpreter, values cross the boundary
 offer this: their guest heap is a separate address space, so every value
 is copied or proxied.
 
-The source notes that scalars and `Text` share correctly today. Richer
-structures are the area to check against the sources before relying on
-them, which the status above already implies: with no `core-tests/script/`
-suite, the guarantee is what the implementation does, not what a
-conformance run has confirmed.
+The source notes that scalars and `Text` share correctly today **through
+the `World` table**. That qualifier matters: it describes the shared
+environment, not every boundary crossing. Passing arguments to a call is a
+separate path — `Engine.call_args` currently carries self-contained scalar
+values, and `Text`, `List` and `Map` arguments need reconstruction on the
+script side that is not wired yet. So a `Text` visible through the shared
+world is not the same as a `Text` handed over as a call argument.
+
+Richer structures generally are the area to check against the sources
+before relying on them, which the status above already implies: with no
+`core-tests/script/` suite, the guarantee is what the implementation does,
+not what a conformance run has confirmed.
 
 ## Status
 
