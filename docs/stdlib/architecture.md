@@ -33,6 +33,28 @@ reuses the existing language surface:
 Zero new keywords; zero new compiler phases; everything reuses the
 existing attribute + axiom + cross-side pin machinery.
 
+## Coverage is universal, and enforced
+
+`@arch_module(...)` is not advisory and not opt-in: **every cog under
+`core/` carries one**, currently 2 252 of them. The invariant is held by a
+pin — `pin_universal_arch_module_coverage_in_core` in `verum_kernel` —
+which walks the whole tree and fails with the name of any file that lacks
+an attestation.
+
+This is what makes the roster below meaningful. An architectural type
+system that most modules declared and a few quietly skipped would let the
+unattested ones drift outside every capability, boundary and lifecycle
+check the system performs — and the gap would be invisible, because
+nothing downstream distinguishes "attested as unconstrained" from "never
+attested". A single missing attestation is therefore a hole in the
+guarantee, not a rounding error, which is why the pin names the offending
+file rather than reporting a percentage.
+
+Adding a module to `core/` means adding its attestation in the same
+change. The values are not free-form: `foundation`, `stratum` and
+`lifecycle` all draw from the canonical primitives in `types.vr` below,
+so a new module inherits the vocabulary its siblings already use.
+
 ## Module roster (12 files, 4 703 lines)
 
 | File | Lines | What's in it |
