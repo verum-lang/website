@@ -73,7 +73,7 @@ type Copy  is protocol extends Clone {
 
 ## Default methods
 
-From the real `core/protocols.vr` definition:
+From the real `core/base/protocols.vr` definition:
 
 ```verum
 type Eq is protocol {
@@ -250,7 +250,7 @@ coordination. This rule keeps protocols unambiguous across an ecosystem.
 ## Marker protocols
 
 Protocols with no methods that communicate a fact to the type
-checker. From `core/protocols.vr`:
+checker. From `core/base/protocols.vr`:
 
 ```verum
 type Send  is protocol { };                       // safe to move across threads
