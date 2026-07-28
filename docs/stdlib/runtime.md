@@ -328,7 +328,7 @@ public async fn execute_with_retry<F, T, E>(
     policy: RetryPolicy,
     f: F,
 ) -> Result<T, E>
-    where F: fn() -> (impl Future<Output = Result<T, E>>);
+    where F: fn() -> (some Fut: Future<Output = Result<T, E>>);
 ```
 
 ### Circuit breaker
@@ -358,7 +358,7 @@ public async fn execute_with_circuit_breaker<F, T, E>(
     breaker: &CircuitBreaker,
     f: F,
 ) -> Result<T, CircuitBreakerError<E>>
-    where F: fn() -> (impl Future<Output = Result<T, E>>);
+    where F: fn() -> (some Fut: Future<Output = Result<T, E>>);
 ```
 
 ### The inline variants

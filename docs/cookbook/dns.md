@@ -67,8 +67,9 @@ let addrs: List<SocketAddr> =
 let stream = TcpStream.connect_addr_async(&addrs[0]).await?;
 ```
 
-`TcpStream.connect_async` already accepts `impl ToSocketAddrs`, so in
-most code you never call `resolve_async` directly:
+`TcpStream.connect_async` is already generic over anything
+implementing `ToSocketAddrs`, so in most code you never call
+`resolve_async` directly:
 
 ```verum
 // Implicit DNS + connect:

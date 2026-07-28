@@ -16,7 +16,7 @@ expression produces.
 | Stream comprehension              | `stream[expr for p in iter …]`         | `Stream<T>`         |
 | Map comprehension                 | `{key: val for p in iter …}`           | `Map<K, V>`         |
 | Set comprehension                 | `set{expr for p in iter …}`            | `Set<T>`            |
-| Generator expression              | `gen{expr for p in iter …}`            | `impl Iterator<T>`  |
+| Generator expression              | `gen{expr for p in iter …}`            | existential `Iterator<T>` (`some I: Iterator<Item = T>`) |
 
 The clause grammar is shared:
 
@@ -101,12 +101,14 @@ let unique_domains = set{
 
 ## Generators — `gen{expr for ... }`
 
-Returns a generic `impl Iterator<Item = T>`. Laziest of the container
-forms — no materialisation, no stream plumbing, just an iterator
-protocol.
+Returns an existential `some I: Iterator<Item = T>` — Verum has no
+`impl Trait`-in-return-position sugar, `some` is the real keyword
+(see [Generics → Existential types](/docs/language/generics#existential-types)).
+Laziest of the container forms — no materialisation, no stream
+plumbing, just an iterator protocol.
 
 ```verum
-fn window_pairs<T: Clone>(xs: &List<T>) -> impl Iterator<(T, T)> {
+fn window_pairs<T: Clone>(xs: &List<T>) -> some I: Iterator<Item = (T, T)> {
     gen{(xs[i].clone(), xs[i + 1].clone())
         for i in 0..xs.len() - 1}
 }
@@ -216,8 +218,8 @@ xs.iter()
 ```
 
 The compiler emits the nested form directly for the non-list
-containers: `Stream`, `Map`, `Set`, and `impl Iterator`. There is no
-intermediate `List` allocated.
+containers: `Stream`, `Map`, `Set`, and the existential
+`some I: Iterator`. There is no intermediate `List` allocated.
 
 ## When to choose which
 

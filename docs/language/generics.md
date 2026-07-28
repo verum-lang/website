@@ -266,11 +266,15 @@ fn make_iter() -> some I: Iterator<Item = Int> {
 ```
 
 The caller sees "*some* iterator of `Int`" — they can iterate, but
-they don't know the concrete type. `some` differs from `impl`:
+they don't know the concrete type. Three related but distinct things:
 
-- `impl T` — existential return type; callers can use the value.
-- `some T` (in bound position) — universal consumption; caller
-  promises to handle any `T` bound by the protocol.
+- `some I: P` (return position) — the existential itself: this
+  function hides one concrete type behind the bound `P`, chosen by
+  the function, opaque to the caller.
+- A plain generic bound, `<T: P>` (parameter position) — the caller
+  chooses the concrete type; the function is monomorphised per type,
+  same as [Static vs dynamic dispatch](/docs/language/protocols#static-vs-dynamic-dispatch).
+  Verum has no `impl Trait`-in-argument-position sugar for this.
 - `dyn T` — runtime polymorphism via vtable; less efficient but
   heterogeneous collections work.
 

@@ -192,10 +192,13 @@ not on the implementation as a whole.
 
 ## Static vs dynamic dispatch
 
-### `impl P` (static)
+### Generic bound (static)
+
+Verum has no `impl Trait`-in-argument-position sugar — write the type
+parameter and its bound explicitly:
 
 ```verum
-fn draw_each(shapes: &[impl Drawable]) { ... }
+fn draw_each<T: Drawable>(shapes: &[T]) { ... }
 ```
 
 - Monomorphised per concrete type.
@@ -212,7 +215,7 @@ fn draw_each(shapes: &[dyn Drawable]) { ... }
 - Allows a heterogeneous collection.
 - One pointer + one vtable pointer per value.
 
-Rule of thumb: `impl` unless you need runtime polymorphism.
+Rule of thumb: a generic bound unless you need runtime polymorphism.
 
 ## Negative bounds
 

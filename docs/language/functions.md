@@ -252,8 +252,11 @@ Closure types implement `Fn` / `FnMut` / `FnOnce` protocols:
 | `FnOnce` | `self` | once | consumes captures |
 
 In function signatures use `fn(T) -> U` for thin function pointers
-(no captures) and `impl Fn(T) -> U` or `dyn Fn(T) -> U` for
-closures with captures.
+(no captures). For closures with captures, Verum has no `impl
+Trait`-in-argument-position sugar: write the bound explicitly as a
+type parameter, `<F: Fn(T) -> U>`, when the caller chooses the
+closure; use `dyn Fn(T) -> U` when you need runtime polymorphism
+(a heterogeneous collection of closures, for instance).
 
 ## Forward declarations
 

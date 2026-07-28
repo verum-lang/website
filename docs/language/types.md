@@ -200,7 +200,7 @@ let shapes: List<dyn Drawable> = [Circle(1.0), Square(2.0)];
 from a literal array with the canonical `[a, b, c]` syntax — no
 `list!` macro, no `List.from_array`; the compiler coerces the
 array literal at the let-binding boundary. See
-**[Protocols](/docs/language/protocols)** for when to prefer `impl P`.
+**[Protocols](/docs/language/protocols)** for when to prefer a generic bound.
 
 ## Generics
 
