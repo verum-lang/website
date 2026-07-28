@@ -25,6 +25,48 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — `--target` cross builds emitted host-shaped runtime code (2026-07-28)
+
+* **Cross-compiling for a different OS than the host now actually
+  targets that OS.** `verum build --target x86_64-unknown-linux-gnu`
+  run from a macOS or Windows host — or any `--target` naming an OS
+  other than the host's — correctly selected the target machine,
+  frameworks, and compiler-rt, but the *LLVM module's own triple*,
+  which is what every per-platform decision in the code generator
+  actually reads, was never set from `--target`. Every cross build
+  therefore emitted **host**-shaped runtime bodies inside a
+  correctly-labelled object file. Concretely, this was a live
+  [no-libc](/docs/architecture/no-libc-architecture) violation: a
+  Linux cross build emitted Darwin/libSystem-style `declare @socket`
+  instead of a raw syscall, leaving 10 undefined libc symbols in the
+  object (`bind`, `connect`, `listen`, `recv`, `recvfrom`, `send`,
+  `sendto`, `setsockopt`, `socket`, `waitpid`) — now 0. With no
+  `--target` flag, nothing changes (output is byte-identical).
+  **Not yet fixed:** the separate no-libc *linking* configuration is
+  not unconditionally coupled to `--target` in every build path, so a
+  cross build can still pick up host linker flags in some
+  configurations — tracked separately, see
+  [no-libc architecture](/docs/architecture/no-libc-architecture).
+
+### Fixed — `tan` and `sincos` returned wrong values for nonzero input (2026-07-28)
+
+* **`math.elementary`'s angle reduction used the wrong unit.**
+  `reduce_trig_arg` reduced its input modulo π/4 while `sin`, `cos`,
+  and `sincos`'s quadrant tables assumed a π/2 reduction — every
+  angle came back in the wrong quadrant except `x = 0`, where the two
+  conventions happen to agree. `tan(1.0)` returned `-4.588…` instead
+  of `1.5574…`; `tan(0.0)` was correct before and after, which is why
+  it read as a working control. Reducing modulo π/2 fixes `tan` and
+  `sincos`, the two callers whose return type let them run at all.
+  **`sin`, `cos`, `exp`, `log`, and `sqrt` in `core.math.elementary`
+  are separately broken right now** — an unrelated stdlib-build defect
+  currently causes calls to these five names to resolve to a
+  same-named function in a different module instead of their own
+  (surfacing as a runtime type error, or in at least one observed case
+  a silently wrong value); `exp2`, `cosh`, `tanh`, and `sinh` inherit
+  the failure because they call `exp` internally. Not fixed yet — see
+  the callout on the [math stdlib page](/docs/stdlib/math).
+
 ### Fixed — type-safety & codegen (2026-07-24)
 
 * **Refinement types are enforced on `let` bindings and destructuring.**
