@@ -120,7 +120,7 @@ usize.max    // 2^64 - 1 on 64-bit platforms
 ```verum
 List<Int>.name                  // "core.collections.List<Int>"
 Map<Text, User>.name            // "core.collections.Map<core.text.Text, User>"
-Point.name                      // "crate::geom::Point" (if defined in crate.geom)
+Point.name                      // "crate.geom.Point" (if defined in crate.geom)
 ```
 
 `T.id` is the FNV-64 hash of the canonical name. It is **stable**

@@ -64,7 +64,7 @@ fn load_images(path: &Path) -> IoResult<Tensor<Float32>> {
     let cols = u32_from_be(&bytes[12..16]) as Int;
 
     let total = n * rows * cols;
-    let mut data = List<Float32>::with_capacity(total);
+    let mut data = List<Float32>.with_capacity(total);
     for i in 0..total {
         data.push(bytes[16 + i] as Float32 / 255.0);
     }

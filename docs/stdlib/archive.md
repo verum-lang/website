@@ -134,13 +134,13 @@ For ergonomic entry construction:
 
 ```verum
 let entry_file: ArchiveEntry =
-    archive::entry_for_file(path, content, mode, mtime);
+    archive.entry_for_file(path, content, mode, mtime);
 
 let entry_dir: ArchiveEntry =
-    archive::entry_for_directory(path, mode, mtime);
+    archive.entry_for_directory(path, mode, mtime);
 
 let entry_symlink: ArchiveEntry =
-    archive::entry_for_symlink(path, target, mtime);
+    archive.entry_for_symlink(path, target, mtime);
 ```
 
 These set the right `kind` variant and zero-fill content for

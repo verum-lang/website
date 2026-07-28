@@ -89,7 +89,7 @@ public fn format_user(u: &User) -> Text {
 fn render_dashboard(users: &List<User>) -> Text {
     users.iter()
          .map(|u| f"User({u.id}, {u.email})")     // <-- inlined
-         .collect::<Text>()
+         .collect<Text>()
          .join("\n")
 }
 ```

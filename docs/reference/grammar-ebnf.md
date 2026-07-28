@@ -372,17 +372,17 @@ references.
 
 ```verum
 @arch_module(
-    exposes = [Capability::Authenticate, Capability::IssueToken],
-    requires = [Capability::HashPassword, Capability::RandomBytes],
-    preserves = [SessionInvariant::NoTokenLeak],
-    at_tier = Tier::MultiTier([Tier::Aot, Tier::Interp]),
-    foundation = Foundation::ZfcTwoInacc,
-    stratum = MsfsStratum::LFnd,
-    lifecycle = Lifecycle::Theorem("v0.1"),
+    exposes = [Capability.Authenticate, Capability.IssueToken],
+    requires = [Capability.HashPassword, Capability.RandomBytes],
+    preserves = [SessionInvariant.NoTokenLeak],
+    at_tier = Tier.MultiTier([Tier.Aot, Tier.Interp]),
+    foundation = Foundation.ZfcTwoInacc,
+    stratum = MsfsStratum.LFnd,
+    lifecycle = Lifecycle.Theorem("v0.1"),
     cve_closure_C = synthesize_session_token,    // C — Constructive
     cve_closure_V_strategy = certified,          // V — @verify ladder
     cve_closure_E = AuthenticationServer,        // E — Executable entry point
-    composes_with = [Database::transactional, Network::tls_v13],
+    composes_with = [Database.transactional, Network.tls_v13],
     strict = true,
 )
 public module authentication { ... }
