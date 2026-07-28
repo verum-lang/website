@@ -234,7 +234,10 @@ for the full decision matrix.
 
 ## Adding a test
 
-Create `tests/greet_test.vr`:
+`verum new` already scaffolded `tests/main_test.vr` with two starter
+tests (`test_example`, `test_semantic_types`) — those run alongside
+the ones you add now, so don't be surprised to see four tests instead
+of two. Create `tests/greet_test.vr`:
 
 ```verum
 mount hello.*;
@@ -259,11 +262,13 @@ Run tests:
 $ verum test
    compiling hello v0.1.0 (./hello)
     finished in 0.2s
-     running 2 tests
-test greet_returns_non_empty ... ok
-test greet_includes_name ... ok
+     running 4 tests
+test greet_test::greet_returns_non_empty ... ok
+test greet_test::greet_includes_name ... ok
+test main_test::test_example ... ok
+test main_test::test_semantic_types ... ok
 
-test result: ok. 2 passed; 0 failed
+test result: ok. 4 passed; 0 failed
 ```
 
 `@test` marks a function as a test. Tests run in parallel by default;
