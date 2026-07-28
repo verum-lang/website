@@ -31,18 +31,27 @@ inside the literal is automatically passed through the
 `ShellEscape` protocol, so user data cannot break
 out of its quoted form:
 
+`sh#"..."` builds a `ShellCommand` value — auto-escaped, but not yet
+run. Executing it is a separate, explicit step (`.run()` or
+`.run_check()`, both `async`), same as every example below:
+
 ```verum
-let user_input: Text = read_line()?;
-sh#"echo ${user_input}"?;     // safe — even if user_input is "'; rm -rf /"
+async fn greet(user_input: &Text) -> Result<(), ShellError> using [ShellContext] {
+    sh#"echo ${user_input}".run_check().await?;     // safe — even if user_input is "'; rm -rf /"
+    Result.Ok(())
+}
 ```
 
 When you genuinely want to splice unescaped shell text (rare, dangerous),
 use `$unsafe{...}` inside an `unsafe` block:
 
 ```verum
-let raw_pipeline: Text = "grep error | head -10".into();
-unsafe {
-    sh#"journalctl -u myservice | $unsafe{raw_pipeline}"?;
+async fn tail_service_errors() -> Result<(), ShellError> using [ShellContext] {
+    let raw_pipeline: Text = "grep error | head -10".into();
+    unsafe {
+        sh#"journalctl -u myservice | $unsafe{raw_pipeline}".run_check().await?;
+    }
+    Result.Ok(())
 }
 ```
 
@@ -51,36 +60,76 @@ unsafe {
 ### Run a command and capture output
 
 ```verum
-let result = sh#"git rev-parse --short HEAD"?;
-let hash: Text = result.text();      // stdout, trimmed
-println(&f"current commit: {hash}");
+async fn show_current_commit() -> Result<(), ShellError> using [ShellContext] {
+    let result = sh#"git rev-parse --short HEAD".run_check().await?;
+    let hash: Text = result.text();      // stdout, trimmed
+    println(&f"current commit: {hash}");
+    Result.Ok(())
+}
 ```
 
 ### Pipe through several commands
 
+`Text` has no `parse` method — conversion is a `from_str` protocol called
+**on the target type**, not chained off the source string:
+
 ```verum
-let count: Int = sh#"git log --oneline | grep feat: | wc -l"?
-    .text()
-    .parse::<Int>()?;
+async fn feature_commit_count() -> Result<Int, ShellError> using [ShellContext] {
+    let result = sh#"git log --oneline | grep feat: | wc -l".run_check().await?;
+    let count: Int = Int.from_str(&result.text()).map_err(|e| ShellError.ParseError {
+        command: "git log --oneline | grep feat: | wc -l".to_text(),
+        format:  "int".to_text(),
+        cause:   e.message,
+    })?;
+    Result.Ok(count)
+}
 ```
 
 ### Parse JSON output into a typed value
 
+There is no general "parse JSON text as type `T`" facility. The only
+typed-JSON-to-value protocol in the stdlib (`JsonDeserialize<T>`) belongs
+to Weft's HTTP request-body extractor — it's wired to `Content-Type`
+checks and HTTP status codes, not available for arbitrary text. What's
+available generally is `core.encoding.json.parse`, which returns an
+untyped `JsonValue` tree you walk by hand:
+
 ```verum
+mount core.encoding.json.{parse, JsonValue, JsonError};
+
 type Pod is { name: Text, ready: Bool }
-let pods: List<Pod> = sh#"kubectl get pods -o json"?
-    .json::<KubeResponse>()?
-    .items;
+
+async fn pod_count() -> Result<Int, ShellError> using [ShellContext] {
+    let result = sh#"kubectl get pods -o json".run_check().await?;
+    let value  = parse(&result.text()).map_err(|e| ShellError.ParseError {
+        command: "kubectl get pods -o json".to_text(),
+        format:  "json".to_text(),
+        cause:   f"{e}",
+    })?;
+    let count = match &value {
+        JsonValue.JsonObject(fields) => match fields.get(&"items".to_text()) {
+            Maybe.Some(JsonValue.JsonArray(items)) => items.len(),
+            _ => 0,
+        },
+        _ => 0,
+    };
+    Result.Ok(count)
+}
 ```
+
+If your program needs full `Pod` records rather than a count, extend
+the match arm above field-by-field (`JsonValue.JsonString` for `name`,
+`JsonValue.JsonBool` for `ready`); there's no derive that does it for
+you outside the Weft handler path today.
 
 ### Run commands in parallel
 
 ```verum
 async fn ci() using [ShellContext] {
-    nursery(on_error: FailFast) {
-        spawn sh#"cargo test"?;
-        spawn sh#"cargo clippy -- -D warnings"?;
-        spawn sh#"verum check core/"?;
+    nursery(on_error: fail_fast) {
+        spawn sh#"cargo test".run_check();
+        spawn sh#"cargo clippy -- -D warnings".run_check();
+        spawn sh#"verum check core/".run_check();
     };
 }
 ```
@@ -227,11 +276,14 @@ let token = password(&"GitHub token: ".into());
 ## Progress indicators
 
 ```verum
-let mut progress = Progress.new("Building".into(), 3);
-sh#"cargo build --release"?;       progress.advance();
-sh#"docker build -t app:latest ."?; progress.advance();
-sh#"docker push app:latest"?;       progress.advance();
-progress.done("✓ released".into());
+async fn build_and_release() -> Result<(), ShellError> using [ShellContext] {
+    let mut progress = Progress.new("Building".into(), 3);
+    sh#"cargo build --release".run_check().await?;        progress.advance();
+    sh#"docker build -t app:latest .".run_check().await?; progress.advance();
+    sh#"docker push app:latest".run_check().await?;       progress.advance();
+    progress.done("✓ released".into());
+    Result.Ok(())
+}
 ```
 
 For unbounded operations:
@@ -256,11 +308,12 @@ permission gate denies anything not declared:
 
 mount core.shell.*;
 
-async fn main() using [ShellContext] {
+async fn main() -> Result<(), ShellError> using [ShellContext] {
     let ctx = bootstrap_from_file(&PathBuf.from("script.vr").as_path())?;
     provide ShellContext = ctx;
-    sh#"git status"?;     // OK — `git` is allow-listed
-    sh#"curl ..."?;       // PermissionDenied at runtime
+    sh#"git status".run_check().await?;     // OK — `git` is allow-listed
+    sh#"curl ...".run_check().await?;       // PermissionDenied at runtime
+    Result.Ok(())
 }
 ```
 
@@ -269,7 +322,7 @@ async fn main() using [ShellContext] {
 Unit-test scripts without spawning real processes:
 
 ```verum
-#[test]
+@test
 async fn deploy_runs_kubectl_in_order() {
     provide ShellContext = ShellContext.mock([
         MockResponse.success("kubectl apply".into(), "created".into()),
