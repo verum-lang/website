@@ -79,13 +79,13 @@ fn count_one(path: &Path) -> IoResult<Counts> {
     let bytes = text.len();
     let lines = text.lines().count();
     let words = text.split_whitespace().count();
-    Result.Ok(Counts { lines, words, bytes, path: path.as_text().to_string() })
+    Result.Ok(Counts { lines, words, bytes, path: path.to_text().to_string() })
 }
 
 fn count_all(paths: &List<Text>) -> IoResult<List<Counts>> {
     let mut out = list![];
     for p in paths {
-        let path = Path.from(p);
+        let path = Path.from_str(p);
         out.push(count_one(&path)?);
     }
     Result.Ok(out)
@@ -125,6 +125,15 @@ fn format_counts(counts: &List<Counts>, fmt: OutputFormat) -> Text {
 ```
 
 ## 5. Main
+
+:::note `env.args()` below is blocked by a compiler defect, not a doc error
+`env` refers to `core.base.env`, and `env.args()` is genuinely the
+intended way to read command-line arguments. But the bare `env`
+identifier currently resolves to an unrelated compiler-internal
+context method instead of that module, so this line fails to compile
+as written today. The example is correct Verum; the name resolution
+underneath it isn't, yet.
+:::
 
 ```verum
 fn print_help() {
