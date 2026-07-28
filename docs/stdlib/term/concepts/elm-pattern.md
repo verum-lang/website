@@ -175,7 +175,7 @@ On exit — `Command.Quit`, `Ctrl+C`, or a `view` that raised — the runtime:
 Because `update` is pure, unit-testing is trivial:
 
 ```verum
-#[test]
+@test
 fn increments_counter() {
     let mut m = CounterModel { counter: 0 };
     let cmd = m.update(Msg.Increment);

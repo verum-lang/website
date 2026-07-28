@@ -183,7 +183,7 @@ let mut perms = fs.metadata(path)?.permissions();
 perms.set_mode(0o644);
 fs.set_permissions(path, perms)?;
 
-#[cfg(unix)]
+@cfg(unix)
 {
     fs.set_mode(path, 0o755)?;                        // Unix helper
 }

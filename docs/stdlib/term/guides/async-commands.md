@@ -140,14 +140,14 @@ Two remedies:
 Because `Command` is a *value*, not an effect, you can inspect it:
 
 ```verum
-#[test]
+@test
 fn increment_starts_no_fetch() {
     let mut m = State.default();
     let cmd = m.update(Msg.Increment);
     assert(cmd.is_noop());
 }
 
-#[test]
+@test
 fn load_starts_fetch_task() {
     let mut m = State.default();
     let cmd = m.update(Msg.Load);

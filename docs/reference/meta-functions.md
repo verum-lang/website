@@ -53,7 +53,7 @@ Emits a compile-time error with the given message and aborts
 compilation.
 
 ```verum
-#[cfg(target_endian = "big")]
+@cfg(target_endian = "big")
 @error("verum_foo requires little-endian");
 ```
 

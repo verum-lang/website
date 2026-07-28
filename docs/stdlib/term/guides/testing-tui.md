@@ -13,7 +13,7 @@ testing. Three layers of tests cover the whole stack:
 ## 1. Unit-test `update`
 
 ```verum
-#[test]
+@test
 fn increment_bumps_counter() {
     let mut m = CounterModel { count: 0 };
     let cmd = m.update(Msg.Increment);
@@ -21,7 +21,7 @@ fn increment_bumps_counter() {
     assert(cmd.is_noop());
 }
 
-#[test]
+@test
 fn load_dispatches_async_fetch() {
     let mut m = DataModel.default();
     let cmd = m.update(Msg.Load);
@@ -40,7 +40,7 @@ of `Msg`s and assert the final model state — no mocking required.
 Render into a buffer of fixed size and compare its string projection:
 
 ```verum
-#[test]
+@test
 fn counter_renders_expected_frame() {
     let m = CounterModel { count: 7 };
     let mut buf = Buffer.new(30, 5);

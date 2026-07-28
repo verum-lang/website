@@ -451,8 +451,8 @@ supply-chain review.
 
 `verum.toml` at project root sets defaults. Any CLI flag can be
 overridden at the file level with
-`#[verify(attr = value)]` at the top of the file, or at the
-declaration level with `#[verify(...)]` on the decl.
+`@verify(attr = value)` at the top of the file, or at the
+declaration level with `@verify(...)` on the decl.
 
 ```toml
 [verify]

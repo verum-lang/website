@@ -225,7 +225,7 @@ match s {
 
 The compiler verifies that **every** arm accounts for the payload.
 Falling through without consuming the payload is a type error
-(linear) or warning (affine + `#[must_use]`).
+(linear) or warning (affine + `@must_use`).
 
 ## Splitting a linear value
 
@@ -457,7 +457,7 @@ freely usable.
 
 Verum's `linear` specifically forbids this convenience because
 **silent drops hide bugs**. If you want automatic cleanup at scope
-exit, use `affine` plus a `#[must_use]` attribute — the compiler
+exit, use `affine` plus a `@must_use` attribute — the compiler
 will warn you but not stop you.
 
 ### "I forgot to consume in one branch of an `if`"

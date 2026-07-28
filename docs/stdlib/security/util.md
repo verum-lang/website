@@ -280,7 +280,7 @@ authoritative way to clear secrets.
   as possible. Load from keystore immediately before use, zeroise
   after.
 - **No debug-print.** Refuse to `Debug`-format secret types. A
-  future `#[opaque_debug]` attribute will enforce this statically.
+  future `@opaque_debug` attribute will enforce this statically.
 - **Hardware keystores.** For long-term keys, the ideal place is
   never in process memory at all — hardware security module (HSM),
   platform KMS, or a TPM-sealed blob decrypted only on use.

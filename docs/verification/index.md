@@ -76,7 +76,7 @@ Three-valued enum defined in `verum_verification::level`:
 Level selection is per-declaration, per-file, or per-project. The
 compiler defaults to `Static` for code with refinements and
 `Runtime` otherwise; overrides live in `verum.toml` (project),
-`#[verify(level = …)]` (declaration), or `--mode` (CLI).
+`@verify(level = …)` (declaration), or `--mode` (CLI).
 
 ### Layer 2 — `VerifyStrategy`
 
@@ -410,13 +410,13 @@ gradient lets you climb:
 2. **Add refinements** — `Int { > 0 }` on a key parameter.
    Default escalates to `Static` level with `Formal` strategy;
    failing proofs surface as build errors. Sampling via
-   `#[verify(level = Runtime)]` lets you defer individual failures.
+   `@verify(level = Runtime)` lets you defer individual failures.
 3. **Add contracts** — `requires` / `ensures` on function
    signatures. Proof obligations expand; you may need `@logic` on
    a helper. Reflection is cheap.
 4. **Write theorems** — `theorem sort_is_stable { proof by … }`.
    Now you're writing proofs, not just annotations.
-5. **Certify** — `#[verify(strategy = Certified)]` on the
+5. **Certify** — `@verify(strategy = Certified)` on the
    theorems that matter most. Certificates land in
    `target/proofs/` and survive in CI artifact storage.
 6. **Export** — `verum export-proofs --to lean` for
