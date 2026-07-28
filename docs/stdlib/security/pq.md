@@ -152,7 +152,7 @@ public fn ml_kem_decapsulate(variant: MlKemVariant, secret_key: &[Byte], ciphert
 Helper methods on the variant:
 
 ```verum
-impl MlKemVariant {
+implement MlKemVariant {
     pub fn public_key_len(&self) -> Int;
     pub fn secret_key_len(&self) -> Int;
     pub fn ciphertext_len(&self) -> Int;
@@ -391,7 +391,7 @@ public type SphincsPlusVariant is
 Per-variant size accessors mirror ML-DSA:
 
 ```verum
-impl SphincsPlusVariant {
+implement SphincsPlusVariant {
     public fn public_key_len(&self) -> Int;
     public fn secret_key_len(&self) -> Int;
     public fn signature_len(&self) -> Int;

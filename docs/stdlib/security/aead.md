@@ -127,7 +127,7 @@ public type GcmError is
     | TagMismatch
     | InvalidInput { reason: Text };
 
-impl Aes128Gcm {
+implement Aes128Gcm {
     pub fn new(key: &AesKey128) -> Aes128Gcm;
 
     pub fn encrypt(
@@ -308,7 +308,7 @@ public type AeadError is
     | TagMismatch
     | InvalidInput { reason: Text };
 
-impl ChaCha20Poly1305 {
+implement ChaCha20Poly1305 {
     pub fn new(key: &ChaChaKey) -> ChaCha20Poly1305;
 
     pub fn encrypt(

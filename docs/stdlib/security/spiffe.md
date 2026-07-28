@@ -87,7 +87,7 @@ spiffe://prod.example.com/ns/billing/sa/api-gateway
 ### API
 
 ```verum
-impl SpiffeId {
+implement SpiffeId {
     // Construction
     pub fn new(trust_domain: Text, path: Text) -> Result<SpiffeId, SpiffeIdError>;
     pub fn from_trust_domain(trust_domain: Text) -> Result<SpiffeId, SpiffeIdError>;
@@ -171,7 +171,7 @@ public type X509Svid is {
     expires_at: Instant,
 };
 
-impl X509Svid {
+implement X509Svid {
     pub fn new(id: SpiffeId, cert_chain: List<Certificate>,
                private_key: PrivateKey, expires_at: Instant) -> X509Svid;
     pub fn id(&self) -> &SpiffeId;
@@ -187,7 +187,7 @@ public type X509Bundle is {
     cas: List<Certificate>,
 };
 
-impl X509Bundle {
+implement X509Bundle {
     pub fn new(trust_domain: Text, cas: List<Certificate>) -> X509Bundle;
     pub fn trust_domain(&self) -> &Text;
     pub fn cas(&self) -> &List<Certificate>;
@@ -223,7 +223,7 @@ public type JwtSvid is {
     extra_claims: Text,
 };
 
-impl JwtSvid {
+implement JwtSvid {
     pub fn id(&self) -> &SpiffeId;
     pub fn token(&self) -> &Text;
     pub fn audiences(&self) -> &List<Text>;
@@ -238,7 +238,7 @@ public type JwtBundle is {
     jwks: Text,
 };
 
-impl JwtBundle {
+implement JwtBundle {
     pub fn new(trust_domain: Text, jwks: Text) -> JwtBundle;
     pub fn trust_domain(&self) -> &Text;
     pub fn jwks(&self) -> &Text;
@@ -292,7 +292,7 @@ public type WorkloadApiClient is {
     handle: UInt64,
 };
 
-impl WorkloadApiClient {
+implement WorkloadApiClient {
     /// Connect using the env-var / default socket path.
     pub async fn connect() -> Result<WorkloadApiClient, WorkloadApiError>;
 

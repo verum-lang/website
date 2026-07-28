@@ -19,7 +19,7 @@ public type Event is
     | FocusGained
     | FocusLost;
 
-impl Event {
+implement Event {
     fn is_key(&self)    -> Bool
     fn is_mouse(&self)  -> Bool
     fn is_resize(&self) -> Bool
@@ -39,7 +39,7 @@ public type KeyEvent is {
 
 public type KeyEventKind is Press | Release | Repeat;
 
-impl KeyEvent {
+implement KeyEvent {
     fn press(code: KeyCode) -> KeyEvent
     fn with_mods(code: KeyCode, mods: Modifiers) -> KeyEvent
     fn is_ctrl_c(&self) -> Bool
@@ -75,7 +75,7 @@ Modifiers.SHIFT   Modifiers.CTRL
 Modifiers.ALT     Modifiers.SUPER
 Modifiers.HYPER   Modifiers.META
 
-impl Modifiers {
+implement Modifiers {
     fn contains(&self, m: Modifiers) -> Bool
     fn union(&self, m: Modifiers)    -> Modifiers
     fn empty(&self) -> Bool
@@ -122,7 +122,7 @@ public type AsyncEventStream is { ... };
 AsyncEventStream.new(fd: FileDesc) -> AsyncEventStream
 AsyncEventStream.stdin() -> AsyncEventStream
 
-impl AsyncIterator for AsyncEventStream {
+implement AsyncIterator for AsyncEventStream {
     type Item = Event;
     async fn next(&mut self) -> Maybe<Event>
 }

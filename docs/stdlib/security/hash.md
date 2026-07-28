@@ -49,7 +49,7 @@ let digest: [Byte; 32] = Sha256.digest(data);
 ### Streaming operations
 
 ```verum
-impl Sha256 {
+implement Sha256 {
     public fn new() -> Sha256;
     public fn update(&mut self, data: &[Byte]);
     public fn finalize(self) -> [Byte; 32];

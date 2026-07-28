@@ -96,7 +96,7 @@ See [`frame_encode_kat`](#references) and
 The ADT carries this in two predicate methods:
 
 ```verum
-impl H3Frame {
+implement H3Frame {
     public fn is_control_stream_legal(&self) -> Bool;
     public fn is_request_stream_legal(&self) -> Bool;
 }

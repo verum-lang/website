@@ -46,7 +46,7 @@ public fn tick<Msg>(delay: Duration, f: fn() -> Msg) -> Command<Msg>
 public fn quit<Msg>() -> Command<Msg>
 
 // combinators
-impl<Msg> Command<Msg> {
+implement<Msg> Command<Msg> {
     fn is_noop(&self) -> Bool
     fn and(self, other: Command<Msg>) -> Command<Msg>    // fan-out; absorbs Noop
     fn then(self, other: Command<Msg>) -> Command<Msg>   // serial; flattens Sequence

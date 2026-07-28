@@ -179,7 +179,7 @@ implement Model for Model {
 // --------------------------------------------------------------------------
 // Side effects
 // --------------------------------------------------------------------------
-impl Model {
+implement Model {
     fn persist(&self) -> Command<Msg> {
         let snapshot = self.items.clone();
         Command.task(async {

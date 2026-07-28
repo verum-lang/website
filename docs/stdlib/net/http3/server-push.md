@@ -43,7 +43,7 @@ public type PushEmitter is {
 Public API:
 
 ```verum
-impl PushEmitter {
+implement PushEmitter {
     public fn new() -> PushEmitter;
     public fn on_peer_max_push_id(&mut self, id: UInt64);
     public fn on_peer_cancel_push(&mut self, id: UInt64);

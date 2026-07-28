@@ -66,7 +66,7 @@ Implement the default `DllT0`:
 // src/t0.vr
 mount .self.lib.*;
 
-impl<T> DllT0<T> {
+implement<T> DllT0<T> {
     pub fn new() -> Self {
         Self { head: Maybe.None, tail: Maybe.None, len: 0 }
     }
@@ -177,7 +177,7 @@ pub type RawDll<T> is {
     len:  Int,
 };
 
-impl<T> RawDll<T> {
+implement<T> RawDll<T> {
     pub fn new() -> Self {
         Self { head: null_mut(), tail: null_mut(), len: 0 }
     }

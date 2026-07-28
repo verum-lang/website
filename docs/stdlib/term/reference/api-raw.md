@@ -27,7 +27,7 @@ public type ClearMode is
     | Entire  | AfterCursor  | BeforeCursor
     | Line    | LineAfter    | LineBefore;
 
-impl RawTerminal {
+implement RawTerminal {
     fn enable_raw_mode(&mut self) -> IoResult<()>
     fn disable_raw_mode(&mut self) -> IoResult<()>
     fn enable_mouse_capture(&mut self) -> IoResult<()>
@@ -55,7 +55,7 @@ impl RawTerminal {
 PosixTerminal.stdin()  -> IoResult<PosixTerminal>
 PosixTerminal.stdout() -> IoResult<PosixTerminal>
 
-impl RawTerminal for PosixTerminal { /* ... */ }
+implement RawTerminal for PosixTerminal { /* ... */ }
 ```
 
 ## `EscapeWriter`

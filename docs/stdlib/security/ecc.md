@@ -110,7 +110,7 @@ public type X25519Error is
     | AllZeroOutput         // peer sent a low-order point (attack!)
     | BackendNotReady;      // intrinsic backend missing (build error)
 
-impl X25519 {
+implement X25519 {
     pub fn generate_secret_key() -> X25519SecretKey;
     pub fn public_key(sk: &X25519SecretKey) -> X25519PublicKey;
     pub fn diffie_hellman(

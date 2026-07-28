@@ -40,7 +40,7 @@ type Msg is
     | Load
     | Loaded(Result<List<User>, Text>);
 
-impl Model for State {
+implement Model for State {
     type Msg = Msg;
 
     fn init(&self) -> Command<Msg> {
@@ -79,7 +79,7 @@ impl Model for State {
 ## Example: a clock
 
 ```verum
-impl Model for ClockApp {
+implement Model for ClockApp {
     type Msg = Msg;
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {

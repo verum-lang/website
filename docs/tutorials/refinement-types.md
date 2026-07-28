@@ -101,7 +101,7 @@ will verify this at construction and every mutation.
 ## Step 4 — Constructor
 
 ```verum
-impl RingBuffer {
+implement RingBuffer {
     pub fn new(capacity: Int { self > 0 }) -> Self {
         Self {
             data:     List.with_capacity(capacity).fill(0, capacity),
@@ -128,7 +128,7 @@ All provable by `omega`. The compiler accepts it.
 ## Step 5 — `push` with `requires` / `ensures`
 
 ```verum
-impl RingBuffer {
+implement RingBuffer {
     pub fn push(&mut self, value: Int)
         where requires self.len < self.capacity
         where ensures  self.len == old(self.len) + 1
@@ -190,7 +190,7 @@ fn push_if_space(buf: &mut RingBuffer, value: Int) -> Bool {
 ## Step 7 — `pop` and `let else` refinement flow
 
 ```verum
-impl RingBuffer {
+implement RingBuffer {
     pub fn pop(&mut self) -> Maybe<Int>
         where ensures result.is_some() => self.len == old(self.len) - 1
         where ensures result.is_none() => self.len == old(self.len)
@@ -213,7 +213,7 @@ solver checks each branch.
 ## Step 8 — Add a loop invariant
 
 ```verum
-impl RingBuffer {
+implement RingBuffer {
     pub fn sum(&self) -> Int {
         let mut total = 0;
         let mut i = 0;
@@ -249,7 +249,7 @@ panics. Force all obligations through the SMT solver:
 
 ```verum
 @verify(formal)
-impl RingBuffer {
+implement RingBuffer {
     // ... all the methods above
 }
 ```

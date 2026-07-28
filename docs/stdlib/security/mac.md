@@ -90,7 +90,7 @@ mount core.security.mac.hmac.{
 ```verum
 public type HmacSha256 is { ... };
 
-impl HmacSha256 {
+implement HmacSha256 {
     public fn new(key: &[Byte]) -> HmacSha256;
     public fn update(&mut self, data: &[Byte]);
     public fn finalize(self) -> [Byte; 32];
@@ -275,7 +275,7 @@ public type Poly1305Tag is [Byte; 16];
 
 // Streaming
 public type Poly1305 is { ... };
-impl Poly1305 {
+implement Poly1305 {
     public fn new(key: &Poly1305Key) -> Poly1305;
     public fn update(&mut self, data: &[Byte]);
     public fn finalize(self) -> Poly1305Tag;

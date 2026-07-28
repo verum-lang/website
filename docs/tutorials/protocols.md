@@ -27,7 +27,7 @@ pub type Serialize is protocol {
 
 pub type SerializeBuf is { bytes: List<Byte> };
 
-impl SerializeBuf {
+implement SerializeBuf {
     pub fn new() -> Self {
         Self { bytes: List.new() }
     }
@@ -178,7 +178,7 @@ pub type DeserializeBuf is {
     pos:   Int,
 };
 
-impl DeserializeBuf {
+implement DeserializeBuf {
     pub fn new(bytes: List<Byte>) -> Self {
         Self { bytes, pos: 0 }
     }

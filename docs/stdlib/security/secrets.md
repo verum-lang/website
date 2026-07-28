@@ -78,7 +78,7 @@ public type SecretReference is {
     version: SecretVersion,
 };
 
-impl SecretReference {
+implement SecretReference {
     pub fn latest(name: Text) -> SecretReference;
     pub fn at(name: Text, version: SecretVersion) -> SecretReference;
 }
@@ -95,7 +95,7 @@ public type Secret is {
     expires_at: Instant,           // Instant.max if non-expiring
 };
 
-impl Secret {
+implement Secret {
     pub fn reference(&self) -> &SecretReference;
     pub fn data(&self) -> &List<Byte>;
     pub fn metadata(&self) -> &Text;
@@ -154,7 +154,7 @@ public type VaultConfig is {
     request_timeout: Duration,   // default 30s
 };
 
-impl VaultConfig {
+implement VaultConfig {
     pub fn new(address: Text, auth: VaultAuth) -> VaultConfig;
     pub fn with_namespace(self, ns: Text) -> VaultConfig;
     pub fn with_kv_mount(self, mount_path: Text) -> VaultConfig;
@@ -167,7 +167,7 @@ impl VaultConfig {
 ```verum
 public type VaultClient is { handle: UInt64, config: VaultConfig };
 
-impl VaultClient {
+implement VaultClient {
     pub async fn connect(config: VaultConfig) -> Result<VaultClient, VaultError>;
     pub async fn kv_read(&self, path: &Text, version: SecretVersion) -> Result<Secret, VaultError>;
     pub async fn kv_write(&self, path: &Text, value: &[Byte]) -> Result<UInt64, VaultError>;
@@ -236,7 +236,7 @@ mount core.security.secrets.aws.{
 
 public type AwsRegion is { code: Text };   // e.g. "us-east-1"
 
-impl AwsRegion {
+implement AwsRegion {
     pub fn new(code: Text) -> AwsRegion;
     pub fn code(&self) -> &Text;
     pub fn us_east_1() -> AwsRegion;     // convenience
@@ -249,7 +249,7 @@ public type AwsCredentials is {
     session_token: Maybe<Text>,
 };
 
-impl AwsCredentials {
+implement AwsCredentials {
     pub fn new(access_key_id: Text, secret_access_key: Text) -> AwsCredentials;
     pub fn with_session_token(self, t: Text) -> AwsCredentials;
 }
@@ -272,7 +272,7 @@ public type AwsCredentialProvider is
 ```verum
 public type AwsSecretsClient is { handle: UInt64, region: AwsRegion };
 
-impl AwsSecretsClient {
+implement AwsSecretsClient {
     pub async fn connect(
         region: AwsRegion,
         provider: AwsCredentialProvider,
@@ -295,7 +295,7 @@ impl AwsSecretsClient {
 }
 
 // AwsSecretsClient implements SecretStore:
-impl SecretStore for AwsSecretsClient { /* delegates to methods above */ }
+implement SecretStore for AwsSecretsClient { /* delegates to methods above */ }
 ```
 
 ### Quick example
@@ -356,7 +356,7 @@ public type GcpAuth is
 ```verum
 public type GcpSecretsClient is { handle: UInt64, project: Text };
 
-impl GcpSecretsClient {
+implement GcpSecretsClient {
     pub async fn connect(project: Text, auth: GcpAuth)
         -> Result<GcpSecretsClient, SecretError>;
 
@@ -372,7 +372,7 @@ impl GcpSecretsClient {
 }
 
 // GcpSecretsClient implements SecretStore.
-impl SecretStore for GcpSecretsClient { /* delegates */ }
+implement SecretStore for GcpSecretsClient { /* delegates */ }
 ```
 
 ### Quick example
@@ -435,7 +435,7 @@ type CachedSecret is {
     refresh_at: Instant,         // 10 min before expires_at
 };
 
-impl CachedSecret {
+implement CachedSecret {
     async fn get_or_refresh<S: SecretStore>(&mut self, store: &S) -> &Secret {
         if Instant.now() >= self.refresh_at {
             self.value = store.get(&self.value.reference).await.unwrap();
@@ -452,7 +452,7 @@ Secrets in `Secret.data` and derivatives should be wiped from
 memory when no longer needed:
 
 ```verum
-impl Drop for Secret {
+implement Drop for Secret {
     fn drop(&mut self) {
         // Best effort — requires util.zeroise (planned P1)
         core.security.util.zeroise(&mut self.data);

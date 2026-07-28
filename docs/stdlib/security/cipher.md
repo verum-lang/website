@@ -106,11 +106,11 @@ mount core.security.cipher.aes.{
     aes256_encrypt_block,
 };
 
-impl RoundKeys128 {
+implement RoundKeys128 {
     public fn expand(key: &AesKey128) -> RoundKeys128;
 }
 
-impl RoundKeys256 {
+implement RoundKeys256 {
     public fn expand(key: &AesKey256) -> RoundKeys256;
 }
 

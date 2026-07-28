@@ -524,7 +524,7 @@ type Layout is {
     align_: Int,   // bytes (power of 2)
 };
 
-impl Layout {
+implement Layout {
     fn new<T>() -> Layout                                   // T.size, T.alignment
     fn from_size_align(size: Int, align: Int) -> Layout     // panics on bad input
     fn try_from_size_align(size: Int, align: Int)
@@ -628,7 +628,7 @@ type HazardStats is {
 
 hazard_stats() -> HazardStats
 
-impl HazardStats {
+implement HazardStats {
     fn needs_reclaim(&self) -> Bool {
         self.retired_count >= RETIRED_THRESHOLD
     }
@@ -886,7 +886,7 @@ type UseAfterFreeError is {
     type_name:      Text,
 };
 
-impl UseAfterFreeError {
+implement UseAfterFreeError {
     fn new(eg: UInt32, ag: UInt32, ee: UInt16, ae: UInt16,
            tn: Text) -> UseAfterFreeError
     fn null_pointer(type_name: Text) -> UseAfterFreeError
@@ -911,7 +911,7 @@ type RevocationError is
     | Internal             { type_name: Text, reason: Text }
     ;
 
-impl RevocationError {
+implement RevocationError {
     fn null_pointer(type_name: Text) -> RevocationError
     fn capability_violation(type_name: Text) -> RevocationError
     fn already_revoked(type_name: Text) -> RevocationError
