@@ -139,11 +139,17 @@ let y: Tensor<Float32, [   3, 5]>;
 let z: Tensor<Float32, [4, 3, 5]> = x + y;
 ```
 
-A failing broadcast is a compile error with the offending axis
-called out:
+A failing broadcast is a compile error with the offending axis called
+out. The shape below is illustrative rather than a captured
+transcript — two attempts to construct a real broadcast-mismatch
+example ran into unrelated tensor-generics syntax issues rather than
+confirming this specific error, so treat the exact code and message
+text as unverified even though the `error<CODE>: ...` bracket
+convention itself (unlike the `error[CODE]` forms found elsewhere on
+this site) matches every real compiler diagnostic seen today:
 
 ```
-error[E1311]: cannot broadcast shapes [4, 3, 1] and [4, 5]
+error<E1311>: cannot broadcast shapes [4, 3, 1] and [4, 5]
   --> src/net.vr:18:13
    |
 18 |     let z = x + y;

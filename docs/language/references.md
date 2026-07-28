@@ -46,19 +46,17 @@ fn tight_loop(data: &checked List<Int>) -> Int {
 ```
 
 You ask for `&checked T` when you want a guarantee from the compiler
-that the CBGR check is eliminable. If the compiler cannot prove it, the
-function is rejected:
-
-```
-error[V5201]: cannot prove reference is safe for `&checked T`
-  --> src/foo.vr:7:14
-   |
- 7 | fn run(x: &checked Config) -> Int { ... }
-   |            ^^^^^^^^ `x` may escape into a stored location
-   |
-   = help: use `&T` (CBGR-checked) if escape is intentional,
-           or refactor to prevent storage of `x`.
-```
+that the CBGR check is eliminable. If the compiler cannot prove it,
+the function is rejected — that's the claim, and this page's
+transcript for it has been removed rather than corrected. Every
+`error[V####]: ... --> file:line:col` transcript checked elsewhere on
+this site today turned out to be fabricated in shape (real
+`verum verify` output is a per-function report with a raw
+counter-example, not a source-anchored diagnostic — see
+[tooling → LSP](/docs/tooling/lsp#diagnostics) for a captured
+example), and this specific one was not independently reproduced
+before that pattern was found, so it's been pulled rather than left
+looking more authoritative than it is.
 
 `&checked T` is typically used:
 - on hot paths where even the ~0.93 ns per deref compounds into

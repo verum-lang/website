@@ -267,19 +267,16 @@ for the per-attribute table.
 
 ## Attribute targets
 
-Each attribute declares which syntactic positions it may appear on.
-A misapplied attribute is a compile error, not a warning:
-
-```
-error[V9001]: `@repr(C)` is not valid on function
-  --> src/foo.vr:3:1
-   |
- 3 | @repr(C)
-   | ^^^^^^^^
- 4 | fn f() { ... }
-   |
-   = help: `@repr(C)` applies to records and variants, not functions.
-```
+Each attribute declares which syntactic positions it may appear on —
+that's the design intent, and it does not currently hold as tested.
+`@repr(C)` applied directly to a function (`@repr(C) fn f() {}`) was
+checked with both `verum check` and `verum verify`: neither rejected
+it, both reported the function proved/clean. **The transcript that
+was here has been removed rather than corrected** — attribute-target
+validation for `@repr(C)` on a function does not currently reject it,
+so a "compile error" transcript would misrepresent what actually
+happens. Whether this is enforced for other misapplied attributes is
+untested.
 
 See **[Attribute registry](/docs/reference/attribute-registry)** for
 the complete target / semantics list.

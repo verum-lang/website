@@ -55,17 +55,15 @@ Use `&checked T` when:
 - The caller naturally holds a reference for the duration of the call
   (stack-local, no storage in between).
 
-If the compiler can't prove it's safe:
-
-```
-error[V5201]: cannot prove reference is safe for `&checked T`
-  --> src/compute.vr:12:21
-   |
-12 | fn dot(a: &checked List<Float>, b: &checked List<Float>) -> Float {
-   |                  ^^^^^^^^^^^^^ argument `a` may escape into
-   |                                `self.store` at line 28
-   = help: either use `&T` (CBGR-checked) or ensure `a` is not stored.
-```
+If the compiler can't prove it's safe, the function is rejected —
+that's the claim. This page's transcript for it has been removed
+rather than corrected: every `error[V####]: ... --> file:line:col`
+transcript checked elsewhere on this site today turned out to be
+fabricated in shape (real `verum verify` output is a per-function
+report with a raw counter-example, not a source-anchored diagnostic —
+see [tooling → LSP](/docs/tooling/lsp#diagnostics) for a captured
+example), and this specific one was not independently reproduced
+before that pattern was found.
 
 ---
 

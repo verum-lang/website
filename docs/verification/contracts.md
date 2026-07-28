@@ -70,16 +70,18 @@ fn middle(xs: &List<Int>, i: Int) -> Int
 ```
 
 Every caller must establish the conjunction of all `requires`
-clauses. Failure becomes:
-
-```
-error[V3401]: precondition not established
-  --> src/foo.vr:5:5
-   |
- 5 |     divide(10, input);
-   |     ^^^^^^^^^^^^^^^^^ requires `input != 0`
-   = counter-example: input = 0
-```
+clauses — that's the claim this section makes, and it does not
+currently hold as tested. `fn divide(a: Int, b: Int) -> Int requires
+b != 0 { a / b }` called with a literal `0` argument was checked
+directly with `verum verify`: both `divide` and its caller reported
+`Proved`, not a failure. **The transcript that was here has been
+removed rather than corrected** — it never matched real `verum
+verify` output in shape (a per-function report with a raw
+counter-example, not a source-anchored `error[...]` block), and given
+the claim itself doesn't reproduce, showing a "corrected" transcript
+would misrepresent a passing check as a failing one. Whether
+caller-side precondition establishment is enforced at all is an open
+question, not a documentation gap.
 
 Preconditions compose naturally with refinement types. The above is
 equivalent to:

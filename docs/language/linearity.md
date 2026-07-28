@@ -462,21 +462,15 @@ will warn you but not stop you.
 
 ### "I forgot to consume in one branch of an `if`"
 
-Diagnostic:
-
-```
-error[E0411]: resource `tx` not consumed on all paths
-  --> src/bank.rs:42:5
-   |
-42 |     if amount > 0 {
-   |     ^^^^^^^^^^^^^^
-43 |         tx.commit();
-   |         --- consumed here
-44 |     }
-   |     - but on the `else` path, `tx` is still live
-   = help: either `tx.commit()` / `tx.rollback()` on both branches,
-           or move the use outside the if.
-```
+Diagnostic (removed rather than corrected — this transcript carried a
+`.rs` file extension, which no Verum compiler output would ever
+produce, and was not independently reproduced before that was
+noticed; not re-verified against real `verum verify` output, which
+elsewhere on this site turned out to be a per-function report rather
+than a source-anchored `error[...]` block). The underlying rule
+still holds regardless of transcript shape: consume `tx` on every
+path — `tx.commit()` / `tx.rollback()` on both branches of the `if`,
+or move the use outside it.
 
 ## Linearity and generics
 

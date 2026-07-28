@@ -50,18 +50,15 @@ fn matmul<const M: Int, const K: Int, const N: Int>(
 let c = matmul(&a, &b);          // c: Matrix<2, 2, Float>
 ```
 
-Try to call `matmul(&a, &a)`:
-
-```
-error[V3402]: cannot unify shapes
-  --> src/main.vr:14:13
-   |
-14 |     let c = matmul(&a, &a);
-   |             ^^^^^^^^^^^^^^
-   |  expected inner dimension 3 == 3
-   |   found    inner dimension 3 != 2
-   = note: `a` has shape [2, 3]; `matmul` expects second arg to start with dim 3.
-```
+Try to call `matmul(&a, &a)` — that's expected to be a compile-time
+shape-mismatch rejection. This page's transcript for it has been
+removed rather than corrected: every `error[V####]: ...
+--> file:line:col` transcript checked elsewhere on this site today
+turned out to be fabricated in shape (real `verum verify` output is a
+per-function report with a raw counter-example, not a source-anchored
+diagnostic — see [tooling → LSP](/docs/tooling/lsp#diagnostics) for a
+captured example), and this specific one was not independently
+reproduced before that pattern was found.
 
 The error is at **compile time**. No tests required.
 

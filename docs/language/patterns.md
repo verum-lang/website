@@ -177,21 +177,15 @@ match tuple { (a, _, _, d) => ..., }  // position-based (for tuples)
 
 ## Exhaustiveness
 
-`match` is exhaustive by default. The compiler runs a Maranget-style
-*usefulness* analysis on a coverage matrix derived from the arms and
-either accepts the match or prints a concrete witness for the missing
-case.
-
-```
-error[E0601]: non-exhaustive patterns: `Err(Timeout { .. })` not covered
-  --> src/foo.vr:12:5
-   |
-12 |     match result {
-   |     ^^^^^^^^^^^^
-   |
-   = note: the following pattern is not covered: `Err(Timeout { .. })`
-   = help: add an arm covering the missing case, or use `_`.
-```
+`match` is exhaustive by default — that's the design intent. **This
+section's transcript has been removed, not corrected, because the
+underlying claim is currently an open question, confirmed two
+independent ways today:** a `match` on a 5-variant sum type with one
+variant's arm omitted and no wildcard, checked with both `verum
+check` and `verum verify`, compiled/verified clean with no diagnostic
+at all — no missing-arm error, on either entry point. Until that's
+resolved, don't rely on this page's specific claim that omitting an
+arm is caught.
 
 ### How exhaustiveness is decided
 
@@ -355,19 +349,12 @@ orchestrator routes through.
 
 ## Witness generation
 
-For every non-exhaustive match, the compiler produces a *concrete*
-example of an uncovered value — not just "incomplete." Witnesses
-recurse into constructors and pick literal values that no arm covers:
-
-```
-error[E0601]: non-exhaustive patterns: `Some(3)` and `None` not covered
-   --> src/main.vr:10:5
-    |
-10  |     match x {
-    |     ^^^^^^^
-    |
-    = help: add `Some(3) | None => ...` or use `_`.
-```
+For every non-exhaustive match, the compiler is designed to produce a
+*concrete* example of an uncovered value — not just "incomplete." As
+noted above, exhaustiveness checking itself did not fire in direct
+testing today, so this section's witness-format example has been
+removed along with the other one rather than left showing output from
+a check that currently doesn't run.
 
 The IDE surfaces the witness in real time through the LSP.
 

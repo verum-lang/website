@@ -153,20 +153,19 @@ Refinements are:
 - **Discharged** by the SMT layer (capability router picks the adapter);
 - **Erased** from the final binary.
 
-When the solver cannot prove an obligation, the compiler prints the
-counter-example the solver returned:
+When the solver cannot prove an obligation, `verum verify` reports it
+per-function with a raw counter-example — not the source-anchored
+`error[...]` transcript shown in earlier drafts of this page, which
+did not match real output in either format or content.
 
-```
-error[V3402]: refinement violated at call site
-  --> src/main.vr:23:12
-   |
-23 |     divide(10, input);
-   |            ^^^^^^^^^^
-   |
-   = obligation: input != 0
-   = counter-example: input = 0
-   = help: guard the call with `if input != 0 { ... }` or
-           change `input`'s type to `Int { self != 0 }`.
+**This example's transcript has been removed, not corrected, and the
+underlying claim is now an open question rather than a documented
+fact.** Tested directly: a function with `requires b != 0`, called
+with a literal `0` argument, was checked with `verum verify` and
+**did not fail** — both the callee and the caller reported `Proved`.
+Whether caller-side obligations like `input != 0` above are actually
+enforced at the call site is unconfirmed on the current binary; don't
+rely on this page's specific claim until that's resolved.
 ```
 
 ## Limitations

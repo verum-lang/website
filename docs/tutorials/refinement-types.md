@@ -277,21 +277,37 @@ pub fn push(&mut self, value: Int)
 }
 ```
 
+`verum check` never runs the SMT obligation pass — that's a separate
+entry point, `verum verify` (`verum check` falls back to a runtime
+assertion for anything it can't dispatch statically). Its output is a
+per-function report, not a source-anchored diagnostic. Captured
+directly (not reconstructed) from the closest minimal equivalent,
+`fn abs_maybe(x: Int) -> Int ensures result > 0 { x }`:
+
 ```bash
-$ verum check
-error[V3402]: postcondition violated
-  --> src/ring.rs:35:7
-   |
-35 |         self.len += 1;
-   |         ^^^^^^^^^^^^^ counter-example found by the SMT solver
-   |                       | at entry: self.len = capacity (buffer full)
-   |                       | at exit:  self.len = capacity + 1  // > capacity — invariant violated!
-   = help: add `where requires self.len < self.capacity`
+$ verum verify
+```
+```
+Verification Report:
+============================================================
+  ✗ abs_maybe: Failed in 0.01s
+      Counterexample: Counterexample:
+  result = 0
+  x = 0
+
+Violates: postcondition violation
+
+Summary: 1 proved, 1 failed, 0 timeout, 0 skipped
 ```
 
-The solver found a counter-example — the type's whole-record
-invariant says `len <= capacity`, and without the precondition, you
-can call `push` on a full buffer and break it.
+For `push` you'd read the same shape with `self.len`/`self.capacity`
+in place of `result`/`x` — no source line, no caret; the counter-
+example is a flat list of bindings under `Counterexample:`, and it's
+the *weakest* violating input the solver found, not necessarily
+"buffer full" specifically. The underlying point stands regardless of
+transcript shape: the type's whole-record invariant says
+`len <= capacity`, and without the precondition, you can call `push`
+on a full buffer and break it.
 
 ## Step 11 — Tagged literals for refined input
 

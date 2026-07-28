@@ -20,19 +20,30 @@ page is the playbook.
 
 ### Read the counter-example
 
-Verum prints the counter-example verbatim:
+`verum verify` prints a per-function report, not a source-anchored
+diagnostic. Captured directly (not reconstructed) from
+`fn abs_maybe(x: Int) -> Int ensures result > 0 { x }`, a minimal
+postcondition violation:
 
 ```
-error[V3402]: postcondition violated
-  --> src/stack.vr:17:5
-   |
-17 |     stack.push(x);
-   |     ^^^^^^^^^^^^^ obligation failed:
-   |   self.len() == old(self.len()) + 1
-   = counter-example:
-      stack.len() = 2147483647      (UInt32.MAX)
-      x           = 42
-   = help: add `requires self.len() < UInt32.MAX`
+Verification Report:
+============================================================
+  ✗ abs_maybe: Failed in 0.01s
+      Counterexample: Counterexample:
+  result = 0
+  x = 0
+
+Violates: postcondition violation
+
+Summary: 1 proved, 1 failed, 0 timeout, 0 skipped
+```
+
+There's no source line or caret — the counter-example is a flat list
+of bindings under `Counterexample:`, and it's the *weakest* violating
+input the solver found by checking the function symbolically, not
+necessarily a value tied to any specific call site. For a `push`-style
+obligation you'd read the same shape with `self`'s fields and the
+pushed value in place of `result`/`x`:
 ```
 
 Often the counter-example reveals an edge case you hadn't

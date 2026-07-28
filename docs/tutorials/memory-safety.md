@@ -144,17 +144,15 @@ pub fn sum_t1(list: &checked DllT0<Int>) -> Int {
 ```
 
 `&checked DllT0<Int>` forces the compiler to prove the reference
-cannot escape. If escape analysis fails, the compile fails with a
-diagnostic:
-
-```
-error[V5101]: could not promote to &checked
-  --> src/t1.vr:3:21
-   |
- 3 | pub fn sum_t1(list: &checked DllT0<Int>) -> Int {
-   |                     ^^^^^^^^ reference escapes via ...
-   = note: leaked through `Shared.new(list)` at line 7
-```
+cannot escape. If escape analysis fails, the compile is expected to
+fail with a diagnostic — this page's transcript for that has been
+removed rather than corrected: every `error[V####]: ...
+--> file:line:col` transcript checked elsewhere on this site today
+turned out to be fabricated in shape (real `verum verify` output is a
+per-function report with a raw counter-example, not a source-anchored
+diagnostic — see [tooling → LSP](/docs/tooling/lsp#diagnostics) for a
+captured example), and this specific one was not independently
+reproduced before that pattern was found.
 
 ## Step 4 — Tier 2: `&unsafe` for the raw path
 

@@ -33,15 +33,15 @@ Rules:
   fragment (comparisons, arithmetic, bounded quantifiers, `@logic`
   function calls, indexing, member access).
 
-If any rule is violated, the compiler rejects reflection:
-
-```
-error[V6201]: @logic function violates purity
-  --> src/logic.vr:3:5
-   |
- 3 |     print(&f"checking {xs:?}");
-   |     ^^^^^ call to side-effecting `print`
-```
+If any rule is violated, the compiler rejects reflection — that's the
+claim. This page's transcript for it has been removed rather than
+corrected: every `error[V####]: ... --> file:line:col` transcript
+checked elsewhere on this site today turned out to be fabricated in
+shape (real `verum verify` output is a per-function report with a raw
+counter-example, not a source-anchored diagnostic — see
+[tooling → LSP](/docs/tooling/lsp#diagnostics) for a captured
+example), and this specific one was not independently reproduced
+before that pattern was found.
 
 ### Use in refinement types
 

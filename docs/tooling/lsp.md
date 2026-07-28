@@ -21,18 +21,29 @@ indexing infrastructure with
 - Under `@verify(formal)`, SMT results on save (or on-type, if fast
   enough).
 
-Example — a violating refinement:
+Example — a violating postcondition. The transcript below is the
+*actual* `verum verify` output for
+`fn abs_maybe(x: Int) -> Int ensures result > 0 { x }` — captured, not
+reconstructed. Verification reports per function rather than
+per source line, and it's the whole-program counter-example the
+solver found (the weakest violating input), not necessarily the one
+you were picturing:
 
 ```
-error[V3402]: postcondition violated
-   ┌─ src/foo.vr:12:5
-   │
-12 │     result
-   │     ^^^^^^
-   │     counter-example:   x = -7  =>  result = -7  (not Positive)
-   │
-help: add `where ensures result > 0` or change the body to abs(x)
+Verification Report:
+============================================================
+  ✗ abs_maybe: Failed in 0.01s
+      Counterexample: Counterexample:
+  result = 0
+  x = 0
+
+Violates: postcondition violation
+
+Summary: 1 proved, 1 failed, 0 timeout, 0 skipped
 ```
+
+The LSP surfaces this as an inline diagnostic anchored to the
+function; the shape above is what `verum verify` itself prints.
 
 ### Code navigation
 

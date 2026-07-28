@@ -11,21 +11,25 @@ Short recipes for common failures. For a specific error code, run
 
 ## Build errors
 
-### `[V3402] refinement violated at call site`
+### Refinement violated at call site
 
-The SMT solver rejected a refinement. Read the counter-example:
+**This section previously showed a fabricated transcript for this
+error and has been corrected rather than patched.** Tested directly:
+a function requiring `b != 0`, called with a literal `0`, reported
+`Proved` under `verum verify` — not a failure. So the underlying
+claim ("the SMT solver rejects an unestablished call-site obligation")
+does not currently reproduce, independent of what the failure output
+would look like. If you hit an actual case of this, the real
+`verum verify` output is a per-function report with a raw
+counter-example, not a source-anchored `error[...]` block — see
+[tooling → LSP](/docs/tooling/lsp#diagnostics) for a captured example
+of the real shape (for a postcondition, not a precondition — that
+half is independently confirmed).
 
-```
-error[V3402]: refinement violated at call site
-   |
- 7 |     divide(10, input);
-   |            ^^^^^^^^^^
-   = obligation: input != 0
-   = counter-example: input = 0
-```
-
-Fix: narrow the value before the call — `if input != 0 { divide(10, input) }` —
-or change the parameter's type.
+If narrowing the value before the call (`if input != 0 { divide(10,
+input) }`) or changing the parameter's type to `Int { self != 0 }`
+doesn't resolve what you're seeing, you've found something worth
+reporting rather than a known pattern.
 
 ### `[V5201]: cannot prove reference is safe for &checked T`
 
@@ -201,12 +205,12 @@ In your editor, check the log: `VerumLSPLog` command in VS Code, or
 
 ### "`@verify(certified)` needs a proof term but I didn't supply one"
 
-```
-error[V6301]: @verify(certified) requires an explicit proof
-   = help: write `proof by <tactic>` or a structured proof block
-```
-
-Add one — start with `by auto`, refine from there. See
+The transcript previously shown here was not independently
+re-verified before this page's other `error[V####]`-style examples
+turned out to be fabricated in shape (see the note above), so it's
+been removed rather than carried forward unchecked. If `@verify(certified)`
+rejects a declaration with no proof term, start with `proof by auto`
+and refine from there. See
 [verification → proofs](/docs/verification/proofs).
 
 ## Packaging issues
