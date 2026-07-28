@@ -103,11 +103,56 @@ using refinement types to document invariants).
 
 Pure-Verum libm. `sin`, `cos`, `exp`, `log`, `pow`, etc. — all
 implemented on top of the bit-level primitives above. No C library
-dependency.
+dependency. **See the callout at the top of Layer 1** — the same-named
+functions one layer up are currently affected by a stdlib
+name-resolution defect; this module is entangled in the same
+collision (it declares some of the same bare names) and has not been
+independently verified.
 
 ---
 
 ## Layer 1 — Scalar math
+
+:::warning Known defect affecting this layer (as of 2026-07-28)
+A stdlib build-time bug currently causes `sin`, `cos`, `exp`, `log`,
+and `sqrt` in `core.math.elementary` to resolve to a **same-named
+function declared in a different `core/math/*.vr` file** instead of
+their own implementation — several submodules in this stack declare
+functions with the same bare names (e.g. a Tensor-typed `exp`
+elsewhere in `core.math`). Effects vary: some calls crash with a
+runtime type error, at least one (`sin`) has been observed *silently*
+returning a value of the wrong type entirely rather than failing
+loudly. This is a name-resolution defect in the compiler's stdlib
+build, not a numerical one, and it is not fixed yet.
+
+**It propagates.** Anything that calls one of those five names
+internally inherits the failure — often only for part of its input
+range, where an implementation switches to a Taylor-series fast path
+for small inputs that happens to avoid the broken call, while its
+general-case path does not.
+
+- **Always broken:** `sin`, `cos`, `exp`, `log`, `sqrt`, `exp2`,
+  `log2`, `log10`, `acoth`.
+- **Broken for typical (not all) inputs** — the general-case path
+  calls one of the five above; a small-input fast path does not:
+  `pow` (non-integer exponents), `hypot`, `log1p`, `expm1`, `asin`,
+  `acos`, and effectively all of `math.hyperbolic`'s general case
+  (`sinh`, `cosh`, `tanh`, `sech`, `csch`, `coth`, `asinh`, `acosh`,
+  `atanh`, `asech`, `acsch`, `gudermannian`, `inverse_gudermannian`)
+  and most of `math.special` (`gamma`, `lgamma`, `digamma`, `beta`,
+  `lbeta`, `erf`, `erfc`, `erfinv`).
+- **Confirmed unaffected:** `tan` and `sincos` — both were numerically
+  **wrong** until 2026-07-28 (see the [changelog](/docs/changelog))
+  and are now fixed and unaffected by the defect above — plus `atan`,
+  `atan2`, `cbrt`, `powi`, the rounding functions
+  (`floor`/`ceil`/`round`/`rint`/`trunc`/`fract`),
+  `min`/`max`/`clamp`/`abs`/`signum`, `fma`, and the interpolation
+  helpers (`lerp`, `inverse_lerp`, `remap`, `smoothstep`,
+  `smootherstep`).
+
+Don't trust a result from the "typical inputs" group without checking
+it independently until this is fixed.
+:::
 
 ### `math.constants`
 
@@ -161,6 +206,9 @@ sqrt_safe(x) / log_safe(x) / asin_safe(x) / acos_safe(x)
 sinh / cosh / tanh                     asinh / acosh / atanh
 ```
 
+Most of this module's general-case paths are currently broken — see
+the callout at the top of Layer 1.
+
 ### `math.special`
 
 ```verum
@@ -168,6 +216,10 @@ gamma(x) / lgamma(x) / digamma(x)
 beta(x, y) / lbeta(x, y)
 erf(x) / erfc(x) / erfinv(x)
 ```
+
+Every function here calls into `log`/`exp`/`sqrt`/`sin`/`cos` — see
+the callout at the top of Layer 1; treat this module as unverified
+until that lands.
 
 ---
 
