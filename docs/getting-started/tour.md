@@ -5,8 +5,12 @@ title: Language Tour
 
 # Language Tour
 
-Twelve minutes. Twelve features. No fluff. Every snippet below
-compiles under the current `verum check`.
+Twelve minutes. Twelve features. No fluff. A fast syntax survey —
+every snippet is real Verum, not pseudocode, but several are
+deliberately abbreviated to keep the feature in focus (an async
+example that elides its own helper types, for instance). Treat this
+page as a map, not a copy-paste source; follow the linked chapter
+under each section for the complete, worked version.
 
 ## 1. Types and functions
 
