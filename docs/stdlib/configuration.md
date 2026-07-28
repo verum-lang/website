@@ -161,17 +161,44 @@ adapter is purely additive — zero upstream code change.
 
 ## Composition example
 
-```verum
-// Load TOML, save same data as YAML — zero glue code.
-let cfg: Configuration<MyConfig> = configuration::load_file("config.toml")?;
-let yaml: Text = configuration::save_str(&cfg, "yaml")?;
+The functions named in earlier drafts of this page
+(`load_file`/`save_str`/`load_str`/`from_env`) do not exist under any
+spelling — confirmed by searching `core/configuration/` directly. The
+real top-level surface is `load_text` / `dump_text` (`mod.vr`), which
+take **text you've already read**, not a path, plus a `FormatId`
+(`format_id_toml()`, `format_id_yaml()`, … — one constructor function
+per format, `core/configuration/error.vr`):
 
-// Layered config: defaults overlaid by user file overlaid by env.
-let defaults = configuration::load_str::<MyConfig>(DEFAULTS_TOML, "toml")?.value;
-let user     = configuration::load_file::<MyConfig>("user.toml")?.value;
-let env_overlay = configuration::from_env::<MyConfig>(&std::env::vars())?;
-let final_value = my_config_merge(defaults, my_config_merge(user, env_overlay));
+```verum
+mount core.configuration.{load_text, dump_text};
+mount core.configuration.error.{format_id_toml, format_id_yaml};
+mount core.io.fs;
+
+// Load TOML, save the same data as YAML.
+let toml_text = fs.read_to_string(&path)?;
+let cfg  = load_text(&toml_text, &format_id_toml())?;
+let yaml = dump_text(&cfg, &format_id_yaml())?;
 ```
+
+For bulk environment enumeration: unlike the JSON case on
+[cookbook → shell scripting](../cookbook/shell-scripting.md), this one
+**does** exist — `core.base.env.vars()` returns an iterator of every
+`(Text, Text)` pair in the process environment:
+
+```verum
+mount core.base.env.{vars};
+
+for (key, value) in vars() {
+    // fold into your own overlay however your merge strategy wants it
+}
+```
+
+There is no ready-made `configuration.from_env::<T>()` bridge from
+that iterator into a typed overlay, and no `Configuration<T>::load*`
+convenience wrapping path + parse + merge into one call the way
+earlier drafts implied — assembling "defaults overlaid by user file
+overlaid by env" from these primitives is real work your own code
+does, not a one-liner this module provides today.
 
 The categorical foundation (slice over `ConfigValue`) ensures
 these compositions are associative + identity-preserving — the
