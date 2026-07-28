@@ -169,19 +169,24 @@ The migration is **substantially complete**.
   `verum_internal_f64_to_decimal`, `verum_internal_strtol`, and
   pure-IR `strtod` replacement (see [Changelog 2026-05-04 — AOT
   no-libc f64 / strtol formatting trio](/docs/changelog#added--aot-no-libc-f64--strtol-formatting-trio-complete-2026-05-04)).
-- Cross-compilation correctness — every per-platform decision
-  reads `module.get_triple()`, never host
-  `#[cfg(target_os = "...")]`. **True as of 2026-07-28, not before.**
-  This line was wrong from 2026-05-04 until then: the LLVM *module's
-  own* triple was never actually set from `--target` in either
-  lowering path (AOT or JIT), so `module.get_triple()` silently
-  returned the **host** triple on every cross build no matter what
-  `--target` said — codegen was reading the triple correctly, the
-  triple itself was wrong. A Linux cross build from a non-Linux host
-  emitted Darwin/libSystem-shaped declarations instead of raw
-  syscalls: a live no-libc violation, not a hypothetical one. Fixed
-  and verified via `nm -u` (10 undefined libc symbols → 0 on the same
-  Linux object, before/after).
+
+### Cross-compilation correctness (2026-07-28 — not 2026-05-04)
+
+Deliberately pulled out of the "Already libc-free" list above and
+given its own date: that list's heading says 2026-05-04, and this
+claim was **not** true on that date.
+
+Every per-platform decision reads `module.get_triple()`, never host
+`#[cfg(target_os = "...")]` — true as of **2026-07-28**. From
+2026-05-04 until today it was false: the LLVM *module's own* triple
+was never actually set from `--target` in either lowering path (AOT
+or JIT), so `module.get_triple()` silently returned the **host**
+triple on every cross build no matter what `--target` said — codegen
+was reading the triple correctly, the triple itself was wrong. A
+Linux cross build from a non-Linux host emitted Darwin/libSystem-
+shaped declarations instead of raw syscalls: a live no-libc violation,
+not a hypothetical one. Fixed and verified via `nm -u` (10 undefined
+libc symbols → 0 on the same Linux object, before/after).
 
 ### Open punch-list
 
