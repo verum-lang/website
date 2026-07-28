@@ -9,6 +9,16 @@ Contracts attach preconditions, postconditions, and invariants to
 functions and loops. They are the bridge between "I think this holds"
 and "the compiler proved this holds."
 
+:::note `verum check` does not run the SMT obligation pass
+`verum check` type-checks and, for anything it can't dispatch
+statically, falls back to a runtime assertion — it does not invoke
+the solver, so it cannot report a contract failure of any kind.
+`verum verify` is the dedicated entry point that discharges
+`requires`/`ensures`/refinement obligations through SMT and can fail
+on them. If you're trying to see a contract violation and `verum
+check` reports nothing, that's expected — reach for `verum verify`.
+:::
+
 ## Clause syntax at a glance
 
 Verum accepts contract clauses in two equivalent shapes.
