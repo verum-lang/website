@@ -161,13 +161,13 @@ public fn double(n: Int) -> Int { n + n }
 
 // Witness-only extraction (Coq).
 @extract_witness(coq)
-public theorem isqrt(n: Int { :: n >= 0 }) -> Int
-    where (Int { result :: result * result <= n })
+public theorem isqrt(n: Int { n >= 0 }) -> Int
+    where (Int { result * result <= n })
 { ... }
 
 // Contract-preserving extraction across an FFI boundary.
 @extract_contract(ocaml)
-public fn safe_divide(a: Int, b: Int { :: b != 0 }) -> Int { a / b }
+public fn safe_divide(a: Int, b: Int { b != 0 }) -> Int { a / b }
 
 // Bind a verified spec to a runtime intrinsic wrapper.
 @extract(realize = "verum_runtime_x25519_scalar_mult")
@@ -183,7 +183,7 @@ public fn decode(input: List<Byte>) -> Result<Frame, Error> { ... }
 @extract(lean)
 public theorem div_uniqueness(
     a: Int,
-    b: Int { :: b != 0 }
+    b: Int { b != 0 }
 ) -> Int { a / b }
 ```
 

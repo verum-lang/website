@@ -80,7 +80,7 @@ computational content you want as runnable code:
 
 ```verum
 @extract
-public fn factorial(n: Int { :: n >= 0 }) -> Int { :: result >= 1 } {
+public fn factorial(n: Int { n >= 0 }) -> Int { result >= 1 } {
     if n == 0 { 1 } else { n * factorial(n - 1) }
 }
 ```
@@ -98,8 +98,8 @@ the target file.
 
 ```verum
 @extract_witness(coq)
-public theorem isqrt(n: Int { :: n >= 0 }) -> Int
-    where (Int { result :: result * result <= n &&
+public theorem isqrt(n: Int { n >= 0 }) -> Int
+    where (Int { result * result <= n &&
                             (result + 1) * (result + 1) > n })
 {
     proof by induction(n) ...
@@ -120,7 +120,7 @@ verifier:
 @extract_contract(ocaml)
 public fn safe_divide(
     a: Int,
-    b: Int { :: b != 0 }
+    b: Int { b != 0 }
 ) -> Int { a / b }
 ```
 
@@ -381,7 +381,7 @@ corpus by stacking `@extract` markers:
 @extract(lean)
 public theorem div_uniqueness(
     a: Int,
-    b: Int { :: b != 0 }
+    b: Int { b != 0 }
 ) -> Int { a / b }
 ```
 
@@ -403,7 +403,7 @@ When the consumer can't run the verifier, use
 @extract_contract(ocaml)
 public fn rope_index(
     r: Rope,
-    i: Int { :: 0 <= i && i < r.len() }
+    i: Int { 0 <= i && i < r.len() }
 ) -> Char { r.char_at(i) }
 ```
 
