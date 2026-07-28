@@ -585,11 +585,21 @@ sysroot = "/opt/xcode-sdks/MacOSX.sdk"
 linker  = "clang"
 ```
 
+**`[cross_compile]` is parsed and validated, but nothing yet wires
+`target` / `sysroot` / `linker` into the toolchain invocation** —
+setting it is observed (a build emits a debug-log line noting the
+values) and otherwise has no effect. The active cross-compile path is
+`[llvm].target_triple` or the `--target` CLI flag; `sysroot` and
+`linker` have no working manifest equivalent yet — pass them to your
+system linker the way you would for any other cross-compiled
+toolchain (see
+[Installation → Cross-compiling Verum programs](/docs/getting-started/installation#cross-compiling-verum-programs)).
+
 CLI equivalents (build-time):
 
 | TOML field | CLI flag |
 |------------|----------|
-| `[build].target`, `[cross_compile].target` | `--target TRIPLE` |
+| `[build].target`, `[llvm].target_triple` | `--target TRIPLE` |
 | `[optimization].level`, `[build].opt_level` | `--release` (= 3) |
 | `[lto].enabled` + `[lto].mode` | `--lto thin\|full` |
 | `[build].incremental` | `--timings` triggers report when enabled |
@@ -598,7 +608,9 @@ CLI equivalents (build-time):
 | emit artefacts | `--emit-asm`, `--emit-llvm`, `--emit-bc`, `--emit-types`, `--emit-vbc` |
 
 CLI flags **always override** the manifest for the current build;
-`verum.toml` values describe the project baseline.
+`verum.toml` values describe the project baseline. `[cross_compile]`
+is the exception — per the note above, it doesn't reach the build at
+all yet.
 
 ## `[lint]` — linter policy
 

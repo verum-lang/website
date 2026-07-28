@@ -257,9 +257,12 @@ applies a **no-libc** linking configuration on every platform:
 - **Windows**: `lld-link` linking only `ntdll.dll` + `kernel32.dll`
   — no MSVC CRT, no UCRT.
 - **FreeBSD**: `lld` (ELF flavour) with direct syscalls.
-- **Cross-compilation**: pre-staged sysroots bundled in the `verum`
-  binary; every per-platform decision reads the **target** triple,
-  never the host's `cfg(target_os)`.
+- **Cross-compilation**: every per-platform codegen decision reads the
+  **target** triple, never the host's `cfg(target_os)` — see
+  [no-libc architecture](/docs/architecture/no-libc-architecture) for
+  what that guarantees and what is still open. `verum` does **not**
+  bundle sysroots or cross-linkers; the final link needs the target's
+  own toolchain, installed separately.
 
 LTO options:
 - `thin` (default): fast, good inlining.

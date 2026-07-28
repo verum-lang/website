@@ -84,7 +84,10 @@ The stdlib has no Rust or C++ dependencies. The bootstrap layer
 and kernel32/ntdll on Windows — all via Verum's own FFI machinery.
 This means:
 
-- Cross-compilation is straightforward.
+- Cross-compilation doesn't also mean cross-building a C toolchain —
+  the stdlib itself carries no C/C++ dependency to cross-compile. You
+  still need a linker and sysroot for the target platform; see
+  [Build System → Cross-compilation](/docs/tooling/build-system#cross-compilation).
 - Embedded targets are first-class.
 - Upgrading the compiler does not change stdlib ABI.
 

@@ -60,16 +60,21 @@ verum build --target wasm32-wasi
 verum build --target aarch64-apple-darwin
 ```
 
-Supported targets:
-- `x86_64-linux-gnu`, `x86_64-linux-musl`
-- `aarch64-linux-gnu`, `aarch64-linux-musl`
-- `x86_64-apple-darwin`, `aarch64-apple-darwin`
-- `x86_64-pc-windows-msvc`
-- `wasm32-wasi`, `wasm32-unknown-unknown`
-- `riscv64gc-linux-gnu`
-- embedded: `thumbv7em-none-eabihf`, `riscv32imac-none-elf`
+`--target <triple>` is passed straight through to LLVM — the CLI does
+not validate it against a fixed list, so any triple LLVM's backend
+recognises can be requested. Verified end-to-end (module triple,
+per-platform runtime bodies, and a linked object carrying zero
+undefined libc symbols) as of 2026-07-28 for `x86_64-unknown-linux-gnu`,
+`aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`,
+`aarch64-apple-darwin`, and `x86_64-pc-windows-msvc`. Other triples —
+`wasm32-*`, `riscv64gc-*`, the embedded targets — are expected to work
+on the same mechanism but have not been individually verified.
 
-Sysroots ship with the `verum` binary; cross-compile by passing `--target <triple>`.
+**`verum` does not bundle sysroots, cross-linkers, or platform SDKs.**
+Final linking needs the target's own toolchain installed separately —
+see [Installation → Cross-compiling Verum programs](/docs/getting-started/installation#cross-compiling-verum-programs)
+for what that requires and what `[cross_compile]` in `verum.toml` does
+and does not do today.
 
 ## Build scripts
 

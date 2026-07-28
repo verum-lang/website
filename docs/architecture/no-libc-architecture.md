@@ -171,7 +171,17 @@ The migration is **substantially complete**.
   no-libc f64 / strtol formatting trio](/docs/changelog#added--aot-no-libc-f64--strtol-formatting-trio-complete-2026-05-04)).
 - Cross-compilation correctness — every per-platform decision
   reads `module.get_triple()`, never host
-  `#[cfg(target_os = "...")]`.
+  `#[cfg(target_os = "...")]`. **True as of 2026-07-28, not before.**
+  This line was wrong from 2026-05-04 until then: the LLVM *module's
+  own* triple was never actually set from `--target` in either
+  lowering path (AOT or JIT), so `module.get_triple()` silently
+  returned the **host** triple on every cross build no matter what
+  `--target` said — codegen was reading the triple correctly, the
+  triple itself was wrong. A Linux cross build from a non-Linux host
+  emitted Darwin/libSystem-shaped declarations instead of raw
+  syscalls: a live no-libc violation, not a hypothetical one. Fixed
+  and verified via `nm -u` (10 undefined libc symbols → 0 on the same
+  Linux object, before/after).
 
 ### Open punch-list
 
@@ -181,10 +191,14 @@ The migration is **substantially complete**.
 | `verum_vbc::ffi::*` (libffi paths)   | Replace libffi with `__sys_*_raw` intrinsics under `verum_vbc/src/ffi/platform/{linux,darwin}.rs`.  **Deferred.** |
 | `setjmp` / `longjmp` (exception unwinding, Linux body only) | Cross-compile fix landed; Linux body needs `llvm.eh.sjlj.setjmp`. **Open.** |
 | `printf` in `Debug` opcode helper    | Internal-only debug helper; route through `verum_internal_puts` + Verum's number-to-text helpers. **Open — debug only.** |
+| No-libc *linking* config vs. `--target` | The LLVM module triple is now correct (previous row), but the separate no-libc **linking** configuration is not yet unconditionally coupled to `--target` in every build path — a cross build can still pick up host linker flags / entry-point handling in some configurations. **Open, in progress.** |
 
 The deferred items are large standalone tasks — they don't
 block the no-libc claim for the canonical hot paths but must
-close before V1.0.
+close before V1.0. The cross-compilation row above is a reminder
+that a row marked done here describes a point-in-time
+verification, not a permanent guarantee — check the
+[changelog](/docs/changelog) if the exact date matters to you.
 
 ## 7. Owner and mechanism
 
