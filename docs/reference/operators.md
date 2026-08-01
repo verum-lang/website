@@ -18,29 +18,29 @@ From **tightest** (evaluated first) to **loosest**.
 | 1    | `.field`, `.method()`, `?.`, `[idx]`, `()` — method/index/call    | left          | —                         |
 | 2    | `.await`, `?` (postfix)                                          | left          | —                         |
 | 3    | `as` (cast)                                                      | left          | `From`, `Into`            |
-| 4    | `is` (pattern test)                                              | left          | —                         |
-| 5    | `-x`, `!x`, `~x` (prefix unary)                                  | prefix        | `Neg`, `Not`, `BitNot`    |
-| 6    | `&x`, `&mut x`, `&checked x`, `&unsafe x`, `*x` (ref/deref)       | prefix        | — / `Deref`               |
-| 7    | `**` (exponent)                                                  | right         | `Pow`                     |
-| 8    | `*`, `/`, `%`                                                    | left          | `Mul`, `Div`, `Rem`       |
-| 9    | `+`, `-`                                                         | left          | `Add`, `Sub`              |
-| 10   | `<<`, `>>`                                                       | left          | `Shl`, `Shr`              |
-| 11   | `&` (bitand)                                                     | left          | `BitAnd`                  |
-| 12   | `^` (bitxor)                                                     | left          | `BitXor`                  |
-| 13   | `\|` (bitor)                                                     | left          | `BitOr`                   |
-| 14   | `..`, `..=` (range)                                              | none          | —                         |
-| 15   | `==`, `!=`, `<`, `<=`, `>`, `>=`                                 | none          | `Eq`, `Ord` / `PartialOrd`|
-| 16   | `&&` (logical and)                                                | left          | short-circuit             |
-| 17   | `\|\|` (logical or)                                               | left          | short-circuit             |
-| 18   | `??` (null coalesce)                                              | left          | —                         |
-| 19   | `\|>` (pipe)                                                      | left          | —                         |
-| 20   | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `\|=`, `^=`, `<<=`, `>>=` | right         | `AddAssign`, `SubAssign`, …|
+| 4    | `-x`, `!x`, `~x` (prefix unary)                                  | prefix        | `Neg`, `Not`, `BitNot`    |
+| 5    | `&x`, `&mut x`, `&checked x`, `&unsafe x`, `*x` (ref/deref)       | prefix        | — / `Deref`               |
+| 6    | `**` (exponent)                                                  | right         | `Pow`                     |
+| 7    | `*`, `/`, `%`                                                    | left          | `Mul`, `Div`, `Rem`       |
+| 8    | `+`, `-`                                                         | left          | `Add`, `Sub`              |
+| 9    | `<<`, `>>`                                                       | left          | `Shl`, `Shr`              |
+| 10   | `&` (bitand)                                                     | left          | `BitAnd`                  |
+| 11   | `^` (bitxor)                                                     | left          | `BitXor`                  |
+| 12   | `\|` (bitor)                                                     | left          | `BitOr`                   |
+| 13   | `..`, `..=` (range)                                              | none          | —                         |
+| 14   | `==`, `!=`, `<`, `<=`, `>`, `>=`, `is`                                 | none          | `Eq`, `Ord` / `PartialOrd`|
+| 15   | `&&` (logical and)                                                | left          | short-circuit             |
+| 16   | `\|\|` (logical or)                                               | left          | short-circuit             |
+| 17   | `??` (null coalesce)                                              | left          | —                         |
+| 18   | `\|>` (pipe)                                                      | left          | —                         |
+| 19   | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `\|=`, `^=`, `<<=`, `>>=` | right         | `AddAssign`, `SubAssign`, …|
 
 **Lower number = tighter binding.** `a + b * c` parses as
-`a + (b * c)` because `*` (8) binds tighter than `+` (9).
+`a + (b * c)` because `*` (7) binds tighter than `+` (8).
 
 Non-associative operators (range, comparison) do **not chain**:
-`a < b < c` is a parse error; use `a < b && b < c`.
+`a < b < c` parses but is rejected by the type checker (a `Bool`
+compared with a number); use `a < b && b < c`.
 
 ## Overloadable operators
 
@@ -105,7 +105,6 @@ These operators have fixed semantics:
 | `?.`      | Optional chaining — `a?.b` = `a.and_then(\|x\| x.b)`.   |
 | `..`      | Rest / struct-update (in patterns and record exprs).    |
 | `@`       | Pattern alias binding; `x @ Pattern` binds `x` *and* tests. |
-| `::`      | Turbofish (expression-position type args).              |
 | `->`      | Function type / return type arrow.                      |
 | `=>`      | Match-arm arrow / closure / lambda.                     |
 
@@ -143,7 +142,7 @@ See [language/references](/docs/language/references).
 `AddAssign` protocol when implemented, avoiding a temporary copy:
 
 ```verum
-let mut xs = vec![1, 2, 3];
+let mut xs = [1, 2, 3];
 xs += 4;                        // desugars to xs.add_assign(4)
 ```
 
@@ -158,7 +157,7 @@ if x is not None             { use(x); }             // negation
 let flag = value is Int;                             // type-test pattern
 ```
 
-`is` has the same precedence as `==`/`<`/`>` (level 15). It's a
+`is` has the same precedence as `==`/`<`/`>` (level 14). It's a
 pattern **test**; bindings introduced by the pattern scope outside
 the test expression where accessible.
 
