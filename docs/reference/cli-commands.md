@@ -413,6 +413,119 @@ Flags:
 - `--json`.
 - `--reset` — clear statistics after printing.
 
+## Proof tooling
+
+The proof-lane commands operate on kernel-checkable certificates
+(`.vproof`), tactic scripts, and the verification cache. All of them
+accept the global `--verbose` / `--quiet` / `--color <auto|always|never>`
+flags, omitted from the per-command lists below.
+
+### `verum elaborate-proof <FILE>`
+
+Elaborate theorems from a `.vr` source file into kernel-checkable
+`.vproof` certificates.
+
+Flags:
+- `--output-dir <DIR>` — output directory for emitted `.vproof` files
+  (default: `<source-dir>/elaborated/`).
+- `--allow-empty` — exit 0 even when zero certificates were produced
+  (all theorems skipped). Without this flag an all-skip run is an
+  error: an empty success is indistinguishable from an unwired gate,
+  and reads as a pass in CI.
+
+### `verum check-proof <FILE>`
+
+Re-verify a `.vproof` proof certificate via the kernel.
+
+Flags:
+- `--meta-mode` — universe-lift re-check: re-runs the kernel with every
+  `Universe(n)` interpreted as `Universe(n + 1)`, i.e. the proof is
+  replayed at a strictly stronger universe. A closed certificate must
+  accept at lift 0 iff it accepts at any higher lift
+  (universe-cumulativity); a disagreement indicates either a
+  shift-implementation bug or an unsound universe-identity dependence
+  in the proof structure. Useful as a sanity check before publishing.
+- `--meta-lift <LIFT>` — explicit lift level (`--meta-mode` is
+  `--meta-lift 1`; `--meta-lift 0` is identical to the default run).
+
+### `verum proof-draft --theorem <THEOREM> --goal <GOAL>`
+
+Draft proof-obligation suggestions for a focused goal.
+
+Flags:
+- `--theorem <THEOREM>` — theorem name (used for diagnostic labelling
+  and history attribution).
+- `--goal <GOAL>` — the focused goal's proposition rendering; pipe via
+  stdin with `--goal -` for multi-line goals.
+- `--lemma <NAME:::SIGNATURE>` — a lemma in scope (repeatable), or
+  `--lemmas-from <file>` for a newline-separated list.
+- `--max <MAX>` — maximum number of suggestions (default 5).
+- `--format <plain|json>`.
+
+### `verum proof-repair --kind <KIND>`
+
+Suggest repairs for a failing proof, keyed by failure kind.
+
+Flags:
+- `--kind <KIND>` — failure-kind tag.
+- `--field <KEY=VALUE>` — per-kind structured fields (repeatable);
+  required keys differ per kind, and a missing required key surfaces
+  as an `InvalidArgument` error naming the key.
+- `--max <MAX>` (default 5), `--format <plain|json>`.
+
+### `verum proof-repl <COMMAND>`
+
+Live proof REPL with stepwise tactic feedback. Subcommands:
+
+- `batch` — run REPL commands non-interactively, from a file
+  (`--commands`) and/or repeated `--cmd` flags, concatenated in CLI
+  order.
+- `tree` — apply a sequence of tactics and emit the resulting proof
+  tree as Graphviz DOT (suitable for `dot -Tsvg`); non-zero exit on
+  any kernel rejection.
+
+### `verum tactic <COMMAND>`
+
+Tactic combinator catalogue surface. Subcommands:
+
+- `list` — every combinator in the canonical catalogue with a one-line
+  semantics summary.
+- `explain` — the full structured doc for a single combinator.
+- `laws` — the canonical algebraic-law inventory.
+
+### `verum llm-tactic <COMMAND>`
+
+LCF-style fail-closed LLM tactic proposer — proposals are only ever
+admitted through kernel checking, never trusted directly. Subcommands:
+`propose`, `audit-trail`, `models`.
+
+### `verum cert-replay <COMMAND>`
+
+SMT certificate replay with multi-backend cross-validation.
+Subcommands: `replay`, `cross-check`, `formats`, `backends`.
+
+### `verum cache-closure <COMMAND>`
+
+Closure-hash incremental verification cache. Subcommands:
+
+- `stat` — summary stats: entries, size, hit ratio.
+- `list` — every theorem name currently cached.
+- `get` — a single record (fingerprint + verdict).
+- `clear` — remove every cache entry (idempotent).
+- `decide` — probe the cache: report Skip / Recheck for the given
+  fingerprint.
+
+### `verum cubical <COMMAND>`
+
+Cubical / HoTT primitive catalogue. Subcommands:
+
+- `primitives` — every primitive with a one-line semantics summary;
+  `--category` filters to one of `identity` / `path_ops` / `induction`
+  / `transport` / `composition` / `glue` / `universe`.
+- `explain` — full structured doc for a single primitive.
+- `rules` — every computation / reduction rule.
+- `face` — parse + validate a face formula (e.g. `i = 0 ∧ j = 1`).
+
 ## Profiling
 
 ### `verum profile [FILE]`
