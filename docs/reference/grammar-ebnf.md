@@ -542,7 +542,8 @@ type SortedList<T: Ord> is List<T> where self.is_sorted();
 function_def = visibility , function_modifiers , fn_keyword , identifier
              , [ generics ] , '(' , param_list , ')'
              , [ throws_clause ]
-             , [ '->' , type_expr , [ ensures_clause ] ]
+             , [ '->' , type_expr ]
+             , { function_contract_clause }
              , [ context_clause ]
              , [ generic_where_clause ]
              , [ meta_where_clause ]
@@ -556,8 +557,21 @@ stage_level         = integer_lit ;
 throws_clause       = 'throws' , '(' , error_type_list , ')' ;
 error_type_list     = type_expr , { '|' , type_expr } ;
 
-ensures_clause      = 'where' , ensures_item , { ',' , ensures_item } ;
-ensures_item        = 'ensures' , expression ;
+(* Runtime-function contracts: a SEQUENCE of clauses after the
+   signature, independent of the return type — the stdlib uses bare
+   `requires`/`ensures` on ordinary `public fn` pervasively. The old
+   `ensures_clause = 'where' , …` form documented here previously is
+   the SUGAR variant, renamed `where_ensures_clause` in the canonical
+   grammar; `@ghost` may prefix any clause (proof-only, erased).      *)
+function_contract_clause =
+      [ '@ghost' ] , requires_clause
+    | [ '@ghost' ] , ensures_clause
+    | [ '@ghost' ] , where_ensures_clause
+    | contract_literal ;
+requires_clause      = 'requires' , expression , { ',' , expression } ;
+ensures_clause       = 'ensures' , expression , { ',' , expression } ;
+where_ensures_clause = 'where' , ensures_item , { ',' , ensures_item } ;
+ensures_item         = 'ensures' , expression ;
 
 function_body       = copattern_body | block_expr | '=' , expression , ';' | ';' ;
 copattern_body      = '{' , copattern_arm , { ',' , copattern_arm } , [ ',' ] , '}' ;
@@ -1315,26 +1329,47 @@ These are **functions**, not macros. `print(f"x = {x}")` — never `print!()`.
 ### 2.18 Formal proofs and verification (Section 2.19 in the EBNF)
 
 ```ebnf
-theorem_decl   = 'theorem'   , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
-               , [ '->' , type_expr ] , [ requires_clause ] , [ ensures_clause ] , proof_body ;
-lemma_decl     = 'lemma'     , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
-               , [ '->' , type_expr ] , [ requires_clause ] , [ ensures_clause ] , proof_body ;
-axiom_decl     = 'axiom'     , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
+(* theorem / lemma share one surface (2026-08 audit alignment): the
+   old fixed-order production covered a fraction of what the parser
+   and stdlib use. Note [ generics ] — angle-bracket form; the old
+   bracket-less [ generic_params ] cite was a spec defect.            *)
+theorem_decl = { attribute } , visibility , 'theorem' , theorem_tail ;
+lemma_decl   = { attribute } , visibility , 'lemma' , theorem_tail ;
+
+theorem_tail =
+    theorem_name , [ generics ] , [ '(' , [ param_list ] , ')' ] ,
+    [ '->' , type_expr ] ,
+    ( ':' , expression , [ where_clause ] , theorem_proof_tail
+    | { theorem_contract_clause } , [ ':' , expression ] ,
+      [ where_clause ] , theorem_proof_tail
+    ) ;
+
+theorem_name = identifier | keyword ;
+
+theorem_contract_clause =
+      [ 'ghost' ] , 'requires' , expression , { ',' , expression }
+    | [ 'ghost' ] , 'ensures' , expression , { ',' , expression }
+    | 'given' , identifier , ':' , expression
+    | 'from' , identifier
+    | attribute ;
+
+theorem_proof_tail = proof_body , [ ';' ] | ';' ;
+
+axiom_decl     = 'axiom'     , identifier , [ generics ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ]
                , [ requires_clause ]
                , [ ensures_clause ]
                , [ where_clause ]
                , ';' ;
-ensures_clause = 'ensures' , expression , { ',' , expression } ;
 
 (* Axioms may also appear inside protocol bodies (T1-R) — they become
    proof obligations at every `implement` site, realising the
    model-theoretic semantics of protocols: an implementation IS a
    model of the theory iff every axiom holds on its concrete ops. *)
 protocol_item_axiom = axiom_decl ;
-corollary_decl = 'corollary' , identifier , [ generic_params ] , '(' , [ param_list ] , ')'
+corollary_decl = 'corollary' , identifier , [ generics ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ] , [ requires_clause ] , 'from' , identifier , proof_body ;
-tactic_decl    = 'tactic'    , identifier , [ generic_params ]
+tactic_decl    = 'tactic'    , identifier , [ generics ]
                , '(' , [ tactic_param_list ] , ')'
                , [ where_clause ] , tactic_body ;
 
