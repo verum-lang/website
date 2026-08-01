@@ -215,14 +215,16 @@ Before: using a keyword as a parameter name (`fn f(mount: Text)`,
 Now the parser lexer has a central `is_reserved_keyword_token`
 check; any keyword appearing where an identifier is required emits:
 
-> 'mount' is a reserved keyword and cannot be used as an identifier
-> here — rename to `mount_` or similar
+> 'mount' cannot be used as an identifier here — rename to
+> `mount_` or similar
 
-The full list tracks all 41 keywords: `let, fn, is, type, match,
-mount, link, where, if, else, while, for, loop, break, continue,
-return, yield, mut, const, volatile, static, pure, meta, stage,
-lift, implement, protocol, extends, module, async, await, spawn,
-select, nursery, unsafe, ref, move, as, in, public`.
+Verum reserves only THREE words outright: `let`, `fn`, `is`
+(grammar/verum.ebnf, "Reserved"). Everything else — `type`, `match`,
+`mount`, `where`, control-flow words, and the rest of the ~60-word
+roster — is CONTEXTUAL: a keyword where the grammar expects it, an
+ordinary identifier elsewhere. The parser's identifier-position check
+rejects a contextual keyword only in positions where accepting it
+would be ambiguous, which is what the diagnostic above reports.
 
 ## Byte-string literals in patterns
 

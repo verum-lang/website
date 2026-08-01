@@ -53,14 +53,14 @@ most permissive:
 | (none) `Private`      | defining module only | implementation helpers |
 | `pub(super)`          | parent module and descendants | sibling collaboration |
 | `pub(in path)`        | a specific subtree named by `path` | curated APIs |
-| `internal` / `pub(crate)` | entire current cog, not downstream | cog-wide utilities |
+| `internal` / `pub(cog)` | entire current cog, not downstream | cog-wide utilities |
 | `pub`                 | anywhere, including downstream cogs | the cog's stable API |
 
 ```verum
 pub           fn public_api()       { ... }   // exported from the cog
-internal      fn cog_visible()      { ... }   // aka pub(crate)
+internal      fn cog_visible()      { ... }   // aka pub(cog)
 pub(super)    fn parent_visible()   { ... }
-pub(in .crate.net) fn net_visible() { ... }   // just the net subtree
+pub(in .self.net) fn net_visible()  { ... }   // just the net subtree
               fn module_private()   { ... }   // no modifier → private
 protected     fn type_relative()    { ... }   // see below
 ```
@@ -109,8 +109,8 @@ implement Protocol for MyWrapper {
 ## Re-exports
 
 ```verum
-pub use .self.internal.Tool;    // makes `Tool` part of this module's API
-pub use .self.util.*;           // re-exports everything public from `util`
+public mount .self.internal.Tool;    // makes `Tool` part of this module's API
+public mount .self.util.*;            // re-exports everything public from `util`
 ```
 
 Re-exports let you build a flat public API from a deeper internal
@@ -129,7 +129,7 @@ The following items are valid at module scope:
 - `extern "C" { ... }` — FFI declarations.
 - `context ...` — context definitions.
 - `mount ...` — imports.
-- `pub use ...` — re-exports.
+- `public mount ...` — re-exports.
 
 ## Cyclic modules
 
