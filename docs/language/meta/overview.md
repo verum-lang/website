@@ -160,7 +160,7 @@ page.
 ### Literal handlers
 
 Tagged (`sql#"..."`, `rx#"..."`), suffixed (`120_px`, `2_MiB`), and
-interpolated (`sql"SELECT * FROM t WHERE id = {x}"`) literals are
+interpolated (`sql#"SELECT * FROM t WHERE id = {x}"`) literals are
 all just meta functions registered to a literal form. You can add
 new ones; the standard ones ship as ordinary `core.tagged.*`
 modules. See [Literal handlers](./literal-handlers) for the full
