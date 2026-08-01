@@ -136,7 +136,7 @@ implement Module for MNISTNet {
 mount core.math.nn.*;
 mount core.math.tensor.*;
 mount core.math.autodiff.*;
-use .self.model.MNISTNet;
+mount .self.model.MNISTNet;
 
 fn train_step(
     model: &mut MNISTNet,
@@ -174,9 +174,9 @@ mount core.io.*;
 mount core.math.random.{Rng, PCG};
 mount core.math.nn.AdamW;
 mount core.math.tensor.*;
-use .self.data.*;
-use .self.model.MNISTNet;
-use .self.train.*;
+mount .self.data.*;
+mount .self.model.MNISTNet;
+mount .self.train.*;
 
 const BATCH_SIZE: Int = 64;
 const EPOCHS: Int = 10;
@@ -231,9 +231,9 @@ fn main() {
 ```verum
 @cfg(test)
 module tests {
-    use .super.model.MNISTNet;
+    mount .super.model.MNISTNet;
     mount core.math.tensor.*;
-    use core.math.random.PCG;
+    mount core.math.random.PCG;
 
     @test
     fn forward_shape() {

@@ -175,7 +175,7 @@ $ verum run -- --json /tmp/a.txt
 ```verum
 @cfg(test)
 module tests {
-    use .super.*;
+    mount .super.*;
 
     @test
     fn parses_format_flag() {
@@ -218,8 +218,8 @@ $ verum test
 ```verum
 @cfg(bench)
 module benches {
-    use .super.*;
-    use core.runtime.Bencher;
+    mount .super.*;
+    mount core.runtime.Bencher;
 
     @bench
     fn bench_count_1kb(b: &mut Bencher) {

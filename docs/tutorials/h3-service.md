@@ -207,7 +207,7 @@ Prometheus scrape endpoint:
 
 ```verum
 pub fn prometheus_expose() -> List<Byte> {
-    use core.net.h3.stats_prometheus;
+    mount core.net.h3.stats_prometheus;
     stats_prometheus.expose(&server)
 }
 ```
