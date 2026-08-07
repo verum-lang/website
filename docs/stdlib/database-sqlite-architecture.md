@@ -152,7 +152,7 @@ arranges pages into b-trees.
 - A `Page` borrowed for read remains valid until the pager's
   transaction boundary, even if checkpointing rotates underlying
   storage — the CBGR generation tag detects use-after-recycle.
-- WAL frame checksums (CRC32 from `core.security.hash.crc32`) catch
+- WAL frame checksums (CRC32 from `core.hash.checksum.crc32`) catch
   partial-write corruption.
 - Hot-journal detection runs before the first read on every open.
 

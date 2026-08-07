@@ -399,7 +399,7 @@ where two distinct trees could hash to the same root.
 
 ## Further reading
 
-- [`hash`](/docs/stdlib/security/hash) — underlying SHA / CRC /
+- [`hash`](/docs/stdlib/hash) — underlying SHA / CRC /
   non-crypto fingerprint primitives.
 - [`ecc`](/docs/stdlib/security/ecc) — Ed25519 / X25519 / P-256
   curves these primitives build on.

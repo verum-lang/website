@@ -255,7 +255,7 @@ IFC catches **explicit** leaks (assigning a `Secret` value to a
   leaks one bit per call). These are caught by stricter systems;
   Verum's lattice is intentionally simpler for broader adoption.
 - **Side channels** via timing / caching / resource exhaustion.
-  Those are [constant-time](/docs/stdlib/security/util) territory.
+  Those are [constant-time](/docs/stdlib/subtle) territory.
 - **Application logic bugs** that put the wrong data in the wrong
   `Labeled<T>` wrapper in the first place. Garbage in, garbage
   labels out.

@@ -38,7 +38,7 @@ risks.
 - **Constant-time code** — the compiler doesn't guarantee side-
   channel resistance by default. The stdlib crypto primitives are
   constant-time by construction, and
-  [`core.security.util.constant_time_eq`](/docs/stdlib/security/util)
+  [`core.subtle.constant_time_eq`](/docs/stdlib/subtle)
   is mandatory for any secret-byte comparison. Don't branch on
   secret bytes in your own code.
 - **Supply-chain trust** — see the [trust model](/docs/tooling/cog-packages#trust-model)
@@ -89,7 +89,7 @@ risks.
 - Never log `Labeled<T: Secret>` values (the stdlib logger refuses).
 - For types holding key material, implement `Drop` to zero the
   buffer before release — see
-  [`security.util.zeroise`](/docs/stdlib/security/util)
+  [`security.util.zeroise`](/docs/stdlib/subtle)
   (stable wrapper planned; use the `verum.mem.zeroise` intrinsic
   until then).
 - Pull secrets from a dedicated store, not env vars: HashiCorp
@@ -112,7 +112,7 @@ risks.
 - **KDFs** — [HKDF-SHA-256 / -SHA-384 / -SHA-512](/docs/stdlib/security/kdf)
   for key derivation from high-entropy IKM. Argon2id for password
   hashing (different module, planned).
-- **MACs** — [HMAC-SHA-256](/docs/stdlib/security/mac) is the right
+- **MACs** — [HMAC-SHA-256](/docs/stdlib/mac) is the right
   default for cookie signing / token MACs. Always verify tags with
   `constant_time_eq`, never `==`.
 - **Never** `unsafe`-cast between `[Byte; N]` and other types

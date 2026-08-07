@@ -339,7 +339,7 @@ adequate for even very high-traffic servers.
 
 - **Secret-key storage.** Clamped 32-byte scalars are as sensitive
   as long-term keys. Store in a secure keystore; zero memory on
-  drop (see [`util`](/docs/stdlib/security/util) for `zeroise`).
+  drop (see [`util`](/docs/stdlib/subtle) for `zeroise`).
 - **Downstream KDF.** Never use the raw `X25519SharedSecret` as an
   AEAD key. Run it through HKDF with a protocol-specific salt and
   info context (see [`kdf`](/docs/stdlib/security/kdf)).
@@ -423,7 +423,7 @@ ref10 port for bootstrap / audit purposes.
   X25519 for PQ-hybrid `X25519MLKEM768`.
 - [`core.security.kdf.hkdf`](/docs/stdlib/security/kdf) — always
   post-process the shared secret through HKDF.
-- [`core.security.util`](/docs/stdlib/security/util) — `zeroise`
+- [`core.subtle`](/docs/stdlib/subtle) — `zeroise`
   for clearing scalar memory; `constant_time_eq` if you compare
   public keys.
 - [`core.net.tls`](/docs/stdlib/net/tls/) — consumes X25519 in the

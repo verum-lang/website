@@ -69,7 +69,7 @@ loom is explicitly *not* a self-contained silo. It uses:
 | Stdlib primitive | Where |
 |------------------|-------|
 | `core.encoding.varint` | SQLite varint encoding (record headers, rowids) |
-| `core.security.hash.crc32` | WAL frame checksums |
+| `core.hash.checksum.crc32` | WAL frame checksums |
 | `core.collections.{btree, map}` | In-memory ordered maps (temp tables, sorter) |
 | `core.mem.arena` | Page-cache allocator with CBGR epoch tags |
 | `core.async.{nursery, channel}` | Pager actor mailbox + checkpointer worker |

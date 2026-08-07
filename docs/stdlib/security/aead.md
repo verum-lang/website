@@ -243,7 +243,7 @@ else:         return GCTR_K(inc_32(J_0), C)
 ```
 
 The tag comparison uses
-[`constant_time_eq`](/docs/stdlib/security/util) — essential to
+[`constant_time_eq`](/docs/stdlib/subtle) — essential to
 prevent timing attacks that would otherwise let an attacker forge
 tags byte-by-byte.
 
@@ -500,8 +500,8 @@ QUIC on Android.
 
 - [`core.security.cipher.aes`](/docs/stdlib/security/cipher#aes) — the underlying block cipher.
 - [`core.security.cipher.chacha20`](/docs/stdlib/security/cipher#chacha20) — the underlying stream cipher.
-- [`core.security.mac.poly1305`](/docs/stdlib/security/mac#poly1305) — the one-time MAC inside ChaCha20-Poly1305.
-- [`core.security.util.constant_time`](/docs/stdlib/security/util) — constant-time tag verify.
+- [`core.mac.poly1305`](/docs/stdlib/mac#poly1305) — the one-time MAC inside ChaCha20-Poly1305.
+- [`core.subtle.constant_time`](/docs/stdlib/subtle) — constant-time tag verify.
 - [`core.security.kdf.hkdf`](/docs/stdlib/security/kdf) — typically used to derive the AEAD key from a shared secret.
 
 ## References

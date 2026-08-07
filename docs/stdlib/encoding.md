@@ -347,7 +347,7 @@ fn round_trip() -> Result<(), json.JsonError> {
 
 ```verum
 mount core.encoding.base64.encode_url;
-mount core.security.hash.sha256.Sha256;
+mount core.hash.crypto.sha256.Sha256;
 
 fn bearer_from_secret(secret: &[Byte]) -> Text {
     let digest = Sha256.digest(secret);

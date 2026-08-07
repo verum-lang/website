@@ -1,10 +1,55 @@
 ---
-sidebar_position: 2
-title: hash — SHA-2 + BLAKE3
-description: SHA-256/384/512 (FIPS 180-4) plus BLAKE3 streaming + XOF + keyed + derive_key.
+sidebar_position: 6
+title: hash — digests, grouped by guarantee
+description: checksum / fast / crypto / legacy. The four are not interchangeable, and the mount line says which one you rely on.
 ---
 
-# `core.security.hash` — cryptographic hashes
+# `core.hash` — hash functions, grouped by the guarantee they give
+
+A hash function is chosen by the property you need, and the four
+properties below are **not** interchangeable. This module is split by
+guarantee — not by algorithm family, not by era — so the `mount` line
+at a call site already states what the caller relies on, and a wrong
+choice is visible in review without opening the file.
+
+| module | guarantee | use for | never use for |
+|---|---|---|---|
+| `core.hash.checksum` | detects ACCIDENTAL corruption | wire/storage integrity against noise | anything an attacker touches |
+| `core.hash.fast` | fast, well-distributed, NON-cryptographic | hash tables, sketches, sharding, cache keys | content addressing, dedup, signatures |
+| `core.hash.crypto` | collision- and preimage-resistant | commitments, signatures, key schedules, content addressing | — |
+| `core.hash.legacy` | cryptographic by design, BROKEN in practice | only where a wire protocol mandates the bytes | any security property |
+
+Keyed authentication is not a hash — see [`core.mac`](/docs/stdlib/mac).
+
+## `core.hash.checksum` — crc32, crc32c
+
+Checksums detect bit flips, truncated writes and bad sectors. They give
+no security property at all: producing a second input with the same CRC
+is a linear-algebra exercise, not an attack. Use when the adversary is
+noise.
+
+## `core.hash.fast` — fnv, murmur3, xxhash
+
+Fast, unkeyed, non-cryptographic. The right default for hash tables,
+cardinality sketches, sharding and cache keys.
+
+**The one hazard:** these are unkeyed and their internals are public, so
+an adversary who chooses inputs can compute collisions and degrade a
+hash table to a list — an algorithmic-complexity denial of service. When
+inputs cross a trust boundary, key the hash with
+[`core.mac.hmac`](/docs/stdlib/mac), or seed the sketch from
+[`core.random.secure`](/docs/stdlib/random).
+
+## `core.hash.legacy` — sha1
+
+Nothing here is a free choice. SHA-1's collision resistance is dead
+(SHAttered, 2017; chosen-prefix collisions since 2020). Preimage
+resistance still stands, which is why RFC 6455 may keep using it: the
+WebSocket accept-key is a handshake echo that derives no security
+property from the digest. Never use SHA-1 for signatures, certificates,
+commitments or deduplication.
+
+## `core.hash.crypto` — the collision-resistant digests
 
 Two hash families ship as first-class primitives:
 
@@ -35,9 +80,9 @@ backends per the runtime feature-flag set).
 ### Type + constructors
 
 ```verum
-mount core.security.hash.sha256.{Sha256, BLOCK_SIZE, OUTPUT_SIZE};
-mount core.security.hash.sha384.{Sha384};
-mount core.security.hash.sha512.{Sha512};
+mount core.hash.crypto.sha256.{Sha256, BLOCK_SIZE, OUTPUT_SIZE};
+mount core.hash.crypto.sha384.{Sha384};
+mount core.hash.crypto.sha512.{Sha512};
 
 // Streaming state
 let mut s: Sha256 = Sha256.new();
@@ -63,14 +108,14 @@ implement Sha256 {
 ### Size constants
 
 ```verum
-core.security.hash.sha256.BLOCK_SIZE   // 64
-core.security.hash.sha256.OUTPUT_SIZE  // 32
+core.hash.crypto.sha256.BLOCK_SIZE   // 64
+core.hash.crypto.sha256.OUTPUT_SIZE  // 32
 
-core.security.hash.sha384.BLOCK_SIZE   // 128 (inherited from SHA-512)
-core.security.hash.sha384.OUTPUT_SIZE  // 48
+core.hash.crypto.sha384.BLOCK_SIZE   // 128 (inherited from SHA-512)
+core.hash.crypto.sha384.OUTPUT_SIZE  // 48
 
-core.security.hash.sha512.BLOCK_SIZE   // 128
-core.security.hash.sha512.OUTPUT_SIZE  // 64
+core.hash.crypto.sha512.BLOCK_SIZE   // 128
+core.hash.crypto.sha512.OUTPUT_SIZE  // 64
 ```
 
 ### Low-level compression primitive (SHA-512)
@@ -90,7 +135,7 @@ public fn compress_block(
 ### One-shot hash
 
 ```verum
-mount core.security.hash.sha256.{Sha256};
+mount core.hash.crypto.sha256.{Sha256};
 
 fn example_one_shot() {
     let data = b"The quick brown fox jumps over the lazy dog";
@@ -117,7 +162,7 @@ fn hash_file<R: Read>(reader: &mut R) -> Result<[Byte; 32], IoError> {
 ### SHA-512 for wider outputs
 
 ```verum
-mount core.security.hash.sha512.{Sha512};
+mount core.hash.crypto.sha512.{Sha512};
 
 fn pbkdf2_wide_key(password: &[Byte], salt: &[Byte]) -> [Byte; 64] {
     // Suppose you want a 512-bit key for deriving two 256-bit sub-keys.
@@ -209,7 +254,7 @@ streaming. Use SHA-2 where FIPS / NIST / TLS 1.3 mandates.
 ### API surface
 
 ```verum
-mount core.security.hash.blake3.{
+mount core.hash.crypto.blake3.{
     Blake3, blake3, blake3_keyed, blake3_derive_key,
     BLOCK_SIZE, CHUNK_SIZE, OUTPUT_SIZE, KEY_LEN,
 };
@@ -291,10 +336,10 @@ Production deployments should always enable an accelerated backend.
 ### Constants
 
 ```verum
-core.security.hash.blake3.BLOCK_SIZE   // 64
-core.security.hash.blake3.CHUNK_SIZE   // 1024
-core.security.hash.blake3.OUTPUT_SIZE  // 32
-core.security.hash.blake3.KEY_LEN      // 32
+core.hash.crypto.blake3.BLOCK_SIZE   // 64
+core.hash.crypto.blake3.CHUNK_SIZE   // 1024
+core.hash.crypto.blake3.OUTPUT_SIZE  // 32
+core.hash.crypto.blake3.KEY_LEN      // 32
 ```
 
 ### Constant-time / side-channels
@@ -302,7 +347,7 @@ core.security.hash.blake3.KEY_LEN      // 32
 BLAKE3's compression is by construction free of secret-data-dependent
 branches and memory accesses (all-arithmetic mixing on UInt32). The
 implementation respects this property; pair the *output comparison*
-site with `core.security.util.constant_time_eq` when using BLAKE3 as
+site with `core.subtle.constant_time_eq` when using BLAKE3 as
 a MAC (`keyed_hash`).
 
 ### Reference
@@ -344,18 +389,18 @@ buffers beyond the input slice.
   hashes and thus vulnerable to length-extension attacks if used
   directly as a keyed MAC (`hash(key || message)`). This is NOT a
   defect of the hash — it's a protocol error. For authentication,
-  always use [`core.security.mac.hmac`](/docs/stdlib/security/mac)
+  always use [`core.mac.hmac`](/docs/stdlib/mac)
   which is designed to resist length-extension.
 
 - **Collision resistance.** SHA-256 is still cryptographically
   collision-resistant; public pre-image and second-preimage attacks
   remain out of reach. SHA-1 is deprecated for signatures but
-  remains available in `core.security.hash.sha1` for protocols
+  remains available in `core.hash.legacy.sha1` for protocols
   that require it (Git SHA-1, legacy HMAC-SHA1 in TOTP, etc.).
 
 ## Relation to other modules
 
-- [`core.security.mac.hmac`](/docs/stdlib/security/mac) uses SHA-2
+- [`core.mac.hmac`](/docs/stdlib/mac) uses SHA-2
   as its compression function.
 - [`core.security.kdf.hkdf`](/docs/stdlib/security/kdf) builds on
   HMAC-SHA-{256, 384, 512}.
@@ -380,7 +425,7 @@ trivially reproduce any target checksum. Use SHA-256 or HMAC when
 the integrity check must be tamper-resistant.
 
 ```verum
-mount core.security.hash.crc32.{Crc32, crc32, crc32_continue};
+mount core.hash.checksum.crc32.{Crc32, crc32, crc32_continue};
 
 // one-shot
 let digest: UInt32 = crc32(b"hello world");
@@ -401,7 +446,7 @@ XOR `0xFFFFFFFF`. Matches zlib's `crc32`, the `crc32` CLI, Python's
 ## `crc32c` — Castagnoli polynomial
 
 ```verum
-mount core.security.hash.crc32c.{Crc32c, crc32c};
+mount core.hash.checksum.crc32c.{Crc32c, crc32c};
 let digest: UInt32 = crc32c(b"123456789");   // 0xE3069283 (RFC 3720)
 ```
 
@@ -416,7 +461,7 @@ a follow-up intrinsic.
 ## `xxhash` — XXH64 fast non-crypto hash
 
 ```verum
-mount core.security.hash.xxhash.{XxHash64, xxh64};
+mount core.hash.fast.xxhash.{XxHash64, xxh64};
 
 let h: UInt64 = xxh64(data, seed);
 
@@ -440,7 +485,7 @@ collide.
 ## `murmur3` — MurmurHash3 (32-bit + 128-bit)
 
 ```verum
-mount core.security.hash.murmur3.{murmur3_32, murmur3_128, Murmur3Hash128};
+mount core.hash.fast.murmur3.{murmur3_32, murmur3_128, Murmur3Hash128};
 
 let h32: UInt32 = murmur3_32(key_bytes, seed);
 

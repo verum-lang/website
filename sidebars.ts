@@ -492,6 +492,14 @@ const sidebars: SidebarsConfig = {
       link: {type: 'generated-index', slug: '/category/stdlib-compute'},
       items: [
         'stdlib/math',
+        // Byte primitives: computation over bytes, not security policy.
+        // They live below `security` in the module tree because a Bloom
+        // filter needs a hash, not the crypto stack — see the ring law
+        // in the architecture docs.
+        'stdlib/hash',
+        'stdlib/mac',
+        'stdlib/subtle',
+        'stdlib/random',
         'stdlib/simd',
       ],
     },
@@ -523,15 +531,12 @@ const sidebars: SidebarsConfig = {
               label: 'Cryptographic primitives',
               link: {type: 'generated-index', slug: '/category/stdlib-security-crypto'},
               items: [
-                'stdlib/security/hash',
-                'stdlib/security/mac',
                 'stdlib/security/kdf',
                 'stdlib/security/cipher',
                 'stdlib/security/aead',
                 'stdlib/security/ecc',
                 'stdlib/security/pq',
                 'stdlib/security/zk',
-                'stdlib/security/util',
                 'stdlib/security/auth-primitives',
               ],
             },

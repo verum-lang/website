@@ -36,9 +36,9 @@ For the full map and architectural context, start at the
 
 ### Cryptographic primitives
 
-- [`hash`](/docs/stdlib/security/hash) — SHA-256/384/512, BLAKE3,
+- [`hash`](/docs/stdlib/hash) — SHA-256/384/512, BLAKE3,
   CRC-32/32C, XXH64, MurmurHash3 (32 + 128-bit)
-- [`mac`](/docs/stdlib/security/mac) — HMAC-SHA-family + Poly1305
+- [`mac`](/docs/stdlib/mac) — HMAC-SHA-family + Poly1305
 - [`kdf`](/docs/stdlib/security/kdf) — HKDF + PBKDF2 (HMAC-SHA256/384/512)
 - [`cipher`](/docs/stdlib/security/cipher) — AES + ChaCha20
 - [`aead`](/docs/stdlib/security/aead) — AES-GCM + ChaCha20-Poly1305
@@ -48,7 +48,7 @@ For the full map and architectural context, start at the
 - `hpke` — RFC 9180 Hybrid Public Key Encryption (Mode Base:
   DHKEM-X25519 + HKDF-SHA256 + ChaCha20-Poly1305) — the primitive
   behind ECH, MLS, Privacy Pass
-- [`util`](/docs/stdlib/security/util) — constant-time ops, zeroise, RNG
+- [`util`](/docs/stdlib/subtle) — constant-time ops, zeroise, RNG
 
 ### Token / credential primitives
 

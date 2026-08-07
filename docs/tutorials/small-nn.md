@@ -95,7 +95,7 @@ fn u32_from_be(bytes: &[Byte]) -> UInt32 {
 ```verum
 mount core.math.nn.*;
 mount core.math.tensor.*;
-mount core.math.random.*;
+mount core.random.deterministic.*;
 
 pub type MNISTNet is {
     fc1: Linear,
@@ -171,7 +171,7 @@ fn accuracy(model: &MNISTNet, images: &Tensor<Float32>, labels: &Tensor<Int32>) 
 
 ```verum
 mount core.io.*;
-mount core.math.random.{Rng, PCG};
+mount core.random.deterministic.{Rng, PCG};
 mount core.math.nn.AdamW;
 mount core.math.tensor.*;
 mount .self.data.*;
@@ -233,7 +233,7 @@ fn main() {
 module tests {
     mount .super.model.MNISTNet;
     mount core.math.tensor.*;
-    mount core.math.random.PCG;
+    mount core.random.deterministic.PCG;
 
     @test
     fn forward_shape() {

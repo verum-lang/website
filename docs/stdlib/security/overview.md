@@ -46,7 +46,7 @@ level. Reference implementations use:
   [`cipher`](/docs/stdlib/security/cipher#side-channels));
 - fixed-count iterations;
 - constant-time comparisons via
-  [`util.constant_time_eq`](/docs/stdlib/security/util).
+  [`core.subtle.constant_time.constant_time_eq`](/docs/stdlib/subtle).
 
 For production throughput, every hot path has a
 `@cfg(feature = "crypto-accel")` substitution point that binds to
@@ -83,15 +83,19 @@ The tree below maps to `core/security/` exactly — every filename
 is linked to a dedicated documentation page.
 
 ```
+# Digests, MACs, entropy and constant-time primitives are NOT here: they
+# are computation over bytes, they depend on `core` alone, and they live
+# below this module so that a Bloom filter can obtain a hash without
+# depending on the crypto stack.
+#
+#   core/hash/    — checksum / fast / crypto / legacy   (see: stdlib/hash)
+#   core/mac/     — HMAC, Poly1305                      (see: stdlib/mac)
+#   core/random/  — secure vs deterministic             (see: stdlib/random)
+#   core/subtle/  — constant-time compare, zeroization  (see: stdlib/subtle)
+#
+# What remains below is what genuinely reasons about trust.
+
 core/security/
-├── hash/
-│   ├── sha256.vr       — SHA-256 (FIPS 180-4 §6.2)
-│   ├── sha384.vr       — SHA-384 (FIPS 180-4 §6.5)
-│   ├── sha512.vr       — SHA-512 (FIPS 180-4 §6.4)
-│   └── blake3.vr       — BLAKE3 streaming + XOF + keyed_hash + derive_key
-├── mac/
-│   ├── hmac.vr         — HMAC-SHA-{256, 384, 512}
-│   └── poly1305.vr     — Poly1305 one-time MAC
 ├── kdf/
 │   └── hkdf.vr         — HKDF-{SHA-256, SHA-384, SHA-512}
 ├── cipher/
@@ -120,8 +124,6 @@ core/security/
 │       ├── air.vr      —   AIR DSL (Expr / TransitionConstraint / BoundaryConstraint)
 │       ├── prover.vr   —   prove
 │       └── verifier.vr —   AirVk + verify + verify_batch
-├── util/
-│   └── constant_time.vr — constant-time compare, zeroise
 ├── spiffe/
 │   ├── id.vr           — SPIFFE URI parsing
 │   ├── svid.vr         — X.509-SVID + JWT-SVID types
@@ -139,15 +141,19 @@ core/security/
 
 ### Cryptographic primitives
 
-- [**`hash`**](/docs/stdlib/security/hash) — SHA-256/384/512 + BLAKE3 (streaming, XOF, keyed, derive_key)
-- [**`mac`**](/docs/stdlib/security/mac) — HMAC-SHA-family + Poly1305
 - [**`kdf`**](/docs/stdlib/security/kdf) — HKDF (Extract/Expand)
 - [**`cipher`**](/docs/stdlib/security/cipher) — AES, ChaCha20
 - [**`aead`**](/docs/stdlib/security/aead) — AES-GCM, ChaCha20-Poly1305
 - [**`ecc`**](/docs/stdlib/security/ecc) — Ed25519, P-256, X25519, ECVRF (RFC 9381), BLS12-381 (pairing + threshold sigs)
 - [**`pq`**](/docs/stdlib/security/pq) — ML-KEM, ML-DSA, SPHINCS+ post-quantum
 - [**`zk`**](/docs/stdlib/security/zk) — Halo2 + KZG10 (BLS12-381) and STARK + FRI (PQ-secure)
-- [**`util`**](/docs/stdlib/security/util) — constant-time ops, zeroise, RNG
+
+### Below this module — byte primitives, not security policy
+
+- [**`core.hash`**](/docs/stdlib/hash) — digests grouped by guarantee: checksum / fast / crypto / legacy
+- [**`core.mac`**](/docs/stdlib/mac) — HMAC-SHA-family + Poly1305
+- [**`core.random`**](/docs/stdlib/random) — secure (CSPRNG) vs deterministic (reproducible)
+- [**`core.subtle`**](/docs/stdlib/subtle) — constant-time comparison, zeroization
 
 ### Identity, secrets, policy
 
@@ -165,9 +171,9 @@ is implementable with modules from this subtree alone.
 
 | Cipher-suite | Hash | KDF | AEAD | KEX |
 |--------------|------|-----|------|-----|
-| `TLS_AES_128_GCM_SHA256` | [`sha256`](/docs/stdlib/security/hash) | [`hkdf_sha256`](/docs/stdlib/security/kdf) | [`aes_gcm-128`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
-| `TLS_AES_256_GCM_SHA384` | [`sha384`](/docs/stdlib/security/hash) | [`hkdf_sha384`](/docs/stdlib/security/kdf) | [`aes_gcm-256`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
-| `TLS_CHACHA20_POLY1305_SHA256` | [`sha256`](/docs/stdlib/security/hash) | [`hkdf_sha256`](/docs/stdlib/security/kdf) | [`chacha20_poly1305`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
+| `TLS_AES_128_GCM_SHA256` | [`sha256`](/docs/stdlib/hash) | [`hkdf_sha256`](/docs/stdlib/security/kdf) | [`aes_gcm-128`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
+| `TLS_AES_256_GCM_SHA384` | [`sha384`](/docs/stdlib/hash) | [`hkdf_sha384`](/docs/stdlib/security/kdf) | [`aes_gcm-256`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
+| `TLS_CHACHA20_POLY1305_SHA256` | [`sha256`](/docs/stdlib/hash) | [`hkdf_sha256`](/docs/stdlib/security/kdf) | [`chacha20_poly1305`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
 | `X25519MLKEM768` (PQ hybrid) | — | — | — | [`x25519`](/docs/stdlib/security/ecc) + [`ml_kem-768`](/docs/stdlib/security/pq) |
 
 ## Threat model and what the layer does NOT cover

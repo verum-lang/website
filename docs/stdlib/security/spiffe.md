@@ -485,7 +485,7 @@ its SVID expires. Always subscribe to the stream — don't just
 SPIRE's delivery over the local Unix-domain socket is designed to
 keep the key in process memory; it never touches disk.
 
-Wipe memory on drop using [`zeroise`](/docs/stdlib/security/util)
+Wipe memory on drop using [`zeroise`](/docs/stdlib/subtle)
 (planned P1).
 
 ### Clock skew

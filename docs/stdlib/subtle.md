@@ -1,17 +1,33 @@
 ---
-sidebar_position: 9
-title: util — constant-time ops, zeroise, RNG
-description: Timing-safe comparisons, secret-wipe, and the platform CSPRNG. Small utilities that matter enormously.
+sidebar_position: 8
+title: subtle — constant-time ops, zeroization
+description: Operations defined by what the machine must NOT do — reveal timing, or elide a wipe.
 ---
 
-# `core.security.util` — small utilities
+# `core.subtle` — operations defined by what must NOT happen
+
+Ordinary code is specified by the value it computes. The operations
+here are specified by what must **not** happen while computing it —
+which is why an obvious-looking rewrite silently destroys them.
+
+* `constant_time` — comparison and selection whose timing does not
+  depend on secret data. `==` on two byte strings exits at the first
+  difference, so its running time reveals the length of the correct
+  prefix: enough to forge a MAC tag byte by byte.
+* `zeroize` — wipes that survive optimisation. A compiler may delete a
+  store to memory that is never read again, which is exactly the shape
+  of erasing a key before free.
+
+Randomness moved to [`core.random`](/docs/stdlib/random), where the
+choice between a CSPRNG and a reproducible generator is made
+explicitly.
 
 Three primitives that every cryptographic program needs, in one
 module. Each is tiny but essential — using the wrong alternative
 (regular `==`, a debug-friendly clear, the userland RNG) is how
 real-world crypto deployments get compromised.
 
-## Why these three?
+## Why these two?
 
 | Need | Naive alternative that fails | What to use |
 |---|---|---|
@@ -91,7 +107,7 @@ Key properties:
 ### API
 
 ```verum
-mount core.security.util.constant_time.{
+mount core.subtle.constant_time.{
     constant_time_eq,
     constant_time_compare,
 };
@@ -138,8 +154,8 @@ Always use `constant_time_eq` (never `==`) when:
 ### Quick example — signing a cookie
 
 ```verum
-mount core.security.mac.hmac.{hmac_sha256};
-mount core.security.util.constant_time.{constant_time_eq};
+mount core.mac.hmac.{hmac_sha256};
+mount core.subtle.constant_time.{constant_time_eq};
 
 fn verify_cookie(key: &[Byte], payload: &[Byte], tag: &[Byte; 32]) -> Bool {
     let expected = hmac_sha256(key, payload);
@@ -163,72 +179,6 @@ the compiler might insert a conditional jump, the
 `@verify(constant_time)` attribute causes the codegen to lower to
 bit manipulation (`diff |= (diff >> 16); diff |= (diff >> 8); …`)
 to stay branch-free.
-
----
-
-## Secure random — `verum.rng.fill_secure`
-
-Every cryptographic primitive in this library that needs randomness
-calls the runtime intrinsic `verum.rng.fill_secure`. This is bound
-per-platform:
-
-- **Linux / Android** → `getrandom(2)` syscall.
-- **macOS / iOS** → `arc4random_buf` (ChaCha20-backed CSPRNG).
-- **Windows** → `BCryptGenRandom(BCRYPT_USE_SYSTEM_PREFERRED_RNG)`.
-- **BSDs** → `getrandom(2)` or `arc4random_buf`.
-
-These are the kernel/OS CSPRNGs, reseeded from hardware entropy
-(RDRAND on x86, `arch_get_random_*` on ARM, PMU randomness, physical
-interrupts). They satisfy the `NIST SP 800-90B` random bit generator
-requirements.
-
-### When you need random bytes
-
-Most of the time, you don't — the high-level APIs handle it:
-
-- `X25519.generate_secret_key()` — uses the CSPRNG.
-- `ml_kem_keygen(variant)` — uses the CSPRNG.
-- `ml_dsa_sign(...)` — uses the CSPRNG for hedged signing.
-
-If you really need raw random bytes (e.g. generating a nonce for a
-protocol the library doesn't directly support):
-
-```verum
-fn generate_nonce() -> [Byte; 12] {
-    let filled = @intrinsic("verum.rng.fill_secure", 12);
-    let mut nonce: [Byte; 12] = [0; 12];
-    let mut i = 0;
-    while i < 12 { nonce[i] = filled[i]; i = i + 1; }
-    nonce
-}
-```
-
-For the common case, `core.security.util.rng` exposes ergonomic
-helpers built on top of the intrinsic:
-
-```verum
-mount core.security.util.rng;
-
-let mut nonce: [Byte; 12] = [0; 12];
-rng.fill_secure_array(&mut nonce);   // const-N form, no bounds check
-
-let mut buf = List<Byte>.with_size(32);
-rng.fill_secure(&mut buf);           // dynamic-size form
-```
-
-Use the `_array` form when the buffer length is known at compile
-time (key, nonce, MAC tag); use `fill_secure` when it's dynamic.
-
-### What NOT to use
-
-**Do not** use `core.math.random` or any other userland PRNG for
-cryptographic purposes. Those are deterministic, reproducible,
-optimised for speed — perfect for simulation and tests, fatal for
-crypto.
-
-Rule of thumb: **if the output is ever going to be used as a key,
-nonce, IV, salt, or signature randomness**, it must come from
-`verum.rng.fill_secure`.
 
 ---
 
@@ -269,7 +219,7 @@ fn wipe(buf: &mut [Byte; 32]) {
 }
 ```
 
-A stable wrapper module (`core.security.util.zeroise`) is on the
+A stable wrapper module (`core.subtle.zeroize`) is on the
 short list of additions to this module — when it lands, the call
 collapses to `zeroise(buf)`. Until then, the intrinsic is the
 authoritative way to clear secrets.
@@ -292,7 +242,7 @@ authoritative way to clear secrets.
 
 ## Relationship to other modules
 
-- [`mac/hmac`](/docs/stdlib/security/mac) — the HMAC-SHA-2 family.
+- [`mac/hmac`](/docs/stdlib/mac) — the HMAC-SHA-2 family.
   Always verify tags with `constant_time_eq`.
 - [`aead`](/docs/stdlib/security/aead) — AEAD decrypt already uses
   `constant_time_eq` internally.

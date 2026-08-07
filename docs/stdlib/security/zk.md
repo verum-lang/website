@@ -301,7 +301,7 @@ the Verum kernel via `@framework(halo2_2019, ...)` /
 
 * [`core.security.ecc.bls12_381`](/docs/stdlib/security/ecc#bls12-381--pairing-friendly-threshold-signatures)
   — pairing back-end for Halo2 + KZG10.
-* [`core.security.hash.blake3`](/docs/stdlib/security/hash#blake3) —
+* [`core.hash.crypto.blake3`](/docs/stdlib/hash#blake3) —
   Merkle commitment back-end for STARK.
 
 ---

@@ -463,7 +463,7 @@ block =
   — AES in GCM mode, with authentication.
 - [`core.security.aead.chacha20_poly1305`](/docs/stdlib/security/aead#chacha20-poly1305)
   — ChaCha20 paired with Poly1305.
-- [`core.security.mac.poly1305`](/docs/stdlib/security/mac#poly1305)
+- [`core.mac.poly1305`](/docs/stdlib/mac#poly1305)
   — the one-time authenticator paired with ChaCha20 in the AEAD.
 
 ## References

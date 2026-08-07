@@ -1,10 +1,10 @@
 ---
-sidebar_position: 3
+sidebar_position: 7
 title: mac — HMAC + Poly1305
 description: Keyed message-authentication codes — HMAC-SHA-2 family and Poly1305 one-time authenticator.
 ---
 
-# `core.security.mac` — message authentication
+# `core.mac` — message authentication codes (keyed)
 
 ## What is a MAC and why do we need one?
 
@@ -75,11 +75,11 @@ break a naive `H(key || message)` construction.
 
 ### API
 
-Verum's `core.security.mac` ships three streaming HMAC types (one
+Verum's `core.mac` ships three streaming HMAC types (one
 per SHA-2 variant) plus three one-shot helpers:
 
 ```verum
-mount core.security.mac.hmac.{
+mount core.mac.hmac.{
     HmacSha256, HmacSha384, HmacSha512,
     hmac_sha256, hmac_sha384, hmac_sha512,
 };
@@ -111,8 +111,8 @@ public fn hmac_sha512(key: &[Byte], data: &[Byte]) -> [Byte; 64];
 ### Quick start — signing a cookie
 
 ```verum
-mount core.security.mac.hmac.{hmac_sha256};
-mount core.security.util.constant_time.{constant_time_eq};
+mount core.mac.hmac.{hmac_sha256};
+mount core.subtle.constant_time.{constant_time_eq};
 
 const COOKIE_KEY: [Byte; 32] = /* loaded from secrets, NOT hard-coded */ ;
 
@@ -190,7 +190,7 @@ All three variants pass every vector in
 - **Constant-time comparison mandatory.** Comparing tags with `==`
   opens a timing side-channel — the attacker can determine the tag
   byte-by-byte by measuring response time. Always use
-  [`constant_time_eq`](/docs/stdlib/security/util).
+  [`constant_time_eq`](/docs/stdlib/subtle).
 
 - **Key length.** RFC 2104 recommends keys ≥ L (output size) bytes.
   Shorter keys work but reduce brute-force margin. Keys longer than
@@ -264,7 +264,7 @@ If neither applies: reach for `chacha20_poly1305` or HMAC.
 ### API
 
 ```verum
-mount core.security.mac.poly1305.{
+mount core.mac.poly1305.{
     Poly1305, Poly1305Key, Poly1305Tag,
     poly1305_mac,
     KEY_SIZE, TAG_SIZE,
@@ -346,7 +346,7 @@ Skipping or modifying the clamp **destroys the security argument**.
   acceptable threshold.
 
 - **Constant-time verification.** Same rule as HMAC — compare tags
-  with [`constant_time_eq`](/docs/stdlib/security/util), not `==`.
+  with [`constant_time_eq`](/docs/stdlib/subtle), not `==`.
 
 - **Poly1305 is not a hash.** The `(r, s)` key is integral to
   security; unkeyed Poly1305 has no meaning.
@@ -374,14 +374,14 @@ tag  = a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9
 
 ## Related modules
 
-- [`core.security.hash`](/docs/stdlib/security/hash) — the SHA-2
+- [`core.hash.crypto`](/docs/stdlib/hash) — the SHA-2
   primitive HMAC builds on.
 - [`core.security.kdf.hkdf`](/docs/stdlib/security/kdf) — uses HMAC
   as its underlying PRF.
 - [`core.security.aead`](/docs/stdlib/security/aead) — the
   ChaCha20-Poly1305 AEAD which is how Poly1305 is actually used in
   TLS / QUIC.
-- [`core.security.util.constant_time`](/docs/stdlib/security/util) —
+- [`core.subtle.constant_time`](/docs/stdlib/subtle) —
   constant-time tag comparison (mandatory).
 
 ## References

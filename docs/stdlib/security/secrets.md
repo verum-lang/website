@@ -455,7 +455,7 @@ memory when no longer needed:
 implement Drop for Secret {
     fn drop(&mut self) {
         // Best effort — requires util.zeroise (planned P1)
-        core.security.util.zeroise(&mut self.data);
+        core.subtle.zeroize.secure_zero(&mut self.data);
     }
 }
 ```

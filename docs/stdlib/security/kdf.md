@@ -379,9 +379,9 @@ VCS discharge: `vcs/specs/L1-core/security/hmac_hkdf.vr`
 
 ## Related modules
 
-- [`core.security.mac.hmac`](/docs/stdlib/security/mac) — the
+- [`core.mac.hmac`](/docs/stdlib/mac) — the
   underlying PRF.
-- [`core.security.hash`](/docs/stdlib/security/hash) — the hashes
+- [`core.hash.crypto`](/docs/stdlib/hash) — the hashes
   HMAC is keyed with.
 - [`core.net.tls`](/docs/stdlib/net/tls/) — consumes HKDF for the
   TLS 1.3 key schedule.
