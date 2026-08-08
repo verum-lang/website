@@ -500,6 +500,7 @@ const sidebars: SidebarsConfig = {
         'stdlib/mac',
         'stdlib/subtle',
         'stdlib/random',
+        'stdlib/id',
         'stdlib/simd',
       ],
     },

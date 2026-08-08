@@ -11,20 +11,59 @@ and a pure-Verum math library (replacing libc's `libm`).
 
 ## Layered architecture
 
+The layering is not a description — it is **data, and it is enforced**.
+`core/rings.toml` declares which ring each module belongs to, and
+`scripts/ci/check_core_rings.py` measures the actual `mount` graph
+against it on every PR. As of 2026-08-08:
+
 ```
-Layer 6  Compute                 math, simd
-Layer 5  Network                 net (TCP, HTTP, TLS, DNS)
-Layer 4  Async                   async, runtime
-Layer 3  I/O                     io, term
-Layer 2  Collections             collections, sync
-Layer 1  Text                    text
-Layer 0  Core                    base, mem, intrinsics
-Kernel   V-LLSI                  sys
-Meta     Compile-time            meta, proof, theory_interop
+[ok] ring law holds: 2557 modules, 5275 inter-module edges, 0 violations
 ```
 
-Each layer depends only on layers below it. `core` is the root
-namespace; users see its children via `mount core.*`.
+```
+Ring 5.5  integration-client  the CLIENT halves: sigstore, tuf, oidc,
+                              spiffe.workload_api, x509 revocation clients
+Ring 5    domain              net, security, database, storage, term, cli,
+                              shell, mesh, redis, search, compress, money,
+                              protobuf, architecture, theory_interop
+Ring 4    language-services   meta, cog, proof, verify, archive, script,
+                              diagnostics
+Ring 3    runtime             async, runtime, concurrency, context, control,
+                              tracing, metrics, signal, cache, action, eval
+Ring 2    data                collections, text, encoding, math, simd, logic,
+                              io, time, sync, configuration, id
+Ring 1.5  byte-primitive      hash, mac, random, subtle,
+                              security.{ecc, cipher, aead, kdf}
+Ring 1    platform            sys, mem, target  (cohesive)
+Ring 0    primitive           base, types, intrinsics,
+                              collections.{list, map, set}, text.text  (cohesive)
+```
+
+**The law:** a module in ring N depends only on rings below N. A ring
+marked *cohesive* is one layer whose members are mutually dependent by
+design — `Maybe.ok_or → Result` and `Result.ok → Maybe` are paired
+conversions; an atomic that blocks IS a syscall, and the syscall layer
+cannot initialise without an atomic. Cutting either edge would duplicate
+one side, not improve anything, so cohesion is declared and the cycle
+check skips those rings only.
+
+**Placement follows measurement, not topic.** Two consequences a reader
+will notice:
+
+* `List`, `Map`, `Set` and `Text` sit in ring 0, not with `collections`
+  and `text`. They are the LANGUAGE's vocabulary — `base` uses them in
+  384 places and `collections/list.vr` depends on `base`, a genuine
+  mutual dependency. The rest of `collections` (btree, deque, lru,
+  bloom) and of `text` (regex, formatter) is ring 2.
+* Digests, MACs, entropy, constant-time operations and the ciphers,
+  AEADs, curves and KDFs sit in ring 1.5, below `security`. They are
+  computation over bytes: a Bloom filter needs a hash, not a dependency
+  on the crypto stack, and TLS cannot encrypt a packet without an AEAD.
+
+Sub-modules may carry their own ring where the parent's is wrong for
+them — `runtime.{thread, pool}` are ring 2 because async is BUILT ON
+them, while `runtime.{spawn, supervisor}` are ring 3 because they are
+built on async.
 
 ## Top-level modules
 
@@ -35,6 +74,11 @@ namespace; users see its children via `mount core.*`.
 | [`text`](/docs/stdlib/text) | `Text`, `Char`, formatting, regex, tagged literals |
 | [`mem`](/docs/stdlib/mem) | CBGR allocator, `Heap`, `Shared`, reference primitives |
 | [`intrinsics`](/docs/stdlib/intrinsics) | compiler intrinsics (SIMD, atomic, memory, CPU) |
+| [`hash`](/docs/stdlib/hash) | digests grouped by GUARANTEE: `checksum` / `fast` / `crypto` / `legacy` |
+| [`mac`](/docs/stdlib/mac) | keyed authentication — HMAC, Poly1305 |
+| [`random`](/docs/stdlib/random) | `secure` (platform CSPRNG) vs `deterministic` (reproducible) |
+| [`subtle`](/docs/stdlib/subtle) | constant-time comparison, zeroization that survives optimisation |
+| [`id`](/docs/stdlib/id) | unique identifiers — UUID, ULID, NanoID, Snowflake |
 | [`io`](/docs/stdlib/io) | files, paths, stdio, processes, `Read`/`Write` protocols |
 | [`time`](/docs/stdlib/time) | `Duration`, `Instant`, `SystemTime`, timers |
 | [`sys`](/docs/stdlib/sys) | V-LLSI kernel bootstrap (direct syscalls) |
