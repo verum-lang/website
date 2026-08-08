@@ -116,6 +116,23 @@ public mount .self.util.*;            // re-exports everything public from `util
 Re-exports let you build a flat public API from a deeper internal
 structure.
 
+A glob — whether mounted or re-exported — carries **every** public item
+of the target: types, protocols, constants and free functions alike. A
+named mount and a glob therefore agree about what a module exports;
+the only difference is how much you write.
+
+```verum
+mount core.base.iterator.*;
+
+fn main() {
+    let r = range(0, 5);      // a free function, in scope from the glob
+    let e: Range<Int> = r;    // a type, likewise
+}
+```
+
+Inherent methods (`List.push`) are not module-level names and are never
+introduced by a mount — they are reached through their receiver.
+
 ## Module-level items
 
 The following items are valid at module scope:

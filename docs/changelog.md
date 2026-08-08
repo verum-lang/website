@@ -25,6 +25,51 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — glob mounts now deliver free functions (2026-08-08)
+
+* **`mount some.module.*;` brings the module's FUNCTIONS into scope, not
+  just its types.** Until this fix a glob delivered types, protocols and
+  constants, while every free function stayed unbound:
+
+  ```verum
+  mount core.prelude.*;
+
+  fn main() {
+      let r = range(0, 5);   // was: error<E100>: unbound variable: range
+  }
+  ```
+
+  A *named* mount of the same function always worked
+  (`mount core.base.iterator.range;`), so the two spellings disagreed
+  about what a module exports.
+
+* **Scope.** `mount core.prelude.*` appears in over four thousand files,
+  and the prelude re-exports most of its surface through globs — so the
+  standard library's declared contract was only half in force. `Maybe`,
+  `Result` and `List` arrived; `range`, `once`, `empty`, `unfold`,
+  `min`, `max`, `sqrt` did not. `print` is a compiler built-in rather
+  than a library function, which is why the prelude nonetheless looked
+  alive.
+
+* **Why it was invisible.** Nothing failed loudly — the standard library
+  baked green and every build exited 0. The symptom was a large number
+  of red tests, which reads as unfinished tests rather than as an unmet
+  language contract.
+
+* **Root.** Archive entries are *directory* modules: everything in
+  `core/base/*.vr` is stored under `core.base`. Types carried the
+  declaring file submodule alongside that entry path; functions and
+  protocols did not, so `core.base.iterator` published its types and
+  none of its functions. A glob *enumerates* a module's export surface,
+  whereas a named mount *looks a name up* and can fall back to the
+  archive metadata — a fallback an enumeration cannot use, because
+  asking by name means already knowing the name.
+
+* **Measured.** In the conformance run, `text/text` went from 278 failing
+  tests to none; `base/memory` from 92 to 69; `base/iterator` from 251
+  to 241.
+
+
 ### Fixed — `--target` cross builds emitted host-shaped runtime code (2026-07-28)
 
 * **Cross-compiling for a different OS than the host now actually
