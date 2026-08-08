@@ -116,10 +116,18 @@ public mount .self.util.*;            // re-exports everything public from `util
 Re-exports let you build a flat public API from a deeper internal
 structure.
 
-A glob — whether mounted or re-exported — carries **every** public item
-of the target: types, protocols, constants and free functions alike. A
-named mount and a glob therefore agree about what a module exports;
-the only difference is how much you write.
+A glob — whether mounted or re-exported — carries the target's public
+types, protocols and constants, and carries free functions that reach
+you through the prelude's re-export chain:
+
+* `mount core.prelude.*` then `range(0, 5)` — works;
+* `mount core.base.iterator.*` then `range(0, 5)` — works.
+
+One case does **not** yet hold: a direct glob of a module whose free
+functions do not travel that chain. `mount core.text.format.*` followed
+by a bare `println_empty()` still fails to resolve; name the function
+(`mount core.text.format.println_empty;`) until that is closed. This is
+a known gap, not a design decision.
 
 ```verum
 mount core.base.iterator.*;
