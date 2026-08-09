@@ -25,6 +25,61 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — `Mutex.lock()` and `try_lock()` succeed at Tier-0 (2026-08-09)
+
+* **Locking a `core.sync.mutex.Mutex` works.** Until this fix every
+  `lock()` returned `Err` and every `try_lock()` returned
+  `TryLockError.WouldBlock` on a freshly created, uncontended mutex —
+  which also left the async task queue, the signal registry and the
+  global tracer inert, since all three guard their state with this
+  Mutex:
+
+  ```verum
+  mount core.sync.mutex.{Mutex};
+
+  fn main() {
+      let m: Mutex<Int> = Mutex.new(5);
+      let guard = m.lock();
+      print(f"{guard is Ok(_)}");   // was: false — now: true
+  }
+  ```
+
+  The cause was name shadowing, not the lock itself: the platform
+  layer's bare aliases (`public type Mutex = DarwinMutex;` and the
+  Linux twin) captured the name inside the compiler's alias table, so a
+  method call on a `Mutex` value was emitted against the platform type
+  — `m.lock()` compiled to `DarwinMutex.lock`, which reads a different
+  layout and fails. The colliding aliases (`Mutex`, `Condvar`,
+  `SpinLock`, `Once` in `core.sys.{linux,darwin}.thread`) had no
+  consumers and are removed; reach platform primitives by their own
+  names (`DarwinMutex`, `LinuxMutex`, …).
+
+### Fixed — UUID v7 IDs mint in sorted order within one millisecond (2026-08-09)
+
+* **`Uuid.new_v7()` now carries the RFC 9562 §6.2 monotonic counter.**
+  `rand_a` used to be 12 random bits, so IDs generated inside a single
+  millisecond came out in arbitrary order — 500 consecutive IDs showed
+  37 inversions, defeating the property a v7 database key is chosen
+  for. The 12 bits now hold a counter, advanced together with the
+  48-bit millisecond under one compare-exchange, so the pair can never
+  tear; a backwards clock step never lowers the stored millisecond, and
+  counter saturation re-reads the clock instead of borrowing random
+  bits:
+
+  ```verum
+  mount core.id.uuid.{Uuid};
+
+  fn main() {
+      let a = Uuid.new_v7().to_text();
+      let b = Uuid.new_v7().to_text();
+      print(f"{a < b}");   // true — even inside the same millisecond
+  }
+  ```
+
+  Entropy accounting changed accordingly: 62 random bits plus a 12-bit
+  counter, rather than 74 random bits.
+
+
 ### Changed — ID generators live in `core.id`, not `core.base` (2026-08-09)
 
 * **`uuid`, `ulid`, `nanoid` and `snowflake` moved out of `core.base`.**
