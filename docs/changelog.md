@@ -25,6 +25,47 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Changed — ID generators live in `core.id`, not `core.base` (2026-08-09)
+
+* **`uuid`, `ulid`, `nanoid` and `snowflake` moved out of `core.base`.**
+  They read a wall clock and draw entropy, so they are not primitives of
+  the language the way `Maybe` and `Result` are. Update the mount path:
+
+  ```verum
+  mount core.id.uuid.{Uuid, v4, v7};        // was: core.base.uuid
+  mount core.id.ulid.{Ulid, parse};         // was: core.base.ulid
+  mount core.id.nanoid.{generate};          // was: core.base.nanoid
+  mount core.id.snowflake.{Snowflake};      // was: core.base.snowflake
+  ```
+
+  The old paths never worked after the move — `core.base` kept
+  forward-declaring four modules whose sources had left, so every
+  compile printed a "forward-declared but no source file exists"
+  warning and any `mount core.base.uuid;` failed with
+  `error<E402>: module not found`. Both are gone.
+
+### Fixed — a renamed re-export is mountable from the module that renames it (2026-08-09)
+
+* **`public mount .sub.{X as Y};` now really publishes `Y`.** A module
+  can re-export a type under a name of its own choosing, and callers
+  mount that name from the re-exporting module without knowing where the
+  type is declared:
+
+  ```verum
+  // core/term/layout/mod.vr
+  public mount .constraint.{LayoutConstraint as Constraint};
+
+  // your code
+  mount core.term.layout.{Constraint};   // was: error<E401>: cannot find
+                                          // `Constraint` in module
+                                          // `core.term.layout`
+  ```
+
+  The alias existed only in the module's re-export table and never
+  reached the export surface the mount checker consults, so the compiler
+  rejected a name its own module genuinely published. Renamed re-exports
+  of FUNCTIONS were unaffected and keep working as before.
+
 ### Fixed — glob mounts now deliver free functions (2026-08-08)
 
 * **`mount some.module.*;` brings the module's FUNCTIONS into scope, not
