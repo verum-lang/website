@@ -25,6 +25,39 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — writes through lock guards actually land (2026-08-09)
+
+* **`*guard = value` on a `Mutex` or `RwLock` guard reaches the
+  protected data.** Until this fix the write was silently lost: the
+  lock was taken, the assignment ran, the guard released — and a later
+  read saw the old value:
+
+  ```verum
+  mount core.sync.rwlock.{RwLock};
+
+  fn main() {
+      let l: RwLock<Int> = RwLock.new(1);
+      {
+          let mut w = l.write().unwrap();
+          *w = 42;
+      }
+      let r = l.read().unwrap();
+      let seen: Int = *r;
+      print(f"{seen}");   // was: 1 — now: 42
+  }
+  ```
+
+  Three compiler defects stacked to produce the silence, and all three
+  are fixed: taking a field's address through a reference receiver was
+  refused outright; the reborrow `&mut *(ptr as *const T as *mut T)`
+  returned a reference to a temporary copy instead of the address; and
+  the field offset of a generic record's field fell back to 0, so the
+  write that finally happened landed on the lock's own state word.
+  Both `sync/mutex` and `sync/rwlock` conformance families are green,
+  and the pins that guard this are the operations themselves — lock,
+  write-through, read-back.
+
+
 ### Fixed — `Mutex.lock()` and `try_lock()` succeed at Tier-0 (2026-08-09)
 
 * **Locking a `core.sync.mutex.Mutex` works.** Until this fix every
