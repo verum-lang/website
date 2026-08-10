@@ -25,6 +25,38 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a function body may start with `it` (2026-08-10)
+
+* **`fn f(it: Int) -> Int { it.abs() }` now compiles.** It used to fail
+  with *"expected `{` to start function body"*, because the compiler
+  decided "is this brace group a refinement of the return type, or the
+  body?" by looking at the FIRST IDENTIFIER inside it — `it` followed
+  by a dot meant refinement, any other name meant body. A parameter
+  named `it` was therefore unusable in tail position:
+
+  ```verum
+  fn consume<I: Iterator>(it: I) -> Int {
+      it.count()          // was: parse error — now: fine
+  }
+  ```
+
+  The rule is now read off the grammar instead: a function body is
+  mandatory, so the group is a refinement exactly when the signature
+  CONTINUES after it (the body, a `;`, or a clause such as `using` /
+  `where` / `requires` / `ensures`). Nothing depends on identifier
+  names or on whitespace.
+
+* **Refined return types are unaffected.** Both spellings keep working:
+
+  ```verum
+  fn sin(x: Float) -> Float{it >= -1.0 && it <= 1.0} { ... }
+  fn is_even(n: Int) -> Bool { n % 2 == 0 }
+  ```
+
+  So are casts — `let y = match x as Int { 1 => 10, _ => 20 };` parses
+  as it always did.
+
+
 ### Fixed — writes through lock guards actually land (2026-08-09)
 
 * **`*guard = value` on a `Mutex` or `RwLock` guard reaches the
