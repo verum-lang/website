@@ -11,28 +11,19 @@ another. A type opts in, explicitly, by implementing a marker protocol from
 runtime cost — so that the coercion surface is a **declaration you can
 read**, not a table buried in the compiler.
 
-:::caution Standard-library types only, today
-
-The markers are honoured for types declared in the standard library. An
-`implement IntCoercible for MyType {}` in your own code compiles, but the
-unifier does not currently read it:
-
 ```verum
+mount core.base.coercion.{IntCoercible};
+
 type Fd is (Int);
-implement IntCoercible for Fd {}
+
+implement IntCoercible for Fd {}   // Fd may now stand in for Int
 
 fn takes_int(n: Int) -> Int { n + 1 }
 
-takes_int(Fd(7))
-// error<E400>: Type mismatch: expected 'Int', found 'Fd'
+takes_int(Fd(7))   // 8
 ```
 
-The same call with a standard-library type that carries the marker —
-`Duration`, `FileDesc`, `Port` — compiles and runs. Until user-side
-registration lands, convert explicitly at the boundary (`fd.as_int()`), which
-is clearer at the call site anyway.
-
-:::
+Markers work for your own types, not only for the standard library's.
 
 ## The markers
 
@@ -104,8 +95,7 @@ for i in 0..3 { ... }    // ranges likewise
 
 ## Marker checklist
 
-These questions apply when the marker takes effect — today, for standard-library
-types. Before adding `implement <Marker> for MyType {}`, answer these:
+Before adding `implement <Marker> for MyType {}`, answer these:
 
 1. **Is the runtime representation the same thing?** A newtype over `Int`
    qualifies for `IntCoercible`; a struct holding an `Int` among other
