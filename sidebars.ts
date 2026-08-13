@@ -635,6 +635,7 @@ const sidebars: SidebarsConfig = {
     'reference/verum-toml',
     'reference/lint-configuration',
     'reference/lint-rules',
+    'reference/diagnostics',
     'reference/glossary',
   ],
 };
