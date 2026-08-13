@@ -275,6 +275,7 @@ const sidebars: SidebarsConfig = {
         'language/tensor-types',
         'language/protocols',
         'language/generics',
+        'language/coercion-markers',
         'language/type-properties',
         'language/capability-types',
       ],
