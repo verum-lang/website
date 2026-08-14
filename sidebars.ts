@@ -281,6 +281,7 @@ const sidebars: SidebarsConfig = {
       ],
     },
     'language/functions',
+    'language/iterators',
     {
       type: 'category',
       label: 'Patterns & Destructuring',
