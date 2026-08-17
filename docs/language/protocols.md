@@ -34,6 +34,33 @@ type Iterator is protocol {
 - `Self` refers to the implementing type; `Self.Item` to its
   associated type.
 
+:::warning `protocol P { ... }` on its own is not the grammar
+
+The grammar reaches `protocol` only through a type definition, so
+`type P is protocol { ... }` is the whole of the surface. Writing
+
+```verum
+public protocol P {           // not the grammar
+    fn f(&self) -> Int;
+}
+```
+
+is nonetheless accepted by the parser, and the file that contains it
+type-checks clean — which is what makes it worth a warning rather than a
+footnote. The two forms differ in whether the protocol is **exported**.
+
+Measured in the standard library: of three protocols written the bare way,
+one was invisible to every module that mounted it while the other two
+exported normally. Each name was declared exactly once, so nothing was
+shadowing anything, and the protocol bodies explain nothing either — a
+canonical protocol with the same `async fn` and `&mut self` members exports
+fine. The failure surfaced three files away, as an import that could not
+find a symbol whose declaration was sitting right there in the source.
+
+Use the `type` form. A source gate now enforces it across `core/`.
+
+:::
+
 ## Implementing
 
 ```verum
