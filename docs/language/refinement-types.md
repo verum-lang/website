@@ -170,8 +170,37 @@ rely on this page's specific claim until that's resolved.
 
 ## Limitations
 
-- **Undecidable predicates are rejected**: the refinement language is
-  deliberately a decidable fragment.
+- **Predicates outside the decidable fragment are reported, not
+  rejected.** The compiler accepts the predicate, warns that the
+  constraint is unenforced, and continues — which is gradual
+  verification working as designed, but it is not the same thing as a
+  rejection, and this page previously said "rejected". Measured on the
+  current binary, with a field initialised to `1`:
+
+  | predicate | result |
+  |---|---|
+  | `Int{it >= 10}` | `error<E500>` — decided, violated |
+  | `Int{(it, 0).0 >= 10}` | `error<E500>` — decided through the projection |
+  | `Int{twice(it) >= 10}` | `warning<W0500>` — solver returned unknown |
+  | `Int{it \|> twice >= 10}` | `warning<W0500>` |
+  | `Int{f"{it}" == "zz"}` | `warning<W0500>` |
+  | `Int{[it][0] >= 10}` | `warning<W0500>` |
+
+  The warning names the predicate and says what to do:
+
+  > refinement `{twice(…) >= 10}` was NOT verified against a value known
+  > at compile time (SMT solver returned unknown), so the constraint is
+  > not enforced here — express the predicate in terms the solver decides
+  > (comparisons, arithmetic, `&&`/`||`/`!`), or check it explicitly in
+  > code
+
+  Two things follow for anyone relying on a refinement. A predicate that
+  compiles clean has been *checked*; a predicate that compiles with
+  `W0500` has been *parsed*. And the warning only fires where the value
+  is known at compile time — the solver answers `unknown` for any
+  predicate over a value it has not seen yet, so a refinement on a
+  function parameter carries no such signal at the declaration.
+
 - **Recursion in `@logic` functions** requires a termination metric
   (`decreases`) — the solver cannot prove termination automatically.
 - **Mutation is not expressible**: refinement predicates are pure;
