@@ -217,6 +217,45 @@ mount os.linux;
 const RELEASE: Bool = true;
 ```
 
+`@cfg` is not restricted to declarations. It also gates a **block of
+statements**, a **method inside an `implement` block**, and it can be read
+as a **`Bool` value**:
+
+```verum
+fn tune() {
+    // Statement block: excluded blocks are not compiled AND not
+    // type-checked, so they may reference platform-only names.
+    @cfg(target_arch = "x86_64") {
+        let _ = arch_prctl(ARCH_SET_FS, tcb);
+    }
+
+    // Value position: the predicate's own truth value.
+    let wide: Bool = @cfg(target_pointer_width = "64");
+}
+```
+
+```verum
+implement UnixStream {
+    // One body per platform under a single name — this is the idiom,
+    // not a workaround. Exactly one survives for a given target.
+    @cfg(target_os = "linux")
+    public fn peer_cred(&self) -> Result<PeerCred, UnixError> { ... }
+
+    @cfg(target_os = "macos")
+    public fn peer_cred(&self) -> Result<PeerCred, UnixError> { ... }
+
+    @cfg(target_os = "windows")
+    public fn peer_cred(&self) -> Result<PeerCred, UnixError> { ... }
+}
+```
+
+An excluded body is **dropped**, not merely skipped at run time: it is
+never type-checked, so it may use imports and intrinsics that exist only
+on its own target — which is what makes the per-platform method idiom
+usable at all. Conversely, a name a block needs must be gated the same
+way the block is; an import gated for one platform and used unguarded is
+an error on every other.
+
 ### Serialisation helpers
 
 ```verum

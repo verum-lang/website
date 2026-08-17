@@ -129,6 +129,25 @@ by a bare `println_empty()` still fails to resolve; name the function
 (`mount core.text.format.println_empty;`) until that is closed. This is
 a known gap, not a design decision.
 
+## Using a name without mounting it
+
+A fully-qualified path is an expression, so a name can be used once
+without bringing it into scope at all:
+
+```verum
+print(core.hash.crypto.sha256.OUTPUT_SIZE);   // 32
+```
+
+This is the same resolution `mount` performs, run for that one
+occurrence: the module is loaded and the item resolved exactly as a
+mount would, but the short name is **not** left bound afterwards. Writing
+`core.a.b.NAME` once does not make `NAME` visible on the next line — for
+that, mount it.
+
+Prefer a `mount` when a name is used more than once; the qualified form
+earns its keep where a single reference would otherwise force an import
+that reads as a dependency the file does not really have.
+
 ```verum
 mount core.base.iterator.*;
 

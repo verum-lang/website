@@ -95,6 +95,43 @@ to a single function with a comment explaining the obligation.
 &T           ↛   &unsafe T      (requires `unsafe`)
 ```
 
+## Reaching through a wrapper — `Deref`
+
+A type that implements `Deref` is transparent to the three receiver-shaped
+accesses: **field access**, **indexing**, and **method calls**. All three
+walk the chain, so a guard or a wrapper does not have to be unwrapped by
+hand.
+
+```verum
+type Boxy<T> is { inner: T };
+
+implement<T> Deref for Boxy<T> {
+    type Target = T;
+    fn deref(&self) -> &T { &self.inner }
+}
+
+let b: Boxy<List<Int>> = Boxy { inner: [10, 20, 30] };
+
+b[1]        // 20   — indexing through Deref
+b.len()     // 3    — method call through Deref
+```
+
+The canonical case is a lock guard: `MutexGuard<List<T>>` derefs to
+`List<T>`, so `guard[i]`, `guard.len()` and `guard.field` all read the
+protected value rather than the guard.
+
+Two properties are worth relying on:
+
+* **A direct match wins.** The chain is walked only when the receiver
+  itself does not answer, so a wrapper that defines its own `len()` keeps
+  it.
+* **The coercion is explicit in the compiled program.** The type checker
+  records how many steps it took and the AST carries that many `deref()`
+  calls, so the value you get is the target's — every tier agrees on it.
+
+`Heap<T>` and `Shared<T>` are peeled by the runtime itself rather than
+through a protocol call; the behaviour you observe is the same.
+
 ## Mutable references
 
 Each tier has a mutable variant.
