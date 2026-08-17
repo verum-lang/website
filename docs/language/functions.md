@@ -56,6 +56,66 @@ The compiler checks legal combinations:
 | `async unsafe` | ✓ | rare: raw async IO kernels |
 | `meta(2) pure` | ✓ | multi-stage compile-time, still pure |
 
+### What `pure` rejects today
+
+Two parts of this are settled by design, and a third is a measured gap
+worth knowing before you lean on the modifier.
+
+**By design, `pure` permits `Fallible` and `Divergent`.** A function that
+returns an error or panics is still pure: both outcomes are deterministic
+functions of the input. So neither `?` nor `panic` trips the check, and
+that is intentional rather than an oversight.
+
+**The violation is `E503`.** Measured on the current binary:
+
+| body of a `pure fn` | result |
+|---|---|
+| `spawn { 1 }` | `error<E503>` |
+| `(spawn { 1 })` | `error<E503>` |
+| `let _ = (spawn { 1 }, 0).1` | `error<E503>` |
+| `let _ = f"{spawn { 1 }}"` | `error<E503>` |
+| `if a < 0 { panic("neg") } else { a }` | accepted — `Divergent` is allowed |
+
+The wrapper rows are listed because until recently they were *not*
+reported: property inference treated 45 of the language's 73 expression
+forms as pure without inspecting their contents, so one pair of
+parentheses was enough to hide an impure operation from the check. Those
+four rows are now a conformance pin in both directions — the same wrappers
+around genuinely pure expressions must stay silent.
+
+**The gap.** `E503` does not yet fire for every side effect the grammar
+names. Also measured, in a `pure fn` body:
+
+| body | result | expected |
+|---|---|---|
+| `print("x")` | accepted | should report — `IO` |
+| `*x = 1` through a `&mut` parameter | accepted | should report — mutation |
+| a call to a non-`pure` function | accepted | should report — the grammar's own comment says a pure function cannot call an impure one |
+
+So today `pure` is verified against task spawning and reads as an
+assertion of intent for the rest.
+
+The negative-context form is **not** a substitute, and the measurements
+say so rather than the reasoning. All three of these are accepted by
+`verum check` on the current binary:
+
+```verum
+fn f() -> Int using [!IO] { print("x"); 1 }   // excluded context, used anyway
+
+fn writes() -> Int using [IO] { 1 }
+fn g() -> Int using [!IO] { writes() }        // calls an IO function
+fn h() -> Int { writes() }                    // requirement not propagated
+```
+
+The third is the plainest: a function that requires `IO` is called from
+one that declares no context at all, and nothing is reported. Whatever
+the eventual division of labour between property inference and the context
+system, neither currently rejects an `IO` call, so write `pure` for the
+reader's benefit and do not plan around it as a checked barrier yet.
+
+These are compile-time claims measured with `verum check`; a later phase
+may add its own diagnostics.
+
 ## Parameters
 
 Parameter patterns, not just names:
