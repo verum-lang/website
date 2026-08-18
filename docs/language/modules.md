@@ -38,10 +38,45 @@ mount .super.sibling;        // import from the parent module's sibling
 mount .crate.util;           // import from the cog's root
 ```
 
-A `mount` brings names into scope. There is no implicit import; even
-items from the same cog must be mounted. Verum's stdlib lives under
-the `core` root (not `std`) — every stdlib module is
-`core.<subpath>`.
+A `mount` brings names into scope. Verum's stdlib lives under the `core`
+root (not `std`) — every stdlib module is `core.<subpath>`.
+
+:::caution The stdlib is visible without a mount
+
+This page used to say "there is no implicit import; even items from the
+same cog must be mounted." For your own cog that holds. For the standard
+library it does not, and the difference matters when you are reasoning
+about what a module can reach.
+
+Every **public** `core` symbol resolves bare, however deep it lives:
+
+```verum
+fn main() { print(WAL_MAGIC_LE); }   // compiles, with no mount at all
+```
+
+`WAL_MAGIC_LE` is declared in
+`core/database/sqlite/native/l1_pager/journal/wal.vr` — nine module levels
+down, nowhere near a prelude. The same holds for `OUTPUT_SIZE`
+(`core/hash/crypto/sha256.vr`) and `MAX_EXPAND_OUTPUT_256`
+(`core/security/kdf/hkdf.vr`).
+
+This is not blanket leniency: a name that does not exist is still an error
+(`ZZ_NO_SUCH_CONST_ZZ` gives `E100`). The stdlib's public surface is simply
+all in scope.
+
+Two consequences worth planning around:
+
+- **A `mount` of a stdlib value documents intent; it does not restrict
+  reach.** Deleting one rarely breaks a build, so the imports in a file are
+  not a reliable inventory of what it actually uses.
+- **A misspelled import can land on a namesake instead of failing.** If the
+  module you name does not export the symbol but some *other* module
+  declares one with that name, the bare visibility satisfies it. In the
+  standard library this has bound X.509 certificate validity fields to the
+  unit type `Time` from `core.time`, and an HTTP/2 `Frame` to a terminal
+  render frame — each time with no diagnostic at the import.
+
+:::
 
 ## Visibility
 
