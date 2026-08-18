@@ -271,6 +271,27 @@ Prefer the second form when the arms are values and the first when they
 are procedures — a body of `@asm` or syscall statements is a statement
 block already, and gating it needs nothing else.
 
+The `return` form also carries the answer to the question it raises: what
+happens on a target no arm names. Nothing forces the arms to be exhaustive,
+so give the function a plain tail expression as its general case and let the
+gated arms be the exceptions:
+
+```verum
+fn page_size() -> Int {
+    @cfg(target_os = "linux") { return 4096; }
+    @cfg(target_os = "macos") { return getpagesize(); }
+
+    // Every other target — this is the function's value when no arm ran.
+    4096
+}
+```
+
+A function written this way is total by construction: adding a fourth
+platform cannot silently turn it into a `Unit`-returning stub, because the
+tail is always there. Reach for it whenever a sensible default exists — and
+where none does, the absence should be loud, not a body that quietly ends
+after the last arm.
+
 ```verum
 implement UnixStream {
     // One body per platform under a single name — this is the idiom,
