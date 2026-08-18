@@ -167,11 +167,46 @@ xs.shrink_to_fit()            xs.shrink_to(min_capacity)
 
 ```verum
 xs[i]                 // panics on OOB
-xs.get(i) -> Maybe<&T>
-xs.get_mut(i) -> Maybe<&mut T>
-xs.first() / xs.last() -> Maybe<&T>
-xs.first_mut() / xs.last_mut() -> Maybe<&mut T>
+xs.get(i) -> Maybe<T>
+xs.get_mut(i) -> Maybe<T>
+xs.first() / xs.last() -> Maybe<T>
+xs.first_mut() / xs.last_mut() -> Maybe<T>
 ```
+
+:::caution These return the element BY VALUE, not a reference
+
+This block previously read `Maybe<&T>` and `Maybe<&mut T>`, matching the
+Rust API it is modelled on. `core/collections/list.vr` returns `Maybe<T>`
+from all six — checked against the declarations at lines 350, 360, 396,
+402, 412 and 418.
+
+Two things follow, and both bite in practice:
+
+- **`get_mut` cannot mutate.** Its body is `self.get(idx)`, and the comment
+  above it says "returns copy of element value". So
+  `xs.get_mut(i).field = v` writes to a copy; where the element is a record
+  the compiler rejects it outright with `E103: Cannot access field on
+  non-record type`. Use `xs.set(i, value)`, or `get_unchecked_mut` inside
+  `unsafe` when you need a reference. It is the only `get_mut` in the
+  standard library that does not return `&mut T` — the ones on
+  `RenderCell`, `File`, `BufWriter` and `Mutex` all do.
+
+- **Do not dereference the unwrapped element.** `xs.get(i)` already yields
+  the value, so `xs.get(i).unwrap()` is a `T`. Writing
+  `*xs.get(i).unwrap()` dereferences a value; in generic code that binds the
+  function's own type parameter to a reference and produces a cascade of
+  "ambiguous type" errors on lines that are perfectly well annotated.
+
+  `*xs.get(i)` on its own IS valid — `implement<T> Deref for Maybe<T>` in
+  `core/base/maybe.vr` makes the dereference unwrap the `Maybe`. That is
+  exactly why the extra `.unwrap()` is easy to miss.
+
+The by-value signature is not an oversight. `list.vr` records that the raw
+`*self.ptr.offset(idx)` form returned bytes from the heap object header,
+because codegen resolves `self.ptr` to the start of the backing object
+rather than past the header; returning a copy is the retreat from that.
+
+:::
 
 ### Mutation
 
