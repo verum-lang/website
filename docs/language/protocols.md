@@ -122,6 +122,14 @@ type Ord is protocol where Self: Eq {
 };
 ```
 
+A method with a body is a **default**: an implementation may take it as
+written or override it. A method without one is **required** — an
+`implement` block must provide it, and a bound `T: Ord` is a promise to
+every caller that `cmp` is there. So `Eq` asks an implementation for `eq`
+alone, and `Ord` for `cmp` alone; the other nine methods come for free and
+are worth overriding only when a type can answer them more directly than
+the default does.
+
 ## Specialisation
 
 A generic implementation can have a more specific override:
