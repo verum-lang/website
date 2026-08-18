@@ -332,6 +332,35 @@ phase 7.5 (link)                0.32s
 total                           4.51s
 ```
 
+### Cold start — the part that is not your program
+
+The per-phase numbers above are what *your code* costs. Separately from
+them, every invocation pays a fixed amount to make the standard library
+available: the compiler ships a precompiled bytecode archive with its
+typecheck metadata and its call-graph index, and those are loaded before
+your source is looked at.
+
+This floor is why a four-line program does not compile in four lines'
+worth of time, and why a throughput figure (LOC/second on a large module)
+and a small program's wall-clock are two different measurements. Quote
+both, and measure them separately: throughput on a large input, cold
+start on an empty `main`.
+
+What moves the floor, in the order that matters:
+
+* **What your program names.** The loader walks the call graph from the
+  names your module references and decodes only the archive entries it
+  reaches. A program that touches nothing loads a handful of entries; one
+  that constructs a `List` loads more; `mount core.*` loads a great deal
+  (see [modules](/docs/language/modules)).
+* **The call-graph index is precomputed** at build time and read as
+  bytes, so it is not rebuilt per invocation.
+* **Typecheck metadata is decoded on first use**, not per file.
+
+If you are chasing a slow build, separate the two before optimising:
+compile an empty `main` to see the floor, then your real module. If the
+empty one is most of the time, the fix is not in your code.
+
 ### Breadcrumbs on failure
 
 Every phase pushes an RAII breadcrumb (`verum_error::breadcrumb`) so

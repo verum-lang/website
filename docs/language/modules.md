@@ -78,6 +78,23 @@ Two consequences worth planning around:
 
 :::
 
+:::caution `mount core.*` costs a great deal and buys nothing
+
+A glob of the stdlib root is not a shorter way to write the mount you
+meant. Every public `core` symbol already resolves bare (above), so the
+glob adds no reach — and it makes the compiler enumerate a surface it
+would otherwise never look at.
+
+Measured on one three-line program, identical but for the mount line: with
+no mount, and with a precise `mount core.collections.list.{List};`, it
+compiles in a couple of seconds. Under `mount core.*;` the same program
+takes minutes — and prints the same answer.
+
+Mount the module or the item you mean. If you want the import list to
+document what a file uses, the precise form is also the only form that
+does that.
+:::
+
 ## Visibility
 
 Verum has a **five-level** visibility system. From most restrictive to
