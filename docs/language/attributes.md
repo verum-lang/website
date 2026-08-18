@@ -234,6 +234,43 @@ fn tune() {
 }
 ```
 
+A gated block is a **statement**, and that is the one place the two roles
+are easy to confuse. A statement produces no value, so a chain of `@cfg`
+blocks cannot be a function's result — the function falls off the end and
+yields `Unit`:
+
+```verum
+// WRONG — the body is two statements, so `pick` returns Unit and the
+// declared type is never satisfied.  The diagnostic lands on the
+// signature, not on either block.
+fn pick() -> Text {
+    @cfg(target_os = "windows")      { ";" }
+    @cfg(not(target_os = "windows")) { ":" }
+}
+```
+
+Say it with `return`, which leaves the per-platform structure intact:
+
+```verum
+fn pick() -> Text {
+    @cfg(target_os = "windows")      { return ";"; }
+    @cfg(not(target_os = "windows")) { return ":"; }
+}
+```
+
+or, when the platforms differ only in a value, lift the predicate into an
+expression and keep one exit:
+
+```verum
+fn pick() -> Text {
+    if @cfg(target_os = "windows") { ";" } else { ":" }
+}
+```
+
+Prefer the second form when the arms are values and the first when they
+are procedures — a body of `@asm` or syscall statements is a statement
+block already, and gating it needs nothing else.
+
 ```verum
 implement UnixStream {
     // One body per platform under a single name — this is the idiom,
