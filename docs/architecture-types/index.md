@@ -167,6 +167,17 @@ infrastructure as ordinary type errors — same span pointers, same
 LSP integration, same `verum check` workflow. Architecture is no
 longer a separate review pass; it is part of the compiler.
 
+The phase runs on **every path that parses a module** — `verum
+check`, `verum build`, `verum run`, single file or project mode —
+the moment the module's declarations exist. A malformed
+`@arch_module(...)` is itself a compile error, never silence: an
+unknown field (`UnknownField`, with a spelling suggestion), an
+unknown enum value (`UnknownVariant` — e.g. a stratum outside
+`{LFnd, LCls, LClsTop, LAbs}`), or a missing required argument
+each name exactly what the parser could not take. A module with
+no `@arch_module(...)` at all passes vacuously — annotation is
+opt-in, judgment of what you annotate is not.
+
 ## 4. The forty anti-pattern catalog
 
 The check above is the foundation; on top of it ATS-V layers a

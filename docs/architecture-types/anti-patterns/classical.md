@@ -276,27 +276,52 @@ downgrade.
 
 ## AP-010 — CveIncomplete {#ap-010}
 
-**Severity:** error in strict mode, warning in soft · **Phase:** arch-check · **Stable since:** v0.2
+**Severity:** error in strict mode and for `Lifecycle.Theorem`, warning in soft · **Phase:** arch-check · **Stable since:** v0.2
 
-**Predicate.** `Shape.strict ⇒ Shape.cve_closure.is_fully_closed()`.
-A strict-mode cog must declare all three CVE-closure axes:
+**Predicate.** `Shape.strict ⇒ Shape.cve_closure.is_fully_closed()`,
+and unconditionally
+`Shape.lifecycle = Theorem(…) ⇒ Shape.cve_closure.is_fully_closed()`.
+A cog under either premise must declare all three CVE-closure axes:
 
 - **C** — Constructive witness (function or constructor path).
 - **V** — Verification strategy (one of the nine `@verify(...)`
   ladder rungs).
 - **E** — Executable artefact (entry point or audit command).
 
-Soft-mode cogs may have missing axes (warning); strict-mode
-cogs must close the triple.
+Soft-mode cogs may have missing axes (warning) — **unless** they
+declare `Lifecycle.Theorem(…)`. `[T]` status is by definition a
+CVE⁺ commitment (see
+[Lifecycle §4.1](../primitives/lifecycle.md)), so a Theorem with
+any axis missing is an **error regardless of the `strict` flag**
+(the [AT-2 red-team closure](../red-team.md)). A load-bearing claim resting on
+absent foundations is precisely what the check exists to refuse;
+a cog that is not there yet says so with `Definition`,
+`Conditional(…)` or `Postulate(…)` instead.
 
 **Why it matters.** CVE-closure is the operational engineering
 contract: every claim has a constructive witness, a verification
 mechanism, and an executable artefact. Missing an axis means the
 claim doesn't compose under the CVE discipline.
 
-**Remediation.** Add the missing axes via
-`@arch_module(cve_closure: { ... })`, or demote `strict: true`
-to `strict: false` for cogs that are intentionally partial.
+**Remediation.** Add the missing axes — either the record
+spelling
+
+```verum
+@arch_module(
+    cve_closure: CveClosure {
+        constructive:        Maybe.Some("explicit_constructor_path"),
+        verifiable_strategy: Maybe.Some(VerifyStrategy.Certified),
+        executable:          Maybe.Some("verum extract --target=rust"),
+    },
+)
+```
+
+or the flat fields `cve_closure_C: "…", cve_closure_V_strategy:
+Certified, cve_closure_E: "…"` (both spellings feed the same
+triple) — **or** demote the lifecycle to the honest status
+(`Definition` / `Conditional` / `Postulate` / `Plan` /
+`Hypothesis`); for non-Theorem cogs that are intentionally
+partial, `strict: false` keeps the warning regime.
 
 ---
 

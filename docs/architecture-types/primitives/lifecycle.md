@@ -139,6 +139,17 @@ In **strict mode**, the cog MUST also declare:
 co-located but distinct concepts; conflating them is a register
 collision.
 
+**Enforcement.** Declaring `Theorem(…)` without a fully-closed
+CVE triple is a **compile error regardless of the `strict`
+flag** — [`AP-010
+CveIncomplete`](../anti-patterns/classical.md#ap-010) fires at
+Error severity because `[T]` is an unconditional CVE⁺
+commitment. This is why the standard library's own headers
+default to `Definition`: a module that defines its surface and
+claims no proof says so, and upgrades to `Postulate` /
+`Conditional` / `Theorem` only together with the evidence the
+status names.
+
 **Maturation path:** none — `[T]` is the terminal status. To
 *retract* a `[T]`, transition to `Retracted("reason", Some(replacement))`.
 
