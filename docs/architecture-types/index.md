@@ -54,7 +54,7 @@ already in the language carry the entire load.
 | **[Lifecycle](./primitives/lifecycle.md)** | `type Lifecycle is …` (variant) | At which stage of maturation is this artefact? |
 | **[Foundation](./primitives/foundation.md)** | `type Foundation is …` (variant) | Which meta-theoretic profile does the proof corpus inhabit? |
 | **[Tier](./primitives/tier.md)** | `type Tier is …` (variant) | Where does this code execute? |
-| **[Stratum](./primitives/stratum.md)** | `type MsfsStratum is …` (variant) | Which level of the Modular-Stratified Foundation moduli does it occupy? |
+| **[Stratum](./primitives/stratum.md)** | `type MsfsStratum is …` (variant) | Which logical-admissibility stratum (constructive → classical → +reflection → absolute) does it occupy? |
 | **[Shape](./primitives/shape.md)** | `type Shape is { … }` (record) | The aggregate carrier — a `Shape` *is* a typed architectural fingerprint. |
 
 A cog (the unit of compilation) declares its `Shape` via the
@@ -392,7 +392,7 @@ architecture-types/
 │   ├── lifecycle.md                 · CVE 7-symbol taxonomy
 │   ├── foundation.md                · meta-theoretic profile
 │   ├── tier.md                      · execution placement
-│   ├── stratum.md                   · MSFS moduli stratum
+│   ├── stratum.md                   · logical admissibility stratum
 │   └── shape.md                     · aggregate carrier
 │
 ├── cve/

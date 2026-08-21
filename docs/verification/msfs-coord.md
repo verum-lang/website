@@ -17,11 +17,12 @@ title: MSFS Coordinate (Framework, ν, τ)
 
 ## 1. The MSFS classifier
 
-The Modular Sequent-Foundation Stack `𝔐` is a 2-stack over the
-category of Rich-Sequent foundations
-([Sereda 2026](../architecture/verification-pipeline.md)) whose
-points are *foundations* — pairs `(F, S)` with F a deductive
-formalism and S a sequent calculus internalising it.
+`𝔐` is the moduli space of formal systems — the classifying
+2-stack of MSFS ([Sereda 2026,
+DOI 10.5281/zenodo.19755781](https://doi.org/10.5281/zenodo.19755781)):
+its points are Morita-equivalence classes of *Rich foundations*
+(formal theories satisfying (R1)–(R5)), and its k-morphisms are
+faithful interpretations and provable natural equivalences.
 
 A theorem T has a *coordinate* `(Fw, ν, τ)` in `𝔐`:
 

@@ -174,8 +174,8 @@ has a corresponding TextMate pattern. Key points:
   scoped as `meta.refinement.verum`, with `self` highlighted as a
   language variable.
 - **Attributes**. `@derive(A, B)` highlights each derivee;
-  `@verify(formal)` validates against the 9 strategies in the
-  spec; `@name(args)` gets generic parameter/value scopes.
+  `@verify(formal)` validates against the 13 strategies in the
+  grammar; `@name(args)` gets generic parameter/value scopes.
 - **No `#[...]`**. Verum uses `@` exclusively; there are no
   Rust-style hash attributes.
 - **No `name!` macros**. Verum has no macro-bang syntax —

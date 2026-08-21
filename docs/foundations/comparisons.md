@@ -347,7 +347,7 @@ algorithm that is not verified sometimes *is*. Choose accordingly.
 - **[Semantic Honesty](/docs/foundations/semantic-honesty)** — the
   naming philosophy that shapes the stdlib.
 - **[Gradual Verification](/docs/foundations/gradual-verification)** —
-  the nine-strategy ladder that sets Verum apart from both Rust and
-  Coq.
+  the thirteen-strategy ladder that sets Verum apart from both Rust
+  and Coq.
 - **[Migrating from Rust / TypeScript / Go](/docs/migrating/from-rust)**
   — concrete translation guides.

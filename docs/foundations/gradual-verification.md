@@ -1,13 +1,13 @@
 ---
 sidebar_position: 3
 title: Gradual Verification
-description: The nine-strategy ladder from runtime assertions to cross-validated proof certificates.
+description: The thirteen-strategy ladder from runtime assertions to cross-validated proof certificates and coherence checks.
 ---
 
 # Gradual Verification
 
 Verification in Verum is a **spectrum**, not a mode. A single program
-typically uses all nine strategies — `runtime` on prototypes,
+typically spans the thirteen strategies — `runtime` on prototypes,
 `formal` on business logic, `certified` on the one page of code that
 must be right or the rocket falls out of the sky.
 
@@ -37,16 +37,18 @@ quantifier-free arrays, bitvectors — and picks an adapter accordingly.
 See [verification/smt-routing](/docs/verification/smt-routing) for
 the dispatch rules.
 
-## The nine strategies
+## The thirteen strategies
 
-The grammar's own enumeration:
+The grammar's own enumeration (`grammar/verum.ebnf`):
 
 ```ebnf
-verify_attribute = 'verify' , '(' ,
-    ( 'runtime' | 'static' | 'formal' | 'proof'
+verify_attribute = 'verify' , '(' , verify_strategy , ')' ;
+verify_strategy =
+      'runtime' | 'static' | 'formal' | 'proof'
     | 'fast' | 'thorough' | 'reliable'
-    | 'certified' | 'synthesize' ) ,
-    ')' ;
+    | 'certified' | 'synthesize'
+    | 'coherent' | 'coherent_static' | 'coherent_runtime'
+    | 'complexity_typed' ;
 ```
 
 ### `runtime`
@@ -92,7 +94,7 @@ fn safe_div(a: Int, b: Int { self != 0 }) -> Int {
 }
 ```
 
-### `formal`  (and alias `proof`)
+### `formal`
 
 **Intent**: "prove every obligation with the SMT engine".
 
@@ -117,8 +119,19 @@ fn balance_after_debit(balance: Money, debit: Money) -> Money
 }
 ```
 
-`proof` is a strict alias — use it to emphasise that the proof term
-should be **extracted and preserved** for later inspection.
+### `proof`
+
+**Intent**: "here is my tactic proof — recheck it".
+
+Historically an alias of `formal`; today a **distinct** strategy:
+
+- The user supplies a `proof { … }` tactic block; the trusted kernel
+  rechecks it.
+- Unbounded user time, mechanically checked result; admits induction
+  and everything else SMT alone cannot reach (ν = ω + 1 — the first
+  rung that dominates pure SMT).
+- Use: theorems (as opposed to code contracts), anything with an
+  induction or a lemma decomposition.
 
 ### `fast`
 
@@ -136,7 +149,22 @@ runtime".
 Trade-off: you may merge code that the hotter strategy would have
 rejected. Run `@verify(formal)` on main before release.
 
-### `thorough`  (and alias `reliable`)
+### `complexity_typed`
+
+**Intent**: "discharge the polynomial-time obligations inside a
+bounded-arithmetic theory".
+
+- Bounded-arithmetic verification: the obligation is routed through
+  the `V_0` / `V_1` / `S^1_2` / `V_NP` / `V_PH` / `IΔ_0` stratum
+  chosen at the pragma level.
+- Sits strictly between `fast` and `formal` on the ladder (ν = 3).
+- CI budget ≤ 30 s; UNKNOWN degrades to a conservative accept, like
+  `fast`.
+- Use: complexity-sensitive code where the *resource bound itself* is
+  part of the contract (polynomial-time guarantees, feasibility
+  proofs).
+
+### `thorough`
 
 **Intent**: "throw everything at it in parallel".
 
@@ -144,13 +172,25 @@ rejected. Run `@verify(formal)` on main before release.
 - The first successful close wins.
 - Failed strategies are retried with different tactics, lemma sets,
   and heuristics.
+- Requires the full specification discipline: mandatory `decreases`,
+  `invariant`, `frame` clauses (ν = ω · 2).
 - Cost: 2× slower than `formal` on compile time; zero extra runtime
   cost.
 - Use: Hard goals that `formal` couldn't close; verification-heavy
   modules; the pre-release tightening pass.
 
-`reliable` is a strict alias — use it to emphasise *result
-reliability* in review contexts.
+### `reliable`
+
+**Intent**: "two independent solvers must agree".
+
+Historically an alias of `thorough`; today a **distinct** strategy:
+
+- Runs `thorough`, then demands that **both** Z3 and CVC5 return
+  UNSAT independently; any disagreement degrades to UNKNOWN
+  (ν = ω · 2 + 1).
+- Cost: ≈ 2× `thorough`.
+- Use: results whose reliability will be cited — review gates,
+  solver-bug paranoia, cross-checking before `certified`.
 
 ### `certified`
 
@@ -176,6 +216,34 @@ fn verify_signature(msg: &[Byte], sig: &Signature, pk: &PublicKey) -> Bool
 ```
 
 Export: `verum check --export-proofs` produces the certificate.
+
+### `coherent_static`, `coherent_runtime`, `coherent`
+
+**Intent**: "verify not just the claim (α) but its coherence with the
+runtime story (ε)".
+
+The coherence family checks two artefacts against each other — the
+static α-certificate and the ε-side (the runtime-behaviour claim
+attached at `@enact(epsilon = ...)`):
+
+- **`coherent_static`** — the α-side is verified `certified`-style,
+  the ε-side is discharged through the *symbolic* ε-claim; no runtime
+  monitor. Polynomial; CI budget ≤ 60 s (ν = ω·2 + 3).
+- **`coherent_runtime`** — α-side `certified`, ε-side checked at
+  runtime through the monitor wired by
+  `core.action.coherence_monitor`. Trace-bounded; CI budget ≤ 5 min
+  (ν = ω·2 + 4).
+- **`coherent`** — the strict form: **both** the α-articulation and
+  the ε-coordinate are discharged at compile time and the kernel
+  re-checks both certificates. Single-exponential; CI budget ≤ 30 min
+  (ν = ω·2 + 5).
+
+Backed by the `verum_kernel::eps_mu` coherence machinery (see
+[Actic dual](../verification/actic-dual.md) and
+[gradual verification in the verification section](../verification/gradual-verification.md)).
+Use: proof corpora and kernels where a statically-proved claim must
+demonstrably match the executable semantics, not merely coexist with
+it.
 
 ### `synthesize`
 
@@ -269,10 +337,16 @@ At each step **the code does not change** — only the guarantee does.
 |----------------|---------------------------|--------------------|
 | `runtime`      | same                      | per-call panic check |
 | `static`       | same (baseline)           | zero               |
-| `formal`       | +20-50% per function      | zero               |
 | `fast`         | +5-15% per function       | some panic checks  |
+| `complexity_typed` | bounded (≤ 30 s CI budget) | zero (UNKNOWN demotes like `fast`) |
+| `formal`       | +20-50% per function      | zero               |
+| `proof`        | user-authored tactic time; kernel recheck is fast | zero |
 | `thorough`     | +50-150% per function     | zero               |
+| `reliable`     | ≈2× `thorough` (two solvers) | zero            |
 | `certified`    | +200-500% per function    | zero               |
+| `coherent_static` | polynomial (≤ 60 s CI budget) | zero        |
+| `coherent_runtime` | ≤ 5 min CI budget        | ε-monitor on traced paths |
+| `coherent`     | single-exponential worst case | zero           |
 | `synthesize`   | +500%+ per function       | zero               |
 
 Relative to fully-unverified baseline. Real numbers depend on goal

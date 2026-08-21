@@ -103,7 +103,7 @@ structural equality.
 
 This is a *syntactic* projection of the Diakrisis 2-categorical
 notion: a true Articulation is an object of `⟨⟨·⟩⟩` (the
-classifying 2-stack of Rich-Sequent foundations). The flat record
+classifying 2-stack `𝔐` of Rich foundations, MSFS). The flat record
 is enough for stdlib-level arithmetic; the full 2-categorical
 structure lives in [`core.theory_interop`](msfs-coord.md).
 

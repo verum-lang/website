@@ -233,8 +233,8 @@ no-libc invariant.
 
 ## 11. Cross-references
 
-- [Stratum primitive](./stratum.md) — the MSFS moduli stratum
-  that participates in `AP-006 RegisterMixing`.
+- [Stratum primitive](./stratum.md) — the logical-admissibility
+  stratum that participates in `AP-006 RegisterMixing`.
 - [Lifecycle primitive](./lifecycle.md) — the CVE 7-symbol
   taxonomy that interacts with Tier.
 - [Foundation primitive](./foundation.md) — the meta-theoretic

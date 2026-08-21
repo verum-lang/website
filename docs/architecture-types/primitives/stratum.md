@@ -1,18 +1,34 @@
 ---
 sidebar_position: 8
-title: "Stratum — MSFS moduli stratum"
-description: "The MsfsStratum primitive: position in the Modular-Stratified-Foundation moduli space (LFnd / LCls / LClsTop / LAbs). LAbs is inadmissible by AFN-T α."
+title: "Stratum — logical admissibility stratum"
+description: "The MsfsStratum primitive: a cog's logical-admissibility profile (LFnd / LCls / LClsTop / LAbs — constructive / classical / classical+reflection / absolute). LAbs is inadmissible by AFN-T α."
 slug: /architecture-types/primitives/stratum
 ---
 
-# Stratum — MSFS moduli stratum
+# Stratum — logical admissibility stratum
 
-A **stratum** in ATS-V is a cog's position in the
-**Modular-Stratified-Foundation (MSFS) moduli space**. The MSFS
-discipline organises foundational mathematical content into four
-strata, each with its own admissibility rules. The stratum
-primitive answers *"which level of the MSFS hierarchy does this
-cog inhabit?"*
+A **stratum** in ATS-V is a cog's **logical-admissibility
+profile**: which reasoning principles its content is allowed to
+use, and under which Foundation profiles it is therefore
+admissible. The stratum primitive answers *"how much logical
+commitment does this cog carry?"*
+
+:::info Name borrowing — not the MSFS stratification of 𝔐
+The variant names `LFnd` / `LCls` / `LClsTop` / `LAbs` are
+borrowed from MSFS ([Sereda 2026,
+DOI 10.5281/zenodo.19755781](https://doi.org/10.5281/zenodo.19755781)),
+but the ATS-V stratum measures a **different thing**. In MSFS
+proper, the strata classify objects of the moduli space `𝔐` **by
+role** — `L_Fnd` = Rich foundations (R1)–(R5), `L_Cls` =
+*classifiers* (M1)–(M5) (meta-frameworks such as ∞-cosmoi or
+Univalent Foundations, not "classical systems"), `L_Cls^⊤` =
+maximal classifiers — whereas the ATS-V stratum grades a cog's
+*reasoning commitment*: constructive → classical → classical +
+reflection → absolute. The two ladders touch only at the top:
+`LAbs` is inadmissible here *because* AFN-T proves `L_Abs = ∅`
+there. For the paper-faithful MSFS coordinate of a theorem, see
+[MSFS Coordinate](../../verification/msfs-coord.md).
+:::
 
 ```verum
 public type MsfsStratum is
@@ -22,7 +38,7 @@ public type MsfsStratum is
     | LAbs;
 ```
 
-Four strata, in order of increasing strength:
+Four strata, in order of increasing logical commitment:
 
 | Stratum | Reading | Admissibility |
 |---------|---------|---------------|
