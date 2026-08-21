@@ -9,7 +9,7 @@ const ghPagesBaseUrl = process.env.GH_PAGES_BASE_URL || '/';
 
 const config: Config = {
   title: 'Verum',
-  tagline: 'A verifiable systems language with semantic honesty',
+  tagline: 'A complete systems language — proof-grade when you need it',
   favicon: 'img/favicon.png',
   url: ghPagesUrl,
   baseUrl: ghPagesBaseUrl,
