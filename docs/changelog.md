@@ -25,6 +25,44 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Added — inference-first architecture: `verum arch query`, transitive capability inference, protocol `@max_shape` (2026-08-22)
+
+* **The compiler now COMPUTES every module's capability surface** —
+  the ATS-V-2 inference-first discipline landed. Per-function
+  summaries are solved over the local call graph (SCC fixpoint), so a
+  helper's `Network` capability reaches its caller's surface
+  *transitively*; mounted callees resolve across module boundaries
+  through the compilation session; calls the resolver cannot name are
+  *surfaced, never guessed*.
+* **`verum arch query --at FILE [--json]`** exposes the same
+  inference as a tool: inferred surface (with per-atom provenance),
+  the `@arch_module` pin, and the two-direction judgment — code
+  exceeding the pin is an *escalation*, a pinned right nothing
+  exercises is a *dead right*. The JSON schema is append-only: it is
+  the machine contract coding agents consume.
+* **Protocols can declare `@max_shape(...)`** — an upper bound on
+  what implementations may do. A call through a protocol-typed
+  parameter contributes that bound as a *cited* fact and keeps the
+  summary closed: bounded polymorphism at the trait seam, no silent
+  widening.
+* **The `@arch_module` pin parser now parses its arguments.** All
+  eight `Capability.<Variant>(args)` forms used to ignore their
+  payloads ("placeholder fillers"), so every pin in the corpus parsed
+  to the same stamped values and the escalation check could agree
+  with reality only by accident. Caught by the new clean-twin fixture
+  on day one; all eight arms now read their real payloads.
+
+### Added — `verum diff-tiers`: the tier-identity judge (2026-08-22)
+
+One bytecode, two executions is the language's core promise. The new
+command runs a program under both tiers as isolated subprocesses,
+compares program output and exit codes, and returns `identical` or
+`DIVERGENT` (exit 3) with the first diverging line — turning the
+tier-identity guarantee from a point fix into a continuously
+checkable institution. A semantic-debt ratchet accompanies it: the
+count of codegen degrades (places where static resolution gave up)
+is recorded per build and budgeted to only go down.
+
 ### Fixed — AOT honours the allocation intrinsics' declared contract (2026-08-22)
 
 * **`cbgr_alloc` returns what its signature says — on both tiers.** The

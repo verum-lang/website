@@ -100,6 +100,36 @@ parametrised tests, deterministic seed replay, CI output formats
 Full guide in **[Tooling → Testing](/docs/tooling/testing)**;
 PBT deep dive in **[Tooling → Property testing](/docs/tooling/property-testing)**.
 
+## Architecture queries & tier identity
+
+```bash
+verum arch query --at FILE [--json]   # what may this code do?
+verum diff-tiers FILE [--json]        # do both tiers agree about it?
+```
+
+**`verum arch query`** answers the machine-facing question of
+ATS-V-2's inference-first discipline: the module's *inferred*
+capability surface (row-solved and transitive — a helper's `Network`
+reaches the module surface through the call graph, and mounted
+callees resolve across module boundaries), the `@arch_module` *pin*
+if one is declared, and the two-direction judgment between them —
+**escalations** (code exceeds the pin) and **dead rights** (pinned,
+never exercised). Per-function summaries carry their open row
+variables (named capability-bearing parameters), and unresolved local
+calls are *surfaced, never guessed*. `--json` emits the append-only
+machine schema that coding agents consume in the ask → patch → diff
+cycle; every atom carries its provenance (`computed`, or the citation
+source for extern pins and protocol `@max_shape` declarations).
+
+**`verum diff-tiers`** is the tier-identity judge: it runs the same
+program under Tier 0 (interpreter) and Tier 1 (AOT) as isolated
+subprocesses, compares program output and exit codes, and refuses to
+call different answers anything but a defect — verdict `identical`
+or `DIVERGENT` with the first diverging output line, exit code 3 on
+divergence so CI fails by default. One bytecode with two executions
+is the language's core promise; this command makes the promise
+continuously checkable rather than point-fixed.
+
 ## Verification & analysis
 
 ```bash
