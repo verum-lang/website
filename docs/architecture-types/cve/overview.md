@@ -226,7 +226,7 @@ losing the property the claim asserts.
 
 | Mode | Meaning | Example |
 |------|---------|---------|
-| **Present** | Constructor extracts to a binary that runs at native or near-native speed. | A `@verify(formal)` function with `@extract(rust)`. |
+| **Present** | Constructor extracts to a binary that runs at native speed (the parity bar). | A `@verify(formal)` function with `@extract(rust)`. |
 | **Trivial** | Executability is not at issue; the claim is a definition or boundary marker. | A `type X is …` declaration. |
 | **Absent** | Constructor exists in the meta-theory but does not reduce to runnable code. | Many classical-mathematics theorems whose proofs use AC. |
 

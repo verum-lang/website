@@ -14,13 +14,19 @@ measure and where to spend that effort.
 
 Expect, out of the box:
 
-| Workload | Typical range vs C |
+| Workload | Bar vs C |
 |---|---|
-| Tight numeric loops | 0.90–1.00× |
-| Pointer-heavy structures | 0.85–0.98× |
+| Tight numeric loops | 1× — parity |
+| Pointer-heavy structures | 1× — parity (CBGR checks eliminated by tier analysis) |
 | Async / IO-bound servers | comparable to Rust tokio |
-| Math / tensor operations | 0.95–1.00× with SIMD |
+| Math / tensor operations | ≥1× with SIMD |
 | Allocator-heavy workloads | Mimalloc-class |
+
+Parity with C is the acceptance bar for every workload class — a
+benchmark below 1× is a defect being closed, never a published
+target. Above-parity results are the design intent where
+whole-program optimization (fusion, devirtualization, bounds-check
+elimination) sees more than a C compiler can.
 
 Variance within the range tracks how well CBGR escape analysis
 promotes references in your specific code.

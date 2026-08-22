@@ -589,7 +589,7 @@ const TOOLS = [
   {
     icon: '⚙',
     title: 'verum build — Tier 1',
-    body: 'Native AOT through LLVM: one self-contained binary at 0.85–0.95× native-C speed, speaking syscalls (or libSystem / kernel32) directly. Cross-target flags included.',
+    body: 'Native AOT through LLVM: one self-contained binary holding the native-C parity bar (1×), speaking syscalls (or libSystem / kernel32) directly. Cross-target flags included.',
   },
   {
     icon: '✎',
@@ -652,9 +652,9 @@ const NUMBERS = [
     body: 'Front-end throughput, held by a compile-speed contract test in the repository — a regression fails the build, not a quarterly report.',
   },
   {
-    icon: '0.85–0.95×',
+    icon: '1×',
     title: 'Native-C runtime',
-    body: 'The AOT target window. Interpreter startup is effectively instant, and both paths execute the same bytecode with identical semantics.',
+    body: 'Parity with C is the bar, not the ceiling — whole-program optimization aims beyond it. Interpreter startup is effectively instant, and both paths execute the same bytecode with identical semantics.',
   },
   {
     icon: '0',

@@ -89,7 +89,7 @@ native binary:
 
 - **Startup:** LLVM compile time (seconds to minutes for large
   projects); incremental compilation amortises this.
-- **Steady-state speed:** 85-95 % of native C.
+- **Steady-state speed:** native-C parity (the 1× bar).
 - **Use cases:** production binaries, long-running services,
   performance-sensitive code.
 

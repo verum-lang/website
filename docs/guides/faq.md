@@ -19,7 +19,9 @@ Expect early-adopter friction.
 
 ### How fast is it?
 
-LLVM-AOT builds run at **0.85–1.0× of equivalent C**. The
+LLVM-AOT builds hold a **native-C parity bar (1×)** — a workload
+running below parity is treated as a defect to close, not a range
+to accept. The
 [CBGR reference model](/docs/language/cbgr) adds ~0.93 ns
 (measured on the `production_targets` bench, well under the
 ≤ 15 ns design target) to non-promoted dereferences — invisible

@@ -37,7 +37,7 @@ Production-ready:
   work-stealing executor.
 - **VBC bytecode**: ~350 opcodes (primary + extended tables), full
   interpreter (37-file dispatch table), LLVM AOT path
-  (0.85–0.95× of C), MLIR GPU path.
+  (native-C parity bar), MLIR GPU path.
 - **Stdlib**: a substantial `.vr` tree across `core/` — `base`,
   `collections`, `text`, `mem`, `async`, `sync`, `runtime`, `io`,
   `time`, `sys`, `term`, `net`, `math`, `simd`, `meta`, `proof`,

@@ -115,7 +115,9 @@ Ahead-of-time compilation through LLVM — the default for
 `verum build --release` and `verum run --aot`.
 
 - **Compile time**: seconds per function, dominated by LLVM.
-- **Execution**: 0.85–0.95× of equivalent C.
+- **Execution**: the bar is 1× of equivalent C — parity is the
+  floor Verum designs for, and whole-program optimization (fusion,
+  devirtualization, CBGR check elimination) hunts for more.
 - **CBGR**: tier-aware. `&T` references emit a CBGR check
   (measured ~0.93 ns on the `production_targets` bench against a
   ≤ 15 ns design target); `&checked T` and `&unsafe T` compile to
