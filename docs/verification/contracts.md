@@ -249,6 +249,6 @@ reference aliasing rules.
 - **[Gradual verification](/docs/verification/gradual-verification)** —
   when each contract is checked.
 - **[Refinement reflection](/docs/verification/refinement-reflection)**
-  — extending the contract vocabulary with `@logic` functions.
+  — extending the contract vocabulary with reflected predicates.
 - **[Proofs](/docs/verification/proofs)** — when contracts need a
   manual discharge.

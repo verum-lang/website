@@ -30,7 +30,7 @@ not the specific solver.
 flowchart TD
     IN[["Obligation (typed IR)"]]
     ES["expr_to_smtlib<br/><i>typed IR → SMT-LIB</i>"]
-    RR["refinement_reflection<br/><i>inject @logic axioms</i>"]
+    RR["refinement_reflection<br/><i>inject reflected definitions</i>"]
     CR["capability_router<br/><i>classify theory → pick adapter</i>"]
     A1[["Adapter A"]]
     A2[["Adapter B"]]
@@ -75,7 +75,7 @@ in its own code.
 
 ## Refinement reflection
 
-User `@logic` functions become `define-fun-rec` in SMT-LIB:
+A reflected function becomes a declaration plus a defining axiom:
 
 ```text
 (define-fun-rec is_sorted ((xs (List Int))) Bool
@@ -87,7 +87,7 @@ User `@logic` functions become `define-fun-rec` in SMT-LIB:
         ((cons y _) (and (<= x y) (is_sorted rest)))))))
 ```
 
-This means `@logic` definitions are first-class in the obligation
+This means reflected definitions are first-class in the obligation
 language — refinement predicates can call them, and the SMT
 adapter sees the same recursion structure the verifier sees.
 
@@ -416,7 +416,7 @@ ignored option.
 - **[Verification → SMT routing](/docs/verification/smt-routing)** —
   user-facing routing policy.
 - **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
-  — how `@logic` functions reach the solver.
+  — which functions reflect, and what they become.
 - **[Verification → proofs](/docs/verification/proofs)** — the
   tactic DSL.
 - **[Reference → verum.toml](/docs/reference/verum-toml)** —

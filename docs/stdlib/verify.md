@@ -27,7 +27,7 @@ narrow, ergonomic API on top so user code can:
    code that should behave differently at proof-level vs runtime-
    level can branch on it.
 4. **Attach verification directives at value-position** —
-   `@verify(strategy)` / `@trigger(pattern)` / `@logic` attributes
+   `@verify(strategy)` / `@trigger(pattern)` / attributes
    composable from user code.
 
 ## Layout

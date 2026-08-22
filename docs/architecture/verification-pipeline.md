@@ -39,7 +39,7 @@ internal stages — the solver work, not the public pipeline phases.
 | Sub-phase | Stage                         | Summary                                                                     |
 |-----------|-------------------------------|-----------------------------------------------------------------------------|
 | **5.1**   | Obligation collection         | refinement types, `requires` / `ensures`, loop invariants, CBGR hints       |
-| **5.2**   | SMT encoding                  | `verum_smt::expr_to_smtlib` + `@logic` axiom injection                      |
+| **5.2**   | SMT encoding                  | `verum_smt::expr_to_smtlib` + reflected-definition injection                |
 | **5.3**   | Capability router             | theory classification → adapter / portfolio                                 |
 | **5.4**   | Executor                      | synchronous / portfolio / cross-validate, per-obligation timeout            |
 | **5.5**   | Proof extraction & certify    | solver log → Verum proof term (machine-checked if `@verify(certified)`)     |
@@ -50,7 +50,7 @@ internal stages — the solver work, not the public pipeline phases.
 flowchart TD
     IN[["Verified HIR<br/>(from Phase 4)"]]
     S1["5.1 · Obligation collection<br/><i>refinements, ensures/requires,<br/>loop invariants, CBGR hints</i>"]
-    S2["5.2 · SMT encoding<br/><i>expr_to_smtlib + @logic axioms</i>"]
+    S2["5.2 · SMT encoding<br/><i>expr_to_smtlib + reflected definitions</i>"]
     S3["5.3 · Capability router<br/><i>theory classification →<br/>adapter / portfolio</i>"]
     S4["5.4 · Executor<br/><i>synchronous · portfolio ·<br/>cross-validate · timeout</i>"]
     S5["5.5 · Proof extraction & certify<br/><i>solver log → Verum proof term</i>"]
@@ -98,11 +98,12 @@ analysis.
 
 - Primitive types → SMT sorts (`Int`, `Real`, `Bool`, `Bitvector N`).
 - Algebraic data types → SMT `declare-datatypes`.
-- `@logic` functions → `define-fun-rec` with termination measure.
+- Reflected predicates → `declare-fun` plus a universally-quantified
+  defining axiom (no recursive encoding).
 - Generic instantiations → monomorphised SMT sorts.
 - Cubical / path types → projected to their computational content.
 
-`@logic` axiom injection: the subset of `@logic fn`s reachable from
+reflected definition injection: the subset of reflected functions reachable from
 the current obligation is collected (via transitive closure), and
 their bodies emitted as `(define-fun-rec …)` before the obligation's
 `(assert (not goal))`.

@@ -31,8 +31,8 @@ Every obligation passes through five stages:
 1. **Emission** — IR-level obligation construction in
    `verum_types`. Cheap. O(size of function body).
 2. **Translation** — IR → SMT-LIB via `verum_smt::translate`.
-   Linear in proposition size, but reflection unfolding can blow
-   up by a constant-per-`@logic`-call.
+   Linear in proposition size, plus one defining axiom per
+   reflected function the proposition reaches.
 3. **Routing** — capability classification. Cheap, O(1) on the
    translated formula's theory mix.
 4. **Solving** — the dominant cost for most obligations.
@@ -72,35 +72,42 @@ apply.
 
 ---
 
-## 3. The reflection-unfolding knob
+## 3. What reflection costs
 
-`@logic` functions get unfolded into axioms. Each unfold adds a
-formula that the solver must handle. Reflection cost per call is
-roughly:
+Reflection is automatic: a pure, single-expression, parameterised
+function whose body is inside the translated fragment becomes one
+`declare-fun` plus one universally-quantified defining axiom. There is
+no unfolding knob to turn, because there is no recursive encoding —
+a self-calling function is simply not reflected.
 
-- **Total function, no recursion**: negligible. One conditional
-  equivalence axiom.
-- **Structurally recursive**: O(depth × branching). Bound depth
-  via `@logic(depth = 3)`.
-- **With accumulators / let-bindings**: each let binding becomes
-  a fresh axiom. Minimise intermediate bindings in `@logic` code.
-- **With quantifiers in the body**: costly. Prefer non-quantified
-  formulations.
+Cost per reflected function:
 
-**Diagnostic**: `verum verify --show-costs obligation_name` emits
-per-obligation breakdown including "reflection unfolds" count.
+- **One definition.** A quantified equality the solver instantiates on
+  demand. Negligible on its own.
+- **Its declarations.** Opaque parameter sorts and any field or method
+  projections the body uses add `declare-sort` / `declare-fun` lines,
+  deduplicated across the module.
+- **Its callers.** A composite predicate is a call, not a copy: the
+  cost of `a() && b()` is the two definitions plus one more, not their
+  inlined bodies.
+
+What actually gets expensive is the goal side — quantifiers in a
+predicate body, and non-linear arithmetic underneath them.
 
 **Fix patterns**:
 
-1. Drop the `@logic` on functions whose bodies the solver doesn't
-   need to reason about. Let them be uninterpreted.
-2. Convert deeply-recursive `@logic` fns to closed forms where
-   possible. E.g., `sum(xs) = xs.fold(0, +)` closes up better
-   than `sum(Cons(h, t)) = h + sum(t)` for the solver.
-3. Use `@logic(depth = N)` to cap unfold recursion.
+1. Keep leaves small and non-quantified. A field projection or a
+   comparison is free; a `forall` in a body is not.
+2. Where a predicate must be recursive, leave it unreflected and state
+   what it guarantees as explicit `requires` / `ensures`. The
+   obligation becomes visible instead of silently unconstrained.
+3. If a goal will not close, run with `VERUM_TRACE_PROOFS=1` before
+   tuning anything — an unproved goal caused by a predicate that never
+   reflected looks exactly like one caused by a hard obligation, and
+   the remedies are opposite.
 
 See [Refinement reflection](./refinement-reflection.md) for the
-reflection model itself.
+fragment, the sorts and the emitted SMT-LIB.
 
 ---
 
@@ -173,10 +180,9 @@ ensures forall x, y: Int. x + y == y + x
 Rewrite:
 
 ```verum
-// Use an auxiliary uninterpreted function so the solver has
+// Use an auxiliary reflected function so the solver has
 // something to instantiate on.
-@logic
-fn sum(x: Int, y: Int) -> Int { x + y }
+public pure fn sum(x: Int, y: Int) -> Int { x + y }
 
 @trigger(sum(x, y))
 ensures forall x, y: Int. sum(x, y) == sum(y, x)
@@ -197,7 +203,9 @@ verum verify --solver portfolio --timeout 300 <target>
 If still unknown, one of:
 
 1. Add `@trigger` attributes to quantifiers.
-2. Convert recursive `@logic` functions to closed forms.
+2. Give a recursive predicate a non-recursive formulation, or
+   leave it unreflected and state its guarantee as an explicit
+   `requires` / `ensures`.
 3. Split the obligation into subgoals via `have` steps in a
    structured proof block.
 4. Escalate to `--strategy thorough` (portfolio race + longer
@@ -216,12 +224,13 @@ smt-backend-version   = "4.12.2"
 smt-backend-version = "1.0.9"
 ```
 
-### 5.3 "Reflection unfolds dominate"
+### 5.3 "The predicate seems to mean nothing"
 
-Profile with `--show-costs`. If reflection-unfold count is >10
-for a single obligation, at least one `@logic` function is
-recursing too deep. Bound it, or drop `@logic` on the deepest
-helper.
+A goal over a predicate that never reflected is not hard — it is
+unconstrained, and it fails the same way a genuinely open obligation
+does. Run `VERUM_TRACE_PROOFS=1` and check the reflection warnings
+first: a skipped entry names the leaf that took it down. Tuning the
+solver for an unconstrained goal is time spent on the wrong layer.
 
 ### 5.4 "Portfolio disagreement"
 
@@ -235,8 +244,8 @@ verum verify --mode proof --strategy certified <target> --on-disagreement=log
 This logs the disagreement without failing the build, so you can
 inspect whether a solver is buggy or the encoding is ambiguous.
 Common causes: non-linear arithmetic handled differently by each
-adapter, or a user-defined function without `@logic` where the
-solvers uninterpret the symbol differently.
+adapter, or an unreflected user-defined function whose symbol each
+solver leaves uninterpreted in its own way.
 
 ### 5.5 "Timeout per obligation"
 
@@ -418,8 +427,8 @@ verum verify --dump-smt target/dump --only sort_preserves_length
 Look for:
 
 - Unbounded quantifier depth.
-- `@logic` unfold expansions — `(declare-fun sort_rec …)` with
-  large axioms.
+- Reflected definitions — a `(declare-fun …)` plus its
+  `(assert (forall …))` per predicate the goal reaches.
 - Missing trigger hints on `forall` clauses.
 
 **Step 3** — add triggers:
@@ -444,8 +453,8 @@ future readers know why they're there.
 
 - [SMT routing](./smt-routing.md) — which backend gets picked
   and why.
-- [Refinement reflection](./refinement-reflection.md) — how
-  `@logic` unfolding works and what bounds it.
+- [Refinement reflection](./refinement-reflection.md) — which
+  functions reflect, into what, and where the fragment ends.
 - [CLI workflow](./cli-workflow.md) §6–7 — `smt-stats` /
   `smt-info` commands.
 - [Counterexamples](./counterexamples.md) — when a proof

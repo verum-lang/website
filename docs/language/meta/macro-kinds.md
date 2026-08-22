@@ -147,11 +147,11 @@ Attributes compose top-to-bottom. If you write
 ```verum
 @traced
 @verify(formal)
-@logic
-fn add(x: Int, y: Int) -> Int { x + y }
+@traced
+pure fn add(x: Int, y: Int) -> Int { x + y }
 ```
 
-the expander runs `@logic`, then `@verify(formal)`, then `@traced`.
+the expander runs `@derive`, then `@verify(formal)`, then `@traced`.
 The macro author can ask for the current invocation order via
 `AstAccess.attribute_chain()` and decide whether to pre-process or
 post-process.

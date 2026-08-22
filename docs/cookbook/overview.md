@@ -72,7 +72,7 @@ Looking for longer guided builds? See **[Tutorials](/docs/tutorials)**.
   reasoning inside a function body.
 - **[Adding `@verify(formal)`](/docs/cookbook/adding-verification)** —
   promoting runtime checks into SMT-proven invariants.
-- **[`@logic` functions](/docs/cookbook/logic-functions)** — extending
+- **[reflected predicates](/docs/cookbook/logic-functions)** — extending
   the solver's vocabulary soundly.
 - **[Debugging SMT failures](/docs/cookbook/smt-debug)** — counter-
   example diagnostics, timeouts, strategy escalation.

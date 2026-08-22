@@ -40,8 +40,9 @@ The refinement language is intentionally small and decidable:
 - **Bitwise**: `&`, `|`, `^`, `<<`, `>>`.
 - **Field access**: `self.field`, `self.field.subfield`.
 - **Indexing**: `xs[i]`, `xs[i..j]`.
-- **Calls to `@logic` functions**: user-written functions marked `@logic`
-  are reflected into the solver verbatim (see [Refinement reflection](/docs/verification/refinement-reflection)).
+- **Calls to reflected functions**: a pure, single-expression
+  user function is reflected into the solver as a definition (see
+  [Refinement reflection](/docs/verification/refinement-reflection)).
 - **Quantifiers** (bounded): `forall i in 0..n. P(i)`, `exists i in xs. P(i)`.
 - **Built-in predicates**: `self.is_sorted()`, `self.is_empty()`,
   `self.contains(x)`, etc.
@@ -201,8 +202,9 @@ rely on this page's specific claim until that's resolved.
   predicate over a value it has not seen yet, so a refinement on a
   function parameter carries no such signal at the declaration.
 
-- **Recursion in `@logic` functions** requires a termination metric
-  (`decreases`) — the solver cannot prove termination automatically.
+- **Recursive predicates do not reflect**: there is no
+  `decreases`-checked recursive encoding, so a self-calling function
+  stays uninterpreted and its goals stay unconstrained.
 - **Mutation is not expressible**: refinement predicates are pure;
   `self.is_sorted()` talks about a snapshot, not an ongoing invariant.
 
@@ -239,8 +241,7 @@ establishes `from != to` and `from.balance >= amount`.
 ### A verified sorted-list invariant
 
 ```verum
-@logic
-fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+public pure fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
     forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
 }
 
@@ -303,7 +304,7 @@ added.
   the idioms you'll actually use.
 - **[Cookbook → validation](/docs/cookbook/validation)** — refinements
   at system boundaries.
-- **[Cookbook → `@logic` functions](/docs/cookbook/logic-functions)**
+- **[Cookbook → reflection-friendly predicates](/docs/cookbook/logic-functions)**
   — extending the refinement vocabulary.
 - **[Cookbook → SMT debugging](/docs/cookbook/smt-debug)** — when the
   solver can't prove your obligation.
@@ -314,7 +315,8 @@ added.
   `proof`, `fast`, `thorough`, `reliable`, `certified`, `synthesize`)
   and the two-layer dispatch architecture.
 - **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
-  — soundness gate for `@logic`.
+  — the fragment that reflects, and the closure gate that keeps a
+  bad leaf from poisoning the module.
 - **[Verification → framework axioms](/docs/verification/framework-axioms)**
   — postulating refinement-relevant results from external
   mathematics (Petz quantum-metric monotonicity, Bures bounds, ...).

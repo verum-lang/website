@@ -441,7 +441,7 @@ certificate whose version exceeds the kernel's current
 ## See also
 
 - **[Refinement reflection](/docs/verification/refinement-reflection)**
-  — making `@logic` functions available to the solver.
+  — making reflected predicates available to the solver.
 - **[SMT routing](/docs/verification/smt-routing)** — how the
   capability router picks between the available SMT backends.
 - **[Contracts](/docs/verification/contracts)** — `requires`,

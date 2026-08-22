@@ -1,330 +1,194 @@
 ---
 sidebar_position: 2
 title: Refinement Reflection
-description: "@logic functions — extending the refinement vocabulary with user-defined predicates."
+description: "Pure functions become SMT definitions, so refinements and theorems can speak the vocabulary your program already uses."
 ---
 
 # Refinement Reflection
 
-Refinement predicates can call user-defined functions — but only if the
-functions are **reflected** into the SMT logic. Reflection is Verum's
-mechanism for extending the refinement vocabulary.
+Refinement predicates and theorem goals can call your own functions —
+but the solver only knows what a call *means* if the function has been
+**reflected** into the SMT logic. Reflection is how Verum extends the
+refinement vocabulary with the predicates a program already defines.
 
-This page explains:
-
-- Why reflection is necessary.
-- What kinds of functions can be `@logic`.
-- How reflected functions are encoded for the solver.
-- Best practices for writing reflection-friendly code.
-- Limitations and workarounds.
+This page explains what gets reflected, what a reflected function turns
+into, and where the boundary currently sits.
 
 ## The problem
 
-The refinement language is decidable: arithmetic, booleans, bounded
-quantifiers, indexing. This is deliberately restrictive so that `self.
-len() > 0` and `xs[i] < xs[i+1]` are provable without heroics.
+The refinement language is decidable on purpose: arithmetic, booleans,
+comparisons. That is why `self.len() > 0` needs no heroics.
 
-But realistic invariants often need domain predicates. Is a matrix
-symmetric? Is a tree balanced? Does a parser state accept empty input?
-These are user-defined; the solver does not know them unless we tell
-it.
+Realistic invariants need domain predicates. Is a witness complete? Is
+a tree balanced? Does a configuration satisfy its layer conditions?
+These are yours; the solver does not know them unless it is told.
 
-## `@logic` functions
+Told *how* matters. An unreflected `p(w)` reaches the solver as an
+opaque application with no defining axiom: goals mentioning it are
+neither true nor false, they are unconstrained — which shows up as an
+unproved goal even when the fact is available verbatim as a hypothesis.
 
-A function marked `@logic` is **reflected** — its body becomes an SMT
-axiom.
+## What gets reflected
+
+Reflection is automatic — there is no attribute to write. Every
+function in the module is offered to the reflector, and one is admitted
+when it is:
+
+- **Pure** — declares no contexts (`using [...]` makes a function
+  ineligible; its result may depend on injected state).
+- **A single expression** — the body is one expression, or a block whose
+  only content is a tail expression. Multi-statement bodies are not
+  reflected.
+- **Parameterised** — nullary functions are constants, not definitions
+  worth unfolding.
+- **Expressible** — the body translates into the SMT fragment below.
+
+A function that fails any of these is simply not reflected: it stays an
+uninterpreted symbol. No incorrect axiom is ever emitted — the
+translator refuses rather than approximates.
 
 ```verum
-@logic
-fn is_sorted(xs: &List<Int>) -> Bool {
-    forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
+// Reflected: pure, one expression, parameterised.
+public pure fn is_positive(n: Int) -> Bool {
+    n > 0
 }
 
-// Now usable in refinements:
-type Sorted is List<Int> { is_sorted(self) };
+// Reflected: field access over a record witness.
+public pure fn pnt_predicate(w: &Witness) -> Bool {
+    w.pnt_asymptotic
+}
 
-@verify(formal)
-fn merge(a: &Sorted, b: &Sorted) -> Sorted { ... }
-// The SMT solver knows what `is_sorted` means.
-```
-
-## What can be `@logic`
-
-A `@logic` function must be:
-- **Pure** — no IO, no mutation, no context.
-- **Total** — every input produces a value (termination checked).
-- **Expressible** — its body is in the refinement fragment
-  (comparisons, arithmetic, quantifiers, calls to other `@logic`
-  functions).
-
-Calls to non-`@logic` functions are rejected. Recursion is allowed if
-there is a `decreases` clause the compiler can validate.
-
-```verum
-@logic
-fn tree_depth(t: &Tree) -> Int
-    where decreases t.size()
-{
-    match t {
-        Tree.Leaf => 0,
-        Tree.Node { left, right, .. } =>
-            1 + max(tree_depth(left), tree_depth(right)),
-    }
+// Reflected: an aggregate over other reflected functions.
+public pure fn chain_predicate(w: &Witness) -> Bool {
+    pnt_predicate(w) && w.zeta_bridge
 }
 ```
 
-## How reflection works
+## What the translator expresses
 
-At compile time:
+`verum_smt::expr_to_smtlib` covers:
 
-1. The compiler collects all `@logic` functions reachable from the
-   refinements being checked.
-2. Each function is translated to SMT-LIB as a recursive / quantified
-   definition, using the solver's native `define-fun-rec` (with the
-   adapter's preferred termination strategy, e.g. fmf).
-3. The axiom is asserted before the obligation is solved.
+| Verum | SMT-LIB |
+|---|---|
+| integer / boolean / float literals | `42`, `true`, `3.5` |
+| parameters and variables | bare symbols |
+| `+ - * / %` | `+ - * div mod` |
+| `== != < <= > >=` | `= (not (= …)) < <= > >=` |
+| `&& \|\| ! =>` | `and or not =>` |
+| `if c { t } else { e }` | `(ite c t e)` |
+| `f(a, b)` | `(f a b)` |
+| `match k { K.A => …, K.B => … }` over nullary variants | right-to-left `ite` chain guarded by `(= k path_K.A)` |
+| `w.field` | `(Verum!proj!W!field w)` |
+| `p.method(args)`, including chains | `(Verum!method!P!method p args…)` |
 
-The translator lives in `verum_smt::expr_to_smtlib`.
+The last two rows are what let a predicate over a **record witness** or
+a **protocol receiver** reflect at all. Both lower to uninterpreted
+projection symbols over the receiver's sort: the solver learns nothing
+about the field's *value*, only that one receiver always projects to
+one value — which is exactly what a field-conjunction body and a
+hypothesis about the same receiver need in order to meet.
 
-## Example — red-black tree invariant
+Anything else — loops, multi-statement blocks, variant patterns with
+payloads, guarded match arms — makes the function unreflected rather
+than mistranslated.
 
-```verum
-@logic
-fn is_rb(t: &Tree) -> Bool {
-    no_red_red(t) && black_balanced(t) && root_is_black(t)
-}
+## Sorts
 
-@logic
-fn no_red_red(t: &Tree) -> Bool {
-    match t {
-        Tree.Leaf => true,
-        Tree.Node { color: Red, left: Heap(Tree.Node { color: Red, .. }), .. } => false,
-        Tree.Node { color: Red, right: Heap(Tree.Node { color: Red, .. }), .. } => false,
-        Tree.Node { left, right, .. } => no_red_red(left) && no_red_red(right),
-    }
-}
+A reflected signature must name the same sorts the goal side names, or
+the two emit conflicting symbols and the solver treats them as
+unrelated. Both translators therefore answer from one authority:
 
-type RBTree is Tree { is_rb(self) };
+| Verum type | Sort |
+|---|---|
+| `Int` and the integer family | `Int` |
+| `Float` family | `Real` |
+| `Bool` | `Bool` |
+| `Text` | `String` |
+| `&T` | the sort of `T` — a reference carries its referent's facts |
+| a named type the translator does not model | `Verum!<Name>`, uninterpreted |
 
-fn insert(t: RBTree, k: Int) -> RBTree
-    where ensures is_rb(result)
-{ ... }
+An unmodelled type is opaque **under its own name**, never a scalar.
+That distinction is load-bearing: substituting `Int` for a list-shaped
+value turns `xs.len() > 0` into arithmetic that means nothing, and a
+solver can then "prove" it.
+
+## What a reflected function becomes
+
+Two lines per function, plus whatever declarations its body needs:
+
+```smt2
+; declarations the body depends on
+(declare-sort Verum!Witness 0)
+(declare-fun Verum!proj!Witness!pnt_asymptotic (Verum!Witness) Bool)
+
+; the function itself
+(declare-fun pnt_predicate (Verum!Witness) Bool)
+(assert (forall ((w Verum!Witness))
+  (= (pnt_predicate w) (Verum!proj!Witness!pnt_asymptotic w))))
 ```
 
-The SMT solver proves the postcondition using the `@logic` axioms
-directly. No manual proof needed for linear arithmetic cases; for
-nonlinear or string-heavy cases, a stronger adapter is dispatched (see
-**[SMT routing](/docs/verification/smt-routing)**).
+Sort declarations are emitted before the functions that use them, and
+identical declarations coming from several functions are emitted once.
 
-## Inspecting the generated SMT-LIB
+## The closure gate
+
+A body that names a symbol the block never declares makes the solver
+reject the **entire** block — every reflection in the module, not just
+the offending one. The registry therefore closes itself under its call
+graph: an entry whose body references something neither declared nor
+reflected is dropped, iterating to a fixpoint because dropping one
+entry can open its callers.
+
+Each drop is reported, never silent:
+
+```
+warning: refinement reflection: skipping `chain_predicate` — its body
+references `helper`, which is neither a parameter nor another reflected
+function; reflecting it would invalidate the module's entire SMT block.
+Other reflections are unaffected.
+```
+
+Reading this warning as "the aggregate is unreflectable" is the wrong
+conclusion — it names the *leaf* that failed. Make the leaf reflectable
+and the aggregate follows.
+
+## Seeing what happened
+
+When a goal will not close, the prover explains itself:
 
 ```bash
-$ verum verify --emit-smtlib src/tree.vr
+$ VERUM_TRACE_PROOFS=1 verum verify src/witness.vr
+[proof-trace] apply_with lemma=`grounding` args=["w"] goal=`pnt_predicate(w)`
+[proof-trace] instantiate_lemma `grounding` args=["w"] targets=["w"]: premises=0 conclusion=`pnt_predicate(w)`
+[proof-trace] apply_with unified; emitting 0 premise subgoal(s)
+[proof-trace] tactic Apply { … } on `pnt_predicate(w)` -> OK, 0 subgoal(s)
 ```
 
-Produces `target/smtlib/*.smt2` — the exact queries sent to the solver.
-Useful for debugging obligations that mysteriously fail.
+The trace names the tactic, the goal it faced, how a lemma was
+instantiated, and — when unification fails — both sides of the failure.
+See **[Proof honesty](/docs/verification/proof-honesty)** for the wider
+discipline this belongs to.
 
-## Reflection + portfolio
+## Current boundary
 
-When `@verify(thorough)` is set, every active solver adapter receives
-the same reflected axioms. A disagreement indicates a bug in one of
-the solvers and is reported:
+Reflection today is **non-recursive**: a function whose body calls
+itself is not admitted, and there is no `decreases`-checked recursive
+encoding. Structural predicates over recursive data (tree balance,
+sortedness of a cons-list) are therefore stated as protocol methods or
+record fields and reasoned about through their projections, rather than
+unfolded.
 
-```
-warning[V6104]: solvers disagreed on obligation
-  obligation:  is_rb(insert(t, k))
-  smt-backend:          proved (230 ms)
-  smt-backend:        sat (counter-example: t = Leaf, k = 0)
-  action:      downgraded proof to sat=unknown; manual review required
-```
+Multi-statement bodies, loops and payload-carrying variant patterns are
+likewise outside the fragment. Where a predicate needs them, the honest
+shape is to keep the function unreflected and state the facts it
+guarantees as explicit `requires` / `ensures` on the theorem that uses
+it.
 
-Disagreements are rare but diagnostic.
+## Related
 
-## Best practices
-
-### Keep `@logic` functions minimal
-
-Large `@logic` bodies explode the SMT solver's context. Prefer many
-small `@logic` helpers that compose — the solver handles a conjunction
-of small definitions better than one complex one.
-
-```verum
-// Prefer this:
-@logic fn is_balanced(t: &Tree) -> Bool { ... }
-@logic fn is_ordered(t: &Tree) -> Bool { ... }
-@logic fn is_bst(t: &Tree) -> Bool { is_balanced(t) && is_ordered(t) }
-
-// Over this:
-@logic fn is_bst(t: &Tree) -> Bool {
-    /* 40-line predicate inlined */
-}
-```
-
-### Bounded recursion over structures
-
-Recursion over a finite structure (list, tree, natural number) with
-a `decreases` clause is routinely supported. Recursion over an
-unbounded type (e.g. `Int` without lower bound) can confuse the
-termination checker; add `requires n >= 0`.
-
-### Expose invariants as types, not as function preconditions
-
-If `f(x: T)` needs `is_valid(x)` to reason, make `x: T { is_valid(self) }`
-a refinement on the parameter. Callers prove it once at the boundary;
-the body assumes it everywhere.
-
-### Avoid non-linear arithmetic unless you need it
-
-`x * y` with both sides symbolic forces the solver into non-linear
-arithmetic (slower, sometimes incomplete). For `x * constant` or
-`constant * y`, the goal remains linear. Multiply by concrete values
-when possible.
-
-### Cache-friendly signatures
-
-`@logic` functions are memoised per-argument at the SMT level.
-Large structural arguments (full trees, long lists) blow out the
-cache. Prefer local invariants that reason about a subset.
-
-## Writing a reflection-heavy module
-
-A typical pattern for a data structure with invariants:
-
-```verum
-// --- invariants.vr --- reflective predicates only
-@logic
-fn has_no_red_red(t: &Tree) -> Bool { ... }
-
-@logic
-fn is_black_balanced(t: &Tree) -> Bool { ... }
-
-@logic
-fn is_bst_ordered(t: &Tree) -> Bool { ... }
-
-@logic
-fn is_rb(t: &Tree) -> Bool {
-    has_no_red_red(t)
-    && is_black_balanced(t)
-    && is_bst_ordered(t)
-}
-
-// --- tree.vr --- types and operations
-type RBTree is Tree { is_rb(self) };
-
-@verify(formal)
-fn insert(t: RBTree, k: Int) -> RBTree
-    ensures is_rb(result)
-    ensures contains(result, k)
-{ ... }
-
-// --- proofs.vr --- optional, if `auto` can't close
-lemma insert_preserves_rb(t: RBTree, k: Int)
-    ensures is_rb(insert(t, k))
-{
-    proof by induction t
-}
-```
-
-Three files:
-
-1. `invariants.vr` — pure, `@logic`, reusable.
-2. `tree.vr` — implementation using refined types.
-3. `proofs.vr` — manual lemmas where automation falls short.
-
-## Limitations
-
-### First-order only
-
-`@logic` functions cannot take higher-order arguments (no
-function-typed parameters). A `@logic fn map<A, B>(f: fn(A) -> B,
-xs: List<A>) -> List<B>` is rejected. Reason: SMT quantification
-over function space is undecidable in general.
-
-**Workaround**: specialise. Instead of `map(double, xs)`, write
-`@logic fn double_all(xs: List<Int>) -> List<Int> { ... }`.
-
-### No references
-
-Refinements talk about values, not memory. A `@logic` function
-cannot dereference `&T`. Workaround: define the predicate on the
-owned value type; callers pass by value (costs a `Clone`).
-
-### No effects
-
-`@logic` cannot read the clock, environment, IO, or random. Makes
-sense — the solver runs at compile time without those resources.
-
-### No exceptions
-
-`@logic` functions cannot `throw`, `panic`, or return `Result.Err`.
-A total function that *might* fail should return `Maybe<T>`.
-
-### No `async`
-
-Obvious: the solver is synchronous. `async fn @logic` is rejected.
-
-For invariants that need state (imperative loop invariants, heap
-shapes), use loop `invariant` clauses or separation logic — see
-**[Contracts](/docs/verification/contracts)**.
-
-## Diagnostic cheatsheet
-
-| Message                                     | Cause                                                     |
-|---------------------------------------------|-----------------------------------------------------------|
-| `V6100: @logic call of non-logic function`  | You called an ordinary function; mark it `@logic`.         |
-| `V6101: @logic function cannot return unit` | `@logic` must produce a value; `()` is meaningless.        |
-| `V6102: @logic body uses effects`           | Pure-only; remove the IO/mutation.                         |
-| `V6103: @logic recursion without decreases` | Add `where decreases <measure>`.                           |
-| `V6104: solvers disagreed on obligation`    | Rare SMT bug; manual review (above).                       |
-| `V6105: refinement not decidable`           | Reflection failed — the function uses unreachable theory.  |
-| `V6106: reflection cache stale`             | Rebuild with `verum clean` to invalidate.                   |
-
-## Performance notes
-
-Reflection adds compile time. On a 50k LOC project with ~500 refined
-types and ~100 `@logic` functions, expect:
-
-- **First build**: 3-10 s of SMT time total.
-- **Incremental builds**: 50-500 ms, mostly cache hits.
-- **`@verify(thorough)` on everything**: 30-90 s (parallel workers
-  help).
-
-If verification dominates your build, scope `formal` / `thorough` to
-the files that need it; leave the rest at `static`.
-
-## Reflection and the trusted kernel
-
-`@logic` functions extend what the SMT solver can prove, not what
-the kernel trusts. When `@verify(formal)` / `(proof)` discharges
-a refinement obligation using a `@logic` axiom, the solver emits
-an `SmtCertificate`; the kernel's `replay_smt_cert` then re-derives
-a `CoreTerm::Refine` witness that records the predicate. A bug in
-the `@logic` function (e.g., an invalid recursion that slipped past
-the termination check) can cause the kernel to reject the replayed
-term, but it cannot accept a false theorem.
-
-`@verify(certified)` is the stronger discharge — it runs cross-
-validation through an orthogonal technique (a second solver adapter,
-tactic-based proof, or proof-carrying-code witness). A `@logic`
-function whose semantics diverge between two adapters is caught at
-this gate rather than silently accepted. See
-**[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**.
-
-## See also
-
-- **[SMT routing](/docs/verification/smt-routing)** — how the router
-  picks an adapter for your `@logic` function.
-- **[Contracts](/docs/verification/contracts)** — `requires`,
-  `ensures`, `invariant` — including the bare-clause syntax that
-  matches the stdlib convention.
-- **[Refinement types](/docs/language/refinement-types)** — the
-  predicate language itself; `@logic` extends its vocabulary.
-- **[Framework axioms](/docs/verification/framework-axioms)** —
-  when an invariant cannot be a `@logic` function (e.g. a cited
-  theorem from HTT or Petz), postulate it with
-  `@framework(identifier, "citation")` so the trusted boundary stays
-  enumerable.
-- **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
-  — how refinement obligations are re-checked regardless of which
-  solver produced the witness.
+- **[Gradual verification](/docs/verification/gradual-verification)** —
+  the thirteen strategies and where the SMT layer sits in the ladder.
+- **[SMT routing](/docs/verification/smt-routing)** — which solver
+  receives an obligation, and why.
+- **[Proof honesty](/docs/verification/proof-honesty)** — what a verdict
+  is allowed to claim, and how it must say where it came from.

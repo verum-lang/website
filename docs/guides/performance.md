@@ -281,7 +281,7 @@ Whenever possible, bound the quantifier: `forall x in 0..n. P(x)`.
 ### Reflect common predicates
 
 Instead of inlining a 10-line predicate in 50 different refinements,
-extract it to a `@logic fn`. The solver reuses the axiom across
+extract it to a a reflected function. The solver reuses the axiom across
 obligations.
 
 ## Compile-time performance

@@ -24,8 +24,7 @@ mount core.collections.List;
 pub type SortedList<T: Ord> is List<T> { is_sorted(self) };
 
 /// The named predicate — reflectable into SMT.
-@logic
-fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+public pure fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
     forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
 }
 ```
@@ -79,7 +78,7 @@ fn insert<T: Ord>(xs: SortedList<T>, x: T) -> SortedList<T>
 The SMT backend gets this from:
 
 1. `pos` satisfies `∀ j < pos. xs[j] < x` and `∀ j ≥ pos. xs[j] ≥ x`
-   (axioms of `partition_point`, reflected from `@logic`).
+   (the reflected definition of `partition_point`).
 2. The original `xs` is sorted (from the input type).
 3. Case-split on `i`: the only interesting case is when `i = pos - 1`
    or `i = pos`, where the new element is adjacent.
@@ -219,15 +218,16 @@ If `merge` takes > 5 s to verify, try:
 - Escalate to `@verify(thorough)` on merge specifically — this races
   the available solver adapters and tactic-based proof search; specialised
   adapter quantifier reasoning is often faster on nested foralls.
-- Split invariants 4 and 5 into separate helper `@logic` lemmas
-  that name the adjacency property.
+- Split invariants 4 and 5 into separate helper predicates that
+  name the adjacency property.
 - Let the proof cache persist across runs (on by default) and the
   first slow build won't recur.
 
 ## What you learned
 
 - `SortedList<T>` as a refinement of `List<T>`.
-- `@logic` functions — the predicates that become SMT axioms.
+- Reflected predicates — the pure functions that become SMT
+  definitions.
 - `where ensures` postconditions.
 - Loop invariants: **every** inductive step must be spelled out.
 - `decreases` for termination.

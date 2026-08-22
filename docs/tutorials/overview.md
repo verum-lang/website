@@ -131,7 +131,7 @@ Combinator-style parsing for a small arithmetic DSL.
 Implement a sorted list and prove the sort invariant with
 `@verify(formal)`.
 
-- **Teaches**: refinement reflection, invariants, `@logic` functions,
+- **Teaches**: refinement reflection, invariants, reflected predicates,
   loop invariants, `decreases` for termination.
 - **Assumes**: refinement-types tutorial.
 - **See also**: [language/refinement-types](/docs/language/refinement-types),

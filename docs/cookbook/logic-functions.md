@@ -1,159 +1,157 @@
 ---
-title: "`@logic` functions for reflection"
-description: "Extending the refinement vocabulary with named predicates the SMT solver understands."
+title: "Reflection-friendly predicates"
+description: "Writing pure functions the solver can unfold, and what to do when a predicate falls outside the fragment."
 ---
 
-# `@logic` functions
+# Reflection-friendly predicates
 
-`@logic` tells the compiler: "reflect this function into the SMT
-solver as an axiom, so refinements can use it."
+Refinement types and theorem goals are more useful when they can call
+the predicates your program already defines. That works when the
+predicate is **reflected** — turned into an SMT definition the solver
+unfolds. Reflection is automatic: there is no attribute to write. What
+you control is whether a function *qualifies*.
 
-### When you need one
+The mechanism, the exact translated fragment and the emitted SMT-LIB
+are documented in
+**[Verification → Refinement reflection](/docs/verification/refinement-reflection)**.
+This page is about writing code that lands on the right side of it.
 
-Refinement types are expressive but decidable. Complex predicates
-— sortedness, tree balance, graph connectivity — are expensive or
-undecidable for the solver in raw form. Extracting them as named
-`@logic` functions makes them **reusable axioms**.
-
-### Anatomy
+## The shape that qualifies
 
 ```verum
-@logic
-fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
-    forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
+public pure fn is_positive(n: Int) -> Bool {
+    n > 0
 }
 ```
 
-Rules:
+Four requirements, all checked mechanically:
 
-- **Pure**: no mutation, no IO, no context.
-- **Total**: every input produces an answer; termination provable.
-- **Closed**: no free variables (captured from environment).
-- **Decidable body**: the body must be expressible in the refinement
-  fragment (comparisons, arithmetic, bounded quantifiers, `@logic`
-  function calls, indexing, member access).
+- **Pure** — no `using [...]` contexts. A function whose result can
+  depend on injected state has no fixed meaning to axiomatise.
+- **One expression** — the body is a single expression, or a block
+  whose only content is a tail expression. A multi-statement body is
+  not reflected.
+- **Parameterised** — a nullary function is a constant, not a
+  definition worth unfolding.
+- **Inside the fragment** — arithmetic, comparisons, boolean
+  connectives, `if`/`else`, calls to other reflected functions, `match`
+  over nullary variants, field access, and protocol-method calls.
 
-If any rule is violated, the compiler rejects reflection — that's the
-claim. This page's transcript for it has been removed rather than
-corrected: every `error[V####]: ... --> file:line:col` transcript
-checked elsewhere on this site today turned out to be fabricated in
-shape (real `verum verify` output is a per-function report with a raw
-counter-example, not a source-anchored diagnostic — see
-[tooling → LSP](/docs/tooling/lsp#diagnostics) for a captured
-example), and this specific one was not independently reproduced
-before that pattern was found.
+A function that misses any of these is not rejected — it simply stays
+an uninterpreted symbol, and goals mentioning it stay unconstrained.
+That silence is the thing to watch for.
 
-### Use in refinement types
+## Predicates over records
 
-```verum
-type Sorted<T: Ord>       is List<T> { is_sorted(self) };
-type Unique<T: Eq + Hash> is List<T> { is_unique(self) };
-type Balanced<T>           is Tree<T> { is_balanced(self) };
-```
-
-### Use in contracts
+Field access reflects, so a witness record's predicate is a normal
+function:
 
 ```verum
-@verify(formal)
-fn insert_sorted<T: Ord>(xs: &mut Sorted<T>, x: T)
-    where ensures is_sorted(self),
-          ensures self.len() == old(self.len()) + 1
-{ ... }
-```
+type Witness is { pnt_asymptotic: Bool, zeta_bridge: Bool };
 
-### Composing `@logic` functions
-
-```verum
-@logic
-fn is_valid_rbtree<T: Ord>(t: &RBTree<T>) -> Bool {
-    is_bst(t) && has_proper_colours(t) && balanced_black_depth(t)
+public pure fn pnt_predicate(w: &Witness) -> Bool {
+    w.pnt_asymptotic
 }
 
-@logic fn is_bst<T: Ord>(t: &RBTree<T>) -> Bool                  { /*...*/ }
-@logic fn has_proper_colours<T: Ord>(t: &RBTree<T>) -> Bool       { /*...*/ }
-@logic fn balanced_black_depth<T: Ord>(t: &RBTree<T>) -> Bool     { /*...*/ }
-```
-
-Each `@logic` is reflected independently; composed predicates are
-just function calls from the solver's point of view.
-
-### Recursive `@logic` — termination
-
-```verum
-@logic
-fn tree_depth<T>(t: &Tree<T>) -> Int
-    where decreases t.size()
-{
-    match t {
-        Tree.Leaf                       => 0,
-        Tree.Node { left, right, .. }   => 1 + max(tree_depth(left), tree_depth(right)),
-    }
+public pure fn chain_predicate(w: &Witness) -> Bool {
+    pnt_predicate(w) && w.zeta_bridge
 }
 ```
 
-`decreases` is required for recursive `@logic` functions so the
-compiler can prove termination. Common well-founded measures:
+Both reflect: the first through a field projection, the second through
+that projection plus a call to the first.
 
-- `xs.len()` for lists.
-- `t.size()` for trees.
-- `n - i` in loops.
-- Lexicographic pair: `(outer.len(), inner.len())`.
+## Predicates over protocol receivers
 
-### Inside the solver
+Method calls reflect too, including chains — the receiver type of an
+outer call is the return type of the inner one:
 
-`is_sorted` becomes an SMT axiom that looks like:
-
-```
-(define-fun-rec is_sorted ((xs (List T))) Bool
-  (forall ((i Int))
-    (=> (and (>= i 0) (< i (- (List.len xs) 1)))
-        (<= (List.get xs i) (List.get xs (+ i 1))))))
+```verum
+public pure fn admissible(c: &Candidate) -> Bool {
+    c.cond_F_S().has_phi_X()
+}
 ```
 
-See the actual query with:
+## Composing
+
+Compose freely; each reflected function is an independent definition
+and a composite is just a call from the solver's point of view.
+
+```verum
+public pure fn layer_predicate(p: &RefinedPrimitive) -> Bool {
+    base_layer(p) && realisation_layer(p) && extension_layer(p)
+}
+```
+
+Keep leaves small. A leaf that falls outside the fragment takes its
+callers down with it — see below.
+
+## When a leaf fails, the aggregate is reported
+
+The reflection registry closes under its call graph: if a leaf is not
+reflectable, every function that calls it is dropped too, because a
+block naming an undeclared symbol makes the solver reject the whole
+block. The warning names the **leaf**:
+
+```
+warning: refinement reflection: skipping `chain_predicate` — its body
+references `helper`, which is neither a parameter nor another reflected
+function; reflecting it would invalidate the module's entire SMT block.
+Other reflections are unaffected.
+```
+
+Read it as a pointer to `helper`, not as a verdict on
+`chain_predicate`. Make the leaf qualify and the aggregate follows.
+
+## Recursion
+
+Recursive predicates are **not** reflected today: there is no
+`decreases`-checked recursive encoding, so a function that calls itself
+stays uninterpreted. Structural properties over recursive data
+(sortedness of a cons-list, tree balance) are therefore expressed as
+protocol methods or record fields and reasoned about through their
+projections.
+
+Where the recursive formulation is what you need, keep the function
+unreflected and state what it guarantees as explicit `requires` /
+`ensures` on the theorem that consumes it. That is honest: the
+obligation moves to a place a reader can see, instead of relying on an
+unfolding that never happens.
+
+## When a goal will not close
+
+Ask the prover what it did:
 
 ```bash
-$ verum verify --emit-smtlib path/to/file.vr
-# writes target/smtlib/*.smt2
+$ VERUM_TRACE_PROOFS=1 verum verify path/to/file.vr
 ```
 
-### Performance
+The trace names each tactic, the goal it faced, how a lemma was
+instantiated, and both sides of a failed unification. Two failures look
+alike from the outside and are opposite inside: a predicate that never
+reflected (goal unconstrained) and a premise that is genuinely not
+among the hypotheses.
 
-- **Reflected predicates are memoised**: the solver handles
-  repeated calls once.
-- **Reuse across obligations**: a single `is_sorted` definition is
-  used by many theorems — no redundant work.
-- **Small = fast**: prefer short `@logic` functions that decompose
-  complex predicates into smaller ones. `is_sorted && all_positive`
-  reuses two independent facts.
+## Pitfalls
 
-### When the solver still can't prove
+- **The runtime function and the definition are the same thing.**
+  Because reflection is automatic and reads the body you wrote, they
+  cannot drift — but this also means editing a `pure fn` edits an
+  axiom. Treat such edits as proof-affecting.
+- **Higher-order predicates.** A reflected function cannot take a
+  function argument; specialise it.
+- **Unbounded existentials in negative position.** `!exists x: Int.
+  P(x)` asks the solver to prove absence across all integers; bound the
+  search or supply a proof.
+- **Non-linear arithmetic under quantifiers.** Escalate the strategy —
+  see **[gradual verification](/docs/verification/gradual-verification)**
+  for the ladder and what each rung costs.
 
-Even with `@logic`, some predicates are too hard:
-
-- **Unbounded existential in negative position**: `!exists x: Int. P(x)`
-  forces the solver to prove absence across all integers. Either bound
-  the search or supply a manual proof.
-- **Non-linear arithmetic with quantifiers**: escalate to
-  `@verify(thorough)` — races a CAD-capable adapter (cylindrical algebraic
-  decomposition handles these well) against the default adapter and tactics.
-- **Higher-order**: `@logic` functions can't take function arguments.
-  Specialise or use a tactic.
-
-### Pitfalls
-
-- **Shadowing the solver's view**: a `@logic` definition can make the
-  solver "know" things your runtime function doesn't. Keep them in
-  sync — ideally the `@logic` **is** the runtime implementation
-  (the compiler can verify this alignment).
-- **Complex recursion**: avoid mutual recursion unless necessary;
-  the solver handles structural recursion but struggles with
-  measure-based recursion on multi-argument functions.
-
-### See also
+## See also
 
 - **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
-- **[Verified data structure tutorial](/docs/tutorials/verified-data-structure)**
-  — real `@logic` use.
+  — the fragment, the sorts, the emitted SMT-LIB, the closure gate.
+- **[Proof honesty](/docs/verification/proof-honesty)** — what a verdict
+  may claim and how it must say where it came from.
 - **[proof](/docs/stdlib/proof#refinement-reflection--reflectionvr)** —
-  internal data types.
+  the internal data types.

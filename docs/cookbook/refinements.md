@@ -87,7 +87,7 @@ type AsciiOnly             is Text   { self.chars().all(|c| c.is_ascii()) };
 ```
 
 Some of these predicates (`is_sorted`, `is_unique`) are not SMT-native —
-they require `@logic` reflection; see
+they require reflection; see
 [verification/refinement-reflection](/docs/verification/refinement-reflection).
 
 ## Pattern-validated text
@@ -214,10 +214,10 @@ The `{ self => u.email.is_some() }` refinement on a `Bool` return
 says: "if the result is true, `u.email.is_some()` holds." Useful for
 *refined predicates* — returning a flag and an invariant.
 
-## Using refinements without `@logic` overhead
+## Using refinements the solver already understands
 
 Sometimes the predicate is already SMT-native — arithmetic, indexing,
-bounded quantifiers — and doesn't need `@logic` reflection:
+bounded quantifiers — and needs no reflection at all:
 
 ```verum
 type NonNegative is Float { self >= 0.0 };              // SMT-native
@@ -226,11 +226,10 @@ type Power2      is Int   { self & (self - 1) == 0 };   // bitwise, SMT-native
 ```
 
 `is_sorted()`, `is_palindrome()`, `is_cyclic()` do need reflection —
-mark the helper `@logic`:
+write the helper so it qualifies (pure, one expression):
 
 ```verum
-@logic
-fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
+public pure fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
     forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
 }
 
@@ -305,7 +304,7 @@ non-critical paths.
 - **[language/refinement-types](/docs/language/refinement-types)** —
   the syntax reference.
 - **[verification/refinement-reflection](/docs/verification/refinement-reflection)** —
-  when and how to use `@logic`.
+  which functions reflect, and what they become.
 - **[language/dependent-types](/docs/language/dependent-types)** —
   when a refinement needs a value in the type.
 - **[verification/smt-routing](/docs/verification/smt-routing)** —

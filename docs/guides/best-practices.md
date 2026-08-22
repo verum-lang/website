@@ -42,7 +42,7 @@ fn process(user: AuthenticatedUser) { ... }
 A short decidable predicate costs the SMT solver milliseconds; a
 complex one with quantifiers, string manipulation, and cross-parameter
 refs can cost seconds. If a refinement grows, extract a named
-`@logic` helper — it reuses proof fragments and speeds up the solver.
+pure helper predicate — it reuses proof fragments and speeds up the solver.
 
 ## Start with `@verify(static)`, upgrade where it pays
 

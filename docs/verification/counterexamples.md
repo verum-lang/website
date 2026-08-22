@@ -74,7 +74,8 @@ Source chain:
 Suggested fixes:
   1. Use `a.floor_div(b)` if you meant floor division.
   2. Weaken the ensures to `a / b == result && (a < 0 && b > 0 ⇒ result * b >= a)`.
-  3. Add `@logic` attribute to a helper that models truncation correctly.
+  3. Extract a pure helper that models truncation correctly, so it
+     reflects.
 
 help: run `verum verify --counterexample=minimal core/math/arith.vr`
       for the single-page version without source-chain detail.
@@ -132,7 +133,7 @@ versioned). Useful for IDE integrations and CI dashboards.
     { "file": "core/math/arith.vr", "line": 42, "col": 13, "reason": "ensures clause body" },
     { "file": "core/math/arith.vr", "line": 44, "col": 5,  "reason": "body evaluates via Int.div" }
   ],
-  "suggested_fixes": [ "use .floor_div", "weaken ensures", "add @logic helper" ]
+  "suggested_fixes": [ "use .floor_div", "weaken ensures", "extract a pure helper" ]
 }
 ```
 
@@ -361,7 +362,7 @@ causes and diagnostics:
 | Timeout                            | `--timeout 120` (or `Thorough` strategy).                         |
 | Nonlinear arithmetic explosion     | Switch to a stronger adapter via `--solver smt-backend`; or decompose manually.        |
 | Unbounded quantifier instantiation | Add `@trigger` to help the solver pick patterns.                  |
-| Reflection unfolding loop          | Bound recursion depth with `@logic(depth=N)`.                     |
+| Predicate never reflected          | Check the reflection warnings — a skipped entry names the leaf.   |
 | Theory combination at a hard boundary | Use the Certified strategy to race both backends.              |
 
 The diagnostic for `unknown` is distinct from a counterexample —

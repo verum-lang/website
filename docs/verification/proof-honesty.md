@@ -17,14 +17,42 @@ such as the [verum-msfs-corpus](https://github.com/verum-lang/verum-msfs-corpus)
 
 ## Companion audits (V2 / V3 trusted-boundary surfaces)
 
-Three additional audit surfaces work alongside `--proof-honesty`:
+Several audit surfaces work alongside `--proof-honesty`:
 
 | Flag | What it answers |
 |------|------------------|
 | `--proof-honesty` | "How many theorems carry real deductive content?" |
+| `--kernel-discharged-axioms` | "Does every `@kernel_discharge` citation have a verifier behind it — and did that verifier COMPUTE its verdict or cite someone else's proof?" |
 | `--bridge-admits` | "Which Diakrisis preprint results does each theorem rely on?" |
 | `--framework-soundness` | "Are the @framework citations real or trivial-placeholder?" |
 | `--coord-consistency` | "Does each theorem's coord majorise its dependencies?" |
+
+### Evidence, not just a count
+
+`--kernel-discharged-axioms` reports an `evidence_breakdown` beside the
+discharge count, because "40 discharged" is a number, not a status:
+
+```json
+"evidence_breakdown": { "computed": 28, "cited": 22, "needs_structural_args": 3 },
+```
+
+* **computed** — the kernel ran the check that decides the question.
+  The architectural family is entirely of this kind: each verdict
+  executes its pattern's canonical counterexample against the live
+  checkers, and a checker that goes silent or starts firing
+  indiscriminately turns the discharge red.
+* **cited** — the verdict holds on a proof living outside this kernel.
+  Every such entry names where: `Leroy 2009 §5.2`, `Vellvm POPL 2012
+  §4-5`, a `core/verify/kernel_v0/rules/*.vr` lemma. A citation that
+  named nothing would be indistinguishable from an assertion, so the
+  kernel refuses to construct one.
+* **needs_structural_args** — the dispatcher declined the bare form:
+  this verdict requires structural data the audit does not carry.
+  Saying so is not the same as saying it was discharged.
+
+An unrecognised citation additionally lists the theorems that
+transitively depend on it: the count says something is broken, the
+dependents say what breaks with it.
 
 See [Diakrisis Bridge Roster](diakrisis-bridge-roster.md) for the
 `--bridge-admits` deep-dive, and

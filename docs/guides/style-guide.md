@@ -196,7 +196,7 @@ fn double_sat(x: Int) -> Int { x.saturating_add(x) }
 
 ## Refinement conventions
 
-- Keep refinements short and decidable. Long ones belong in `@logic`
+- Keep refinements short and decidable. Long ones belong in reflection
   helpers with a named predicate.
 
   ```verum
@@ -204,8 +204,7 @@ fn double_sat(x: Int) -> Int { x.saturating_add(x) }
   type Positive is Int { self > 0 };
 
   // Refactor
-  @logic
-  fn is_valid_checksum(xs: &List<Byte>) -> Bool { ... }
+  public pure fn is_valid_checksum(xs: &List<Byte>) -> Bool { ... }
   type Validated is List<Byte> { is_valid_checksum(self) };
   ```
 

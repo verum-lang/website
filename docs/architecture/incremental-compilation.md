@@ -126,7 +126,7 @@ flowchart TD
 | Edit function body | that function + all (transitive) callers |
 | Change function signature | function + all callers + all generic instantiations |
 | Edit type definition | every function referencing the type |
-| Edit `@logic` function | every obligation that reflected it |
+| Edit reflected predicate | every obligation that reflected it |
 | Change `--profile` / `--target` / `--opt-level` | all functions (config_hash changes) |
 | Add / remove `features` | functions gated by that feature |
 | Upgrade compiler | all (version-tuple in config_hash) |

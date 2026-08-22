@@ -115,7 +115,7 @@ nonlinearity, or a predicate the solver can't decompose.
 
 - Add an intermediate assertion: `assert(helper_lemma());` — splits
   the proof.
-- Move a complex predicate into a named `@logic fn` that the solver
+- Move a complex predicate into a named a reflected function that the solver
   can reuse.
 - Escalate to `@verify(thorough)` — races available solver adapters
   and tactic-based proof search in parallel; different adapters handle

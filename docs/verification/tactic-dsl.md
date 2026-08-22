@@ -55,7 +55,7 @@ The tactic runtime supplies each tactic with:
 - **Goal.** The current proof obligation: a `Proposition` plus a
   list of `Hypothesis` assumptions.
 - **Context.** Scope information — type parameters in scope,
-  reflected `@logic` functions available, framework axioms
+  reflected reflected predicates available, framework axioms
   enumerable.
 - **Cache.** A memo table for previously-proved subgoals (scoped
   to this proof search).

@@ -136,4 +136,4 @@ check.
 - **[Language → refinement types](/docs/language/refinement-types)** —
   syntax reference.
 - **[Verification → refinement reflection](/docs/verification/refinement-reflection)**
-  — when a predicate needs `@logic`.
+  — when a predicate needs reflection.

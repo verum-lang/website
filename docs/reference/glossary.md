@@ -160,7 +160,7 @@ the same obligation and cross-validating.
 satisfy: `Int { self > 0 }`.
 
 **Refinement reflection** — Extending the refinement vocabulary by
-making `@logic` functions available as SMT axioms.
+making pure user predicates available as SMT definitions.
 
 ## S
 

@@ -230,7 +230,7 @@ submitted as feedback.
   `forall i in 0..n. P(i)` is usually enough.
 - **Keep nonlinearity local**. `a * b * c` is fine;
   `(a * b * c) / (d * e * f)` invites slowness.
-- **Prefer named predicates** (via `@logic`) over inlined
+- **Prefer named predicates** (via reflection) over inlined
   formulas — the verifier can reuse proof fragments.
 
 ## Limitations
@@ -339,7 +339,7 @@ hard-depending on a specific external solver.
 - **[Gradual verification](/docs/verification/gradual-verification)**
   — the 13-strategy surface and the two-layer dispatch architecture.
 - **[Refinement reflection](/docs/verification/refinement-reflection)**
-  — how `@logic` functions extend the verifier's vocabulary
+  — how reflected predicates extend the verifier's vocabulary
   without expanding the TCB.
 - **[Framework axioms](/docs/verification/framework-axioms)** —
   explicit postulates (Lurie HTT, Connes, Petz, ...) for results

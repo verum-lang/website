@@ -43,10 +43,11 @@ same kernel term. Consequently:
 - A `theorem` declaration is not a second-class "spec document" — it
   is a **first-class compilation unit** with parameters, imports,
   generics, proof body, and machine-checkable certificate.
-- The `?` operator, the `throws` clause, and the `@logic` attribute
-  are not runtime features with a verification extension; they are
-  **verification primitives with a runtime implementation** chosen by
-  the compiler per-obligation.
+- The `?` operator and the `throws` clause are not runtime features
+  with a verification extension; they are **verification primitives
+  with a runtime implementation** chosen by the compiler
+  per-obligation. Reflection needs no marker at all: a pure,
+  single-expression function IS its own definition to the solver.
 
 The payoff: *you never choose between expressive code and provable
 code.* You write ordinary Verum and decide, per function or per
@@ -169,13 +170,14 @@ SMT-LIB formula. Key responsibilities:
 
 - **Theory selection.** Int / Real / Bool / Bitvector / Array / String
   / Sequence — each term picks its native SMT sort.
-- **Uninterpreted symbols.** User-defined functions without a
-  `@logic` attribute become uninterpreted function symbols; their
-  arguments' shapes are preserved but their bodies are hidden from
-  the solver.
-- **Refinement reflection.** Functions annotated `@logic` are
-  unfolded into axioms that constrain the uninterpreted symbol;
-  solvers can then reason about their behaviour. See
+- **Uninterpreted symbols.** A user-defined function that does not
+  qualify for reflection becomes an uninterpreted function symbol;
+  its arguments' shapes are preserved but its body is hidden from the
+  solver.
+- **Refinement reflection.** A pure, single-expression, parameterised
+  function whose body is inside the translated fragment gets a
+  defining axiom that constrains its symbol, so solvers can reason
+  about its behaviour. See
   [Refinement reflection](./refinement-reflection.md).
 - **Variant encoding.** ADTs use the disjointness/exhaustiveness
   scheme described in [ADT encoding](./adt-encoding.md). The
@@ -276,14 +278,14 @@ flowchart TB
     Axiom --> Module[module export]
 
     TacticDSL[tactic DSL<br/>verum_smt::proof_search] --> Certificate
-    Logic[@logic functions<br/>refinement reflection] --> Translate
+    Logic[pure predicates<br/>refinement reflection] --> Translate
     Framework[framework_axioms<br/>stratified TCB] --> Kernel
     Cubical[cubical/HoTT<br/>univalence/paths] --> Kernel
 ```
 
-- **Refinement types & `@logic`** → encoded as axioms in the
-  translator; invisible to the kernel (they constrain uninterpreted
-  symbols, not core terms).
+- **Refinement types & reflected predicates** → encoded as axioms in
+  the translator; invisible to the kernel (they constrain
+  uninterpreted symbols, not core terms).
 - **`theorem`/`lemma` declarations** → obligations with real kernel
   terms; the tactic DSL produces `CoreTerm` values that the kernel
   checks directly.
@@ -311,16 +313,18 @@ LIA / arithmetic. Every solver handles it; usually sub-millisecond.
 ### 5.2 Refinement + reflection
 
 `safe_index(xs, i) requires i < len(xs)`. The predicate references
-user functions (e.g., `len`). If the function is `@logic`, the
-solver reasons symbolically; otherwise it becomes an opaque UF.
+user functions (e.g., `len`). If the function reflects, the solver
+reasons symbolically; otherwise it becomes an opaque UF.
 
 ### 5.3 Inductive / structural
 
 `length(append(xs, ys)) == length(xs) + length(ys)`. Needs
 induction over `xs`. Verum offers three mechanisms:
 - `proof by induction(xs)` — the tactic generates cases and base.
-- Quantifier axioms via `@logic` unfolding — works for simple
-  recursive laws when the solver's quantifier handling cooperates.
+- Quantifier axioms from reflected predicates — works for simple
+  laws when the solver's quantifier handling cooperates. Note that
+  reflection is non-recursive today, so a self-calling predicate does
+  not become an axiom.
 - Manual structured proof (`have` chain + `ind` tactic) for cases
   the solver can't close directly.
 
@@ -412,8 +416,9 @@ gradient lets you climb:
    failing proofs surface as build errors. Sampling via
    `@verify(level = Runtime)` lets you defer individual failures.
 3. **Add contracts** — `requires` / `ensures` on function
-   signatures. Proof obligations expand; you may need `@logic` on
-   a helper. Reflection is cheap.
+   signatures. Proof obligations expand; a helper predicate reflects
+   automatically if it is pure and single-expression. Reflection is
+   cheap.
 4. **Write theorems** — `theorem sort_is_stable { proof by … }`.
    Now you're writing proofs, not just annotations.
 5. **Certify** — `@verify(strategy = Certified)` on the
@@ -648,10 +653,11 @@ part of the shipping release:
 **Verification core**
 
 - **Two-layer dispatch** — `VerificationLevel` × `VerifyStrategy`
-  with machine-checked policy table (`evaluate_attempt`). Nine
+  with machine-checked policy table (`evaluate_attempt`). Thirteen
   strategies in the gradual ladder.
-- **Refinement types + `@logic` reflection** — user functions
-  lifted into solver axioms with unfold-budget knobs.
+- **Refinement types + reflection** — pure user predicates lifted
+  into solver axioms, including projections over record fields and
+  protocol methods.
 - **ADT encoding** — native SMT datatypes per variant with cached sort
   reuse.
 - **Cubical / HoTT primitives** — `PathTy`, `HComp`, `Transp`,

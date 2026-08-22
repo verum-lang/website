@@ -71,19 +71,20 @@ Increase per-project: `verum.toml [verify] solver_timeout_ms = 30_000`.
 ### "Solvers disagreed on obligation"
 
 A portfolio run found two adapters disagreeing. Very rare — usually a
-solver bug. Report with the SMT-LIB query (`verum verify --emit-smtlib`)
+solver bug. Report with the failing source and the prover trace
+(`VERUM_TRACE_PROOFS=1 verum verify …`)
 so the Verum team can file it upstream.
 
 ### "I can see my obligation is true, but the solver can't"
 
 Three levers:
-1. **Add a `@logic` helper** that names the key predicate. The solver
+1. **Add a pure helper predicate** that names the key predicate. The solver
    can reuse the fragment rather than re-deriving it.
 2. **Supply a hint via `have`** inside a proof block:
    `have h: x < y by auto;`.
 3. **Upgrade to `@verify(certified)`** and write the proof manually.
 
-### "Cannot reflect `@logic fn` — NotReflectable"
+### "Cannot reflect a reflected function — NotReflectable"
 
 The function violated the soundness gate (pure + total + closed).
 Check:

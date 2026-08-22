@@ -346,7 +346,7 @@ A bounded ring buffer whose:
 - **[language/dependent-types](/docs/language/dependent-types)** —
   when you need a value *inside* a type.
 - **[verification/refinement-reflection](/docs/verification/refinement-reflection)** —
-  `@logic` helpers for non-SMT-native predicates.
+  pure helper predicates for non-SMT-native properties.
 - **[cookbook/refinements](/docs/cookbook/refinements)** — catalogue
   of useful refined types.
 - **[tutorials/verified-data-structure](/docs/tutorials/verified-data-structure)** —

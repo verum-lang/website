@@ -123,9 +123,10 @@ A consumer can:
 
 ## Refinement reflection — `reflection.vr`
 
-Lets user-defined `@logic` functions appear as axioms in the SMT
-solver. The **soundness gate** enforces that only pure + total +
-closed functions are reflectable — the rest are rejected by the
+Lets user-defined pure predicates appear as definitions in the SMT
+solver. The **soundness gate** enforces that only pure,
+single-expression, closed functions are reflectable — the rest are
+left uninterpreted by the
 compiler.
 
 ### `ReflectedFunction`
@@ -185,7 +186,6 @@ public fn to_smtlib_axiom(f: ReflectedFunction) -> Text;
 ### Example
 
 ```verum
-@logic
 fn is_sorted(xs: &List<Int>) -> Bool {
     forall i in 0..xs.len() - 1. xs[i] <= xs[i + 1]
 }

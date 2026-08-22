@@ -142,7 +142,7 @@ contract#"""ensures result >= 0"""  →  SMT-LIB obligation  →  solver  →  v
 - Fails the build with a counter-example on violation.
 
 This runs between Phase 3 and Phase 4 because a contract's proof may
-reference `@logic` functions registered in Phase 2 but must be
+reference reflected predicates registered in Phase 2 but must be
 discharged before the type checker sees the annotated function.
 
 ## Phase 4 — Semantic analysis

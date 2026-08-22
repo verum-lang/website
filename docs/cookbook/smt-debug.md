@@ -51,19 +51,20 @@ considered (overflow, empty collection, NaN).
 
 ### Diagnostic flags
 
-Emit the SMT-LIB sent to the solver:
+Ask the prover to narrate what it did:
 
 ```bash
-$ verum verify --emit-smtlib src/stack.vr
-# writes target/smtlib/*.smt2 — one per obligation
+$ VERUM_TRACE_PROOFS=1 verum verify src/stack.vr
 ```
 
-Run an SMT solver interactively on it:
+Each line names the tactic, the goal it faced and the outcome; an
+`apply` additionally reports how the lemma was instantiated and, on a
+failure, both sides of the unification. This distinguishes the two
+failures that look identical from the outside: a goal that is *hard*,
+and a goal that is *unconstrained* because its predicate never
+reflected.
 
-```bash
-$ smt-backend -st target/smtlib/push_postcond.smt2
-$ smt-backend --stats target/smtlib/push_postcond.smt2
-```
+There is currently no flag that writes the generated SMT-LIB to disk.
 
 Time each obligation:
 
@@ -134,11 +135,13 @@ adapter, but if that's still not enough, escalate:
 proof search in parallel and takes the first success. Otherwise,
 supply lemmas that linearise the reasoning.
 
-#### 6. Missing `@logic` axiom
+#### 6. The helper never reflected
 
-If the predicate refers to a helper function, that function must be
-reflected via `@logic`. Without it, the solver sees an uninterpreted
-function it can't unfold.
+If the predicate calls a helper, that helper must qualify for
+reflection (pure, single expression, parameterised). Otherwise the
+solver sees an uninterpreted function it cannot unfold — and the goal
+is unconstrained rather than hard. The reflection warnings name the
+leaf that failed.
 
 See [Logic functions](/docs/cookbook/logic-functions).
 
@@ -206,19 +209,12 @@ goals are easier.
 
 ### Playbook — "portfolio disagreement"
 
-With `@verify(thorough)`, a disagreement means two solver adapters
-returned conflicting verdicts:
+With `@verify(thorough)` several adapters race the same obligation. If
+two return conflicting verdicts, that is a potential solver bug rather
+than a defect in your code. Action:
 
-```
-warning[V6104]: portfolio solvers disagreed
-  obligation: critical_invariant#3
-  smt-backend:   unsat (142 ms)
-  smt-backend: sat  (counter-example: x = 17, y = 0)
-```
-
-This is exceedingly rare and indicates a potential solver bug. Action:
-
-1. **Extract the SMT-LIB** and test each solver manually.
+1. **Re-run each strategy on its own** to see which adapter produced
+   which verdict.
 2. **Check for timeouts** — sometimes `unknown` is reported as `sat`
    by one tool and `unsat` by another due to resource limits.
 3. **File a bug** with the minimal reproducer — both to Verum and

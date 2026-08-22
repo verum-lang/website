@@ -351,7 +351,6 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 | `@const expr` | expr | force compile-time evaluation |
 | `@meta_macro` | meta fn | expose as a callable `@name(...)` macro |
 | `@tactic` | meta fn | expose as a proof tactic |
-| `@logic` | fn | mark as reflection-eligible |
 | `@llvm_only` | fn | cannot run in VBC interpreter |
 | `@requires_runtime` | fn | needs a specific runtime feature |
 
