@@ -418,12 +418,25 @@ fn abs_c(x: Int) -> NonNeg { if x >= 0 { x } else { -x } }
   },
 ];
 
+/**
+ * Card blurbs are plain strings, not MDX — nothing parses markdown in
+ * them, so a literal `fn<R>(...)` used to render with its backticks on
+ * the page. Split on backtick pairs and render the insides as <code>.
+ */
+function renderInlineCode(text: string): React.ReactNode {
+  const parts = text.split('`');
+  // Even indices are prose, odd indices were between backticks.
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <code key={i}>{part}</code> : <React.Fragment key={i}>{part}</React.Fragment>,
+  );
+}
+
 function PillarCard({pillar}: {pillar: typeof PILLARS[number]}) {
   return (
     <div className={styles.pillarCard} style={{'--accent': pillar.accent} as React.CSSProperties}>
       <div className={styles.pillarAccent} />
       <h3 className={styles.pillarTitle}>{pillar.title}</h3>
-      <p className={styles.pillarBlurb}>{pillar.blurb}</p>
+      <p className={styles.pillarBlurb}>{renderInlineCode(pillar.blurb)}</p>
       <div className={styles.pillarCode}>
         <CodeBlock language="verum">{pillar.code}</CodeBlock>
       </div>
