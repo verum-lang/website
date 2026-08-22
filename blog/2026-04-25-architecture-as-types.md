@@ -26,14 +26,49 @@ into the territory; there is exactly one source of truth, and it
 is the code.
 
 This post walks through ATS-V end-to-end, grounded in the actual
-implementation: 1230 lines of canonical Verum-side type declarations
-in the Architecture module, mirrored by 8320 lines in the
-Architectural kernel surface on the Rust side. It closes with the
-question the language was built around: what changes in this stack
-when much of the code is written not by the engineer holding the
-keyboard but by a model they are prompting.
+implementation: some 4,600 lines of canonical Verum-side declarations
+in the Architecture module, mirrored by roughly 12,000 lines in the
+Architectural kernel surface on the Rust side (figures re-measured
+August 2026; they grow). It closes with the question the language was
+built around: what changes in this stack when much of the code is
+written not by the engineer holding the keyboard but by a model they
+are prompting.
 
 <!-- truncate -->
+
+:::info Update — August 2026: the discipline earned its own medicine, and a rethink is accepted
+
+Two things happened to ATS-V since this post, and both are worth
+stating plainly.
+
+**The checker was caught being decorative — and revived.** An audit
+found the architectural checking phase inert in part of the pipeline
+while stamps accumulated: over two thousand modules carried
+`Lifecycle.Theorem` claims nothing had ever discharged. The phase is
+now live in the default pipeline, and the corpus was re-judged
+honestly — today only a handful of modules carry `Theorem`, each with
+a closed proof triple behind it, and the rest were demoted to the rank
+their evidence actually supports. An annotation layer that is not
+enforced does not stay neutral; it accumulates confident falsehood.
+That lesson is now load-bearing design input.
+
+**A ground-up rethink — ATS-V-2 — is an accepted design.** The
+direction of truth inverts: the compiler *computes* every module's
+Shape from its body (capability rows over the call graph, so
+higher-order code stays polymorphic; capabilities ride on values, not
+just calls); annotations *pin* intent rather than invent the record;
+and the judgment runs in both directions — code exceeding its pin is
+an escalation, a pin exceeding the code is a dead right, and rights
+rot unless their cold paths are kept alive by executed drills.
+Declared capability surfaces become physically enforceable (Verum owns
+its entire syscall surface), with the honest caveat that process
+filters only narrow — widening is a process rebirth, not a mutation.
+The design document lives in the repository under
+`docs/architecture/ats-v2-inference-first.md`; the sections below
+describe ATS-V-1 as shipped, which remains the running system while
+the successor lands.
+
+:::
 
 ## 1. The drift problem, restated
 
@@ -96,9 +131,12 @@ The compiler reads this as an obligation. Every claim — *I expose
 this capability, I require that one, I preserve these boundary
 invariants, I run at this tier, my proof corpus rests on this
 foundation* — is checked against the actual code body and against
-the surrounding graph of cogs. As of this writing, **284 cogs in
-the core stdlib carry an `@arch_module` annotation**; the
-annotation is the standard surface, not an experimental one.
+the surrounding graph of cogs. As of August 2026, **just under 2,500
+files in the core stdlib carry an `@arch_module` annotation**; the
+annotation is the standard surface, not an experimental one — and
+after the honest re-judgment described in the update note above, the
+lifecycle ranks those annotations claim are the ranks their evidence
+supports.
 
 The full primitive reference is on the
 [Eight Architectural Primitives](/docs/architecture-types/primitives) page.
@@ -125,18 +163,19 @@ part of the compiler. There is no place to demote them to "warning
 in the next sprint", because at the type-system level they cannot
 be demoted any more than `Int + Bool` can.
 
-## 4. The thirty-two anti-pattern catalog
+## 4. The anti-pattern catalog — forty entries, append-only
 
 On top of the structural check ATS-V layers a **canonical catalog
 of architectural defects**, each registered as a refinement-level
-predicate. The catalog has thirty-two entries, organised in three
+predicate. The catalog opened at thirty-two entries and has grown —
+append-only — to forty as of August 2026, organised in three
 bands. Each entry publishes a stable RFC code (`ATS-V-AP-NNN` —
 the code never changes), a refinement predicate, a canonical
 example, and a remediation recipe. The implementation in the
 [Anti-patterns module](https://github.com/oldman/verum/blob/main/core/architecture/anti_patterns.vr)
-on the Verum side and the corresponding 1722-line
-anti-pattern kernel intrinsic on the Rust side holds the full
-surface; an excerpt:
+on the Verum side and the corresponding anti-pattern kernel
+intrinsic on the Rust side (some 3,700 lines by August 2026) holds
+the full surface; an excerpt from the original band structure:
 
 | Code | Band | Triggers when |
 |------|------|---------------|
@@ -256,7 +295,8 @@ extension into time, observer-roles, and modal qualification.
 
 MTAC ships seven primitives in the
 [MTAC module](https://github.com/oldman/verum/blob/main/core/architecture/mtac.vr)
-(173 LOC) plus a 575-line MTAC kernel intrinsic on the Rust side.
+plus an MTAC kernel intrinsic on the Rust side (roughly 460 and
+570 lines respectively, August 2026).
 The carriers:
 
 ```verum
@@ -546,7 +586,7 @@ A model that learned to fix `error[E0382]: borrow of moved
 value` in 2020 would still recognise the error in 2026 because
 Rust's diagnostic codes are stable. ATS-V follows the same
 discipline: every anti-pattern carries a stable RFC code
-(`ATS-V-AP-001` through `ATS-V-AP-032`) that *never changes*,
+(`ATS-V-AP-001` onwards) that *never changes*,
 even when the prose explanation is rewritten. The catalog is
 *append-only*: existing patterns are never renumbered or
 removed.
@@ -616,7 +656,8 @@ A short list of claims ATS-V deliberately does *not* make.
 ATS-V promotes eight primitives — Capability, Boundary,
 Composition, Lifecycle, Foundation, Tier, Stratum, Shape — into
 the type system; layers thirty-two canonical defects on top under
-stable RFC codes (`ATS-V-AP-001` … `032`); pins the maturation
+stable RFC codes (`ATS-V-AP-001` onwards — forty and counting,
+append-only); pins the maturation
 status of every artefact to one of seven CVE glyphs; and keeps
 capability, property, and context as three orthogonal axes
 instead of conflating them. The modal-temporal layer (MTAC), the
@@ -624,9 +665,10 @@ counterfactual reasoning engine, the four canonical adjunctions,
 and the self-application discipline extend the static surface
 into time, observer-roles, scenario reasoning, and refactor
 equivalence. Around forty-five audit gates aggregate to a single
-bundle verdict. The implementation is concrete: ~9 550 LOC across
-the Architecture module of the standard library and the
-Architectural kernel surface on the Rust side.
+bundle verdict. The implementation is concrete: roughly 17,000
+lines across the Architecture module of the standard library and
+the Architectural kernel surface on the Rust side (August 2026
+measurement).
 
 No single piece of this is novel. The combination is — under one
 compiler-checked discipline, in a production systems language

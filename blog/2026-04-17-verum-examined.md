@@ -25,7 +25,7 @@ This sounds obvious. It is also the reason a great many language features you ma
 
 Every one of these choices costs something (occasional verbosity, a few familiar idioms ruled out). The payoff is that the language stops lying to its reader. In 2024 the reader was human. In 2026 it is often not. A language that lies — even a little — to a model that doesn't know it's being lied to is a liability, not a convenience.
 
-The three reserved keywords are `let`, `fn`, `is`. Everything else — `type`, `using`, `where`, `async`, `spawn`, `meta`, `theorem` — is a contextual keyword that rebinds to an identifier when used as one. The authoritative grammar is a single EBNF file of a little under twenty-five hundred lines; everything in the language below has a production in it.
+The three reserved keywords are `let`, `fn`, `is`. Everything else — `type`, `using`, `where`, `async`, `spawn`, `meta`, `theorem` — is a contextual keyword that rebinds to an identifier when used as one. The authoritative grammar is a single EBNF file of a little under three thousand lines; everything in the language below has a production in it.
 
 ## 2. Types that carry their invariants
 
@@ -250,7 +250,7 @@ A `cog` is Verum's package — not an archive of source, but an archive of VBC b
 
 The precedent here is the Proof-Carrying Code tradition (Necula, Lee, 1996) and WebAssembly's validation step. Java's bytecode verifier checks type safety; WebAssembly's validator checks more. Verum goes further: the verifier can check refinement predicates up to `@verify(certified)`. Proof terms are exportable to **five active foreign systems with automated re-check** (`verum audit --cross-format` driving `coqc`, `lean`, `agda`, `isabelle build`, `dkcheck` — the `ExportFormat` enum at `crates/verum_kernel/src/cross_format_gate.rs`) plus **Metamath as a static-export target** (`.mm` files for offline verification). The five active re-check backends cover three foundational families — calculus of inductive constructions (Coq, Lean 4), Martin-Löf type theory (Agda), classical higher-order logic (Isabelle), and λΠ-modulo (Dedukti) — so a theorem passing all five is robust across the three families simultaneously.
 
-Inside the validator itself, Verum runs **three independent kernel implementations** in parallel — an LCF-style direct rule-matcher (Algorithm A), a normalisation-by-evaluation kernel (Algorithm B), and a manifest-driven kernel registry (Algorithm C). Every certificate is checked by all three, and the differential gate fails the audit the moment any pair disagrees. This is a structural defence against kernel-implementation bugs that single-kernel systems (Coq, Lean, HOL Light, Isabelle, Agda) cannot match — a substitution bug, a binder-capture mistake, a universe off-by-one is invisible to peer review of the rules but visible the instant a second implementation following orthogonal algorithmic choices disagrees.
+Inside the validator itself, Verum runs **three independent kernel implementations** in parallel — an LCF-style direct rule-matcher (Algorithm A), a normalisation-by-evaluation kernel (Algorithm B), and a manifest-driven kernel registry (Algorithm C). Every certificate is checked by all three, and the differential gate fails the audit the moment any pair disagrees. Since August 2026 every kernel verdict also carries its **provenance** — `Computed` (this kernel derived it) or `Cited { source }` (accepted from a named authority, and an empty source is a panic, not a default): a verdict can no longer be stamped without saying where it came from, which closed a real defect where a temporary stamp had outlived the condition it was stamped under. This is a structural defence against kernel-implementation bugs that single-kernel systems (Coq, Lean, HOL Light, Isabelle, Agda) cannot match — a substitution bug, a binder-capture mistake, a universe off-by-one is invisible to peer review of the rules but visible the instant a second implementation following orthogonal algorithmic choices disagrees.
 
 The single-command verdict is `verum audit --bundle`: it runs every load-bearing gate (bridge-discharge, kernel-discharged-axioms, apply-graph, cross-format-roundtrip, three-kernel differential, framework footprint, signatures, proof-honesty, ladder monotonicity, …), aggregates them into one `bundle.json` with top-level `l4_load_bearing: bool`, and gives a CI a single yes/no answer about whether the cog is ready to ship.
 
@@ -265,6 +265,23 @@ The consequence is architectural rather than performance-headline-worthy:
 - `verum run` starts in milliseconds because it skips native codegen. Every VBC opcode has a direct interpreter handler; the primary plus extended opcode tables together approach the scale of a real machine's instruction set.
 - `verum build --release` runs the same front end, the same type checker, the same CBGR analysis, and only differs in the final lowering step.
 - Behaviour under the two paths is the same. A test that passes under the interpreter passes under AOT; a panic reproduces on both; a verification obligation discharges once.
+
+*Update, August 2026.* That identity claim is now **enforced, not
+assumed** — and the enforcement earned its keep. An audit of the
+allocation intrinsics found the AOT lowering placing a raw pointer
+where the declaration promises a `Result` (the interpreter had always
+built the `Result`); the two tiers were honouring different contracts
+and only one of them was the declared one. The fix went beyond the one
+site: a CI-gated check now pins every `@intrinsic` declaration's arity
+to the dispatch registry (it caught five real drifts on landing,
+including a 1046-line shadow signature table nothing ever read —
+deleted), and where the AOT lowering cannot perform a dispatch the
+interpreter would perform, the compiled program **aborts with a
+diagnostic naming the method** instead of computing a different
+answer. Silent tier divergence — one source, two answers — is treated
+as the worst failure class the toolchain can have, and the discipline
+that holds the line is machine-checked agreement between the
+declaration, the registry, and both executions.
 - Tooling — LSP, DAP, REPL, Playbook — sits on the same pipeline. There is no "dev mode semantics vs release mode semantics." Python grew that and now spends a significant chunk of its design energy managing the gap.
 
 Languages with this property: BEAM (Erlang/Elixir), the JVM, the CLR, LuaJIT. Languages without it: C, C++, Rust (separate rustdoc/test/compile paths with differences), Swift, Go. Verum is firmly in the VBC-first camp, which is unusual for a systems language targeting native.
