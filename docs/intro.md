@@ -310,6 +310,15 @@ The interpreter and AOT path **share the same bytecode** —
 correctness is identical; the difference is execution time vs.
 startup time.
 
+That identity is *enforced*, not assumed. In the rare case where the
+AOT lowering cannot perform a dispatch the interpreter would perform
+(a compiler defect, never a user error), the compiled program aborts
+with a diagnostic that names the method involved — it does not fall
+back to a guess. Silent tier divergence — the same source computing
+a *different answer* under the two modes — is treated as the worst
+possible failure class, and the toolchain's own conformance suites
+run every spec against both tiers to hold the line.
+
 A Verum *script* is a `.vr` file with a `#!` shebang line and no
 `fn main()` — top-level statements are the program. Scripts run
 directly via `verum hello.vr` or `./hello.vr` with no

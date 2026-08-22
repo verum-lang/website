@@ -25,7 +25,34 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
-### Fixed — a function body may start with `it` (2026-08-10)
+### Fixed — AOT honours the allocation intrinsics' declared contract (2026-08-22)
+
+* **`cbgr_alloc` returns what its signature says — on both tiers.** The
+  declaration promises
+  `Result<(&unsafe Byte, UInt32, UInt16), AllocError>`; the interpreter
+  always built that value, but the native (AOT) lowering used to place a
+  **raw pointer** in the result register. Consumers then pattern-matched
+  the pointer as if it were a `Result` variant and read garbage — the
+  root of a family of macOS AOT crashes whose only visible frame was
+  `Shared.new`. The AOT path now builds the full `Result` bit-for-bit
+  like the interpreter (validation, error variant, generation/epoch read
+  back from the allocation header), and allocation goes through one
+  aligned allocator instead of three drifting copies.
+
+* **Alignment is a real parameter now.** The raw-memory intrinsics
+  (`alloc`, `alloc_zeroed`, `dealloc`, `realloc`) declared an `align`
+  the compiler read and discarded — three handlers hardcoded 8, one
+  mapped 0 to 8. Alignment now flows from the declaration through both
+  tiers to the actual allocation, a zero-size allocation is freed
+  correctly instead of leaking, and freeing under a different layout
+  than the allocation is refused loudly.
+
+* **The contract can no longer drift silently.** A CI-gated test now
+  cross-checks every `@intrinsic` declaration's parameter count against
+  the dispatch registry. It caught five real mismatches on landing
+  (including two stale redeclarations that matched *neither* the
+  canonical declarations *nor* the registry, and a 1046-line shadow
+  signature table nothing ever read — both deleted).
 
 * **`fn f(it: Int) -> Int { it.abs() }` now compiles.** It used to fail
   with *"expected `{` to start function body"*, because the compiler

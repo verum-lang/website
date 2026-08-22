@@ -258,6 +258,207 @@
   margin: 0 auto;
 }
 
+/* ─── Quick start ────────────────────────────────────────────────────── */
+.quickStart {
+  padding-top: 3.5rem;
+  padding-bottom: 3.5rem;
+}
+
+.quickStartGrid {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.quickStartIntro h2 {
+  font-family: var(--verum-font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 72, 'SOFT' 60, 'WONK' 0;
+  letter-spacing: -0.022em;
+  margin: 0 0 0.85rem;
+}
+
+.quickStartIntro p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+  margin: 0 0 0.75rem;
+}
+
+.quickStartHint {
+  font-size: 0.92rem;
+}
+
+.terminal {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.14);
+}
+
+.terminalBar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.terminalBar span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ifm-color-emphasis-300);
+}
+
+.terminalBar span:nth-child(1) { background: #f87171; }
+.terminalBar span:nth-child(2) { background: #fbbf24; }
+.terminalBar span:nth-child(3) { background: #34d399; }
+
+.terminalBar em {
+  margin-left: auto;
+  font-style: normal;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-600);
+  letter-spacing: 0.04em;
+}
+
+.terminal :global(.theme-code-block) {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.terminal :global(.prism-code) {
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* ─── Stdlib breadth ─────────────────────────────────────────────────── */
+.stdlibGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.stdlibGroup {
+  padding: 1.35rem 1.5rem;
+  border-radius: 14px;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-top: 3px solid var(--accent, var(--ifm-color-primary));
+}
+
+.stdlibGroup h3 {
+  font-family: var(--verum-font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.8rem;
+  color: var(--accent, var(--ifm-color-primary));
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chip {
+  padding: 0.22rem 0.65rem;
+  border-radius: 9999px;
+  background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-800);
+  white-space: nowrap;
+}
+
+.stdlibFootnote {
+  text-align: center;
+  margin: 2rem 0 0;
+  font-size: 0.95rem;
+}
+
+/* ─── Toolchain ──────────────────────────────────────────────────────── */
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+/* ─── Comparison ─────────────────────────────────────────────────────── */
+.comparison {
+  max-width: 1180px;
+}
+
+.comparisonWrap {
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
+}
+
+.comparisonTable {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  display: table;
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  padding: 0.85rem 1rem;
+  border: none;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  vertical-align: top;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.comparisonTable thead th {
+  font-family: var(--verum-font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--ifm-color-emphasis-100);
+}
+
+.comparisonTable tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ifm-color-emphasis-800);
+  background: var(--ifm-color-emphasis-100);
+}
+
+.comparisonTable tbody tr:last-child th,
+.comparisonTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.comparisonVerum {
+  background: rgba(124, 58, 237, 0.07);
+  border-left: 1px solid rgba(124, 58, 237, 0.25);
+  border-right: 1px solid rgba(124, 58, 237, 0.25);
+}
+
+[data-theme='dark'] .comparisonVerum {
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.comparisonTable td {
+  color: var(--ifm-color-emphasis-700);
+}
+
+.comparisonTable td.comparisonVerum {
+  color: var(--ifm-color-emphasis-900);
+}
+
 .sectionHeader {
   text-align: center;
   max-width: 780px;
@@ -458,6 +659,16 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .quickStartGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .stdlibGrid,
+  .toolGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .section {
     padding: 3.5rem 1.25rem;
   }
@@ -468,8 +679,14 @@
 }
 
 @media (max-width: 576px) {
-  .featureGrid {
+  .featureGrid,
+  .stdlibGrid,
+  .toolGrid {
     grid-template-columns: 1fr;
+  }
+
+  .chip {
+    white-space: normal;
   }
 
   .heroTagline {

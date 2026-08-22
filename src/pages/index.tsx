@@ -96,6 +96,51 @@ function Hero() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Quick start — from zero to a running program, honestly.             */
+/* Commands mirror docs/getting-started/installation.md exactly.       */
+/* ------------------------------------------------------------------ */
+
+function QuickStart() {
+  return (
+    <section className={clsx(styles.section, styles.quickStart)}>
+      <div className={styles.quickStartGrid}>
+        <div className={styles.quickStartIntro}>
+          <h2>Zero to running in one binary</h2>
+          <p>
+            The <code>verum</code> binary is the whole toolchain — compiler,
+            interpreter, LSP server, debugger, REPL, Playbook TUI, formatter,
+            test runner. Prebuilt for six platforms, rebuilt daily. No runtime
+            to install, no package manager required before your first program.
+          </p>
+          <p className={styles.quickStartHint}>
+            <Link to="/docs/getting-started/installation">
+              All six platforms and checksums →
+            </Link>
+          </p>
+        </div>
+        <div className={styles.terminal}>
+          <div className={styles.terminalBar}>
+            <span /><span /><span />
+            <em>terminal</em>
+          </div>
+          <CodeBlock language="bash">{`# Grab today's build (macOS arm64 shown; six triples published daily)
+curl -LO https://github.com/verum-lang/verum/releases/download/dev/verum-dev-aarch64-apple-darwin.tar.gz
+tar xzf verum-dev-aarch64-apple-darwin.tar.gz
+sudo install -m755 verum /usr/local/bin/verum
+
+# Write a program
+echo 'fn main() { print("hello, verum"); }' > hello.vr
+
+# Run it two ways — same bytecode, same semantics
+verum run hello.vr      # Tier 0: interpreter, instant start
+verum build hello.vr    # Tier 1: native AOT binary`}</CodeBlock>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* The language — the everyday surface, before any verification story. */
 /* ------------------------------------------------------------------ */
 
@@ -447,6 +492,138 @@ fn binary_search(xs: &List<Int> { self.is_sorted() },
 }
 
 /* ------------------------------------------------------------------ */
+/* Standard library breadth — module names straight from core/.        */
+/* ------------------------------------------------------------------ */
+
+const STDLIB_GROUPS: {domain: string; accent: string; chips: string[]}[] = [
+  {
+    domain: 'Data',
+    accent: '#38bdf8',
+    chips: ['SQL engine (sqlite, in Verum)', 'postgres', 'mysql', 'redis',
+            'json', 'protobuf', 'encoding', 'compress', 'storage'],
+  },
+  {
+    domain: 'Network',
+    accent: '#a78bfa',
+    chips: ['http/1.1 · 2 · 3', 'tls 1.3', 'quic', 'websocket', 'dns',
+            'url · uri-template', 'proxy', 'weft framework'],
+  },
+  {
+    domain: 'Security',
+    accent: '#f43f5e',
+    chips: ['x509', 'aead · hpke · kdf', 'post-quantum', 'zero-knowledge',
+            'jwt · oidc · webauthn', 'sigstore · tuf', 'constant-time subtle'],
+  },
+  {
+    domain: 'Compute',
+    accent: '#34d399',
+    chips: ['tensors + GPU lowering', 'autodiff', 'simd', 'math',
+            'random', 'hash', 'search'],
+  },
+  {
+    domain: 'Runtime',
+    accent: '#fbbf24',
+    chips: ['async', 'sync · concurrency', 'mem · arenas', 'time',
+            'io · fs', 'signal', 'tracing · metrics'],
+  },
+  {
+    domain: 'Surface',
+    accent: '#e879f9',
+    chips: ['terminal UI (widgets, layout)', 'shell DSL', 'cli args',
+            'text · fmt', 'config', 'money', 'id'],
+  },
+];
+
+function StdlibSection() {
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <h2>The standard library ships whole</h2>
+        <p>
+          Fifty-plus top-level modules, written in Verum on the no-libc
+          substrate and baked into the toolchain binary. Every name below is a
+          directory in <code>core/</code> today — not a roadmap.
+        </p>
+      </div>
+      <div className={styles.stdlibGrid}>
+        {STDLIB_GROUPS.map(g => (
+          <div key={g.domain} className={styles.stdlibGroup}
+               style={{'--accent': g.accent} as React.CSSProperties}>
+            <h3>{g.domain}</h3>
+            <div className={styles.chipRow}>
+              {g.chips.map(c => <span key={c} className={styles.chip}>{c}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className={styles.stdlibFootnote}>
+        <Link to="/docs/stdlib/overview">Browse the standard library →</Link>
+      </p>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Toolchain — what the one binary actually contains.                  */
+/* ------------------------------------------------------------------ */
+
+const TOOLS = [
+  {
+    icon: '▸',
+    title: 'verum run — Tier 0',
+    body: 'The interpreter. Instant start on the same bytecode the AOT path compiles — your development loop is edit → run, no build step, identical semantics.',
+  },
+  {
+    icon: '⚙',
+    title: 'verum build — Tier 1',
+    body: 'Native AOT through LLVM: one self-contained binary at 0.85–0.95× native-C speed, speaking syscalls (or libSystem / kernel32) directly. Cross-target flags included.',
+  },
+  {
+    icon: '✎',
+    title: 'Language server',
+    body: 'Completion, diagnostics, go-to-definition, incremental lossless parsing — the same binary serves your editor over LSP. First-party VS Code extension.',
+  },
+  {
+    icon: '⊙',
+    title: 'Step debugger',
+    body: 'A Debug Adapter Protocol server in the box: breakpoints, stepping, variable inspection — wired to the interpreter tier for zero-rebuild debug sessions.',
+  },
+  {
+    icon: '≋',
+    title: 'REPL & Playbook TUI',
+    body: 'An interactive REPL for quick exploration, and Playbook — a terminal notebook for literate, replayable sessions against real code.',
+  },
+  {
+    icon: '✓',
+    title: 'Tests, benches, audits',
+    body: 'A spec-test runner with tiered conformance levels, criterion benchmarks, escape-analysis reports, and architecture audit gates that aggregate to one verdict.',
+  },
+];
+
+function Toolchain() {
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <h2>One binary, the whole workshop</h2>
+        <p>
+          Everything below ships inside the same <code>verum</code> executable
+          you installed above — there is no companion toolchain to version-match.
+        </p>
+      </div>
+      <div className={styles.toolGrid}>
+        {TOOLS.map(t => (
+          <div key={t.title} className={styles.featureCard}>
+            <div className={styles.featureIcon}>{t.icon}</div>
+            <h3>{t.title}</h3>
+            <p>{t.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Numbers + tooling — measurable claims, enterprise table stakes.     */
 /* ------------------------------------------------------------------ */
 
@@ -479,9 +656,9 @@ function Numbers() {
       <div className={styles.sectionHeader}>
         <h2>By the numbers</h2>
         <p>
-          The toolchain in the box: language server, step debugger (DAP), REPL
-          and playbook TUI, spec-test runner, criterion benchmarks, and audit
-          gates that aggregate to a single verdict.
+          Performance claims here are either measured on benchmarks that live
+          in the repository or held by contract tests that fail the build on
+          regression — never a slide-deck figure.
         </p>
       </div>
       <div className={styles.featureGrid}>
@@ -528,6 +705,16 @@ const FEATURES = [
     title: 'For architects and auditors',
     body: 'Architectural intent — capability discipline, boundary invariants, lifecycle maturity, foundation profile — is a typed annotation checked on every build. Every artefact carries an explicit lifecycle status; promoting and demoting are deliberate, audited actions.',
   },
+  {
+    icon: '▲',
+    title: 'For data & ML engineers',
+    body: 'Tensors with GPU lowering (PTX, Metal, SPIR-V), reverse-mode autodiff, and SIMD in the standard library. An embedded SQL engine plus PostgreSQL, MySQL and Redis wire clients for the data plumbing around the model.',
+  },
+  {
+    icon: '▽',
+    title: 'For security engineers',
+    body: 'X.509, TLS 1.3, AEAD/HPKE/KDF suites, post-quantum and zero-knowledge primitives, JWT/OIDC/WebAuthn, sigstore and TUF — with a constant-time subtle module and capability-typed boundaries the compiler enforces.',
+  },
 ];
 
 function Features() {
@@ -549,6 +736,94 @@ function Features() {
             <p>{f.body}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Side by side — where Verum sits among its neighbours.               */
+/* ------------------------------------------------------------------ */
+
+const COMPARISON: {dim: string; verum: string; rust: string; go: string; c: string}[] = [
+  {
+    dim: 'Memory safety',
+    verum: 'Generational references, three tiers — no lifetime annotations in types',
+    rust: 'Ownership + borrow checker, lifetimes in signatures',
+    go: 'Garbage collector',
+    c: 'Manual',
+  },
+  {
+    dim: 'Formal verification',
+    verum: 'In the language: refinements → SMT → kernel-checked certificates, one dial',
+    rust: 'External tools (Kani, Prusti, Creusot)',
+    go: '—',
+    c: 'External tools (Frama-C, CBMC)',
+  },
+  {
+    dim: 'Concurrency',
+    verum: 'Structured async in the stdlib; select, channels, supervision',
+    rust: 'Library executors (tokio, async-std)',
+    go: 'Goroutines on a managed runtime',
+    c: 'Threads + libraries',
+  },
+  {
+    dim: 'Standard library',
+    verum: 'SQL engine, TLS 1.3/QUIC, terminal UI, tensors — in the box',
+    rust: 'Lean core, rich crates.io ecosystem',
+    go: 'Broad stdlib',
+    c: 'Minimal, per-platform',
+  },
+  {
+    dim: 'Development loop',
+    verum: 'One binary: instant interpreter and native AOT on the same bytecode',
+    rust: 'Compile-first',
+    go: 'Fast compile',
+    c: 'Compile-first',
+  },
+  {
+    dim: 'Embedded / no-libc',
+    verum: 'First-class: no runtime, raw syscalls, bare-metal targets',
+    rust: 'no_std, mature',
+    go: 'Needs the runtime',
+    c: 'First-class',
+  },
+];
+
+function Comparison() {
+  return (
+    <section className={clsx(styles.section, styles.comparison)}>
+      <div className={styles.sectionHeader}>
+        <h2>Side by side</h2>
+        <p>
+          Each of these languages is excellent at what it optimises for.
+          This table is where Verum sits — the column to read is the one
+          whose trade-offs match your problem.
+        </p>
+      </div>
+      <div className={styles.comparisonWrap}>
+        <table className={styles.comparisonTable}>
+          <thead>
+            <tr>
+              <th></th>
+              <th className={styles.comparisonVerum}>Verum</th>
+              <th>Rust</th>
+              <th>Go</th>
+              <th>C / C++</th>
+            </tr>
+          </thead>
+          <tbody>
+            {COMPARISON.map(row => (
+              <tr key={row.dim}>
+                <th>{row.dim}</th>
+                <td className={styles.comparisonVerum}>{row.verum}</td>
+                <td>{row.rust}</td>
+                <td>{row.go}</td>
+                <td>{row.c}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );
@@ -590,11 +865,15 @@ export default function Home(): React.ReactElement {
     >
       <Hero />
       <main>
+        <QuickStart />
         <LanguageSection />
         <Pillars />
         <CodeShowcase />
+        <StdlibSection />
+        <Toolchain />
         <Numbers />
         <Features />
+        <Comparison />
         <CTA />
       </main>
     </Layout>
