@@ -322,10 +322,13 @@ Verum cogs may iterate `anti_pattern_full_roster()` to build
 runtime walks (e.g. an in-process audit cog that records which
 patterns its codebase has cleared).  The roster size is pinned by
 the cross-side test in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs` —
-adding a 33rd code requires updating both the kernel-side
-`AntiPatternCode::full_list()` and the Verum-side roster in the
-same change-set.
+`crates/verum_kernel/tests/k_arch_v_alignment.rs`
+(`pin_anti_pattern_code_count_canonical`) — adding a code requires
+updating both the kernel-side `AntiPatternCode::full_list()` and the
+Verum-side roster in the same change-set, and giving the new pattern
+an executable counterexample in `verum_kernel::arch_probe`
+(`every_roster_code_has_a_probe` refuses a roster entry no run can
+falsify).
 
 Companion types:
 
@@ -391,21 +394,38 @@ Every code in the canonical 40-pattern roster has a corresponding
 | AP-031 | `check_phantom_evolution` | `arch_anti_pattern.rs` |
 | AP-032 | `check_yoneda_inequivalent_refactor` | `arch_anti_pattern.rs` |
 
-All 32 functions return `Option<AntiPatternViolation>` — `None`
-means the predicate holds (no violation), `Some(v)` carries the
-structured diagnostic.  `check_all_anti_patterns` walks every
-function and aggregates violations.  The cross-side pin test in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs::pin_all_thirty_two_codes_have_check_function`
-asserts every entry in this table has a matching `pub fn check_*`
-in the source — adding a 33rd code requires updating both the
-enum and the table in lockstep.
+Every check returns `Option<AntiPatternViolation>` — `None` means the
+predicate holds (no violation), `Some(v)` carries the structured
+diagnostic.  `check_all_anti_patterns` walks every function and
+aggregates violations.  The cross-side pin test in
+`crates/verum_kernel/tests/k_arch_v_alignment.rs::pin_all_canonical_codes_have_check_function`
+asserts every entry in this table has a matching `pub fn check_*` in
+the source, so the enum and the table move in lockstep.
 
-## 12. Adversarial-closure axioms
+## 12. How a pattern is discharged
 
-Beyond the 32 declarative patterns, the Verum-side cog
-`core.architecture.anti_patterns` declares four kernel-discharge
-axioms that close known attack vectors against the declarative
-surface:
+A `@kernel_discharge("kernel_arch_…")` citation asks the kernel to
+attest that a pattern is enforced. The kernel answers by **executing**
+that pattern's canonical counterexample against the live checkers —
+the same `check_all_anti_patterns` entry point the architectural phase
+calls — and the verdict carries both controls:
+
+* the counterexample must be reported with that pattern's code, so a
+  check that is deleted, unwired or vacuous turns the discharge red;
+* the clean baseline must stay silent, so a check that fires
+  indiscriminately cannot pass either.
+
+Forty claims that once shared a single unfalsifiable stamp are
+therefore forty separately falsifiable facts. The verdict also states
+that it was *computed* rather than accepted on citation — see
+[proof honesty](/docs/verification/proof-honesty#evidence-not-just-a-count)
+for what the two evidence kinds mean and how the audit counts them.
+
+### Adversarial-closure axioms
+
+Beyond the declarative patterns, the Verum-side cog
+`core.architecture.anti_patterns` declares kernel-discharge axioms
+that close known attack vectors against the declarative surface:
 
 - `kernel_arch_capability_ontology_check` (closes AT-1) —
   registry validation for `Capability.Custom { tag, schema }`.
@@ -416,6 +436,16 @@ surface:
   Yoneda verdicts demand the full canonical 5-roster.
 - `kernel_arch_consumes_format_check` (closes AT-5) — `consumes`
   field format enforcement.
+
+The CVE articulation-hygiene band (AP-033 .. AP-040) carries its own
+endpoints — `kernel_arch_retracted_citation_check`,
+`kernel_arch_hypothesis_plan_check`,
+`kernel_arch_interpretation_in_mature_check`,
+`kernel_arch_observer_impersonation_check`,
+`kernel_arch_boundless_audit_check`,
+`kernel_arch_implicit_substrate_check`,
+`kernel_arch_anchoring_overextension_check` and
+`kernel_arch_self_reference_check`.
 
 See [adversarial threat modelling](../red-team.md) for full
 attack-vector analysis.
