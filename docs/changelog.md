@@ -25,6 +25,55 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Added — the Playground reborn: gallery, lenses, replayable books (2026-08-23)
+
+* **`verum play` opens a gallery** on empty launch — guided tours
+  built at compile time from `docs/by-example` (one truth of the
+  examples; the old hardcoded tutorial decks are deleted), recent
+  books, blank sheet. The status line always teaches the next 3–5
+  keys; `?` shows the whole map.
+* **Research lenses in the sidebar**: Arch (the notebook's inferred
+  capability surface, escalations red, dead rights yellow — via
+  `verum arch query`), VBC (the bytecode the interpreter actually
+  runs), Tiers (`t` runs the interpreter-vs-AOT judge on demand and
+  reports its cost), Journal (every question the session asked, with
+  wall time and chain address).
+* **`.vrbook` v2 carries a content-address chain** over its code
+  cells: `verum playbook --replay` refuses an out-of-step hand edit
+  before execution (exit 2), re-runs every cell from scratch, and
+  names the first bit-level divergence by cell and address (exit 3);
+  `--freeze report.md` writes the frozen snapshot of what actually
+  happened. Execution timing is a price badge, not a result — it
+  never diverges a replay.
+* **`verum inspect BINARY`** reads the shape manifest every AOT
+  binary now embeds — schema, toolchain, and the program's pinned +
+  inferred capability surface — with no compiler present.
+* **Your First Hour** (getting-started) — a guided sixty minutes from
+  install to a formally verified function, every command output
+  pasted from a live run.
+
+### Fixed — entry points, f-string Debug, honest math refinements (2026-08-23)
+
+* **`module X;` + `fn main` now runs on both tiers.** The header
+  qualified `main` into `X.main`; the interpreter reported "No main
+  function found" while the AOT binary silently exited 1. One rule
+  now lives in the bytecode module itself: bare `main`, else the
+  unique `*.main`, else an honest ambiguity report.
+* **`f"{x:?}"` works everywhere** — the Debug arm desugars to a bare
+  `format_debug` call, which the prelude now provides (the grammar
+  itself emits the name, so the inclusion law applies).
+* **Math return refinements state the exact IEEE-754 image.**
+  `exp: Float{> 0.0}` was real analysis, not IEEE: `exp(-2839)`
+  (the log-domain probability idiom) underflows to exact `0.0` and
+  died on a runtime refinement assert. The whole family (`exp`,
+  `exp2`, `sin`, `cos`, `abs`, `cosh`, `tanh`, `sech`, `erf`) now
+  carries its true image — boundaries IEEE reaches are included,
+  NaN is spelled `it != it`.
+* **`sh("...")` returns what its signature says.** The Tier-0
+  shell intercept wrapped every entry point's result in `Result`;
+  `sh` — whose contract is a bare `ShellResult` — panicked on
+  `.success()`. Each entry point now honours its declared contract.
+
 ### Added — inference-first architecture: `verum arch query`, transitive capability inference, protocol `@max_shape` (2026-08-22)
 
 * **The compiler now COMPUTES every module's capability surface** —
