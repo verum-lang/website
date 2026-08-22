@@ -1,276 +1,104 @@
 ---
 sidebar_position: 5
-title: Playbook
-description: The interactive terminal-UI for exploring a Verum project — discover, invoke, verify, profile.
+title: Playground
+description: The notebook TUI — cells, guided tours, and research lenses over the same vocabulary agents use.
 ---
 
-# Playbook TUI
+# Playground (`verum play`)
 
-`verum playbook` launches a terminal UI for interactive exploration
-of a Verum project — a faster-feedback alternative to the
-REPL + editor cycle.
-
-Think of it as the IDE-on-the-terminal: everything you want to do to
-a function (call it, test it, verify it, inspect its CBGR report,
-profile it) one keystroke away.
-
-## Launching
+`verum play` opens Verum's notebook TUI — the human client of the
+same machine surface that agents and the CLI speak. One derivation of
+every truth, three transports: the CLI for scripts, the Agent
+Protocol for machines, the Playground for people.
 
 ```bash
-$ cd my-project
-$ verum playbook
+$ verum play                 # empty launch → the gallery
+$ verum play notes.vrbook    # open a book
+$ verum play demo.vr         # preload a source file
 ```
 
-On first launch Playbook indexes the project, wires up an async
-runtime, and starts an empty session in the project root's module.
+(`verum playbook` is the same command; `play` is the short alias.)
 
-## What it does
+## The gallery
 
-- **Discover** — auto-indexes functions, types, protocols in your
-  project, plus their dependencies.
-- **Invoke** — call functions interactively with typed argument
-  prompts.
-- **Inspect** — view results with pretty-printing for every stdlib
-  type.
-- **Profile** — measure execution time, allocations, SMT time per
-  call.
-- **Verify** — run `@verify(formal)` on the function at cursor; see
-  obligations discharged live with per-obligation timing.
-- **Replay** — re-run prior invocations with modified arguments.
-- **Trace** — live-replay an invocation's VBC steps, seeing local
-  values at each point.
+An empty launch opens a chooser, not a bare buffer:
 
-## Layout
+- **blank sheet** — an empty notebook;
+- **guided tours** — built from
+  [`docs/by-example`](https://github.com/verum-lang/verum/tree/main/docs/by-example)
+  at compile time: *First steps*, *Collections & functions*,
+  *Abstraction*, *Researcher: memory, proofs, contexts*, plus every
+  remaining chapter. The tours **are** the by-example chapters — one
+  truth of the examples, embedded at build time, zero drift;
+- **recent books** — the working directory's newest `.vrbook` files.
 
-```mermaid
-flowchart TB
-    subgraph TOP["top row"]
-        direction LR
-        EXPL["<b>Explorer</b><br/><i>src/ · lib.vr · search.vr · tests/</i>"]
-        EDIT["<b>Editor / Result</b><br/><i>fn search(xs: &Sorted, key: Int)</i><br/>Result: Maybe.Some(42)<br/>CBGR: 3 checks · 2 promoted<br/>SMT: 2 obligations · 0.04 s"]
-    end
-    subgraph BOT["bottom row"]
-        PROMPT["<b>Prompt</b> — line-editing REPL<br/><code>&gt; xs := [1, 2, 3, 42, 100]</code><br/><code>&gt; key := 42</code><br/><code>&gt; search(&xs, key)</code>"]
-    end
-    TOP --> BOT
-```
+## Cells and the state law
 
-Three panels, always visible:
+A notebook is a sequence of markdown and code cells. The accumulated
+session is a **growing module**: conceptually, cell *k* runs against
+the module formed by cells 1..k — state lives in the question, not in
+a hidden kernel. There is no Jupyter-style invisible state to
+un-reproduce; re-running from the top always means the same thing.
 
-| Panel              | Role                                                                 |
-|--------------------|----------------------------------------------------------------------|
-| **Explorer**       | File tree on the left; select any file to view it.                   |
-| **Editor / Result** | Top-right panel shows the current function's source and last result. |
-| **Prompt**         | Bottom panel is a line-editing REPL.                                 |
+The status line always teaches the next 3–5 keys; `?` opens the full
+key map. Run a cell with `F5` (or `x` in vim mode), all cells with
+`F9` / `X`.
 
-## Navigation
+## Lenses
 
-| Key       | Action                                           |
-|-----------|--------------------------------------------------|
-| `Tab`     | Switch focus among explorer, editor, prompt.     |
-| `Ctrl-P`  | Command palette.                                 |
-| `Ctrl-F`  | Find function / type / protocol.                 |
-| `Ctrl-R`  | Search command history.                          |
-| `F5`      | Re-run current invocation.                       |
-| `F7`      | Open function's source.                          |
-| `F9`      | Toggle profiling panel.                          |
-| `F10`     | Open CBGR tier report for this function.         |
-| `F11`     | Open SMT trace for the latest verification.      |
-| `Ctrl-C`  | Cancel running invocation.                       |
-| `Ctrl-L`  | Clear prompt (no history loss).                  |
-| `Esc`     | Leave search / dialog / modal.                   |
+`Tab` cycles the sidebar through one lens at a time — one cell, many
+truths; the lens picks which to show:
 
-## Command palette
+| Lens | Shows | Source |
+|---|---|---|
+| Vars | bindings with inferred types and value previews | execution context |
+| Cells | outline of the notebook | session |
+| **Arch** | the notebook-as-module's inferred capability surface, its `@arch_module` pin, escalations (red) and dead rights (yellow), unresolved calls | `verum arch query` |
+| **VBC** | the bytecode of the notebook, disassembled from the same `VbcModule` artifact the interpreter runs | in-process disassembler |
+| **Tiers** | interpreter-vs-AOT verdict — on demand only: press `t` (it builds both tiers and reports its cost) | `verum diff-tiers` |
+| **Journal** | the session's glass mind: every question asked — runs, queries, judgments — with wall time and chain address | session ledger |
+| Session | execution stats | session |
 
-`Ctrl-P` opens a fuzzy-search menu. Common actions:
+The cheap lenses (Arch, VBC) refresh themselves whenever their
+subject may have changed while visible — landing on the tab,
+executing cells with the tab open. The expensive lens (Tiers) answers
+only when explicitly asked, and the answer wears its price.
 
-- **Run test module** — pick a file, execute every `@test` in it.
-- **Verify selected function** — runs `@verify(formal)` on the
-  cursor's function.
-- **Explain refinement failure** — on a failed verification, open
-  the counter-example explorer.
-- **Open CBGR report** — show tier-analysis for the current function.
-- **Toggle proof search trace** — stream tactic invocations live.
-- **Export session as test** — turn the current invocation history
-  into a `@test` file.
-- **Profile current function** — benchmark with 10 000 warmup +
-  100 000 iterations.
-- **Switch runtime profile** — toggle between `debug`, `release`,
-  `release-with-proofs`.
+## Books: `.vrbook` v2 and bit-for-bit replay
 
-## The prompt language
-
-The prompt accepts three forms:
-
-### Bind a value
-
-```
-> xs := [1, 2, 3, 42, 100]
-> key := 42
-```
-
-The name is declared in the session's scope. Types are inferred.
-
-### Invoke a function
-
-```
-> search(&xs, key)
-Result: Maybe.Some(3)
-```
-
-Arguments use ordinary Verum expressions — literals, name
-references, or method chains.
-
-### Evaluate an expression
-
-```
-> xs.len() + 1
-6
-```
-
-Expressions that are not function calls evaluate and print.
-
-## Session persistence
-
-Playbook sessions are saved to `.verum/playbook/sessions/`. Each
-session records every invocation, every bound value, and every
-result.
-
-To restore a session next time:
+A saved book carries its **content-address chain**: cell *k*'s
+address is `sha256(address[k-1] ‖ source[k])` over the code cells.
+The chain makes books replayable:
 
 ```bash
-$ verum playbook --session last
-$ verum playbook --session "2026-04-17-abc123"
+$ verum play --replay notes.vrbook
+    Finished replay identical: 9 cells (7 compared, 2 unrecorded), chain head 368f81f5af26
 ```
 
-### Export a session
+- a book whose recorded chain does not match its sources (an
+  out-of-step hand edit) is refused **before execution** — exit 2;
+- a recorded output that does not reproduce bit-for-bit names its
+  cell and address — exit 3;
+- identical — exit 0.
 
-```
-> export session tests/playbook_session.vr
-```
+Execution timing is a price badge, not a result: it is stripped from
+the comparison, so replays never diverge on the clock.
 
-Generates a runnable test file from your exploration:
+`--freeze report.md` replays and then writes a frozen snapshot — the
+sources, chain addresses, and the outputs that *actually happened* on
+that run. The frozen book is a report; the live book stays the truth.
 
-```verum
-// tests/playbook_session.vr  (generated by verum playbook)
-mount my_project.*;
+## Keys (defaults)
 
-@test
-fn session_20260417_1423() {
-    let xs = [1, 2, 3, 42, 100];
-    let key = 42;
-    assert_eq(search(&xs, key), Maybe.Some(3));
-}
-```
+| | |
+|---|---|
+| `↑/↓` (`j/k`) | move between cells |
+| `Enter` (`i`) | edit the cell; `Esc` leaves |
+| `F5` (`x`) | run cell · `F9` (`X`) run all |
+| `Ins` (`o`) | new cell · `Del` (`D`) delete |
+| `Tab` | next lens · `Ctrl+B` toggle sidebar |
+| `t` | (in the Tiers lens) run the tier judge |
+| `?` | the full key map |
+| `Ctrl+S` | save · `q` quit |
 
-## Context bindings
-
-Bind contexts interactively; they persist for the session:
-
-```
-> bind Database = postgres://localhost/dev
-> bind Logger   = ConsoleLogger.new(LogLevel.Debug)
-> bind Clock    = SystemClock.new()
-
-> fetch_user(UserId(42))
-User { id: 42, name: "Alice", email: "alice@example.com", ... }
-```
-
-The bindings propagate through every call. Call a function that
-needs a different context and Playbook prompts you for it:
-
-```
-> send_email(UserId(42), "welcome")
-? Email context not bound. Bind now?  (s)mtp  (m)ock  (f)ile  (n)one
-> m
-✓ bound Email = MockEmail.new()
-Result: Result.Ok(())
-```
-
-## Verification in the TUI
-
-Put the cursor on a function and press `F10`. The verification panel shows:
-
-**Strategy:** `formal`
-
-| Obligation                                                       | Time       | Solver  | Result |
-|------------------------------------------------------------------|------------|---------|--------|
-| `requires xs.is_sorted()`                                        | 18 ms      | smt     | pass   |
-| `ensures result.is_some() => xs[result.unwrap()] == key`         | 42 ms      | smt     | pass   |
-| `ensures result.is_none() => forall i in xs. xs[i] != key`       | 500 ms     | —       | **timeout** |
-
-**Total:** 2 / 3 discharged, 1 timed out.
-
-**Actions:**
-
-| Key | Action                          |
-|-----|---------------------------------|
-| `a` | Explain failure (counter-example) |
-| `r` | Retry with `thorough` strategy  |
-| `e` | Edit the function in place      |
-
-Press `a` for the counter-example, `r` to race more solvers, `e` to
-edit the function without leaving Playbook.
-
-## Integration with LSP
-
-Playbook uses the same indexer as the LSP server — no duplicate
-parsing. Changes to source files invalidate cached call results
-automatically. Run `verum lsp` alongside Playbook in a second pane,
-and your editor's inline diagnostics and Playbook's call results
-stay in sync.
-
-## Profiling
-
-Press `F9` to toggle the profiling panel. Sample output for `search(&xs, key)`:
-
-| Metric          | Value                                             |
-|-----------------|---------------------------------------------------|
-| wall time       | 18 ns  (2 000 000 iters, σ 1.1 ns)                |
-| allocations     | 0                                                 |
-| SMT time        | 0 (cached)                                        |
-| CBGR checks     | 0  (all promoted)                                 |
-
-**Most costly callees:**
-
-| Function                    | Time    | Share |
-|-----------------------------|---------|-------|
-| `List.binary_search_by`    | 13 ns   | 72%   |
-| `List.len`                 | 1 ns    | 6%    |
-
-## Breakpoints and step-through
-
-Playbook is not a full debugger, but it can step through VBC
-execution for debugging:
-
-```
-> trace search(&xs, key)
-step 1 / 27: call search(...)      locals: xs, key
-step 2 / 27: let lo = 0            locals: xs, key, lo=0
-step 3 / 27: let hi = xs.len()     locals: xs, key, lo=0, hi=5
-...
-```
-
-Press space to advance, `b` to set a conditional breakpoint (e.g.
-"when lo > 10").
-
-## Command-line flags
-
-```
-verum playbook [options]
-  --session NAME      Resume the named session.
-  --no-verify         Skip verification on invocation (faster iteration).
-  --profile PROFILE   Use a named build profile.
-  --workspace PATH    Switch to a different workspace root.
-  --bind K=V          Pre-bind a context before the TUI opens.
-```
-
-## See also
-
-- **[REPL](/docs/tooling/repl)** — line-oriented interactive mode,
-  without the TUI overhead.
-- **[LSP](/docs/tooling/lsp)** — language server (same indexer).
-- **[`stdlib/term`](/docs/stdlib/term)** — the 7-layer TUI framework
-  Playbook uses.
-- **[tutorials/cli-tool](/docs/tutorials/cli-tool)** — a program
-  whose exploration benefits from Playbook.
+`--vim` enables the vim-style bindings shown in parentheses.

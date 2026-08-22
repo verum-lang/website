@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'getting-started/installation',
         'getting-started/hello-world',
+        'getting-started/first-hour',
         'getting-started/tour',
         'getting-started/project-structure',
         'getting-started/script-mode',

@@ -130,6 +130,36 @@ divergence so CI fails by default. One bytecode with two executions
 is the language's core promise; this command makes the promise
 continuously checkable rather than point-fixed.
 
+## Binary shape manifests
+
+```bash
+verum inspect BINARY [--json]         # what does this binary claim to do?
+```
+
+Every AOT binary embeds a **shape manifest**: a magic-tagged JSON
+block carrying the schema version, the building toolchain, and the
+program's capability surface (pinned and inferred) as the compiler
+judged it. `verum inspect` reads it back **without the compiler** —
+from any Verum binary, anywhere — so a deployed artifact can answer
+"what may you do?" years after its build. A non-Verum binary is
+refused with a diagnosis (exit 1), never guessed at.
+
+## Notebook replay
+
+```bash
+verum playbook --replay BOOK.vrbook           # bit-for-bit replay verdict
+verum playbook --freeze REPORT.md BOOK.vrbook # replay + frozen snapshot report
+```
+
+`.vrbook` v2 notebooks carry a content-address chain over their code
+cells. `--replay` recomputes the chain from the sources (an
+out-of-step hand edit is refused before execution, exit 2), re-runs
+every cell from scratch, and compares recorded outputs bit-for-bit —
+the first divergence names its cell and address (exit 3). `--freeze`
+additionally writes the frozen report: sources, chain addresses, and
+the outputs that actually happened on that run. See
+[Playground](/docs/tooling/playbook) for the notebook itself.
+
 ## Verification & analysis
 
 ```bash
