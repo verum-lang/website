@@ -90,6 +90,37 @@ the comparison, so replays never diverge on the clock.
 sources, chain addresses, and the outputs that *actually happened* on
 that run. The frozen book is a report; the live book stays the truth.
 
+## The cell editor
+
+Editing a cell opens a real code editor, not a line buffer: syntax
+highlighting, bracket-match highlighting, a `Ln, Col` status in the
+frame title, and horizontal panning for long lines. It stays fast on
+megabyte-class buffers — undo history is stored as line-span deltas,
+so typing in a 40 000-line cell costs the same as in a 4-line one.
+
+**Modal fullscreen**: `Ctrl+F` / `F11` expands the editor over the
+whole terminal — the notebook disappears until you leave. The first
+`Esc` collapses the modal back into the notebook; the second leaves
+edit mode.
+
+| Editing | |
+|---|---|
+| `Enter` | auto-indents; after `{` opens an indented block; inside `{}` splits it into open / body / close |
+| `(` `[` `{` `"` | auto-close; typing the closer skips over it; with a selection, wraps it |
+| `Backspace` on an empty pair | removes both halves |
+| `Ctrl+D` | duplicate line / selected block |
+| `Ctrl+Shift+K` | delete line(s) |
+| `Alt+↑/↓` | move line / block up / down |
+| `Ctrl+/` | toggle `//` comments |
+| `Tab` / `Shift+Tab` | indent / dedent a multi-line selection |
+| `Ctrl+K` · `Ctrl+J` | kill to end of line · join lines |
+| `Ctrl+←/→` | move by word · `Ctrl+Backspace/Del` delete by word |
+| `Home` | smart home (first non-blank ↔ column 0) |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | undo / redo (word-level coalescing) |
+| `Ctrl+C/X/V` | system clipboard · `Ctrl+A` select all |
+| `Tab` (bare cursor) | complete word (cycles) |
+| `F5` / `Ctrl+R` / `Alt+Enter` | run the cell from inside the editor |
+
 ## Keys (defaults)
 
 | | |
@@ -100,6 +131,7 @@ that run. The frozen book is a report; the live book stays the truth.
 | `Ins` (`o`) | new cell · `Del` (`D`) delete |
 | `Tab` | next lens · `Ctrl+B` toggle sidebar |
 | `t` | (in the Tiers lens) run the tier judge |
+| `/` | search across cells (both binding modes) |
 | `?` | the full key map |
 | `Ctrl+S` | save · `q` quit |
 
