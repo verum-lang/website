@@ -27,6 +27,13 @@ before `0.1.0` is cut.
 
 ### Added — the Playground reborn: gallery, lenses, replayable books (2026-08-23)
 
+* **Cells execute through the real compiler** — the notebook's
+  parallel execution bridge is deleted; cells run as a growing
+  module through the same stdlib-linked compiler `verum run` uses.
+  Practical difference: `mount core.…` works in a cell (the old
+  bridge silently produced nothing), failures are honest compiler
+  diagnostics, and the Vars lens shows values from the actual run.
+
 * **`verum play` opens a gallery** on empty launch — guided tours
   built at compile time from `docs/by-example` (one truth of the
   examples; the old hardcoded tutorial decks are deleted), recent

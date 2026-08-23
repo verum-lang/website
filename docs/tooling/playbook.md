@@ -35,10 +35,12 @@ An empty launch opens a chooser, not a bare buffer:
 ## Cells and the state law
 
 A notebook is a sequence of markdown and code cells. The accumulated
-session is a **growing module**: conceptually, cell *k* runs against
-the module formed by cells 1..k — state lives in the question, not in
-a hidden kernel. There is no Jupyter-style invisible state to
-un-reproduce; re-running from the top always means the same thing.
+session is a **growing module**: cell *k* runs against the module
+formed by cells 1..k, recomputed from source through the same
+compiler `verum run` uses — state lives in the question, not in a
+hidden kernel. There is no Jupyter-style invisible state to
+un-reproduce, and cells reach the entire stdlib through `mount`,
+exactly like any script.
 
 The status line always teaches the next 3–5 keys; `?` opens the full
 key map. Run a cell with `F5` (or `x` in vim mode), all cells with
@@ -51,7 +53,7 @@ truths; the lens picks which to show:
 
 | Lens | Shows | Source |
 |---|---|---|
-| Vars | bindings with inferred types and value previews | execution context |
+| Vars | top-level bindings with values FROM the last run | the run's VARS channel |
 | Cells | outline of the notebook | session |
 | **Arch** | the notebook-as-module's inferred capability surface, its `@arch_module` pin, escalations (red) and dead rights (yellow), unresolved calls | `verum arch query` |
 | **VBC** | the bytecode of the notebook, disassembled from the same `VbcModule` artifact the interpreter runs | in-process disassembler |
