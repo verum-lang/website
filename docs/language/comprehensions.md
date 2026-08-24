@@ -101,11 +101,13 @@ let unique_domains = set{
 
 ## Generators — `gen{expr for ... }`
 
-Returns an existential `some I: Iterator<Item = T>` — Verum has no
-`impl Trait`-in-return-position sugar, `some` is the real keyword
-(see [Generics → Existential types](/docs/language/generics#existential-types)).
-Laziest of the container forms — no materialisation, no stream
-plumbing, just an iterator protocol.
+The laziest of the container forms — no materialisation, no stream
+plumbing, just the iterator protocol. A `gen{…}` expression evaluates
+to a `Generator<T>`; a function can return it under that concrete
+name or hide it behind an existential `some I: Iterator<Item = T>` —
+Verum has no `impl Trait`-in-return-position sugar, `some` is the
+real keyword (see
+[Generics → Existential types](/docs/language/generics#existential-types)).
 
 ```verum
 fn window_pairs<T: Clone>(xs: &List<T>) -> some I: Iterator<Item = (T, T)> {
@@ -113,6 +115,19 @@ fn window_pairs<T: Clone>(xs: &List<T>) -> some I: Iterator<Item = (T, T)> {
         for i in 0..xs.len() - 1}
 }
 ```
+
+Consume a generator like any iterator — drive it with `for`, or
+materialise it with `.collect()`:
+
+```verum
+let g = gen{ i * i for i in 0..5 };
+let squares: List<Int> = g.collect();   // [0, 1, 4, 9, 16]
+```
+
+One parser note: directly in an iterable position (`for v in gen{…}`)
+the `{` reads as the loop body — bind the generator to a `let` first,
+or parenthesise `(gen{…})`. This is the same disambiguation rule as
+struct literals in `if` conditions.
 
 A generator expression is the simplest way to return an iterator
 without defining a named iterator type. For stateful iterators — those

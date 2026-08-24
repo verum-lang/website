@@ -25,6 +25,42 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — generators and iterator chains: eager consumption is now trustworthy (2026-08-24)
+
+* **`gen{ … }` values survive every way of consuming them.** A
+  generator expression driven by a `for` loop, collected with
+  `.collect()`, returned from a function as `Generator<T>`, or hidden
+  behind an existential `-> some I: Iterator<Item = T>` now yields the
+  same elements on both the interpreter and AOT tiers. Previously each
+  consumption path failed in its own way — silently empty sequences,
+  a list whose `.len()` crashed, or a program that exited mid-`main`
+  on the first iteration — and the documentation's `window_pairs`
+  example (Comprehensions → Generators) did not run at all. It runs
+  now, exactly as printed.
+* **Capturing generator bodies work under AOT.** A generator that
+  closes over locals (`gen{ i * i for i in 0..n }` inside a function
+  taking `n`) compiled to a body that ignored its captures on the
+  native tier, iterating an empty range. Captures now arrive
+  correctly for up to six captured values.
+* **Adapter-chain methods resolve wherever the chain was built.**
+  Long lazy chains (`.iter().map(..).dedup()`, `.inspect(..)
+  .map(..)`, `.peekable()` then `peek_mut()`) hit "method not found"
+  or mis-typed closures when the receiver type was known only through
+  a return value. The archive loader now tracks return-type
+  reachability, so an adapter's whole method surface loads with it —
+  cold-start cost is unchanged.
+* **`partition` builds its containers.** A terminator whose result
+  container appears only in the return type (`partition(p) ->
+  (C, C)`) received no type witness at runtime and fabricated an
+  integer where a `List` belonged. The witness now flows from the
+  binding annotation: `let (evens, odds): (List<Int>, List<Int>) =
+  range(0, 10).partition(|x| *x % 2 == 0);` splits correctly.
+* **Explicit `size_hint` implementations are dispatched again.** A
+  materialised protocol default could shadow a type's own override
+  depending on declaration order; `range(0, 10).size_hint()` answered
+  `(0, None)` instead of `(10, Some(10))`. Declaration order no
+  longer decides dispatch.
+
 ### Added — the Playground reborn: gallery, lenses, replayable books (2026-08-23)
 
 * **Cells execute through the real compiler** — the notebook's

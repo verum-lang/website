@@ -118,6 +118,7 @@ and with any terminator.
 | `rev()` | back to front — needs `DoubleEndedIterator` |
 | `peekable()` | adds `peek()`, which looks without consuming |
 | `inspect(f)` | items unchanged, calling `f` on each |
+| `dedup()` | items with consecutive duplicates collapsed |
 
 ```verum
 xs.iter().take_while(|x| **x < 16).count()    // 2
@@ -140,6 +141,7 @@ Each consumes the iterator and produces a value.
 | `any(p)` / `all(p)` | `Bool`, short-circuiting |
 | `find(p)` / `position(p)` | the first match / its index — `Maybe` |
 | `min()` / `max()` / `last()` / `nth(n)` | `Maybe` |
+| `partition(p)` | two containers — items where `p` holds, then the rest |
 | `for_each(f)` | nothing; calls `f` on each item |
 
 `collect` needs to know what to build. Either annotate the binding or say
@@ -148,6 +150,14 @@ it at the call:
 ```verum
 let doubled: List<Int> = xs.iter().map(|n| n * 2).collect();
 print(xs.iter().map(|n| n * 2).collect<List<Int>>());
+```
+
+`partition` follows the same rule — its two result containers are named
+by the binding annotation:
+
+```verum
+let (evens, odds): (List<Int>, List<Int>) =
+    range(0, 10).partition(|x| *x % 2 == 0);
 ```
 
 ## for loops
