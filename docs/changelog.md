@@ -25,6 +25,24 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — the playground's screen, its VBC lens, and headless replay (2026-08-25)
+
+* **Nothing can paint over the interface any more.** Diagnostics from
+  the compiler, warnings, and messages from background work used to go
+  to the same terminal the notebook draws on, smearing borders and
+  panels — which looks exactly like the interface breaking. Those
+  writes are captured and shown in a new **Console** lens instead.
+* **The VBC lens no longer freezes the frame.** It compiles the whole
+  notebook, which was happening on the interface thread; cycling
+  through the sidebar felt like a hang. It now works in the
+  background and shows `disassembling…` until its answer arrives.
+* **A cell that prints nothing says so.** An empty output panel and a
+  broken one used to look identical; a silent run is now labelled, and
+  the status line reports how many output lines arrived.
+* **`verum play --replay` works.** Headless replay never installed the
+  script compiler and answered `CompilerUnavailable` for every book —
+  reading as a broken book rather than a missing step.
+
 ### Changed — the compiler refuses to ship a degraded build (2026-08-25)
 
 Compilation is now **strict by default**. Where the compiler

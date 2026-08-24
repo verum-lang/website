@@ -59,12 +59,21 @@ truths; the lens picks which to show:
 | **VBC** | the bytecode of the notebook, disassembled from the same `VbcModule` artifact the interpreter runs | in-process disassembler |
 | **Tiers** | interpreter-vs-AOT verdict — on demand only: press `t` (it builds both tiers and reports its cost) | `verum diff-tiers` |
 | **Journal** | the session's glass mind: every question asked — runs, queries, judgments — with wall time and chain address | session ledger |
+| **Console** | anything the process wrote outside the notebook — compiler diagnostics, warnings, a worker's panic message | captured stdout/stderr |
 | Session | execution stats | session |
 
-The cheap lenses (Arch, VBC) refresh themselves whenever their
-subject may have changed while visible — landing on the tab,
-executing cells with the tab open. The expensive lens (Tiers) answers
-only when explicitly asked, and the answer wears its price.
+The Arch lens refreshes itself whenever its subject may have changed
+while visible. The VBC lens compiles the whole notebook, so it works
+on a background thread and shows `disassembling…` until the answer
+arrives — switching tabs never blocks the interface. The expensive
+lens (Tiers) answers only when explicitly asked, and the answer wears
+its price.
+
+Writes that are not the notebook's own output — a diagnostic from the
+compiler, a warning, a stray message from a worker — are captured for
+the **Console** lens rather than printed over the interface. A cell
+that produces no output says so, so an empty panel never has to be
+distinguished from a broken one.
 
 ## Books: `.vrbook` v2 and bit-for-bit replay
 
