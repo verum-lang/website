@@ -72,19 +72,34 @@ Generators can take arguments and interact with other iterators.
 
 ## Consuming sync generators
 
-Generators are iterators; every combinator works:
+Drive one with `for`, or pull values with `next()` until it is spent:
 
 ```verum
-let primes: List<Int> = natural_numbers()
-    .skip(2)
-    .filter(|n| is_prime(*n))
-    .take(100)
+fn* three() -> Int { yield 1; yield 2; yield 3; }
+
+for n in three() {
+    print(f"{n} ");            // 1 2 3
+}
+
+let mut g = three();
+while let Maybe.Some(n) = g.next() {
+    print(f"{n} ");            // 1 2 3
+}
+```
+
+Generators are iterators, so the adapter chain applies as well —
+here on a generator expression, materialised with `collect`:
+
+```verum
+let ten: List<Int> = gen{ x * 2 for x in 0..1_000_000 }
+    .take(10)
     .collect();
+// [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
 ```
 
-```verum
-let total: Int = fibonacci().take(20).sum();
-```
+Bound an unbounded sequence at the source — a `while` with an exit
+condition in the generator body, or a bounded range in a `gen{…}` —
+rather than relying on a downstream adapter to stop it.
 
 The entire `Iterator` protocol applies — `.map`, `.filter`,
 `.flat_map`, `.zip`, `.chain`, `.cycle`, `.step_by`, …. See

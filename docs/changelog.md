@@ -55,6 +55,18 @@ before `0.1.0` is cut.
   integer where a `List` belonged. The witness now flows from the
   binding annotation: `let (evens, odds): (List<Int>, List<Int>) =
   range(0, 10).partition(|x| *x % 2 == 0);` splits correctly.
+* **`extend` accepts iterators again.** `Extend.extend` takes any
+  iterator, but the runtime shortcut behind it read whatever it was
+  handed as an array — element access on a `List`, FIELD access on
+  anything else. `list.extend(range(5, 7))` appended `[5, 7, false]`
+  (a `Range`'s three fields), extending from a mapped iterator
+  appended the iterator and the closure, and `extend_one(x)` — which
+  the protocol defines as `extend(once(x))` — appended the wrapper
+  instead of the value. Everything that builds a container
+  element-by-element inherited it: `partition` returned wrapped
+  elements, `unzip` and the grouping patterns failed outright. The
+  shortcut now applies only to real array-shaped collections and
+  otherwise runs the ordinary loop.
 * **Explicit `size_hint` implementations are dispatched again.** A
   materialised protocol default could shadow a type's own override
   depending on declaration order; `range(0, 10).size_hint()` answered
