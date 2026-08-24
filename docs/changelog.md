@@ -25,6 +25,19 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Changed — the compiler refuses to ship a degraded build (2026-08-25)
+
+Compilation is now **strict by default**. Where the compiler
+previously fell back quietly and kept going — monomorphisation
+dropping to the unspecialised module, a signature collision leaving a
+function declared without its body — the build stops and the message
+names the site. Those fallbacks produced binaries that link and then
+behave oddly, which is the most expensive kind of failure to chase.
+
+The permissive behaviour is still available, now as a deliberate
+choice: `verum build --lenient`. See
+[build system → degradation is a build error](/docs/tooling/build-system#degradation-is-a-build-error).
+
 ### Fixed — generators and iterator chains: eager consumption is now trustworthy (2026-08-24)
 
 * **`gen{ … }` values survive every way of consuming them.** A

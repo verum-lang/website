@@ -175,6 +175,27 @@ Any combination can be passed; each flag is independent. These replace
 the output binary when set (a build that only emits `--emit-llvm`
 stops before the native codegen stage).
 
+## Degradation is a build error
+
+When the compiler cannot do a job properly it stops, rather than
+producing something that links and then behaves oddly. Two examples:
+monomorphisation that fails leaves generic call sites resolving to the
+erased body, and a signature collision leaves a function declared
+without its body — the binary links, the call finds garbage. Both fail
+the build, and the message names the site.
+
+If you need the older permissive behaviour — bisecting an upstream
+change, or shipping a build where one degraded corner is understood
+and acceptable — ask for it explicitly:
+
+```bash
+verum build --lenient          # degraded sites warn instead of failing
+```
+
+The flag is process-wide and deliberate: prefer fixing the reported
+site, and keep `--lenient` for the case where you have decided the
+degradation is acceptable this once.
+
 ## Output
 
 ```
