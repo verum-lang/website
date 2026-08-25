@@ -25,6 +25,48 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — `return match { … }` type-checks like the tail form (2026-08-26)
+
+Returning a match explicitly reported errors that the identical code
+without `return` did not:
+
+```verum
+fn parse(b: Bool) -> Result<Int, Text> {
+    return match b {
+        true  => Ok(1),
+        false => Err("bad"),     // reported: expected 'Int', found 'Text'
+    };
+}
+```
+
+The returned value was being typed from the bottom up, with nothing to
+compare it against, so the match's arms were unified with each other
+instead of with the declared return type. Return values are now checked
+against the signature, and the two spellings behave the same.
+
+### Fixed — `?` works on a protocol method that returns a Result (2026-08-26)
+
+`self.field.fmt_debug(f)?` — the ordinary way to write a `Debug`
+implementation that delegates to a field — reported *"`Result` does not
+implement `Try`"*, even though the method is declared to return
+`Result<(), FormatError>`.
+
+Two things had to be fixed for it. The standard library's protocol
+descriptions were arriving with **no methods at all**, because a
+protocol re-exported from several modules was overwritten by an empty
+entry. And a method's recorded return type was dropping its type
+arguments, so `Result<(), FormatError>` became a bare `Result` that `?`
+could not recognise.
+
+### Changed — `BufReader`'s line reader is named `next_line` (2026-08-26)
+
+`BufReader` had its own `read_line()` alongside the `BufRead` protocol's
+`read_line(&mut Text)`. Two methods of the same name on one type made
+every call ambiguous, and reading a file line by line silently produced
+**empty lines**. The convenience method — the one that answers
+`Maybe<Text>` and reports end-of-file as `None` — is now `next_line`
+(and `next_line_async`). The protocol's `read_line` is unchanged.
+
 ### Fixed — the playground's screen, its VBC lens, and headless replay (2026-08-25)
 
 * **Nothing can paint over the interface any more.** Diagnostics from
