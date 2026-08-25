@@ -86,6 +86,24 @@ You use `&unsafe T` when:
 In application code, `&unsafe T` should be rare — typically confined
 to a single function with a comment explaining the obligation.
 
+## Tiers as method receivers
+
+A method's receiver takes a tier the same way any other reference does:
+
+```verum
+implement Counter {
+    fn read(&self) -> Int { self.value }              // Tier 0
+    fn read_fast(&checked self) -> Int { self.value } // Tier 1
+    fn read_raw(&unsafe self) -> Int { self.value }   // Tier 2
+}
+```
+
+All three are methods, called the same way — `c.read_fast()`. The tier
+changes what the runtime has to verify, never how the method is reached.
+An owning receiver (`%self`) and a by-value receiver (`self`) are methods
+too; only a function with no receiver at all is an associated function,
+called as `Counter.new()`.
+
 ## Coercion rules
 
 ```

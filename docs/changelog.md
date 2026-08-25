@@ -43,6 +43,105 @@ before `0.1.0` is cut.
   script compiler and answered `CompilerUnavailable` for every book —
   reading as a broken book rather than a missing step.
 
+### Fixed — `Ok(…)` and `Some(…)` work in multi-file projects (2026-08-25)
+
+Writing `Ok(value)` or `Some(x)` without naming the type worked when a
+file was checked on its own, and failed with **`not a function: Ok`**
+when the very same file was part of a project. Since a project is how
+every real program is built, the idiomatic spelling was effectively
+unavailable outside single-file scripts, and the workaround —
+qualifying every constructor as `Result.Ok(value)` — spread through
+codebases as though it were the required form.
+
+Both ways of building now register the standard library's variant
+constructors identically. The qualified spelling remains valid; it is
+no longer forced.
+
+### Changed — an unmet architectural obligation is an audit finding, not a build failure (2026-08-25)
+
+Architectural declarations distinguish two things that used to be
+punished alike:
+
+* A **false claim** — code declaring a property it does not have —
+  remains a compile error. The declaration is wrong, and that is a
+  defect of the same order as a type error.
+* An **unmet obligation** — a promise that is genuine but not yet
+  discharged, such as a lifecycle stratum awaiting its closure —
+  is now a warning during compilation and a finding in
+  `verum arch check`. Running the audit with `--strict` still exits
+  non-zero, so a pipeline that gates on it keeps gating.
+
+Previously a single outstanding obligation made a source file
+uncompilable, which also removed its names from every module that
+mounted it — one unfinished promise could look like a dozen unrelated
+failures elsewhere.
+
+### Fixed — a shared value reports its own length (2026-08-25)
+
+`Shared.new(list).len()` answered **2** — for every list, whatever its
+length. A shared handle is a small cell holding a reference count and
+the value, and the length was being taken from the cell rather than
+from the value inside it. The number was plausible, nothing reported
+it, and `Shared` is the ordinary way to share a value.
+
+`len` and `is_empty` now read through to the value, as field access and
+method calls already did. `strong_count` still reports on the handle,
+which is what it is for.
+
+Indexing a shared list (`shared[0]`) is still not resolved and reports
+an ambiguous type; that is a separate gap and is being worked.
+
+### Fixed — a qualified path now costs what a mount costs (2026-08-25)
+
+Calling something through its full path — `core.time.Duration.from_secs(30)`,
+the documented way to use a name once without mounting it — produced the
+same program and the same answer as the mounted spelling and took
+**6 minutes 19 seconds** to compile where the mount took under a second.
+On anything with a timeout that reads as a hang.
+
+The compiler was reading a dotted expression one link at a time and
+treating each link as a name to go looking for. Since every standard
+library module mentions `core`, looking for a function called `core`
+meant reading nearly the whole library: 582 modules and 48,815 functions
+loaded to call one function. A dotted path is now read as a single name.
+
+Both spellings now load exactly the same 11 modules, and the one-line
+program compiles in seconds. Choose between them on readability; compile
+time no longer argues for one over the other.
+
+### Fixed — a method's reference tier no longer decides whether it is a method (2026-08-25)
+
+A method declared with a tiered receiver — `fn read(&checked self)` or
+`fn read(&unsafe self)` — was filed as an associated function. The
+symptom was asymmetric and therefore confusing: `Counter.read(&c)`
+worked while `c.read()`, the way every call site actually spells it,
+reported *"no method named `read`"*. The zero-overhead reference tiers
+were consequently unusable on methods, which is most of the code that
+would want them. See
+[references → tiers as method receivers](/docs/language/references#tiers-as-method-receivers).
+
+### Fixed — refinement types no longer hide what the underlying type can do (2026-08-25)
+
+Indexing a value whose type carried both a reference and a refinement,
+as in `fn nth(xs: &List<Int>{len > 0}, i: Int) -> Int { xs[i] }`, was
+rejected with *"cannot index non-indexable type"*. Either layer alone
+was fine; only the combination failed. A refinement says which values
+inhabit a type — it never removes an operation the base type supports,
+and indexing now sees through it.
+
+### Fixed — `Int.MAX` and friends are known to the verifier (2026-08-25)
+
+A function promising a refined result and returning a limit constant —
+`fn abs_value(n: Int) -> Int{>= 0} { … Int.MAX … }` — was reported as
+violating its own refinement, with a counterexample that named an
+impossible value. The verifier treated `Int.MAX` as an unknown
+quantity, so the solver was free to imagine a negative one.
+
+Limit constants of the primitive numeric types (`MIN`, `MAX`, `BITS`,
+and the float constants `EPSILON`, `PI`, `E`, `MIN_POSITIVE`) now
+carry their true values into verification, and proofs that depend on
+them go through.
+
 ### Changed — the compiler refuses to ship a degraded build (2026-08-25)
 
 Compilation is now **strict by default**. Where the compiler

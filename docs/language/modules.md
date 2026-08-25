@@ -200,6 +200,9 @@ Prefer a `mount` when a name is used more than once; the qualified form
 earns its keep where a single reference would otherwise force an import
 that reads as a dependency the file does not really have.
 
+Both spellings load the same modules and compile in the same time, so
+the choice is about readability alone.
+
 ```verum
 mount core.base.iterator.*;
 
