@@ -25,6 +25,63 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a context works across module boundaries (2026-08-26)
+
+A `context` declared in one module could not be used from another, which
+left dependency injection working only where it is not needed — a
+context declared in the file that consumes it is a dependency nobody had
+to inject.
+
+```verum
+// src/config.vr
+public context Clock { fn now() -> Int; }
+
+// src/service.vr
+mount demo.config.{Clock};        // error: cannot find `Clock`
+```
+
+Two things were in the way. The context was missing from the module's
+export table, so the `mount` could not find it; and once it could, the
+`provide` still reported **`undefined context`**, because the import
+told the context resolver about it and never told the context *checker*
+— which is what `provide` consults.
+
+Both are fixed, including a function depending on several contexts from
+the same module.
+
+:::note An inline `module { … }` block is still affected
+A context declared inside an inline block in the same file is not yet
+found. Contexts that cross a **file** boundary — the usual arrangement —
+work.
+:::
+
+### Fixed — a future survives a collection, and a type annotation (2026-08-26)
+
+Fanning out — spawn several tasks, keep the handles, await them — is
+what structured concurrency is for, and two of its spellings answered
+with **garbage instead of an error**:
+
+```verum
+let mut handles: List<Future<Int>> = List.new();
+handles.push(spawn(async { work(1).await }));
+handles[0].await          // a large negative integer, not the result
+
+let h: Future<Int> = spawn(async { work(1).await });
+h.await                   // the same
+```
+
+The second is the one to know about: *writing the type down broke the
+program*. Without the annotation the compiler recorded the handle's own
+type and awaited it; with the annotation it saw `Future<Int>`, did not
+recognise a handle, and passed the raw task marker through as if it were
+the answer.
+
+Both now work, as does `for h in handles { … h.await }`.
+
+`handles.iter()` is still refused, and deliberately: awaiting *consumes*
+a future, so a reference to one is not awaitable. The by-value `for`
+above is the spelling that consumes.
+
 ### Fixed — a refinement on a variant payload is enforced (2026-08-26)
 
 ```verum

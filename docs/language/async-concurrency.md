@@ -35,12 +35,32 @@ Context stacks are preserved across the suspension.
 ## `spawn`
 
 ```verum
-let handle: JoinHandle<T> = spawn fetch("...");
+let handle = spawn fetch("...");
 let result = handle.await;
 ```
 
-`spawn` starts a new task on the executor. The returned `JoinHandle`
-is itself a future — awaiting it produces the task's result.
+`spawn` starts a new task on the executor. The handle it returns is
+itself a future — awaiting it produces the task's result.
+
+Both spellings work and mean the same thing:
+
+```verum
+let a = spawn fetch(url);                    // keyword form
+let b = spawn(async { fetch(url).await });   // an async block
+```
+
+Handles keep their meaning in a collection, which is what a fan-out
+needs:
+
+```verum
+let mut pending: List<Future<Response>> = List.new();
+for url in urls {
+    pending.push(spawn(async { fetch(url).await }));
+}
+for h in pending {          // by value: awaiting CONSUMES a future,
+    handle(h.await);        // so `pending.iter()` is refused
+}
+```
 
 ### Context forwarding
 
