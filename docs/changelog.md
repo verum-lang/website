@@ -25,6 +25,41 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a reference that outlives what it points at is refused (2026-08-26)
+
+A `&T` held in a record field and read after its referent's scope had
+ended returned **whatever was in that memory**:
+
+```verum
+type Keeper is { held: &Big };
+
+let mut k = Keeper { held: &Big { a: 1 } };
+{ let v = Big { a: 7 }; k = Keeper { held: &v }; }
+k.held.a          // printed Variant(196608)
+```
+
+The value depended on what had been allocated since — one run produced
+an interned string from elsewhere in the heap — which makes it a
+memory-safety defect rather than a wrong answer. Nothing was reported at
+compile time either.
+
+`&T` is the default tier, the one whose entire purpose is that this
+cannot happen. Nothing was missing from the machinery: references carry
+a generation, the counter advances when a scope ends, and the check
+compares them. It was simply not being called on the path a **field
+read** takes, while the explicit dereference had always called it — so
+which of two spellings a program used decided whether it was safe.
+
+Reading through a stale reference now stops the program:
+
+```text
+error: CBGR use-after-free detected: expected generation 2, found 3
+```
+
+A reference used while its referent is alive is unaffected, and so is
+every value that is not a reference — the check runs only where there is
+something to check, which is the tier's documented cost.
+
 ### Fixed — a context works across module boundaries (2026-08-26)
 
 A `context` declared in one module could not be used from another, which
