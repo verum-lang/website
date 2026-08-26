@@ -68,6 +68,38 @@ fn caller(x: Int) {
 The compiler's flow-sensitive analysis narrows `x` inside the `if`
 branch from `Int` to `Int { self != 0 }`, so the second call succeeds.
 
+### Which positions carry a check
+
+"Anywhere a value flows into a refined type" is the intent. The
+positions that carry it today are these:
+
+| Where the refinement is written | Checked |
+|---|---|
+| A parameter's type | yes |
+| A return type | yes |
+| A record field's type | yes |
+| A `let` annotation, including destructuring | yes |
+| A variant payload — `Consistent(Int{it >= 0})` | yes |
+| Inside a **generic argument** — `Result<Int{it >= 0}, E>`, `List<Int{it > 0}>` | **no** |
+
+The last row is the one to know about, because nothing at the
+declaration marks it: the refinement is accepted, reads as a guarantee,
+and no check is emitted. It comes from *instantiating* a generic whose
+own declaration (`Result<T, E>`) carries no refinement, so there is no
+declaration site holding the predicate.
+
+If you need the guarantee there, put it where it is carried — a named
+type with a refined field, or a refined return type on the function that
+produces the value:
+
+```verum
+// Not checked: the refinement rides on a type argument.
+fn stored() -> Result<Int{it >= 0}, ImportError> { ... }
+
+// Checked: the refinement is the return type.
+fn count() -> Int{it >= 0} { ... }
+```
+
 ## Common patterns
 
 ### Nonzero / positive

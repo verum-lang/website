@@ -25,6 +25,32 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a refinement on a variant payload is enforced (2026-08-26)
+
+```verum
+type Audit is
+    | Consistent(Int{it >= 0})
+    | Contradicts(Text);
+
+Audit.Consistent(-1)     // built happily, printed "over -1"
+```
+
+The same refinement on a **record field** or a **return type** stopped
+the program with a precise message. On a variant payload it was
+decoration — and nothing at the declaration said which positions are
+which, so it read as a guarantee the compiler had never made.
+
+It now answers in whichever way is available earliest: a value the
+compiler can see is refused at compile time with `E500`, and one that
+only exists at run time raises `refinement violation: field
+`Audit.Consistent.0``. A same-named variant of a *different* type is
+unaffected — the check is tied to the type that declared it.
+
+Still inert, and worth knowing before you rely on it: a refinement
+reached through a **generic argument**, as in
+`Result<Int{it >= 0}, E>`. There the refinement comes from instantiating
+`Result<T, E>`, which declares none of its own.
+
 ### Fixed — a project with more than one file runs (2026-08-26)
 
 `verum check` reported no errors and `verum run` refused the same
