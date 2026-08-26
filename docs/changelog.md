@@ -25,6 +25,62 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a project with more than one file runs (2026-08-26)
+
+`verum check` reported no errors and `verum run` refused the same
+sources with **`E402: module 'demo.helper' not found`** — so a project
+type-checked but could not be executed the moment it was split across
+files.
+
+Three separate causes were in the way, each hidden behind the one in
+front of it:
+
+* the module root came from the **directory name** rather than the cog
+  name in `verum.toml`, so a checkout in a directory called `work-copy`
+  registered `work_copy.helper` for a file that declares
+  `module demo.helper;`;
+* a `src/` directory became a **module segment**, so the same file was
+  registered as `demo.src.helper`;
+* the entry-point search accepted a **method** named `main`, so a
+  program with exactly one entry point was refused as ambiguous.
+
+Neither of the first two was visible in the standard library, whose
+directory name matches its cog name and which has no `src/`.
+
+### Fixed — iterating a slice, and methods on a wrapper that dereferences (2026-08-26)
+
+`for x in items[1..]` failed to find `iter`. A slice's type is spelled
+`[T]`, and method lookup was searching for a type by that spelling
+instead of the `Slice` the methods are declared on.
+
+Separately, a method called on a wrapper type that implements `deref`
+now reaches the wrapped value instead of reporting the method missing.
+The call is retried once against the dereferenced receiver — the same
+step a reader performs when they write `handle.len()` and expect the
+handle to stand in for what it holds.
+
+### Fixed — a type you declare keeps its own arity (2026-08-26)
+
+Declaring a type whose name matches a standard-library generic produced
+a program refused against itself:
+
+```verum
+type Slice is { count: Int };
+
+fn build() -> Slice { Slice { count: 3 } }
+// error<E400>: Type mismatch: expected 'Slice', found 'Slice<_>'
+```
+
+The record literal took its **fields** from your declaration and its
+**parameter count** from the standard library's `Slice<T>`, then
+instantiated a type variable for a parameter your type does not have.
+One name, half a question answered by each of two types.
+
+The cause was silence rather than a wrong answer: a declaration with no
+type parameters recorded nothing, and whatever a same-named type had
+recorded earlier kept answering. Every declaration now states its own
+arity, "none" included.
+
 ### Fixed — `return match { … }` type-checks like the tail form (2026-08-26)
 
 Returning a match explicitly reported errors that the identical code

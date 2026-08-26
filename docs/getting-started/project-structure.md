@@ -216,16 +216,23 @@ pub module handlers {
 
 Four path roots:
 
-- `crate` — the cog's root module.
+- `cog` — the cog's root module.
 - `self` — the current module.
 - `super` — the parent module.
-- *(no prefix)* — path resolved from the current module, then crate.
+- *(no prefix)* — path resolved from the current module, then the cog root.
 
 ```verum
-crate.types.User          // fully-qualified from cog root
+cog.types.User            // fully-qualified from cog root
 super.shared_helpers.fmt  // from the parent module
-.self.submodule             // explicit self-rooted
+.self.submodule           // explicit self-rooted
 ```
+
+:::note `crate` currently parses too
+`crate` lexes to the same token as `cog`, so `crate.types.User` and
+`public(crate)` are accepted. `cog` is the canonical name: it is what
+the unit is called, what diagnostics print, and what the grammar
+specifies. Write `cog`.
+:::
 
 ### Visibility
 
