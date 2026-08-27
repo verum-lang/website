@@ -25,6 +25,92 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a complete match over an error type from another module is accepted (2026-08-27)
+
+A module declares an error type; another module returns it inside a
+`Result`; the caller matches every constructor. That was reported as
+non-exhaustive whenever the error type came from a sibling module and
+any constructor carried a generic payload:
+
+```verum
+// lib/first.vr
+public type LoadError is
+    | Missing
+    | Ambiguous(List<Text>);
+
+public fn load(name: Text) -> Result<Config, LoadError> { … }
+
+// main.vr
+match load("app") {
+    Ok(cfg)                      => run(cfg),
+    Err(LoadError.Missing)       => print("no such config"),
+    Err(LoadError.Ambiguous(xs)) => print(f"{xs.len()} candidates"),
+}
+```
+
+```text
+error<E0601>: non-exhaustive patterns: `Err(_)` not covered
+```
+
+The match covers everything, and the workaround people reach for —
+adding `Err(_) => …` — is exactly what exhaustiveness exists to make
+unnecessary: a catch-all silently absorbs the constructor somebody adds
+next year.
+
+Underneath, a generic type's parameters were recorded by NAME with a
+placeholder standing in for each parameter itself, so `Result<Config,
+LoadError>` substituted its first argument and left the second
+untouched. The type's own variables are now recorded, and there is one
+of each per type rather than one per constructor — which also means a
+type like `type Pair<T> is Both(T, T) | One(T)` now forces all three of
+its payloads to agree.
+
+### Fixed — `Maybe.Some(x)` binds `x` to the same type `Some(x)` does (2026-08-27)
+
+The two spellings of a variant pattern are meant to be the same
+pattern. The qualified one lost the payload's type:
+
+```verum
+fn name_length(m: Maybe<Text>) -> Int {
+    let s = match m {
+        Maybe.Some(t) => t,
+        Maybe.None    => return 0,
+    };
+    s.len()
+}
+```
+
+```text
+error<E404>: Ambiguous type for `s`: the inferred type `_` is not fully
+             determined by this function
+```
+
+Spelled `Some(t)`, the same function compiled. The qualified form
+rebuilt the variant from the qualifier's NAME — a template whose payload
+is an unbound variable — instead of using the scrutinee's own
+`Maybe<Text>`, which already knew the answer.
+
+It stayed hidden because it usually did not matter: any sibling arm that
+yields a value pins the variable anyway. Only when every other arm
+DIVERGES — `return`, `panic()` — is there nothing left to determine the
+binding, which is why the shape above is the one that fails.
+
+One consequence is worth knowing about when you upgrade. Because the
+payload now binds to its real type, code that dereferenced such a
+binding is reported instead of accepted:
+
+```verum
+match &limits.max_age {
+    Maybe.Some(n) => Maybe.Some(*n),   // error<E409>: cannot dereference
+    Maybe.None    => Maybe.None,
+}
+```
+
+Matching a reference auto-dereferences the scrutinee and binds payloads
+BY VALUE, so `n` is a value and the `*` was never right — it was
+accepted only because the binding used to have no type to check it
+against. Drop the `*`.
+
 ### Fixed — a refinement on a compile-time parameter is enforced (2026-08-27)
 
 A meta parameter could carry a refinement, and nothing checked it:
