@@ -97,21 +97,36 @@ public pure fn chain_predicate(w: &Witness) -> Bool {
 | `if c { t } else { e }` | `(ite c t e)` |
 | `f(a, b)` | `(f a b)` |
 | `match k { K.A => …, K.B => … }` over nullary variants | right-to-left `ite` chain guarded by `(= k path_K.A)` |
+| `match r { K.A(x) => … }` binding a payload | guarded by `(Verum!is!K!A r)`, with `x` bound to `(Verum!payload!K!A!0 r)` |
 | `let x = e; …` | substituted into what follows |
 | `if c { return t; } rest` | `(ite c t rest)` |
 | `w.field` | `(Verum!proj!W!field w)` |
 | `p.method(args)`, including chains | `(Verum!method!P!method p args…)` |
 
-The last two rows are what let a predicate over a **record witness** or
-a **protocol receiver** reflect at all. Both lower to uninterpreted
+A constructor carrying a payload is not a constant, so its arm cannot
+test equality with one. It gets a **discriminant** — a predicate on the
+scrutinee — and each payload position gets a **projection**, alongside
+three facts: some constructor holds, no two hold together, and a
+nullary constructor's discriminant is exactly equality with its
+constant. That last one is what lets a `match` mixing both kinds of arm
+agree with itself.
+
+The record rows below are what let a predicate over a **record
+witness** or a **protocol receiver** reflect at all. Both lower to uninterpreted
 projection symbols over the receiver's sort: the solver learns nothing
 about the field's *value*, only that one receiver always projects to
 one value — which is exactly what a field-conjunction body and a
 hypothesis about the same receiver need in order to meet.
 
-Anything else — loops, variant patterns with payloads, guarded match
-arms, an `if` whose block does more than return one value — makes the
-function unreflected rather than mistranslated.
+Anything else — loops, guarded match arms, an `if` whose block does
+more than return one value, a `..` rest pattern — makes the function
+unreflected rather than mistranslated. Run with `VERUM_LOG=debug` to
+see which gate a function failed:
+
+```text
+reflection declined `a_guard`: body does not translate: field access
+on a value whose named type is unknown to reflection: .None
+```
 
 The `let` and guard rows are substitutions into a body the solver then
 trusts, so their ORDER is part of the contract: a guard is folded with
