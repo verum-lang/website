@@ -25,6 +25,63 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Added — predicates over your own types are provable (2026-08-27)
+
+`@verify(formal)` could prove claims about predicates over `Int` and
+little else. Four things landed together, and each was a claim that
+could not be STATED rather than one that failed to prove — a
+distinction that matters because the two print almost the same.
+
+**Records and their fields.**
+
+```verum
+public type Box is { a: Int, b: Int };
+
+public fn fields_commute(x: Box) -> Bool {
+    x.a + x.b == x.b + x.a
+}
+
+@verify(formal)
+public theorem holds(x: Box)
+    ensures fields_commute(x)
+    proof by auto;               // now closes
+```
+
+**Variants, as parameters and as values.** A `match` over an enum
+reflects, so `is_red(Colour.Red)` unfolds to its body; a variant-typed
+parameter can be spelled at all. A `Bool` parameter used to abort the
+compiler with an internal error where a proof belonged.
+
+**Types your module mounts.** The shapes now come from every module the
+check loaded, not only the file being verified — so a type declared in
+a sibling file works exactly like one declared locally.
+
+**Early-return guards.** A comparison over more than one component is
+written one way by everyone:
+
+```verum
+public fn older(a: &Version, b: &Version) -> Bool {
+    if a.major != b.major { return a.major < b.major; }
+    if a.minor != b.minor { return a.minor < b.minor; }
+    a.patch < b.patch
+}
+```
+
+That shape was outside the reflector, so nothing about such a predicate
+could be proved — not even that nothing is older than itself. It folds
+into nested `if … else` now, alongside the `let` folding that landed
+earlier.
+
+Nothing became provable that should not be: each of these ships with a
+soundness spec where the FALSE version of the same claim must still
+fail, including one that fails only because guards are applied in
+source order.
+
+The verifier also says more when a goal does not close. It names what
+disagreed (`argument 4 is Int, declared "Verum!AuthorityRole"`), and
+the verdict that used to read "SMT: goal is unsatisfiable" when the
+solver had found a COUNTEREXAMPLE now says so.
+
 ### Changed — a call through a module path is checked (2026-08-27)
 
 A call whose receiver is a module path of three or more segments was

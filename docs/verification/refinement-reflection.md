@@ -36,9 +36,10 @@ when it is:
 
 - **Pure** — declares no contexts (`using [...]` makes a function
   ineligible; its result may depend on injected state).
-- **A single expression** — the body is one expression, or a block whose
-  only content is a tail expression. Multi-statement bodies are not
-  reflected.
+- **Straight-line** — the body is one expression, or a block built from
+  `let` bindings and early-return guards ending in a tail expression.
+  Anything else — a loop, a `match` with payload patterns, a mutation —
+  declines the whole reflection rather than reflecting part of it.
 - **Parameterised** — nullary functions are constants, not definitions
   worth unfolding.
 - **Expressible** — the body translates into the SMT fragment below.
@@ -51,6 +52,24 @@ translator refuses rather than approximates.
 // Reflected: pure, one expression, parameterised.
 public pure fn is_positive(n: Int) -> Bool {
     n > 0
+}
+
+// Reflected: `let` bindings fold into the tail.
+public pure fn doubled_differs(n: Int) -> Bool {
+    let d = n + n;
+    d != n + 1
+}
+
+// Reflected: early-return guards become nested `if … else`, which is
+// what a lexicographic comparison is written as.
+public pure fn older(a: &Version, b: &Version) -> Bool {
+    if a.major != b.major {
+        return a.major < b.major;
+    }
+    if a.minor != b.minor {
+        return a.minor < b.minor;
+    }
+    a.patch < b.patch
 }
 
 // Reflected: field access over a record witness.
@@ -78,6 +97,8 @@ public pure fn chain_predicate(w: &Witness) -> Bool {
 | `if c { t } else { e }` | `(ite c t e)` |
 | `f(a, b)` | `(f a b)` |
 | `match k { K.A => …, K.B => … }` over nullary variants | right-to-left `ite` chain guarded by `(= k path_K.A)` |
+| `let x = e; …` | substituted into what follows |
+| `if c { return t; } rest` | `(ite c t rest)` |
 | `w.field` | `(Verum!proj!W!field w)` |
 | `p.method(args)`, including chains | `(Verum!method!P!method p args…)` |
 
@@ -88,9 +109,15 @@ about the field's *value*, only that one receiver always projects to
 one value — which is exactly what a field-conjunction body and a
 hypothesis about the same receiver need in order to meet.
 
-Anything else — loops, multi-statement blocks, variant patterns with
-payloads, guarded match arms — makes the function unreflected rather
-than mistranslated.
+Anything else — loops, variant patterns with payloads, guarded match
+arms, an `if` whose block does more than return one value — makes the
+function unreflected rather than mistranslated.
+
+The `let` and guard rows are substitutions into a body the solver then
+trusts, so their ORDER is part of the contract: a guard is folded with
+the bindings written before it and none of those after, because a
+binding that follows a guard is only reached when the guard did not
+fire — which is exactly the else-branch that guard becomes.
 
 ## Sorts
 
@@ -105,12 +132,22 @@ unrelated. Both translators therefore answer from one authority:
 | `Bool` | `Bool` |
 | `Text` | `String` |
 | `&T` | the sort of `T` — a reference carries its referent's facts |
-| a named type the translator does not model | `Verum!<Name>`, uninterpreted |
+| a record or variant type declared in the program | `Verum!<Name>`, uninterpreted |
+| a variant CONSTANT `K.A` | `Verum!K` — the same sort its parameters carry |
+| anything else, including a generic like `List<T>` | `Int` |
 
-An unmodelled type is opaque **under its own name**, never a scalar.
-That distinction is load-bearing: substituting `Int` for a list-shaped
-value turns `xs.len() > 0` into arithmetic that means nothing, and a
-solver can then "prove" it.
+A type the program declares is opaque **under its own name**, never a
+scalar. That distinction is load-bearing: substituting `Int` for a
+record turns a projection into arithmetic that means nothing, and a
+solver can then "prove" things about it.
+
+The last row is the other half. `List<Authority>` is not a name the
+verifier knows a shape for, and every generic would collapse into the
+same opaque sort if it got one — so it stays `Int`, which is what the
+goal side gives such a value, and the two agree.
+
+Types a module MOUNTS count as declared: the shapes come from every
+module the check loaded, not only from the file being verified.
 
 ## What a reflected function becomes
 
