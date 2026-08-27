@@ -25,6 +25,37 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — a refinement on a compile-time parameter is enforced (2026-08-27)
+
+A meta parameter could carry a refinement, and nothing checked it:
+
+```verum
+public type Hash<N: meta USize { it == 32 || it == 64 }> is {
+    bytes: [Byte; N],
+};
+
+let sha1: Hash<20> = …;      // accepted, and it ran
+```
+
+The grammar admitted the predicate, the parser stored it, and every
+reader of the parameter dropped it — a feature present, accepted,
+documented, and doing nothing, so anything built on it inherited a
+guarantee that was never made. It now reports:
+
+```text
+error<E506>: meta argument 1 of `Hash` violates its refinement:
+             `20` does not satisfy `it == 32 || it == 64`
+```
+
+The other half already worked and is unchanged: the width is part of
+the type's identity, so `Hash<32>` and `Hash<64>` are different types
+and a function taking one cannot be handed the other.
+
+Only arguments that evaluate at compile time are judged — a parameter
+passed through from an enclosing generic has no value yet, and nothing
+is concluded about it. So code that was correct stays accepted; what
+changes is that code claiming a guarantee now gets it.
+
 ### Added — predicates over your own types are provable (2026-08-27)
 
 `@verify(formal)` could prove claims about predicates over `Int` and

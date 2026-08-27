@@ -301,19 +301,65 @@ no function body to run — the compiler substitutes at instantiation.
 
 ## Meta parameters
 
-Compile-time values with refinements, usable in types:
+A **compile-time value**, usable in types, and carrying a refinement the
+compiler checks where the argument is supplied.
 
 ```verum
-fn ring_buffer<n: meta Int { n > 0 }>() -> RingBuffer<n> { ... }
+public type Hash<N: meta USize { it == 32 || it == 64 }> is {
+    bytes: [Byte; N],
+};
+```
 
+Two separate guarantees come out of that one line.
+
+**The width is part of the type's identity.** `Hash<32>` and `Hash<64>`
+are different types, so a function taking one cannot be handed the
+other:
+
+```text
+error<E400>: Type mismatch: expected 'Hash<32>', found 'Hash<64>'
+```
+
+There is no length check to forget, because there is no comparison
+across widths to write. For a digest that matters: a 32-byte hash
+compared against the first 32 bytes of a 64-byte one is equal for as
+long as anyone looks.
+
+**The refinement says which values the parameter admits at all**, and it
+is decided at compile time — which is the point of a compile-time
+parameter:
+
+```verum
+let sha1: Hash<20> = …;
+```
+
+```text
+error<E506>: meta argument 1 of `Hash` violates its refinement:
+             `20` does not satisfy `it == 32 || it == 64`
+```
+
+The alternative in most languages is an assertion inside one
+constructor, which runs after the value exists and is absent from the
+next constructor someone adds.
+
+Only arguments that **evaluate at compile time** are judged. A
+parameter passed through from an enclosing generic has no value yet, so
+nothing is concluded about it:
+
+```verum
+// Accepted: `N` is symbolic here, and a refusal has to be a fact
+// about a value.
+public fn width_of<N: meta USize>(h: &Hash<N>) -> Int { h.bytes.len() }
+```
+
+`where meta <expr>` is the other spelling, adding a constraint beside
+the signature rather than on the parameter:
+
+```verum
 fn statically_sized_vec<dim: meta Int>() -> Vector<dim>
     where meta dim > 0 && dim <= 4
 { ... }
 ```
-
-`n: meta Int` declares `n` as a compile-time value of type `Int`.
-`where meta <expr>` adds a compile-time constraint; it's evaluated
-during monomorphisation.
 
 ## Context parameters
 
