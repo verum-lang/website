@@ -25,6 +25,115 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Changed — a call through a module path is checked (2026-08-27)
+
+A call whose receiver is a module path of three or more segments was
+not resolved, and its argument count was not checked at any path
+length. Both now are.
+
+```verum
+module a {
+    public module b {
+        public fn g(x: Int) -> Int { x + 1 }
+    }
+}
+
+a.b.absent()      // now: error<E100>: unbound variable: a.b.absent
+a.zzz.g(1)        // now: error<E100>: unbound variable: a.zzz.g
+a.b.g()           // now: error: `g` expects 1 argument(s), but 0 were provided
+```
+
+The third line is the one worth pausing on. It used to check clean and
+**run**, answering `1` — the missing argument read as unset memory.
+Everything in the neighbourhood was already checked, which is why this
+went unnoticed for so long: a two-segment path reported a missing leaf,
+a missing method on a value reported a type error, a missing field
+reported a field error. Only the module-path form was exempt, and its
+symptom was a call that quietly did nothing rather than one that failed.
+
+Working code is unaffected — chained calls
+(`base64.decode_url(s).map_err(f)`), constructors reached through a
+module path (`some.module.Colour.Red`), methods on associated
+constants (`MemProt.READ_WRITE.to_unix_flags()`) and nested module
+calls all resolve exactly as before.
+
+Eight dead calls inside the standard library came out with the change,
+each repointed at the callee it meant. Two of them mattered beyond the
+call site: `Ulid.generate()` was filling its random seed through a
+call that did nothing, so every ULID it minted carried a **zero seed**;
+and a QUIC server's accept loop spawned nothing, dropping every
+connection it accepted.
+
+If your own code now reports `E100` on a module-path call, the call was
+not reaching a function before either — it was evaluating to nothing.
+
+### Fixed — a file path held in a record field names the right file (2026-08-27)
+
+Writing to a path kept in a struct field reported success and produced
+no file:
+
+```verum
+type Store is { path: Text };
+
+let s = Store { path: "/tmp/out.txt" };
+core.io.file.write(&s.path, &"x")     // Ok(())  …and no /tmp/out.txt
+```
+
+What it produced instead was a file named, literally,
+`<ptr@0x9d4831cf8>` in the working directory, and a later read through
+the same field returned that file's contents — so the round-trip agreed
+with itself and the program had no way to notice. A store that keeps
+its own path in a field, which is where any store keeps it, lost
+everything it held and reported success in both directions.
+
+`&record.field` is a different runtime shape from `&local`: it is an
+interior pointer to the field's slot, and the file-I/O layer's argument
+handling knew the other two shapes but not that one. It now reads the
+one authority every `&T` argument goes through.
+
+The second half of the fix is that a value which is not a path no
+longer becomes one. The old fallback rendered the value as text on the
+reasoning that a visible wrong path beats a confusing "not found" — but
+a rendering is a perfectly good filename, so the loud failure became a
+silent write to the wrong place. Anything unrecognised is now refused,
+which is also why this now behaves:
+
+```verum
+core.io.file.write(&s.path, &"x")     // path in a missing directory
+                                      // now: Err(NotFound)
+```
+
+### Fixed — a predicate proves over the type it was written for (2026-08-27)
+
+`@verify(formal)` could prove claims about predicates over `Int` and
+essentially nothing else. A predicate taking a `Bool`, a `Text` or a
+record was unprovable however trivial:
+
+```verum
+public type Box is { a: Int, b: Int };
+
+public fn fields_commute(x: Box) -> Bool {
+    x.a + x.b == x.b + x.a
+}
+
+@verify(formal)
+public theorem holds(x: Box)
+    ensures fields_commute(x)
+    proof by auto;               // would not close
+```
+
+A user function reaches the solver as a declared symbol plus a defining
+axiom, and the two were written by different code that disagreed about
+what sort a parameter has — the solver saw two unrelated symbols that
+happened to share a name, so the axiom never bore on the goal. There
+was no error and no diagnostic, only a theorem that would not close.
+
+A `Bool` parameter was worse than unprovable: it **aborted the
+compiler** with an internal error where a proof belonged. Both sides
+now read the same authority for a parameter's sort, and an argument
+that does not carry the declared sort is a named refusal rather than a
+crash.
+
 ### Fixed — a reference that outlives what it points at is refused (2026-08-26)
 
 A `&T` held in a record field and read after its referent's scope had
