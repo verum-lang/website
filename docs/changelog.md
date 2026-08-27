@@ -25,6 +25,105 @@ before `0.1.0` is cut.
 
 ## [Unreleased]
 
+### Fixed — iterator element types resolve in a project, not just in a file (2026-08-27)
+
+The same file gave two verdicts depending on how you asked:
+
+```verum
+mount core.base.iterator.{Transducer};
+
+fn pick(xs: &List<Int>) -> List<Int> {
+    let t: Transducer<Int, Int> = Transducer.filter(|x| x > 0);
+    xs.iter().transduce(t).collect()
+}
+```
+
+```text
+verum check pick.vr        clean
+verum check   (project)    error<E400>: Type mismatch:
+                           expected 'Item<ListIter<Int>>', found 'Int'
+verum run     (project)    prints the right answer
+```
+
+`Item<ListIter<Int>>` IS `Int`. The projection reached the comparison
+unreduced, so the mismatch was reported against a type nobody wrote —
+and only in project mode, which is the mode that gates a build.
+
+The resolver was never the problem: it was called and answered correctly
+in the same run that reported the error. The comparison simply did not
+ask it. `check_expr` now reduces the expected type through the same
+helper that match scrutinees already used, so every caller gets it.
+
+If you have been seeing `expected 'Item<…>'` on `map`, `filter`, `fold`
+or a transducer chain in a multi-module project — and finding that the
+same code checks clean as a single file — that is this, and it is gone.
+
+### Fixed — a `match` over your own type proves what its arms return (2026-08-27)
+
+The most ordinary function a sum type has is "map the case to a number"
+— a rank, a priority, a severity. It could not discharge a refinement on
+its own return type:
+
+```verum
+public type Standing is Trusted | Suspended(Text) | Revoked(Text);
+
+public pure fn severity(s: &Standing) -> Int{it >= 0} {
+    match s {
+        Standing.Trusted      => 0,
+        Standing.Suspended(_) => 1,
+        Standing.Revoked(_)   => 2,
+    }
+}
+```
+
+```text
+✗ severity: Failed
+    Counterexample: result = (- 1)
+```
+
+`result = (- 1)` is the prover reporting that the body told it nothing.
+A function's tail expression is turned into a VALUE and substituted for
+`result`; the translator that builds that value handled `if` and not
+`match`, so a match in tail position produced a term nothing
+constrained. Anything stated about such a function inherited the silence
+— which is why a theorem over a three-case analysis could sit unproved
+with no visible reason.
+
+Written over a `Bool` the same body proved from the start, because those
+arms are literal patterns the translator did handle. If you have been
+avoiding refinements on match-bodied functions, they work now.
+
+### Fixed — an affine value may be consumed on a path that returns (2026-08-27)
+
+An affine type promises the value is used at most once. The check asked
+a different question — whether a loop happened to be around it:
+
+```verum
+fn run(t: Token, n: Int) -> Int {
+    let mut i = 0;
+    loop {
+        if i >= n { return take(t); }   // consumes, then leaves
+        i = i + 1;
+    }
+}
+```
+
+```text
+error<E302>: affine value `t` cannot be used in loop
+```
+
+The consuming path returns, so no execution reaches a second
+consumption. The rule is now about whether the loop's back-edge is
+reachable from the consumption, not about whether a loop encloses it: a
+block whose own top level carries an unconditional `return` cannot come
+back, so consuming there is allowed.
+
+Still refused, deliberately: a consumption the loop CAN come back from,
+and one that only `break`s — `break` leaves the innermost loop, so under
+nesting an outer loop can still come round. Both poles ship as
+conformance specs, because a relaxation of a soundness rule and a
+removal of it look identical from the passing side.
+
 ### Fixed — a complete match over an error type from another module is accepted (2026-08-27)
 
 A module declares an error type; another module returns it inside a
