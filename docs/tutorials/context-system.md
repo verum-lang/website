@@ -132,8 +132,11 @@ that stores orders in memory. We could just as easily implement
 
 ```verum
 fn main() {
-    let logger: Logger = ConsoleLogger { prefix: "app" };
-    let db: Database   = MemoryDatabase {
+    // No type annotation: a context is a separate namespace, not a
+    // type, so `let logger: Logger = …` is `error<E101>: type not
+    // found: Logger`. The binding holds the IMPLEMENTING value.
+    let logger = ConsoleLogger { prefix: "app" };
+    let db     = MemoryDatabase {
         orders: Shared.new(Mutex.new(Map.new())),
     };
 
