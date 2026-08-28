@@ -76,7 +76,7 @@ in `core/context/standard.vr`:
   depends on them.
 
 The `provide ... in { ... }` scope injects the value. `using [Logger,
-Database]` declares the function's effects. Within the provided scope,
+Database]` declares the contexts the function needs. Within the provided scope,
 `Logger.info(...)` routes to the installed backend.
 
 ## Choosing between the two

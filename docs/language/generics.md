@@ -125,7 +125,7 @@ fn drive(status: Register<UInt32, ReadOnly>) {
 
 Slot-matching rules:
 
-- An impl-level generic slot (`T` in `implement<T: Copy> Register<T,
+- An implement-level generic slot (`T` in `implement<T: Copy> Register<T,
   ReadOnly>`) matches **any** concrete argument at the same position.
 - A concrete slot (like `ReadOnly`) must match the receiver's
   corresponding argument structurally.
@@ -462,16 +462,16 @@ dependently-typed libraries need them. See
 
 ```verum
 type Config<T = DefaultConfig> is { ... };
-type HashMap<K, V, H: Hasher = FxHasher> is { ... };
+type Map<K, V, H: Hasher = FxHasher> is { ... };
 ```
 
 The default is used when the caller omits the type argument:
 
 ```verum
-let m: HashMap<Text, Int> = HashMap.new();
+let m: Map<Text, Int> = Map.new();
 // H is FxHasher by default
 
-let m: HashMap<Text, Int, SipHasher> = HashMap.new();
+let m: Map<Text, Int, SipHasher> = Map.new();
 // H explicitly SipHasher
 ```
 
@@ -485,11 +485,11 @@ let m: HashMap<Text, Int, SipHasher> = HashMap.new();
 This is the **orphan rule**: prevents two cogs from implementing the
 same protocol for the same external type in incompatible ways.
 
-A specialisation hierarchy allows *more specific* impls to override
+A specialisation hierarchy allows *more specific* implement blocks to override
 *less specific* ones:
 
 ```verum
-implement<T: Display> MyProto for T { ... }          // generic impl
+implement<T: Display> MyProto for T { ... }          // generic implement block
 @specialize
 implement MyProto for Text { ... }                    // wins when T = Text
 ```

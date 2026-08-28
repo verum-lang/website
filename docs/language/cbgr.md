@@ -41,7 +41,7 @@ revoked) and the access is rejected.
 |      8 | 4 B   | `generation`    | issued-against counter               |
 |     12 | 4 B   | `epoch / caps`  | scope epoch + capability bit vector  |
 
-For unsized types, slices, trait objects, and interior references the
+For unsized types, slices, protocol objects, and interior references the
 runtime uses `FatRef<T>` — 32 bytes total. It layers three fields on
 top of a `ThinRef`: an 8-byte metadata word (length for slices, vtable
 pointer for `dyn`), a 4-byte offset (for interior references), and a

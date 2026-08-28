@@ -83,7 +83,7 @@ keeps a single implementation valid across the hierarchy.
 
 - `Type(0)` (written `Type` when the level is inferred) holds
   ordinary value types: `Int`, `Float`, `List<Int>`, `User`,
-  `Option<T>` for small `T`, etc.
+  `Maybe<T>` for small `T`, etc.
 - `Type(1)` holds *descriptions* of things in `Type(0)`: for
   example `Type(0)` itself, or a type family `Int -> Type(0)`.
 - `Type(n+1)` holds things that need `Type(n)` to be described.
@@ -129,7 +129,7 @@ runtime value is just `Int`; the proof that `self != 0` holds is a
 
 - `Bool` — it has computational content (`true` and `false` are
   distinguishable at runtime).
-- `Option<T>` — the shape of the value matters.
+- `Maybe<T>` — the shape of the value matters.
 - Any type you pattern-match on for runtime branching.
 
 :::note Rule of thumb
@@ -289,17 +289,17 @@ covering the use case cumulativity exists for elsewhere.
 
 ## Practical catalogue
 
-### `Option<T>` — level-polymorphic
+### `Maybe<T>` — level-polymorphic
 
 ```verum
-type Option<universe u, T: Type(u)> is
+type Maybe<universe u, T: Type(u)> is
     | None
     | Some(T);
 ```
 
 Lives in `Type(u)` — same level as its parameter. You get one
-definition that works for `Option<Int>` *and* `Option<Type>` *and*
-`Option<Monoid<Int>>`.
+definition that works for `Maybe<Int>` *and* `Maybe<Type>` *and*
+`Maybe<Monoid<Int>>`.
 
 ### The category of types
 

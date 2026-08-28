@@ -18,7 +18,7 @@ belongs.
 
 > **One-line entry-point.** `mount core.cli.*;` imports everything
 > a script needs: types, builder, runtime, error model, help
-> renderer.  No second crate, no procedural-macro dance.
+> renderer.  No second cog, no procedural-macro dance.
 
 ## 1. The mental model
 

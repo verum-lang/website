@@ -225,16 +225,16 @@ let (rows, meta) = try_join(db.rows(), db.meta()).await?;
 ### `join_all`
 
 ```verum
-async fn join_all<T>(futures: Vec<Future<T>>) -> Vec<T>;
+async fn join_all<T>(futures: List<Future<T>>) -> List<T>;
 ```
 
 Runs a variable number of identical-result-type futures. Returns all
-results as a `Vec<T>`. Any panic propagates.
+results as a `List<T>`. Any panic propagates.
 
 ### `select_any`
 
 ```verum
-async fn select_any<T>(futures: Vec<Future<T>>) -> (T, usize, Vec<Future<T>>);
+async fn select_any<T>(futures: List<Future<T>>) -> (T, Int, List<Future<T>>);
 ```
 
 Completes when the **first** future completes. Returns the result, the
@@ -272,7 +272,7 @@ the `async` expansion — manual use is rarely needed.
 
 ## Time & system intrinsics
 
-From `core.intrinsics.runtime.time` — auto-mounted in every crate.
+From `core.intrinsics.runtime.time` — auto-mounted in every cog.
 These are direct wrappers over OS clocks; cost is one syscall or a
 single `mach_absolute_time` / `QueryPerformanceCounter` call on the
 respective platform.

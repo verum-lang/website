@@ -121,8 +121,8 @@ type linear Connection<S: ProtocolState> is {
 };
 
 // generic with linearity-aware content
-type Box<T> is { inner: Heap<T> };
-// Box<Connection<..>> is automatically Linear by contagion.
+type Wrapper<T> is { inner: Heap<T> };
+// Wrapper<Connection<..>> is automatically Linear by contagion.
 ```
 
 ## A first example — unclosable files
@@ -479,7 +479,7 @@ A generic over `T: Any` is allowed regardless of `T`'s resource
 kind, but the compiler propagates kind constraints:
 
 ```verum
-fn store<T>(slot: &mut Option<T>, v: T) {
+fn store<T>(slot: &mut Maybe<T>, v: T) {
     *slot = Some(v);
 }
 ```
@@ -495,7 +495,7 @@ fn drop_silently<T: Affine>(_: T) {}
 // callable only when T is Copy or Affine, never Linear
 ```
 
-(`Affine` and `Linear` are built-in kind traits; `Copy` is the
+(`Affine` and `Linear` are built-in kind protocols; `Copy` is the
 default when no bound is given.)
 
 ## Linearity and protocols

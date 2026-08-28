@@ -44,7 +44,8 @@ Every production reflects a deliberate language decision. Six pervade:
    else is contextual.
 2. **Unified type definitions** — `type T is …` covers records, variants,
    protocols, sigma types, aliases, and existentials.
-3. **Explicit context system** — `using [...]` is mandatory for effects.
+3. **Explicit context system** — `using [...]` is mandatory for the
+   contexts a function depends on.
 4. **Three-tier references** — `&T`, `&checked T`, `&unsafe T`.
 5. **No `!`-suffix macros** — every compile-time construct uses `@`.
 6. **`is` operator replaces `matches!()`** — patterns are first-class

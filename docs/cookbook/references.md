@@ -115,10 +115,10 @@ vec_sum                  64      44      18       2     18/64 (28.1%)
 A low promotion rate on a hot function means the compiler had to keep
 the check. Investigate — often it's because:
 
-- The reference is stored in a struct (breaks escape tracking).
+- The reference is stored in a record (breaks escape tracking).
 - It's returned from a function whose inputs are all owned (nothing
   to borrow from).
-- It crosses an opaque function boundary (closures, trait objects,
+- It crosses an opaque function boundary (closures, protocol objects,
   async suspensions).
 
 ---

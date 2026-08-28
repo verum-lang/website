@@ -119,7 +119,7 @@ public async fn accept_loop<R: ConnectionRunner + Clone + Send + Sync + 'static>
 ```
 
 Generic over the runner — zero-cost polymorphism via
-monomorphisation, no boxed trait objects on the hot path. The loop:
+monomorphisation, no boxed protocol objects on the hot path. The loop:
 
 1. Checks the cancellation token; breaks if cancelled.
 2. Checks the `draining` flag; breaks if draining was requested.

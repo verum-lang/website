@@ -286,7 +286,7 @@ You:
 
 That is the whole shape of day-to-day Verum. Every program:
 
-1. Declares its effects in the function signatures.
+1. Declares the contexts it needs in the function signatures.
 2. Attaches invariants to types (refinements) and to functions
    (`requires` / `ensures`).
 3. Lets the compiler verify what the static checker can prove;

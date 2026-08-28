@@ -71,7 +71,7 @@ function; the shape above is what `verum verify` itself prints.
   - Inferred types on `let` bindings.
   - CBGR tier (`&T` → `&checked T` after promotion).
   - Capability bits (`Database with [Read]`).
-  - `using [...]` effect clauses (when implicit).
+  - `using [...]` context clauses (when implicit).
   - Refinement predicates (when inferred).
 - **Rename** — symbol-aware, respects visibility.
 - **Code actions**:

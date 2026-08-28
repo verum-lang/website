@@ -162,7 +162,7 @@ shows per-phase time. Usual culprits:
   file with many `@verify(formal)` functions: scope down what needs SMT,
   or raise `[verify] solver_timeout_ms` only for the functions that
   need it via `[verify.modules.*]`.
-- Phase 7 (AOT: VBC → LLVM) on a big crate: increase `codegen_units`
+- Phase 7 (AOT: VBC → LLVM) on a big cog: increase `codegen_units`
   in `[profile.release]` (more parallelism, slightly less inlining).
 
 ### "Release binary too large"

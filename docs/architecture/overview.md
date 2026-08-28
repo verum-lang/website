@@ -405,7 +405,7 @@ A stable bytecode gives:
 - A **single lowering** from source to execution; no fork between
   interpreted and compiled paths.
 - A **tooling surface** for inspectors, disassemblers, fuzzers, and
-  cross-crate caches.
+  cross-cog caches.
 - **Proof-carrying distribution** — cogs ship as `.cog` archives
   containing VBC plus optional proof certificates; validators can
   recheck without re-parsing Verum source.

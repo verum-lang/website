@@ -201,7 +201,7 @@ multiple sites; prefer guards for one-off checks.
 ## Visibility
 
 A `pub pattern` is exported like any other item. Private patterns are
-module-local. Patterns can be defined in protocol impls and inherit
+module-local. Patterns can be defined in implement blocks and inherit
 the implementer's generic parameters.
 
 ```verum

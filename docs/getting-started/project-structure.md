@@ -467,7 +467,7 @@ needs to emit code returns a `TokenStream` — see
 target/
 ├── debug/              # `verum build` output
 │   ├── my-project      # binary (or my-project.cog for libraries)
-│   └── deps/           # per-crate object files
+│   └── deps/           # per-cog object files
 ├── release/            # `verum build --release` output
 ├── doc/                # `verum doc` output (HTML docs)
 ├── proof-cache/        # SMT solver memos (speed up re-verification)

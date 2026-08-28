@@ -70,7 +70,7 @@ so a new module inherits the vocabulary its siblings already use.
 | `composition.vr`        |  128 | A ⊗ B typed operation — CompositionResult + associativity pin |
 | `parse.vr`              |  117 | `@arch_module(...)` parser error type — ArchParseError (5 variants) + canonical-field roster pin |
 | `capability_ontology.vr`|  112 | Registered Custom capability names |
-| `mod.vr`                |  283 | Re-exports + crate header |
+| `mod.vr`                |  283 | Re-exports + module header |
 
 ## Canonical primitives (`types.vr`)
 

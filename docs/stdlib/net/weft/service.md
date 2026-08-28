@@ -166,7 +166,7 @@ ready. `RateLimitLayer` returns `Err(Overloaded)` when the bucket
 is empty. Each chooses based on whether the limit is *capacity*
 (Pending — wait) or *rejection* (Err — load shed).
 
-### Effect-system contract
+### Computational-property contract
 
 Computational properties (`Pure`, `IO`, `Async`, `Fallible`,
 `Mutates`, `Spawns`, `FFI`) flow through layer composition. The
@@ -199,7 +199,7 @@ than auth's narrow identity-provider call.
 - **Implementation**: complete.
 - **Conformance**: `service_basic` test passing.
 - **Phase**: 1 (Core Service Layer) — closed.
-- **Next**: middleware chain effect-system audit — Phase 6.
+- **Next**: middleware chain computational-property audit — Phase 6.
 
 ## Related documentation
 

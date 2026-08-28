@@ -220,7 +220,7 @@ your handler code.
 ## 9. Test it
 
 ```bash
-$ cargo run --bin tickr &
+$ verum run src/main.vr &
 tickr listening on [::]:8443
 
 # In another terminal — using curl with HTTP/3.

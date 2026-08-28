@@ -124,5 +124,6 @@ Don't test:
 ## CI snapshots
 
 Check buffer snapshots into git. When rendering changes intentionally,
-regenerate with `cargo test --features snapshot-update` or the Verum
-equivalent; the diff in the PR makes changes reviewable line-by-line.
+regenerate the stored buffer by hand — there is no snapshot-update
+flag today — and the diff in the PR makes the change reviewable
+line-by-line.

@@ -190,7 +190,7 @@ fn make_iter() -> some I: Iterator<Item = Int> { 0..100 }
 The caller sees _some_ type implementing `Iterator<Item = Int>` without
 the concrete type leaking into the signature.
 
-## Dynamic (trait) objects
+## Dynamic (protocol) objects
 
 ```verum
 let shapes: List<dyn Drawable> = [Circle(1.0), Square(2.0)];

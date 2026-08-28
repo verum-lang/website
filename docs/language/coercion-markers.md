@@ -98,7 +98,7 @@ for i in 0..3 { ... }    // ranges likewise
 Before adding `implement <Marker> for MyType {}`, answer these:
 
 1. **Is the runtime representation the same thing?** A newtype over `Int`
-   qualifies for `IntCoercible`; a struct holding an `Int` among other
+   qualifies for `IntCoercible`; a record holding an `Int` among other
    fields does not.
 2. **Would the coercion ever produce a value nobody converted?** If yes, the
    marker is wrong — coercion markers assert *sameness*, they do not insert

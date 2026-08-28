@@ -275,7 +275,7 @@ Concretely, a Verum script gets:
   `&checked T` is compile-time-proven safe and zero-cost. A
   shell-replacement script gets the same `O(1)` no-leak guarantee
   as a long-lived service.
-- **Effect-tracking.** The function's return type already says
+- **Computational properties.** The function's return type already says
   whether it can fail, allocate, or perform I/O. A script that
   crosses an unexpected effect boundary fails at compile time,
   not three minutes into a deploy.

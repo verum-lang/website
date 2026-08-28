@@ -98,7 +98,7 @@ to reset, **Q** / **Esc** to quit.
 
 ### The three pieces
 
-**1. Model + Message**. The `Counter` struct + `Msg` variants
+**1. Model + Message**. The `Counter` record + `Msg` variants
 enumerate every possible transition.
 
 **2. `update`**. Pure function: old state + message → new state +

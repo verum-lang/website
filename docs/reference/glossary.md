@@ -152,7 +152,8 @@ in type `A`, treated as data that can be transported.
 **Portfolio (verification)** — Running multiple solver adapters in parallel on
 the same obligation and cross-validating.
 
-**Protocol** — A trait / interface. Declared as `type P is protocol { ... }`.
+**Protocol** — Verum's name for what other languages call a trait
+or interface. Declared as `type P is protocol { ... }`.
 
 ## R
 

@@ -14,7 +14,7 @@ protobuf, or to implement ad-hoc binary protocols that reuse the
 varint / length-delimited framing vocabulary.
 
 Schema-driven code generation (from `.proto` files) is a separate
-meta-programming follow-up; this crate stays deliberately at the
+meta-programming follow-up; this module stays deliberately at the
 wire layer so that callers can compose it with any ADT of their
 choosing.
 

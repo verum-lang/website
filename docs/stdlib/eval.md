@@ -234,8 +234,9 @@ The module is intentionally minimal:
   step-by-step reducer if you need one.
 - No typing judgements — the intended use is post-type-checking
   (the Rust core already verifies kinds).
-- No effects layer — the user-level effect system is encoded by
-  context tracking, not by CBPV operators.
+- No effects layer — Verum tracks side effects with COMPUTATIONAL
+  PROPERTIES inferred from the code, not with CBPV operators and not
+  with an effect system.
 
 ## Relationship to `core.control`
 

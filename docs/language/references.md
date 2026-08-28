@@ -180,7 +180,7 @@ the outside.
 
 ## References in data structures
 
-Storing a reference in a struct commits you to its lifetime. In Verum,
+Storing a reference in a record commits you to its lifetime. In Verum,
 this is usually done via `Shared<T>` (ref-counted) or a borrow-checker
 approved `&'a T` when the compiler can track the scope:
 
@@ -191,7 +191,7 @@ type Cache<'a> is {
 };
 ```
 
-In practice, most Verum code avoids lifetime-parameterised structs —
+In practice, most Verum code avoids lifetime-parameterised records —
 CBGR makes `Shared<Map<Key, Value>>` a cheap and safe alternative.
 
 ## Taking addresses

@@ -417,7 +417,7 @@ type FatRef<T> is {
 };
 ```
 
-Used when `T` is unsized — slices (`[T]`) and trait objects (`dyn P`) —
+Used when `T` is unsized — slices (`[T]`) and protocol objects (`dyn P`) —
 and for interior references that need an offset into a larger allocation.
 
 ### `AllocationHeader` — 32 bytes, cache-aligned

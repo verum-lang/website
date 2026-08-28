@@ -120,7 +120,7 @@ let u = User {
 };
 ```
 
-`..other` for struct update goes last, no trailing comma:
+`..other` for record update goes last, no trailing comma:
 
 ```verum
 let v2 = User { name: "Bob".to_string(), ..user };

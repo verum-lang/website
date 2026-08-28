@@ -644,9 +644,9 @@ implement Eq for MyError {
 
 When **not** to add `Eq`:
 
-  * The error wraps a trait object (`Heap<dyn Error>`,
+  * The error wraps a protocol object (`Heap<dyn Error>`,
     `List<Heap<dyn Error>>`).  The `Error` protocol is intentionally
-    not `Eq`-extending — comparing two trait objects via `.message()`
+    not `Eq`-extending — comparing two protocol objects via `.message()`
     text would be an oracle leak masquerading as structural equality.
     Defer Eq with an inline rationale comment.
 
@@ -739,7 +739,7 @@ let p = (1001..).find(|n| is_prime(n));
 let csv: Text = sorted.iter().dedup().map(|x| x.to_string())
     .intersperse(",".to_string()).collect();
 
-// produce a Map<Int, List<String>> grouped by length
+// produce a Map<Int, List<Text>> grouped by length
 let by_len: Map<Int, List<Text>> = words.iter()
     .fold(Map.new(), |mut m, w| {
         m.entry(w.len()).or_insert_with(List.new).push(w.clone());

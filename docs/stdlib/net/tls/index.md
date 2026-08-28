@@ -8,7 +8,7 @@ description: Pure-Verum implementation of RFC 8446 + RFC 8449 + RFC 8879 with ty
 
 A pure-Verum implementation of TLS 1.3, replacing the legacy
 intrinsic-backed `core.net.tls.*` surface with a fully-typed,
-refinement-verified pipeline. The crate tracks these specifications:
+refinement-verified pipeline. The module tracks these specifications:
 
 | Spec | Title | Scope |
 |------|-------|-------|

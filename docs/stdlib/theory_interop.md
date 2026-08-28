@@ -24,7 +24,7 @@ translators).
 | `protocol.vr` | 614 | JSON-RPC server — theory/list, claim/translate, coherence/check, audit/run, … |
 | `congruence_closure.vr` | 420 | Decision procedure for theory-internal congruence over function symbols |
 | `coord.vr` | 467 | Theory-coordinate system + canonical identifier resolution across registries |
-| `mod.vr` | 139 | Re-exports + crate header |
+| `mod.vr` | 139 | Re-exports + module header |
 | `bridges/owl2_to_htt.vr` | 559 | OWL2 description-logic → HoTT translation |
 | `bridges/htt_to_owl2.vr` | 245 | HoTT → OWL2 translation (partial — only ∞-groupoid-free fragment) |
 | `bridges/oc_dc_bridge.vr` | 174 | Open-/closed-world ↔ description-logic bridge |

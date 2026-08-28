@@ -26,7 +26,7 @@ rule, spec §4.4).
 
 ## Module map
 
-The crate is organised by RFC-section boundary. Each module has an
+The module is organised by RFC-section boundary. Each module has an
 [invariant budget](#refinement-contracts): when the type system can
 express a safety property, it does so via refinement — these columns
 are the compiled `verum verify` discharge pointers.

@@ -103,7 +103,7 @@ These operators have fixed semantics:
 | `??`      | Null-coalesce — `a ?? b` = `a.unwrap_or(b)`.            |
 | `.`       | Field / method access.                                  |
 | `?.`      | Optional chaining — `a?.b` = `a.and_then(\|x\| x.b)`.   |
-| `..`      | Rest / struct-update (in patterns and record exprs).    |
+| `..`      | Rest / record-update (in patterns and record exprs).    |
 | `@`       | Pattern alias binding; `x @ Pattern` binds `x` *and* tests. |
 | `->`      | Function type / return type arrow.                      |
 | `=>`      | Match-arm arrow / closure / lambda.                     |

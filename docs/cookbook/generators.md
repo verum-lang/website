@@ -290,7 +290,7 @@ Insert `yield_now().await` to add cancellation checkpoints.
 Generators compile to a state machine in VBC. The generator's
 captured locals become fields; `yield` becomes a return-plus-resume.
 The resulting code is fast — the overhead is roughly the same as a
-hand-written iterator struct.
+hand-written iterator record.
 
 ## See also
 

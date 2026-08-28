@@ -127,7 +127,7 @@ let squares: List<Int> = g.collect();   // [0, 1, 4, 9, 16]
 One parser note: directly in an iterable position (`for v in gen{…}`)
 the `{` reads as the loop body — bind the generator to a `let` first,
 or parenthesise `(gen{…})`. This is the same disambiguation rule as
-struct literals in `if` conditions.
+record literals in `if` conditions.
 
 A generator expression is the simplest way to return an iterator
 without defining a named iterator type. For stateful iterators — those

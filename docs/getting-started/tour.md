@@ -46,7 +46,7 @@ fn depth<T>(t: &Tree<T>) -> Int {
   and therefore indirect.
 - `match` on a sum type with wildcard field binding `..`.
 
-## 3. Generics and protocols (traits)
+## 3. Generics and protocols
 
 ```verum
 type Eq is protocol {

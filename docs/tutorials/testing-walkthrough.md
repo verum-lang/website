@@ -5,7 +5,7 @@ title: Testing walkthrough
 
 # Testing walkthrough — from zero to a mature suite
 
-A hands-on tutorial: we'll build a small text-utility crate and grow
+A hands-on tutorial: we'll build a small text-utility cog and grow
 its test suite from one trivial assertion through property-based
 tests, parametrised cases, regression locking, benchmarks, and CI
 output. Every snippet compiles against the shipped `verum` binary —

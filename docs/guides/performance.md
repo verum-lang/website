@@ -100,7 +100,7 @@ If `verum analyze --escape` shows a low promotion rate on a hot
 function, rewrite so the compiler can prove local scope. Common causes
 of escape:
 
-- Storing a reference in a struct that outlives the scope (use
+- Storing a reference in a record that outlives the scope (use
   `Heap<T>` to own, or `Shared<T>` to share).
 - Passing a reference to an opaque function (the compiler can't see
   what happens to it).
@@ -117,7 +117,7 @@ will confirm the promotion was possible.
   prefer `List`.
 - **Ordered iteration + lookup**: `BTreeMap` over `Map`. Same O(log n)
   vs O(1) tradeoff as Rust.
-- **Producer/consumer**: prefer `channel` (MPSC) over `Mutex<Vec<T>>`
+- **Producer/consumer**: prefer `channel` (MPSC) over `Mutex<List<T>>`
   + `Condvar`.
 
 ## Targeted optimisations

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 10
 title: "Three orthogonal axes — Capability, Property, Context"
-description: "Why Verum carries three independent dimensions of effect-tracking, what each tracks, and why merging them is a category error."
+description: "Why Verum carries three independent dimensions of static tracking, what each tracks, and why merging them is a category error."
 slug: /architecture-types/orthogonality
 ---
 

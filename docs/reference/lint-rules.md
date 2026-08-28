@@ -349,7 +349,7 @@ error: module `core.math.linalg` may not use context `Database`
 
 ### `unnecessary-heap` — *warn*
 
-Heap allocation for a small type (Int, Bool, Char, small struct)
+Heap allocation for a small type (Int, Bool, Char, small record)
 that could live on the stack.
 
 ```verum
@@ -359,7 +359,7 @@ let n: Int = 42;                // silenced
 
 ### `large-copy` — *warn*
 
-A struct ≥ 256 bytes (default) is passed by value rather than by
+A record ≥ 256 bytes (default) is passed by value rather than by
 reference, copying many bytes per call.
 
 ```verum
@@ -380,7 +380,7 @@ for i in 0..n {
     process(&data[i]);   // fires — &data is managed
 }
 // after promotion:
-let data: &checked Vec<Item> = make_checked(&data);
+let data: &checked List<Item> = make_checked(&data);
 ```
 
 ### `unbounded-channel` — *warn*

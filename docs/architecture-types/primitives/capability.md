@@ -496,6 +496,6 @@ are independent quality gates.
 - [Context system](../../language/context-system.md) — the runtime
   DI mechanism that exposes capabilities as providers.
 - [Type properties](../../language/type-properties.md) — the
-  function-level effect-tracking system.
+  function-level computational-property system.
 - [Security capabilities](../../stdlib/security/capabilities.md) —
   the runtime label-flow enforcement.

@@ -336,7 +336,7 @@ Use cases:
 | Layer | Status |
 |---|---|
 | `Vec<T, N>` / `Mask<N>` types | Complete (69 public ops) |
-| `SimdElement` protocol impls for all int/float primitives | Complete |
+| `SimdElement` implement blocks for all int/float primitives | Complete |
 | `@intrinsic("simd_*")` declarations | Complete |
 | **LLVM backend lowering to `<N x T>` vector ops** | **In progress (compiler-level)** |
 | `@multiversion` runtime CPU-feature dispatch | In progress (compiler-level) |

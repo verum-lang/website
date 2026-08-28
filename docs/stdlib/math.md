@@ -432,7 +432,7 @@ recompute(values)
 ```
 
 Implements `Differentiable` for `Float`, `Float32`, `Float64`, all
-tensor types, and user structs via `@derive(Differentiable)`.
+tensor types, and user records via `@derive(Differentiable)`.
 
 ---
 
