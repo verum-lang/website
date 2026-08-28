@@ -70,7 +70,7 @@ fn main(args: Args) -> ExitCode {
             print(&f"hello, {args.name}\n");
         }
     }
-    ExitCode.Success
+    ExitCode.Ok
 }
 ```
 
@@ -104,17 +104,22 @@ let app = App.new("wave")
 several ways:
 
 ```verum
-// Standard: parse argv from `env`, dispatch to `main`, exit.
-ExitCode.exit(app.run(env.argv()));
+// Standard: parse argv from `env`, dispatch, and exit the process.
+// `run_or_exit` returns `!` — it does not come back. Internally it
+// reads `env.args()`, calls `try_run`, and passes `code.code()` to
+// `env.exit`.
+app.run_or_exit();
 
-// Test mode: parse a manufactured argv vector, return parsed
-// args without dispatching.  Used in `@test` and golden-test
-// harnesses.
-let parsed = app.parse(List.from(["wave", "Maxim", "-n", "3"]));
+// Test mode: parse a manufactured argv vector and get the exit code
+// back instead of exiting. Used in `@test` and golden-test harnesses.
+let outcome: Result<ExitCode, ParseError> =
+    app.try_run(List.from(["wave", "Maxim", "-n", "3"]));
 
-// JSON-schema export: every spec serialises to a stable schema
-// for editors / shells / completion engines.
-let schema = app.to_json_schema();
+// JSON-schema export: a spec serialises to a stable schema for
+// editors / shells / completion engines. It is a free function over
+// the SPEC, not a method on the app —
+// `core.cli.json_schema.{render, render_compact}`.
+let schema = json_schema.render(&spec);
 ```
 
 ## 4. The error model
@@ -196,8 +201,10 @@ the canonical roster:
 | `Cancelled`      | 130 | SIGINT — `Ctrl-C` |
 | `CapabilityDenied` | 143 | permission policy denied (`--allow=…`) |
 
-Custom exit codes can be lifted via `ExitCode.from_raw(rc: Int)`
-where the argument is in `[0, 255]`.
+`ExitCode` converts in one direction only: `code(&self) -> Int` gives
+the POSIX number (`Ok` → 0, `Usage` → 2, `DataErr` → 65, …). There is no
+`from_raw`; to exit with a number the enum does not name, call
+`env.exit(n)` directly.
 
 ## 7. Permissions integration
 
