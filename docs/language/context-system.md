@@ -432,10 +432,12 @@ the caller didn't provide a `Database`. Tests swap in a mock:
 ```verum
 @test
 async fn test_handler() {
-    provide Database = MockDatabase.new() in
-    provide Logger   = NullLogger.new() in
-    provide Clock    = FakeClock.at(epoch()) in
-    provide Metrics  = NullMetrics.new() in {
+    // Several contexts at once: comma-separated bindings, ONE block.
+    // `in` scopes a SINGLE binding and does not chain.
+    provide Database = MockDatabase.new(),
+            Logger   = NullLogger.new(),
+            Clock    = FakeClock.at(epoch()),
+            Metrics  = NullMetrics.new() {
         let req = Request.get("/users/42");
         let resp = handle(req).await;
         assert_eq(resp.status.code(), 200);

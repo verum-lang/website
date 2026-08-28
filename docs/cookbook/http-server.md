@@ -301,8 +301,8 @@ async fn test_health_endpoint() {
     let mock_db = MockDatabase.empty();
     let mock_log = NullLogger.new();
 
-    provide Database = mock_db in
-    provide Logger = mock_log in {
+    provide Database = mock_db,
+            Logger = mock_log {
         let req = Request.new(Method.Get, "/health");
         let resp = route(req).await.unwrap();
         assert_eq(resp.status.code(), 200);
@@ -313,8 +313,8 @@ async fn test_health_endpoint() {
 @test
 async fn test_user_not_found() {
     let mock_db = MockDatabase.empty();
-    provide Database = mock_db in
-    provide Logger = NullLogger.new() in {
+    provide Database = mock_db,
+            Logger = NullLogger.new() {
         let req = Request.new(Method.Get, "/users/999");
         let resp = route(req).await.unwrap();
         assert_eq(resp.status.code(), 404);

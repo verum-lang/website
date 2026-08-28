@@ -52,7 +52,7 @@ pub type ParseError is { pos: Int, expected: Text };
 `src/parser/atoms.vr`:
 
 ```verum
-use .super.types.*;
+mount .super.types.*;
 
 /// Match a single character exactly.
 fn char(c: Char) -> Parser<Char> {
@@ -140,7 +140,7 @@ fn number() -> Parser<Float> {
 `src/parser/combinators.vr`:
 
 ```verum
-use .super.types.*;
+mount .super.types.*;
 
 /// Transform the parsed value.
 fn map<A, B>(p: Parser<A>, f: fn(A) -> B) -> Parser<B> {
@@ -233,9 +233,9 @@ fn sep_by1<T, S>(p: Parser<T>, sep: Parser<S>) -> Parser<List<T>> {
 `src/parser/grammar.vr`:
 
 ```verum
-use .super.types.*;
-use .super.atoms.*;
-use .super.combinators.*;
+mount .super.types.*;
+mount .super.atoms.*;
+mount .super.combinators.*;
 
 /// Expression: term ((+|-) term)*
 fn expr() -> Parser<Expr> {
@@ -327,7 +327,7 @@ fn parse(input: &Text) -> Result<Expr, ParseError> {
 `src/parser/eval.vr`:
 
 ```verum
-use .super.types.Expr;
+mount .super.types.Expr;
 
 fn eval(e: &Expr) -> Float {
     match e {
@@ -343,7 +343,7 @@ fn eval(e: &Expr) -> Float {
 ## 6. REPL in `src/main.vr`
 
 ```verum
-use .self.parser.*;
+mount .self.parser.*;
 
 fn main() {
     let stdin = stdin();
@@ -366,7 +366,7 @@ fn main() {
 ```verum
 @cfg(test)
 module tests {
-    use .super.parser.*;
+    mount .super.parser.*;
 
     fn p(s: &'static str) -> Float { eval(&parse(&s.to_string()).unwrap()) }
 

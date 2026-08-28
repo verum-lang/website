@@ -52,7 +52,7 @@ pub meta fn derive_display_all<T>() -> TokenStream
 ### Using it
 
 ```verum
-use .self.derives.derive_display_all;
+mount .self.derives.derive_display_all;
 
 @derive(DisplayAll)
 type User is { id: Int, name: Text, email: Text };

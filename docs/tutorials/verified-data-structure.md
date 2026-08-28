@@ -166,7 +166,7 @@ unproven adjacency.
 ```verum
 @cfg(test)
 module tests {
-    use .super.*;
+    mount .super.*;
 
     @test
     fn insert_preserves_sort() {

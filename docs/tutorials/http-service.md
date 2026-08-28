@@ -82,7 +82,7 @@ forces conversion at the boundary.
 
 ```verum
 mount core.context.*;
-use .self.domain.*;
+mount .self.domain.*;
 
 /// Storage for the URL-shortener — abstract so we can swap
 /// the implementation (in-memory / Postgres / Redis) without
@@ -106,7 +106,7 @@ pub type StoreError is
 
 ```verum
 mount core.text.*;
-use .self.domain.Code;
+mount .self.domain.Code;
 
 const ALPHABET: &Text =
     &"abcdefghjkmnpqrstuvwxyz23456789";          // excludes 0/o/1/l
@@ -152,8 +152,8 @@ iteration; combined with the exit condition, they imply `result.len()
 
 ```verum
 mount core.sync.*;
-use .self.domain.*;
-use .self.store.*;
+mount .self.domain.*;
+mount .self.store.*;
 
 pub type MemoryStore is {
     inner: Shared<RwLock<Map<Code, Link>>>,
@@ -205,9 +205,9 @@ implement Store for MemoryStore {
 mount core.net.http.*;
 mount core.text.*;
 mount core.time.Instant;
-use .self.domain.*;
-use .self.store.*;
-use .self.codegen;
+mount .self.domain.*;
+mount .self.store.*;
+mount .self.codegen;
 
 /// Shorten a URL — accepts JSON body `{"target": "..."}`.
 pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
@@ -293,8 +293,8 @@ pub async fn route(req: Request) -> Response
 mount core.net.*;
 mount core.async.*;
 mount core.sync.Semaphore;
-use .self.store_memory.MemoryStore;
-use .self.http.route;
+mount .self.store_memory.MemoryStore;
+mount .self.http.route;
 
 const MAX_INFLIGHT: Int = 1024;     // upper bound on concurrent tasks
 
@@ -336,9 +336,13 @@ fn main() {
         .expect("runtime");
 
     rt.block_on(async {
-        provide Store = MemoryStore.new() in
-        provide Clock = SystemClock.new() in
-        provide Logger = ConsoleLogger.new(LogLevel.Info) in {
+        // Several contexts at once: comma-separated bindings and ONE
+        // block. `in` introduces a scope for a SINGLE binding
+        // (`provide X = v in { … }`); it does not chain, so
+        // `provide A = x in provide B = y in { … }` does not parse.
+        provide Store = MemoryStore.new(),
+                Clock = SystemClock.new(),
+                Logger = ConsoleLogger.new(LogLevel.Info) {
             serve().await.expect("server");
         }
     });
@@ -361,11 +365,11 @@ Three things to notice:
 ```verum
 @cfg(test)
 module tests {
-    use .super.domain.*;
-    use .super.codegen;
-    use .super.store.*;
-    use .super.store_memory.MemoryStore;
-    use .super.http.*;
+    mount .super.domain.*;
+    mount .super.codegen;
+    mount .super.store.*;
+    mount .super.store_memory.MemoryStore;
+    mount .super.http.*;
 
     @test
     fn codegen_produces_valid_code() {
@@ -401,8 +405,8 @@ module tests {
         let store = MemoryStore.new();
         let logger = NullLogger.new();
 
-        provide Store = store in
-        provide Logger = logger in {
+        provide Store = store,
+                Logger = logger {
             let body = json#"""{"target": "https://example.com"}""".to_bytes();
             let resp = handle_shorten(&body).await.unwrap();
             assert(resp.status.is_success());

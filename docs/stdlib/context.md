@@ -134,8 +134,8 @@ fn handle(req: Request) using [Logger, Database] {
 }
 
 fn main() {
-    provide Logger = ConsoleLogger.new() in
-    provide Database = connect_db() in {
+    provide Logger = ConsoleLogger.new(),
+            Database = connect_db() {
         handle(request);
     };
 }

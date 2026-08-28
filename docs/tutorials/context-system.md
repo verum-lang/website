@@ -137,8 +137,8 @@ fn main() {
         orders: Shared.new(Mutex.new(Map.new())),
     };
 
-    provide Logger = logger in
-    provide Database = db in {
+    provide Logger = logger,
+            Database = db {
         seed_test_data();
         match order_total(42) {
             Result.Ok(total)  => print(f"total: {total}"),
@@ -180,8 +180,8 @@ fn test_order_total() {
         ])},
     ]));
 
-    provide Logger = log.clone() in
-    provide Database = db in {
+    provide Logger = log.clone(),
+            Database = db {
         let total = order_total(42).unwrap();
         assert_eq(total, 35.0);
     }
@@ -248,8 +248,8 @@ fn replicate(order: &Order)
 }
 
 // Provider:
-provide Database as primary = primary_db in
-provide Database as replica = replica_db in {
+provide Database as primary = primary_db,
+        Database as replica = replica_db {
     replicate(&order);
 }
 ```
