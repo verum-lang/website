@@ -76,22 +76,47 @@ see [Installation → Cross-compiling Verum programs](/docs/getting-started/inst
 for what that requires and what `[cross_compile]` in `verum.toml` does
 and does not do today.
 
-## Build scripts
+## Build scripts — there are none, on purpose
 
-A `build.vr` file at the project root is a pre-build script:
+Verum has no `build.vr` and no build-script phase. A build script
+is a second program the type checker cannot see, communicating with
+the build through stdout conventions; the two things it is normally
+used for are first-class language constructs here instead.
+
+**Native libraries** are declared where they are used, and the link
+line follows from the declaration:
 
 ```verum
-// build.vr
-fn main() {
-    let schema = fs.read_to_string("schema.sql")?;
-    let generated = codegen_bindings(&schema);
-    fs.write("target/generated/bindings.vr", &generated)?;
-    println("cargo:rerun-if-changed=schema.sql");
+@ffi("sqlite3")
+extern {
+    fn sqlite3_libversion_number() -> Int32;
 }
 ```
 
-Build scripts produce outputs under `target/generated/` which are
-automatically mounted into the project.
+**Compile-time asset reading and code generation** are `meta`
+functions, which run during compilation and are type-checked like
+any other function. `BuildAssets` is read-only and confined to the
+project directory; `CompileDiag` turns a missing input into a real
+diagnostic instead of a failed process:
+
+```verum
+mount core.meta.contexts.{BuildAssets, CompileDiag};
+mount core.meta.span.{Span};
+
+meta fn schema_text() -> Text using [BuildAssets, CompileDiag] {
+    match BuildAssets.load_text("assets/schema.sql") {
+        Result.Ok(text) => text,
+        Result.Err(_) => {
+            CompileDiag.emit_error("assets/schema.sql is missing", Span.call_site());
+            ""
+        }
+    }
+}
+```
+
+See [meta/staging](/docs/language/meta/staging) for when a `meta`
+function runs, and [meta/token-api](/docs/language/meta/token-api)
+for generating code rather than reading data.
 
 ## Features
 
@@ -206,7 +231,6 @@ target/
 │   └── deps/             # dependency artefacts
 ├── release/
 │   └── myprog            # LTO'd, stripped
-├── generated/            # build.vr outputs, auto-mounted
 ├── bench/drivers/        # `verum bench --aot` synthesised drivers
 ├── test/                 # per-test binaries + coverage profraw
 │   ├── pbt-regressions.json  # PBT regression database

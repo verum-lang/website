@@ -50,7 +50,6 @@ Optional project-level subtrees picked up by the build system:
 | `examples/`   | Executable examples runnable with `verum run --example <name>` |
 | `proofs/`     | Exported `.verum-cert` bundles (produced by `@verify(certified)`) |
 | `target/`     | Build artefacts (gitignored). `debug/`, `release/`, plus `target/smt-cache/` — content-addressed SMT result cache. |
-| `build.vr`    | Build script (optional, used for FFI and code-gen)  |
 | `verum.lock`  | Dependency lock file                                |
 
 Only three things are required: `verum.toml`, `src/`, and either
@@ -413,23 +412,52 @@ See [tooling/build-system](/docs/tooling/build-system) for workspace
 build semantics and [tooling/cog-packages](/docs/tooling/cog-packages)
 for publishing.
 
-## Build script — `build.vr`
+## Compile-time work — there is no build script
 
-For FFI or code generation at build time, place `build.vr` at the
-cog root. The file compiles as a `meta` program and runs before
-the main build:
+Verum has **no `build.vr`**, and the two jobs a build script
+usually does are handled in ordinary source instead. This is a
+deliberate difference from Cargo: a build script is a second
+program, in a second language-of-conventions, whose output the
+type checker cannot see. Both replacements below are checked by
+the same compiler that checks the rest of the cog.
+
+**Linking a native library** is declarative — `@ffi` names the
+library, `extern` declares its symbols, and the linker line is
+derived from what the module actually uses:
 
 ```verum
-// build.vr
-meta fn main() using [BuildAssets, CompileDiag] {
-    let version = BuildAssets.load_text("src/VERSION")?;
-    BuildAssets.emit_constant("VERSION", version.trim());
-    BuildAssets.link_native_lib("sqlite3");
+@ffi("sqlite3")
+extern {
+    fn sqlite3_libversion_number() -> Int32;
 }
 ```
 
-Build scripts run in a sandboxed compile-time environment; they
-cannot perform I/O outside the project directory.
+**Reading an asset at compile time** is a `meta` function. It runs
+during compilation with the `BuildAssets` context, which is
+read-only — `load`, `load_text`, `exists`, `list_dir`, `metadata`,
+`project_root`, `asset_dirs` — and it reports through `CompileDiag`,
+so a missing asset is a compile error at a span rather than a
+message on stderr:
+
+```verum
+mount core.meta.contexts.{BuildAssets, CompileDiag};
+mount core.meta.span.{Span};
+
+meta fn schema_text() -> Text using [BuildAssets, CompileDiag] {
+    match BuildAssets.load_text("assets/schema.sql") {
+        Result.Ok(text) => text,
+        Result.Err(_) => {
+            CompileDiag.emit_error("assets/schema.sql is missing", Span.call_site());
+            ""
+        }
+    }
+}
+```
+
+`BuildAssets` cannot write, and it cannot read outside the project
+boundary: paths containing `..` are refused. A `meta` function that
+needs to emit code returns a `TokenStream` — see
+[meta/overview](/docs/language/meta/overview).
 
 ## The `target/` directory
 

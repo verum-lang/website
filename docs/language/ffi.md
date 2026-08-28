@@ -260,7 +260,7 @@ full walkthrough including error translation.
 ## See also
 
 - **[Cookbook → FFI](/docs/cookbook/ffi)** — end-to-end walkthrough
-  with `build.vr` and header generation.
+  with error translation across the boundary.
 - **[Language → attributes](/docs/language/attributes)** — `@extern`,
   `@repr`.
 - **[Stdlib → sys](/docs/stdlib/sys)** — the V-LLSI kernel bootstrap
