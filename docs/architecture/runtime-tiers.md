@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Runtime Tiers and Profiles
-description: Execution modes (interpreter vs AOT), CBGR safety tiers, and the five runtime profiles that configure what the runtime can do.
+description: Execution modes (interpreter vs AOT), CBGR safety tiers, and the six runtime profiles the stdlib is organised by — with what is implemented on each axis marked.
 ---
 
 # Runtime Tiers and Profiles
@@ -27,13 +27,18 @@ either; the choice is per-build, not per-function.
 |------------------|---------------------------------------------------|----------------------------------------------------------|
 | `Interpreter`    | Direct VBC interpretation                          | `verum run`, REPL, Playbook, tests, `meta fn` evaluation |
 | `Aot`            | Ahead-of-time compilation via LLVM                 | `verum build`, production binaries                       |
-| `Check` (mode)   | Type-check only, no code emission                  | `verum check`, editor diagnostics                        |
+| `Check`          | Type-check only, no code emission. NOT a member of the `Tier` enum — `verum_cli::tier::Tier` has exactly two variants, `Interpret` and `Aot`; `check` is a command and a `[codegen].tier` value that `verum run` explicitly refuses. | `verum check`, editor diagnostics |
 
-`verum run` is interpreter-first by default — startup is instant,
-every VBC opcode is available (including cubical, HoTT, and
-autodiff). Pass `--aot` (or set `[build].tier = "aot"` in
-`verum.toml`) to compile through LLVM for production-speed
-execution.
+`verum run` is interpreter-first by default — measured: on a fresh
+project with no `[codegen]` section it prints `Interpreting …` and
+finishes in 0.37s, emitting no native binary. Startup is instant and
+every VBC opcode is available (including cubical, HoTT and autodiff).
+
+The flags are `--interp`, `--aot` and `--tier <name>`, mutually
+exclusive in the clap definition. In the manifest the key is
+`[codegen].tier` (`"interpret"`, `"aot"`, `"check"`), with the older
+`[profile.dev].tier` / `[profile.release].tier` still honoured as a
+fallback — dev defaults to the interpreter, release to AOT.
 
 ### Interpreter — VBC
 
@@ -231,10 +236,32 @@ changes tiers.
 
 ## Axis 3 — Runtime profiles
 
-The third axis selects **which subset of the runtime** is linked.
-Defined in `core/runtime/mod.vr` via `@cfg(runtime = "...")`, five
-profiles cover the entire target spectrum from servers to
-microcontrollers.
+The third axis names **which subset of the runtime** a piece of code
+belongs to. `core/runtime/mod.vr` carries 16 `@cfg(runtime = "…")`
+attributes and `core/` uses six values in total.
+
+:::caution What is implemented, and what is not
+
+The attributes are written and the stdlib is organised by them. **There
+is no way to select a profile yet.** Verified: `@cfg(runtime = "X")` is
+not a known cfg key — `TargetConfig::matches` handles `target_os`,
+`target_arch`, `target_family`, `target_pointer_width`, `target_endian`,
+`target_env`, `target_vendor` and `feature`, and falls through to a
+`custom` map for everything else. That map is populated only by
+`CompilerOptions::with_cfg_custom`, which nothing in `verum_cli` calls;
+there is no `--cfg` flag, and `BuildConfig` — the `[build]` manifest
+section — has no `runtime` field (its fields are `target`, `opt_level`,
+`incremental`, `lto`, `codegen_units`, `panic`, `subsystem`).
+
+The one place the value has an effect today is the stdlib bake:
+`DEFAULT_EXCLUDED_RUNTIMES = ["embedded", "none"]` in
+`verum_compiler::module_utils` drops the files carrying those two,
+matching the attribute by NAME rather than evaluating it — which is
+also why the other four stay in.
+
+So read the table below as the intended taxonomy, and the paragraph
+after it about build-time refusal as intent rather than behaviour.
+:::
 
 | Profile          | Executor                | Heap              | Threads       | I/O driver              | Use case                             |
 |------------------|-------------------------|-------------------|---------------|-------------------------|--------------------------------------|
@@ -243,27 +270,18 @@ microcontrollers.
 | `no_async`       | —                       | System allocator  | OS threads    | Blocking POSIX / Windows | Batch tools, CLIs without futures    |
 | `no_heap`        | Cooperative             | Stack only        | Current only  | Polling only            | Real-time, safety-critical           |
 | `embedded`       | —                       | Stack only        | Current only  | MMIO / registers only   | Microcontrollers, freestanding       |
+| `none`           | —                       | Stack only        | Current only  | None                    | No runtime at all — `core/sys/no_runtime.vr` |
 
-A program that uses a feature its profile doesn't support is a
-**build-time error**, not a runtime failure. `verum build` refuses
-to link `runtime = "no_heap"` against any transitive dependency
-that allocates from `Heap<T>`.
+INTENDED, not yet built: a program that uses a feature its profile does
+not support should be a **build-time error** rather than a runtime
+failure — `verum build` refusing to link `runtime = "no_heap"` against
+any transitive dependency that allocates from `Heap<T>`. Nothing
+implements that check today.
 
-Select a profile in `verum.toml`:
-
-```toml
-[build]
-runtime = "full"        # default
-# runtime = "single_thread"
-# runtime = "no_async"
-# runtime = "no_heap"
-# runtime = "embedded"
-```
-
-The profile selection also drives which crates in `core/` are even
-compiled — the `no_heap` profile, for example, excludes
-`core/collections` entirely and falls back to stack-only
-replacements in `core/stack`.
+The `[build] runtime = "…"` key that earlier versions of this page
+showed does not exist; writing it into `verum.toml` selects nothing.
+Nor is there a `core/stack` module for `no_heap` to fall back to —
+`core/collections` is not excluded by any profile.
 
 ## Async scheduler
 
