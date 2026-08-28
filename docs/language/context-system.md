@@ -448,13 +448,19 @@ signature, and `Clock.now()` inside a function that did NOT declare
 `[Clock]` is refused — `error<E801>: context 'Clock' used but not
 declared in function signature`.
 
-:::caution The obligation stops at the signature
-A CALL does not currently propagate the requirement. Calling
-`handle(req)` from a function that declares no contexts compiles,
-and the missing context surfaces at runtime as `Panic: Context
-Database not provided`. Declare the contexts you pass on, and
-provide them at the entry point; the compiler will not remind you.
-:::
+The obligation travels. Calling `handle(req)` from a function that
+declares no contexts is refused:
+
+```verum
+fn caller() { handle(req); }
+// error<E801>: context `Database` used but not declared in
+//              function signature
+```
+
+Declaring a *different* context does not satisfy it either — the
+check compares names, not the presence of a `using` clause. So a
+requirement cannot be lost by wrapping the call in a function, which
+is what "no hidden state" has to mean for it to be worth anything.
 
 Tests swap in a mock:
 
