@@ -524,7 +524,7 @@ declarations: ShapeDeclarations {
         v_min: CveThresholdV.TypecheckPlusTests, // or FullFormalProof, NamedCertification
         e_min: CveThresholdE.StructurallyReady,  // or DeployedInOneEnv, FunctorialOnly
     }),
-    ..ShapeDeclarations::empty()
+    ..ShapeDeclarations.empty()
 }
 ```
 
@@ -552,7 +552,7 @@ declarations: ShapeDeclarations {
     substrate: Some(CognitiveSubstrate.AnalyticDecompositional),
     // ... or HolisticRelational, ActionCentric, TraditionTransmitting
     //     for cogs in non-default substrate domains
-    ..ShapeDeclarations::empty()
+    ..ShapeDeclarations.empty()
 }
 ```
 
@@ -585,7 +585,7 @@ declarations: ShapeDeclarations {
     // ... or ControlTheory, DistributedProtocols, FunctionalSystems,
     //     InstitutionalDesign, CustomAnchoring("..."), depending on
     //     the actual domain of formalisation
-    ..ShapeDeclarations::empty()
+    ..ShapeDeclarations.empty()
 }
 ```
 
@@ -641,7 +641,7 @@ declarations: ShapeDeclarations {
         fixpoint_class: FixpointClass.Banach,
         //          // or Tarski / Adamek / CustomFixpoint("...")
     }),
-    ..ShapeDeclarations::empty()
+    ..ShapeDeclarations.empty()
 }
 ```
 
@@ -681,7 +681,7 @@ module synarc.governance.constitution;
             fixed_point:    "synarc.governance.constitution",
             fixpoint_class: FixpointClass.Banach,
         }),
-        ..ShapeDeclarations::empty()
+        ..ShapeDeclarations.empty()
     },
 )
 module synarc.governance.constitution;

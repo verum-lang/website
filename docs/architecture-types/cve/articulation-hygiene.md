@@ -479,7 +479,7 @@ strict mode this is rejected at deploy.
             fixed_point:    "synarc.governance.constitution",
             fixpoint_class: fixpoint_class_banach(),
         }),
-        ..ShapeDeclarations::empty()
+        ..ShapeDeclarations.empty()
     },
 )
 module synarc.governance.constitution;

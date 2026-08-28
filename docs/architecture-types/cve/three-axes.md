@@ -206,7 +206,7 @@ The kernel exposes an `is_canonical_e` accessor on
     lifecycle: Lifecycle.Theorem("v1.0"),
     declarations: ShapeDeclarations {
         e_sense: Some(ExecutabilitySense.StructuralReadiness),
-        ..ShapeDeclarations::empty()
+        ..ShapeDeclarations.empty()
     },
 )
 module my_app.cog;

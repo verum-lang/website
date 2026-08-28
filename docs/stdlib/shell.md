@@ -94,13 +94,13 @@ Composition is type-checked.
 ## 5. Typed command DSLs — `GitCmd`, `DockerCmd`
 
 ```verum
-let log = GitCmd::log()
+let log = GitCmd.log()
     .since("1 week ago")
     .author("alice")
     .format("oneline")
     .run()?;
 
-let img = DockerCmd::build("./Dockerfile")
+let img = DockerCmd.build("./Dockerfile")
     .tag("myapp:latest")
     .build_arg("VERSION", "1.2.3")
     .run()?;
@@ -151,7 +151,7 @@ denial.
 ## 8. MockLayer — testable shell scripts
 
 ```verum
-let ctx = ShellContext::test()
+let ctx = ShellContext.test()
     .mock("git status", "On branch main\nnothing to commit\n")
     .mock("docker ps", "");
 
