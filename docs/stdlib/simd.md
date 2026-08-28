@@ -241,6 +241,13 @@ shared_atomic_add_f64(ptr, offset, value) -> Float
 
 ### Example — element-wise vector addition
 
+:::caution The launch line below does not compile
+
+Everything in this block parses except the `<<<…>>>` call: `@kernel`
+bodies are checked today, launching one from host code is not. Read the
+launch as the intended surface.
+:::
+
 ```verum
 @kernel
 fn vec_add(a: &[Float], b: &[Float], c: &mut [Float], n: Int) {
@@ -256,6 +263,12 @@ fn main() using [IO, GpuDevice] {
     let b = GpuBuffer.from_slice(&[10.0, 20.0, 30.0, 40.0]);
     let mut c = GpuBuffer<Float>.allocate(4);
 
+    // COMPILE ERROR: not yet supported. The `<<<grid, block>>>` launch syntax appears
+    // nowhere in `grammar/verum.ebnf`, and every occurrence of it in
+    // the conformance suite sits inside a COMMENT — the suite's own
+    // `gpu/kernel/kernel_launch.vr` says "GPU kernel launch syntax
+    // (<<<grid, block>>>) requires runtime" and leaves `fn main` empty,
+    // validating that the kernel BODY parses and nothing more.
     vec_add<<<Grid.d1(1), Block.d1(4)>>>(&a, &b, &mut c, 4);
 
     let host = c.to_host();

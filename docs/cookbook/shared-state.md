@@ -129,7 +129,7 @@ async fn actor_loop(mut rx: Receiver<Req>) {
 
 // Client
 fn make_actor() -> (ActorHandle, JoinHandle<()>) {
-    let (tx, rx) = channel<Req>(128);
+    let (tx, rx) = bounded<Req>(128);
     let h = spawn actor_loop(rx);
     (ActorHandle { tx }, h)
 }

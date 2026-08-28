@@ -147,8 +147,7 @@ async fn fetch_all(urls: &List<Text>) -> List<Bytes>
             .collect();
         try_join_all(handles).await?
     }
-    on_cancel { metrics.increment("fetch_all.cancelled") }
-    recover(e: HttpError) { List.new() }
+    on_cancel { metrics.increment("fetch_all.cancelled") } recover |e| { List.new() }
 }
 ```
 

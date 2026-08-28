@@ -37,8 +37,7 @@ async fn fetch_all(urls: &List<Url>) -> Result<List<Bytes>, Error>
     }
     on_cancel {
         metrics.increment("fetch_all.cancelled");
-    }
-    recover(e: NurseryError) {
+    } recover |e| {
         Result.Err(Error.from(e))
     }
 }

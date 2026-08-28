@@ -257,9 +257,9 @@ const CHANNEL_CAPACITY: Int = 1024;
 
 async fn run_pipeline(output_path: &Path) -> Result<(), Error> using [IO, Logger] {
     // Wire the stages.
-    let (raw_tx,   raw_rx)   = channel<RawRecord>(CHANNEL_CAPACITY);
-    let (parsed_tx, parsed_rx) = channel<ParsedRecord>(CHANNEL_CAPACITY);
-    let (valid_tx, valid_rx) = channel<ValidRecord>(CHANNEL_CAPACITY);
+    let (raw_tx,   raw_rx)   = bounded<RawRecord>(CHANNEL_CAPACITY);
+    let (parsed_tx, parsed_rx) = bounded<ParsedRecord>(CHANNEL_CAPACITY);
+    let (valid_tx, valid_rx) = bounded<ValidRecord>(CHANNEL_CAPACITY);
 
     nursery(on_error: cancel_all) {
         // Stage 1: reader (single)
@@ -288,7 +288,7 @@ async fn run_pipeline(output_path: &Path) -> Result<(), Error> using [IO, Logger
         };
 
         // Nursery waits for every child.
-    } recover (e: NurseryError) {
+    } recover |e| {
         Logger.error(&f"pipeline error: {e:?}");
         return Result.Err(Error.new(&"pipeline failed"));
     }
@@ -380,9 +380,9 @@ module tests {
             f"2026-04-15T00:00:{i:02} INFO Message {i}"
         ).collect();
 
-        let (raw_tx, raw_rx) = channel<RawRecord>(16);
-        let (parsed_tx, parsed_rx) = channel<ParsedRecord>(16);
-        let (valid_tx, mut valid_rx) = channel<ValidRecord>(16);
+        let (raw_tx, raw_rx) = bounded<RawRecord>(16);
+        let (parsed_tx, parsed_rx) = bounded<ParsedRecord>(16);
+        let (valid_tx, mut valid_rx) = bounded<ValidRecord>(16);
 
         nursery {
             spawn async move {
@@ -403,7 +403,7 @@ module tests {
     @test
     async fn backpressure_throttles_sender() using [IO, Clock] {
         // Slow consumer: sleep after each recv.
-        let (tx, mut rx) = channel<Int>(4);
+        let (tx, mut rx) = bounded<Int>(4);
 
         let sender_start = Clock.now();
         spawn async move {

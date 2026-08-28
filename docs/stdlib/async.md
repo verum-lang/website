@@ -958,7 +958,7 @@ async fn fetch_batch(urls: &List<Text>) -> List<Bytes> using [Http] {
         try_join_all(handles).await?
     } on_cancel {
         metrics.increment("fetch_batch.cancelled");
-    } recover(e: NurseryError) {
+    } recover |e| {
         log_error(&e);
         List.new()
     }
