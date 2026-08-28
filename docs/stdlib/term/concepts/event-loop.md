@@ -121,7 +121,7 @@ loop's drain. If this is a concern, wrap your producers in the
 `throttle`/`debounce` combinators from `core.async.timer`:
 
 ```verum
-Subscription.from_stream(Heap(
+sub_from_stream(Heap(
     raw_stream.throttle(Duration.from_millis(50))
 ))
 ```

@@ -7,7 +7,7 @@ description: Full signature reference for every widget in `core.term.widget`.
 # API reference — widgets
 
 All widgets live in `core.term.widget`. Most are re-exported from
-`core.term.widget.*` and also from `core.term.prelude.*`. This page is a
+`core.term.widget.*` and also from `core.term.app.*`. This page is a
 dense reference; for guided explanations see the [widget catalogue](../widgets/overview.md).
 
 ## Protocols

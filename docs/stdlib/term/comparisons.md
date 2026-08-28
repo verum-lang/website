@@ -17,7 +17,7 @@ borrows freely from all of them, and differs in a few opinionated ways.
 | Rendering | Double-buffer + diff + row-skip + sync-output | Double-buffer + diff | Diff + dirty regions | VDOM diff | Double-buffer + diff |
 | Layout | Constraint + **Flex** + **Grid** | Constraint only | CSS Grid / Flex | Yoga flex | Lip Gloss manual |
 | Widgets | 20 built-in | ~20 | ~40 | ~15 via Ink UI | Bubbles set (~15) |
-| Async | `Command.task(future)` native | `tokio` you wire yourself | `async def`, native | async/await | `tea.Cmd` = `func() Msg` |
+| Async | `task(future)` native | `tokio` you wire yourself | `async def`, native | async/await | `tea.Cmd` = `func() Msg` |
 | Subscriptions | First-class `Subscription` | Manual | CSS watchers, reactive | `useEffect` | `tea.Sub` (deprecated — now `Cmd`) |
 | Cancellation | Structured, automatic | Manual | Automatic | Manual | Manual |
 | Unicode | Grapheme-aware; ZWJ emoji, flags | Via `unicode-width` | Full | Full | `runewidth` |
@@ -32,7 +32,7 @@ borrows freely from all of them, and differs in a few opinionated ways.
 
 * **Out-of-box graphics.** Kitty + Sixel + iTerm + Braille fallback is
   one function call (`create_graphics_renderer(caps, writer)`).
-* **Structured async.** `Command.task(future)` is spawned on the same
+* **Structured async.** `task(future)` is spawned on the same
   runtime that backs `core.async`; cancellation is wired automatically.
 * **Perceptual colour adaptation.** CIELAB distance gives the right
   fallback on 16-colour shells; naive RGB distance (Ratatui, Bubble Tea)

@@ -7,7 +7,7 @@ description: Model / Command / Subscription / run / run_async.
 # API reference — application framework
 
 All symbols live in `core.term.app`; most are re-exported from
-`core.term.prelude.*`.
+`core.term.app.*`.
 
 ## `Model` protocol
 
@@ -15,7 +15,7 @@ All symbols live in `core.term.app`; most are re-exported from
 public type Model is protocol {
     type Msg;
 
-    fn init(&self) -> Command<Self.Msg> { Command.none() }
+    fn init(&self) -> Command<Self.Msg> { none() }
     fn update(&mut self, msg: Self.Msg) -> Command<Self.Msg>;
     fn view(&self, frame: &mut Frame);
     fn handle_event(&self, event: Event) -> Maybe<Self.Msg> { None }

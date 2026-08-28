@@ -40,7 +40,8 @@ flowchart TB
 ## Quick start
 
 ```verum
-mount core.term.prelude.*;
+mount core.term.app.*;
+mount core.term.widget.*;
 
 type Model is {
     counter: Int,
@@ -53,8 +54,8 @@ implement Model for Model {
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Increment => { self.counter = self.counter + 1; Command.none() }
-            Decrement => { self.counter = self.counter - 1; Command.none() }
+            Increment => { self.counter = self.counter + 1; none() }
+            Decrement => { self.counter = self.counter - 1; none() }
         }
     }
 

@@ -14,7 +14,8 @@ A compact TODO app with:
 * `Dialog` confirm on clear-all
 
 ```verum
-mount core.term.prelude.*;
+mount core.term.app.*;
+mount core.term.widget.*;
 mount core.term.widget.textarea.*;
 
 // --------------------------------------------------------------------------
@@ -54,18 +55,18 @@ implement Model for Model {
     type Msg = Msg;
 
     fn init(&self) -> Command<Msg> {
-        Command.task(async { Msg.Saved(load_from_disk().await) })
+        task(async { Msg.Saved(load_from_disk().await) })
     }
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            StartAdd => { self.mode = Mode.Adding; self.input.clear(); Command.none() }
+            StartAdd => { self.mode = Mode.Adding; self.input.clear(); none() }
 
-            CancelAdd => { self.mode = Mode.Browsing; Command.none() }
+            CancelAdd => { self.mode = Mode.Browsing; none() }
 
             InputKey(ke) => {
                 let _ = self.input.handle_key(ke);
-                Command.none()
+                none()
             }
 
             FinishAdd => {
@@ -80,30 +81,30 @@ implement Model for Model {
             Toggle => {
                 match self.list.get_selected() {
                     Some(i) => { self.items[i].done = !self.items[i].done; self.persist() }
-                    None => Command.none(),
+                    None => none(),
                 }
             }
 
             Delete => {
                 match self.list.get_selected() {
                     Some(i) => { self.items.remove(i); self.persist() }
-                    None => Command.none(),
+                    None => none(),
                 }
             }
 
-            Up   => { self.list.select_previous(); Command.none() }
-            Down => { self.list.select_next();     Command.none() }
+            Up   => { self.list.select_previous(); none() }
+            Down => { self.list.select_next();     none() }
 
-            AskClearAll     => { self.mode = Mode.Confirming; Command.none() }
-            CancelClearAll  => { self.mode = Mode.Browsing;   Command.none() }
+            AskClearAll     => { self.mode = Mode.Confirming; none() }
+            CancelClearAll  => { self.mode = Mode.Browsing;   none() }
             ConfirmClearAll => {
                 self.items.clear();
                 self.mode = Mode.Browsing;
                 self.persist()
             }
 
-            Saved(_) => Command.none(),
-            Quit     => Command.quit(),
+            Saved(_) => none(),
+            Quit     => quit(),
         }
     }
 
@@ -117,11 +118,11 @@ implement Model for Model {
                 KeyCode.Char('c')                 => Some(Msg.AskClearAll),
                 KeyCode.Up                        => Some(Msg.Up),
                 KeyCode.Down                      => Some(Msg.Down),
-                KeyCode.Char('q') | KeyCode.Esc   => Some(Msg.Quit),
+                KeyCode.Char('q') | KeyCode.Escape   => Some(Msg.Quit),
                 _ => None,
             },
             Adding => match ke.code {
-                KeyCode.Esc                       => Some(Msg.CancelAdd),
+                KeyCode.Escape                       => Some(Msg.CancelAdd),
                 KeyCode.Enter                     => Some(Msg.FinishAdd),
                 _                                 => Some(Msg.InputKey(ke)),
             },
@@ -182,7 +183,7 @@ implement Model for Model {
 implement Model {
     fn persist(&self) -> Command<Msg> {
         let snapshot = self.items.clone();
-        Command.task(async {
+        task(async {
             let ok = save_to_disk(&snapshot).await;
             Msg.Saved(ok)
         })
@@ -211,7 +212,7 @@ fn main() -> IoResult<()> {
 * **Three modes, one state machine.** `Browsing` / `Adding` / `Confirming`
   drive both event routing and view rendering — a common pattern.
 * **Input re-uses `TextInput.handle_key`.** No custom keybindings needed.
-* **Persistence is reified.** `self.persist()` returns a `Command.task(...)`
+* **Persistence is reified.** `self.persist()` returns a `task(...)`
   so the caller can decide whether to chain, batch, or ignore it.
 * **Async doesn't leak into `update`.** Saving is a future; its result
   (`Msg.Saved`) is just another message.

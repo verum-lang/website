@@ -14,15 +14,15 @@ a working guide; for the types themselves see [the Elm pattern](../concepts/elm-
 
 | You want… | Use this |
 |---|---|
-| Run a sync thunk and turn its return value into a `Msg` | `Command.perform(thunk)` |
-| Kick an async future, deliver its result as a `Msg` | `Command.task(future)` |
-| Several commands in parallel | `Command.batch([c1, c2, c3])` |
-| Several commands sequentially | `Command.sequence([c1, c2, c3])` |
-| One-shot timer → Msg after `d` | `Command.tick(d, \|\| Msg.Timeout)` |
-| Periodic tick | `Subscription.interval(d, \|\| Msg.Tick)` |
-| Tick with timestamp | `Subscription.every(d, \|t\| Msg.Clock(t))` |
-| Receive from a long-lived stream | `Subscription.from_stream(Heap(stream))` |
-| Quit | `Command.quit()` |
+| Run a sync thunk and turn its return value into a `Msg` | `perform(thunk)` |
+| Kick an async future, deliver its result as a `Msg` | `task(future)` |
+| Several commands in parallel | `batch([c1, c2, c3])` |
+| Several commands sequentially | `sequence([c1, c2, c3])` |
+| One-shot timer → Msg after `d` | `tick(d, \|\| Msg.Timeout)` |
+| Periodic tick | `interval(d, \|\| Msg.Tick)` |
+| Tick with timestamp | `every(d, \|t\| Msg.Clock(t))` |
+| Receive from a long-lived stream | `sub_from_stream(Heap(stream))` |
+| Quit | `quit()` |
 
 All async work observes the app's global `CancellationToken` — when the
 user quits, every available future is notified and bows out cleanly.
@@ -44,7 +44,7 @@ implement Model for State {
     type Msg = Msg;
 
     fn init(&self) -> Command<Msg> {
-        Command.task(async { Msg.Loaded(fetch_users().await) })
+        task(async { Msg.Loaded(fetch_users().await) })
     }
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
@@ -52,17 +52,17 @@ implement Model for State {
             Load => {
                 self.loading = true;
                 self.error = None;
-                Command.task(async { Msg.Loaded(fetch_users().await) })
+                task(async { Msg.Loaded(fetch_users().await) })
             }
             Loaded(Ok(users)) => {
                 self.loading = false;
                 self.users = users;
-                Command.none()
+                none()
             }
             Loaded(Err(e)) => {
                 self.loading = false;
                 self.error = Some(e);
-                Command.none()
+                none()
             }
         }
     }
@@ -83,11 +83,11 @@ implement Model for ClockApp {
     type Msg = Msg;
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Tick(now) => { self.time = now; Command.none() }
+            Tick(now) => { self.time = now; none() }
         }
     }
     fn subscriptions(&self) -> Subscription<Msg> {
-        Subscription.every(Duration.from_secs(1), |now| Msg.Tick(now))
+        every(Duration.from_secs(1), |now| Msg.Tick(now))
     }
     fn view(&self, f: &mut Frame) { /* show self.time */ }
 }
@@ -97,9 +97,9 @@ implement Model for ClockApp {
 
 ```verum
 fn subscriptions(&self) -> Subscription<Msg> {
-    Subscription.batch([
-        Subscription.interval(Duration.from_millis(60), || Msg.AnimationTick),
-        Subscription.from_stream(Heap(self.log_stream.clone())),
+    sub_batch([
+        interval(Duration.from_millis(60), || Msg.AnimationTick),
+        sub_from_stream(Heap(self.log_stream.clone())),
     ])
 }
 ```
@@ -130,7 +130,7 @@ Two remedies:
 
 1. **Throttle / debounce at the source.**
    ```verum
-   Subscription.from_stream(Heap(raw.throttle(Duration.from_millis(50))))
+   sub_from_stream(Heap(raw.throttle(Duration.from_millis(50))))
    ```
 2. **Drop duplicates in `update`.** If the newest Msg supersedes older
    ones, just discard the stale state transition.

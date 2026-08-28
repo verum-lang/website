@@ -15,7 +15,8 @@ A live system dashboard showing:
 * `Subscription.interval` to tick every second and pull a new sample
 
 ```verum
-mount core.term.prelude.*;
+mount core.term.app.*;
+mount core.term.widget.*;
 
 // ---------- Metrics state ------------------------------------------------
 type Sample is { cpu: Float, mem: Float, net_kb: Float };
@@ -40,37 +41,37 @@ implement Model for Model {
     type Msg = Msg;
 
     fn init(&self) -> Command<Msg> {
-        Command.task(async { Msg.ProcsReady(list_processes().await) })
+        task(async { Msg.ProcsReady(list_processes().await) })
     }
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
             Tick => {
-                Command.task(async { Msg.NewSample(sample().await) })
+                task(async { Msg.NewSample(sample().await) })
             }
             NewSample(s) => {
                 self.history.push(s);
                 if self.history.len() > 120 { self.history.remove(0); }
-                Command.none()
+                none()
             }
-            ProcsReady(ps) => { self.procs = ps; Command.none() }
-            SplitMouse(me) => Command.none(),
-            SplitKey(ke)   => Command.none(),
-            Quit           => Command.quit(),
+            ProcsReady(ps) => { self.procs = ps; none() }
+            SplitMouse(me) => none(),
+            SplitKey(ke)   => none(),
+            Quit           => quit(),
         }
     }
 
     fn subscriptions(&self) -> Subscription<Msg> {
-        Subscription.batch([
-            Subscription.interval(Duration.from_secs(1), || Msg.Tick),
-            Subscription.interval(Duration.from_secs(5), || Msg.Tick),  // refresh procs
+        sub_batch([
+            interval(Duration.from_secs(1), || Msg.Tick),
+            interval(Duration.from_secs(5), || Msg.Tick),  // refresh procs
         ])
     }
 
     fn handle_event(&self, event: Event) -> Maybe<Msg> {
         match event {
             Event.Key(ke) => match ke.code {
-                KeyCode.Char('q') | KeyCode.Esc => Some(Msg.Quit),
+                KeyCode.Char('q') | KeyCode.Escape => Some(Msg.Quit),
                 _ => Some(Msg.SplitKey(ke)),
             },
             Event.Mouse(me) => Some(Msg.SplitMouse(me)),
@@ -165,7 +166,7 @@ fn main() -> IoResult<()> {
 ## Why this is a good reference
 
 * **Subscriptions + Commands together.** Periodic sampling is a
-  `Subscription.interval`; each sample triggers a `Command.task(...)` that
+  `Subscription.interval`; each sample triggers a `task(...)` that
   actually does the work. The split prevents a slow sampler from blocking
   the tick.
 * **`Grid` layout.** The 2×2 grid of charts is one line of code.

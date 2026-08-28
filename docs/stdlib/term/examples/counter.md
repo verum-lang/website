@@ -7,7 +7,8 @@ description: The "hello world" of TEA — an incrementing counter in 40 lines.
 # Counter
 
 ```verum
-mount core.term.prelude.*;
+mount core.term.app.*;
+mount core.term.widget.*;
 
 type Model is { count: Int };
 
@@ -18,10 +19,10 @@ implement Model for Model {
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Increment => { self.count = self.count + 1; Command.none() }
-            Decrement => { self.count = self.count - 1; Command.none() }
-            Reset     => { self.count = 0;               Command.none() }
-            Quit      => Command.quit(),
+            Increment => { self.count = self.count + 1; none() }
+            Decrement => { self.count = self.count - 1; none() }
+            Reset     => { self.count = 0;               none() }
+            Quit      => quit(),
         }
     }
 
@@ -46,7 +47,7 @@ implement Model for Model {
                 KeyCode.Up    | KeyCode.Char('+') => Some(Msg.Increment),
                 KeyCode.Down  | KeyCode.Char('-') => Some(Msg.Decrement),
                 KeyCode.Char('r')                 => Some(Msg.Reset),
-                KeyCode.Char('q') | KeyCode.Esc   => Some(Msg.Quit),
+                KeyCode.Char('q') | KeyCode.Escape   => Some(Msg.Quit),
                 _ => None,
             },
             _ => None,
@@ -63,10 +64,10 @@ fn main() -> IoResult<()> {
 
 * **`run(model)`** is the entire boot sequence — terminal init, event loop,
   async runtime, and restore-on-exit are all included.
-* **`update` is pure.** Incrementing a field and returning `Command.none()`
+* **`update` is pure.** Incrementing a field and returning `none()`
   keeps every transition testable in isolation.
 * **`Esc`/`q` both quit** because `handle_event` returns `Quit`, which maps
-  to `Command.quit()` and tears down cleanly.
+  to `quit()` and tears down cleanly.
 * **Resize-safe.** `view` reads `f.size()` each frame; resizing the terminal
   does nothing visible except re-center the hint line.
 
@@ -74,7 +75,7 @@ fn main() -> IoResult<()> {
 
 ```verum
 fn init(&self) -> Command<Msg> {
-    Command.perform(|| match fs.read_text("counter.txt") {
+    perform(|| match fs.read_text("counter.txt") {
         Ok(t) => Msg.Loaded(t.parse<Int>().unwrap_or(0)),
         Err(_) => Msg.Loaded(0),
     })

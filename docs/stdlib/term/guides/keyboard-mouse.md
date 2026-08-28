@@ -26,7 +26,7 @@ match event {
         KeyCode.Char('q') if ke.modifiers.empty() => quit(),
         KeyCode.Char('s') if ke.modifiers.contains(Modifiers.CTRL) => save(),
         KeyCode.F(5) => refresh(),
-        KeyCode.Esc | KeyCode.Char('q') => quit(),
+        KeyCode.Escape | KeyCode.Char('q') => quit(),
         _ => {}
     },
     _ => {}
@@ -130,6 +130,6 @@ Then in `update`:
 ```verum
 Msg.SearchKey(ke) => {
     let _ = self.search.handle_key(ke);
-    Command.none()
+    none()
 }
 ```

@@ -339,20 +339,35 @@ Notification.new(NotificationLevel.Warning, &"disk nearly full")
 Elm-architecture loop. Implement `Model` and run.
 
 ```verum
+// Copied from core/term/app/app.vr. The associated type is `Msg`, not
+// `Message`; `subscriptions` returns ONE `Subscription`, not a list; and
+// terminal input arrives through `handle_event` rather than through a
+// subscription. `init`, `handle_event`, `subscriptions` and `on_quit`
+// all have defaults — `update` and `view` are the two you must write.
 type Model is protocol {
-    type Message;
-    fn update(&mut self, msg: Self.Message) -> Command<Self.Message>;
-    fn view(&self, f: &mut Frame);
-    fn subscriptions(&self) -> List<Subscription<Self.Message>>;
+    type Msg;
+    fn init(&self) -> Command<Self.Msg>;                   // default
+    fn update(&mut self, msg: Self.Msg) -> Command<Self.Msg>;
+    fn view(&self, frame: &mut Frame);
+    fn handle_event(&self, event: Event) -> Maybe<Self.Msg>;  // default
+    fn subscriptions(&self) -> Subscription<Self.Msg>;        // default
+    fn on_quit(&mut self);                                    // default
 }
 
-type Command<M> is { ... };
-Command.none()     Command.batch(&cmds)     Command.message(m)
-Command.task(future)     Command.delay(duration, m)
+type Command<Msg> is Noop | Perform(fn() -> Msg) | Async(...)
+                   | Batch(...) | Sequence(...) | Tick(...) | Quit;
+// FREE FUNCTIONS, not associated ones — `Command.none()` does not exist.
+none()            perform(|| msg)        task(future)
+batch(cmds)       sequence(cmds)         tick(delay, || msg)
+quit()
 
-type Subscription<M> is { ... };
-Subscription.events(|event| maybe_map_to_message(event))
-Subscription.interval(duration, |_| tick_msg)
+type Subscription<Msg> is { ... };
+// Also free functions. Re-exported from `core.term.app` under aliases
+// where the name would collide with the Command builder of the same
+// name: `none` -> `sub_none`, `batch` -> `sub_batch`,
+// `from_stream` -> `sub_from_stream`.
+sub_none()        interval(period, || msg)      every(period, |at| msg)
+once(delay, || msg)   sub_from_stream(stream)   sub_batch(subs)
 
 type AppMessage is Exit | Resize(ResizeEvent) | ...;
 
@@ -370,8 +385,8 @@ implement Model for Counter {
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Msg.Increment => { self.count += 1; Command.none() }
-            Msg.Decrement => { self.count -= 1; Command.none() }
+            Msg.Increment => { self.count += 1; none() }
+            Msg.Decrement => { self.count -= 1; none() }
             Msg.Quit      => { self.running = false; Command.exit() }
         }
     }
@@ -383,18 +398,16 @@ implement Model for Counter {
             .render(f, area);
     }
 
-    fn subscriptions(&self) -> List<Subscription<Msg>> {
-        list![
-            Subscription.events(|e| match e {
-                Event.Key(k) => match k.code {
-                    KeyCode.Char('+') | KeyCode.Up   => Maybe.Some(Msg.Increment),
-                    KeyCode.Char('-') | KeyCode.Down => Maybe.Some(Msg.Decrement),
-                    KeyCode.Char('q') | KeyCode.Esc  => Maybe.Some(Msg.Quit),
-                    _ => Maybe.None,
-                },
+    fn handle_event(&self, e: Event) -> Maybe<Msg> {
+        match e {
+            Event.Key(k) => match k.code {
+                KeyCode.Char('+') | KeyCode.Up   => Maybe.Some(Msg.Increment),
+                KeyCode.Char('-') | KeyCode.Down => Maybe.Some(Msg.Decrement),
+                KeyCode.Char('q') | KeyCode.Escape  => Maybe.Some(Msg.Quit),
                 _ => Maybe.None,
-            }),
-        ]
+            },
+            _ => Maybe.None,
+        }
     }
 }
 

@@ -35,7 +35,7 @@ flowchart LR
 public type Model is protocol {
     type Msg;
 
-    fn init(&self) -> Command<Self.Msg> { Command.none() }
+    fn init(&self) -> Command<Self.Msg> { none() }
     fn update(&mut self, msg: Self.Msg) -> Command<Self.Msg>;
     fn view(&self, frame: &mut Frame);
     fn handle_event(&self, event: Event) -> Maybe<Self.Msg> { None }
@@ -97,22 +97,22 @@ public type Command<Msg> is
 
 | Factory | Example |
 |---|---|
-| `Command.none()` | `Command.none()` |
-| `Command.perform(thunk)` | `Command.perform(|| Msg.Loaded(read_file()))` |
-| `Command.task(fut)` | `Command.task(async { fetch(url).await })` |
-| `Command.batch([a, b])` | kicks both in parallel |
-| `Command.sequence([a, b])` | `a` completes before `b` starts |
-| `Command.tick(Duration.from_millis(500), || Msg.Timeout)` | one-shot |
-| `Command.quit()` | graceful shutdown |
+| `none()` | `none()` |
+| `perform(thunk)` | `perform(|| Msg.Loaded(read_file()))` |
+| `task(fut)` | `task(async { fetch(url).await })` |
+| `batch([a, b])` | kicks both in parallel |
+| `sequence([a, b])` | `a` completes before `b` starts |
+| `tick(Duration.from_millis(500), || Msg.Timeout)` | one-shot |
+| `quit()` | graceful shutdown |
 
 ### Combinators
 
 `Command` provides an applicative-style DSL:
 
 ```verum
-let c = Command.task(load_profile())
-    .and(Command.task(load_friends()))          // fan-out
-    .then(Command.perform(|| Msg.Ready));       // serial
+let c = task(load_profile())
+    .and(task(load_friends()))          // fan-out
+    .then(perform(|| Msg.Ready));       // serial
 ```
 
 `and` absorbs `Noop` and flattens nested `Batch`es; `then` flattens nested
@@ -134,12 +134,12 @@ Typical patterns:
 
 ```verum
 // Fire a Tick every 60 ms for animations.
-Subscription.interval(Duration.from_millis(60), || Msg.AnimationTick)
+interval(Duration.from_millis(60), || Msg.AnimationTick)
 
 // Combine a clock and a filesystem watcher.
-Subscription.batch([
-    Subscription.every(Duration.from_secs(1), |t| Msg.Clock(t)),
-    Subscription.from_stream(Heap(fs_watcher("./"))),
+sub_batch([
+    every(Duration.from_secs(1), |t| Msg.Clock(t)),
+    sub_from_stream(Heap(fs_watcher("./"))),
 ])
 ```
 

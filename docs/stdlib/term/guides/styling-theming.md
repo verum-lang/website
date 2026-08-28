@@ -125,7 +125,7 @@ fn update(&mut self, msg: Msg) -> Command<Msg> {
     match msg {
         ToggleTheme => {
             self.theme = if self.theme == Theme.dark() { Theme.light() } else { Theme.dark() };
-            Command.none()
+            none()
         }
     }
 }
