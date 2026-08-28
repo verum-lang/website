@@ -93,7 +93,11 @@ implement Model for Model {
         split.render_divider(div, f.buffer, &self.split);
 
         // Sidebar — processes
-        SelectableList.new(&self.procs)
+        // `SelectableList` takes `List<Line>`, not `List<Text>` — a
+        // line is a sequence of styled spans. `Line.raw(t)` is the
+        // unstyled lift (core/term/widget/paragraph.vr:83).
+        let rows: List<Line> = self.procs.iter().map(|p| Line.raw(p.clone())).collect();
+        SelectableList.new(&rows)
             .block(Block.new().title(" Processes ").borders(Borders.ALL))
             .render(left, f.buffer, &mut self.list.clone());
 

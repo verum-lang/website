@@ -153,9 +153,9 @@ implement Model for Model {
                     .render(chunks[1], f.buffer, &mut self.input.clone());
             }
             _ => {
-                let lines: List<Text> = self.items.iter().map(|it| {
+                let lines: List<Line> = self.items.iter().map(|it| {
                     let mark = if it.done { "☑" } else { "☐" };
-                    f"{mark} {it.text}"
+                    Line.raw(f"{mark} {it.text}")
                 }).collect();
                 SelectableList.new(&lines)
                     .highlight_style(Style.new().reversed())
