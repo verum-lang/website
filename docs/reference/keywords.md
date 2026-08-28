@@ -154,7 +154,6 @@ Prop                  (* universe of proof-irrelevant propositions              
 Level                 (* universe level kind: u: Level                           *)
 max                   (* level arithmetic: max(u, v)                             *)
 imax                  (* impredicative max for Π into Prop                       *)
-Pi                    (* explicit dependent function type: Pi (x: A) . B        *)
 view                  (* pattern-level view operator                             *)
 affine                (* affine type modifier: type affine Foo is …             *)
 linear                (* linear type modifier: type linear Foo is …             *)
@@ -171,7 +170,9 @@ See the following language pages for semantics:
 
 - [`affine` / `linear`](/docs/language/linearity) — resource-kind types.
 - [`Prop` / `Type(n)` / `universe` / `Level` / `max` / `imax`](/docs/language/universes) — universe hierarchy.
-- [`Pi`](/docs/language/dependent-types#the-three-surface-forms-of-π) — explicit dependent-function syntax.
+- [dependent functions](/docs/language/dependent-types) — `Π` is the
+  kernel's name for the type, not a keyword: `Pi (x: A) . B` is a
+  parse error. A dependent function is written as an ordinary `fn`.
 - [`tensor`](/docs/language/tensor-types) — shape-typed tensor types and literals.
 - [row polymorphism](/docs/language/row-polymorphism) — extensible records with `| r`.
 

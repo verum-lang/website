@@ -733,20 +733,22 @@ rank2_function_type = [ 'async' ] , 'fn' , generics , '(' , type_list , ')' ,
 
 #### Dependent function types (Π)
 
-```ebnf
-```
-
-Round brackets denote **explicit** parameters; curly braces denote
-**implicit** parameters (synthesised by inference, like Agda/Lean).
+There is no `Pi` production, because there is no `Pi` surface syntax.
+`Π` is the kernel's name for the dependent-function type; a program
+writes the dependent function itself and lets it elaborate:
 
 ```verum
-type ReplicateOf<T>  is Pi (n: Int) . [T; n];
-type At<T>           is Pi {n: Int} (i: Int where i < n) . T;
+fn replicate<T>(n: Int { self >= 0 }, x: T) -> [T; n] { [x; n] }
+
+fn push<T>(v: List<T, n>, x: T) -> List<T, n + 1>
+    where n: Nat
+    ensures |result| == |v| + 1
+{ ... }
 ```
 
-All three surface forms — value-dependent `fn`, `where`/`ensures`,
-and explicit `Pi` — elaborate to the same `Ty::Pi` node. See
-[dependent types](../language/dependent-types.md#the-three-surface-forms-of-π).
+Both forms elaborate to the same `Ty::Pi` node. `type X is Pi (n: Int) . T;`
+is a parse error — the parser stops at the `.`. See
+[dependent types](../language/dependent-types.md#the-two-surface-forms-of-π).
 
 #### Universe hierarchy
 
