@@ -102,11 +102,14 @@ implement Model for Model {
             .render(left, f.buffer, &mut self.list.clone());
 
         // Main pane — grid of charts
-        let grid = GridLayout.new()
-            .columns([GridTrack.Fr(1), GridTrack.Fr(1)])
-            .rows([GridTrack.Fr(1), GridTrack.Fr(1)])
+        // `GridLayout.new` takes the tracks directly — there are no
+        // `.columns()` / `.rows()` builders (core/term/layout/grid.vr:66).
+        let grid = GridLayout.new(
+                [GridTrack.Fr(1.0), GridTrack.Fr(1.0)],
+                [GridTrack.Fr(1.0), GridTrack.Fr(1.0)],
+            )
             .gap(1)
-            .compute(right);
+            .compute(&right);
 
         render_cpu(f, grid[0][0], &self.history);
         render_mem(f, grid[0][1], &self.history);

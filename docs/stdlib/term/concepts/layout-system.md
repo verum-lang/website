@@ -107,13 +107,14 @@ Two-dimensional tracks with the full CSS unit vocabulary:
 ```verum
 public type GridTrack is
     | Fixed(Int)            // exact size
-    | Fr(Int)               // fractional remainder
+    | Fr(Float)               // fractional remainder
     | MinMax(Int, Int)      // lower..upper
     | Auto;                 // content size (fallback 1)
 
-let grid = GridLayout.new()
-    .columns([GridTrack.Fr(1), GridTrack.Fr(2), GridTrack.Fixed(20)])
-    .rows([GridTrack.Fixed(3), GridTrack.Fr(1)])
+let grid = GridLayout.new(
+        [GridTrack.Fr(1.0), GridTrack.Fr(2.0), GridTrack.Fixed(20)],
+        [GridTrack.Fixed(3), GridTrack.Fr(1.0)],
+    )
     .gap(1);
 
 let cells = grid.compute(frame.size());  // List<List<Rect>>, [row][col]

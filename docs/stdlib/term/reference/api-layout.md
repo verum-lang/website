@@ -119,17 +119,15 @@ FlexItem.new()
 ```verum
 public type GridTrack is
     | Fixed(Int)
-    | Fr(Int)
+    | Fr(Float)
     | MinMax(Int, Int)
     | Auto;
 
 public type GridLayout is { ... };
 
-GridLayout.new()
-    .columns(List<GridTrack>)
-    .rows(List<GridTrack>)
-    .gap(n: Int)
-    .compute(area: Rect) -> List<List<Rect>>   // [row][column]
+GridLayout.new(columns: List<GridTrack>, rows: List<GridTrack>)
+    .gap(n: Int)                  // or .column_gap(n) / .row_gap(n)
+    .compute(area: &Rect) -> List<List<Rect>>   // [row][column]
 ```
 
 ## Shortcuts

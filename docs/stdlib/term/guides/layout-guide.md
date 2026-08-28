@@ -90,9 +90,10 @@ Cards wrap onto additional rows when the main axis overflows.
 ## Form with label column
 
 ```verum
-let rows = GridLayout.new()
-    .columns([GridTrack.Fixed(12), GridTrack.Fr(1)])
-    .rows([GridTrack.Fixed(1), GridTrack.Fixed(1), GridTrack.Fixed(1)])
+let rows = GridLayout.new(
+        [GridTrack.Fixed(12), GridTrack.Fr(1.0)],
+        [GridTrack.Fixed(1), GridTrack.Fixed(1), GridTrack.Fixed(1)],
+    )
     .gap(1)
     .compute(area);
 
@@ -106,9 +107,10 @@ let page = TermLayout.vertical()
     .constraints([LayoutConstraint.Length(3), LayoutConstraint.Min(1)])
     .split(area);
 
-let grid = GridLayout.new()
-    .columns([GridTrack.Fr(1), GridTrack.Fr(1)])
-    .rows([GridTrack.Fr(1), GridTrack.Fr(1)])
+let grid = GridLayout.new(
+        [GridTrack.Fr(1.0), GridTrack.Fr(1.0)],
+        [GridTrack.Fr(1.0), GridTrack.Fr(1.0)],
+    )
     .gap(1)
     .compute(page[1]);
 
