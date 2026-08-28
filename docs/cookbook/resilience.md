@@ -58,7 +58,7 @@ async fn fetch_orders(uid: UserId) -> List<Order>
     if remaining <= Duration.ZERO {
         return Result.Err(Error.Deadline);
     }
-    timeout(remaining, Database.query_orders(uid)).await?
+    timeout(remaining, query_orders(uid)).await?
 }
 ```
 
@@ -172,7 +172,7 @@ async fn handle_request(req: Request) -> Response
     using [Database, AiClient]
 {
     let db_permit = db_sem.acquire().await;
-    let rows = Database.query(&req).await?;
+    let rows = Database.query(&req, List.new()).await?;
     drop(db_permit);
 
     let ai_permit = ai_sem.acquire().await;

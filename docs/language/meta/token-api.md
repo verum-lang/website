@@ -417,8 +417,8 @@ pub meta fn sql(tokens: TokenStream) -> TokenStream
     }
 
     quote {
-        Database.execute_prepared(${lift(parsed.to_canonical_sql())},
-                                  &[${lift_params(parsed.bind_params)}])
+        Database.execute(${lift(parsed.to_canonical_sql())},
+                         ${lift_params(parsed.bind_params)})
     }
 }
 ```
@@ -426,7 +426,7 @@ pub meta fn sql(tokens: TokenStream) -> TokenStream
 The macro (1) validates the input is a string literal, (2) parses
 the SQL and emits a rich diagnostic on parse error, (3)
 cross-validates bind parameters against the outer scope, and (4)
-emits the call to `Database.execute_prepared` with parameters
+emits the call to `Database.execute` with parameters
 properly marshalled. The error path is just as important as the
 success path; production macros rarely have fewer diagnostics than
 quote-lines.

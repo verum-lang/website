@@ -149,8 +149,8 @@ List.with_capacity(capacity: Int) -> List<T>
 List.from_slice(slice: &[T]) -> List<T>    // T: Clone
 List.from(iter)                            // from any Iterator<Item=T>
 
-let xs = list![1, 2, 3];                    // macro — array of items
-let ys = list![0; 10];                      // macro — 10 copies of 0
+let xs = [1, 2, 3];                    // macro — array of items
+let ys = [0; 10];                           // repeat form — 10 copies of 0
 ```
 
 ### Capacity & size
@@ -280,7 +280,7 @@ xs.to_vec()     // alias for clone-into-new-list
 ### Example
 
 ```verum
-let mut words = list!["hello", "world", "verum"];
+let mut words = ["hello", "world", "verum"];
 words.sort();
 words.dedup();
 for (i, w) in words.iter().enumerate() {
@@ -312,7 +312,7 @@ Swiss-table-style flat hash map. `K: Hash + Eq`.
 Map.new() -> Map<K, V>
 Map.with_capacity(capacity) -> Map<K, V>
 Map.from_iter(iter: Iter<(K,V)>)
-let m = map!["a" => 1, "b" => 2];
+let m: Map<Text, Int> = Map.from([("a", 1), ("b", 2)]);
 ```
 
 ### Size
@@ -415,7 +415,7 @@ is undefined. Collect the changes and apply after, or use `retain`.
 
 ```verum
 Set.new()      Set.with_capacity(cap)      Set.from_iter(iter)
-let s = set![1, 2, 3];
+let s: Set<Int> = Set.from([1, 2, 3]);
 ```
 
 ### Size & access
@@ -451,8 +451,8 @@ a.is_disjoint(&b)   a.is_subset(&b)   a.is_superset(&b)
 ### Example
 
 ```verum
-let a: Set<Int> = set![1, 2, 3, 4];
-let b: Set<Int> = set![3, 4, 5, 6];
+let a: Set<Int> = Set.from([1, 2, 3, 4]);
+let b: Set<Int> = Set.from([3, 4, 5, 6]);
 
 let union: Set<Int>      = a.union(&b).copied().collect();     // {1..6}
 let intersect: Set<Int>  = a.intersection(&b).copied().collect(); // {3,4}
@@ -589,7 +589,7 @@ Ring buffer. O(1) push/pop at both ends.
 
 ```verum
 Deque.new()     Deque.with_capacity(cap)
-let q = deque![1, 2, 3];
+let q = [1, 2, 3];
 ```
 
 ```verum
@@ -616,7 +616,7 @@ Use as FIFO (`push_back` + `pop_front`) or LIFO (`push_back` + `pop_back`).
 Max-heap: `BinaryHeap<T>`. Min-heap: `MinHeap<T>`. `T: Ord`.
 
 ```verum
-let mut pq: BinaryHeap<Int> = heap![3, 1, 4, 1, 5, 9, 2, 6];
+let mut pq: BinaryHeap<Int> = [3, 1, 4, 1, 5, 9, 2, 6];
 pq.push(7);
 pq.peek();              // Maybe.Some(&9)
 let top = pq.pop();     // Maybe.Some(9)

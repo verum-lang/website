@@ -376,7 +376,7 @@ constructs:
 - `format` — no such function; use `f"..."`.
 - `matches!` — Verum uses the `is` operator: `value is Some(x)`.
 - `vec!` / `list!` / `hashmap!` — use literal syntax
-  (`[1, 2]`, `{k: v, ...}`) or constructors (`List.of(...)`,
+  (`[1, 2]`, `{k: v, ...}`) or constructors (`Set.from(...)`,
   `Map.of(...)`).
 
 ## See also

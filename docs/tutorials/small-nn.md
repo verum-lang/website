@@ -120,7 +120,7 @@ implement Module for MNISTNet {
     }
 
     fn parameters(&self) -> List<&Parameter<Tensor<Float32>>> {
-        let mut ps = list![];
+        let mut ps = [];
         ps.extend(self.fc1.parameters());
         ps.extend(self.fc2.parameters());
         ps

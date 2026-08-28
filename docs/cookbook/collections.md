@@ -23,7 +23,7 @@ let xs: List<Int> = [];
 // Literal
 let xs = [1, 2, 3, 4, 5];                    // list literal
 let ys = [0; 10];                             // 10 copies of 0
-let zs = list![1, 2, 3];                      // legacy list macro
+let zs = [1, 2, 3];                      // legacy list macro
 
 // From iter
 let fibs: List<Int> = (0..10).map(|n| fib(n)).collect();

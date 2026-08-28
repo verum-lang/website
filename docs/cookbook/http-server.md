@@ -93,11 +93,23 @@ regex routes.
 
 ## JSON responses with tagged literals
 
+`find_user` is a helper of your own — the `Database` context is
+deliberately narrow (`query`, `execute`, `begin`, `commit`,
+`rollback`, `is_connected`), and domain queries live above it:
+
+```verum
+fn find_user(id: Int) -> Result<Maybe<User>, Text> using [Database] {
+    let rows = Database.query("SELECT id, name, email FROM users WHERE id = $1",
+                              [f"{id}"])?;
+    Result.Ok(rows.first().map(User.from_row))
+}
+```
+
 ```verum
 async fn handle_get_user(id: Int) -> Result<Response, Error>
     using [Database]
 {
-    match Database.find_user(id).await? {
+    match find_user(id)? {
         Maybe.Some(u) => {
             let body = json#"""
                 {
@@ -140,7 +152,7 @@ async fn handle_create_user(req: Request) -> Result<Response, Error>
 {
     let body = req.read_body_limited(1024 * 64).await?;
     let payload: CreateUserRequest = json.parse(&body)?;
-    let user = Database.create_user(&payload).await?;
+    let user = create_user(&payload)?;      // your helper, over Database.execute
     Response.json(user).into_ok()
 }
 

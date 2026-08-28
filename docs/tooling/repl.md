@@ -49,7 +49,7 @@ $ verum repl --session prev.vr    # load session
 ## Expressions and definitions
 
 ```
->>> let xs = list![1, 2, 3, 4, 5]
+>>> let xs = [1, 2, 3, 4, 5]
 List<Int> (len=5)
 
 >>> xs.iter().map(|x| x * x).sum()

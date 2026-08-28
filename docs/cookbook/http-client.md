@@ -134,9 +134,9 @@ implement Http for MockHttp { ... }
 @test
 async fn uses_cached_response() {
     let mock = MockHttp {
-        responses: map![
-            "https://a" => Response.new(StatusCode.ok()).with_body(b"A".to_vec())
-        ],
+        responses: Map.from([
+            ("https://a", Response.new(StatusCode.ok()).with_body(b"A".to_vec()))
+        ]),
     };
     provide Http = mock;
     assert_eq(fetch(&"https://a").await.unwrap(), "A".to_string());

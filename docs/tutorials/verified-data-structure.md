@@ -45,7 +45,7 @@ fn empty<T: Ord>() -> SortedList<T>
 fn singleton<T: Ord>(x: T) -> SortedList<T>
     where ensures is_sorted(result)
 {
-    list![x]
+    [x]
 }
 ```
 
@@ -175,15 +175,15 @@ module tests {
         let xs = insert(xs, 1);
         let xs = insert(xs, 2);
         assert(is_sorted(&xs));
-        assert_eq(xs, list![1, 2, 3]);
+        assert_eq(xs, [1, 2, 3]);
     }
 
     @test
     fn merge_produces_sorted() {
-        let a: SortedList<Int> = list![1, 3, 5];
-        let b: SortedList<Int> = list![2, 4, 6];
+        let a: SortedList<Int> = [1, 3, 5];
+        let b: SortedList<Int> = [2, 4, 6];
         let c = merge(a, b);
-        assert_eq(c, list![1, 2, 3, 4, 5, 6]);
+        assert_eq(c, [1, 2, 3, 4, 5, 6]);
     }
 
     @property

@@ -191,12 +191,12 @@ fail with a missing-context panic; this catches it at lint time.
 ```verum
 // fires — Database not declared
 fn save(user: &User) {
-    Database.exec("INSERT …", &[]);
+    Database.execute("INSERT …", List.new());
 }
 
 // silenced
 fn save(user: &User) using [Database] {
-    Database.exec("INSERT …", &[]);
+    Database.execute("INSERT …", List.new());
 }
 ```
 

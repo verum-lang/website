@@ -216,11 +216,11 @@ fn update(&mut self, msg: Msg) -> Command<Msg> {
 ```verum
 let theme = Theme.builtin("dark");
 // or
-let theme = Theme.from_colors(&map![
-    "headline".to_string() => Color.Rgb(Rgb { r: 255, g: 140, b: 0 }),
-    "body".to_string()      => Color.White,
-    "accent".to_string()    => Color.Cyan,
-]);
+let theme = Theme.from_colors(&Map.from([
+    ("headline", Color.Rgb(Rgb { r: 255, g: 140, b: 0 })),
+    ("body",     Color.White),
+    ("accent",   Color.Cyan),
+]));
 
 Paragraph.new(text)
     .style(theme.style(&"body"))

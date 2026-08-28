@@ -223,7 +223,7 @@ fn should_resolve(input: &Text) -> Bool {
 if should_resolve(host) {
     lookup_host_async(host).await
 } else if is_ip_address(host) {
-    Result.Ok(List.of(parse_ip(host)?))    // already an IP
+    Result.Ok([parse_ip(host)?])    // already an IP
 } else {
     Result.Err(DnsError.InvalidName)
 }

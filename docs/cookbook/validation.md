@@ -69,7 +69,7 @@ type ValidationError is
     | MissingField(Text);
 
 fn parse_form(raw: &Data) -> Result<Registration, List<ValidationError>> {
-    let mut errors = list![];
+    let mut errors = [];
     let email = match raw.get(&"email").and_then(Data.as_text) {
         Maybe.Some(e) => parse_email(e).map_err(|err| { errors.push(err); }),
         Maybe.None    => { errors.push(ValidationError.MissingField("email".to_string())); Result.Err(()) }

@@ -120,12 +120,12 @@ monotonically-growing evidence.
 ```verum
 // Frame with two worlds and w0 → w1.
 let f: KripkeFrame = frame(
-    list![world("w0".into()), world("w1".into())],
-    list![edge(world("w0".into()), world("w1".into()))],
+    [world("w0".into()), world("w1".into())],
+    [edge(world("w0".into()), world("w1".into()))],
 );
 
 // Valuation: "p" holds at w1.
-let v: Valuation = valuation(list![
+let v: Valuation = valuation([
     WorldFact { world_id: "w1".into(), atom: "p".into(), truth: true },
 ]);
 

@@ -156,10 +156,10 @@ fn add(a: Int, b: Int, expected: Int) {
 // state-mutating, no params — plain @test
 @test
 fn cache_grows_with_writes() {
-    let mut c = Cache.new();
-    c.put(&"a", 1);
-    c.put(&"b", 2);
-    assert_eq(c.size(), 2);
+    let mut c: LruCache<Text, Int> = LruCache.new(16);
+    c.insert("a", 1);
+    c.insert("b", 2);
+    assert_eq(c.len(), 2);
 }
 ```
 

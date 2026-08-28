@@ -108,10 +108,11 @@ runtime context is empty.
 fn fetch_score(user: UserId) -> Result<FraudScore, Error>
     using [FraudClient, Logger, Tracer]
 {
-    Tracer.span("fetch_score", || {
-        Logger.info(f"checking user {user}");
-        FraudClient.score(user)
-    })
+    let span = Tracer.start_span("fetch_score");
+    Logger.info(f"checking user {user}");
+    let result = FraudClient.score(user);
+    Tracer.end_span(span);
+    result
 }
 ```
 

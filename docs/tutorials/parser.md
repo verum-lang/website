@@ -177,7 +177,7 @@ fn right<A, B>(a: Parser<A>, b: Parser<B>) -> Parser<B> {
 /// Zero-or-more.
 fn many<T>(p: Parser<T>) -> Parser<List<T>> {
     move |input, mut pos| {
-        let mut out = list![];
+        let mut out = [];
         loop {
             match p(input, pos) {
                 Maybe.Some((v, new_pos)) => {
@@ -196,7 +196,7 @@ fn many1<T>(p: Parser<T>) -> Parser<List<T>> {
     move |input, pos| {
         let (first, p1) = p(input, pos)?;
         let (rest, p2) = many(p)(input, p1)?;
-        let mut out = list![first];
+        let mut out = [first];
         out.extend(rest);
         Maybe.Some((out, p2))
     }
@@ -221,7 +221,7 @@ fn sep_by1<T, S>(p: Parser<T>, sep: Parser<S>) -> Parser<List<T>> {
         let (first, p1) = p(input, pos)?;
         let rest_parser = many(right(sep, p));
         let (rest, p2) = rest_parser(input, p1)?;
-        let mut out = list![first];
+        let mut out = [first];
         out.extend(rest);
         Maybe.Some((out, p2))
     }

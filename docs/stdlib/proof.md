@@ -193,10 +193,10 @@ fn is_sorted(xs: &List<Int>) -> Bool {
 // Compiler generates equivalent ReflectedFunction:
 let r = reflected_fn(
     "is_sorted",
-    list!["xs"],
+    ["xs"],
     "(forall ((i Int)) (=> (and (>= i 0) (< i (- (List.len xs) 1))) (<= (List.get xs i) (List.get xs (+ i 1)))))",
     "Bool",
-    list!["(List Int)"],
+    ["(List Int)"],
 );
 
 // The axiom form is what the solver sees:

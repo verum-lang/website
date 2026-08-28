@@ -42,7 +42,7 @@ type Args is {
 };
 
 fn parse_args(argv: &List<Text>) -> Result<Args, Text> {
-    let mut paths = list![];
+    let mut paths = [];
     let mut format = OutputFormat.Text;
     let mut show_help = false;
 
@@ -83,7 +83,7 @@ fn count_one(path: &Path) -> IoResult<Counts> {
 }
 
 fn count_all(paths: &List<Text>) -> IoResult<List<Counts>> {
-    let mut out = list![];
+    let mut out = [];
     for p in paths {
         let path = Path.from_str(p);
         out.push(count_one(&path)?);
@@ -179,7 +179,7 @@ module tests {
 
     @test
     fn parses_format_flag() {
-        let args = parse_args(&list!["prog".to_string(), "--json".to_string(), "a.txt".to_string()])
+        let args = parse_args(&["prog".to_string(), "--json".to_string(), "a.txt".to_string()])
             .expect("should parse");
         assert(args.format is OutputFormat.Json);
         assert_eq(args.paths.len(), 1);
@@ -197,7 +197,7 @@ module tests {
 
     @test
     fn formats_csv_header() {
-        let counts = list![Counts { lines: 1, words: 2, bytes: 10, path: "x".to_string() }];
+        let counts = [Counts { lines: 1, words: 2, bytes: 10, path: "x".to_string() }];
         let out = format_counts(&counts, OutputFormat.Csv);
         assert(out.starts_with("path,lines,words,bytes\n"));
     }

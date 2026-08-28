@@ -164,7 +164,10 @@ async fn get_user(Path(id): Path<UserId>)
     -> Result<Json<User>, ApiError>
     using [Database]
 {
-    let user = Database.find(id).await
+    // `find_user` is your own helper over the narrow `Database`
+    // context (query / execute / begin / commit / rollback /
+    // is_connected) — domain queries are not part of it.
+    let user = find_user(id)
         .map_err(|e| ApiError.Internal(f"{e}"))?;
     match user {
         Some(u) => Ok(Json(u)),
@@ -178,11 +181,11 @@ fn main() using [Config] {
         .layer(TracingLayer.new())
         .layer(TimeoutLayer.ms(5000))
         .layer(RateLimitLayer.new(RateConfig { rps: 1000, burst: 100 }))
-        .layer(AuthLayer.jwt(Config.jwt_secret));
+        .layer(AuthLayer.jwt(Config.get_or("jwt.secret", "")));
 
     let root = Supervisor.new(supervisor_config());
     root.add_child(ChildSpec.permanent("db")
-        .with_start(|| Database.connect(Config.db_url)));
+        .with_start(|| PostgresDatabase.connect(Config.get_or("db.url", ""))));
     root.add_child(ChildSpec.permanent("http")
         .with_start(|| WeftApp.new(app).bind("0.0.0.0:8080").serve()));
 

@@ -317,7 +317,7 @@ fn insert_record(id: Int) using [Database] {
     // We know the buffer outlives this call because the caller
     // holds the mmap guard.
     let buf: &unsafe Byte = unsafe { mmap_region.as_ptr() };
-    Database.execute(f"INSERT INTO log(id) VALUES({id})")?;
+    Database.execute("INSERT INTO log(id) VALUES($1)", [f"{id}"])?;
 }
 ```
 

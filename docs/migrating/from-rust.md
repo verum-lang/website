@@ -41,7 +41,7 @@ below gets you writing code quickly; subtleties are flagged with
 | `assert!(cond)` | `assert(cond)` |
 | `assert_eq!(a, b)` | `assert_eq(a, b)` |
 | `matches!(x, P)` | `x is P` — operator, no macro |
-| `vec![1, 2, 3]` | `list![1, 2, 3]` |
+| `vec![1, 2, 3]` | `[1, 2, 3]` |
 | `let _ = expr;` | `let _ = expr;` (same) |
 | `?` operator | `?` operator (same) |
 | `async fn f() -> T` | `async fn f() -> T` (same) |
@@ -182,7 +182,7 @@ struct Foo { ... }
 // Verum
 print(&f"hi {x}");             // function call + format literal
 let s = f"hi {x}";             // Text via format literal
-list![1, 2, 3];                // macro, but lowercase + no bang
+[1, 2, 3];                     // array literal, no macro at all
 @derive(Clone)
 type Foo is { ... };            // attribute
 ```
