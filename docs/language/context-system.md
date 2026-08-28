@@ -402,17 +402,14 @@ A typical top-level entry point layers every context once:
 
 ```verum
 fn main() {
-    let app_layer = Layer.new()
-        .with_singleton<Logger>(ConsoleLogger.new(LogLevel.Info))
-        .with_singleton<Clock>(SystemClock.new())
-        .with_request<Database>(|| PostgresDatabase.connect(&db_url))
-        .with_request<Metrics>(|| Metrics.tagged("req_id"));
-
-    app_layer.run(async {
+    provide Logger   = ConsoleLogger.new(LogLevel.Info),
+            Clock    = SystemClock.new(),
+            Database = PostgresDatabase.connect(&db_url),
+            Metrics  = PrometheusMetrics.new()
+    {
         let mut server = HttpServer.bind(&":8080").await?;
         server.serve(|req| handle(req)).await?;
-        Result.Ok<(), Error>(())
-    }).await.expect("server");
+    }
 }
 
 async fn handle(req: Request) -> Response
@@ -425,9 +422,25 @@ async fn handle(req: Request) -> Response
 }
 ```
 
+The multi-`provide` form takes comma-separated bindings and a
+MANDATORY block — the bindings are in scope for the block and
+nothing else. A single binding may use `provide X = v;` to run to
+the end of the enclosing scope, or `provide X = v { ... }`.
+
 The `handle` function declares every capability it needs in its
-signature; the compiler refuses to call `Database.find_user` if
-the caller didn't provide a `Database`. Tests swap in a mock:
+signature, and `Clock.now()` inside a function that did NOT declare
+`[Clock]` is refused — `error<E801>: context 'Clock' used but not
+declared in function signature`.
+
+:::caution The obligation stops at the signature
+A CALL does not currently propagate the requirement. Calling
+`handle(req)` from a function that declares no contexts compiles,
+and the missing context surfaces at runtime as `Panic: Context
+Database not provided`. Declare the contexts you pass on, and
+provide them at the entry point; the compiler will not remind you.
+:::
+
+Tests swap in a mock:
 
 ```verum
 @test
