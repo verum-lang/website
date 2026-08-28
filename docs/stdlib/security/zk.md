@@ -60,7 +60,7 @@ core/security/zk/halo2/
 ├── circuit.vr   — Circuit DSL: Column / ColumnType / Selector / Region / Cell
 │                  / Constraint / Gate / Lookup / Permutation / Circuit +
 │                  Configure / SynthesizeContext + generic helpers
-├── prover.vr    — ProvingKey / Proof + precompute + prove + prove_with_aux
+├── prover.vr    — ProvingKey / Halo2Proof + precompute + prove + prove_with_aux
 ├── verifier.vr  — VerifyingKey + verify + verify_batch
 └── srs.vr       — UniversalSrs + setup + setup_with_entropy + load + serialize
 ```
@@ -91,7 +91,7 @@ mount core.security.zk.halo2.{
     // Generic constraint shapes
     range_constraint, set_membership_constraint, hash_preimage_constraint,
     // Prover / verifier
-    Proof, ProvingKey, prove, prove_with_aux,
+    Halo2Proof, ProvingKey, prove, prove_with_aux,
     VerifyingKey, verify, verify_batch,
     // SRS
     UniversalSrs, SrsParams, setup, setup_with_entropy,
@@ -181,7 +181,7 @@ core/security/zk/stark/
 ├── air.vr       — AIR DSL: Expr (poly over trace cells) /
 │                  TransitionConstraint / BoundaryConstraint /
 │                  TraceLayout / AirBuilder / FieldChoice / ProofParams
-├── prover.vr    — Proof + prove
+├── prover.vr    — StarkProof + prove
 └── verifier.vr  — AirVk + verify + verify_batch
 ```
 
@@ -213,7 +213,7 @@ public type FieldChoice is
 mount core.security.zk.stark.{
     Air, AirBuilder, TransitionConstraint, BoundaryConstraint,
     TraceLayout, FieldChoice, ProofParams,
-    Proof, prove, AirVk, verify, verify_batch,
+    StarkProof, prove, AirVk, verify, verify_batch,
     AirError, ProverError, VerifierError,
 };
 
