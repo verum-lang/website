@@ -86,12 +86,13 @@ tokens:
 
 ```verum
 let raw: Text = BuildAssets.load_text("codegen/fragment.vr")?;
-let ts: TokenStream = AstAccess.tokenize(&raw)?;
+let ts: TokenStream = TokenStream.from_str(raw)?;
 ```
 
-`tokenize` is the lexer-only front end. It returns either the
-token stream or a `ParseError` pointing at the first unexpected
-character.
+`from_str` is the lexer-only front end — `TokenStream.from_str(source: Text)
+-> Result<TokenStream, LexError>`. It stops at the first character it
+cannot lex; it does not parse, so a stream that comes back clean can
+still fail `AstAccess.parse_item`.
 
 ## `Ident`
 
@@ -291,11 +292,11 @@ type VariantInfo is
 The canonical pattern inside a derive:
 
 ```verum
-if not TypeInfo.implements<T, Copy>() {
+if !TypeInfo.implements<T, Copy>() {
     CompileDiag.emit_error(
         &f"cannot derive TriviallyCopyable for {TypeInfo.name_of<T>()} — \
            one or more fields are not Copy",
-        Span.current()
+        Span.call_site()
     );
     return TokenStream.empty();
 }
@@ -325,29 +326,46 @@ node you receive already has one, and `to_tokens()` preserves them.
 The `CompileDiag` context is how macros emit diagnostics:
 
 ```verum
-CompileDiag.emit_error(msg: Text, span: Span);
-CompileDiag.emit_warning(msg: Text, span: Span);
-CompileDiag.emit_note(msg: Text, span: Span);
-CompileDiag.emit_help(msg: Text, span: Span);
-CompileDiag.abort() -> !;   // stop expansion; returns to the compiler
+CompileDiag.emit_error(message: Text, span: Span);
+CompileDiag.emit_warning(message: Text, span: Span);
+CompileDiag.emit_note(message: Text, span: Span);
+CompileDiag.emit_help(message: Text, span: Span);
+CompileDiag.emit_error_with_code(code: Text, message: Text, span: Span);
+CompileDiag.emit_warning_with_code(code: Text, message: Text, span: Span);
+CompileDiag.has_errors() -> Bool;
+CompileDiag.error_count() -> Int;
+CompileDiag.warning_count() -> Int;
 ```
 
 Emitted diagnostics participate in the standard error pipeline.
 They appear in `verum build`, the LSP, and CI test runners.
 
+There is no `abort`. A macro that cannot proceed emits its
+diagnostic and returns `TokenStream.empty()`; the compilation
+fails because an error was emitted, not because expansion was
+cut short. This is deliberate — a macro that aborts on the first
+problem reports one error per build, and the worked example below
+finishes checking every bind parameter before giving up.
+
 ### Structured diagnostics
 
-`CompileDiag.emit_diagnostic(d: Diagnostic)` takes a fully
-structured diagnostic for complex cases:
+For anything richer than a message and a span, `CompileDiag`
+hands out a builder. Each method returns the builder, and `emit`
+consumes it:
 
 ```verum
-let d = Diagnostic.error("unsupported variant")
-    .with_primary_span(v.span, "this variant uses a tuple shape")
-    .with_secondary_span(t.span, "but the derive only handles records")
-    .with_help("add @derive(ClonePartial) or convert the variant to a record");
-
-CompileDiag.emit_diagnostic(d);
+CompileDiag.diagnostic()
+    .error("unsupported variant")
+    .code("E9001")
+    .primary_span(v.span, "this variant uses a tuple shape")
+    .secondary_span(t.span, "but the derive only handles records")
+    .help("convert the variant to a record")
+    .emit();
 ```
+
+`suggest(message, span, replacement)` adds a machine-applicable
+fix, which is what the LSP offers as a code action; `warning`
+replaces `error` for a non-fatal diagnostic.
 
 ## Worked example — an SQL DSL with a proper error path
 
@@ -370,20 +388,29 @@ pub meta fn sql(tokens: TokenStream) -> TokenStream
     let parsed = match SqlParser.parse(&text) {
         Result.Ok(ast) => ast,
         Result.Err(err) => {
-            CompileDiag.emit_diagnostic(
-                Diagnostic.error(err.message.clone())
-                    .with_primary_span(err.span, &err.hint)
-                    .with_help("check the syntax against the project's SQL dialect")
-            );
+            CompileDiag.diagnostic()
+                .error(err.message.clone())
+                .primary_span(err.span, err.hint.clone())
+                .help("check the syntax against the project's SQL dialect")
+                .emit();
             return TokenStream.empty();
         }
     };
 
-    // Validate that every bind parameter is available in the outer scope.
+    // Validate every bind parameter, and report ALL the bad ones —
+    // a macro that returns on the first error costs the caller a
+    // build per mistake.
+    //
+    // NOTE the limit: the meta API has no scope query. Nothing in
+    // `AstAccess` or `Hygiene` can answer "is this name bound at the
+    // call site", so a macro cannot check that `:user_id` matches a
+    // Verum binding — that error surfaces later, when the expansion
+    // is type-checked. What a macro CAN check is the shape of what
+    // it was handed.
     for param in parsed.bind_params.iter() {
-        if not AstAccess.name_in_scope(&param.name) {
+        if TokenStream.from_str(param.name.clone()) is Result.Err(_) {
             CompileDiag.emit_error(
-                &f"sql bind parameter :{param.name} has no matching Verum binding",
+                &f"sql bind parameter :{param.name} does not lex as Verum",
                 param.span
             );
         }

@@ -62,8 +62,7 @@ error: unbalanced quote body
 ## `MacroError` — expansion-time failure
 
 Raised when a macro expands but the output is not the shape the
-splice site expected, or when a macro explicitly aborts via
-`CompileDiag.abort()`. Typical triggers:
+splice site expected. Typical triggers:
 
 - The splice site is an expression position and the macro produced
   an item, or vice versa.
@@ -73,7 +72,8 @@ splice site expected, or when a macro explicitly aborts via
 - A derive macro runs on a type it cannot handle (a protocol type,
   a type with no fields, a type whose generics cannot be bounded).
 - A macro's `TypeInfo`-driven branch emits a diagnostic via
-  `CompileDiag.emit_error(...)` without aborting.
+  `CompileDiag.emit_error(...)` and then returns a stream the
+  splice site cannot use.
 
 The diagnostic typically carries two spans: the macro invocation
 and the offending construct inside the generated output.
@@ -156,18 +156,27 @@ CompileDiag.emit_error(message, span);
 CompileDiag.emit_warning(message, span);
 CompileDiag.emit_note(message, span);
 CompileDiag.emit_help(message, span);
-CompileDiag.abort() -> !;
+CompileDiag.emit_error_with_code(code, message, span);
+CompileDiag.emit_warning_with_code(code, message, span);
 ```
 
-Or, for a fully structured diagnostic with multiple spans:
+There is no `abort`. A macro that cannot continue emits its
+diagnostic and returns `TokenStream.empty()`; the build fails
+because an error was emitted. `CompileDiag.has_errors()`,
+`.error_count()` and `.warning_count()` let a macro see what it
+has already reported.
+
+Or, for a fully structured diagnostic with multiple spans, take a
+builder from the context — every method returns it, and `emit`
+consumes it:
 
 ```verum
-CompileDiag.emit_diagnostic(
-    Diagnostic.error("unsupported variant")
-        .with_primary_span(v.span, "this variant uses a tuple shape")
-        .with_secondary_span(t.span, "but the derive only handles records")
-        .with_help("convert the variant to a record, or add `@derive(ClonePartial)`")
-);
+CompileDiag.diagnostic()
+    .error("unsupported variant")
+    .primary_span(v.span, "this variant uses a tuple shape")
+    .secondary_span(t.span, "but the derive only handles records")
+    .help("convert the variant to a record, or add `@derive(ClonePartial)`")
+    .emit();
 ```
 
 ## Linter advisories (warnings by default)

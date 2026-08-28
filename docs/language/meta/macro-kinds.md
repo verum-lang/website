@@ -122,9 +122,9 @@ pub meta fn traced_fn(f: FnAst) -> TokenStream
     let span_var = Hygiene.gensym("_tracer_span");
     quote {
         fn ${f.name}(${f.params}) -> ${f.return_type} using ${f.contexts} {
-            let ${span_var} = Tracer.enter(${lift(f.name.to_text())});
+            let ${span_var} = Tracer.start_span(${lift(f.name.to_text())});
             let _result = ${f.body};
-            Tracer.exit(${span_var}, &_result);
+            Tracer.end_span(${span_var});
             _result
         }
     }
@@ -326,10 +326,10 @@ Every form can emit compile errors through `CompileDiag`:
 ```verum
 CompileDiag.emit_error("can only derive for records", span);
 CompileDiag.emit_warning("this macro is deprecated — prefer @NewApi",
-                         Span.current());
+                         Span.call_site());
 CompileDiag.emit_note("see docs at /docs/language/meta/...",
-                      Span.current());
-CompileDiag.abort();   // stop expansion; produce no output
+                      Span.call_site());
+return TokenStream.empty();   // nothing to splice; the error already stands
 ```
 
 The emitted diagnostics participate in the normal Verum error
