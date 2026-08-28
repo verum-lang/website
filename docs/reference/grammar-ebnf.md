@@ -708,6 +708,7 @@ simple_type     = primitive_type
                 | existential_type
                 | inferred_type
                 | dynamic_type
+                | static_protocol_type
                 | capability_type ;
 never_type     = '!' ;
 unknown_type   = 'unknown' ;
