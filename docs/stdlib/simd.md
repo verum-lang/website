@@ -161,7 +161,7 @@ via CPUID at runtime — see [intrinsics → platform](/docs/stdlib/intrinsics#p
 
 ## GPU (`simd.gpu`)
 
-SIMT primitives for `@gpu.kernel` functions and device orchestration.
+SIMT primitives for `@kernel` functions and device orchestration.
 
 ### Types
 
@@ -242,7 +242,7 @@ shared_atomic_add_f64(ptr, offset, value) -> Float
 ### Example — element-wise vector addition
 
 ```verum
-@gpu.kernel
+@kernel
 fn vec_add(a: &[Float], b: &[Float], c: &mut [Float], n: Int) {
     let i = global_thread_id();
     if i < n {
@@ -335,4 +335,4 @@ Use cases:
 
 - **[math → tensor](/docs/stdlib/math)** — tensor operations built on SIMD/GPU.
 - **[intrinsics → simd / gpu / lowlevel](/docs/stdlib/intrinsics)** — the lower-level intrinsic functions.
-- **[Language → attributes](/docs/language/attributes)** — `@multiversion`, `@vectorize`, `@gpu.kernel`.
+- **[Language → attributes](/docs/language/attributes)** — `@multiversion`, `@vectorize`, `@kernel`.

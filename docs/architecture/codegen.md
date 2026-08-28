@@ -66,7 +66,7 @@ directly rather than reconstructed from primitive linalg.
 
 ### GPU (Metal)
 
-`metal_ir.rs` emits Metal shading-language IR for `@gpu.kernel`
+`metal_ir.rs` emits Metal shading-language IR for `@kernel`
 functions.
 
 ### Inline assembly

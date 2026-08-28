@@ -854,7 +854,7 @@ surface is staged under the T0179 epic.
 
 ## GPU
 
-Orchestration intrinsics used by `math.gpu` and `@gpu.kernel`.
+Orchestration intrinsics used by `math.gpu` and `@kernel`.
 
 ```verum
 // Device management

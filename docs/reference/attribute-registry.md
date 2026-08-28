@@ -209,7 +209,7 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 |-----------|---------|-----------|
 | `@device(cpu)` | fn | run on CPU (default, usually implicit) |
 | `@device(gpu)` | fn | route through MLIR GPU pipeline — triggers `VbcToMlirGpuLowering` in Phase 7 |
-| `@gpu.kernel` | fn | mark as a GPU kernel (implies `@device(gpu)`) with kernel-launch semantics |
+| `@kernel` | fn | mark as a GPU kernel (implies `@device(gpu)`) with kernel-launch semantics |
 | `@differentiable` | fn | synthesise a VJP companion in Phase 4a autodiff |
 | `@thread_local` | static | per-thread storage |
 | `@naked` | fn | no prologue / epilogue (assembly trampolines only) |

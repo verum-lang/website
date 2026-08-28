@@ -168,7 +168,7 @@ when it can recover). The diagnostic carries the parser's own
 span and message; the `suggestion` field, when present, is the
 parser's recovery hint.
 
-```verum
+```text
 // fires — unbalanced brace
 fn main() { let x = 1;
             ^                   // parser error: expected `}` before EOF
