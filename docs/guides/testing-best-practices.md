@@ -516,7 +516,7 @@ hand-rolled — Stage-2 ships `test_provide` for first-class mocking.
 
 ```verum
 // production
-fn fetch_profile(id: UserId) using [Database] -> Result<Profile, Error> {
+fn fetch_profile(id: UserId) -> Result<Profile, Error> using [Database] {
     let row = Database.query(f"select … from users where id = {id}")?;
     Profile.from_row(&row)
 }

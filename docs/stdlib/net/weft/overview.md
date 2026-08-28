@@ -98,15 +98,23 @@ reverse-proxy kit (see below).
 
 ```verum
 @runtime(work_stealing)
-mount core.net.weft.{Router, Method, Response, WeftApp};
+mount core.net.weft.{Router, Method, Response, WeftApp, WeftRequest};
 mount core.net.http.{Request};
 
 async fn hello() -> Response {
     Response.ok("Hello from Weft!")
 }
 
-async fn echo_name(Path(name): Path<Text>) -> Response {
-    Response.ok(f"Hello, {name}!")
+// A path parameter is read from the request, not destructured in the
+// signature: a pattern like `Path(name): Path<Text>` is an axum-style
+// extractor and does not parse in Verum — a parameter takes an
+// identifier, not a tuple-variant pattern. `WeftRequest` carries the
+// captures and offers `path_param` / `path_param_int` / `query_param`.
+async fn echo_name(req: WeftRequest) -> Response {
+    match req.path_param(&"name") {
+        Maybe.Some(name) => Response.ok(f"Hello, {name}!"),
+        Maybe.None       => Response.ok("no name"),
+    }
 }
 
 fn main() {
@@ -120,6 +128,17 @@ fn main() {
         .await
 }
 ```
+
+:::note `Response.ok(...)` on this page
+
+`core/net/http.vr` defines `Response` with the builders `new(status)`,
+`status(code)`, `body(bytes)` and `header(name, value)` — there is no
+`ok(body)` constructor there, and `core/net/weft/app.vr`'s own doc
+comment reaches for a `Response.text(...)` that is not defined either.
+The examples below keep the `Response.ok(...)` spelling they were
+written with; treat the exact constructor as unverified until the weft
+response surface is settled.
+:::
 
 ## REST API with DI, validation, errors
 

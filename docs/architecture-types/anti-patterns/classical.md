@@ -57,7 +57,7 @@ list, or remove the usage in the body.
 // Before — body uses Database, attribute doesn't declare it.
 @arch_module(requires: [Logger])
 module my_app.checkout;
-fn process() using [Database, Logger] -> Bool { ... }
+fn process() -> Bool using [Database, Logger] { ... }
 
 // After — declaration matches inferred surface.
 @arch_module(requires: [Database, Logger])

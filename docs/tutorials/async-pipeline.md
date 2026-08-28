@@ -103,7 +103,7 @@ mount .self.types.*;
 pub async fn parse_loop(
     mut rx: Receiver<RawRecord>,
     tx: Sender<ParsedRecord>,
-) using [Logger] -> Result<Int, Error> {
+) -> Result<Int, Error> using [Logger] {
     let mut processed = 0;
 
     while let Maybe.Some(raw) = rx.recv().await {
@@ -160,7 +160,7 @@ mount .self.types.*;
 pub async fn validate_loop(
     mut rx: Receiver<ParsedRecord>,
     tx: Sender<ValidRecord>,
-) using [Logger] -> Result<Int, Error> {
+) -> Result<Int, Error> using [Logger] {
     let mut valid = 0;
     let mut invalid = 0;
 
@@ -192,7 +192,7 @@ mount .self.types.ValidRecord;
 pub async fn write_loop(
     mut rx: Receiver<ValidRecord>,
     path: &Path,
-) using [IO, Logger] -> Result<Int, Error> {
+) -> Result<Int, Error> using [IO, Logger] {
     let file = OpenOptions.new()
         .create(true).append(true)
         .open_async(path).await?;
@@ -255,7 +255,7 @@ mount .self.types.*;
 const PARSER_WORKERS: Int = 4;
 const CHANNEL_CAPACITY: Int = 1024;
 
-async fn run_pipeline(output_path: &Path) using [IO, Logger] -> Result<(), Error> {
+async fn run_pipeline(output_path: &Path) -> Result<(), Error> using [IO, Logger] {
     // Wire the stages.
     let (raw_tx,   raw_rx)   = channel<RawRecord>(CHANNEL_CAPACITY);
     let (parsed_tx, parsed_rx) = channel<ParsedRecord>(CHANNEL_CAPACITY);

@@ -120,7 +120,7 @@ manifest setting is the outer guardrail.
 ## Mocked context (DI)
 
 ```verum
-fn process_order(id: OrderId) using [Database, Logger] -> Result<Order, Error> {
+fn process_order(id: OrderId) -> Result<Order, Error> using [Database, Logger] {
     Logger.info(f"processing {id}");
     let row = Database.query(f"select … where id = {id}")?;
     Order.from_row(&row)
