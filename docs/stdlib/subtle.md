@@ -256,8 +256,8 @@ authoritative way to clear secrets.
 
 | File | Role |
 |---|---|
-| `core/security/util/constant_time.vr` | Timing-safe compare + 3-way compare |
-| `core/security/util/rng.vr` | random helpers building on the `verum.rng.fill_secure` intrinsic |
+| `core/subtle/constant_time.vr` | Timing-safe compare + 3-way compare |
+| `core/random/secure.vr` | random helpers building on the `verum.rng.fill_secure` intrinsic |
 
 ## References
 

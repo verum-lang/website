@@ -411,11 +411,11 @@ buffers beyond the input slice.
 
 | File | Role |
 |---|---|
-| `core/security/hash/sha1.vr` | SHA-1 (legacy only) |
-| `core/security/hash/sha256.vr` | SHA-256 |
-| `core/security/hash/sha384.vr` | SHA-384 (shares sha512 core) |
-| `core/security/hash/sha512.vr` | SHA-512 (exposes `compress_block`) |
-| `core/security/hash/crc32.vr` | CRC-32 / IEEE 802.3 — **non-cryptographic** checksum |
+| `core/hash/legacy/sha1.vr` | SHA-1 (legacy only) |
+| `core/hash/crypto/sha256.vr` | SHA-256 |
+| `core/hash/crypto/sha384.vr` | SHA-384 (shares sha512 core) |
+| `core/hash/crypto/sha512.vr` | SHA-512 (exposes `compress_block`) |
+| `core/hash/checksum/crc32.vr` | CRC-32 / IEEE 802.3 — **non-cryptographic** checksum |
 
 ## `crc32` — non-cryptographic checksum
 

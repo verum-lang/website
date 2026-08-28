@@ -6,6 +6,36 @@ description: Capability annotations, declassification primitives, and the build-
 
 # `core.security.capabilities` — capability annotations & audit
 
+:::danger NOT IMPLEMENTED — this page describes a design, not the compiler
+
+Measured on the current toolchain:
+
+```text
+$ verum check                       # mount core.security.capabilities.*;
+error<E402>: module `core.security.capabilities` not found
+```
+
+The module does not exist. Neither does the `@cap(...)` attribute: it
+appears nowhere in `grammar/verum.ebnf`, nowhere in the compiler,
+nowhere in `core/`, and in no conformance spec.
+
+WORSE, AND THE REASON THIS BANNER IS RED RATHER THAN YELLOW: writing
+`@cap(net)` on a function compiles with **zero errors**, because an
+unrecognised attribute is accepted silently. So following this page
+produces code that looks checked and is not.
+
+The page is kept because it is a coherent design and the security model
+it describes is wanted. Read every code block below as a proposal.
+
+If you need a compile-time capability today, the language has a
+different and REAL mechanism: capability attenuation as types —
+`T with [Read, Write]` may be passed where `T with [Read]` is required
+and not the reverse (`error<E411>`). See
+[architecture/overview](/docs/architecture/overview) invariant 9. It
+restricts what may be done with a VALUE rather than annotating a
+function, so it is not a drop-in replacement for what is described here.
+:::
+
 ## What is a capability?
 
 A **capability** in Verum is a compile-time token that says
