@@ -13,9 +13,9 @@ Ten layouts you'll reach for again and again.
 ```verum
 let chunks = TermLayout.vertical()
     .constraints([
-        Constraint.Length(3),
-        Constraint.Min(1),
-        Constraint.Length(1),
+        LayoutConstraint.Length(3),
+        LayoutConstraint.Min(1),
+        LayoutConstraint.Length(1),
     ])
     .split(frame.size());
 
@@ -28,7 +28,7 @@ Shortcut: `header_body_footer(area, 3, 1)`.
 
 ```verum
 let chunks = TermLayout.horizontal()
-    .constraints([Constraint.Length(25), Constraint.Min(1)])
+    .constraints([LayoutConstraint.Length(25), LayoutConstraint.Min(1)])
     .split(area);
 ```
 
@@ -40,8 +40,8 @@ Shortcut: `sidebar_main(area, 25)`. For a **resizable** sidebar use the
 ```verum
 let cols = TermLayout.horizontal()
     .constraints([
-        Constraint.Ratio(1, 4), Constraint.Ratio(1, 4),
-        Constraint.Ratio(1, 4), Constraint.Ratio(1, 4),
+        LayoutConstraint.Ratio(1, 4), LayoutConstraint.Ratio(1, 4),
+        LayoutConstraint.Ratio(1, 4), LayoutConstraint.Ratio(1, 4),
     ])
     .split(area);
 ```
@@ -103,7 +103,7 @@ let rows = GridLayout.new()
 
 ```verum
 let page = TermLayout.vertical()
-    .constraints([Constraint.Length(3), Constraint.Min(1)])
+    .constraints([LayoutConstraint.Length(3), LayoutConstraint.Min(1)])
     .split(area);
 
 let grid = GridLayout.new()
@@ -122,13 +122,13 @@ match current_breakpoint(area.width) {
     Mobile | Tablet => {
         // Stack vertically
         TermLayout.vertical().constraints([
-            Constraint.Min(1), Constraint.Min(1), Constraint.Min(1),
+            LayoutConstraint.Min(1), LayoutConstraint.Min(1), LayoutConstraint.Min(1),
         ]).split(area)
     }
     _ => {
         // Side by side
         TermLayout.horizontal().constraints([
-            Constraint.Ratio(1, 3), Constraint.Ratio(1, 3), Constraint.Ratio(1, 3),
+            LayoutConstraint.Ratio(1, 3), LayoutConstraint.Ratio(1, 3), LayoutConstraint.Ratio(1, 3),
         ]).split(area)
     }
 }
@@ -137,7 +137,7 @@ match current_breakpoint(area.width) {
 ## Resizable split panes
 
 ```verum
-let split = Split.horizontal()
+let split = TermSplit.horizontal()
     .min_first(15)
     .min_second(20);
 let (left, div, right) = split.layout(area, &self.split_state);

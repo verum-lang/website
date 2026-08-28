@@ -135,7 +135,7 @@ implement Model for Model {
 
     fn view(&self, f: &mut Frame) {
         let chunks = TermLayout.vertical()
-            .constraints([Constraint.Length(3), Constraint.Min(1), Constraint.Length(1)])
+            .constraints([LayoutConstraint.Length(3), LayoutConstraint.Min(1), LayoutConstraint.Length(1)])
             .split(f.size());
 
         // Header
@@ -150,7 +150,7 @@ implement Model for Model {
                 TextInput.new()
                     .block(Block.new().title("Add item").borders(Borders.ALL))
                     .placeholder("type and press Enter…")
-                    .render_stateful(f, chunks[1], &mut self.input.clone());
+                    .render(chunks[1], f.buffer, &mut self.input.clone());
             }
             _ => {
                 let lines: List<Text> = self.items.iter().map(|it| {
@@ -160,7 +160,7 @@ implement Model for Model {
                 SelectableList.new(&lines)
                     .highlight_style(Style.new().reversed())
                     .highlight_symbol(&"▸ ")
-                    .render_stateful(f, chunks[1], &mut self.list.clone());
+                    .render(chunks[1], f.buffer, &mut self.list.clone());
             }
         }
 

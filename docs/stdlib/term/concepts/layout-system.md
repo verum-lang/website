@@ -45,7 +45,7 @@ public type Constraint is
     | Fill(Int);
 
 let chunks = TermLayout.vertical()
-    .constraints([Constraint.Length(3), Constraint.Min(5), Constraint.Length(1)])
+    .constraints([LayoutConstraint.Length(3), LayoutConstraint.Min(5), LayoutConstraint.Length(1)])
     .split(frame.size());
 ```
 

@@ -205,7 +205,7 @@ type FlexDirection is Row | RowReverse | Column | ColumnReverse;
 type FlexItem is { grow: Float, shrink: Float, basis: Constraint };
 
 Flex.new(direction)
-    .constraints(&[Constraint.Fill, Constraint.Length(20), Constraint.Fill])
+    .constraints(&[Constraint.Fill, LayoutConstraint.Length(20), Constraint.Fill])
     .margin(1)
     .split(rect) -> List<Rect>
 
@@ -224,12 +224,16 @@ Grid.new()
 ### Protocols
 
 ```verum
+// From core/term/widget/protocol.vr. Both take an owned `Rect` and the
+// BUFFER — not a `&mut Frame` — and the stateful one is also called
+// `render`; there is no `render_stateful`. Note the receivers differ:
+// `Widget` borrows, `StatefulWidget` consumes.
 type Widget is protocol {
-    fn render(&self, f: &mut Frame, area: &Rect);
+    fn render(&self, area: Rect, buf: &mut Buffer);
 }
 type StatefulWidget is protocol {
     type State;
-    fn render_stateful(&self, f: &mut Frame, area: &Rect, state: &mut Self.State);
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self.State);
 }
 type Styled is protocol {
     fn style(&self) -> &Style;
@@ -265,30 +269,30 @@ SelectableList.new(&items)
     .block(Block.new())
     .highlight_style(Style.new().modifier(Modifier.Reversed))
     .highlight_symbol(&">> ")
-    .render_stateful(f, area, &mut state)
+    .render(area, f.buffer, &mut state)
 
 type TableState is { selected: Maybe<Int>, offset: Int };
 Table.new(&rows)
     .header(Row.new(&[Cell.from("id"), Cell.from("name")]))
-    .widths(&[Constraint.Length(8), Constraint.Fill])
+    .widths(&[LayoutConstraint.Length(8), Constraint.Fill])
     .column_spacing(1)
     .highlight_style(Style.new().modifier(Modifier.Bold))
 
 type TreeState is { selected: List<Int>, opened: Set<List<Int>> };
 Tree.new(&items)
-    .render_stateful(f, area, &mut state)
+    .render(area, f.buffer, &mut state)
 
 Menu.new(&items)
     .orientation(Direction.Horizontal)
-    .render_stateful(f, area, &mut state)
+    .render(area, f.buffer, &mut state)
 
 type TextInputState is { buffer: Text, cursor: Int, selection: Maybe<(Int, Int)> };
 TextInput.new()
     .placeholder(&"type…")
     .password(false)
-    .render_stateful(f, area, &mut state)
+    .render(area, f.buffer, &mut state)
 
-Gauge.new()
+TermGauge.new()
     .ratio(0.72)                       // 0.0..=1.0
     .label(&"72%")
     .gauge_style(Style.new().fg(Color.Green))
@@ -300,7 +304,7 @@ Tabs.new(&titles)
 type ScrollbarState is { content_length: Int, position: Int, viewport_content_length: Int };
 Scrollbar.new(direction: ScrollDirection)
     .thumb_style(Style.new().fg(Color.DarkGray))
-    .render_stateful(f, area, &mut state)
+    .render(area, f.buffer, &mut state)
 
 Canvas.new()
     .x_bounds([0.0, 100.0])
@@ -322,7 +326,7 @@ Dialog.new()
     .title(&"Confirm")
     .body(&"Delete this file?")
     .buttons(&[DialogButton.new(&"Cancel"), DialogButton.new(&"Delete").primary()])
-    .render_stateful(f, area, &mut state)
+    .render(area, f.buffer, &mut state)
 
 Spinner.new()
     .frames(&SpinnerFrames.Dots)      // Dots | Line | Arc | …

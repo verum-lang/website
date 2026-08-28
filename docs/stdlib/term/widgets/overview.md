@@ -27,8 +27,8 @@ Block.new()
 Two panes with an interactive divider (horizontal or vertical).
 
 ```verum
-let (left, div, right) = Split.horizontal().ratio(0.3).layout(area, &state);
-Split.horizontal().render_divider(div, buf, &state);
+let (left, div, right) = TermSplit.horizontal().ratio(0.3).layout(area, &state);
+TermSplit.horizontal().render_divider(div, buf, &state);
 ```
 
 ## Text
@@ -53,7 +53,7 @@ SelectableList.new(&items)
     .block(Block.new().title("Files"))
     .highlight_style(Style.new().reversed())
     .highlight_symbol(&"> ")
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ### `Table`
@@ -62,9 +62,9 @@ Structured rows with per-column `Constraint` widths.
 ```verum
 Table.new(rows)
     .header(Row.new(["Name", "Value"]))
-    .widths(&[Constraint.Percentage(40), Constraint.Percentage(60)])
+    .widths(&[LayoutConstraint.Percentage(40), LayoutConstraint.Percentage(60)])
     .highlight_spacing(HighlightSpacing.WhenSelected)
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ### `Tree<T>`
@@ -74,7 +74,7 @@ Nested items with expand/collapse, connectors, and path-based selection.
 Tree.new(items)
     .highlight_style(Style.new().bg(Color.Blue).fg(Color.White))
     .highlight_symbol(&"> ")
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ## Input
@@ -87,7 +87,7 @@ Emacs bindings.
 TextInput.new()
     .block(Block.new().title("Search"))
     .placeholder("type here…")
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ### `TextArea`
@@ -97,7 +97,7 @@ Multi-line editor with line-array storage, line numbers, tab expansion.
 TextArea.new()
     .line_numbers(true)
     .wrap(WrapMode.NoWrap)
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ### `Dropdown<T>`
@@ -107,7 +107,7 @@ Select widget with optional incremental search.
 Dropdown.new(items, |x| x.name.clone())
     .searchable(true)
     .max_visible(8)
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ### `Menu`
@@ -139,14 +139,14 @@ Dialog.new("Save changes?")
 Smooth progress bar (8 sub-cell levels ▏▎▍▌▋▊▉█).
 
 ```verum
-Gauge.new().percent(state.progress).style(Style.new().fg(Color.Green))
+TermGauge.new().percent(state.progress).style(Style.new().fg(Color.Green))
 ```
 
 ### `Spinner`
 Frame-based animation (`dots`, `line`, `moon`, `earth`, `arrows`, `blocks`).
 
 ```verum
-Spinner.dots().label_text("Loading…").render_stateful(f, area, &mut state);
+Spinner.dots().label_text("Loading…").render(area, f.buffer, &mut state);
 ```
 
 ### `Notification`
@@ -161,7 +161,7 @@ Thin scroll indicator (vertical or horizontal).
 
 ```verum
 Scrollbar.new(ScrollbarOrientation.VerticalRight)
-    .render_stateful(f, area, &mut state);
+    .render(area, f.buffer, &mut state);
 ```
 
 ## Charts

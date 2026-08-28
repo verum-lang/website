@@ -119,9 +119,9 @@ fn view(&self, f: &mut Frame) {
     let area = f.area();
     let layout = Flex.new(Direction.Vertical)
         .constraints(&[
-            Constraint.Length(3),     // header
+            LayoutConstraint.Length(3),     // header
             Constraint.Fill,          // body
-            Constraint.Length(1),     // status
+            LayoutConstraint.Length(1),     // status
         ])
         .split(area);
 
@@ -144,7 +144,7 @@ implement Model for AppState {
             .block(Block.new().title(&"Files").borders(Borders.All))
             .highlight_style(Style.new().modifier(Modifier.Reversed))
             .highlight_symbol(&">> ")
-            .render_stateful(f, f.area(), &mut self.list_state.clone());
+            .render(f.area(), f.buffer, &mut self.list_state.clone());
     }
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
@@ -186,7 +186,7 @@ type AppState is { input: TextInputState };
 fn view(&self, f: &mut Frame) {
     TextInput.new()
         .placeholder(&"type a name")
-        .render_stateful(f, area, &mut self.input.clone());
+        .render(area, f.buffer, &mut self.input.clone());
 }
 
 // Every event, forwarded verbatim. `handle_event` is the protocol

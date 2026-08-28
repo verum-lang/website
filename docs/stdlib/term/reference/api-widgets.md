@@ -59,7 +59,7 @@ SelectableList.new(items: &List<Text>) -> Self
     .block(b: Block) -> Self
     .highlight_style(s: Style) -> Self
     .highlight_symbol(sym: &Text) -> Self
-    .render_stateful(f, area, &mut ListState)
+    .render(area, f.buffer, &mut ListState)
 
 // From core/term/widget/list.vr. `selected` is a FIELD, not a method,
 // and the movers are `next` / `previous`, each taking the total item
@@ -216,8 +216,8 @@ DropdownState.new() -> DropdownState
 ## `Split`
 
 ```verum
-Split.horizontal() -> Split
-Split.vertical()   -> Split
+TermSplit.horizontal() -> Split
+TermSplit.vertical()   -> Split
     .divider_style(s: Style) -> Self
     .dragging_style(s: Style) -> Self
     .show_divider(on: Bool) -> Self

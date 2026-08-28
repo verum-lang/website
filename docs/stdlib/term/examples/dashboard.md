@@ -84,14 +84,18 @@ implement Model for Model {
     }
 
     fn view(&self, f: &mut Frame) {
-        let split = Split.horizontal().ratio(0.25).min_first(20);
+        // `TermSplit` is pure widget config; the ratio is STATE
+        // (`SplitState.ratio(0.25)` in core/term/widget/split.vr), which
+        // is why the split is passed `&self.split` below rather than
+        // carrying the position itself.
+        let split = TermSplit.horizontal().min_first(20);
         let (left, div, right) = split.layout(f.size(), &self.split);
         split.render_divider(div, f.buffer, &self.split);
 
         // Sidebar — processes
         SelectableList.new(&self.procs)
             .block(Block.new().title(" Processes ").borders(Borders.ALL))
-            .render_stateful(f, left, &mut self.list.clone());
+            .render(left, f.buffer, &mut self.list.clone());
 
         // Main pane — grid of charts
         let grid = GridLayout.new()
