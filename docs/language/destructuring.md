@@ -244,7 +244,7 @@ destructuring_target = '(' , expression_list , ')'           (* tuple *)
 
 destructuring_assign = destructuring_target , assign_op , assignment_expr ;
 let_stmt        = 'let' , pattern , [ ':' , type_expr ] , [ '=' , expression ] , ';' ;
-let_else_stmt   = 'let' , pattern , '=' , expression , 'else' , block_expr ;
+let_else_stmt   = 'let' , pattern , [ ':' , type_expr ] , '=' , expression , 'else' , block_expr ;
 ```
 
 ## See also

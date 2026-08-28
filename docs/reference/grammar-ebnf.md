@@ -138,7 +138,7 @@ Verum has **two text literal forms** (intentionally minimal):
 
 ```ebnf
 plain_string    = '"' , { string_char | escape_seq } , '"' ;
-raw_multiline   = '"""' , { any_char - '"""' | '""""' } , '"""' ;
+raw_multiline   = '"""' , raw_multiline_content , '"""' ;
 string_lit      = plain_string | raw_multiline ;
 byte_string_lit = 'b' , '"' , { byte_string_char | byte_escape_seq } , '"' ;
 char_lit        = "'" , ( char | escape_seq ) , "'" ;
@@ -158,7 +158,7 @@ escape_seq = '\' , ( 'n' | 'r' | 't' | '0' | 'a' | 'b' | 'f' | 'v'
 #### 1.4.3 Format strings (interpolation)
 
 ```ebnf
-interpolated_string = ( 'f' | 'fmt' ) , '"' , { string_char | interpolation } , '"' ;
+interpolated_string = interpolated_prefix , '"' , { string_char | interpolation } , '"' ;
 interpolation       = '{' , expression , [ ':' , format_spec ] , '}' ;
 ```
 
@@ -204,9 +204,9 @@ composite_body    = composite_string | composite_paren | composite_bracket | com
 
 context_adaptive_lit = bare_token ;
 bare_token       = identifier | hex_color_literal | at_literal | dollar_literal ;
-hex_color_literal = '#' , hex_digit{6} , [ hex_digit{2} ] ;   (* #RRGGBB or #RRGGBBAA *)
-at_literal       = '@' , identifier ;                          (* @tag *)
-dollar_literal   = '$' , identifier ;                          (* $name *)
+hex_color_literal = '#' , hex_digit , hex_digit , hex_digit
+                  , hex_digit , hex_digit , hex_digit
+                  , [ hex_digit , hex_digit ] ;
 ```
 
 #### 1.4.6 Boolean
@@ -221,6 +221,7 @@ bool_lit = 'true' | 'false' ;
 arith_op       = '+' | '-' | '*' | '/' | '%' | '**' ;
 compare_op     = '==' | '!=' | '<' | '>' | '<=' | '>=' ;
 logical_op     = '&&' | '||' | '!' ;
+spec_op        = 'implies' | '<->' ;
 bitwise_op     = '&' | '|' | '^' | '<<' | '>>' | '~' ;
 assign_op      = '=' | '+=' | '-=' | '*=' | '/=' | '%='
                | '&=' | '|=' | '^=' | '<<=' | '>>=' ;
@@ -229,6 +230,19 @@ pipe_op        = '|>' ;
 arrow_op       = '->' | '=>' ;
 optional_chain = '?.' ;
 null_coalesce  = '??' ;
+```
+
+`implies` and `<->` are SPECIFICATION connectives. They are accepted
+in `requires` and `ensures`; in an ordinary expression `a implies b`
+is refused — the checker reports that the operator requires a
+protocol implementation, and no type in core/ provides one. Write
+`!a || b` for a runtime implication.
+
+```verum
+fn f(x: Int) -> Int
+    requires x > 0 <-> x >= 1
+    ensures  result > 0 implies x > 0
+{ x }
 ```
 
 For full precedence, see [Operators](/docs/reference/operators).
@@ -251,28 +265,46 @@ punctuation = '(' | ')' | '[' | ']' | '{' | '}'
 program      = { program_item } ;
 program_item = item | statement ;
 
-item = function_def
-     | type_def
-     | impl_block
-     | extern_block
-     | context_def
-     | context_protocol_def
-     | context_type_protocol_def
-     | context_group_def
-     | const_def
-     | static_def
-     | mount_stmt
-     | module_def
-     | meta_def
-     | pattern_def
-     | ffi_declaration
-     | attribute_item ;
+item            = function_def
+                | type_def
+                | impl_block
+                | extern_block
+                | context_def
+                | context_protocol_def
+                | context_type_protocol_def
+                | context_group_def
+                | const_def
+                | static_def
+                | mount_stmt
+                | module_def
+                | meta_def
+                | pattern_def
+                | layer_def
+                | ffi_declaration
+                | attribute_item ;
+
+layer_def       = visibility , 'layer' , identifier ,
+                  ( '{' , { provide_stmt } , '}'
+                  | '=' , identifier , { '+' , identifier } , ';' ) ;
 ```
+
+A **layer** is a named group of `provide` bindings, and layers
+compose with `+`:
+
+```verum
+layer DbLayer  { provide Pool = P { n: 1 }; }
+layer AppLayer = DbLayer + LogLayer;
+```
+
+The composition form takes layers left to right; initialisation order
+is derived from the dependencies between the provided contexts, so
+the written order is not the run order.
 
 ### 2.2 Visibility and attributes
 
 ```ebnf
-visibility = 'public' | 'internal' | 'protected' | epsilon ;
+visibility      = ( 'public' | 'pub' ) , [ visibility_restriction ]
+                | 'internal' | 'protected' | 'private' | epsilon ;
 
 attribute_item = '@' , attribute , item ;
 attribute      = std_attribute
@@ -284,20 +316,19 @@ attribute_args = expression_list | named_arg_list ;
 named_arg_list = named_arg , { ',' , named_arg } ;
 named_arg      = identifier , '=' , expression ;
 
-std_attribute        = 'std' , [ '(' , identifier , ')' ] ;
+std_attribute   = 'std' , [ '(' , context_group_identifier , ')' ] ;
 specialize_attribute = 'specialize' ;
 derive_attribute     = 'derive' , '(' , identifier , { ',' , identifier } , ')' ;
 
 verify_attribute = 'verify' , '(' , verify_strategy_list , ')' ;
-verify_strategy_list = verify_strategy
+verify_strategy_list = verify_strategy , { ',' , verify_strategy }
                      | '[' , verify_strategy , { ',' , verify_strategy } , ']' ;
-verify_strategy = 'runtime' | 'static' | 'fast'
-                | 'complexity_typed'
-                | 'formal' | 'proof'
-                | 'thorough' | 'reliable' | 'certified'
-                | 'coherent_static' | 'coherent_runtime' | 'coherent'
-                | 'synthesize'
-                | 'assume' ;
+verify_strategy =
+      'runtime' | 'static' | 'formal' | 'proof'
+    | 'fast' | 'thorough' | 'reliable'
+    | 'certified' | 'synthesize'
+    | 'coherent' | 'coherent_static' | 'coherent_runtime'
+    | 'complexity_typed' ;
 ```
 
 `@verify` selects a **semantic strategy** rather than a particular
@@ -404,7 +435,8 @@ for the 40-pattern reference.
 ### 2.3 Modules and imports
 
 ```ebnf
-mount_stmt   = 'mount' , mount_tree , [ 'as' , identifier ] , ';' ;
+mount_stmt       = visibility , ( 'mount' | 'link' ) , mount_tree
+                 , [ 'as' , identifier ] , ';' ;
 mount_tree   = mount_item , [ 'as' , identifier ]
              | path , '.' , '{' , mount_list , '}'
              | path , '.' , '*' ;
@@ -415,7 +447,7 @@ module_path  = identifier , { '.' , identifier } ;
 module_body  = '{' , { program_item } , '}' | ';' ;
 
 path         = [ '.' ] , path_segment , { '.' , path_segment } ;
-path_segment = identifier | 'self' | 'super' | 'crate' ;
+path_segment    = identifier | 'self' | 'super' | 'cog' | crate_alias ;
 ```
 
 ### 2.4 Type definitions — unified `is` syntax
@@ -423,17 +455,48 @@ path_segment = identifier | 'self' | 'super' | 'crate' ;
 ```ebnf
 linearity_qualifier = 'linear' | 'affine' ;
 
-type_def = visibility , 'type' , [ linearity_qualifier ] , identifier , [ generics ]
-         , [ meta_where_clause ]
-         , 'is' , type_definition_body ;
+type_def        = visibility , 'type' , [ linearity_qualifier ] , identifier , [ generics ]
+                , [ meta_where_clause ]
+                , [ '(' , [ param_list ] , ')' ]
+                , 'is' , type_definition_body ;
 
-type_definition_body =
-      type_expr , [ type_refinement ] , ';'      (* alias / refinement *)
-    | sigma_bindings , ';'                       (* dependent pair *)
-    | '(' , type_list , ')' , ';'                (* newtype / tuple *)
-    | '{' , field_list , '}' , [ type_refinement ] , ';'  (* record *)
-    | variant_list , ';'                         (* sum type *)
-    | protocol_def , ';' ;                       (* protocol *)
+type_definition_body = type_expr , [ type_refinement ] , ';'
+                     | sigma_bindings , ';'
+                     | '(' , type_list , ')' , ';'
+                     | '{' , field_list , '}' , [ type_refinement ] , ';'
+                     | variant_list , ';'
+                     | inductive_def , ';'
+                     | coinductive_def , ';'
+                     | protocol_def , ';' ;
+
+inductive_def   = 'inductive' , '{' , [ variant_list ] , '}' ;
+coinductive_def = ( 'coinductive' | 'codata' ) ,
+                  ( '{' , protocol_items , '}' | '{' , field_list , '}' ) ;
+```
+
+An **inductive** type is given by its constructors and is
+well-founded — every value is finite, so recursion over it
+terminates:
+
+```verum
+type Nat is inductive { | Zero | Succ(Nat) };
+```
+
+A **coinductive** type is given by its DESTRUCTORS — the
+observations that can be made of it — and its values may be
+infinite. It is what `cofix` functions produce, and it is judged on
+productivity rather than termination:
+
+```verum
+type Str<A> is coinductive { fn head(&self) -> A; fn tail(&self) -> Str<A>; };
+```
+
+`codata` is an accepted spelling of the same idea in record form,
+where each field is an observation. It is an ordinary identifier to
+the lexer, not a keyword:
+
+```verum
+type Str<A> is codata { head: A, tail: Str<A> };
 ```
 
 #### Records
@@ -448,37 +511,10 @@ field_default = '=' , expression ;
    the extension; an extensible record captures additional fields in
    the row variable. See language/row-polymorphism.md for semantics,
    the `lacks` predicate, and splat syntax. *)
-record_type   = '{' , [ field_list ] , [ row_extension ] , '}' ;
-row_extension = '|' , row_expr ;
-row_expr      = identifier                                 (* single row var *)
-              | identifier , { ',' , identifier } ;        (* row split *)
-```
-
-`{ x: Int }` is closed; `{ x: Int | r }` is open with `r` capturing
-the remaining fields. A lacks-constraint `r # x` (inferred or
-written `where r # x`) ensures `r` does not already contain `x`.
-
-#### Variants (sum types)
-
-```ebnf
-variant_list    = [ '|' ] , variant , { '|' , variant } ;
-variant         = { attribute } ,
-                  variant_name ,               (* any keyword is allowed *)
-                  [ variant_data ] ,
-                  ( path_endpoints | path_annotation )? ;
+record_type     = '{' , [ field_list ] , [ '|' , identifier ] , '}' ;
+variant         = { attribute } , identifier , [ variant_data ] , [ path_endpoints ] ;
 variant_data    = '{' , field_list , '}' | '(' , type_list , ')' ;
 path_endpoints  = '=' , expression , '..' , expression ;          (* range form *)
-path_annotation = ':' , type_expr ;                               (* type-annotation form *)
-```
-
-A variant that ends in `= a..b` or `: Path<C>(a, b)` is a
-**higher-inductive type** path constructor (cubical HoTT). Both forms
-lower to the same `path_endpoints` metadata; choose whichever is
-idiomatic for your domain:
-
-```verum
-// Range form — concise.
-type S1_range is Base | Loop() = Base..Base;
 type Interval is Zero | One   | Seg()  = Zero..One;
 
 // Type-annotation form — mirrors `Path<C>(a, b)` surface syntax used
@@ -595,7 +631,7 @@ param_list      = [ param , { ',' , param } , [ ',' ] ] ;
 param           = param_pattern | self_param ;
 param_pattern   = { attribute } , pattern , ':' , type_expr ;
 self_param      = { attribute } , [ ref_modifier ] , 'self' ;
-ref_modifier    = '&' , [ ref_kind ] , [ 'mut' ] ;
+ref_modifier    = '&' , [ lifetime ] , [ ref_kind ] , [ 'mut' ] ;
 ref_kind        = 'checked' | 'unsafe' | epsilon ;
 ```
 
@@ -615,10 +651,8 @@ extended_generic_param =
     | universe_param
     | level_param ;
 
-extended_type_param  = identifier , [ hk_params ] , [ ':' , bounds ] ;
-hk_params            = '<' , '_' , { ',' , '_' } , '>' ;       (* placeholder HKT *)
-
-kind_annotated_param = identifier , ':' , kind_expr , [ '+' , bounds ] ;
+extended_type_param = identifier , [ hk_params ] , [ ':' , bounds ] , [ '=' , type ] ;
+hk_params           = '<' , hk_placeholder_list , '>' ;
 kind_expr            = 'Type' , [ '->' , kind_expr ]
                      | '(' , kind_expr , ')' ;
 
@@ -652,33 +686,28 @@ extended_type_arg      = type_expr | expression | type_level_literal | meta_type
 ```ebnf
 type_expr  = simple_type , [ type_refinement ] ;
 
-simple_type = primitive_type
-            | never_type             (* ! *)
-            | unknown_type           (* unknown *)
-            | path_type_expr         (* Path<A>(a, b) — cubical *)
-            | path_type
-            | tuple_type
-            | record_type
-            | array_type             (* [T; N] *)
-            | slice_type             (* [T] *)
-            | managed_reference_type (* &T, &mut T *)
-            | checked_reference_type (* &checked T *)
-            | unsafe_reference_type  (* &unsafe T *)
-            | pointer_type           (* *const, *mut, *volatile *)
-            | function_type
-            | rank2_function_type
-            | pi_type                (* Pi (x: A) . B — explicit dependent fn *)
-            | tensor_type_expr       (* tensor<...> T — shape-typed array *)
-            | universe_type          (* Type, Type(n), Prop *)
-            | generic_type
-            | genref_type            (* GenRef<T> *)
-            | higher_kinded_type     (* F<_> *)
-            | existential_type       (* some T: P *)
-            | inferred_type          (* _ *)
-            | dynamic_type           (* dyn P + Q *)
-            | capability_type ;      (* T with [...] *)
-
-primitive_type = 'Int' | 'Float' | 'Bool' | 'Char' | 'Text' | '()' | 'Interval' | 'Prop' ;
+simple_type     = primitive_type
+                | never_type
+                | unknown_type
+                | path_type_expr
+                | path_type
+                | tuple_type
+                | record_type
+                | array_type
+                | slice_type
+                | managed_reference_type
+                | checked_reference_type
+                | unsafe_reference_type
+                | pointer_type
+                | function_type
+                | rank2_function_type
+                | generic_type
+                | genref_type
+                | higher_kinded_type
+                | existential_type
+                | inferred_type
+                | dynamic_type
+                | capability_type ;
 never_type     = '!' ;
 unknown_type   = 'unknown' ;
 ```
@@ -686,11 +715,7 @@ unknown_type   = 'unknown' ;
 #### References (three tiers)
 
 ```ebnf
-managed_reference_type  = '&' , [ 'mut' ] , type_expr ;            (* CBGR-checked *)
-checked_reference_type  = '&' , 'checked' , [ 'mut' ] , type_expr ; (* zero-cost, proven *)
-unsafe_reference_type   = '&' , 'unsafe' , [ 'mut' ] , type_expr ;  (* zero-cost, asserted *)
-
-pointer_type = '*' , ( 'const' | 'mut' | 'volatile' , [ 'mut' ] ) , type_expr ;
+managed_reference_type = '&' , [ lifetime ] , [ 'mut' ] , type_expr ;
 ```
 
 #### Function types
@@ -707,9 +732,6 @@ rank2_function_type = [ 'async' ] , 'fn' , generics , '(' , type_list , ')' ,
 #### Dependent function types (Π)
 
 ```ebnf
-pi_type   = 'Pi' , pi_binder , { pi_binder } , '.' , type_expr ;
-pi_binder = '(' , identifier , ':' , type_expr , [ 'where' , expression ] , ')'
-          | '{' , identifier , ':' , type_expr , [ 'where' , expression ] , '}' ;
 ```
 
 Round brackets denote **explicit** parameters; curly braces denote
@@ -727,17 +749,11 @@ and explicit `Pi` — elaborate to the same `Ty::Pi` node. See
 #### Universe hierarchy
 
 ```ebnf
-universe_type       = 'Type' , [ '(' , universe_level_expr , ')' ]
-                    | 'Prop' ;
+universe_type   = 'Type' , [ '(' , universe_level_expr , ')' ] ;
 
-universe_level_expr = universe_level_atom , { '+' , integer_lit } ;
+universe_level_expr = integer_lit | identifier
+                    | 'max' , '(' , universe_level_expr , ',' , universe_level_expr , ')' ;
 
-universe_level_atom = integer_lit
-                    | identifier                                (* level variable *)
-                    | 'max'  , '(' , universe_level_expr
-                                   , { ',' , universe_level_expr } , ')'
-                    | 'imax' , '(' , universe_level_expr , ',' , universe_level_expr , ')'
-                    | '(' , universe_level_expr , ')' ;
 ```
 
 - `Type(0) : Type(1) : Type(2) : ...` is the predicative hierarchy.
@@ -750,7 +766,6 @@ See [language/universes.md](../language/universes.md).
 #### Tensor types (shape-typed arrays)
 
 ```ebnf
-tensor_type_expr = 'tensor' , '<' , shape_params , '>' , type_expr ;
 (* shape_params: comma-separated compile-time dimensions; each is an
    integer literal, a bound identifier of kind Nat, or a meta-arith
    expression. Equivalent generic form: Tensor<T, [d1, d2, ...]>. *)
@@ -781,9 +796,8 @@ fields/variants; see [language/linearity.md](../language/linearity.md).
 #### Cubical / dependent
 
 ```ebnf
-path_type_expr     = 'Path' , type_args , '(' , expression , ',' , expression [, ','] , ')' ;
-dependent_app_type = type_head , [ type_args ] ,
-                     '(' , expression , { ',' , expression } , [ ',' ] , ')' ;
+path_type_expr  = 'Path' , type_args , '(' , expression , ',' , expression , ')' ;
+dependent_app_type = path , [ type_args ] , '(' , expression_list , ')' ;
                      (* generalises Path<A>(a,b) to arbitrary dependent
                         type constructors indexed by runtime values:
                         Glue<A>(phi, T, e), IsContrMap<A, B>(f),
@@ -816,7 +830,10 @@ are a superset.
 ### 2.8 Protocols and implementations
 
 ```ebnf
-protocol_item     = protocol_function | protocol_type | protocol_const ;
+protocol_item   = protocol_function
+                | protocol_type
+                | protocol_const
+                | axiom_decl ;
 
 protocol_function = visibility , function_modifiers , 'fn' , identifier , [ generics ]
                   , '(' , param_list , ')' , [ '->' , return_type_with_refinement ]
@@ -834,7 +851,10 @@ impl_block        = [ attribute ] , [ 'unsafe' ] , 'implement' , [ generics ] , 
 impl_type         = type_expr , 'for' , type_expr     (* implement P for T *)
                   | type_expr ;                       (* implement T (inherent impl) *)
 
-impl_item         = visibility , [ 'default' ] , ( function_def | type_alias | const_def ) ;
+impl_item       = visibility , [ 'default' ] , ( function_def
+                                               | type_alias
+                                               | const_def
+                                               | proof_clause ) ;
 
 (* Associated type binding inside `implement` / `protocol` blocks.            *)
 (* Distinct from the top-level `type_def` (§2.4) — only the associated-type   *)
@@ -927,8 +947,7 @@ fn handler(req: Request) -> Response
 ```ebnf
 context_group_def = 'using' , identifier , '=' , context_list_def , ';' ;
 
-provide_stmt      = 'provide' , context_path , [ 'as' , identifier ] , '='
-                  , expression , ( ';' | 'in' , block_expr ) ;
+provide_stmt    = 'provide' , ( provide_layer | provide_single | provide_multi ) ;
 ```
 
 ```verum
@@ -1044,30 +1063,51 @@ destructuring_target = '(' , expression_list , ')'                   (* (a, b) =
 #### Primary expressions
 
 ```ebnf
-primary_expr = literal_expr
-             | path_expr
-             | '(' , ')'                          (* unit *)
-             | '(' , expression , ')'             (* parens *)
-             | tuple_expr
-             | array_expr
-             | tensor_literal_expr
-             | map_expr | set_expr
-             | comprehension_expr | map_comprehension | set_comprehension | generator_expr
-             | stream_expr
-             | record_expr
-             | block_expr
-             | if_expr | match_expr | loop_expr
-             | try_expr
-             | closure_expr
-             | meta_expr | meta_call | meta_function | quote_expr
-             | async_expr | unsafe_expr
-             | return_expr | throw_expr
-             | break_expr | continue_expr
-             | spawn_expr | yield_expr
-             | select_expr | nursery_expr
-             | forall_expr | exists_expr
-             | typeof_expr ;
+primary_expr    = literal_expr
+                | path_expr
+                | '(' , ')'
+                | '(' , expression , ')'
+                | tuple_expr
+                | array_expr
+                | tensor_literal_expr
+                | map_expr
+                | set_expr
+                | comprehension_expr
+                | map_comprehension
+                | set_comprehension
+                | generator_expr
+                | stream_expr
+                | record_expr
+                | block_expr
+                | if_expr
+                | match_expr
+                | loop_expr
+                | try_expr
+                | closure_expr
+                | meta_expr
+                | meta_call
+                | meta_function
+                | quote_expr
+                | async_expr
+                | unsafe_expr
+                | return_expr
+                | throw_expr
+                | break_expr
+                | continue_expr
+                | spawn_expr
+                | yield_expr
+                | select_expr
+                | nursery_expr
+                | forall_expr
+                | exists_expr
+                | inject_expr
+                | typeof_expr ;
+
+inject_expr     = 'inject' , path ;
 ```
+
+`using [Log]` makes `Log.note(..)` callable by name; `inject Log`
+names the INSTANCE, for passing on or storing.
 
 #### Control flow
 
@@ -1126,9 +1166,7 @@ nursery_recover = 'recover' , recover_body ;
 try_expr        = 'try' , block_expr , [ try_handlers ] ;
 try_handlers    = try_recovery , [ try_finally ] | try_finally ;
 try_recovery    = 'recover' , recover_body ;
-recover_body    = '{' , match_arms , '}'                  (* match-arm form *)
-                | closure_params , recover_closure_body ; (* closure form *)
-try_finally     = 'finally' , block_expr ;
+recover_body    = recover_match_arms | recover_closure ;
 ```
 
 #### Stream literals & comprehensions
@@ -1156,7 +1194,7 @@ stream_literal_body  = stream_range_body | stream_elements_body ;
 #### Quote / staged metaprogramming
 
 ```ebnf
-quote_expr        = 'quote' , [ '(' , stage_level , ')' ] , '{' , token_tree , '}' ;
+quote_expr      = 'quote' , [ quote_stage ] , '{' , token_tree , '}' ;
 quote_interpolation = splice_operator , ( identifier | '{' , expression , '}' ) ;
 splice_operator     = '$' , { '$' } ;       (* one $ per stage level escaped *)
 quote_repetition    = splice_operator , '[' , 'for' , pattern , 'in' , expression , '{' , token_tree , '}' , ']' ;
@@ -1221,8 +1259,8 @@ record_pattern     = path , '{' , field_patterns , '}' ;
 variant_pattern    = path , [ variant_pattern_data ] ;
 variant_pattern_data = '(' , pattern_list , ')' | '{' , field_patterns , '}' ;
 reference_pattern  = '&' , [ 'mut' ] , pattern ;
-range_pattern      = literal_expr , range_op , [ literal_expr ]
-                   | range_op , literal_expr ;
+range_pattern   = range_bound , range_op , [ range_bound ]
+                | range_op , range_bound ;
 ```
 
 #### Active patterns (F#-style)
@@ -1251,17 +1289,19 @@ statement       = let_stmt
                 | expression_stmt ;
 
 let_stmt        = 'let' , pattern , [ ':' , type_expr ] , [ '=' , expression ] , ';' ;
-let_else_stmt   = 'let' , pattern , '=' , expression , 'else' , block_expr ;
+let_else_stmt   = 'let' , pattern , [ ':' , type_expr ] , '=' , expression , 'else' , block_expr ;
 defer_stmt      = 'defer' , defer_body | 'errdefer' , defer_body ;
 defer_body      = expression , ';' | block_expr ;
-expression_stmt = expression , [ ';' ] ;
+expression_stmt = expression , ';' ;
 ```
 
 ### 2.14 Constants and statics
 
 ```ebnf
-const_def  = visibility , 'const'  , identifier , ':' , type_expr , '=' , const_expr , ';' ;
-static_def = visibility , 'static' , [ 'mut' ] , identifier , ':' , type_expr , '=' , const_expr , ';' ;
+const_def       = visibility , ( 'const' | 'let' ) , identifier , [ generics ]
+                , [ ':' , type_expr ] , '=' , const_expr , ';' ;
+static_def      = visibility , 'static' , [ 'mut' ] , identifier
+                , ':' , type_expr , [ '=' , const_expr ] , ';' ;
 ```
 
 ### 2.15 Metaprogramming
@@ -1366,7 +1406,6 @@ axiom_decl     = 'axiom'     , identifier , [ generics ] , '(' , [ param_list ] 
    proof obligations at every `implement` site, realising the
    model-theoretic semantics of protocols: an implementation IS a
    model of the theory iff every axiom holds on its concrete ops. *)
-protocol_item_axiom = axiom_decl ;
 corollary_decl = 'corollary' , identifier , [ generics ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ] , [ requires_clause ] , 'from' , identifier , proof_body ;
 tactic_decl    = 'tactic'    , identifier , [ generics ]
@@ -1380,13 +1419,15 @@ tactic_param_type = 'Expr' | 'Type' | 'Tactic' | 'Hypothesis' | 'Int'
                   | 'Prop' | type_expr ;
 
 tactic_body       = tactic_expr | '{' , { tactic_stmt } , '}' ;
-tactic_stmt       = 'let'   , identifier , [ ':' , type_expr ] , '=' , expression , ';'
-                  | 'if'    , expression , '{' , tactic_expr , '}'
-                    , [ 'else' , ( 'if' , expression , '{' , tactic_expr , '}' , …
-                                 | '{'  , tactic_expr , '}' ) ]
-                  | 'match' , expression , '{' , match_arm , { ( ',' | ';' ) , match_arm } , [ ',' | ';' ] , '}'
-                  | 'fail'  , '(' , expression , ')'
-                  | tactic_expr , [ ';' ] ;
+tactic_stmt =
+      'let'   , identifier , [ ':' , type_expr ] , '=' , expression , ';'
+    | 'if'    , expression , '{' , tactic_expr , '}' ,
+                [ 'else' , ( 'if' , expression , '{' , tactic_expr , '}'
+                           | '{' , tactic_expr , '}' ) ]
+    | 'match' , expression , '{' ,
+                match_arm , { ( ',' | ';' ) , match_arm } , [ ',' | ';' ] , '}'
+    | 'fail'  , '(' , expression , ')'
+    | tactic_expr , [ ';' ] ;
 
 requires_clause = 'requires' , expression , { ',' , expression } ;
 
@@ -1421,8 +1462,10 @@ tactic_name = 'auto' | 'simp' | 'ring' | 'field' | 'omega' | 'blast' | 'smt'
             | identifier ;
 
 (* Calculational chains *)
-calc_chain    = 'calc' , '{' , calc_step , { calc_step } , '}' ;
-calc_step     = expression , calc_relation , '{' , proof_justification , '}' , expression ;
+calc_chain =
+    'calc' , '{' , expression , calc_step , { calc_step } , '}' ;
+calc_step =
+    calc_relation , '{' , proof_justification , '}' , expression ;
 calc_relation = '==' | '<' | '<=' | '>' | '>=' | '!=' ;
 ```
 

@@ -42,7 +42,7 @@ the dispatch rules.
 The grammar's own enumeration (`grammar/verum.ebnf`):
 
 ```ebnf
-verify_attribute = 'verify' , '(' , verify_strategy , ')' ;
+verify_attribute = 'verify' , '(' , verify_strategy_list , ')' ;
 verify_strategy =
       'runtime' | 'static' | 'formal' | 'proof'
     | 'fast' | 'thorough' | 'reliable'

@@ -58,7 +58,7 @@ Shape typing moves all of this to compile time. The runtime cost is
 
 ```ebnf
 tensor_type_expr    = 'tensor' , '<' , shape_params , '>' , type_expr ;
-shape_params        = dimension , { ',' , dimension } ;
+shape_params    = expression_list ;
 dimension           = integer_lit | identifier | meta_arith_expr ;
 ```
 

@@ -97,9 +97,10 @@ type MaybeFile is
 ```ebnf
 linearity_qualifier = 'linear' | 'affine' ;
 
-type_def = visibility , 'type' , [ linearity_qualifier ] , identifier
-         , [ generics ] , [ meta_where_clause ]
-         , 'is' , type_definition_body ;
+type_def        = visibility , 'type' , [ linearity_qualifier ] , identifier , [ generics ]
+                , [ meta_where_clause ]
+                , [ '(' , [ param_list ] , ')' ]
+                , 'is' , type_definition_body ;
 ```
 
 Both `linear` and `affine` are **contextual** keywords — the three

@@ -504,9 +504,10 @@ local state and branch on values:
 ### Grammar
 
 ```ebnf
-tactic_decl   = [ visibility ] , 'tactic' , identifier ,
-                [ generic_params ] , '(' , [ tactic_param_list ] , ')' ,
-                [ where_clause ] , tactic_body ;
+tactic_decl =
+    'tactic' , identifier , [ generics ] ,
+    '(' , [ tactic_param_list ] , ')' ,
+    [ where_clause ] , tactic_body ;
 
 tactic_param  = identifier , ':' , tactic_param_type ,
                 [ '=' , expression ] ;
@@ -516,12 +517,15 @@ tactic_param_type = 'Expr' | 'Type' | 'Tactic' | 'Hypothesis' | 'Int'
 
 tactic_body   = tactic_expr | '{' , { tactic_stmt } , '}' ;
 
-tactic_stmt   = 'let' , identifier , [ ':' , type_expr ] , '=' , expression , ';'
-              | 'if' , expression , '{' , tactic_expr , '}' ,
-                [ 'else' , ( 'if' , … | '{' , tactic_expr , '}' ) ]
-              | 'match' , expression , '{' , { match_arm } , '}'
-              | 'fail' , '(' , expression , ')'
-              | tactic_expr , ';' ;
+tactic_stmt =
+      'let'   , identifier , [ ':' , type_expr ] , '=' , expression , ';'
+    | 'if'    , expression , '{' , tactic_expr , '}' ,
+                [ 'else' , ( 'if' , expression , '{' , tactic_expr , '}'
+                           | '{' , tactic_expr , '}' ) ]
+    | 'match' , expression , '{' ,
+                match_arm , { ( ',' | ';' ) , match_arm } , [ ',' | ';' ] , '}'
+    | 'fail'  , '(' , expression , ')'
+    | tactic_expr , [ ';' ] ;
 ```
 
 ## Cheat-sheet: when to reach for which

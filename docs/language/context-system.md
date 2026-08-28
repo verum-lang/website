@@ -409,8 +409,7 @@ extended_context_item = negative_context
                       | simple_context ;
 
 context_group_def = 'using' , identifier , '=' , context_list_def , ';' ;
-provide_stmt      = 'provide' , context_path , [ 'as' , identifier ]
-                  , '=' , expression , ( ';' | 'in' , block_expr ) ;
+provide_stmt    = 'provide' , ( provide_layer | provide_single | provide_multi ) ;
 ```
 
 ## Worked example — wiring a web service

@@ -61,7 +61,7 @@ static checking, full information, and a natural API.
 ## The syntax
 
 ```ebnf
-record_type   = '{' , [ field_list ] , [ row_extension ] , '}' ;
+record_type     = '{' , [ field_list ] , [ '|' , identifier ] , '}' ;
 row_extension = '|' , row_expr ;
 row_expr      = identifier | identifier , { ',' , identifier } ;
 ```
