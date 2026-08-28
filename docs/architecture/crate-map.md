@@ -5,7 +5,8 @@ title: Crate Map
 
 # Crate Map
 
-Every crate in the Verum compiler workspace, with purpose and
+Every crate in the Verum compiler workspace — 39 members as of this
+writing, all named below — with purpose and
 representative entry points. The workspace is a single Cargo
 workspace under `crates/`; the `Layer 0 → Layer 4` partition
 reflects build dependency order, not directory layout.
@@ -23,7 +24,7 @@ reflects build dependency order, not directory layout.
 |-------|---------|-----------|
 | `verum_lexer`        | Tokenisation via `logos`. | `token.rs`, `lexer.rs` |
 | `verum_fast_parser`  | Main recursive-descent parser — direct-to-AST, no lossless overhead. The active parser used by every pipeline. | `decl.rs`, `expr.rs`, `ty.rs`, `stmt.rs`, `pattern.rs`, `proof.rs`, `parser.rs`, `recovery.rs`, `attr_validation.rs`, `safe_interpolation.rs` |
-| `verum_parser`       | Legacy parser, partial coverage; retained for compatibility tooling. Not on the hot path. | — |
+| `verum_parser`       | The IDE parser: lossless (`syntax_bridge::LosslessParser`) and incremental (`IncrementalDocument`). NOT on the compile path — that is `verum_fast_parser` — but not legacy either: `verum_lsp` builds formatting, diagnostics and semantic tokens on it, and `verum_interactive`, `verum_types` and `verum_vbc` depend on it too. 11.7k lines. | `syntax_bridge.rs`, `incremental.rs`, `ast_sink.rs` |
 | `verum_ast`          | AST node definitions. | `expr.rs`, `ty.rs`, `pattern.rs`, `decl.rs` |
 | `verum_syntax`       | Lossless (red–green) syntax tree infrastructure used by formatter, IDE, and structured-edit tooling. | `lib.rs` |
 
@@ -64,6 +65,20 @@ reflects build dependency order, not directory layout.
 | `verum_interactive` | REPL and Playbook TUI; reuses the LSP analysis layer for interactive feedback. | `playbook/`, `execution/`, `discovery/`, `output/` |
 | `verum_cli`         | Command-line frontend (binary `verum`). Houses every subcommand: `build`, `run`, `test`, `check`, `lint`, `fmt`, `lsp`, `dap`, `playbook`, `repl`, `bench`, `audit`, `audit_gate`, `cache`, `cog_*`, `cubical`, `doc`, `doctor`, `explain`, `export`, `extract`, `fuzz`, `import`, `init`, `lex_mask`, `lint_*`, `llm_tactic`, `owl2`, `proof_*`, `property`, `publish`, `search`, `smt_check`, … | `main.rs`, `commands/` |
 | `verum_integration_tests` | Workspace-wide end-to-end integration suite. | — |
+| `verum_test_support` | Shared helpers the test suites build on, so a fixture is written once rather than per crate. Depended on by `verum_types`, `verum_smt` and `verum_verification`. | — |
+
+## Conformance runners (`vcs/`)
+
+Five workspace members live outside `crates/`. They are part of the
+build, not a side directory, which is why they appear here.
+
+| Crate | Purpose | Key files |
+|-------|---------|-----------|
+| `vtest`  | The conformance-suite runner. Reads the `@test:` / `@level:` / `@tier:` directives at the top of every `.vr` spec and executes the phase each one names — parse, typecheck, verify, compile, run, or a differential across tiers. | `vcs/runner/vtest` |
+| `vbench` | Benchmark runner for the `L4-performance` tier. | `vcs/runner/vbench` |
+| `vfuzz`  | Fuzzing harness over the same corpus. | `vcs/runner/vfuzz` |
+| `isabelle_graph_import` | Imports an Isabelle theory graph, for the external-prover cross-checking path. | `vcs/tools/isabelle_graph_import` |
+| `meta_engines` | Differential harness that runs more than one engine over the same input and compares. | `vcs/differential/meta_engines` |
 
 ## External bindings
 
