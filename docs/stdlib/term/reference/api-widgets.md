@@ -61,13 +61,16 @@ SelectableList.new(items: &List<Text>) -> Self
     .highlight_symbol(sym: &Text) -> Self
     .render_stateful(f, area, &mut ListState)
 
+// From core/term/widget/list.vr. `selected` is a FIELD, not a method,
+// and the movers are `next` / `previous`, each taking the total item
+// count because the state does not hold the list.
+type ListState is { selected: Maybe<Int>, offset: Int };
+
 ListState.new() -> ListState
-    .selected(idx: Maybe<Int>) -> Self
-    fn select(&mut self, idx: Int)
-    fn select_next(&mut self)
-    fn select_previous(&mut self)
+ListState.with_selected(idx: Int) -> ListState
+    fn next(&mut self, total: Int)
+    fn previous(&mut self, total: Int)
     fn unselect(&mut self)
-    fn get_selected(&self) -> Maybe<Int>
 ```
 
 ## `Table`

@@ -16,6 +16,10 @@ A live system dashboard showing:
 
 ```verum
 mount core.term.app.*;
+// `interval` is re-exported by core.term.app, but a bare call to it
+// currently resolves to core.async's one-argument `interval` instead
+// (T0931). The alias sidesteps the collision.
+mount core.term.app.subscription.{interval as sub_interval};
 mount core.term.widget.*;
 
 // ---------- Metrics state ------------------------------------------------
@@ -63,8 +67,8 @@ implement Model for Model {
 
     fn subscriptions(&self) -> Subscription<Msg> {
         sub_batch([
-            interval(Duration.from_secs(1), || Msg.Tick),
-            interval(Duration.from_secs(5), || Msg.Tick),  // refresh procs
+            sub_interval(Duration.from_secs(1), || Msg.Tick),
+            sub_interval(Duration.from_secs(5), || Msg.Tick),  // refresh procs
         ])
     }
 

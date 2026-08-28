@@ -62,7 +62,7 @@ implement Model for Model {
     fn view(&self, frame: &mut Frame) {
         let title = f"Counter: {self.counter} — press ↑/↓ / q to quit";
         let block = Block.new().title(title).borders(Borders.ALL);
-        frame.render(block, frame.size());
+        frame.render_widget(&block, frame.size());
     }
 
     fn handle_event(&self, event: Event) -> Maybe<Msg> {

@@ -79,14 +79,14 @@ implement Model for Model {
             }
 
             Toggle => {
-                match self.list.get_selected() {
+                match self.list.selected {
                     Some(i) => { self.items[i].done = !self.items[i].done; self.persist() }
                     None => none(),
                 }
             }
 
             Delete => {
-                match self.list.get_selected() {
+                match self.list.selected {
                     Some(i) => { self.items.remove(i); self.persist() }
                     None => none(),
                 }
