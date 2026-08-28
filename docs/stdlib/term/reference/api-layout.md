@@ -47,14 +47,26 @@ public type Direction is Horizontal | Vertical;
 
 public type Flex is Start | Center | End | SpaceBetween | SpaceAround;
 
-public type Layout is { ... };
+// From core/term/layout/constraint.vr. The type is `TermLayout`, not
+// `Layout` — `Layout` is taken twice elsewhere in the stdlib
+// (`core/math/tensor.vr` aliases it to `TensorLayout`, and
+// `core/mem/allocator.vr` declares its own), and a bare `Layout` here
+// resolves to one of those.
+//
+// Direction is chosen by the CONSTRUCTOR, so there is no
+// `.direction(...)` builder.
+public type TermLayout is {
+    direction: Direction, constraints: List<LayoutConstraint>,
+    margin: Margin, flex: Flex, spacing: Int,
+};
 
-Layout.new() -> Layout
-    .direction(d: Direction) -> Self
-    .constraints(cs: List<Constraint>) -> Self
-    .flex(f: Flex) -> Self
-    .margin(m: Int) -> Self
-    .split(area: Rect) -> List<Rect>
+TermLayout.horizontal() -> TermLayout
+TermLayout.vertical()   -> TermLayout
+    .constraints(cs: List<LayoutConstraint>) -> TermLayout
+    .margin(m: Margin) -> TermLayout
+    .flex(f: Flex) -> TermLayout
+    .spacing(n: Int) -> TermLayout
+    .split(&self, area: Rect) -> List<Rect>
 ```
 
 ## Flex layout

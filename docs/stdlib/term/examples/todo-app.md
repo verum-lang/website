@@ -134,8 +134,7 @@ implement Model for Model {
     }
 
     fn view(&self, f: &mut Frame) {
-        let chunks = Layout.new()
-            .direction(Direction.Vertical)
+        let chunks = TermLayout.vertical()
             .constraints([Constraint.Length(3), Constraint.Min(1), Constraint.Length(1)])
             .split(f.size());
 

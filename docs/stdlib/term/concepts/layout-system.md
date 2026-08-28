@@ -44,8 +44,7 @@ public type Constraint is
     | Ratio(Int, Int)
     | Fill(Int);
 
-let chunks = Layout.new()
-    .direction(Direction.Vertical)
+let chunks = TermLayout.vertical()
     .constraints([Constraint.Length(3), Constraint.Min(5), Constraint.Length(1)])
     .split(frame.size());
 ```

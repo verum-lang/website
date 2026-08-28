@@ -11,8 +11,7 @@ Ten layouts you'll reach for again and again.
 ## Header / body / footer
 
 ```verum
-let chunks = Layout.new()
-    .direction(Direction.Vertical)
+let chunks = TermLayout.vertical()
     .constraints([
         Constraint.Length(3),
         Constraint.Min(1),
@@ -28,8 +27,7 @@ Shortcut: `header_body_footer(area, 3, 1)`.
 ## Sidebar + main
 
 ```verum
-let chunks = Layout.new()
-    .direction(Direction.Horizontal)
+let chunks = TermLayout.horizontal()
     .constraints([Constraint.Length(25), Constraint.Min(1)])
     .split(area);
 ```
@@ -40,8 +38,7 @@ Shortcut: `sidebar_main(area, 25)`. For a **resizable** sidebar use the
 ## Equal columns
 
 ```verum
-let cols = Layout.new()
-    .direction(Direction.Horizontal)
+let cols = TermLayout.horizontal()
     .constraints([
         Constraint.Ratio(1, 4), Constraint.Ratio(1, 4),
         Constraint.Ratio(1, 4), Constraint.Ratio(1, 4),
@@ -105,8 +102,7 @@ let rows = GridLayout.new()
 ## Dashboard (header + 2×2 cards)
 
 ```verum
-let page = Layout.new()
-    .direction(Direction.Vertical)
+let page = TermLayout.vertical()
     .constraints([Constraint.Length(3), Constraint.Min(1)])
     .split(area);
 
@@ -125,13 +121,13 @@ let grid = GridLayout.new()
 match current_breakpoint(area.width) {
     Mobile | Tablet => {
         // Stack vertically
-        Layout.new().direction(Direction.Vertical).constraints([
+        TermLayout.vertical().constraints([
             Constraint.Min(1), Constraint.Min(1), Constraint.Min(1),
         ]).split(area)
     }
     _ => {
         // Side by side
-        Layout.new().direction(Direction.Horizontal).constraints([
+        TermLayout.horizontal().constraints([
             Constraint.Ratio(1, 3), Constraint.Ratio(1, 3), Constraint.Ratio(1, 3),
         ]).split(area)
     }
