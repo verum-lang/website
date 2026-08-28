@@ -88,7 +88,7 @@ pub fn foo_compute_safe(xs: &[Float]) -> Result<Float, Error> {
 | `float` | `Float32` |
 | `double` | `Float` (or `Float64`) |
 | `bool` / `_Bool` | `Bool` |
-| `char *` (C string) | `*const Byte` + explicit length; convert to `Text` via `Text.from_c_str` |
+| `char *` (C string) | `*const Byte` + explicit length; convert to `Text` via `Text.from_utf8` |
 | `const T *` (array) | `*const T` + separate length |
 | `T *` (out-param) | `*mut T` |
 | `void *` | `*const Byte` or opaque type |
@@ -99,8 +99,18 @@ pub fn foo_compute_safe(xs: &[Float]) -> Result<Float, Error> {
 
 C strings are null-terminated. To pass:
 
+There is no `to_c_string` helper — the standard library builds the
+buffer by hand, and `core/sys/fs_watch.vr` is the model:
+
 ```verum
-let c_string = Text.to_c_string(&"hello").unwrap();  // List<Byte> with trailing \0
+fn nul_terminate(t: &Text) -> List<Byte> {
+    let mut out = List.with_capacity(t.len() + 1);
+    for b in t.clone().into_bytes().iter() { out.push(*b); }
+    out.push(0);
+    out
+}
+
+let c_string = nul_terminate(&"hello");
 unsafe { c_fn(c_string.as_ptr()); }
 ```
 
@@ -109,7 +119,11 @@ To receive:
 ```verum
 unsafe {
     let ptr = c_fn_returning_string();
-    let text = Text.from_c_str(ptr).unwrap();
+    // You must know the length: C gives you a pointer, not a slice.
+    // `strlen` if the library does not tell you, then decode.
+    // core.intrinsics.memory.slice_from_raw_parts
+    let bytes = slice_from_raw_parts(ptr as &Byte, len);
+    let text  = Text.from_utf8(bytes)?;
     // ptr is borrowed; if C owns it, do not free.
 }
 ```

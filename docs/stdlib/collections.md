@@ -311,7 +311,7 @@ Swiss-table-style flat hash map. `K: Hash + Eq`.
 ```verum
 Map.new() -> Map<K, V>
 Map.with_capacity(capacity) -> Map<K, V>
-Map.from_iter(iter: Iter<(K,V)>)
+Map.from(pairs: [(K, V); _])
 let m: Map<Text, Int> = Map.from([("a", 1), ("b", 2)]);
 ```
 
@@ -414,7 +414,7 @@ is undefined. Collect the changes and apply after, or use `retain`.
 ### Construction
 
 ```verum
-Set.new()      Set.with_capacity(cap)      Set.from_iter(iter)
+Set.new()      Set.with_capacity(cap)      Set.from(values)
 let s: Set<Int> = Set.from([1, 2, 3]);
 ```
 

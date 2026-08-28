@@ -142,15 +142,22 @@ type Handle is (*unsafe mut Byte);
 
 ## String interop
 
-C strings are `*const Byte` (null-terminated). Convert:
+C strings are `*const Byte` (null-terminated). Verum has no
+`from_c_str`: a pointer is not a slice, so you supply the length and
+decode explicitly.
 
 ```verum
+mount core.intrinsics.memory.{slice_from_raw_parts};
+
 let c: *const Byte = ...;
-let text: Text     = unsafe { Text.from_c_str(c) };
+let bytes          = unsafe { slice_from_raw_parts(c as &Byte, len) };
+let text: Text     = Text.from_utf8(bytes)?;
 ```
 
-UTF-8 validation happens during conversion. Raw non-null-terminated
-byte sequences use `&unsafe [Byte]`.
+`Text.from_utf8` returns `Result<Text, Utf8Error>` — validation is a
+value you handle, not something that happens invisibly during a
+conversion. `Text.from_utf8_lossy` substitutes replacement characters
+instead. Raw non-null-terminated byte sequences use `&unsafe [Byte]`.
 
 ## Callbacks
 

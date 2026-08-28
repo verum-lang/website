@@ -157,7 +157,8 @@ risks.
   `errors_via`, `@ownership`).
 - Input pointers: validate non-null, bound-check length.
 - Output pointers: zero before return if returning on error.
-- Strings crossing the boundary: `Text.from_c_str` — validates UTF-8.
+- Strings crossing the boundary: `Text.from_utf8` — returns
+  `Result<Text, Utf8Error>`, so invalid input is a value you handle.
 
 ### Verification
 

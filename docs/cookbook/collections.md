@@ -39,11 +39,11 @@ Similarly for `Map`, `Set`, etc.:
 
 ```verum
 let m = Map.new();
-let m = Map.from_pairs([("a", 1), ("b", 2)]);
-let m = Map.of(("a", 1), ("b", 2), ("c", 3));
+let m = Map.from([("a", 1), ("b", 2)]);
+let m = Map.from([("a", 1), ("b", 2), ("c", 3)]);
 
 let s = Set.new();
-let s = Set.of(1, 2, 3);
+let s = Set.from([1, 2, 3]);
 
 let d = Deque.new();
 let d = Deque.from_list(list);
@@ -247,7 +247,7 @@ xs.chunks(5)                          // &[T]... fixed chunks
 ## Set operations
 
 ```verum
-let a: Set<Int> = Set.of(1, 2, 3);
+let a: Set<Int> = Set.from([1, 2, 3]);
 let b: Set<Int> = Set.of(2, 3, 4);
 
 let union:        Set<Int> = a.union(&b).cloned().collect();

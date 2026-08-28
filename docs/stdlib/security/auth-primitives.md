@@ -46,7 +46,7 @@ let opts = VerifyOptions {
     allowed_algorithms: [JwtAlgorithm.HS256],
     expected_iss: Some(Text.from("acme")),
     expected_aud: None,
-    now_unix: Instant.now_unix(),
+    now_unix: Instant.now(),
     clock_skew_sec: 5,
 };
 let parsed = jwt.verify_compact(&token, &key, &opts)?;
@@ -142,13 +142,13 @@ let secret = otp.generate_secret(otp.DEFAULT_SECRET_BYTES);
 
 // Classic 30-s step, 6-digit code, SHA-256 (recommended over SHA-1).
 let code = otp.totp(
-    secret.as_slice(), Instant.now_unix(),
+    secret.as_slice(), Instant.now(),
     otp.DEFAULT_STEP_SEC, otp.DEFAULT_DIGITS, &OtpHash.Sha256,
 )?;
 
 // Verify with ±1 step clock-drift tolerance.
 let ok = otp.totp_verify(
-    secret.as_slice(), &candidate, Instant.now_unix(),
+    secret.as_slice(), &candidate, Instant.now(),
     otp.DEFAULT_STEP_SEC, otp.DEFAULT_DIGITS, &OtpHash.Sha256, 1,
 );
 ```

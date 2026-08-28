@@ -75,7 +75,7 @@ mount core.*;
 public type TopicName is Text where
     Text.len(self) >= 1
     && Text.len(self) <= 64
-    && Text.all_chars(self, |c|
+    && self.chars().all(|c|
         (c >= 'a' && c <= 'z')
         || (c >= '0' && c <= '9')
         || c == '-'

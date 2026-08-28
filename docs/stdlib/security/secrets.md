@@ -92,7 +92,7 @@ public type Secret is {
     data: List<Byte>,             // the payload
     metadata: Text,                // opaque backend-specific JSON
     created_at: Instant,
-    expires_at: Instant,           // Instant.max if non-expiring
+    expires_at: Instant,           // Instant.from_nanos(Int.MAX) if non-expiring
 };
 
 implement Secret {
@@ -439,7 +439,7 @@ implement CachedSecret {
     async fn get_or_refresh<S: SecretStore>(&mut self, store: &S) -> &Secret {
         if Instant.now() >= self.refresh_at {
             self.value = store.get(&self.value.reference).await.unwrap();
-            self.refresh_at = self.value.expires_at.checked_sub(Duration.from_mins(10)).unwrap_or(Instant.max());
+            self.refresh_at = self.value.expires_at.checked_sub(Duration.mins(10)).unwrap_or(Instant.from_nanos(Int.MAX));
         }
         &self.value
     }

@@ -96,8 +96,8 @@ let mut rt = ManualRuntime.new();
 let (done_rx, result) = rt.block_on_with_fake_clock(
     run_async(my_model),
     |events| {
-        events.push(Msg.Tick(Instant.epoch()));
-        events.push(Msg.Tick(Instant.epoch() + Duration.from_secs(1)));
+        events.push(Msg.Tick(Instant.from_nanos(0)));
+        events.push(Msg.Tick(Instant.from_nanos(0) + Duration.from_secs(1)));
     },
 );
 ```
