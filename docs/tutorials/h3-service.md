@@ -94,7 +94,7 @@ using [Nursery]
 mount core.*;
 mount core.net.quic.api.{QuicServerOptions};
 mount core.net.h3.server.{H3Server, ServerOptions, H3ServerError};
-mount core.net.h3.request.{H3Request, H3Response, H3Status};
+mount core.net.h3.request.{H3Request, H3Response};
 mount core.security.x509.parse.{parse_cert_chain_pem};
 mount core.security.x509.sign.{FileSigner};
 
@@ -140,7 +140,7 @@ async fn handle(req: H3Request) -> H3Response {
             handle_subscribe(req).await,
 
         _ =>
-            H3Response.status(H3Status.NotFound).text(f"404"),
+            H3Response.status(404_u16),
     }
 }
 ```
@@ -156,11 +156,11 @@ async fn handle_subscribe(mut req: H3Request) -> H3Response {
     let body = req.body_bytes().await;
     let topic_text = match Text.from_utf8(body.as_slice()) {
         Ok(t) => t,
-        Err(_) => return H3Response.status(H3Status.BadRequest).text(f"bad utf8"),
+        Err(_) => return H3Response.status(400_u16),
     };
     let topic: TopicName = match TopicName.from_text(topic_text) {
         Ok(t) => t,
-        Err(_) => return H3Response.status(H3Status.BadRequest).text(f"bad topic"),
+        Err(_) => return H3Response.status(400_u16),
     };
 
     H3Response.ok()

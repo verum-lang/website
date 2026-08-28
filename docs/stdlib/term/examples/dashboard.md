@@ -148,7 +148,7 @@ fn render_net(f: &mut Frame, area: Rect, history: &List<Sample>) {
         .x_bounds(0.0, history.len().max(1) as Float)
         .y_bounds(0.0, max_y)
         .marker(Marker.Braille)
-        .paint(Heap(LineSeries.new(pts, Color.Yellow)))
+        .paint(Heap.new(LineSeries.new(pts, Color.Yellow)))
         .render(area, f.buffer);
 }
 
