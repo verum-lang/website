@@ -195,7 +195,7 @@ backend. Try a refinement the compiler can clearly disprove:
 type Positive is Int { self > 0 };
 
 fn return_zero() -> Positive {
-    0
+    0            // COMPILE ERROR: 0 does not satisfy {self > 0}
 }
 
 fn main() {

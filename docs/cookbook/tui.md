@@ -149,8 +149,8 @@ implement Model for AppState {
 
     fn update(&mut self, msg: Msg) -> Command<Msg> {
         match msg {
-            Msg.Up   => self.list_state.select_previous(),
-            Msg.Down => self.list_state.select_next(),
+            Msg.Up   => self.list_state.previous(self.items.len()),
+            Msg.Down => self.list_state.next(self.items.len()),
             _ => (),
         }
         none()

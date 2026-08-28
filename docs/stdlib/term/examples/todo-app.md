@@ -92,8 +92,8 @@ implement Model for Model {
                 }
             }
 
-            Up   => { self.list.select_previous(); none() }
-            Down => { self.list.select_next();     none() }
+            Up   => { self.list.previous(self.items.len()); none() }
+            Down => { self.list.next(self.items.len());     none() }
 
             AskClearAll     => { self.mode = Mode.Confirming; none() }
             CancelClearAll  => { self.mode = Mode.Browsing;   none() }
