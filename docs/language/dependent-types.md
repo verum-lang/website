@@ -46,11 +46,11 @@ fn main() {
 Π-types arise naturally from refined types: the return type `[T; n]`
 depends on the _value_ `n`, not on a type-level numeral.
 
-### The three surface forms of Π
+### The two surface forms of Π
 
-Verum lets you write a dependent function in three equivalent ways.
-All three elaborate to the same core dependent-function (`Π`) type
-in the kernel.
+Verum lets you write a dependent function in two equivalent ways.
+Both elaborate to the same core dependent-function (`Π`) type in the
+kernel. Both were compiled before being written here.
 
 **1. Value-dependent `fn` signature** — the everyday form:
 
@@ -70,38 +70,32 @@ fn push<T>(v: List<T, n>, x: T) -> List<T, n + 1>
 { ... }
 ```
 
-**3. Explicit `Pi` form** — for type aliases, protocol methods, and
-proof terms where no function definition is yet at hand:
+:::caution There is no explicit `Pi` surface syntax
+`Π` is the kernel's name for the dependent-function type, not
+something you write. `type ReplicateOf<T> is Pi (n: Int) . [T; n];`
+is a parse error — the parser stops at the `.`. Write the dependent
+function itself, in one of the two forms above, and let it elaborate.
 
-```verum
-// As a type alias.
-type ReplicateOf<T> is Pi (n: Int) . [T; n];
-
-// As a protocol method signature.
-type Indexed<T> is protocol {
-    fn at : Pi (i: Int) (s: Self) . T
-        where i < s.length;
-};
-
-// As an argument type.
-fn fold<T, U>(xs: List<T, n>, z: U, step: Pi (i: Int) . fn(U, T) -> U) -> U { ... }
-```
-
-All three forms carry identical semantics; the compiler normalises
-them to the same internal representation.
+The same applies to the implicit-binder spelling described below:
+`Pi { k: K } (m: Map<K, V>) . Maybe<V>` does not parse either.
+Implicit parameters are written on the function's own generics.
+:::
 
 ### Implicit parameters
 
 A Π-binder written with curly braces is **implicit** — filled in by
 inference at the call site, the way Agda and Lean handle them:
 
+In Verum that binder is the function's own generic parameter list —
+there is no separate `Pi` spelling to write it in:
+
 ```verum
-type Lookup<K, V> is Pi { k: K } (m: Map<K, V>) . Maybe<V>;
+fn lookup<K, V>(m: Map<K, V>) -> Maybe<V> { Maybe.None }
 ```
 
-The caller writes `lookup(my_map)` and the compiler synthesises `k`.
-Use implicit parameters for proof-relevant indices that should not
-clutter the call site.
+The caller writes `lookup(my_map)` and the compiler synthesises `K`
+and `V` from the argument. Use implicit parameters for
+proof-relevant indices that should not clutter the call site.
 
 ### Universe of a Π
 
@@ -115,7 +109,8 @@ full story.
 
 A refinement `T { P(self) }` is exactly a Σ (dependent pair)
 `Σ (x: T) . P(x)` with `P(x) : Prop`. The dual, a refinement on a
-function's *output*, is exactly a Π: `Pi (x: A) . { y: B | Q(x, y) }`.
+function's *output*, is exactly a Π: `Π (x: A) . { y: B | Q(x, y) }`.
+Both are written here in mathematical notation, not Verum syntax.
 Refinements and dependent types are **two syntaxes for one machinery**.
 
 ## Type-level computation
