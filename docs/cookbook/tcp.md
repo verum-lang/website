@@ -151,7 +151,7 @@ Use a shutdown flag checked on every iteration and a `select` that
 races `accept` against the signal:
 
 ```verum
-mount core.os.signal;
+mount core.signal.{ctrl_c};
 
 async fn echo_server_graceful(addr: &Text) -> IoResult<()>
     using [IO, Logger]
@@ -162,7 +162,7 @@ async fn echo_server_graceful(addr: &Text) -> IoResult<()>
     // Signal listener task
     let s_clone = stop.clone();
     spawn async move {
-        signal.wait_for(Signal.Interrupt).await;
+        ctrl_c().await;
         Logger.info("shutdown requested");
         s_clone.store(true, MemoryOrdering.Release);
     };

@@ -297,13 +297,14 @@ generates optimal initialisation order.
 
 ```verum
 layer DatabaseLayer {
-    provide ConnectionPool = ConnectionPool.new(Config.get_url());
+    provide ConnectionPool = ConnectionPool.new(
+        Config.get_or("database.url", "postgres://localhost/app"));
     provide QueryExecutor = QueryExecutor.new(ConnectionPool);
     provide Migrations = Migrations.new(ConnectionPool);
 }
 
 layer LoggingLayer {
-    provide Logger = ConsoleLogger.new(Config.get_level());
+    provide Logger = ConsoleLogger.new(Config.get_or("log.level", "info"));
     provide Metrics = PrometheusMetrics.new();
 }
 ```

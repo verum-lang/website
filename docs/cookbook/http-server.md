@@ -170,7 +170,8 @@ Wait for SIGINT or SIGTERM and stop accepting new connections while
 letting available handlers complete:
 
 ```verum
-mount core.os.signal;
+mount core.signal.{signal_stream};
+mount core.sys.signal.{Signal};
 
 async fn serve_graceful() using [IO, Database, Logger, Network] {
     let listener = TcpListener.bind("0.0.0.0:8080").await?;
@@ -179,7 +180,8 @@ async fn serve_graceful() using [IO, Database, Logger, Network] {
     let shutdown = Shared.new(AtomicBool.new(false));
     let s = shutdown.clone();
     spawn async move {
-        signal.wait_any(&[Signal.Interrupt, Signal.Term]).await;
+        let mut sigs = signal_stream(&[Signal.Int, Signal.Term]);
+        let _ = sigs.next().await;
         Logger.info("shutdown requested");
         s.store(true, MemoryOrdering.Release);
     };
