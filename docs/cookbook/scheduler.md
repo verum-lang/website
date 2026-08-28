@@ -85,7 +85,7 @@ async fn reload_with_jitter() using [Logger, Random] {
     let base = 30.seconds();
     loop {
         // ±5 seconds of jitter
-        let jitter_ms = Random.uniform(-5000, 5000);
+        let jitter_ms = Random.int_range(-5000, 5000);
         sleep(base + jitter_ms.milliseconds()).await;
         reload_config().await;
     }

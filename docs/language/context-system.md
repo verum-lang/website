@@ -137,24 +137,41 @@ Groups are just named lists. They compose.
 
 ### Transformed contexts
 
-```verum
-fn analyse(db: Database) using [Database.readonly()] { ... }
-```
-
-The callee receives a `Database` with only read capabilities. If the
-function tries to call a mutating method, the compiler rejects it
-immediately — no runtime error.
-
-Transforms chain:
+A `using` entry may call methods on the context, and the function
+body then sees the RESULT of those calls rather than the context as
+provided:
 
 ```verum
-fn do_tx() using [Database.transactional().isolated(Serializable)] { ... }
+context Store {
+    fn read(key: Text) -> Maybe<Text>;
+    fn write(key: Text, value: Text);
+    fn readonly() -> Store;
+}
+
+fn analyse() using [Store.readonly()] { ... }
 ```
 
-Each segment is an ordinary method on the context type (`Database`
-has `.transactional()` and `.isolated(Level)` methods declared in its
-protocol). The transform produces a **refined context** — the
-function body sees `Database` with the tighter contract.
+Each segment is an ordinary method on the context, and that is
+literally how it lowers: the compiler fetches the provided context,
+calls the named method on it, and installs the result as the context
+for the body. Segments chain left to right:
+
+```verum
+fn audited() using [Store.readonly().traced()] { ... }
+```
+
+There is no fixed list of transform names — whatever the context
+declares can be used. What a transform means is therefore up to the
+context that declares it: `readonly()` above returns a `Store` whose
+`write` is a no-op or a panic, and the language does not enforce that
+promise for you.
+
+:::caution The method is not checked
+A transform names a method, but the compiler does not verify that the
+context declares one — `Store.nonexistent()` compiles today and fails
+when the call is made. Contexts and their methods are resolved from
+the function signature, not from a registry of declarations.
+:::
 
 ### Named and aliased contexts
 

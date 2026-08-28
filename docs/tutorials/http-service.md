@@ -220,7 +220,7 @@ pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
     let target: TargetUrl = TargetUrl.try_from(raw.clone())
         .map_err(|_| Error.new(&"invalid URL"))?;
 
-    let seed = Clock.now_ns();
+    let seed = Clock.now().as_nanos();
     let code = codegen.generate(seed, 7);
 
     let link = Link {
