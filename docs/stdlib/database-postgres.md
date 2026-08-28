@@ -335,7 +335,7 @@ mount core.database.postgres.row.Row;
 
 let row: Row = pool.acquire().await?
     .query_one(&"SELECT id, name, active, created_at FROM users WHERE id = $1".into(),
-               vec![Some(TvInt4(42))]).await?;
+               [Some(TvInt4(42))]).await?;
 
 let id:         Int          = row.get_int("id")?;
 let name:       Text         = row.get_text("name")?;
@@ -380,25 +380,25 @@ let conn = pool.acquire().await?;
 // Full result set as Vec of Row.
 let rows: List<Row> = conn.query(
     &"SELECT * FROM users WHERE active = $1".into(),
-    vec![Some(TvBool(true))],
+    [Some(TvBool(true))],
 ).await?;
 
 // Exactly one row — errors with SQLSTATE 02000 (no_data) on zero.
 let row: Row = conn.query_one(
     &"SELECT email FROM users WHERE id = $1".into(),
-    vec![Some(TvInt4(user_id))],
+    [Some(TvInt4(user_id))],
 ).await?;
 
 // Optional single row — Ok(None) on empty.
 let row_opt: Maybe<Row> = conn.query_one_opt(
     &"SELECT email FROM users WHERE id = $1".into(),
-    vec![Some(TvInt4(user_id))],
+    [Some(TvInt4(user_id))],
 ).await?;
 
 // DML returning command_tag (e.g. "UPDATE 3").
 let tag: Text = conn.execute_with_params(
     &"UPDATE users SET active = $1 WHERE id = $2".into(),
-    vec![Some(TvBool(false)), Some(TvInt4(user_id))],
+    [Some(TvBool(false)), Some(TvInt4(user_id))],
 ).await?;
 ```
 

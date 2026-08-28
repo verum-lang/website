@@ -241,7 +241,7 @@ Completes when the **first** future completes. Returns the result, the
 index of the winning future, and the remaining (unpolled) futures.
 
 ```verum
-let (winner, idx, rest) = select_any(vec![fast, medium, slow]).await;
+let (winner, idx, rest) = select_any([fast, medium, slow]).await;
 print(f"task {idx} won with {winner}");
 // `rest` is still live — drop or reawait.
 ```

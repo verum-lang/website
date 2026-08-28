@@ -204,7 +204,7 @@ fn example() -> Result<(), Heap<Error>> {
     let alice_shared = ml_kem_decapsulate(v, &alice.secret_key, &bob_enc.ciphertext)?;
 
     // alice_shared == bob_shared
-    assert_eq!(alice_shared.as_slice(), bob_shared.as_slice());
+    assert_eq(alice_shared.as_slice(), bob_shared.as_slice());
     Ok(())
 }
 ```
@@ -322,7 +322,7 @@ fn example() -> Result<(), Heap<Error>> {
 
     // Verifier (separate party, already holds kp.public_key)
     let ok = ml_dsa_verify(v, &kp.public_key, message, &sig.bytes)?;
-    assert_eq!(ok, true);
+    assert_eq(ok, true);
     Ok(())
 }
 ```

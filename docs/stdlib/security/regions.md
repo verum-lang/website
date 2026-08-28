@@ -158,10 +158,9 @@ let returned = region_type(
 
 match check_no_escape(returned, env) {
     EscapeVerdict.Ok =>
-        println!("safe: no escape"),
+        print("safe: no escape"),
     EscapeVerdict.Escape { region: r, returned_type: t } =>
-        println!("ERROR: {} would carry region {} out of scope",
-                 t, r.name),
+        print(f"ERROR: {t} would carry region {r.name} out of scope"),
 }
 // → ERROR: List<Int> would carry region τ out of scope
 ```

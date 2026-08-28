@@ -141,9 +141,9 @@ public type SpiffeIdError is
 mount core.security.spiffe.id.{SpiffeId};
 
 let id = SpiffeId.parse(&"spiffe://prod.example.com/ns/billing/sa/api")?;
-assert_eq!(id.trust_domain(), &"prod.example.com");
-assert_eq!(id.path(), &"/ns/billing/sa/api");
-assert!(id.is_member_of(&"prod.example.com".to_string()));
+assert_eq(id.trust_domain(), &"prod.example.com");
+assert_eq(id.path(), &"/ns/billing/sa/api");
+assert(id.is_member_of(&"prod.example.com"));
 ```
 
 ---
@@ -368,8 +368,8 @@ async fn get_my_identity() -> Result<(), Error> {
     let resp = client.fetch_x509_svid().await?;
 
     let me = &resp.svids[0];
-    println!("I am: {}", me.id().to_uri());
-    println!("My cert expires at: {}", me.expires_at());
+    print(f"I am: {me.id().to_uri()}");
+    print(f"My cert expires at: {me.expires_at()}");
     Ok(())
 }
 ```

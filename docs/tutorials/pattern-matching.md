@@ -205,7 +205,7 @@ full `match`:
 fn is_special_form(e: &Expr) -> Bool {
     e is Expr.List(items) && items.len() > 0 && {
         if let Expr.Symbol(name) = &*items[0] {
-            matches!(name.as_str(), "if" | "let" | "lambda" | "+")
+            name is "if" | "let" | "lambda" | "+"
         } else { false }
     }
 }
