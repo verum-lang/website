@@ -185,15 +185,15 @@ fn replicate(n: Int { self >= 0 }, x: Int) -> [Int; n] {
 }
 
 /// Path type from cubical HoTT — propositional equality is a type.
-mount core.math.hott.{ Path, refl, I };
+mount core.math.hott.{ HottPath, refl, I };
 
-fn same_value<T>(x: T) -> Path<T>(x, x) {
+fn same_value<T>(x: T) -> HottPath<T>(x, x) {
     refl(x)
 }
 ```
 
 Σ-types (`n: Int, data: [Int; n]`), Π-types (`[Int; n]` where `n` is
-a value), and Path types (`Path<T>(x, y)` — the type of paths from
+a value), and Path types (`HottPath<T>(x, y)` — the type of paths from
 `x` to `y`) coexist with refinement types and the rest of the surface
 language. The kernel's HoTT layer (`Transp`, `HComp`, `Glue`) is
 wired to its reduction rules in `verum_smt.cubical_tactic`.

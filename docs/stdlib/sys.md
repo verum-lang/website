@@ -999,7 +999,7 @@ Advisory byte-range locking, typed and capability-safe. Wraps
 to implement SQLite's 5-state locking protocol.
 
 ```verum
-mount core.sys.locking.{LockRegion, LockKind, LockHandle, try_lock, unlock};
+mount core.sys.locking.{LockRegion, FileLockKind, LockHandle, try_lock, unlock};
 
 public type LockKind is Shared | Exclusive;     // no Unlock variant — unlock consumes
 public type LockRegion is { start: Int, length: Int };  // length == -1 ⇒ to EOF

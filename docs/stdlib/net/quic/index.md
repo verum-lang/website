@@ -176,7 +176,7 @@ datagrams via `on_inbound_datagram` and drains outbound frames via
 `drain_outbound`.
 
 ```verum
-mount core.net.quic.connection_sm.{ClientSm, SmError};
+mount core.net.quic.connection_sm.{QuicConnectionSm, QuicRole, ConnState};
 mount core.net.quic.transport.{SimNetwork};
 
 fn drive_client(net: &mut SimNetwork, mut sm: ClientSm) -> Result<(), SmError> {

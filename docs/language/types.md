@@ -235,8 +235,8 @@ type Vec is n: Int, data: [Int; n];
 
 // Path type constructor (cubical HoTT): the type of paths
 // from `a` to `b` in carrier `A`.
-mount core.math.hott.Path;
-type SelfLoop<A> is fn(x: A) -> Path<A>(x, x);
+mount core.math.hott.HottPath;
+type SelfLoop<A> is fn(x: A) -> HottPath<A>(x, x);
 ```
 
 Covered in **[Dependent types](/docs/language/dependent-types)**.

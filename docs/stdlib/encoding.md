@@ -44,16 +44,17 @@ length-prefixed, RFC 9000 §16).
 mount core.encoding.json.*;
 
 public type JsonValue is
-    | Null
-    | Bool(Bool)
-    | Number(Float)
-    | Text(Text)
-    | Array(List<JsonValue>)
-    | Object(List<(Text, JsonValue)>);
+      JsonNull
+    | JsonBool(Bool)
+    | JsonInt(Int)
+    | JsonFloat(Float)
+    | JsonString(Text)
+    | JsonArray(List<JsonValue>)
+    | JsonObject(Map<Text, JsonValue>);
 
-public fn parse(input: &[Byte]) -> Result<JsonValue, JsonError>;
-public fn serialize(value: &JsonValue, out: &mut Text);
-public fn serialize_pretty(value: &JsonValue, out: &mut Text, indent: Int);
+public fn parse(source: &Text) -> Result<JsonValue, JsonError>;
+public fn stringify(value: &JsonValue) -> Text;
+public fn stringify_pretty(value: &JsonValue) -> Text;
 ```
 
 Strict RFC-8259 semantics — no trailing commas, no comments, no
@@ -332,14 +333,12 @@ headers pass through). Label-mismatch on begin/end returns
 ## Example — JSON round-trip
 
 ```verum
-mount core.encoding.json.{parse, serialize, JsonValue};
+mount core.encoding.json.{parse, stringify, JsonValue, JsonError};
 
-fn round_trip() -> Result<(), json.JsonError> {
-    let raw = b"{\"id\": 42, \"tags\": [\"a\", \"b\"]}";
-    let value = parse(raw)?;
-    let mut out = Text.new();
-    serialize(&value, &mut out);
-    Ok(())
+fn round_trip() -> Result<Text, JsonError> {
+    let raw = "{\"id\": 42, \"tags\": [\"a\", \"b\"]}";
+    let value = parse(&raw)?;
+    Result.Ok(stringify(&value))
 }
 ```
 

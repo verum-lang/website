@@ -71,7 +71,7 @@ flowchart LR
 A minimal loop:
 
 ```verum
-mount core.net.http2.{FrameHeader, Frame, Settings, SettingId,
+mount core.net.http2.{FrameHeader, Http2Frame, Settings, SettingId,
                       Http2Error, ErrorCode, connection_error};
 
 async fn run_frame_loop(

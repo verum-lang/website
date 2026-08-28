@@ -27,7 +27,7 @@ per direction, exactly as the RFC prescribes.
 |---------|--------|-----------|
 | Frame layer (DATA / HEADERS / SETTINGS / CANCEL_PUSH / …) | `core.net.h3.frame` | `H3Frame`, `H3FrameError` |
 | Settings | `core.net.h3.settings` | `H3Settings`, `H3SettingsId` |
-| Requests / responses | `core.net.h3.request` | `H3Request`, `H3Response`, `H3Method`, `H3Status` |
+| Requests / responses | `core.net.h3.request` | `H3Request`, `H3Response`, `H3Method` |
 | Client facade | `core.net.h3.client` | `H3Client`, `ClientOptions`, `H3ClientError` |
 | Server facade | `core.net.h3.server` | `H3Server`, `ServerOptions`, `H3Handler`, `H3ServerError` |
 | Connection driver | `core.net.h3.connection` | `H3Connection`, `new_client`, `new_server`, `on_bidi_stream` |
@@ -54,7 +54,7 @@ async fn fetch_example() -> Result<(), H3ClientError> {
     let mut client = H3Client.connect(&"https://example.test/", opts).await?;
     let response = client.get(&"/api/users/42").await?;
 
-    let status: H3Status = response.status();
+    let status: UInt16 = response.status;
     for header in response.headers().iter() {
         let _ = (header.name, header.value);
     }
@@ -74,7 +74,7 @@ immediately.
 
 ```verum
 mount core.net.h3.server.{H3Server, ServerOptions, H3Handler};
-mount core.net.h3.request.{H3Request, H3Response, H3Status, H3Method};
+mount core.net.h3.request.{H3Request, H3Response, H3Method};
 
 type MyHandler is { /* app state */ };
 
@@ -82,11 +82,11 @@ implement H3Handler for MyHandler {
     async fn handle(&mut self, req: H3Request) -> H3Response {
         match (req.method(), req.path().as_str()) {
             (H3Method.Get, "/health") =>
-                H3Response.new(H3Status.Ok)
+                H3Response.status(200_u16)
                     .with_header("content-type", "text/plain")
                     .with_body(b"ok".to_list()),
 
-            _ => H3Response.new(H3Status.NotFound)
+            _ => H3Response.status(404_u16)
                     .with_body(b"".to_list()),
         }
     }

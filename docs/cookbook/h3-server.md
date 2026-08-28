@@ -16,7 +16,7 @@ using [Nursery]
 
 mount core.*;
 mount core.net.h3.server.{H3Server, ServerOptions};
-mount core.net.h3.request.{H3Request, H3Response, H3Status};
+mount core.net.h3.request.{H3Request, H3Response};
 
 pub async fn main() -> Result<(), core.net.h3.server.H3ServerError> {
     let cert_chain = load_der_chain("/etc/ssl/certs/server.pem");
@@ -34,7 +34,7 @@ pub async fn main() -> Result<(), core.net.h3.server.H3ServerError> {
             "/metrics" =>
                 H3Response.ok().bytes(prometheus_expose()),
             _ =>
-                H3Response.status(H3Status.NotFound).text(f"404"),
+                H3Response.status(404_u16),
         }
     }).await?;
     Ok(())
@@ -83,7 +83,7 @@ server.serve(|req: H3Request| async move {
                 writer.finish().await
             })
     } else {
-        H3Response.status(H3Status.NotFound)
+        H3Response.status(404_u16)
     }
 }).await?;
 ```
