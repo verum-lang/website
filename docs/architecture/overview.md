@@ -1,15 +1,23 @@
 ---
 sidebar_position: 1
 title: Architecture Overview
-description: The five-layer architecture of the Verum compiler — VBC-first, capability-routed SMT, three-tier runtime.
+description: The layered architecture of the Verum compiler — VBC-first, capability-routed SMT, and the two senses of "tier" kept apart.
 ---
 
 # Architecture Overview
 
 Verum is a **VBC-first** compiler: every program lowers to Verum
-Bytecode, and VBC is either interpreted (Tier 0) or compiled to
-native code via LLVM (Tier 1). A separate MLIR path emits GPU binaries
-for `@device(gpu)` code. The compiler is a Rust workspace organised
+Bytecode, and VBC is either interpreted or compiled to native code via
+LLVM. A separate MLIR path emits GPU binaries for `@device(gpu)` code,
+and both LLVM and MLIR also have a JIT entry point
+(`execute_llvm_jit`, `run_mlir_jit` in `verum_compiler::pipeline`).
+
+**"Tier" means two different things in this codebase, and mixing them
+up is the most common misreading of this page.** EXECUTION tiers are
+the interpreter and the AOT compiler. CBGR tiers are the three
+reference kinds — `&T` (checked at run time), `&checked T` and
+`&unsafe T` (both free) — and they are what `CbgrTier::Tier0/1/2` in
+`verum_vbc` names. The compiler is a Rust workspace organised
 into five layers, plus a thin Layer 1.5 of shared protocol-type
 definitions to break what would otherwise be a circular dependency
 between the type system and the SMT backend.
@@ -105,6 +113,22 @@ flowchart TD
 | `verum_interactive`    | REPL and Playbook TUI. |
 | `verum_cli`            | Command-line frontend (binary `verum`). |
 
+THIS TABLE IS A SELECTION, not the workspace: 19 rows against 39
+members. The 20 it omits are
+
+- `verum_lexer` (in the diagram above, not the table) and
+  `verum_stdlib_precompiler` (likewise);
+- `verum_error` and `verum_diagnostics` — error and diagnostic types;
+- `verum_parser` — the IDE parser, lossless and incremental. It is
+  **not** on the compile path, which goes through `verum_fast_parser`;
+  `verum_lsp` is its consumer;
+- `verum_test_support`, `verum_integration_tests`, `cvc5-sys`;
+- the seven in-tree LLVM / MLIR binding crates under `crates/llvm/`
+  (`verum_llvm{,_sys,_derive}`, `verum_mlir{,_sys,_macro}`,
+  `verum_tblgen`) — the project does not use `inkwell`;
+- the five runner crates under `vcs/`: `vtest`, `vbench`, `vfuzz`,
+  `isabelle_graph_import`, `meta_engines`.
+
 See **[crate map](/docs/architecture/crate-map)** for every crate
 with key files and entry points.
 
@@ -138,7 +162,13 @@ verifier and advanced optimisation passes. Full phase detail:
 ### Production-ready
 
 - Bidirectional type inference with dataflow-sensitive narrowing.
-- Refinement types with SMT discharge; `@verify(formal|thorough|certified)`.
+- Refinement types with SMT discharge. `@verify(...)` accepts 27
+  spellings that project onto THREE levels — `runtime`, `static`, and
+  `proof`. `formal`, `thorough`, `certified`, `fast`, `synthesize`,
+  `complexity_typed` and the three `coherent_*` variants all collapse to
+  `proof`; the finer strategy they name is dispatched downstream by
+  `VerifyStrategy`, not by the level. (`verum_verification::level`,
+  `VerificationLevel::from_annotation`.)
 - Dependent types — Π, Σ, path types, computational univalence.
 - Cubical normaliser with HoTT primitives and HITs.
 - Capability-routed SMT layer that classifies obligations by theory
@@ -152,10 +182,24 @@ verifier and advanced optimisation passes. Full phase detail:
 - CBGR memory safety — a multi-module analysis suite (escape, NLL,
   Polonius, points-to, SMT-alias, ownership, lifetime, concurrency, …)
   feeding per-reference tier decisions.
-- Module system: 5-level visibility, coherence (orphan + overlap +
-  specialisation), cycle-break strategy ranking, parallel loading.
+- Module system: seven visibilities — `public`, `public(cog)`,
+  `public(super)`, `public(in path)`, `internal`, `protected`, and
+  private by default (`verum_ast::decl::Visibility`) — plus coherence
+  (orphan + overlap + specialisation), cycle-break strategy ranking and
+  parallel loading.
 - Structured concurrency: `async`, `await`, `spawn`, `nursery`,
   work-stealing executor.
+- Resource types the compiler counts: `type affine T` (at most once)
+  and `type linear T` (exactly once). The exactly-once obligation is
+  checked at every `return` as well as at the end of a body; a function's
+  own parameters are exempt, because a parameter arrives by being moved
+  in and its scope end is where it is destroyed.
+- Capability attenuation as types: `T with [Read, Write]` may be passed
+  where `T with [Read]` is required, and not the reverse
+  (`error<E411>`). An unrestricted `T` satisfies any restriction — it
+  states no restriction, so passing it is itself an attenuation. NOTE
+  the word is overloaded on this page: "capability-routed SMT" below is
+  about solver selection and has nothing to do with these.
 - LSP 3.17 server, DAP debug server, Playbook notebook TUI, REPL.
 - A CLI covering the full project lifecycle (build, run, test,
   check, lint, fmt, audit, bench, doc, doctor, publish, …).
@@ -199,16 +243,36 @@ direction.
 
 ### 2. Verification is monotone up the ladder
 
-If a function passes `@verify(formal)`, it passes every looser
-strategy (`static`, `runtime`). Upgrading a function's strategy never
-makes it suddenly valid — only invalid. Callers can safely rely on
-the tighter guarantees of their callees.
+If a function passes `@verify(proof)` it passes every looser level
+(`static`, `runtime`). Upgrading a level never makes a function
+suddenly valid — only invalid — so callers can rely on the tighter
+guarantees of their callees.
+
+THIS IS A DESIGN PROPERTY, not a checked one. `VerificationLevel`
+(`Runtime`, `Static`, `Proof`) does not derive `Ord`, and nothing in
+the pipeline re-runs a function at a looser level to confirm the
+implication. It holds because the levels are nested by construction —
+the looser analyses are strictly weaker obligations over the same
+verification conditions — and it would be broken by an analysis that is
+looser in NAME while asking a different question. Read it as an
+invariant the implementations must keep, not one the compiler enforces
+for them.
 
 ### 3. CBGR demotions are explicit
 
 The compiler may **promote** `&T` to `&checked T` silently (escape
 analysis succeeded). It may never **demote** silently — a tier-2
 `&unsafe T` always requires an `unsafe` block at the source level.
+
+Verified by compiling `fn read(r: &unsafe Box) -> Int { r.n }` and
+calling it as `read(&unsafe b)`, which is refused:
+
+```text
+error: unsafe reference requires unsafe block: `unsafe { &unsafe expr }`
+```
+
+— a refusal that, as printed above, carries no error code, so a gate
+filtering on `error<E…>` scores this invariant zero.
 
 ### 4. Contexts propagate; they are never ambient
 
@@ -223,11 +287,33 @@ Every allocation is explicit: `Heap(x)`, `Shared.new(x)`, collections
 with a `with_capacity(n)` form, or the arena pool API. The compiler
 does not insert allocations behind the scenes.
 
-### 6. Exhaustiveness is checked
+### 6. Exhaustiveness is checked where it can be decided
 
-Every `match` is exhaustive. Non-exhaustive patterns are compile
-errors, not runtime panics. Active patterns are opaque — a
-catch-all `_ => ...` is required when they're the only alternatives.
+A `match` over a VARIANT or a `Bool`, with no guard on any arm, must
+cover every case; a missing one is `error<E0601>`, not a runtime panic.
+Active patterns are opaque — a catch-all `_ => …` is required when
+they're the only alternatives.
+
+WHAT IS NOT CHECKED, and it is deliberate rather than missing:
+
+```verum
+match c {                    // Colour is Red | Green | Blue
+    Colour.Red   if n > 0 => 1,
+    Colour.Green          => 2,
+}                            // accepted — an arm carries a guard
+
+match n {                    // n: Int
+    0 => 1,
+    1 => 2,
+}                            // accepted — Int has no finite constructor set
+```
+
+A guard makes the analysis imprecise (the checker cannot decide whether
+`Red if n > 0` covers `Red`), and `Int`, `Float` and `Text` have no
+finite set of constructors to cover. Both cases fall through to whatever
+a `match` does at run time when nothing matches, so this invariant is
+about VARIANTS, not about every `match`. Verified by compiling the three
+programs above.
 
 ### 7. Effects are visible in the type
 
@@ -238,6 +324,39 @@ refuses to hide them. (Built-in effects like `print` / `assert` /
 `panic` don't need a `using` clause; user-defined contexts from
 `core/context/standard.vr` — Logger, Database, Clock, Metrics,
 RateLimiter — do.)
+
+### 8. A resource obligation is counted, not suggested
+
+`type affine T` is at most once and `type linear T` is exactly once,
+and both are decided by the compiler rather than by a lint. Dropping a
+`linear` value — reaching the end of a function, or a `return`, still
+holding one — is `error<E303>`. A function's own parameters are exempt:
+a parameter arrived by being moved in and its scope end is where it is
+destroyed, so requiring it to move on again would make
+`fn close(h: Handle) { }` — the canonical consumer — the one thing a
+linear type could not have.
+
+Consuming a value in EACH arm of a `match` is correct and accepted,
+because exactly one arm runs. Consuming it in one arm and using it after
+the match is refused, because one execution reaches both.
+
+Verified by compiling three programs: a dropped `linear` local gives
+`error<E303>: linear value 'h' must be consumed exactly once`; the
+commit-or-rollback `match` over an `affine` value compiles clean; and
+attenuation plus an unrestricted argument (below) compile clean.
+
+### 9. A capability may be given away, never acquired
+
+`T with [Read, Write]` may be passed where `T with [Read]` is required.
+The reverse is `error<E411>`, naming what the value carries and what was
+required. An unrestricted `T` satisfies any restriction — it states no
+restriction, i.e. full rights, so passing it is itself an attenuation.
+
+A capability restricts what may be DONE with a value; it does not change
+what the value IS, so a restricted record is still a record and its
+fields are reachable — `fn narrow(s: Store with [Read]) -> Int { s.n }`
+compiles, and both `wide` (passing `[Read, Write]`) and `plain` (passing
+an unrestricted `Store`) call it without complaint.
 
 ## Data flow across layers
 
