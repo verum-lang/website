@@ -160,15 +160,48 @@ is visible in the type.
 
 ## Three tiers of reference, chosen per use
 
-| Tier | Syntax | Cost | When |
-|---|---|---|---|
-| 0 | `&T` | ~15 ns | default — full generational protection |
-| 1 | `&checked T` | 0 | the compiler proved the lifetime |
-| 2 | `&unsafe T` | 0 | you proved it; you carry the obligation |
+A registry mirror hands out package bytes. Copying them per request is
+wasteful; handing out a raw pointer is how mirrors get CVEs. Most
+languages answer that once, for the whole program:
 
-Most languages offer one of these and make you accept its price
-everywhere. Here the choice is per reference, and the default is the safe
-one.
+- a garbage collector — safe, and you pay on every allocation forever;
+- C — free, and the safety argument lives in a review convention;
+- Rust — free and safe, but the lifetime must be provable at every step,
+  so the shapes it cannot prove are not expressible.
+
+Verum makes it a decision per reference, with a safe default:
+
+```verum
+// tier 0 — nothing written, and the reference is generation-checked
+pure fn describe(b: &Blob) -> Text { b.name }
+
+// tier 1 — the same access with the check removed BY PROOF
+pure fn size_of(b: &checked Blob) -> Int { b.size }
+```
+
+| Tier | Syntax | Cost | Who carries the argument |
+|---|---|---|---|
+| 0 | `&T` | ~1 ns measured | the runtime — a generation compare on deref |
+| 1 | `&checked T` | 0 | the compiler — escape analysis proved it |
+| 2 | `&unsafe T` | 0 | you, and it is written down |
+
+`&checked` is a stronger claim than `&T`, not a weaker one: a reference
+the compiler cannot prove **cannot be spelled that way**.
+
+```verum
+fn leak() -> &checked Blob {
+    let local = Blob { size: 1 };
+    &checked local        // error<E312>: `local` does not live long enough
+}
+```
+
+The tier set is closed, too — `&totallyfake T` is a parse error, not an
+unknown modifier quietly ignored.
+
+What matters is the direction of the burden. Tier 0 is what you get by
+writing nothing, so the unconsidered case is the safe one, and dropping
+to a cheaper tier is deliberate, local, and visible to a reader.
+
 
 ## What this adds up to
 
