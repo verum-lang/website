@@ -1,6 +1,6 @@
 ---
 title: Diagnostic codes
-description: Every error code the Verum compiler emits, what it means, and what usually causes it.
+description: The diagnostic codes you are most likely to meet, what they mean, and what usually causes them.
 ---
 
 # Diagnostic codes
@@ -14,6 +14,10 @@ error<E400>: Type mismatch: expected 'Int', found 'List<Int>'
  5 │     let y: Int = xs;
    │                  ^^
 ```
+
+This page covers the codes you are most likely to meet, not all of them —
+the compiler's own registry holds considerably more, and `verum explain
+<code>` prints the description for any code, listed here or not.
 
 Codes are grouped by category, and the number range tells you which phase
 rejected the program. That is often enough to know where to look: an `E1xx`
