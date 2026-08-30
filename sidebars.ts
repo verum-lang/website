@@ -237,6 +237,7 @@ const sidebars: SidebarsConfig = {
       label: 'Guides',
       link: {type: 'generated-index', slug: '/category/guides'},
       items: [
+        'guides/one-service-every-feature',
         'guides/faq',
         'guides/style-guide',
         'guides/best-practices',
