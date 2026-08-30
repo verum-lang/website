@@ -54,6 +54,18 @@ pure fn bump_patch(v: Version) -> Version
 `ensures` is discharged by an SMT solver for **all** inputs. A test suite
 samples; this does not.
 
+`rank` is the interesting one: its argument is a record whose *fields*
+carry the refinement, and the solver needs `v.major >= 0` — a fact that
+lives on the field, not on the parameter. Until recently it did not
+reach the solver at all and this proof silently failed, which is worth
+saying out loud on a page about proofs. It reaches it now.
+
+`bump_patch` still does not discharge: its postcondition names a field
+of the *result*, and a `result` bound to a record literal does not yet
+reach that literal's fields. Written here rather than quietly omitted —
+a guide that shows only what works teaches you to trust it in the cases
+where it should not be trusted.
+
 When a postcondition does not hold, the compiler does not merely refuse —
 it hands back the values that break it:
 
