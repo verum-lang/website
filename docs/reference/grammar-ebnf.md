@@ -1410,7 +1410,16 @@ theorem_contract_clause =
     | 'from' , identifier
     | attribute ;
 
-theorem_proof_tail = proof_body , [ ';' ] | ';' ;
+(* A theorem's proof comes in two forms, and both are in use — counted
+   in-tree: 381 brace-delimited bodies against 38 without. Both braces
+   are required; a missing closing brace is E029. *)
+theorem_proof_tail =
+      braced_proof_body , [ ';' ]
+    | proof_body , [ ';' ]
+    | ';' ;
+
+braced_proof_body =
+    '{' , ( proof_body | { proof_step } | tactic_expr ) , '}' ;
 
 axiom_decl     = 'axiom'     , identifier , [ generics ] , '(' , [ param_list ] , ')'
                , [ '->' , type_expr ]
