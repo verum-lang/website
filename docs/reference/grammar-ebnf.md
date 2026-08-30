@@ -1016,19 +1016,25 @@ expression          = pipeline_expr ;
 pipeline_expr       = assignment_expr , { '|>' , ( pipe_method_call | assignment_expr ) } ;
 assignment_expr     = destructuring_assign | simple_assign ;
 
-simple_assign       = null_coalesce_expr , [ assign_op , assignment_expr ] ;
-null_coalesce_expr  = range_expr , { '??' , range_expr } ;
+simple_assign       = implication_expr , [ assign_op , assignment_expr ] ;
+implication_expr    = null_coalesce_expr , [ implication_op , implication_expr ] ;
+implication_op      = '->' | 'implies' | '=>' | '<->' | 'iff' ;
+null_coalesce_expr  = range_expr , [ '??' , null_coalesce_expr ] ;
 range_expr          = logical_or_expr , [ range_op , logical_or_expr ] ;
 logical_or_expr     = logical_and_expr , { '||' , logical_and_expr } ;
-logical_and_expr    = equality_expr , { '&&' , equality_expr } ;
-equality_expr       = is_relational_expr , { ( '==' | '!=' ) , is_relational_expr } ;
-is_relational_expr  = relational_expr , [ 'is' , [ 'not' ] , pattern ] ;
-relational_expr     = bitwise_expr , { ( '<' | '>' | '<=' | '>=' ) , bitwise_expr } ;
-bitwise_expr        = shift_expr , { ( '&' | '|' | '^' ) , shift_expr } ;
+logical_and_expr    = comparison_expr , { '&&' , comparison_expr } ;
+comparison_expr     = bitor_expr ,
+                      { ( comparison_op , bitor_expr )
+                      | ( 'is' , [ 'not' ] , pattern ) } ;
+comparison_op       = '==' | '!=' | '<' | '>' | '<=' | '>=' | 'in' ;
+bitor_expr          = bitxor_expr , { '|' , bitxor_expr } ;
+bitxor_expr         = bitand_expr , { '^' , bitand_expr } ;
+bitand_expr         = shift_expr  , { '&' , shift_expr } ;
 shift_expr          = additive_expr , { ( '<<' | '>>' ) , additive_expr } ;
 additive_expr       = mult_expr , { ( '+' | '-' ) , mult_expr } ;
 mult_expr           = power_expr , { ( '*' | '/' | '%' ) , power_expr } ;
-power_expr          = unary_expr , [ '**' , power_expr ] ;       (* right-assoc *)
+power_expr          = cast_expr , [ '**' , power_expr ] ;        (* right-assoc *)
+cast_expr           = unary_expr , { 'as' , type_expr } ;
 
 unary_expr          = unary_op , unary_expr | postfix_expr ;
 unary_op            = '!' | '-' | '~'
@@ -1044,8 +1050,10 @@ postfix_op          = '.' , identifier , [ type_args ] , [ call_args ]
                     | '.' , 'await'
                     | '[' , expression , ']'
                     | [ type_args ] , call_args
-                    | '?'                        (* propagation *)
-                    | 'as' , type_expr ;
+                    | '?' ;                      (* propagation *)
+
+(* `as` is NOT postfix: a prefix operator binds tighter than it, so *)
+(* `-a as Int` is `(-a) as Int`.  See cast_expr in §2.10.           *)
 ```
 
 :::warning No chained comparisons
@@ -1224,8 +1232,13 @@ Three forms supported: type-based, collection-based, combined.
 #### `typeof` and pattern test
 
 ```ebnf
-typeof_expr        = 'typeof' , '(' , expression , ')' ;     (* runtime type info *)
-is_relational_expr = relational_expr , [ 'is' , [ 'not' ] , pattern ] ;
+typeof_expr     = 'typeof' , '(' , expression , ')' ;        (* runtime type info *)
+
+(* `is` is an alternative of comparison_expr (§2.10): it binds like *)
+(* `==` and `<`, and takes a PATTERN on its right.                  *)
+comparison_expr = bitor_expr ,
+                  { ( comparison_op , bitor_expr )
+                  | ( 'is' , [ 'not' ] , pattern ) } ;
 ```
 
 ### 2.12 Patterns

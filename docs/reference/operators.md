@@ -15,32 +15,43 @@ From **tightest** (evaluated first) to **loosest**.
 
 | Prec | Operators                                                        | Associativity | Overload protocol         |
 |-----:|------------------------------------------------------------------|---------------|---------------------------|
-| 1    | `.field`, `.method()`, `?.`, `[idx]`, `()` — method/index/call    | left          | —                         |
-| 2    | `.await`, `?` (postfix)                                          | left          | —                         |
+| 1    | `.field`, `.method()`, `?.`, `[idx]`, `()`, `?`, `.await`        | left          | —                         |
+| 2    | `-x`, `!x`, `~x`, `&x`, `&mut x`, `&checked x`, `&unsafe x`, `*x` | prefix        | `Neg`, `Not`, `BitNot` / `Deref` |
 | 3    | `as` (cast)                                                      | left          | `From`, `Into`            |
-| 4    | `-x`, `!x`, `~x` (prefix unary)                                  | prefix        | `Neg`, `Not`, `BitNot`    |
-| 5    | `&x`, `&mut x`, `&checked x`, `&unsafe x`, `*x` (ref/deref)       | prefix        | — / `Deref`               |
-| 6    | `**` (exponent)                                                  | right         | `Pow`                     |
-| 7    | `*`, `/`, `%`                                                    | left          | `Mul`, `Div`, `Rem`       |
-| 8    | `+`, `-`                                                         | left          | `Add`, `Sub`              |
-| 9    | `<<`, `>>`                                                       | left          | `Shl`, `Shr`              |
-| 10   | `&` (bitand)                                                     | left          | `BitAnd`                  |
-| 11   | `^` (bitxor)                                                     | left          | `BitXor`                  |
-| 12   | `\|` (bitor)                                                     | left          | `BitOr`                   |
-| 13   | `..`, `..=` (range)                                              | none          | —                         |
-| 14   | `==`, `!=`, `<`, `<=`, `>`, `>=`, `is`                                 | none          | `Eq`, `Ord` / `PartialOrd`|
-| 15   | `&&` (logical and)                                                | left          | short-circuit             |
-| 16   | `\|\|` (logical or)                                               | left          | short-circuit             |
-| 17   | `??` (null coalesce)                                              | left          | —                         |
-| 18   | `\|>` (pipe)                                                      | left          | —                         |
-| 19   | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `\|=`, `^=`, `<<=`, `>>=` | right         | `AddAssign`, `SubAssign`, …|
+| 4    | `**` (exponent)                                                  | right         | `Pow`                     |
+| 5    | `*`, `/`, `%`                                                    | left          | `Mul`, `Div`, `Rem`       |
+| 6    | `+`, `-`                                                         | left          | `Add`, `Sub`              |
+| 7    | `<<`, `>>`                                                       | left          | `Shl`, `Shr`              |
+| 8    | `&` (bitand)                                                     | left          | `BitAnd`                  |
+| 9    | `^` (bitxor)                                                     | left          | `BitXor`                  |
+| 10   | `\|` (bitor)                                                     | left          | `BitOr`                   |
+| 11   | `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `is`                     | left          | `Eq`, `Ord` / `PartialOrd`|
+| 12   | `&&` (logical and)                                                | left          | short-circuit             |
+| 13   | `\|\|` (logical or)                                               | left          | short-circuit             |
+| 14   | `??`, `..`, `..=`, `->` / `implies`, `=>`, `<->` / `iff`         | right         | —                         |
+| 15   | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `\|=`, `^=`, `<<=`, `>>=` | right       | `AddAssign`, `SubAssign`, …|
+| 16   | `\|>` (pipe)                                                     | left          | —                         |
 
 **Lower number = tighter binding.** `a + b * c` parses as
-`a + (b * c)` because `*` (7) binds tighter than `+` (8).
+`a + (b * c)` because `*` (5) binds tighter than `+` (6).
 
-Non-associative operators (range, comparison) do **not chain**:
-`a < b < c` parses but is rejected by the type checker (a `Bool`
-compared with a number); use `a < b && b < c`.
+**The three bitwise operators are three levels, not one** — `&`
+tighter than `^` tighter than `|`, as in C. So `a | b & c` is
+`a | (b & c)`, and `diff | a ^ b` accumulates `a ^ b` into `diff`
+rather than xor-ing `diff | a`.
+
+**Comparison is a single left-associative level**, so `a == b < c`
+groups as `(a == b) < c`. Chained comparisons parse and are then
+rejected by the type checker (a `Bool` compared with a number); write
+`a < b && b < c` instead. `is` and `in` sit on this level too.
+
+**Assignment takes the whole right-hand side**: `x = a ?? b` is
+`x = (a ?? b)`. Only the pipeline `|>` is looser, so `x = a |> f`
+groups as `(x = a) |> f` — parenthesise if you meant to pipe the
+value: `x = (a |> f)`.
+
+**A prefix operator binds tighter than `as`**: `-a as Int` is
+`(-a) as Int`, and `-2 ** 2` is `(-2) ** 2`.
 
 ## Overloadable operators
 
@@ -157,7 +168,7 @@ if x is not None             { use(x); }             // negation
 let flag = value is Int;                             // type-test pattern
 ```
 
-`is` has the same precedence as `==`/`<`/`>` (level 14). It's a
+`is` has the same precedence as `==`/`<`/`>` (level 11). It's a
 pattern **test**; bindings introduced by the pattern scope outside
 the test expression where accessible.
 
