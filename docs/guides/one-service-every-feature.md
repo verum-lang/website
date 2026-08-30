@@ -158,6 +158,50 @@ This is dependency injection as a language construct rather than a
 framework. No container, no global, no reflection — and the requirement
 is visible in the type.
 
+## A claim about the design is a declaration
+
+`requires` and `ensures` describe what one function promises. They
+cannot describe what the design as a whole guarantees — "a republish can
+never move a package backwards" is a claim about the *relationship*
+between two operations, and there is no single function to hang it on.
+
+In most languages such a claim lives in a design document and drifts.
+Here it is a declaration the compiler discharges:
+
+```verum
+pure fn rank(major: Int, minor: Int, patch: Int) -> Int
+    requires major >= 0, minor >= 0, patch >= 0
+    ensures result >= 0
+{
+    major * 1000000 + minor * 1000 + patch
+}
+
+theorem minor_outranks_any_patch(major: Int, minor: Int, patch: Int)
+    requires major >= 0, minor >= 0, patch >= 0, patch < 1000
+    ensures rank(major, minor + 1, 0) > rank(major, minor, patch)
+{
+    proof by smt
+}
+```
+
+That second one is the rule a registry gets wrong when it packs a
+version into an integer with too little room: `1.2.1000` must not
+overtake `1.3.0`. As a theorem, the field width becomes a *proven*
+property of the encoding rather than a comment beside a constant —
+change the `1000` in `rank` and the build stops.
+
+A proof that cannot fail proves nothing, so here is the control.
+Widening the bound to `patch < 2000` admits `patch = 1500`, the claim
+stops holding, and the theorem is refused:
+
+```
+✓ theorem patch_bump_moves_forward: Proved
+✗ theorem minor_outranks_any_patch: Failed
+```
+
+Theorems are discharged at compile time. Nothing runs them; what runs is
+ordinary code that relies on what they established.
+
 ## Three tiers of reference, chosen per use
 
 A registry mirror hands out package bytes. Copying them per request is
