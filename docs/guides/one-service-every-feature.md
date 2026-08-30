@@ -158,6 +158,30 @@ This is dependency injection as a language construct rather than a
 framework. No container, no global, no reflection — and the requirement
 is visible in the type.
 
+## A size is part of the type
+
+A registry stores digests. A full digest is 32 bytes and a display
+preview is 8, and mixing them is the class of bug that ends with two
+packages sharing an address.
+
+```verum
+type Digest<const N: Int> is { bytes: List<Int> };
+
+pure fn address_of(d: Digest<32>) -> Int { 32 }
+pure fn preview_width(d: Digest<8>) -> Int { 8 }
+```
+
+Passing the short one where the long one is wanted is a compile error,
+and the compiler says which widths:
+
+```
+error<E400>: Type mismatch: expected '32', found '8'
+```
+
+Not a runtime assert, not a comment above the constant, not a review
+convention. C++ reaches this with templates and pays in diagnostics;
+most languages do not reach it at all.
+
 ## A claim about the design is a declaration
 
 `requires` and `ensures` describe what one function promises. They
