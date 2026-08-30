@@ -553,11 +553,36 @@ recommendations. `--suggest` emits optimisation hints.
 
 ```bash
 verum doc [--open] [--document-private-items] [--format html|markdown|json]
-verum explain <code> [--no-color]      # e.g. verum explain E0312
+verum explain <code> [--no-color]      # e.g. verum explain E400
 verum info [--features] [--llvm] [--all]
 verum smt-info [--json]                # verification backends
 verum smt-stats [--json] [--reset]     # last-session routing telemetry
 ```
+
+`verum explain` takes the code exactly as the diagnostic prints it — the
+`E400` in `error<E400>: type mismatch`. The leading `E` is optional, so
+`verum explain 400` works too. Codes fall into bands by what went wrong:
+
+| Band | Meaning | Example |
+|------|---------|---------|
+| `E0xx` | parse | `E001` unexpected token |
+| `E1xx` | name resolution | `E100` undefined variable, `E102` wrong arity |
+| `E2xx` | modules | `E201` circular import |
+| `E3xx` | memory and lifetimes | `E305` uninitialized value, `E310` use after move |
+| `E4xx` | types | `E400` type mismatch, `E404` missing protocol impl |
+| `E5xx` | verification | `E502` refinement predicate false |
+| `E6xx` | contexts | `E600` context not provided |
+| `E8xx` | FFI | `E800` foreign call convention |
+| `E9xx` | internal | `E900` internal compiler error |
+
+Some codes carry a worked example with causes and fixes; the rest show
+their one-line meaning and category.
+
+One caveat worth knowing: a handful of codes are printed by the compiler
+with a meaning the registry does not share — `E801` is printed for an
+undeclared context and registered as an FFI ABI mismatch, so `explain`
+answers about the second. Being tracked; if an explanation does not
+match the error you saw, trust the error.
 
 ## Crash reports
 
