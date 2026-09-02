@@ -14,11 +14,36 @@ and a pure-Verum math library (replacing libc's `libm`).
 The layering is not a description — it is **data, and it is enforced**.
 `core/rings.toml` declares which ring each module belongs to, and
 `scripts/ci/check_core_rings.py` measures the actual `mount` graph
-against it on every PR. As of 2026-08-08:
+against it on every PR.
+
+When the law was first gated, on 2026-08-08:
 
 ```
 [ok] ring law holds: 2557 modules, 5275 inter-module edges, 0 violations
 ```
+
+Re-measured 2026-09-02, the gate reports four upward edges:
+
+```
+[fail] 4 UPWARD edge(s) across 4 mount site(s):
+    base.env(r1.0)           -> text.format(r2.0)
+    sys.fs_watch(r1.0)       -> text.format(r2.0)
+    sys.process_native(r1.0) -> text.format(r2.0)
+    sys.process_ops(r1.0)    -> text.format(r2.0)
+```
+
+None of those four modules names a formatting dependency — each writes a
+selective root mount of primitives, `mount core.{Maybe, Result, List,
+Text, Byte}`. The edge comes from how the gate counts a root mount: as a
+dependency on everything `core/mod.vr` re-exports. That set gained
+`text.format` on 2026-08-23, when `format_debug` joined the prelude
+because the language itself inserts the name — `f"{x:?}"` desugars to a
+bare `format_debug` call, so it has to resolve everywhere.
+
+So the layering itself is intact and the measurement is not. The
+distinction matters if you are reading this to decide where to put a
+module: the rings below are the law, and the four edges above are an
+artefact of counting, tracked separately.
 
 ```
 Ring 5.5  integration-client  the CLIENT halves: sigstore, tuf, oidc,
