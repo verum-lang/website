@@ -80,7 +80,23 @@ positions that carry it today are these:
 | A record field's type | yes |
 | A `let` annotation, including destructuring | yes |
 | A variant payload — `Consistent(Int{it >= 0})` | yes |
+| Behind a **named type** — `type Positive is Int{it > 0}` | yes |
 | Inside a **generic argument** — `Result<Int{it >= 0}, E>`, `List<Int{it > 0}>` | **no** |
+
+The named-type row is worth stating explicitly because it is the
+spelling programs actually use — you name the domain type once
+(`Positive`, `Port`, `NonEmpty`) and write the name everywhere after
+that. It carries both halves: a value the compiler can disprove is
+refused at compile time (`error<E500>: refinement constraint failed`),
+and one it cannot decide is checked when the program runs.
+
+That was not always true. Until 2026-09-02 the runtime half was lost
+behind the name: the assert emitter matched the annotation's *syntax*
+rather than asking the type for its predicate, so `let a: Int{it > 0}`
+asserted and `let a: Positive` did not — the same predicate, two
+verdicts, decided by the spelling. The static half worked through the
+name the whole time, which is what made it hard to notice: a literal
+`-1` behind `Positive` was refused, so the type looked enforced.
 
 The last row is the one to know about, because nothing at the
 declaration marks it: the refinement is accepted, reads as a guarantee,
