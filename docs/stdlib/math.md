@@ -455,8 +455,36 @@ checkpoint(f, x) -> y                        // trade recompute for memory
 recompute(values)
 ```
 
-Implements `Differentiable` for `Float`, `Float32`, `Float64`, all
-tensor types, and user records via `@derive(Differentiable)`.
+`core/math/autodiff.vr` declares four `Differentiable`
+implementations — for `Float`, `DynTensor<T: RealField>`,
+`Vector<Float>` and `Matrix<Float>`. There are none for `Float32` or
+`Float64`.
+
+Two caveats, both measured on the current toolchain rather than read
+off the source:
+
+* A `<T: Differentiable>` bound is **not yet satisfied by `Float`**,
+  despite the declaration:
+
+  ```
+  error<E405>: type `Float` does not implement `Differentiable`,
+               required by this call's bound
+  ```
+
+  A protocol implementation is carried by its target type's
+  descriptor, and built-in scalars have no descriptor to carry one —
+  so the block does not survive the standard-library build. Tracked;
+  the same is true of every stdlib `implement P for <scalar>`.
+
+* `@derive(Differentiable)` on a user record does **not** generate an
+  implementation. The compiler says so rather than pretending:
+
+  ```
+  warning<W0507>: `@derive(Differentiable)` on `Params` was not applied
+                  — no generator for this protocol yet
+  ```
+
+  Write the implementation by hand until a generator lands.
 
 ---
 
