@@ -35,7 +35,7 @@ verum bench [--filter STR] [--interp | --aot] \
             [--min-samples N] [--max-samples N] [--sample-size N] \
             [--save-baseline NAME | --baseline NAME] \
             [--noise-threshold PCT] [--format table|json|csv|markdown]
-verum watch [<command>] [--clear] [--skip-verify]
+verum watch [<command>] [--clear]
 ```
 
 `verum run` is interpreter-first. Add `--aot` for LLVM native
