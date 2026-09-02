@@ -6,20 +6,43 @@ description: The derive macros that ship with Verum — exact generated-code sem
 
 # Derives catalogue
 
-`@derive(Name)` turns a one-line annotation into a generated
-`implement` block. Verum ships **six core derives** — the set every
-project can rely on from the initial release onward — and a
-**library-derive set** (`Display`, `Error`, `Builder`, and others)
-provided through the standard library. This page documents every
-shipped derive: **what the generated code looks like**, what
-fields/variants it can and cannot handle, and what diagnostics are
-emitted when the derive cannot proceed.
+:::caution This page describes a design, not the current toolchain
 
-Expand any derive inline to see exactly what it emitted:
+Measured 2026-09-02, one record declared per attribute: **`Ord` is the
+only derive with a generator.** Every other `@derive` on this page is
+parsed, accepted, and then reported as not applied —
 
-```bash
-verum build --show-expansions src/models.vr
 ```
+warning<W0507>: `@derive(Clone)` on `Wrap` was not applied
+                — no generator for this protocol yet
+```
+
+Two further claims below do not hold either: `verum build
+--show-expansions` is not a flag the CLI has, and there is no
+`@proc_macro_derive` machinery anywhere in the compiler or the standard
+library.
+
+What saves most code is that records get **structural** behaviour
+whether or not a derive ran: `.clone()` clones, `==` compares, the type
+works as a `Map` key, and `<` `>` work through the `Ord` generator. The
+two places the fallback does not reach are `Default` (`T.default()` is
+absent — `error<E400>: no method named `default``) and `partial_cmp`
+(the operators work, the explicit call does not resolve).
+
+[The attribute registry](/docs/reference/attribute-registry#derive)
+carries the measured per-derive table. Read the sections below as the
+intended semantics for when the generators land, not as a description
+of what runs today.
+
+:::
+
+`@derive(Name)` is intended to turn a one-line annotation into a
+generated `implement` block: **six core derives** — the set every
+project should be able to rely on — plus a **library-derive set**
+(`Display`, `Error`, `Builder`, and others) through the standard
+library. This page documents, for each, **what the generated code
+should look like**, what fields/variants it can and cannot handle, and
+what diagnostics are emitted when the derive cannot proceed.
 
 ## Core derives (initial release)
 
