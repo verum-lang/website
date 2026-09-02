@@ -10,22 +10,39 @@ attribute, its valid targets, and a one-line semantics.
 
 ## Derive
 
-| Attribute | Targets | Semantics |
-|-----------|---------|-----------|
-| `@derive(Clone)` | type | generate `Clone` impl |
-| `@derive(Copy)` | type | mark as `Copy` (requires all fields `Copy`) |
-| `@derive(Debug)` | type | generate `Debug.debug` |
-| `@derive(Display)` | type | generate `Display.format` |
-| `@derive(Eq, PartialEq)` | type | generate equality |
-| `@derive(Ord, PartialOrd)` | type | generate ordering (lexical) |
-| `@derive(Hash)` | type | generate `Hash` |
-| `@derive(Default)` | type | generate `Default` (fields must impl `Default`) |
-| `@derive(Serialize)` | type | generate serialisation |
-| `@derive(Deserialize)` | type | generate deserialisation |
-| `@derive(Builder)` | type | generate fluent builder |
-| `@derive(Error)` | type | generate `Error` impl with `Display` delegation |
-| `@derive(From<T>)` | type | generate `From<T>` conversion (one-field newtypes) |
-| `@derive(Into<T>)` | type | dual of `From<T>` |
+**One generator exists today.** Every other `@derive` on this list is
+accepted, then reported as not applied:
+
+```
+warning<W0507>: `@derive(Clone)` on `Wrap` was not applied
+                — no generator for this protocol yet
+```
+
+Most of the operations still work, because records get structural
+behaviour whether or not a `@derive` generated anything — which is why
+the missing generators went unnoticed. The table says which is which,
+measured rather than intended.
+
+| Attribute | Generator | What you get today |
+|-----------|-----------|--------------------|
+| `@derive(Ord, PartialOrd)` | `Ord` only | `<` `<=` `>` `>=` work, through `Ord.cmp`. `partial_cmp` as an explicit call does **not** resolve. |
+| `@derive(Clone)` | — | `.clone()` works structurally. |
+| `@derive(Eq, PartialEq)` | — | `==` and `!=` work structurally. |
+| `@derive(Hash)` | — | the type is usable as a `Map` key. |
+| `@derive(Debug)` | — | `f"{x}"` renders the fields positionally: `{3}`, not `Shown { w: 3 }`. |
+| `@derive(Display)` | — | same positional rendering as `Debug`; no separate `Display.format`. |
+| `@derive(Default)` | — | **`T.default()` does not exist** — `error<E400>: no method named `default`\`. Write the impl by hand. |
+| `@derive(Copy)` | — | no marker is recorded. |
+| `@derive(Serialize)` / `@derive(Deserialize)` | — | nothing generated. |
+| `@derive(Builder)` | — | nothing generated. |
+| `@derive(Error)` | — | nothing generated. |
+| `@derive(From<T>)` / `@derive(Into<T>)` | — | nothing generated. |
+
+The two cases where the gap is visible rather than absorbed are
+`Default` (the method is simply missing) and `PartialOrd` (the operators
+work but `partial_cmp` does not resolve). For everything else the
+structural behaviour is what a derive would have produced, up to
+rendering.
 
 ## Layout
 
