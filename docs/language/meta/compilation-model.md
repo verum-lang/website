@@ -254,6 +254,15 @@ list of diagnostic categories.
 
 ## Observability — `--show-expansions`
 
+:::note Not implemented
+
+`--show-expansions` is not a flag `verum build` or `verum check`
+accepts today — both answer `error: unexpected argument
+'--show-expansions' found`. The section below describes the intended
+tool.
+
+:::
+
 Compile-time code is hidden from runtime debuggers by nature.
 Passing `--show-expansions` to `verum build` (or `verum check`)
 dumps the post-expansion source for every macro invocation in the

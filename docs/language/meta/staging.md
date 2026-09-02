@@ -226,6 +226,8 @@ tools:
 1. **`verum build --show-expansions`** dumps the post-expansion
    source of every quote in the build, preserving stage information
    so you can see exactly where a splice crosses a boundary.
+   *(Not implemented — the flag is rejected as an unexpected
+   argument.)*
 
 2. **`StageInfo.current()` / `StageInfo.target()`** are meta-context
    methods that return the current stage and the stage a surrounding

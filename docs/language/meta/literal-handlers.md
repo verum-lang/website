@@ -364,6 +364,15 @@ projects can elevate the unsafety-missing warning to error in
 
 ## Debugging literals
 
+:::note Not implemented
+
+`--show-expansions` is not a flag `verum build` or `verum check`
+accepts today — both answer `error: unexpected argument
+'--show-expansions' found`. The section below describes the intended
+tool.
+
+:::
+
 Passing `--show-expansions` to `verum build` (or `verum check`)
 emits the post-expansion form of every tagged and interpolated
 literal in the build, so you can read exactly what the handler
