@@ -332,6 +332,30 @@ rng.shuffle_vec(&mut xs)                   rng.choice(&xs) -> &T
 Defines `Tensor<T, const S: Shape>` (statically shaped) and `DynTensor<T>`
 (dynamic), plus all the usual operations.
 
+:::caution Tier 1 is partial, and says so at the call site
+
+Tensor operations run under the interpreter. The AOT tier lowers some of
+them and announces the rest: of the 107 tensor runtime helpers the
+compiler references, 71 are panic stubs that name themselves when
+reached. Measured 2026-09-02:
+
+```
+verum run             shape ok
+verum run --tier aot  PANIC: verum_tensor_arange_i: no Tier-1 lowering
+                      yet (T0193/T0179)
+```
+
+This is deliberate. A helper declared without a body would either break
+the link or silently return zero; a stub that panics with its own name
+fails where you can see it, and names the epic that is landing the real
+lowerings per operation.
+
+What is not yet measured is WHICH operations survive Tier 1 — every
+tensor spec in the conformance suite runs at tier 0, so the boundary is
+known to exist and not known in detail. If you are targeting AOT, run
+your kernel under `--tier aot` before depending on it.
+:::
+
 ```verum
 // Construction
 zeros<Float, shape[3, 4]>() -> Tensor<Float, shape[3, 4]>
