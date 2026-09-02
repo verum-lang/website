@@ -245,9 +245,10 @@ Go generics (1.18+) are close to Verum's. Differences:
 | `go test` | `verum test` |
 | `go build` | `verum build` |
 
-Cogs (Verum's packages) follow the orphan rule: implementations must
-live in the cog that defines either the protocol or the implementing
-type. Use newtype wrappers for cross-cog glue.
+Cogs (Verum's packages) follow the orphan rule: an implementation
+should live in the cog that defines either the protocol or the
+implementing type. Use newtype wrappers for cross-cog glue. Breaking
+the rule is currently a `[coherence]` warning, not a compile error.
 
 ---
 

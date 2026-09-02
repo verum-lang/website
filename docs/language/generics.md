@@ -477,13 +477,18 @@ let m: Map<Text, Int, SipHasher> = Map.new();
 
 ## Coherence and orphan rules
 
-`implement P for T` is rejected unless *either*:
+`implement P for T` is coherent only if *either*:
 
 - `T` is defined in the current cog, *or*
 - `P` is defined in the current cog.
 
-This is the **orphan rule**: prevents two cogs from implementing the
+This is the **orphan rule**: it keeps two cogs from implementing the
 same protocol for the same external type in incompatible ways.
+
+Violations are currently reported as a `[coherence]` warning rather
+than rejected — the code compiles and runs. See
+[Protocols → Coherence](/docs/language/protocols#coherence-orphan-rule)
+for the diagnostic and what to write instead.
 
 A specialisation hierarchy allows *more specific* implement blocks to override
 *less specific* ones:

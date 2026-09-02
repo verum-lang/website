@@ -278,12 +278,27 @@ See **[Context system](/docs/language/context-system)**.
 
 ## Coherence (orphan rule)
 
-An implementation `implement P for T` is valid only if either:
+An implementation `implement P for T` is coherent only if either:
 - The cog defining the protocol `P` also defines `T`, or
 - The cog defining `T` also defines the implementation.
 
-Two cogs cannot both provide an `implement P for T` without
-coordination. This rule keeps protocols unambiguous across an ecosystem.
+Two cogs both providing an `implement P for T` leaves downstream calls
+ambiguous, which is what the rule exists to prevent.
+
+**Today the check reports, it does not reject.** An orphan
+implementation compiles and runs, with a diagnostic naming the three
+cogs involved and suggesting a newtype wrapper:
+
+```
+warning: [coherence] Orphan implementation: `implement Display for Text`
+Protocol 'Display' is defined in cog 'Display'
+Type 'Text' is defined in cog 'external'
+Implementation is in cog 'private'
+```
+
+Write code as though the rule were enforced — a future release is
+expected to promote this to an error, and the newtype wrapper is the
+portable form either way.
 
 ## Marker protocols
 

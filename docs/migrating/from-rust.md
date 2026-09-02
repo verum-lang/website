@@ -134,8 +134,11 @@ type Ord is protocol extends Eq {
 }
 ```
 
-**Coherence**: same "orphan rule" as Rust. At least one of the
-protocol or the type must belong to the cog providing the impl.
+**Coherence**: same "orphan rule" as Rust — at least one of the
+protocol or the type should belong to the cog providing the impl. One
+difference to know before you port: Verum currently *warns* on a
+violation where rustc errors, so an orphan impl that `cargo` refused
+will compile here. Treat the warning as the error it will become.
 
 ---
 
