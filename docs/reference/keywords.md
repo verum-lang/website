@@ -25,9 +25,15 @@ The parser recognises these three tokens unconditionally.
 
 ```verum
 let let = 42;               // SYNTAX ERROR — `let` is reserved
-let fn_pointer = foo;       // SYNTAX ERROR — `fn` is reserved
-let is_valid = true;        // SYNTAX ERROR — `is` is reserved
+let fn = foo;               // SYNTAX ERROR — `fn` is reserved
+let is = true;              // SYNTAX ERROR — `is` is reserved
+
+let fn_pointer = foo;       // fine — a name that BEGINS with a keyword
+let is_valid = true;        // fine, for the same reason
 ```
+
+A keyword is a whole token. `fn_pointer` and `is_valid` are ordinary
+identifiers, and the compiler accepts them.
 
 ## Contextual — approximately 60
 
@@ -224,11 +230,38 @@ implement Foo for Bar {
 Both contextual. `in` appears in patterns/quantifiers/`provide`;
 `as` appears in casts, aliases, and mount renames.
 
+Both are keywords everywhere, not only where the grammar expects them:
+
 ```verum
-let as = 5;                    // `as` as identifier — legal
+let as = 5;                    // error<E071>: `as` is a reserved keyword
+let in = 5;                    // error<E071>: `in` is a reserved keyword
+
 for x in 0..10 { ... }         // `in` as keyword
 let y = 3.0 as Int;            // `as` as cast operator
 ```
+
+They are listed here because no production names them — see
+[reserved by the lexer](#reserved-by-the-lexer) below.
+
+## Reserved by the lexer
+
+Twenty further words are taken by the lexer and refused as identifiers,
+even though the productions above do not name them. The grammar carries
+them as `lexer_only_reserved`:
+
+`as` · `checked` · `cofix` · `coinductive` · `extern` · `false` · `in` ·
+`inductive` · `inject` · `lift` · `move` · `private` · `quote` · `ref` ·
+`throw` · `true` · `typeof` · `unknown` · `view` · `with`
+
+```verum
+let move = 5;               // error<E071>: `move` is a reserved keyword
+let view = 5;               // error<E071>: `view` is a reserved keyword
+let other = 5;              // fine
+```
+
+So "three reserved keywords" is a statement about the grammar's
+`reserved_keyword` production, not about the names an author may bind.
+Twenty-three words are refused in a binding position.
 
 ## Why so few reserved?
 
