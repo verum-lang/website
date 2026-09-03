@@ -53,9 +53,10 @@ fixed-size array annotation on a `let` whose initialiser was a CALL used
 to bind a zero-filled array of the right length. `[Int; N]` and
 `[Float; N]` were affected; `Bool`, `Text` and `Byte` were not.
 
-One case remains open: `[a, b, c, d, ..]` against `[Int; 3]` — over-long
-whatever the rest absorbs — still compiles and fails at run time. A
-pattern containing `..` takes a different path in the checker.
+A slice pattern is a **lower** bound, so only over-length is an error:
+`[first, ..]`, `[.., last]` and `[a, .., z]` against `[Int; 3]` are all
+fine, while `[a, b, c, d, ..]` is `error<E400>: this pattern binds at
+least 4 element(s), but the type is [_; 3]`.
 :::
 
 `..` may appear **once** per pattern. `..tail` binds the remaining
