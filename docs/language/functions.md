@@ -107,23 +107,33 @@ properties are keyed per name, and a probe with `A.reset` impure and
 `B.reset` pure confirms that calling `B.reset` from a `pure fn` stays
 accepted — the two do not collide.
 
-The negative-context form is **not** a substitute, and the measurements
-say so rather than the reasoning. All three of these are accepted by
-`verum check` on the current binary:
+The negative-context form is **not** a substitute for `pure`, and the
+measurements say so rather than the reasoning. Re-measured 2026-09-03,
+each with a control that must stay silent:
 
-```verum
-fn f() -> Int using [!IO] { print("x"); 1 }   // excluded context, used anyway
+| probe | result |
+|---|---|
+| `fn ok() using [C] { needs_c() }` (control) | accepted |
+| `fn f() using [!C] { print("x") }` | accepted — the exclusion is not checked against the body |
+| `fn g() using [!C] { needs_c() }` | accepted — declaring `!C` does not refuse a call that requires `C` |
+| `fn h() { needs_c() }` | `error<E613>: context \`C\` used but not declared in function signature` |
 
-fn writes() -> Int using [IO] { 1 }
-fn g() -> Int using [!IO] { writes() }        // calls an IO function
-fn h() -> Int { writes() }                    // requirement not propagated
-```
+The last row used to be listed here as unreported; **it is reported
+now**, and it is the row that matters most — a context requirement does
+propagate to a caller that declares nothing. What a negative context
+still does not do is contradict the body: `!C` neither refuses a call
+requiring `C` nor rejects an effect of that shape.
 
-The third is the plainest: a function that requires `IO` is called from
-one that declares no context at all, and nothing is reported. Whatever
-the eventual division of labour between property inference and the context
-system, neither currently rejects an `IO` call, so write `pure` for the
-reader's benefit and do not plan around it as a checked barrier yet.
+One caveat about the spelling. `IO` is not a declared context anywhere
+in `core/` — the declared set is `Logger`, `Database`, `Clock`,
+`FileSystem`, `Random`, `Config`, `Cache`, `Metrics`, `Tracer`, `Auth`
+and their kin. A positive `using [IO]` is refused with
+`error<E605>: undefined context: IO`; a negative `using [!IO]` is
+accepted, because negative contexts are not validated against the
+declared set. So `pure`'s documented expansion to `using [!IO, !State<_>,
+!Random]` names one context that exists and two spellings that do not,
+which is exactly why `pure` is checked by property inference (the table
+above) rather than by the context system.
 
 These are compile-time claims measured with `verum check`; a later phase
 may add its own diagnostics.
