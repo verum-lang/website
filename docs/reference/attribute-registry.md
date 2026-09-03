@@ -8,6 +8,37 @@ title: Attribute Registry
 All standard attributes, organised by purpose. Each row lists the
 attribute, its valid targets, and a one-line semantics.
 
+:::caution Twenty-four of these do not exist yet
+Measured 2026-09-03 by feeding each documented attribute to the
+compiler, one file per attribute, with `@zzq_control_absent` and
+`@inline` as controls inside the same run:
+
+    92 documented attributes tested
+    24 report `warning<W0400>: unknown attribute`
+
+They are absent from `crates/verum_types/src/attr/standard.rs` as well,
+so nothing anywhere implements them:
+
+`@access_pattern` `@autopoietic` `@bit_offset` `@branch_probability`
+`@cap` `@cpu_dispatch` `@cut_elimination` `@device` `@effect`
+`@extract` `@extract_contract` `@extract_witness` `@frequency` `@fuzz`
+`@infinity_category` `@lto` `@ludic_design` `@meta_macro` `@no_lto`
+`@no_return` `@reduce` `@requires_runtime` `@tactic`
+`@vbc_direct_lowering`
+
+An unknown attribute is a **warning**, not an error, so writing one is a
+silent no-op: the code compiles and the attribute does nothing. That
+matters most for `@cap` — see the note on
+[capabilities](/docs/stdlib/security/capabilities).
+
+Thirteen more were unknown until the same day for a different reason:
+they were registered but missing from the parser's own list, so the
+compiler called them unknown while the registry knew them. Those work
+now (`@trusted`, `@linkage`, `@section`, `@ownership`, `@visibility`,
+`@weak` and seven others), and `make check-parser-attrs` keeps the two
+lists from parting again.
+:::
+
 ## Derive
 
 **Two generators exist today** (`Ord` and `Default`), and one more

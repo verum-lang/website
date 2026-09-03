@@ -56,6 +56,25 @@ See [custom capabilities](#custom-capabilities) below.
 
 ## The three-part contract
 
+:::danger `@cap` is not implemented — this page describes a design
+Measured 2026-09-03 on a built compiler, and confirmed independently by
+a second session with its own instrument:
+
+    @cap(name = "X") on a function, caller WITHOUT @cap
+        -> 0 errors, warning<W0400>: unknown attribute `@cap`
+    @zzq_nonsense_attr on a function
+        -> 0 errors, warning<W0400>: unknown attribute `@zzq_nonsense_attr`
+
+Identical. `@cap` is not in `crates/verum_types/src/attr/standard.rs`,
+so the compiler cannot tell it from a name someone invented, and the
+rule below — that only a bearer may call a bearer — is enforced by
+nothing. An unknown attribute is a warning, so a program using `@cap`
+compiles and the attribute does nothing at all.
+
+Read this section as the intended design. Do not rely on it for
+security: a call path that should be refused is not refused.
+:::
+
 When you mark a function with `@cap(name = "X")`:
 
 1. **Only functions themselves bearing `@cap(X)` may call it.** The
