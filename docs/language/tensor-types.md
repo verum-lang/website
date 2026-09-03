@@ -139,14 +139,44 @@ let y: Tensor<Float32, [   3, 5]>;
 let z: Tensor<Float32, [4, 3, 5]> = x + y;
 ```
 
-A failing broadcast is a compile error with the offending axis called
-out. The shape below is illustrative rather than a captured
-transcript — two attempts to construct a real broadcast-mismatch
-example ran into unrelated tensor-generics syntax issues rather than
-confirming this specific error, so treat the exact code and message
-text as unverified even though the `error<CODE>: ...` bracket
-convention itself (unlike the `error[CODE]` forms found elsewhere on
-this site) matches every real compiler diagnostic seen today:
+A failing broadcast is *intended* to be a compile error with the
+offending axis called out.
+
+:::danger Measured 2026-09-03: it is not, and the program crashes the
+compiler at run time
+The earlier text here said the message below was "illustrative rather
+than a captured transcript" because two attempts to construct a
+mismatch ran into unrelated syntax issues. Constructed with the
+grammar's own tensor-literal form, it produces this:
+
+```verum
+let a = tensor<2, 3> Float32 { };
+let b = tensor<5, 4> Float32 { };
+let c = a + b;                      // axes 2vs5 and 3vs4, no broadcast
+```
+
+    verum check   clean, zero diagnostics
+    verum run     internal compiler error (worker thread panicked):
+                  Expected int, got Some(0)
+
+The control — the same program with both shapes `tensor<2, 3>` —
+compiles and runs. So this is a shape mismatch reaching the backend
+unchecked, not a broken example.
+
+**The `Tensor<T, [dims]>` annotation form used throughout this page does
+not carry shapes at all.** `Tensor<Float32, [4, 3, 1]>` resolves to
+`DynTensor<Float32, [Int; 3]>` — the rank survives, the sizes do not.
+Only the `tensor<2, 3> Float32 { }` literal produces a shape-bearing
+type (`Tensor<Float32, Const<Int>, Const<Int>>`), and even there the
+sizes are `Const<Int>` rather than the constants themselves.
+
+Until this is repaired, treat the shapes in a tensor annotation as
+documentation for the reader, not as a constraint the compiler will
+enforce — and expect a crash rather than a diagnostic when they
+disagree.
+:::
+
+The message the checker is meant to produce:
 
 ```
 error<E1311>: cannot broadcast shapes [4, 3, 1] and [4, 5]
@@ -283,9 +313,12 @@ implement Linear<In, Out> {
 }
 ```
 
-Every shape in `forward` is checked against the layer's
-declaration. A shape mismatch in the training loop is a *compile
-error* in the layer definition.
+Every shape in `forward` is *meant* to be checked against the layer's
+declaration, so that a shape mismatch in the training loop surfaces as
+a compile error in the layer definition. See the measurement in the
+broadcasting section above: shapes written in a `Tensor<T, [dims]>`
+annotation are not carried into the type today, so this checking does
+not happen yet.
 
 ### A multi-head attention head
 
@@ -314,9 +347,11 @@ fn conv2d<B, C_in, C_out, Kh, Kw, H, W>(
     where Kh <= H, Kw <= W;
 ```
 
-The output spatial shape is *computed* from the input. The
-compiler rejects a 3×3 kernel on a 2×2 input with a helpful
-message.
+The output spatial shape is *computed* from the input, and the
+`where Kh <= H, Kw <= W` clause is what should reject a 3×3 kernel on a
+2×2 input. Same caveat as above: the constraint is expressible and the
+shapes it constrains are not yet carried by the type, so it does not
+fire today.
 
 ## Interaction with other features
 
