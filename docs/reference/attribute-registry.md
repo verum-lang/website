@@ -10,8 +10,10 @@ attribute, its valid targets, and a one-line semantics.
 
 ## Derive
 
-**One generator exists today.** Every other `@derive` on this list is
-accepted, then reported as not applied:
+**Two generators exist today** (`Ord` and `Default`), and one more
+protocol needs none — `PartialOrd` arrives through the standard
+library's blanket impl. Every other `@derive` on this list is accepted,
+then reported as not applied:
 
 ```
 warning<W0507>: `@derive(Clone)` on `Wrap` was not applied
@@ -25,24 +27,26 @@ measured rather than intended.
 
 | Attribute | Generator | What you get today |
 |-----------|-----------|--------------------|
-| `@derive(Ord, PartialOrd)` | `Ord` only | `<` `<=` `>` `>=` work, through `Ord.cmp`. `partial_cmp` as an explicit call does **not** resolve. |
+| `@derive(Ord, PartialOrd)` | `Ord`; `PartialOrd` needs none | `<` `<=` `>` `>=` and `partial_cmp` all work — the latter through `implement<T: Ord> PartialOrd for T`, so no warning is emitted for it. |
 | `@derive(Clone)` | — | `.clone()` works structurally. |
 | `@derive(Eq, PartialEq)` | — | `==` and `!=` work structurally. |
 | `@derive(Hash)` | — | the type is usable as a `Map` key. |
 | `@derive(Debug)` | — | `f"{x}"` renders the fields positionally: `{3}`, not `Shown { w: 3 }`. |
 | `@derive(Display)` | — | same positional rendering as `Debug`; no separate `Display.format`. |
-| `@derive(Default)` | — | **`T.default()` does not exist** — `error<E400>: no method named `default`\`. Write the impl by hand. |
+| `@derive(Default)` | yes | `T.default()` exists; each field takes its own type's default. A field type without `Default` fails naming **that type**, not the derive. |
 | `@derive(Copy)` | — | no marker is recorded. |
 | `@derive(Serialize)` / `@derive(Deserialize)` | — | nothing generated. |
 | `@derive(Builder)` | — | nothing generated. |
 | `@derive(Error)` | — | nothing generated. |
 | `@derive(From<T>)` / `@derive(Into<T>)` | — | nothing generated. |
 
-The two cases where the gap is visible rather than absorbed are
-`Default` (the method is simply missing) and `PartialOrd` (the operators
-work but `partial_cmp` does not resolve). For everything else the
-structural behaviour is what a derive would have produced, up to
-rendering.
+Both gaps that were visible rather than absorbed are now closed. For
+everything else the structural behaviour is what a derive would have
+produced, up to rendering — and `Debug`/`Display` are the two whose
+generators wait on a decision rather than on code: fields render
+positionally today (`{3}`, not `Shown { w: 3 }`), and generating one
+without settling that contract would make a single type print two ways
+depending on whether the derive ran.
 
 ## Layout
 
