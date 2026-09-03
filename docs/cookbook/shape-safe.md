@@ -15,7 +15,7 @@ without a runtime check.
 mount core.math.tensor.*;
 
 /// M x N matrix of T, shape known at compile time.
-type Matrix<const M: Int, const N: Int, T> is Tensor<T, shape![M, N]>;
+type Matrix<const M: Int, const N: Int, T> is Tensor<T, [M, N]>;
 ```
 
 Verum's `Tensor<T, Shape>` already carries shape in the type. `Matrix`
@@ -24,12 +24,12 @@ is just a friendlier alias.
 ### Construction
 
 ```verum
-let a: Matrix<2, 3, Float> = Tensor.from_slice<Float, shape![2, 3]>(&[
+let a: Matrix<2, 3, Float> = Tensor.from_slice<Float, [2, 3]>(&[
     1.0, 2.0, 3.0,
     4.0, 5.0, 6.0,
 ]);
 
-let b: Matrix<3, 2, Float> = Tensor.from_slice<Float, shape![3, 2]>(&[
+let b: Matrix<3, 2, Float> = Tensor.from_slice<Float, [3, 2]>(&[
     7.0,  8.0,
     9.0, 10.0,
     11.0, 12.0,
@@ -81,9 +81,9 @@ fn determinant<const N: Int { self > 0 }>(m: &SquareMatrix<N, Float>) -> Float {
 /// Element-wise addition with broadcasting.
 fn add_broadcast<const M: Int, const N: Int>(
     a: &Matrix<M, N, Float>,
-    b: &Tensor<Float, shape![N]>,          // row vector
+    b: &Tensor<Float, [N]>,          // row vector
 ) -> Matrix<M, N, Float> {
-    a + b.broadcast<shape![M, N]>()
+    a + b.broadcast<[M, N]>()
 }
 ```
 
@@ -125,11 +125,11 @@ tensors loaded from a file). Mix freely with static tensors —
 
 ```verum
 /// Return a zero vector of length n (n determined at call site).
-fn zeros<const n: Int { self >= 0 }>() -> Tensor<Float, shape![n]> {
-    Tensor.zeros<Float, shape![n]>()
+fn zeros<const n: Int { self >= 0 }>() -> Tensor<Float, [n]> {
+    Tensor.zeros<Float, [n]>()
 }
 
-let z: Tensor<Float, shape![10]> = zeros<10>();
+let z: Tensor<Float, [10]> = zeros<10>();
 ```
 
 ### Common patterns

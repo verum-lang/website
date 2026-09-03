@@ -69,7 +69,7 @@ fn load_images(path: &Path) -> IoResult<Tensor<Float32>> {
         data.push(bytes[16 + i] as Float32 / 255.0);
     }
     // Flatten to [n, 784]
-    Result.Ok(Tensor.from_slice<Float32, shape![n, 784]>(&data))
+    Result.Ok(Tensor.from_slice<Float32, [n, 784]>(&data))
 }
 
 fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> {
@@ -77,7 +77,7 @@ fn load_labels(path: &Path) -> IoResult<Tensor<Int32>> {
     assert_eq(u32_from_be(&bytes[0..4]), 0x00000801);
     let n = u32_from_be(&bytes[4..8]) as Int;
     let data: List<Int32> = bytes[8..8 + n].iter().map(|b| *b as Int32).collect();
-    Result.Ok(Tensor.from_slice<Int32, shape![n]>(&data))
+    Result.Ok(Tensor.from_slice<Int32, [n]>(&data))
 }
 
 fn u32_from_be(bytes: &[Byte]) -> UInt32 {
@@ -239,7 +239,7 @@ module tests {
     fn forward_shape() {
         let mut rng = PCG.seed(0);
         let m = MNISTNet.new(&mut rng);
-        let x = Tensor.zeros<Float32, shape![16, 784]>();
+        let x = Tensor.zeros<Float32, [16, 784]>();
         let out = m.forward(&x);
         assert_eq(out.shape().dim(0), 16);
         assert_eq(out.shape().dim(1), 10);
@@ -249,8 +249,8 @@ module tests {
     fn parameters_have_gradients() {
         let mut rng = PCG.seed(0);
         let m = MNISTNet.new(&mut rng);
-        let x = Tensor.randn<Float32, shape![4, 784]>(&mut rng);
-        let y = Tensor.from_slice<Int32, shape![4]>(&[0, 1, 2, 3]);
+        let x = Tensor.randn<Float32, [4, 784]>(&mut rng);
+        let y = Tensor.from_slice<Int32, [4]>(&[0, 1, 2, 3]);
 
         let (_loss, grads) = value_and_grad(
             |params| cross_entropy(&m.forward(&x), &y),
