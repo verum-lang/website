@@ -37,9 +37,29 @@ let [first, second, ..] = list;             // drop the rest
 let [.., last] = list;                      // take only the last
 let [a, b, .., y, z] = list;                // prefix and suffix
 
-// Exact size — fails to compile if the length is known and wrong:
+// Exact size — the annotation states the length:
 let [x, y, z]: [Int; 3] = fixed_three();
 ```
+
+:::danger Measured 2026-09-03: neither half of this holds yet
+**The length is not checked.** Against `[Int; 3]`, a two-binding and a
+four-binding pattern both compile with zero errors; the four-binding one
+then fails at RUN time with "Index out of bounds". The line above used to
+promise "fails to compile if the length is known and wrong" — it does
+not.
+
+**And the annotation corrupts the values** (T1122). When the initialiser
+is a call, writing the annotation changes what gets bound:
+
+    let [x, y, z]: [Int; 3] = three();   // prints 0 0 0
+    let [x, y, z]           = three();   // prints 1 2 3
+
+One `sed` substitution apart, everything else identical. A literal
+initialiser is unaffected with or without the annotation, and indexing
+the same return value is correct — so it takes the annotation and a call
+together. Until that is fixed, destructure a call's result WITHOUT the
+annotation.
+:::
 
 `..` may appear **once** per pattern. `..tail` binds the remaining
 slice; a bare `..` discards.
