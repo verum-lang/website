@@ -9,7 +9,7 @@ description: Compile-time validated literals — sql#, json#, rx#, url#, d#, and
 Verum's tagged literals are the bridge between a string of bytes and a
 strongly typed, compile-time validated value. The grammar allows any
 identifier as a tag; about forty tags are recognised by the compiler out
-of the box and produce real types (`SqlQuery`, `Regex`, `Url`, …) rather
+of the box and produce real types (`SqlQuery`, `Regex`, `Uri`, …) rather
 than `Text`.
 
 The spelling is always the same:
@@ -19,9 +19,29 @@ tag#"content"          // single-line — escapes processed
 tag#"""content"""      // raw, multi-line — no escapes
 ```
 
-The compiler invokes the tag's validator at parse time. A malformed
-`sql#"..."` is a compile error with a line and column pointing into the
-literal, not a runtime panic.
+The compiler gives each tagged literal its own **type** at parse time —
+that half works, and it is the half that matters for catching a `Uri`
+used where an `Int` was wanted.
+
+:::warning The content is not validated
+Measured 2026-09-03: clearly-invalid content is accepted by **every**
+tag, with a control confirming the well-formed spelling is accepted too.
+
+| written | result |
+|---|---|
+| `url#"ht!tp:// not a url ??"` | accepted |
+| `ip#"999.999.999.999"` | accepted |
+| `d#"not-a-date"` | accepted |
+| `ver#"not-a-version"` | accepted |
+| `rx#"[unclosed"` | accepted |
+| `sql#"!!! not sql @@@"` | accepted |
+| `json#"{ this is not json ,,, }"` | accepted |
+
+The only rejection seen came from the lexer's bracket balance
+(`invalid json literal: unbalanced braces`), which is a delimiter check,
+not the tag's grammar. So a malformed literal is not a compile error
+today; plan for the failure where you consume the value.
+:::
 
 ## Why tagged literals?
 
@@ -30,13 +50,13 @@ it carries. Tagged literals attach a **grammar** and a **result type**:
 
 | You write                              | You get            | Validated by                   |
 |----------------------------------------|--------------------|--------------------------------|
-| `json#"{\"k\": 1}"`                    | `JsonValue`        | JSON5-relaxed parser           |
+| `json#"{\"k\": 1}"`                    | `Json`        | JSON5-relaxed parser           |
 | `sql#"SELECT * FROM u WHERE id = 1"`   | `SqlQuery`         | SQL grammar                    |
 | `rx#"\\d{3}-\\d{4}"`                   | `Regex`            | regex compiler                 |
-| `url#"https://example.com/path"`       | `Url`              | URL parser (RFC 3986)          |
+| `url#"https://example.com/path"`       | `Uri`              | URL parser (RFC 3986)          |
 | `d#"2026-04-17T12:00:00Z"`             | `DateTime`         | ISO-8601 parser                |
-| `ip#"2001:db8::1"`                     | `IpAddress`        | IPv4/IPv6 parser               |
-| `ver#"1.2.3-rc.4"`                     | `SemVer`           | semantic versioning parser     |
+| `ip#"2001:db8::1"`                     | `IpAddr`        | IPv4/IPv6 parser               |
+| `ver#"1.2.3-rc.4"`                     | `Version`           | semantic versioning parser     |
 
 The important property: a malformed value **cannot exist** in a Verum
 program. Validators run before any code is generated.
@@ -48,15 +68,22 @@ accepted by the compiler; custom tags fall back to user-defined macros.
 
 ### Data interchange
 
+Result types, measured 2026-09-03 by passing each literal where an `Int`
+is required and reading the type the compiler names:
+
 ```verum
-json#"..."     → JsonValue       // JSON5-relaxed: unquoted keys, trailing commas, // comments
-json5#"..."    → Json5Value      // same validator; distinct alias for intent
-yaml#"..."     → YamlValue
+json#"..."     → Json
+json5#"..."    → Text            // NOT a distinct type — see below
+yaml#"..."     → Yaml
 toml#"..."     → TomlValue
-xml#"..."      → XmlNode
-html#"..."     → HtmlFragment    // lenient: accepts HTML5 fragments
-csv#"..."      → CsvTable
+xml#"..."      → Xml
+html#"..."     → HtmlTemplate
+csv#"..."      → CsvData
 ```
+
+`json5#` is the odd one: it produces plain `Text`, so it is an alias in
+spelling only and carries none of the type discipline the others do. If
+you want the checker's help, write `json#`.
 
 `json#` implements a **relaxed** grammar — close to JSON5:
 
@@ -74,9 +101,10 @@ let cfg = json#"""
 """;
 ```
 
-For strict JSON, the `json#` literal still validates — it accepts a
-superset. If you need strict mode, refine the result:
-`json#"..." : StrictJson`.
+The relaxed-grammar example above is what the tag is *for*; note from the
+warning at the top of this page that the content is not actually checked
+against that grammar today, so a body that is not JSON at all also
+compiles.
 
 ### Query languages
 
