@@ -122,7 +122,7 @@ There is no `defer` ceremony.
     let lock: FileLock = file_lock("/var/lock/myapp")?;
     // exclusive lock held for the lifetime of `lock`
     do_critical_work();
-}  // ← lock released here, automatically
+}  // // lock released here, automatically
 ```
 
 ## 7. Permission-typed shell context

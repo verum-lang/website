@@ -54,7 +54,7 @@ type Node is {
 ```verum
 type Node is {
     value: Int,
-    parent: Maybe<Weak<Node>>,           // ← non-owning
+    parent: Maybe<Weak<Node>>,           // // non-owning
     children: List<Shared<Node>>,
 };
 

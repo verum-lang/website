@@ -229,7 +229,7 @@ public fn handle_request(req: &Request) -> Response {
     if !validate_auth(auth) {
         return Response.unauthorised();
     }
-    log.info(f"received: {req.body}");           // ← now after auth
+    log.info(f"received: {req.body}");           // // now after auth
     process(req)
 }
 ```

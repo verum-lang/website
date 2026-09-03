@@ -52,6 +52,25 @@ public type AckRanges is List<AckRange>
         self[i].smallest > self[i+1].largest + 1;     // strictly desc, gap ≥ 2
 ```
 
+:::warning `@forall` is not syntax the compiler has
+Measured 2026-09-03: a block using `@forall` fails to parse —
+`error<E018>: expected identifier or keyword after @`. The token exists
+as a proof keyword (`forall`, no `@`), and `@forall` appears nowhere in
+`grammar/verum.ebnf`, `core/`, or the conformance suite.
+
+The suite records the same gap from the other side.
+`vcs/specs/L2-standard/net/quic/v3_ackranges_theorem.vr` states the
+pairwise step over two concrete ranges and says why:
+
+> The full universally-quantified form needs `@forall` over a `List`;
+> Z3 can discharge the pairwise (i, i+1) step when stated at the level
+> of two concrete ranges.
+
+So the quantified-over-a-list invariant on this page is the intended
+notation, not the current one. A non-quantified `where` clause —
+`type R is { a: Int, b: Int } where a <= b;` — does compile.
+:::
+
 `AckRanges.insert(pn)` carries a postcondition:
 
 ```verum

@@ -33,8 +33,8 @@ Server-side tracker for push budget + outstanding / cancelled pushes:
 ```verum
 public type PushEmitter is {
     next_push_id:        UInt64,
-    max_push_id:          UInt64,       ← raised by client MAX_PUSH_ID frame
-    goaway_cap:          Maybe<UInt64>, ← cap from inbound GOAWAY
+    max_push_id:          UInt64,       // raised by client MAX_PUSH_ID frame
+    goaway_cap:          Maybe<UInt64>, // cap from inbound GOAWAY
     cancelled:           Set<UInt64>,
     outstanding:         Set<UInt64>,
 };
@@ -54,8 +54,8 @@ implement PushEmitter {
 }
 
 public type PushError is
-    | NoBudget                  ← next_push_id >= max_push_id
-    | CappedByGoaway             ← peer said "no more pushes above cap"
+    | NoBudget                  // next_push_id >= max_push_id
+    | CappedByGoaway             // peer said "no more pushes above cap"
     | AlreadyCancelled;
 ```
 

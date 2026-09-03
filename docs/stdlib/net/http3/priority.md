@@ -14,8 +14,8 @@ to HTTP/2 (RFC 9113 §5.3.2) and HTTP/3 (this module).
 
 ```verum
 public type H3Priority is {
-    urgency:     UInt8,         ← 0..=7; 0 = highest priority
-    incremental: Bool,          ← deliver progressively or contiguous
+    urgency:     UInt8,         // 0..=7; 0 = highest priority
+    incremental: Bool,          // deliver progressively or contiguous
 };
 ```
 
@@ -78,7 +78,7 @@ ADT:
 
 ```verum
 public type PriorityUpdate is {
-    target: PriorityUpdateTarget,   ← Request(stream_id) | Push(push_id)
+    target: PriorityUpdateTarget,   // Request(stream_id) | Push(push_id)
     priority_field: List<Byte>,
 };
 

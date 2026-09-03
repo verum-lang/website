@@ -82,7 +82,7 @@ public type DynamicTable is { /* ring-buffer + size accounting */ };
 
 public fn DynamicTable.new(max_capacity: UInt64) -> DynamicTable;
 public fn DynamicTable.insert(&mut self, name: Text, value: Text)
-    -> Result<Int, QpackError>;   ← returns absolute index
+    -> Result<Int, QpackError>;   // returns absolute index
 public fn DynamicTable.get(&self, abs_index: Int) -> Maybe<Entry>;
 public fn DynamicTable.set_max_capacity(&mut self, new_cap: UInt64);
 ```

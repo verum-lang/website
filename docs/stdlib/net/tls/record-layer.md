@@ -104,7 +104,7 @@ increasing sequence counter:
 
 ```verum
 public type AeadState is {
-    kind: AeadKind,              ← Aes128Gcm | Aes256Gcm | ChaCha20Poly1305 | ...
+    kind: AeadKind,              // Aes128Gcm | Aes256Gcm | ChaCha20Poly1305 | ...
     key:  SecretBytes,
     iv:   [Byte; 12],
     seq:  UInt64,
@@ -163,11 +163,11 @@ public type RecordError is
 
 ```verum
 public type AeadKind is
-    | Aes128Gcm                  ← key 16, tag 16 — mandatory §9.1
-    | Aes256Gcm                  ← key 32, tag 16 — recommended §9.1
-    | ChaCha20Poly1305           ← key 32, tag 16 — mandatory §9.1
-    | Aes128Ccm                  ← key 16, tag 16 — optional
-    | Aes128Ccm8                 ← key 16, tag 8  — optional (IoT)
+    | Aes128Gcm                  // key 16, tag 16 — mandatory §9.1
+    | Aes256Gcm                  // key 32, tag 16 — recommended §9.1
+    | ChaCha20Poly1305           // key 32, tag 16 — mandatory §9.1
+    | Aes128Ccm                  // key 16, tag 16 — optional
+    | Aes128Ccm8                 // key 16, tag 8  — optional (IoT)
     | Unknown;
 ```
 
