@@ -41,18 +41,21 @@ let [a, b, .., y, z] = list;                // prefix and suffix
 let [x, y, z]: [Int; 3] = fixed_three();
 ```
 
-:::danger Measured 2026-09-03: neither half of this holds yet
-**The length is not checked.** Against `[Int; 3]`, a two-binding and a
-four-binding pattern both compile with zero errors; the four-binding one
-then fails at RUN time with "Index out of bounds". The line above used to
-promise "fails to compile if the length is known and wrong" — it does
-not.
+:::note Both halves fixed 2026-09-03
+**The length is checked.** A pattern whose length disagrees with
+`[T; N]` is now `error<E400>: this pattern binds 2 element(s), but the
+type is [_; 3]`. Until this date a short pattern compiled and silently
+dropped the extra elements, and a long one compiled and failed at RUN
+time with "Index out of bounds" (T1125).
 
-**The annotation used to corrupt the values** — fixed 2026-09-03
-(T1122). Until then, a fixed-size array annotation on a `let` whose
-initialiser was a CALL bound a zero-filled array of the right length,
-silently discarding the call's result. `[Int; N]` and `[Float; N]` were
-affected; `Bool`, `Text` and `Byte` arrays were not.
+**And the annotation no longer discards the initialiser** (T1122). A
+fixed-size array annotation on a `let` whose initialiser was a CALL used
+to bind a zero-filled array of the right length. `[Int; N]` and
+`[Float; N]` were affected; `Bool`, `Text` and `Byte` were not.
+
+One case remains open: `[a, b, c, d, ..]` against `[Int; 3]` — over-long
+whatever the rest absorbs — still compiles and fails at run time. A
+pattern containing `..` takes a different path in the checker.
 :::
 
 `..` may appear **once** per pattern. `..tail` binds the remaining
