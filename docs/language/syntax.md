@@ -152,11 +152,25 @@ the interpolated value:
 | `{:0N}` | Zero-padded width | `f"{42:06}"` → `000042` |
 | `{:<N}` / `{:>N}` | Left / right align | `f"[{42:<6}]"` → `[42    ]` |
 | `{:.N}` | Float precision (N fractional digits) | `f"{3.14159:.2}"` → `3.14` |
+| `{:^N}` | Centre align | `f"[{42:^6}]"` → `[  42  ]` |
+| `{:+}` | Explicit sign | `f"{42:+}"` → `+42` |
 
-Numbers right-align by default; `<`/`>` override. Precision and width
-compose (`f"{3.14159:8.2}"` → `    3.14`). A couple of forms are still
-being wired up — center alignment (`{:^}`) and the explicit `+` sign
-flag — and are tracked in the task pool.
+Numbers right-align by default; `<`/`>`/`^` override. Precision and
+width compose (`f"{3.14159:8.2}"` → `    3.14`).
+
+Every row above was re-measured on 2026-09-03; centre alignment and the
+`+` flag, which this page listed as "still being wired up", both work.
+
+:::note `{:e}` is accepted and ignored
+`f"{31415.9:e}"` prints `31415.9`, not `3.14159e4` — the specifier is
+parsed and dropped rather than refused, so a program asking for
+scientific notation gets plain notation with no diagnostic. The
+`LowerExp` / `UpperExp` protocols exist in `core/text/format.vr` and
+nothing routes to them.
+
+This matters most where the plain rendering is unusable: `Float.max`
+prints as 309 decimal digits.
+:::
 
 The **only** doubled-quote rule for raw multiline:
 

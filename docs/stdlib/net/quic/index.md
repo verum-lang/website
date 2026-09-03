@@ -312,10 +312,15 @@ language-layer issues that affect cross-cog symbol resolution:
    implementation uses domain-prefixed `QuicConnection` / `QuicFrame`
    / etc. Tests need a one-line mount fix; the underlying API is
    stable.
-4. **Explicit type arguments at function call site** are not yet
-   propagated end-to-end through the resolver. Affects per-T
-   monomorphisation patterns in the json extractor and a few
-   surface tests.
+4. ~~**Explicit type arguments at function call site** are not yet
+   propagated end-to-end through the resolver.~~ **Re-measured
+   2026-09-03: they work.** `pick<Text>("a", "b")` type-checks and runs;
+   the discriminating probe — `pick<Text>(1, 2)`, where the explicit
+   argument contradicts the values — is refused with
+   `error<E400>: expected 'Text', found 'Int'`, so the argument is
+   genuinely honoured rather than parsed as a comparison chain. If a
+   per-T monomorphisation pattern here still fails, it is a different
+   defect and needs its own probe.
 
 Verification obligations V1–V10 from the QUIC spec are all
 discharged via the SMT layer (the `v*_theorem.vr` test files in the L2 suite).
