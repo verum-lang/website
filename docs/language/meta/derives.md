@@ -8,9 +8,11 @@ description: The derive macros that ship with Verum — exact generated-code sem
 
 :::caution This page describes a design, not the current toolchain
 
-Measured 2026-09-02, one record declared per attribute: **`Ord` is the
-only derive with a generator.** Every other `@derive` on this page is
-parsed, accepted, and then reported as not applied —
+Measured 2026-09-03, one record declared per attribute: **`Ord` and
+`Default` have generators; `PartialOrd` needs none** (the standard
+library's `implement<T: Ord> PartialOrd for T` supplies it). Every
+other `@derive` on this page is parsed, accepted, and then reported as
+not applied —
 
 ```
 warning<W0507>: `@derive(Clone)` on `Wrap` was not applied
@@ -24,10 +26,10 @@ library.
 
 What saves most code is that records get **structural** behaviour
 whether or not a derive ran: `.clone()` clones, `==` compares, the type
-works as a `Map` key, and `<` `>` work through the `Ord` generator. The
-two places the fallback does not reach are `Default` (`T.default()` is
-absent — `error<E400>: no method named `default``) and `partial_cmp`
-(the operators work, the explicit call does not resolve).
+works as a `Map` key, and `<` `>` work through the `Ord` generator.
+Both places the fallback did not reach are now closed — `Default` by a
+generator, `partial_cmp` by the blanket — so a derive on this page that
+still warns is one whose behaviour you genuinely do not get.
 
 [The attribute registry](/docs/reference/attribute-registry#derive)
 carries the measured per-derive table. Read the sections below as the
