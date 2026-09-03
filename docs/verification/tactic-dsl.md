@@ -227,17 +227,53 @@ Tactic ::= atomic        -- any @tactic meta fn
         |  fail(msg: Text)     -- never succeeds
 ```
 
-Semantic laws (proved in `core/proof/tactics/laws.vr`):
+Twelve semantic laws hold. The inventory below is generated from
+`CANONICAL_LAW_TABLE` in `crates/verum_smt/src/tactic_laws.rs`, which
+is the single source of truth: both the simplifier and the catalogue
+read from it, and a law name appears in it exactly once.
 
-- `t ; ok = t` (identity)
-- `t | fail = t`
-- `try(t) ≠ fail` (idempotent try)
-- `repeat(fail) = ok` (vacuous repeat)
-- `all(ok) = ok` (trivial all)
+| Law | Rewrites to | Name |
+|---|---|---|
+| `skip ; t` | `t` | `seq-left-identity` |
+| `t ; skip` | `t` | `seq-right-identity` |
+| `(t ; u) ; v` | `t ; (u ; v)` | `seq-associative` |
+| `fail \|\| t` | `t` | `orelse-left-identity` |
+| `t \|\| fail` | `t` | `orelse-right-identity` |
+| `(t \|\| u) \|\| v` | `t \|\| (u \|\| v)` | `orelse-associative` |
+| `repeat_n(0, t)` | `skip` | `repeat-zero-is-skip` |
+| `repeat_n(1, t)` | `t` | `repeat-one-is-body` |
+| `try { t }` | `t \|\| skip` | `try-equals-orelse-skip` |
+| `solve { skip }` | `fail` (when goals remain open) | `solve-of-skip-fails-when-open` |
+| `first_of([t])` | `t` | `first-of-singleton-collapses` |
+| `all_goals { skip }` | `skip` | `all-goals-of-skip-is-skip` |
 
-These laws let the orchestrator optimize tactic expressions (e.g.
-hoist common prefixes out of `first`, simplify `try(try(t))` to
-`try(t)`).
+The identity element is **`skip`**, not `ok` — `skip` is the
+0-iteration repeat of the identity simplification. Sequential
+composition and `orelse` each form a monoid: `;` with identity `skip`,
+`||` with identity `fail`.
+
+`verum tactic laws` prints this table, and `verum tactic explain <name>`
+names the laws that apply to one combinator; both read the same table,
+so the CLI cannot drift from the simplifier.
+
+These laws let the orchestrator optimize tactic expressions —
+`tactic_laws::normalize()` is a fixed-point rewrite applying every
+law in `SIMPLIFIER_APPLIES`, and every user tactic is normalized
+through it at compile time.
+
+:::note What "holds" means here
+Eight of the twelve have a dedicated predicate
+(`check_andthen_left_identity` and siblings) deciding them on structural
+equality of combinator trees; the other four are exercised through
+`normalize()`. 32 unit tests in `tactic_laws.rs` cover them over the
+primitive tactics, and two of those tests pin the inventory itself: that
+`SIMPLIFIER_APPLIES` has exactly twelve entries, and that every
+catalogue law appears in it — so no law can become documentation-only.
+So the laws are checked as **rewrite-rule identities on the combinator
+algebra** — the level at which the simplifier consumes them. They are
+not machine-checked as semantic equivalences over proof states; the
+tactic combinators have no Verum-side proof corpus today.
+:::
 
 ---
 
