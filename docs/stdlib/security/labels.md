@@ -215,6 +215,30 @@ return `join(a.label, b.label)`.
 
 ## When the type checker says "no"
 
+:::danger The type checker does not say "no" — labels are runtime values
+Measured 2026-09-03 against a built compiler, with a control that can
+fail:
+
+    fn takes_public(x: Labeled<Text>) { print("accepted"); }
+    takes_public(labeled(Label.Secret, "hunter2"))   -> 0 errors
+    takes_public(42)                                 -> E400, so the
+                                                        call site CAN
+                                                        reject
+
+`Labeled<T>` is a plain record — `{ label: Label, value: T }` in
+`core/security/labels.vr:82` — and `Label` is a **field value**, not a
+type parameter. `Labeled<Text>` carrying `Secret` and `Labeled<Text>`
+carrying `Public` are therefore the same type, and there is nothing for
+the type checker to reject.
+
+`flows_to(lo, hi)` is real, and it is an ordinary function returning
+`Bool` (`labels.vr:99`). The lattice below is right; enforcing it is
+something a program does by **calling** `flows_to` and acting on the
+answer, at run time. The example below shows the intended design, not
+what the compiler does today.
+:::
+
+
 Consider:
 
 ```verum
