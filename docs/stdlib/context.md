@@ -170,7 +170,10 @@ A scope may only depend on scopes of equal or longer lifetime:
 | `Request` | `Singleton`, `Request` |
 | `Transient` | any |
 
-Violating this is compile error **E806: scope violation**.
+Violating this is a compile error. (The code cited here until
+2026-09-03 — `E806` — is in no namespace the compiler has; the
+`ScopeViolation` row above is the runtime `ContextError` variant, which
+is a different layer.)
 
 ```verum
 implement Scope {
@@ -220,9 +223,12 @@ context cannot be resolved or provided):
 
 These are distinct from the **compile-time** diagnostic codes the type
 checker emits for the static `@injectable` / `using` analysis (in
-`crates/verum_types`): **E3050 / E3051 / E3052** (direct / transitive /
-conflicting *negative-context* `!Ctx` violations) and **E808** (duplicate
-`provide` for the same context in one scope). There is no 1:1 mapping
+`crates/verum_types`): **E611** (direct) and **E609** (transitive)
+*negative-context* `!Ctx` violations, **E608** (an excluded context is
+used), and **E808** (duplicate `provide` for the same context in one
+scope). The codes are those in `crates/verum_error/src/registry.rs`,
+which is the authority — `E3050 / E3051 / E3052`, cited here until
+2026-09-03, are in no namespace the compiler has. There is no 1:1 mapping
 between the runtime `ContextError` variants and these compile-time codes —
 they live at different layers.
 
@@ -529,8 +535,8 @@ fn forward(msg: Msg) using [Database as primary, Database as replica] { ... }
 
 Negative contexts are enforced at compile time: a function that
 declares `using [!IO]` cannot transitively call any function whose
-`using` clause includes `IO`. Violations produce **E3050** (direct)
-or **E3051** (transitive).
+`using` clause includes `IO`. Violations produce **E611** (direct) or
+**E609** (transitive).
 
 ---
 

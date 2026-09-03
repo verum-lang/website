@@ -410,8 +410,17 @@ Tactic tests run at stage 1 (meta execution) via `verum test
 
 ## 9. Anti-patterns
 
-Five patterns the linter flags with
-`W501` (warning, tactic authorship):
+Five patterns to avoid when authoring tactics.
+
+:::caution No linter flags these today
+Measured 2026-09-03: nothing in `verum_smt` or `verum_verification`
+inspects a tactic tree for these shapes, and `W501` is in no error-code
+registry — the only place that string occurs is a doc comment in
+`crates/verum_verification/src/level.rs`, where it names the
+soft-fail-fallback warning, a different diagnostic entirely. Read the
+list as authorship guidance, not as something the compiler will catch
+for you.
+:::
 
 1. **Unbounded `repeat` without progress check** — `repeat(smt)`
    may loop forever on unknown goals. Always bound with

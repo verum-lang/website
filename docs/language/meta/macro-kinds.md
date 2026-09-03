@@ -66,8 +66,10 @@ types via `TypeInfo` and generates the appropriate handling:
   `T`.
 - `Shared<T>` fields: call `.clone()` which bumps the ref count.
 - `Mut<T>` fields: call `.clone()` only if `T: Clone`; otherwise
-  emit `E4102 cannot derive Clone for field f: Mut<T> where T: !Clone`
-  with a suggestion.
+  emit a diagnostic naming the field and the missing bound, with a
+  suggestion. (The code cited here until 2026-09-03 — `E4102` — is in
+  no registry; the registered code for a derive that is accepted but
+  generates nothing is `W0507`.)
 
 ### Variant handling
 

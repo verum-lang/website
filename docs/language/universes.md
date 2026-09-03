@@ -336,6 +336,27 @@ builds a heterogeneous record.
 
 ## Common errors and fixes
 
+:::caution The codes below are not the compiler's
+Measured 2026-09-03 against `crates/verum_error/src/registry.rs`, the
+authority on diagnostic codes: `E1103`, `E1104` and `W1105` are in no
+namespace, and neither are the messages quoted with them. The registry
+carries no universe code at all.
+
+What the compiler does produce for the constraint solver is unnumbered
+text, from `crates/verum_smt`:
+
+    Universe constraint unsatisfiable: {a} < {b}
+    Universe constraint unsatisfiable: {a} <= {b}
+    Universe constraint unsatisfiable: {a} = {b}
+    Universe constraint solving did not converge
+
+The situations described below are real and the fixes are right; only
+the code numbers and the message wording are invented. They are kept
+here, marked, rather than deleted — the diagnostics they name are the
+ones this feature still owes, and a reader searching for `E1103`
+deserves to find out it does not exist rather than nothing at all.
+:::
+
 ### `error[E1103]: universe variable not in scope`
 
 You referred to `Type(u)` without declaring `u`. Add `universe u`

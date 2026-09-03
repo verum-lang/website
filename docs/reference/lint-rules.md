@@ -912,7 +912,7 @@ is violated.
 
 | Rule              | Default | Warn / Error code | Fires on                                                                                        |
 |-------------------|---------|-------------------|-------------------------------------------------------------------------------------------------|
-| `map_get_hazard`  | warn    | `W1100` / `E1100` | `Map.get(key)` used where `Map.get_or(key, default)` or pattern-matching on the `Maybe` return is the recommended idiom. |
+| `map_get_hazard`  | warn    | `W0505` / `E0500` | `Map.get(key)` used where `Map.get_or(key, default)` or pattern-matching on the `Maybe` return is the recommended idiom. |
 
 The names listed in this section are surfaced verbatim by
 `verum lint --list-rules` and accept the same severity controls as
