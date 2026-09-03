@@ -262,7 +262,8 @@ The authoritative keyword list is the `keyword` production in the
 ```ebnf
 keyword = reserved_keyword | primary_keyword | control_flow
         | async_keywords | modifiers | ffi_keywords
-        | module_keywords | additional_keywords | proof_keywords ;
+        | module_keywords | additional_keywords | proof_keywords
+        | lexer_only_reserved ;
 ```
 
 Plus the `token` production for keyword-like literals (`true`,

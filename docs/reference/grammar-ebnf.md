@@ -314,8 +314,8 @@ attribute      = std_attribute
                | verify_attribute
                | identifier , [ '(' , attribute_args , ')' ] ;
 attribute_args = expression_list | named_arg_list ;
-named_arg_list = named_arg , { ',' , named_arg } ;
-named_arg      = identifier , '=' , expression ;
+named_arg_list = named_arg , { ',' , named_arg } , [ ',' ] ;
+named_arg      = identifier , ( '=' | ':' ) , expression ;
 
 std_attribute   = 'std' , [ '(' , context_group_identifier , ')' ] ;
 specialize_attribute = 'specialize' ;
@@ -514,7 +514,9 @@ field_default = '=' , expression ;
    the `lacks` predicate, and splat syntax. *)
 record_type     = '{' , [ field_list ] , [ '|' , identifier ] , '}' ;
 variant         = { attribute } , identifier , [ variant_data ] , [ path_endpoints ] ;
-variant_data    = '{' , field_list , '}' | '(' , type_list , ')' ;
+variant_data    = '{' , field_list , '}' | '(' , tuple_payload , ')' ;
+tuple_payload   = [ tuple_slot , { ',' , tuple_slot } ] ;
+tuple_slot      = [ identifier , ':' ] , type_expr ;
 path_endpoints  = '=' , expression , '..' , expression ;          (* range form *)
 type Interval is Zero | One   | Seg()  = Zero..One;
 
