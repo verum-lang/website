@@ -38,6 +38,35 @@ The refinement language is intentionally small and decidable:
 - **Boolean connectives**: `&&`, `||`, `!`.
 - **Arithmetic**: `+`, `-`, `*`, `/`, `%` (with nonlinearity routed to the backend with the stronger nonlinear core).
 - **Bitwise**: `&`, `|`, `^`, `<<`, `>>`.
+:::info What names the value, and what happens to a typo
+Three spellings bind the value under refinement, and they are
+interchangeable:
+
+- `self` — used throughout this page;
+- `it` — the implicit binder, seen in `Int{ it >= 0 }`;
+- the name a `where` form introduces, e.g. `T where |x| x > 0`.
+
+**Every other name in a predicate must be in scope.** Since 2026-09-03 an
+unknown one is `error<E100>: unbound variable in refinement predicate`.
+Before that it was accepted, and the consequence was not a weaker type —
+it was a different one:
+
+    type P is Int { slef > 0 };   // a typo of `self`
+    let x: P = -5;                // was ACCEPTED
+    let x: P =  5;                // was REJECTED
+
+An identifier in a predicate becomes a free variable of the solver
+obligation, so an unknown name is not "no constraint", it is an
+arbitrary one — and here it inverted the type, accepting exactly the
+values the refinement was written to reject.
+
+The check applies to a **type declaration's own** predicate. A
+refinement on a parameter may name a sibling parameter — `fn
+combinations(n: Int{>= 0}, k: Int{>= 0, <= n})` is correct — and those
+names are function-local, so that position is left unjudged rather than
+guessed at.
+:::
+
 - **Field access**: `self.field`, `self.field.subfield`.
 - **Indexing**: `xs[i]`, `xs[i..j]`.
 - **Calls to reflected functions**: a pure, single-expression
