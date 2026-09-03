@@ -70,6 +70,29 @@ Diagnostics: `E430` (outside horizon, with a did-you-mean listing
 candidate owners) and `E431` (two horizon types declare the same
 constructor — qualify to disambiguate).
 
+:::warning `E431` does not exist yet
+Measured 2026-09-03: `E431` is in no registry entry and at no emit site,
+while `E430` and `E432` — named in the same comment of
+`crates/verum_error/src/registry.rs` — are both present.
+
+The situation it describes is not diagnosed at all, and resolves
+silently by source order:
+
+```verum
+public type A is Pending | Done;
+public type B is Pending | Failed;
+
+let x = Pending;      // compiles clean; binds to B, the LAST declarer
+```
+
+Passing that `x` to a function taking `A` is refused; taking `B` is
+accepted. Swap the two declarations and the answer swaps with them.
+
+Until the diagnostic lands, qualify the constructor — `A.Pending` — when
+more than one type in the horizon declares the name. The rule this page
+states is the intended one; the compiler does not yet enforce it.
+:::
+
 ## Law 2 — Boolean-equality clarity
 
 Inside a bare `&&` / `||` chain, an `==` or `!=` whose **both operands
