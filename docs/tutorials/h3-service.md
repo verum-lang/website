@@ -166,6 +166,34 @@ async fn handle(req: H3Request) -> H3Response {
 }
 ```
 
+:::warning `H3Response.ok()` takes the body; `.text` / `.bytes` / `.html` do not exist
+Measured 2026-09-03 against `core/net/h3/request.vr:138`. The whole
+surface is four methods:
+
+```verum
+H3Response.ok(body: List<Byte>) -> H3Response
+H3Response.status(code: UInt16) -> H3Response
+H3Response.with_header(name: Text, value: Text) -> H3Response   // chainable
+H3Response.to_field_list(&self) -> List<QpackHeaderField>
+```
+
+So `H3Response.ok()` with no argument does not compile, and the
+`.text(…)` / `.bytes(…)` / `.html(…)` builders these examples chain
+onto it are not defined — `no method named \`text\` found for type
+\`H3Response\``. The spelling that does compile today:
+
+```verum
+let body: List<Byte> = "ok".as_bytes().to_list();
+H3Response.ok(body)
+H3Response.status(404 as UInt16).with_header("x-k", "v")
+```
+
+The examples below are left in their original form rather than
+rewritten: the shape they show — a body-carrying `ok` and a builder
+chain — is the intended API, and a mechanical substitution would make
+them compile while teaching a design that is not settled.
+:::
+
 ## 6. Streaming subscribe
 
 A successful `/subscribe` upgrades the stream to a long-lived
