@@ -112,7 +112,7 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
     loop {
         match select {
             r = stream.read_async(&mut buf) => r,
-            _ = sleep(30.seconds()) => Result.Err(IoError.Timeout),
+            _ = sleep(30.secs()) => Result.Err(IoError.Timeout),
         } {
             Result.Ok(0) => break,
             Result.Ok(n) => {
@@ -120,7 +120,7 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
                     w = stream.write_all_async(&buf[..n]) => {
                         if w.is_err() { break; }
                     }
-                    _ = sleep(10.seconds()) => {
+                    _ = sleep(10.secs()) => {
                         Logger.warn(f"{peer} write timeout");
                         break;
                     }
@@ -171,7 +171,7 @@ async fn echo_server_graceful(addr: &Text) -> IoResult<()>
         while !stop.load(MemoryOrdering.Acquire) {
             match select {
                 r = listener.accept_async() => r,
-                _ = sleep(100.ms()) => continue,  // re-check flag
+                _ = sleep(100.millis()) => continue,  // re-check flag
             } {
                 Result.Ok((stream, peer)) => {
                     Logger.info(f"{peer} connected");

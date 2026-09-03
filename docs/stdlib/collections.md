@@ -718,7 +718,7 @@ let mut by_ts: BTreeMap<Instant, Metric> = BTreeMap.new();
 
 let now = Instant.now();
 let last_minute: List<&Metric> = by_ts
-    .range((now - 1.minutes())..=now)
+    .range((now - 1.mins())..=now)
     .map(|(_, m)| m)
     .collect();
 

@@ -465,7 +465,7 @@ carries:
   [Language → Type system](/docs/architecture-types).
 - The **verification ladder** — nine semantic strategies from
   `runtime` up to `certified`, with per-strategy proof-obligation
-  generators. Documented under [Verification](/docs/verification).
+  generators. Documented under [Verification](/docs/category/verification).
 - The **architectural type system** — what *this* category covers.
 
 The three dimensions share the same compiler, the same diagnostic

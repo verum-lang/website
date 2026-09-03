@@ -110,7 +110,7 @@ stacked/laid-out using the `layout` sub-module.
 
 **4. `subscriptions`**. Event sources mapped to messages. Most TUIs
 just subscribe to key events; you can also subscribe to timers
-(`interval(1.seconds(), |_| Msg.Tick)`) or streams.
+(`interval(1.secs(), |_| Msg.Tick)`) or streams.
 
 ### Layering widgets
 

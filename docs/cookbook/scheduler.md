@@ -15,7 +15,7 @@ mount core.async.*;
 mount core.time.*;
 
 async fn heartbeat() using [Logger] {
-    let mut ticker = Interval.new(1.seconds());
+    let mut ticker = Interval.new(1.secs());
     loop {
         ticker.tick().await;
         Logger.info(&"still alive");
@@ -30,7 +30,7 @@ the next tick still fires on schedule (not 50 ms later).
 ### "Catch up on missed ticks" behaviour
 
 ```verum
-let mut ticker = Interval.new(100.ms());
+let mut ticker = Interval.new(100.millis());
 ticker.set_missed_tick_behavior(MissedTickBehavior.Skip);
 ```
 
@@ -47,8 +47,8 @@ status updates where freshness matters more than count.
 
 ```verum
 async fn scheduler() using [IO, Logger] {
-    let mut fast = Interval.new(500.ms());
-    let mut slow = Interval.new(10.seconds());
+    let mut fast = Interval.new(500.millis());
+    let mut slow = Interval.new(10.secs());
     let mut hourly = Interval.new(1.hours());
 
     loop {
@@ -65,11 +65,11 @@ async fn scheduler() using [IO, Logger] {
 
 ```verum
 async fn run_until_stop(stop: Shared<AtomicBool>) using [Logger] {
-    let mut ticker = Interval.new(1.seconds());
+    let mut ticker = Interval.new(1.secs());
     while !stop.load(MemoryOrdering.Acquire) {
         select {
             _ = ticker.tick() => do_work().await,
-            _ = sleep(50.ms()) => continue,     // quick check of the flag
+            _ = sleep(50.millis()) => continue,     // quick check of the flag
         }
     }
 }
@@ -82,7 +82,7 @@ for downstream servers. Add jitter:
 
 ```verum
 async fn reload_with_jitter() using [Logger, Random] {
-    let base = 30.seconds();
+    let base = 30.secs();
     loop {
         // ±5 seconds of jitter
         let jitter_ms = Random.int_range(-5000, 5000);

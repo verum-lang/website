@@ -108,7 +108,7 @@ mount stdlib.time.{timeout};
 
 @test
 async fn fetch_completes_quickly() {
-    let result = timeout(100.ms(), fetch_user(42)).await;
+    let result = timeout(100.millis(), fetch_user(42)).await;
     let user = assert_ok(result);
     assert_eq(user.name, "Alice");
 }

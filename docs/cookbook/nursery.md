@@ -29,7 +29,7 @@ nursery_recover = 'recover' , recover_body ;
 async fn fetch_all(urls: &List<Url>) -> Result<List<Bytes>, Error>
     using [Http]
 {
-    nursery(on_error: cancel_all, timeout: 10.seconds()) {
+    nursery(on_error: cancel_all, timeout: 10.secs()) {
         let handles: List<JoinHandle<Bytes>> = urls.iter()
             .map(|u| spawn Http.get(u.clone()))
             .collect();
@@ -90,7 +90,7 @@ acknowledge cancellation. Returns the first error the moment it's
 observed. Use when latency on failure trumps cleanup correctness.
 
 ```verum
-nursery(on_error: fail_fast, timeout: 1.seconds()) {
+nursery(on_error: fail_fast, timeout: 1.secs()) {
     for replica in replicas {
         spawn replica.send(data);
     }
@@ -101,7 +101,7 @@ nursery(on_error: fail_fast, timeout: 1.seconds()) {
 ## Timeouts
 
 ```verum
-nursery(timeout: 5.seconds()) {
+nursery(timeout: 5.secs()) {
     ...
 }
 ```
@@ -115,7 +115,7 @@ timeouts, wrap individual spawns:
 nursery {
     for u in urls {
         spawn async move {
-            timeout(3.seconds(), fetch(u)).await
+            timeout(3.secs(), fetch(u)).await
         };
     }
 }
@@ -184,7 +184,7 @@ async fn main() using [IO, Logger] {
         restart: RestartPolicy.Permanent,
         isolation: IsolationLevel.SendOnly,
         max_restarts: 5,
-        within: 60.seconds(),
+        within: 60.secs(),
     });
 
     sup.spawn(ChildSpec {

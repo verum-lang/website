@@ -649,7 +649,7 @@ design):
 | `graph`      | Per-cog `composes_with` graph rendering (Graphviz DOT or JSON). |
 
 For the catalog itself see
-**[Architecture-as-Types → anti-pattern overview](/docs/architecture-types/anti-patterns/overview)**.
+**[Architecture-as-Types → anti-pattern overview](/docs/architecture-types/anti-patterns)**.
 
 ## Cubical / HoTT primitives (`verum cubical`)
 

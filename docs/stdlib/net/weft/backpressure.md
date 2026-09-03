@@ -200,7 +200,7 @@ select biased {
             respond(503, "Retry-After: 5")
         }
     },
-    _ = timeout(100.ms()) => continue,
+    _ = timeout(100.millis()) => continue,
 }
 ```
 

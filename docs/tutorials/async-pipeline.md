@@ -414,7 +414,7 @@ module tests {
 
         for _ in 0..10 {
             let _ = rx.recv().await.unwrap();
-            sleep(50.ms()).await;
+            sleep(50.millis()).await;
         }
 
         let elapsed = Clock.now() - sender_start;

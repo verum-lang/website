@@ -21,7 +21,7 @@ This page shows each individually and then how to stack them.
 async fn call_with_budget(url: &Url) -> Result<Bytes, Error>
     using [Http]
 {
-    match timeout(5.seconds(), Http.get(url)).await {
+    match timeout(5.secs(), Http.get(url)).await {
         Result.Ok(resp) => resp.body().await.map_err(Error.from),
         Result.Err(_)   => Result.Err(Error.Timeout),
     }
@@ -42,7 +42,7 @@ async fn handle(req: Request) -> Response
     using [Database, Clock]
 {
     let deadline = Clock.now() + Duration.from_header(&req.headers)
-        .unwrap_or(3.seconds());
+        .unwrap_or(3.secs());
 
     provide Deadline = deadline in {
         let user = lookup_user(req.id).await?;      // sees deadline
@@ -212,10 +212,10 @@ async fn resilient_call(url: &Url, b: &CircuitBreaker, limiter: &RateLimiter)
     using [Http]
 {
     limiter.acquire(1).await;                            // rate limit
-    timeout(10.seconds(),                                // global deadline
+    timeout(10.secs(),                                // global deadline
         execute_with_retry_config(
             || call_breaker(b, url),                    // retry + breaker
-            RetryConfig.exponential(3, 200.ms())),
+            RetryConfig.exponential(3, 200.millis())),
     ).await?
 }
 ```
@@ -231,7 +231,7 @@ All five primitives are cooperative with Verum's structured
 cancellation:
 
 ```verum
-nursery(timeout: 30.seconds()) {
+nursery(timeout: 30.secs()) {
     spawn resilient_call(&url_a, &breaker, &limiter);
     spawn resilient_call(&url_b, &breaker, &limiter);
 }

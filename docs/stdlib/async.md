@@ -844,7 +844,7 @@ s.position(|x| pred) -> Maybe<Int>
 
 ```verum
 async fn monitor(sensor: &Sensor) using [Logger] {
-    let mut s = interval(1.seconds())
+    let mut s = interval(1.secs())
         .map(|_| sensor.read())
         .filter(|r| r.is_ok())
         .map(|r| r.unwrap())
@@ -948,7 +948,7 @@ public async fn with_nursery_timeout<T>(
 ```verum
 async fn fetch_batch(urls: &List<Text>) -> List<Bytes> using [Http] {
     nursery(
-        timeout: 10.seconds(),
+        timeout: 10.secs(),
         on_error: cancel_all,
         max_tasks: 100,
     ) {
@@ -1151,7 +1151,7 @@ interval(duration) -> Interval              // stream firing on schedule
 ```
 
 ```verum
-let mut ticker = Interval.new(500.ms());
+let mut ticker = Interval.new(500.millis());
 loop {
     ticker.tick().await;
     update_ui();
@@ -1218,7 +1218,7 @@ type Priority is Low | Normal | High | Critical;
 let cfg = SpawnConfig.new()
     .with_priority(Priority.High)
     .with_isolation(IsolationLevel.Full)
-    .with_recovery(RecoveryStrategy.Retry(RetryConfig.exponential(3, 100.ms())))
+    .with_recovery(RecoveryStrategy.Retry(RetryConfig.exponential(3, 100.millis())))
     .with_timeout_ms(5000)
     .with_name("worker-42");
 

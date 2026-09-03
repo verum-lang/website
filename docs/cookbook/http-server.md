@@ -202,7 +202,7 @@ async fn serve_graceful() using [IO, Database, Logger, Network] {
         while !shutdown.load(MemoryOrdering.Acquire) {
             match select {
                 accept = listener.accept_async() => accept,
-                _ = sleep(100.ms()) => continue,
+                _ = sleep(100.millis()) => continue,
             } {
                 Result.Ok((stream, peer)) => {
                     spawn handle(stream, peer);
@@ -342,7 +342,7 @@ async fn test_user_not_found() {
 |------------------------|--------------------------------------------------|
 | **Backpressure**       | `Semaphore.new(max_connections)`.                |
 | **Read limits**        | `read_body_limited(max_bytes)` on every handler. |
-| **Timeouts**           | `timeout(30.seconds(), req.parse())` around IO.  |
+| **Timeouts**           | `timeout(30.secs(), req.parse())` around IO.  |
 | **Graceful shutdown**  | SIGINT → stop accepting → drain nursery.         |
 | **TLS**                | `TlsListener.bind_with(...)`.                    |
 | **CORS**               | Middleware that sets `Access-Control-*` headers.  |

@@ -149,7 +149,7 @@ async fn merge(mut a: Receiver<Msg>, mut b: Receiver<Msg>)
                 Maybe.Some(msg) => handle_b(msg),
                 Maybe.None      => break,
             },
-            _ = sleep(5.seconds()).await => {
+            _ = sleep(5.secs()).await => {
                 print("idle");
             }
         }

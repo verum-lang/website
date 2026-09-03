@@ -55,7 +55,7 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
 
 ```verum
 let client = HttpClient.builder()
-    .timeout(10.seconds())
+    .timeout(10.secs())
     .max_redirects(3)
     .user_agent(&"my-tool/1.0")
     .pool(PoolConfig {

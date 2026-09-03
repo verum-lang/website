@@ -90,7 +90,7 @@ let stopped = Shared.new(AtomicBool.new(false));
 spawn async move {
     while !stopped.load(MemoryOrdering.Acquire) {
         counter.fetch_add(1, MemoryOrdering.Relaxed);
-        sleep(10.ms()).await;
+        sleep(10.millis()).await;
     }
 };
 ```

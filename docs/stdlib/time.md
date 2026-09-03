@@ -84,10 +84,10 @@ Duration.ZERO              Duration.MAX
 ### Literal sugar (on any integer)
 
 ```verum
-5.nanoseconds()       5.microseconds()      5.milliseconds()
-5.seconds()           5.minutes()           5.hours()
+5.nanos()       5.micros()      5.millis()
+5.secs()           5.mins()           5.hours()
 5.days()
-// Aliases: 5.ns(), 5.us(), 5.ms()
+// Aliases: 5.nanos(), 5.micros(), 5.millis()
 ```
 
 ### Inspection
@@ -219,7 +219,7 @@ type MissedTickBehavior is
 
 ```verum
 async fn heartbeat() using [Logger] {
-    let mut iv = Interval.new(1.seconds());
+    let mut iv = Interval.new(1.secs());
     loop {
         iv.tick().await;
         Logger.info(&"heartbeat");

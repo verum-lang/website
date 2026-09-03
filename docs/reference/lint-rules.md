@@ -262,7 +262,7 @@ peer can hang the caller forever; specify a deadline.
 
 ```verum
 let v = chan.recv()?;                                    // fires
-let v = chan.recv_with_timeout(5.seconds())?;            // silenced
+let v = chan.recv_with_timeout(5.secs())?;            // silenced
 ```
 
 ### `unsafe-ref-in-public` — *warn*

@@ -17,7 +17,7 @@ one conceptual slice well.
 [Language tour](/docs/getting-started/tour).
 
 Looking for short task-oriented snippets?
-See **[Cookbook](/docs/cookbook/overview)**.
+See **[Cookbook](/docs/cookbook)**.
 
 ## Picking a track
 
@@ -185,7 +185,7 @@ MNIST classifier using `math.nn` with autodiff.
 
 ## What's next after tutorials?
 
-- **[Cookbook](/docs/cookbook/overview)** — short, focused recipes for common
+- **[Cookbook](/docs/cookbook)** — short, focused recipes for common
   tasks.
 - **[Language reference](/docs/language/overview)** — normative
   descriptions of each feature.

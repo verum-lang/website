@@ -175,7 +175,7 @@ async fn fetch_all(urls: &List<Text>) -> List<Bytes>
 ### Options
 
 ```verum
-nursery(timeout: 5.seconds(),
+nursery(timeout: 5.secs(),
         on_error: cancel_all,
         max_tasks: 100)
 {
@@ -429,7 +429,7 @@ Full pipeline in the **[async pipeline tutorial](/docs/tutorials/async-pipeline)
 
 ```verum
 async fn fetch_or_fail(url: &Text) -> Result<Bytes, Error> using [Http] {
-    timeout(5.seconds(), Http.get(url)).await?.body().await
+    timeout(5.secs(), Http.get(url)).await?.body().await
 }
 ```
 

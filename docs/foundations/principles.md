@@ -151,7 +151,7 @@ Verum's contribution is the *mechanisation* of the discipline:
 every artefact's C/V/E status is computed by the compiler,
 surfaced by the tooling, and load-bearing in the audit gates.
 **See [Architecture-as-Types → CVE
-overview](/docs/architecture-types/cve/overview).**
+overview](/docs/architecture-types/cve).**
 
 ## 4. Verification is a spectrum
 
@@ -462,7 +462,7 @@ mathematics.
 - [Architecture-as-Types](/docs/architecture-types) is where
   the third-axis-closure and the "architecture is a type"
   principles meet at scale.
-- [Verification](/docs/verification) is where the
+- [Verification](/docs/category/verification) is where the
   spectrum is realised end-to-end.
 - The [grammar reference](/docs/reference/grammar-ebnf) is
   where the surface forms are pinned.

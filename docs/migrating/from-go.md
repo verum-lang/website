@@ -171,7 +171,7 @@ case <-time.After(5 * time.Second): timeout()
 select {
     v = rx1.recv() => handle(v),
     v = rx2.recv() => handle(v),
-    _ = sleep(5.seconds()) => timeout(),
+    _ = sleep(5.secs()) => timeout(),
 }
 ```
 

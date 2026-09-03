@@ -150,7 +150,7 @@ the others are cancelled. See
 ```verum
 async fn polite() {
     do_work();
-    sleep(500.ms()).await;              // wait half a second
+    sleep(500.millis()).await;              // wait half a second
     do_more();
 }
 ```
@@ -179,7 +179,7 @@ siblings.
 async fn fetch_with_deadline(url: &Url) -> Result<Bytes, Error>
     using [Http]
 {
-    match timeout(3.seconds(), fetch(url)).await {
+    match timeout(3.secs(), fetch(url)).await {
         Result.Ok(r) => r.map_err(Error.from),
         Result.Err(_) => Result.Err(Error.Timeout),
     }
@@ -201,7 +201,7 @@ async fn retry<F, T, E>(mut f: F, max_attempts: Int) -> Result<T, E>
         match f().await {
             Result.Ok(v) => return Result.Ok(v),
             Result.Err(e) if attempt < max_attempts - 1 => {
-                sleep(100.ms() * (1 << attempt)).await;     // exp backoff
+                sleep(100.millis() * (1 << attempt)).await;     // exp backoff
                 attempt += 1;
             }
             Result.Err(e) => return Result.Err(e),
@@ -313,7 +313,7 @@ let rt = Runtime.new()
     .build();
 
 let result = rt.block_on(fetch(&url));
-rt.shutdown_timeout(5.seconds());
+rt.shutdown_timeout(5.secs());
 ```
 
 `Runtime` is the configurable alternative to `block_on`. For most
@@ -327,7 +327,7 @@ Use `@test` to mark an async test:
 ```verum
 @test
 async fn test_fetch_timeout() {
-    let result = timeout(100.ms(), pending<()>()).await;
+    let result = timeout(100.millis(), pending<()>()).await;
     assert(result.is_err());
 }
 ```
@@ -340,7 +340,7 @@ async fn test_retry_backoff() {
     let clock = FakeClock.at(epoch());
     provide Clock = clock.clone() in {
         let result = spawn slow_retry();
-        clock.advance(10.seconds());
+        clock.advance(10.secs());
         assert(result.await.is_ok());
     }
 }

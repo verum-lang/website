@@ -10,7 +10,7 @@ slug: /cookbook
 Short, focused recipes for the things you actually do. Each recipe
 is self-contained — copy it into your project as a starting point.
 
-Looking for longer guided builds? See **[Tutorials](/docs/tutorials/overview)**.
+Looking for longer guided builds? See **[Tutorials](/docs/tutorials)**.
 
 ## Getting data in
 
@@ -102,7 +102,7 @@ Looking for longer guided builds? See **[Tutorials](/docs/tutorials/overview)**.
 
 ## See also
 
-- **[Tutorials](/docs/tutorials/overview)** — longer end-to-end builds
+- **[Tutorials](/docs/tutorials)** — longer end-to-end builds
   for a URL shortener, parser combinator, verified data structure,
   ETL pipeline, and MNIST classifier.
 - **[Guides](/docs/guides/best-practices)** — FAQ, performance, security,
