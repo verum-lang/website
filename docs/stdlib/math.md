@@ -463,18 +463,24 @@ implementations — for `Float`, `DynTensor<T: RealField>`,
 Two caveats, both measured on the current toolchain rather than read
 off the source:
 
-* A `<T: Differentiable>` bound is **not yet satisfied by `Float`**,
-  despite the declaration:
+* A `<T: Differentiable>` bound **is satisfied by `Float`** as of
+  2026-09-03 (it was not when this page was first written). Measured
+  with the control that makes the result mean something:
 
-  ```
-  error<E405>: type `Float` does not implement `Differentiable`,
-               required by this call's bound
-  ```
+  | probe | result |
+  |---|---|
+  | `needs_diff(1.0)` where `f: Float` | accepted |
+  | `needs_diff(p)` where `p` implements nothing | `error<E405>: type \`Plain\` does not implement \`Differentiable\`` |
 
-  A protocol implementation is carried by its target type's
-  descriptor, and built-in scalars have no descriptor to carry one —
-  so the block does not survive the standard-library build. Tracked;
-  the same is true of every stdlib `implement P for <scalar>`.
+  The negative case is the point: a clean result on `Float` alone would
+  equally mean "the bound is not checked at all".
+
+  **`Float32` and `Float64` are still refused** — `core/math/autodiff.vr`
+  declares `implement Differentiable for Float` and nothing for the
+  sized spellings, so this is a missing implementation rather than a
+  carrier defect. The underlying cause the page used to describe (a
+  protocol impl is carried by its target type's descriptor, and built-in
+  scalars have none) was repaired under T1068.
 
 * `@derive(Differentiable)` on a user record does **not** generate an
   implementation. The compiler says so rather than pretending:
