@@ -159,8 +159,11 @@ fn fast_dot(a: &[Float32], b: &[Float32]) -> Float32 {
 }
 ```
 
-The `@multiversion` attribute emits several variants and dispatches
-via CPUID at runtime — see [intrinsics → platform](/docs/stdlib/intrinsics#platform).
+The `@multiversion` attribute is accepted but not yet acted on: no
+variants are emitted and no CPUID dispatch is generated, so the function
+runs its single written body. For a build fixed to one instruction set,
+`@target_feature` works today — see
+[intrinsics → platform](/docs/stdlib/intrinsics#platform).
 
 ---
 

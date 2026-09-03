@@ -149,8 +149,14 @@ See [`simd`](/docs/stdlib/simd).
 fn hot_kernel(data: &[Float]) -> Float { ... }
 ```
 
-Emits several variants — scalar, AVX2, AVX-512 — and dispatches via
-CPUID at runtime. Pay a ~3 ns dispatch cost for broad compatibility.
+:::caution Not yet dispatching
+
+The attribute is accepted and its variants are recorded, but the compiler
+does not yet emit them: the function is compiled once, from its single
+body, and no CPUID dispatch is generated. Write the fallback so that it is
+correct on its own, because today it is the only version that runs.
+
+:::
 
 ### `@inline(always)` and `@hot` / `@cold`
 
