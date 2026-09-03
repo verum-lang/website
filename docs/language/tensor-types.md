@@ -156,12 +156,27 @@ let c = a + b;                      // axes 2vs5 and 3vs4, no broadcast
 ```
 
     verum check   clean, zero diagnostics
-    verum run     internal compiler error (worker thread panicked):
-                  Expected int, got Some(0)
 
-The control — the same program with both shapes `tensor<2, 3>` —
-compiles and runs. So this is a shape mismatch reaching the backend
-unchecked, not a broken example.
+so the promised diagnostic does not appear.
+
+**The run-time behaviour is worse, and it is not about shapes at all.**
+Narrowed with controls after the first reading of this measurement was
+wrong:
+
+| program | `verum run` |
+|---|---|
+| no tensor at all | runs |
+| `let a = tensor<2, 3> Float32 { };` and nothing else | **ICE** |
+| the same with a filled body `{ [[1.0, …], …] }` | **ICE** |
+| two same-shape tensors added | **ICE** |
+| two mismatched tensors added | **ICE** |
+
+    internal compiler error (worker thread panicked): Expected int, got Some(0)
+
+A tensor literal does not survive execution, with or without data, with
+or without arithmetic. So the shape question cannot even be reached at
+run time today — `verum check` accepting a mismatch is the whole of the
+observable shape behaviour.
 
 **The `Tensor<T, [dims]>` annotation form used throughout this page does
 not carry shapes at all.** `Tensor<Float32, [4, 3, 1]>` resolves to
