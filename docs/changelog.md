@@ -2178,7 +2178,7 @@ returned `-1` for every call, which made interpreted-mode networking
 a documentation-only feature.
 
 ```verum
-mount core.sys.raw.{
+mount core.intrinsics.runtime.os.{
     __tcp_listen_raw, __tcp_accept_raw,
     __tcp_recv_raw, __tcp_send_raw, __tcp_close_raw,
 };

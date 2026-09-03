@@ -97,6 +97,27 @@ let signer = FileSigner.from_pem_path("/etc/letsencrypt/live/example.com/privkey
 let opts = QuicServerOptions.from_cert(chain, Heap(signer));
 ```
 
+:::danger These two mounts name modules that do not exist
+Measured 2026-09-03 against `core/`:
+
+| written here | reality |
+|---|---|
+| `core.security.x509.parse.{parse_cert_chain_pem}` | no `parse.vr` module, and no `parse_cert_chain_pem` anywhere |
+| `core.security.x509.sign.{FileSigner}` | no `sign.vr` module, and no `FileSigner` anywhere |
+| `ServerOptions.from_cert(chain, Heap(signer))` | **exists** — `core/net/h3/server.vr:85` |
+
+The PEM parsing that does exist is `Certificate.from_pem_chain(&Text)
+-> Result<List<Certificate>, LegacyTlsError>` in
+`core/security/x509/credential.vr`, and a trust bundle is
+`TrustStore.from_pem_bundle`.
+
+The signer half has no substitute: `from_cert` wants a
+`Heap<dyn CertSigner>`, `CertSigner` is declared at
+`core/net/tls13/handshake/server_sm.vr:83`, and **nothing in `core/`
+implements it**. So this walkthrough cannot be written today — not with
+different spellings, not at all — until a concrete signer lands.
+:::
+
 ## Handling individual streams
 
 `QuicAccepted` exposes four async operations:
