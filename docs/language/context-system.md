@@ -13,6 +13,33 @@ declared capabilities.
 
 Verum offers two complementary DI mechanisms.
 
+:::info Which contexts already exist
+A context must be **declared** before `using [...]` will accept it —
+`error<E605>: undefined context` otherwise. The stdlib declares ten:
+
+`Logger`, `Database`, `Auth`, `Config`, `Cache`, `Metrics`, `Tracer`,
+`Clock`, `FileSystem` (all in `core/context/standard.vr`) and `Random`
+(`core/context/random.vr`). See
+[stdlib → context](/docs/stdlib/context#the-10-standard-contexts).
+
+Every other name you meet in these pages — `IO`, `Http`, `Store`,
+`Network` and friends — is a context **the example declares for
+itself**. They are illustrative, not provided: writing `using [Http]`
+without a `context Http { ... }` in scope is an error. Declaring one is
+a single line:
+
+```verum
+context Http {
+    fn get(url: Text) -> Result<Response, HttpError>;
+}
+```
+
+Note also that `IO` is a context name in these examples, not the
+computational property `IO`. Properties (`Pure`, `IO`, `Async`,
+`Fallible`, `Mutates`) are inferred by the compiler and never appear in
+a `using` clause.
+:::
+
 ### Level 1: static `@injectable`
 
 Compile-time dependency injection with zero runtime cost.

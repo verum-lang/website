@@ -333,11 +333,15 @@ value-level `Layer` builder is tracked as a deferred enhancement
 
 ---
 
-## The 10 standard contexts (`standard.vr`)
+## The 10 standard contexts
 
 All are `context protocol`s — you provide a concrete implementation
 at the top of your program. Each one follows the same pattern:
 declare with `using [Name]`, provide with `provide Name = impl`.
+
+Nine are declared in `core/context/standard.vr`; `Random` lives in
+`core/context/random.vr` (measured 2026-09-03 — the heading used to
+attribute all ten to `standard.vr`).
 
 ### `Logger` — structured logging (9 methods)
 
