@@ -82,7 +82,11 @@ fn get_inner_name<r, s>(n: { inner: { name: Text | s } | r }) -> Text {
 ```
 
 A closed record — no row variable — requires an exact match on the
-field set; row-polymorphic code is strictly more permissive.
+field set; row-polymorphic code is meant to be strictly more permissive.
+Note that the open form currently *parses* without *checking*: a record
+missing the named fields is accepted today. See
+[Row polymorphism](/docs/language/row-polymorphism) for the measured
+status.
 
 ## Sum types (variants)
 

@@ -72,8 +72,9 @@ opt-in — you pay only for what you use.
   hierarchy, proof irrelevance, universe polymorphism, level
   arithmetic (`max`, `imax`).
 - **[Row Polymorphism](/docs/language/row-polymorphism)** —
-  extensible records with `{ x: Int | r }`, the lacks predicate,
-  splat syntax, row-preserving transformations.
+  open record types `{ x: Int | r }` parse today but do not yet
+  constrain; the lacks predicate and the pipe-splat are not
+  implemented. Read the status table before building on it.
 - **[Tensor Types](/docs/language/tensor-types)** — shape-typed
   multi-dimensional arrays (`Tensor<Float32, [3, H, W]>`) with
   compile-time shape checking and zero runtime overhead for shape.
