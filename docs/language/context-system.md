@@ -149,10 +149,19 @@ compiler says so:
     but 'Zlog' is excluded via `using [!Zlog]` in 'caller'
 
 :::info What the compiler does with that, measured 2026-09-03
-It is reported as a **warning**, not an error — the phase comment says
-errors "would break existing code that doesn't yet declare all
-contexts" — so the build still succeeds. Raise it with
-`[context] unresolved_policy` in `Verum.toml`.
+It is an **error**, and the build fails. `[context] unresolved_policy`
+in `Verum.toml` chooses the severity, and all four settings now differ:
+
+| `unresolved_policy` | exit | diagnostic | message |
+|---|---|---|---|
+| absent (default) | non-zero | error | shown |
+| `"error"` | non-zero | error | shown |
+| `"warn"` | 0 | none | shown |
+| `"allow"` | 0 | none | silent |
+
+Until this date the `"error"` arm called the same warning routine as
+`"warn"`, so the knob had no effect and a violation reached you as a log
+line that no exit status reflected.
 
 The exclusion also names a real context: `using [!Databse]` is
 `error<E605>: undefined context`, not a silent no-op, so a typo cannot
