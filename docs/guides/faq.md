@@ -150,7 +150,7 @@ DAP-compatible front-end (VS Code, nvim-dap, IntelliJ).
 
 ### Package registry?
 
-`verum publish` / `verum search` target `registry.verum-lang.org`.
+`verum package publish` / `verum package search` target `registry.verum-lang.org`.
 Self-hosting and private registries are supported. Dependency
 specifiers accept registry, git, local path, and content-addressed
 (IPFS).
@@ -163,7 +163,7 @@ See [FFI](/docs/language/ffi).
 
 ### Where's `cargo add`?
 
-`verum add <dep>`. Full toolchain commands: see
+`verum deps add <dep>`. Full toolchain commands: see
 [CLI reference](/docs/reference/cli-commands).
 
 ---

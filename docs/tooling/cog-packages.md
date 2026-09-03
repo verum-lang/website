@@ -127,7 +127,7 @@ A cog can declare its verification profile:
 verification = "portfolio"     # advertised to consumers
 ```
 
-Consumers can filter: `verum add some-cog --require-verification=smt`
+Consumers can filter: `verum deps add some-cog --require-verification=smt`
 refuses to install cogs that do not meet the threshold.
 
 ## Trust model

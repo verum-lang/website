@@ -291,7 +291,7 @@ See [gradual verification](/docs/verification/gradual-verification).
 | `cargo doc` | `verum doc` |
 | `cargo fmt` | `verum fmt` |
 | `cargo clippy` | `verum lint` |
-| `cargo publish` | `verum publish` |
+| `cargo publish` | `verum package publish` |
 | `Cargo.toml` | `verum.toml` |
 | `Cargo.lock` | `Verum.lock` |
 | `rustup` | not needed — `verum` is a single self-contained binary |
@@ -369,7 +369,10 @@ mirrors the test-driven development loop a Rust dev would expect.
 2. **"Why does the constructor use a dot?"** — Variants and associated
    functions are namespaced under the type (`Shape.Circle { ... }`,
    `List.new()`). Consistent across records, enums, and protocols.
-3. **"Where's `cargo add`?"** — `verum add <dep>`. Same thing.
+3. **"Where's `cargo add`?"** — `verum deps add <dep>`. The
+   dependency verbs live under `deps` (`add` / `remove` / `update` /
+   `list`) and the registry verbs under `package` (`publish` /
+   `search` / `install`).
 4. **"How do I `Box<dyn Trait>`?"** — `Heap<dyn Protocol>`.
 5. **"Where's `mem::replace`?"** — `core.intrinsics.memory.replace`.
    For `std::mem::take` there is no general equivalent; `Maybe<T>` has

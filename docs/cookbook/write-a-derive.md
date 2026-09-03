@@ -88,7 +88,16 @@ entry has `.name`, `.type_name`, `.type_kind`, `.visibility`, etc.
 ### Debugging the expansion
 
 ```bash
-$ verum expand-macros src/user.vr
+$ verum expand-macros src/user.vr        # not implemented — see note
+
+:::warning `verum expand-macros` does not exist
+Measured 2026-09-03: `verum expand-macros --help` answers
+`error: unrecognized subcommand`, and the name appears nowhere in
+`verum --help`. There is no macro-expansion dump command today —
+not under this name, not under `expand`, and not hidden as an
+alias (`verum play` IS such a hidden alias for `playbook`, and it
+answers; this one does not).
+:::
 ```
 
 Prints the post-expansion source so you can read exactly what

@@ -87,7 +87,9 @@ Looking for longer guided builds? See **[Tutorials](/docs/tutorials)**.
 ## Metaprogramming
 
 - **[Writing a `@derive(...)`](/docs/cookbook/write-a-derive)** — a
-  full walk-through of `@derive(DisplayAll)` with `verum expand-macros`.
+  full walk-through of `@derive(DisplayAll)`. (The `verum expand-macros`
+  step it shows is not implemented — the walk-through is still correct
+  about what the derive generates.)
 
 ## Systems
 

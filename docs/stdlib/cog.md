@@ -18,7 +18,7 @@ first-class library API for manipulating cogs.
 | Consumer | What it does with `core.cog` |
 |---|---|
 | `verum-registry` (vcogs.io reference impl) | Stores / serves cogs; verifies signatures |
-| `verum publish` / `verum install` CLI | Builds, signs, uploads, downloads, verifies |
+| `verum package publish` / `verum package install` CLI | Builds, signs, uploads, downloads, verifies |
 | IDE / LSP integration | Manifest validation, dependency hover, suggestion |
 | Build tooling (CI) | Reproducible builds via locked dependency resolution |
 
@@ -173,7 +173,7 @@ without re-querying the registry.
 ## Architectural alignment
 
 `core.cog` provides the LIBRARY interface to cog manipulation.
-The CLI tools (`verum publish`, `verum install`, `verum tree`) at
+The CLI tools (`verum package publish`, `verum package install`, `verum tree`) at
 `crates/verum_cli/src/commands/` consume this library — no CLI-
 specific manipulation logic in `core/`, no library logic in
 `crates/verum_cli/`. The split keeps the cog model itself

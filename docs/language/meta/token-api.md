@@ -305,7 +305,8 @@ if !TypeInfo.implements<T, Copy>() {
 ## `Span`
 
 A source position range. Every AST node and every token carries a
-`Span`. Spans are used by diagnostics, by `verum expand-macros` to
+`Span`. Spans are used by diagnostics, by the (unimplemented)
+`verum expand-macros` to
 trace provenance, and by the LSP to locate hover tooltips.
 
 | Method                         | Returns         | Purpose                                 |

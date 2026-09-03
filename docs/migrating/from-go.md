@@ -241,7 +241,7 @@ Go generics (1.18+) are close to Verum's. Differences:
 | `go.mod` | `verum.toml` |
 | `go.sum` | `Verum.lock` |
 | `go mod tidy` | `verum build` (auto-tidy) |
-| `go get example.com/pkg` | `verum add pkg` |
+| `go get example.com/pkg` | `verum deps add pkg` |
 | `go test` | `verum test` |
 | `go build` | `verum build` |
 

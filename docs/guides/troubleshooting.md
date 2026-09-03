@@ -219,7 +219,7 @@ and refine from there. See
 ### "Cannot publish — checksum mismatch"
 
 Someone else already published this `name@version`. Bump the version
-in `verum.toml` and re-run `verum publish`.
+in `verum.toml` and re-run `verum package publish`.
 
 ### "Dependency version conflict"
 

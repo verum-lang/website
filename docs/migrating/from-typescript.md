@@ -246,7 +246,7 @@ fn load_or_default(input: &Text) -> Output {
 | TypeScript | Verum |
 |---|---|
 | `npm init` / `npm create` | `verum new` |
-| `npm install` | `verum add <dep>` |
+| `npm install` | `verum deps add <dep>` |
 | `tsc --watch` | `verum watch` |
 | `tsc` / `tsc --noEmit` | `verum build` / `verum check` |
 | `jest` / `vitest` | `verum test` (libtest-style flag set) |

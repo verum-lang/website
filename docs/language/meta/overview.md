@@ -326,6 +326,16 @@ is working in this single 30-line meta function.
 ## Observability
 
 - `verum expand-macros [--filter "@name"] [--show-hygiene] [--stages]`
+  — **not implemented**; see the note below.
+
+:::warning `verum expand-macros` does not exist
+Measured 2026-09-03: `verum expand-macros --help` answers
+`error: unrecognized subcommand`, and the name appears nowhere in
+`verum --help`. There is no macro-expansion dump command today —
+not under this name, not under `expand`, and not hidden as an
+alias (`verum play` IS such a hidden alias for `playbook`, and it
+answers; this one does not).
+:::
   prints the post-expansion source, optionally annotated.
 - The LSP surfaces the same information inline, per-cursor.
 - `CompileDiag` diagnostics participate in the standard error
