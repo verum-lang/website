@@ -33,6 +33,29 @@ The five statuses are **mutually exclusive**.  Aggregate modules (`base`,
 submodules — if any submodule is `regression-only`, the aggregate is at
 most `partial`.
 
+:::caution The aggregate rule cannot be evaluated today
+Measured 2026-09-03, comparing all 46 status-bearing pages against the
+589 rows of `core-tests/INVENTORY.md`:
+
+**247 of those rows carry `unverified`, a sixth token this table does
+not define.** It was introduced by the T0220 liveness gate to mark a row
+whose status had never actually been asserted — the ABSENCE of a
+conformance level rather than one of the five. Taking it as "weakest"
+propagates it into every aggregate: 32 of the 46 pages would become
+`unverified`, which says less than what they say now.
+
+So the aggregate rule as written is not applicable while that token
+exists, and the two sources are only comparable where both use the five.
+Where they were — `signal` and `simd` — the pages were one status
+PESSIMISTIC and have been corrected against the measurement.
+
+The fix is not to relabel the pages. It is to decide what `unverified`
+means in this table: either it is a sixth status with its own row and
+rank, or those 247 inventory rows need real measurements. Until then, a
+disagreement between a page and the inventory is not evidence of drift
+in the page.
+:::
+
 ## Frontmatter contract
 
 Each module page declares its status in YAML frontmatter so search /

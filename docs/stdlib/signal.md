@@ -1,8 +1,8 @@
 ---
 title: signal
 description: Async signal subscription (SIGTERM, SIGINT, SIGHUP)
-status: regression-only
-status_detail: Conformance suites landed in core-tests/signal/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
+status: partial
+status_detail: Measured 2026-08-08 in a full interpreter run — 20 passed, 0 failed, 5 compile-error, 0 ignored. The page carried `regression-only` while `core-tests/INVENTORY.md` had recorded `partial` since that measurement; the inventory is the truth table this frontmatter mirrors. Cross-tier --aot validation still deferred behind the AOT stdlib build cascade.
 ---
 
 # `core.signal`
