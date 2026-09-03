@@ -1569,6 +1569,18 @@ verum grammar validate FILE   # validate a .vr file against the grammar only
 verum disasm --show-tokens    # tokeniser output for debugging
 ```
 
+:::warning None of these four commands exists
+Measured 2026-09-03: `verum grammar` and `verum disasm` both answer
+`error: unrecognized subcommand`, and neither name appears in
+`verum --help`.
+
+To check a file against the grammar today, use `verum check FILE` — it
+parses and type-checks, and a syntax error is reported with the
+production it expected. To read the grammar, read
+`grammar/verum.ebnf`; it is the project's declared source of truth and
+is kept in step with the parser by measurement.
+:::
+
 ## Version
 
 This page reflects grammar version **3.0** — 2,423 lines of EBNF.

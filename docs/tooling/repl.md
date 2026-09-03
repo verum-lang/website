@@ -246,9 +246,15 @@ A non-interactive mode evaluates a file without the prompt:
 
 ```bash
 verum run my_script.vr              # run as a main program
-verum eval "1 + 2 + 3"              # eval a single expression
+verum eval "1 + 2 + 3"              # NOT IMPLEMENTED — see note below
 verum check my_script.vr            # just type-check (no eval)
 ```
+
+:::warning `verum eval` does not exist
+Measured 2026-09-03: `verum eval --help` answers `error: unrecognized
+subcommand`. To evaluate a single expression, use the REPL (`verum
+repl`) or a one-line script — `verum file.vr` runs a script directly.
+:::
 
 ## Using the REPL programmatically
 

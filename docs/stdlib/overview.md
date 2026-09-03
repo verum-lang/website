@@ -217,8 +217,14 @@ kind = "full"
 ```bash
 $ verum doc --open core                # generate + open docs
 $ verum doc --search "Iterator"        # search
-$ verum api --signature "fn map"       # query by signature
+$ verum api --signature "fn map"       # NOT IMPLEMENTED — see note below
 ```
+
+:::warning `verum api` does not exist
+Measured 2026-09-03: `verum api --help` answers `error: unrecognized
+subcommand`. There is no signature-search command. `verum doc` generates
+documentation and is the nearest thing that ships.
+:::
 
 Source lives at `core/`.
 
