@@ -48,19 +48,11 @@ then fails at RUN time with "Index out of bounds". The line above used to
 promise "fails to compile if the length is known and wrong" — it does
 not.
 
-**And the annotation corrupts the values** (T1122) — which is not a
-destructuring defect at all, though that is how it was found. It takes
-three things together: a fixed-size array type, a `let` annotation, and
-a CALL initialiser.
-
-    let a: [Int; 3] = three();   a[0] is 0
-    let a           = three();   a[0] is 1
-
-Five controls are clean: the same annotation with a literal initialiser,
-no annotation with a call, a `List<Int>` annotation with a call, an `Int`
-annotation with a call, and tuple or record destructures with both.
-Until it is fixed, bind a call's fixed-size array result WITHOUT the
-annotation.
+**The annotation used to corrupt the values** — fixed 2026-09-03
+(T1122). Until then, a fixed-size array annotation on a `let` whose
+initialiser was a CALL bound a zero-filled array of the right length,
+silently discarding the call's result. `[Int; N]` and `[Float; N]` were
+affected; `Bool`, `Text` and `Byte` arrays were not.
 :::
 
 `..` may appear **once** per pattern. `..tail` binds the remaining
