@@ -351,7 +351,7 @@ mode](/docs/getting-started/script-mode).**
   `Text`, `async`, `math`, `term`, `net`, `database`, `crypto`,
   the typed shell-scripting framework, the Diakrisis enactment
   layer, and the rest of `core/`.
-- **[Verification](/docs/category/verification)** — the gradual
+- **[Verification](/docs/verification)** — the gradual
   verification ladder, refinement reflection, contracts, the
   tactic DSL, framework axioms, proof export, program
   extraction, the trusted kernel, the three-kernel architecture,
@@ -360,16 +360,16 @@ mode](/docs/getting-started/script-mode).**
 - **[Architecture](/docs/architecture/overview)** — how the
   compiler, bytecode, runtime tiers, multi-backend SMT, and GPU
   MLIR lowering compose.
-- **[Tooling](/docs/category/tooling)** — the `verum` CLI (with
+- **[Tooling](/docs/tooling/cli)** — the `verum` CLI (with
   every audit subcommand), LSP, REPL, Playbook TUI, build
   system, test runner, benchmarking, package registry.
 - **[Reference](/docs/reference/grammar-ebnf)** — EBNF grammar,
   keyword list, attribute registry, CLI commands, `verum.toml`
   schema, lint rules, glossary.
-- **[Cookbook](/docs/cookbook)** — task-oriented recipes (HTTP
+- **[Cookbook](/docs/cookbook/overview)** — task-oriented recipes (HTTP
   server, validation, scheduler, calc proofs, FFI binding,
   shell scripting, OWL 2 reasoning, …).
-- **[Tutorials](/docs/tutorials)** — guided walkthroughs
+- **[Tutorials](/docs/tutorials/overview)** — guided walkthroughs
   building real programs end-to-end.
 
 ## 9. Who Verum is for
@@ -409,7 +409,7 @@ get `verum --version` on your terminal, then follow the
 **[Language Tour](/docs/getting-started/tour)**. From there:
 
 - Embedded firmware → **[Cookbook → embedded
-  drivers](/docs/cookbook)** + the `@no_std` discipline.
+  drivers](/docs/cookbook/overview)** + the `@no_std` discipline.
 - Application code with verification → **[Gradual
   verification](/docs/verification/gradual-verification)**.
 - Architectural types → **[Architecture-as-Types

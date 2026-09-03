@@ -462,10 +462,10 @@ carries:
 
 - The **value type system** — Hindley-Milner with refinements,
   dependent types, linearity, row polymorphism. Documented under
-  [Language → Type system](/docs/category/language-types).
+  [Language → Type system](/docs/architecture-types).
 - The **verification ladder** — nine semantic strategies from
   `runtime` up to `certified`, with per-strategy proof-obligation
-  generators. Documented under [Verification](/docs/category/verification).
+  generators. Documented under [Verification](/docs/verification).
 - The **architectural type system** — what *this* category covers.
 
 The three dimensions share the same compiler, the same diagnostic

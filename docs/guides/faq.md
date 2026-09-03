@@ -175,7 +175,7 @@ See [FFI](/docs/language/ffi).
 1. [Installation](/docs/getting-started/installation) (`curl ... | sh`).
 2. [Hello, World](/docs/getting-started/hello-world) (5 minutes).
 3. [Language tour](/docs/getting-started/tour) (10 minutes).
-4. Pick a [cookbook recipe](/docs/cookbook) that looks like your task.
+4. Pick a [cookbook recipe](/docs/cookbook/overview) that looks like your task.
 5. Read [philosophy](/docs/foundations/principles) when you want to
    understand *why*.
 
