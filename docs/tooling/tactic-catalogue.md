@@ -482,6 +482,23 @@ have rewritten what you wrote.
 Every law is keyed to its participating combinators in the JSON
 schema below.
 
+:::note What "holds" means for these laws
+Eight of the twelve have a dedicated predicate
+(`check_andthen_left_identity` and siblings in
+`crates/verum_smt/src/tactic_laws.rs`) deciding them on structural
+equality of combinator trees; the other four are exercised through
+`normalize()`. 32 unit tests cover them over the primitive tactics, and
+two of those pin the inventory itself — that `SIMPLIFIER_APPLIES` has
+exactly twelve entries, and that every catalogue law appears in it — so
+a law cannot quietly become documentation-only.
+
+They are checked as **rewrite-rule identities on the combinator
+algebra**, the level at which the simplifier consumes them. They are not
+machine-checked as semantic equivalences over proof states: the tactic
+combinators have no Verum-side proof corpus today, and
+`core/proof/tactics/` contains no `theorem`.
+:::
+
 ---
 
 ## CLI surface

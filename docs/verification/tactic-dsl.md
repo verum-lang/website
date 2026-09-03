@@ -227,53 +227,25 @@ Tactic ::= atomic        -- any @tactic meta fn
         |  fail(msg: Text)     -- never succeeds
 ```
 
-Twelve semantic laws hold. The inventory below is generated from
-`CANONICAL_LAW_TABLE` in `crates/verum_smt/src/tactic_laws.rs`, which
-is the single source of truth: both the simplifier and the catalogue
-read from it, and a law name appears in it exactly once.
+Twelve semantic laws hold. They are listed once, in
+[the tactic catalogue](/docs/tooling/tactic-catalogue#the-12-algebraic-laws),
+which is generated from `CANONICAL_LAW_TABLE` in
+`crates/verum_smt/src/tactic_laws.rs` — the single source of truth that
+the simplifier, the `verum tactic laws` CLI and
+`verum_verification::tactic_combinator` all read from.
 
-| Law | Rewrites to | Name |
-|---|---|---|
-| `skip ; t` | `t` | `seq-left-identity` |
-| `t ; skip` | `t` | `seq-right-identity` |
-| `(t ; u) ; v` | `t ; (u ; v)` | `seq-associative` |
-| `fail \|\| t` | `t` | `orelse-left-identity` |
-| `t \|\| fail` | `t` | `orelse-right-identity` |
-| `(t \|\| u) \|\| v` | `t \|\| (u \|\| v)` | `orelse-associative` |
-| `repeat_n(0, t)` | `skip` | `repeat-zero-is-skip` |
-| `repeat_n(1, t)` | `t` | `repeat-one-is-body` |
-| `try { t }` | `t \|\| skip` | `try-equals-orelse-skip` |
-| `solve { skip }` | `fail` (when goals remain open) | `solve-of-skip-fails-when-open` |
-| `first_of([t])` | `t` | `first-of-singleton-collapses` |
-| `all_goals { skip }` | `skip` | `all-goals-of-skip-is-skip` |
+Two points that matter when reading a tactic here:
 
-The identity element is **`skip`**, not `ok` — `skip` is the
-0-iteration repeat of the identity simplification. Sequential
-composition and `orelse` each form a monoid: `;` with identity `skip`,
-`||` with identity `fail`.
+- The identity element is **`skip`**, not `ok`. `skip` is the
+  0-iteration repeat of the identity simplification.
+- Sequential composition and `orelse` each form a monoid: `;` with
+  identity `skip`, `||` with identity `fail`. That is what lets the
+  orchestrator hoist common prefixes and flatten alternation chains.
 
-`verum tactic laws` prints this table, and `verum tactic explain <name>`
-names the laws that apply to one combinator; both read the same table,
-so the CLI cannot drift from the simplifier.
-
-These laws let the orchestrator optimize tactic expressions —
-`tactic_laws::normalize()` is a fixed-point rewrite applying every
-law in `SIMPLIFIER_APPLIES`, and every user tactic is normalized
-through it at compile time.
-
-:::note What "holds" means here
-Eight of the twelve have a dedicated predicate
-(`check_andthen_left_identity` and siblings) deciding them on structural
-equality of combinator trees; the other four are exercised through
-`normalize()`. 32 unit tests in `tactic_laws.rs` cover them over the
-primitive tactics, and two of those tests pin the inventory itself: that
-`SIMPLIFIER_APPLIES` has exactly twelve entries, and that every
-catalogue law appears in it — so no law can become documentation-only.
-So the laws are checked as **rewrite-rule identities on the combinator
-algebra** — the level at which the simplifier consumes them. They are
-not machine-checked as semantic equivalences over proof states; the
-tactic combinators have no Verum-side proof corpus today.
-:::
+`tactic_laws::normalize()` is a fixed-point rewrite applying every law
+in `SIMPLIFIER_APPLIES`, and every user tactic is normalized through it
+at compile time — so what runs is the canonical form, not what you
+wrote.
 
 ---
 
