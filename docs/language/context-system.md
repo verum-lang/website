@@ -140,9 +140,26 @@ extended_context_item = negative_context       (* !Context          *)
 
 ### Negative contexts
 
-`!IO` means "this function may not perform IO." A caller that provides
-`IO` to the function violates the contract at compile time. This is
-how Verum encodes "pure" code:
+`!Ctx` means "this function may not use `Ctx`, and neither may
+anything it calls." A function that declares `using [!Ctx]` and calls
+one whose `using` clause includes `Ctx` violates the contract, and the
+compiler says so:
+
+    Function 'caller' calls 'callee' which requires context 'Zlog',
+    but 'Zlog' is excluded via `using [!Zlog]` in 'caller'
+
+:::info What the compiler does with that, measured 2026-09-03
+It is reported as a **warning**, not an error — the phase comment says
+errors "would break existing code that doesn't yet declare all
+contexts" — so the build still succeeds. Raise it with
+`[context] unresolved_policy` in `Verum.toml`.
+
+The exclusion also names a real context: `using [!Databse]` is
+`error<E605>: undefined context`, not a silent no-op, so a typo cannot
+read as a guarantee.
+:::
+
+This is how Verum encodes "pure" code:
 
 ```verum
 using Pure = [!IO, !State<_>, !Random];

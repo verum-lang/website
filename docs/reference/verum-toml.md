@@ -651,6 +651,37 @@ require_verify_on_refined_fn = true
 Full schema, every knob, every preset and the precedence stack:
 **[Reference → Lint configuration](/docs/reference/lint-configuration)**.
 
+## `[profile]` — per-build-kind compilation settings
+
+Four sub-tables, one per build kind: `[profile.dev]`, `[profile.release]`,
+`[profile.test]`, `[profile.bench]`. Each carries the same ten keys.
+
+```toml
+[profile.release]
+tier              = "1"          # "0" (interpreter) | "1" (AOT)
+verification      = "static"     # none | runtime | static | fast
+opt_level         = 3            # 0..3
+debug             = false
+debug_assertions  = false
+overflow_checks   = false
+lto               = true
+incremental       = false
+codegen_units     = 1            # omit for the compiler's choice
+cbgr_checks       = "optimized"  # all | optimized | proven | audit-points
+```
+
+`tier` is written as the string `"0"` or `"1"`; `"interpreter"`,
+`"interp"`, `"aot"`, `"release"` and `"native"` are accepted aliases.
+`verification` is lowercase; `cbgr_checks` is kebab-case, matching
+[the three-tier reference model](/docs/language/cbgr) —
+`optimized` lets escape analysis elide what it can prove, `proven`
+checks only what it could not, and `audit-points` restricts checks to
+boundary points.
+
+Every key is optional and every sub-table is optional: an absent
+`[profile.release]` gets the compiler's defaults, which are what
+`verum build --release` uses today.
+
 ## `[lsp]`
 
 ```toml
