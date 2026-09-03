@@ -148,9 +148,23 @@ implement List<UInt8> {
 }
 ```
 
-The compiler checks **specialisation coherence**: the specialised
-instance must satisfy the same contracts as the generic one (a
-metatheorem discharged at compile time).
+The compiler runs a coherence phase on every compile, governed by
+`[protocols].coherence` in `verum.toml` (`strict` by default, with
+`lenient` and `unchecked` available). It enforces three rules:
+
+- **Orphan rule** — an implementation must live where either the
+  protocol or the type is defined.
+- **Overlap** — two implementations may not apply to the same
+  `(protocol, type)` pair.
+- **Opt-in** — an overlapping implementation must carry `@specialize`.
+
+What it does **not** check is contract equivalence. Nothing verifies
+that the specialised body satisfies the same contracts as the generic
+one: the overlap detector, the specialisation lattice, and the SMT
+coherence verifier all exist, but no compilation phase discharges that
+metatheorem. A `@specialize` override that behaves differently from the
+generic implementation is accepted — keeping the two interchangeable is
+yours to guarantee.
 
 ## Associated-type projections — `Self.Item`
 
@@ -215,15 +229,38 @@ implementer's `Item` choice.
 
 ## Generic associated types (GATs)
 
+An associated type may carry type parameters of its own, so the
+implementer supplies a type *constructor* rather than a single type:
+
 ```verum
-type LendingIterator is protocol {
-    type Item<'a>;
-    fn next<'a>(&'a mut self) -> Maybe<Self.Item<'a>>;
+type Mapper is protocol {
+    type Out<T>;
+    fn run<T>(&self, x: T) -> Self.Out<T>;
 };
+
+type Box is { v: Int };
+
+implement Mapper for Box {
+    type Out<T> = T;
+
+    public fn run<T>(&self, x: T) -> T { x }
+}
 ```
 
-GATs let associated types depend on the lifetime/shape of each call,
-not on the implementation as a whole.
+The implementation must bind the associated type with the **same
+number** of parameters the protocol declared.  Binding
+`type Out = Int` against a declared `type Out<T>` is a conformance
+error (`E405`), reported at the binding.
+
+### Lifetimes do not parameterise a GAT
+
+The grammar accepts a lifetime wherever a type parameter may appear,
+so `type Item<'a>` parses.  It does not mean what the same spelling
+means in Rust: lifetime annotations in Verum are **parsed and
+discarded** — `&'static Text` and `&Text` check identically — so an
+associated type parameterised only by a lifetime is, to the checker,
+parameterised by nothing.  Write the type parameter you actually
+want to vary.
 
 ## Static vs dynamic dispatch
 

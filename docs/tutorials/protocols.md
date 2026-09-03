@@ -264,17 +264,23 @@ type. Using `IntParser.parse("42")` gives you `Result<Int, ParseError>`
 
 ## Step 10 — Generic associated types (GATs)
 
-An associated type can itself take parameters:
+An associated type can itself take parameters, so the implementer
+supplies a type *constructor* rather than a single type:
 
 ```verum
-pub type Iterable is protocol {
-    type Iter<'a>;
-    fn iter<'a>(&'a self) -> Self.Iter<'a>;
-}
+public type Wrapper is protocol {
+    type Wrapped<T>;
+    fn wrap<T>(&self, x: T) -> Self.Wrapped<T>;
+};
 ```
 
-GATs are essential for lending iterators and for higher-kinded
-abstractions. See
+The implementation must bind it with the same number of parameters —
+`type Wrapped<T> = List<T>;`, not `type Wrapped = List<Int>;`.
+
+GATs are the tool for higher-kinded abstractions. Note that a lifetime
+is **not** a parameter here: `type Iter<'a>` parses, but lifetime
+annotations are discarded by the checker, so that spelling declares an
+associated type with no parameters at all. See
 [language/protocols](/docs/language/protocols#generic-associated-types-gats).
 
 ## Step 11 — Specialisation

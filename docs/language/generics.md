@@ -418,8 +418,8 @@ example building a verified fold-combinator.
 
 ## Lifetime / region parameters
 
-CBGR makes lifetimes mostly implicit, but they can be named
-explicitly when they appear in signatures:
+The grammar accepts a lifetime wherever a type parameter may appear,
+so this parses:
 
 ```verum
 fn longest<'r>(a: &'r Text, b: &'r Text) -> &'r Text {
@@ -427,13 +427,16 @@ fn longest<'r>(a: &'r Text, b: &'r Text) -> &'r Text {
 }
 ```
 
-In practice, lifetime-annotated signatures are **rare** in Verum;
-CBGR and escape analysis handle the common cases automatically. Use
-explicit lifetimes when:
+**It constrains nothing.** Lifetime annotations are parsed and
+discarded: `&'static Text` and `&Text` check identically, and a
+signature whose annotations disagree with each other is accepted
+exactly like one whose annotations agree. Reference safety in Verum
+comes from CBGR and escape analysis, which read the code — not from
+the annotations.
 
-- The function returns a reference whose lifetime relates to multiple
-  inputs in a non-obvious way.
-- You want to document a lifetime relationship at the API boundary.
+Write them only as documentation, if at all, and never as a claim the
+compiler will hold you to. Region *inference* is where the guarantee
+lives; see [References](/docs/language/references).
 
 ## Universe polymorphism
 

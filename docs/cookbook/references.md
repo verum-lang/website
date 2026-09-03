@@ -138,10 +138,10 @@ Almost always a zero-cost `&checked`.
 ### Stored reference → own it instead
 
 ```verum
-// Tempting but hard to promote
+// Parses, but the `'a` is discarded — it promises nothing
 type Cache<'a> is { data: &'a Map<Key, Value> };
 
-// Easier to optimise, same semantics in practice
+// Say what you mean: the record owns a counted handle
 type Cache is { data: Shared<Map<Key, Value>> };
 ```
 

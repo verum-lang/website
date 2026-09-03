@@ -83,17 +83,29 @@ parentheses was enough to hide an impure operation from the check. Those
 four rows are now a conformance pin in both directions — the same wrappers
 around genuinely pure expressions must stay silent.
 
-**The gap.** `E503` does not yet fire for every side effect the grammar
-names. Also measured, in a `pure fn` body:
+**The three rows this page used to list as a gap now fire.** Re-measured
+2026-09-03 on `verum check`, each probe differing from its control in one
+value:
 
-| body | result | expected |
-|---|---|---|
-| `print("x")` | accepted | should report — `IO` |
-| `*x = 1` through a `&mut` parameter | accepted | should report — mutation |
-| a call to a non-`pure` function | accepted | should report — the grammar's own comment says a pure function cannot call an impure one |
+| body of a `pure fn` | result |
+|---|---|
+| `a + b` (control) | accepted |
+| `print("x")` | `error<E503>: pure function \`f\` has side effects: IO` |
+| `*x = 1` through a `&mut` parameter | `error<E503>: ... side effects: Mutates` |
+| a call to a non-`pure` function | `error<E503>: ... side effects: IO` |
+| a `pure` method calling an impure method on the same type | `error<E503>: ... side effects: IO` |
 
-So today `pure` is verified against task spawning and reads as an
-assertion of intent for the rest.
+Writing a **local** is still not an effect — a loop accumulating into
+`let mut acc` is as pure as the fold it is written out from. The
+distinction the compiler draws is whether the assignment reaches its
+target through a reference the caller handed in.
+
+Properties travel across call sites by a fixpoint over the module's
+functions, so declaration order does not decide the answer: an impure
+callee defined *below* its pure caller is still caught. Method
+properties are keyed per name, and a probe with `A.reset` impure and
+`B.reset` pure confirms that calling `B.reset` from a `pure fn` stays
+accepted — the two do not collide.
 
 The negative-context form is **not** a substitute, and the measurements
 say so rather than the reasoning. All three of these are accepted by

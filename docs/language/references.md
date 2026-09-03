@@ -180,19 +180,21 @@ the outside.
 
 ## References in data structures
 
-Storing a reference in a record commits you to its lifetime. In Verum,
-this is usually done via `Shared<T>` (ref-counted) or a borrow-checker
-approved `&'a T` when the compiler can track the scope:
+Storing a reference in a record commits you to its lifetime. In Verum
+that commitment is enforced by CBGR at the dereference, not by an
+annotation on the record:
 
 ```verum
-type Cache<'a> is {
-    hot: &'a Map<Key, Value>,
-    ...
+type Cache is {
+    hot: Shared<Map<Key, Value>>,
 };
 ```
 
-In practice, most Verum code avoids lifetime-parameterised records —
-CBGR makes `Shared<Map<Key, Value>>` a cheap and safe alternative.
+The lifetime-parameterised spelling `type Cache<'a> is { hot: &'a Map<Key, Value> }`
+parses, but the `'a` is discarded — it records an intention the
+compiler does not check. Reach for `Shared<T>` when a record must
+outlive the scope that built it; it is cheap, and its safety is
+enforced rather than annotated.
 
 ## Taking addresses
 

@@ -48,12 +48,12 @@ below gets you writing code quickly; subtleties are flagged with
 | `.await` | `.await` (same) |
 | `use std::collections::*;` | `mount std.collections.*;` |
 | `mod foo;` | `module foo;` |
-| `pub`, `pub(crate)`, `pub(super)` | `pub`, `internal`, `pub(super)` |
+| `pub`, `pub(crate)`, `pub(super)` | `public` (`pub` is an accepted synonym), `public(cog)`, `public(super)` |
 | (no equivalent) | `pub(in path)` — restrict to a named subtree |
 | (no equivalent) | `protected` — protocol-local, visible to impls |
 | `unsafe { ... }` | `unsafe { ... }` (same) |
 | `&T` | `&T` (but CBGR-checked) |
-| `&'a T` | `&T` — lifetimes usually inferred |
+| `&'a T` | `&T` — CBGR checks the deref; `'a` parses but is discarded |
 | (no equivalent) | `&checked T` — proven-safe zero-cost reference |
 | (no equivalent) | `&unsafe T` — unchecked zero-cost reference |
 | `*const T`, `*mut T` | `*const T`, `*mut T` (same) |
@@ -64,10 +64,12 @@ below gets you writing code quickly; subtleties are flagged with
 
 Same core model. Differences:
 
-**No lifetime annotations in signatures (usually).** CBGR's runtime
-generation checking absorbs what Rust's lifetime analysis statically
-tracked. When the compiler cannot infer, you add lifetimes explicitly
-— but that's rare in practice.
+**No lifetime annotations in signatures.** CBGR's runtime generation
+checking absorbs what Rust's lifetime analysis tracked statically.
+The syntax is still accepted — `fn f<'a>(x: &'a T)` parses — but a
+lifetime annotation is discarded and constrains nothing, so it is not
+an escape hatch for a case CBGR cannot express. Use `&checked T` when
+you want the compiler to refuse code that would need a runtime check.
 
 **Three reference tiers.** `&T` is CBGR-checked (~0.93 ns per
 deref, measured on the `production_targets` bench — a single
@@ -148,7 +150,7 @@ will compile here. Treat the warning as the error it will become.
   `or_else`, `unwrap`, `unwrap_or_else`, `?`).
 - `Option<T>` → `Maybe<T>` — identical API.
 - `thiserror`-style error enums: use `@derive(Debug, Display, Error)`.
-- `anyhow::Error`: use `core::base::Error` (lightweight catch-all)
+- `anyhow::Error`: use `core.base.result.Error` (lightweight catch-all: a single `message: Text`)
   plus your own typed errors where it matters.
 
 **`throws(E)`**: for functions that can throw a specific error type —
@@ -369,8 +371,11 @@ mirrors the test-driven development loop a Rust dev would expect.
    `List.new()`). Consistent across records, enums, and protocols.
 3. **"Where's `cargo add`?"** — `verum add <dep>`. Same thing.
 4. **"How do I `Box<dyn Trait>`?"** — `Heap<dyn Protocol>`.
-5. **"Where's `mem::replace`?"** — `core::intrinsics::memory::replace`,
-   or `std::mem::take` equivalent: `xs.take()`.
+5. **"Where's `mem::replace`?"** — `core.intrinsics.memory.replace`.
+   For `std::mem::take` there is no general equivalent; `Maybe<T>` has
+   `take(&mut self) -> Maybe<T>`, and elsewhere use `replace` with the
+   value you want left behind. (Note `List.take(n)` is unrelated — it
+   returns the first `n` elements.)
 6. **"Why `f"{x}"` not `format!("{x}")`?"** — format strings are
    literals, not macros. The compiler validates them.
 
