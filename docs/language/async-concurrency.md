@@ -57,10 +57,31 @@ let mut pending: List<Future<Response>> = List.new();
 for url in urls {
     pending.push(spawn(async { fetch(url).await }));
 }
-for h in pending {          // by value: awaiting CONSUMES a future,
-    handle(h.await);        // so `pending.iter()` is refused
+for h in pending {          // by value, which is how it should be written
+    handle(h.await);
 }
 ```
+
+:::warning Awaiting does not consume, and the call type is erased
+Measured 2026-09-03, each probe one value from its control:
+
+    let h = spawn { 1 }; let a = h.await;                   accepted (control)
+    let h = spawn { 1 }; let a = h.await; let b = h.await;  ALSO accepted
+
+So a handle awaited twice is not refused today — `pending.iter()` would
+be accepted as well. Write the by-value loop for the semantics you want,
+not because the compiler will hold you to it.
+
+Separately, an `async fn` call carries the plain result type rather than
+a future over it:
+
+    async fn f() -> Int { 1 }
+    fn takes_int(x: Int) -> Int { x }
+    takes_int(f())        // accepted
+
+which is the same erasure the AOT-status note below describes, seen at
+the type level.
+:::
 
 ### Context forwarding
 

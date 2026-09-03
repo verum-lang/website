@@ -119,11 +119,24 @@ the reference is passed around):
 | 6 | `MUTABLE`    | `&mut` semantics (exclusive access) |
 | 7 | `NO_ESCAPE`  | optimisation hint — cannot escape |
 
-This is how `Database with [READ]` becomes a value at runtime — the
-`Database` reference has `WRITE` cleared, and a call to
+This is how `Database with [Read]` becomes a value at runtime — the
+`Database` reference has `Write` cleared, and a call to
 `Database.write(...)` fails a capability check that is one AND plus
-one branch (~1 ns). Reducing the set (`db.readonly()`) is always
-allowed; re-expanding it is rejected by the compiler.
+one branch (~1 ns).
+
+At compile time the direction is checked, and both halves were measured
+on 2026-09-03 with a control:
+
+    a [ReadWrite] value where [Read] is required    accepted
+    a [Read] value where [ReadWrite] is required    error<E411>
+
+`ReadWrite` grants `Read` and `Write`, and `Admin` grants everything, so
+giving a capability away needs no ceremony — pass the value. Acquiring
+one is refused: "a capability may be given away, never acquired".
+
+(Until that date the narrowing was refused too, and with the widening
+message. There is no `db.readonly()` method; attenuation happens at the
+call, from the parameter's declared capability set.)
 
 ## When the check is elided
 
