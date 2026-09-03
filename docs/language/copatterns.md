@@ -82,17 +82,37 @@ cofix fn ones() -> Stream<Int> {
 ```
 
 A definition that recurses in `.head` without a guarding constructor
-is rejected:
+is meant to be rejected:
 
 ```verum
 cofix fn bad() -> Stream<Int> {
-    .head => bad().head(),       // no progress — rejected
+    .head => bad().head(),       // no progress
     .tail => bad(),
 }
 ```
 
 This is the dual of induction's termination check: induction demands
 the input shrink; coinduction demands the output grow.
+
+:::warning The productivity check cannot be what rejects it today
+Measured 2026-09-03: the productive definition and the unproductive one
+produce the **same** diagnostic, so the rejection is not the productivity
+check speaking.
+
+    cofix fn nats_from(n: Int) -> Stream<Int> { .head => n, .tail => ... }
+      -> error: Type inference for expression kind 'copattern body'
+                requires additional context.
+
+    cofix fn bad() -> Stream<Int> { .head => bad().head(), .tail => bad() }
+      -> the identical error
+
+A copattern body does not typecheck at all — the control fails exactly
+as the subject does — so a negative test on this page's `bad()` would
+pass for the wrong reason. `check_cofix_productivity` exists in the
+pipeline and is called; it is not reached, because inference stops
+first. The conformance spec `070_copattern_basic.vr` carries
+`@expect: pass` and reports nine errors.
+:::
 
 ## Coinductive protocols
 
