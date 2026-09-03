@@ -48,16 +48,18 @@ then fails at RUN time with "Index out of bounds". The line above used to
 promise "fails to compile if the length is known and wrong" — it does
 not.
 
-**And the annotation corrupts the values** (T1122). When the initialiser
-is a call, writing the annotation changes what gets bound:
+**And the annotation corrupts the values** (T1122) — which is not a
+destructuring defect at all, though that is how it was found. It takes
+three things together: a fixed-size array type, a `let` annotation, and
+a CALL initialiser.
 
-    let [x, y, z]: [Int; 3] = three();   // prints 0 0 0
-    let [x, y, z]           = three();   // prints 1 2 3
+    let a: [Int; 3] = three();   a[0] is 0
+    let a           = three();   a[0] is 1
 
-One `sed` substitution apart, everything else identical. A literal
-initialiser is unaffected with or without the annotation, and indexing
-the same return value is correct — so it takes the annotation and a call
-together. Until that is fixed, destructure a call's result WITHOUT the
+Five controls are clean: the same annotation with a literal initialiser,
+no annotation with a call, a `List<Int>` annotation with a call, an `Int`
+annotation with a call, and tuple or record destructures with both.
+Until it is fixed, bind a call's fixed-size array result WITHOUT the
 annotation.
 :::
 
