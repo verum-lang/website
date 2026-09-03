@@ -174,7 +174,7 @@ When **finding a kernel disagreement**:
    Slot A is the trusted base, so it should be right unless the
    typing rules themselves changed.
 3. Fix the misbehaving slot.  Document the defect in the audit
-   ledger (`docs/architecture/verum-kernel-audit.md`).
+   ledger (`docs/architecture/verum-kernel-audit.md` — not written yet).
 4. Confirm the disagreement flips to unanimous.
 
 ## 8. Cross-references

@@ -132,7 +132,7 @@ Near-term items already underway for **v0.33**:
 - **Use cases & pain points**: open issues / discussions on
   the project repository.
 - **RFCs**: for anything touching the language or stdlib surface.
-  Template at `docs/rfcs/TEMPLATE.md`.
+  Template at `docs/rfcs/TEMPLATE.md` — not present yet.
 - **Pull requests**: see [Contributing](/docs/community/contributing).
 
 ## Version history

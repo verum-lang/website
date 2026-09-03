@@ -46,7 +46,10 @@ representative bug class this design pattern surfaces.
 
 The two implementations were authored separately against the same
 abstract specification (the typing rules in
-`docs/research/proof-tree-formalization.md`) — they are intended
+`docs/research/proof-tree-formalization.md`, a document that does not
+exist in either repository as of 2026-09-03 — the specification is
+carried by `crates/verum_kernel/src/proof_tree.rs` instead) — they are
+intended
 to disagree only when one of them has a bug.
 
 ## 3. The 24-cert canonical battery
@@ -255,7 +258,7 @@ When **finding a kernel disagreement** (i.e., the gate failed):
 1. Add a `defect-N-mirror` cert to the battery that captures the
    minimal failing shape.
 2. Fix the kernel(s). Document the defect in the audit ledger
-   (`docs/architecture/verum-kernel-audit.md`).
+   (`docs/architecture/verum-kernel-audit.md` — not written yet).
 3. Confirm the cert flips to unanimous agreement.
 
 ## 9. Cross-references

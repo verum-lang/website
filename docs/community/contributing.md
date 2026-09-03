@@ -45,7 +45,8 @@ Small additions: open an issue describing the use case.
 
 Anything touching the language surface, the type system, or the
 stdlib ABI: **write an RFC** first. Template:
-`docs/rfcs/TEMPLATE.md`.
+`docs/rfcs/TEMPLATE.md` (not present yet — write the RFC free-form
+until it lands).
 
 RFCs undergo a **two-week comment period** before merge. Big ones
 (type-system changes, verification model) can take longer.
