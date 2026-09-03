@@ -195,8 +195,26 @@ type RingBuffer<const N: Int { self > 0 }, T> is {
 };
 ```
 
-The refinement `N > 0` is checked at every instantiation; `identity<0, Float>()`
-is a compile error.
+The refinement `N > 0` is *intended* to be checked at every
+instantiation.
+
+:::warning Measured 2026-09-03: not checkable with the syntax available
+Two ways to reach it, both blocked:
+
+```verum
+identity<0, Float>(x)          // error<E408>: expects 1 explicit type
+                               //   argument — a const generic cannot be
+                               //   supplied positionally at a call site
+fn take<const N: Int { self > 0 }>(buf: &[Byte; N]) -> Int { N }
+take(&([] : [Byte; 0]))        // accepted — the refinement does not fire
+```
+
+and the second is not evidence either, because the parameter is not a
+usable value: the same function's body returns `N`, and printing it
+gives `nil` rather than the length. Until a const generic can be
+supplied explicitly and read as a value, a refinement on one documents
+an intention.
+:::
 
 ### Const expressions in generic positions
 
