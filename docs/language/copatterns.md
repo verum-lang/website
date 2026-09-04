@@ -137,7 +137,21 @@ coinductive type) is admissible as a `cofix` target.
 ## Worked example: Hamming numbers
 
 The Hamming sequence (numbers of the form 2^i · 3^j · 5^k) is a
-textbook coinductive definition:
+textbook coinductive definition.
+
+:::caution This example does not compile today
+It is written the way the feature is meant to read, not the way it
+currently behaves. Two things are missing, both measured 2026-09-04:
+
+* copattern bodies still fail inference, the same diagnostic as the
+  warning above — so `hamming()` does not typecheck;
+* `merge3`, `map_stream` and `Stream.take` are not defined anywhere in
+  `core/` — the `Stream<T>` protocol on this page declares `.head` and
+  `.tail` and nothing else.
+
+Read it as the shape of the definition. The `.head`/`.tail` walk in
+the section above is the part you can write today.
+:::
 
 ```verum
 cofix fn hamming() -> Stream<Int> {
