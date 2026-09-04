@@ -95,7 +95,9 @@ a.load(order) -> V
 a.store(value, order)
 a.swap(value, order) -> V
 a.compare_exchange(current, new, success_order, failure_order) -> Result<V, V>
-a.compare_exchange_weak(...)                            // may spuriously fail
+// One CAS, not two: there is no `_weak` variant that may fail
+// spuriously, so a retry loop around `compare_exchange` is retrying a
+// real conflict and nothing else.
 a.fetch_add(delta, order) -> V
 a.fetch_sub(delta, order) -> V
 a.fetch_and(mask, order)  / fetch_or  / fetch_xor       // bitwise

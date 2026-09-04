@@ -254,7 +254,7 @@ xs.drain(a..b)            // removes and yields a range
 xs.chunks(n)              // non-overlapping windows; ChunksIter
 xs.chunks_exact(n)        // exact-sized chunks + remainder
 xs.windows(n)             // sliding window of n; WindowsIter
-xs.enumerate_iter()       // convenience (.iter().enumerate() also works)
+xs.enumerate()            // convenience (.iter().enumerate() also works)
 ```
 
 ### Searching
@@ -274,7 +274,7 @@ xs.partition_point(|x| pred(x)) -> Int
 ```verum
 xs.as_slice() -> &[T]
 xs.as_mut_slice() -> &mut [T]
-xs.to_vec()     // alias for clone-into-new-list
+xs.clone()      // clone into a new List
 ```
 
 ### Example
@@ -620,7 +620,7 @@ let mut pq: BinaryHeap<Int> = [3, 1, 4, 1, 5, 9, 2, 6];
 pq.push(7);
 pq.peek();              // Maybe.Some(&9)
 let top = pq.pop();     // Maybe.Some(9)
-let all_sorted: List<Int> = pq.into_sorted_vec();  // max-heap -> descending
+let all_sorted: List<Int> = pq.into_sorted_list();  // ascending
 ```
 
 ```verum
@@ -634,7 +634,7 @@ h.peek_mut() -> Maybe<PeekMut<T>>
 h.clear()
 h.drain()                 // unordered drain; HeapDrain
 h.drain_sorted()          // yields in heap order; HeapDrainSorted
-h.into_sorted_vec() -> List<T>
+h.into_sorted_list() -> List<T>   // ascending; `to_list` keeps heap order
 h.iter()                  // unordered
 ```
 
@@ -700,8 +700,8 @@ m.last_key_value()  -> Maybe<(&K, &V)>    // largest
 m.pop_first() -> Maybe<(K, V)>
 m.pop_last()  -> Maybe<(K, V)>
 
-m.range(lo..hi)                  // iterator in range
-m.range_mut(lo..hi)
+m.range(lo..hi)                  // iterator in range (shared refs)
+m.iter_mut()  m.values_mut()     // mutable iteration is whole-map
 m.split_off(&key) -> BTreeMap<K,V>   // split into two halves
 ```
 

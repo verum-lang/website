@@ -11,10 +11,23 @@ concurrency surface, see
 
 ## An `async fn`
 
+Every example on this page demands an `Http` context. That context is
+**yours**, not the standard library's: Verum ships `Logger`, `Database`,
+`Clock`, `FileSystem` and about two dozen more, and an HTTP client is
+not among them. One declaration, once:
+
 ```verum
+mount core.net.url.{Url};
+mount core.net.http.{Response, HttpError};
+mount core.base.{Bytes};
+
+context Http {
+    async fn get(url: &Url) -> Result<Response, HttpError>;
+}
+
 async fn fetch(url: &Url) -> Result<Bytes, HttpError> using [Http] {
     let resp = Http.get(url).await?;
-    resp.body().await
+    Result.Ok(resp.body)
 }
 ```
 
@@ -39,7 +52,8 @@ let result = f.await;                                      // runs here
 ## Driving a future
 
 ```verum
-// Top-level (not async)
+// Top-level (not async). `provide` supplies the context an
+// implementation; without it, `using [Http]` has nothing to bind to.
 fn main() using [Http] {
     let result = block_on(fetch(&url));
     print(f"{result:?}");

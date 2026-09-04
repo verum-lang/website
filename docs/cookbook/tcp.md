@@ -39,7 +39,7 @@ async fn handle_client(mut stream: TcpStream, peer: SocketAddr)
         match stream.read_async(&mut buf).await {
             Result.Ok(0)  => break,                     // peer closed
             Result.Ok(n)  => {
-                if stream.write_all_async(&buf[..n]).await.is_err() {
+                if write_everything(&mut stream, &buf[..n]).await.is_err() {
                     break;
                 }
             }
@@ -90,7 +90,33 @@ A `0`-length `read` means the peer closed its write side (sent a
 `FIN`). On BSD sockets this is the *only* signal of a clean
 disconnection; treat it as "done, we're free to drop the stream".
 
-A `write_all_async` failure can mean:
+### Async writes are partial
+
+`stream.write_async(buf)` returns **how many bytes it wrote**, which can
+be fewer than `buf.len()`. The `write_all` that loops for you is a
+default method on the synchronous `Write` protocol; the async side has
+no counterpart yet, so the loop is yours:
+
+```verum
+async fn write_everything(stream: &mut TcpStream, buf: &[Byte])
+    -> Result<(), IoError>
+{
+    let mut sent = 0;
+    while sent < buf.len() {
+        match stream.write_async(&buf[sent..]).await {
+            Result.Ok(0) => return Result.Err(IoError.WriteZero),
+            Result.Ok(n) => sent += n,
+            Result.Err(e) => return Result.Err(e),
+        }
+    }
+    Result.Ok(())
+}
+```
+
+Dropping the loop is the bug that does not show up in testing: a short
+write on a small message is rare, and on a large one it is certain.
+
+A write failure can mean:
 
 - The peer reset (`ECONNRESET`) — treat as disconnect.
 - The write timed out (we set a timeout below).
@@ -117,7 +143,7 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
             Result.Ok(0) => break,
             Result.Ok(n) => {
                 select {
-                    w = stream.write_all_async(&buf[..n]) => {
+                    w = write_everything(&mut stream, &buf[..n]) => {
                         if w.is_err() { break; }
                     }
                     _ = sleep(10.secs()) => {
@@ -238,7 +264,7 @@ async fn ping(host: &Text, port: Int) -> IoResult<Duration>
 {
     let t0 = Instant.now();
     let mut stream = TcpStream.connect(f"{host}:{port}").await?;
-    stream.write_all_async(b"ping\n").await?;
+    write_everything(&mut stream, b"ping\n").await?;
 
     let mut buf = [0u8; 16];
     let n = stream.read_async(&mut buf).await?;

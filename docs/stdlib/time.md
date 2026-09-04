@@ -85,9 +85,10 @@ Duration.ZERO              Duration.MAX
 
 ```verum
 5.nanos()       5.micros()      5.millis()
-5.secs()           5.mins()           5.hours()
-5.days()
-// Aliases: 5.nanos(), 5.micros(), 5.millis()
+5.secs()        5.mins()        5.hours()
+// The family stops at `hours` on purpose: it mirrors `Duration`'s own
+// short constructors exactly, with no synonyms. For longer spans name
+// the constructor — `Duration.from_days(5)`, `Duration.from_weeks(2)`.
 ```
 
 ### Inspection
@@ -95,7 +96,9 @@ Duration.ZERO              Duration.MAX
 ```verum
 d.as_nanos() -> Int        d.as_micros() -> Int
 d.as_millis() -> Int       d.as_secs() -> Int
-d.as_secs_f64() -> Float   d.as_secs_f32() -> Float
+d.as_minutes() -> Int      d.as_hours() -> Int
+d.as_days() -> Int         d.as_weeks() -> Int
+d.as_secs_f64() -> Float
 d.subsec_nanos() -> Int    d.subsec_micros() -> Int    d.subsec_millis() -> Int
 d.is_zero() -> Bool
 ```
@@ -106,7 +109,9 @@ d.is_zero() -> Bool
 d + d2        d - d2        d * n         d / n
 d.checked_add(d2) / checked_sub / checked_mul / checked_div -> Maybe<Duration>
 d.saturating_add(d2) / saturating_sub / saturating_mul
-d.mul_f64(factor) -> Duration         d.div_f64(divisor) -> Duration
+// Scaling is by `Int`. There is no float-factor multiply and no
+// `saturating_div`: division can only fail on a zero divisor, which
+// `checked_div` already reports.
 ```
 
 Implements `Eq`, `Ord`, `Clone`, `Copy`, `Hash`, `Debug`, `Display`.
@@ -122,12 +127,12 @@ manual time changes). Use for measuring elapsed time.
 Instant.now() -> Instant
 
 i.elapsed() -> Duration                 // since this instant
-i.duration_since(&earlier) -> Duration  // panics if i < earlier
-i.checked_duration_since(&earlier) -> Maybe<Duration>
-i.saturating_duration_since(&earlier) -> Duration
+i.duration_since(earlier) -> Maybe<Duration>   // None if i < earlier
+i.saturating_duration_since(earlier) -> Duration  // zero if i < earlier
 
 i.checked_add(duration) -> Maybe<Instant>
 i.checked_sub(duration) -> Maybe<Instant>
+Instant.from_nanos(nanos) -> Instant     i.as_nanos() -> Int
 i + duration        i - duration
 i < other    i == other                   // comparison
 ```
@@ -197,47 +202,67 @@ sleep_until(instant).await
 
 ## `Interval` — repeating timer
 
-```verum
-Interval.new(period: Duration) -> Interval
-interval(period) -> Interval                     // re-exported from async
+Two types, and picking the wrong one is the usual mistake: `Interval`
+**blocks the calling thread**, `AsyncInterval` is a `Stream`.
 
-iv.tick().await -> Instant                       // fires at `period` intervals
-iv.reset()                                        // restart from now
+```verum
+Interval.new(period: Duration) -> Interval        // first tick after one period
+Interval.immediate(period: Duration) -> Interval  // first tick fires at once
+
+iv.tick() -> Int          // BLOCKS until the next tick; see below
 iv.period() -> Duration
-iv.missed_tick_behavior() -> MissedTickBehavior
-iv.set_missed_tick_behavior(behaviour)
+iv.reset()                // next tick one full period from now
 ```
 
-```verum
-type MissedTickBehavior is
-    | Burst                  // fire all missed ticks immediately
-    | Delay                  // skip missed, restart from now
-    | Skip;                  // skip and keep original schedule
-```
-
-### Example
+`tick()` returns **how many periods elapsed**, normally `1`. A slow
+caller that missed ticks gets the count it fell behind by, and the
+schedule advances past them — so the interval does not accumulate drift,
+and you decide what a missed tick means:
 
 ```verum
-async fn heartbeat() using [Logger] {
-    let mut iv = Interval.new(1.secs());
-    loop {
-        iv.tick().await;
-        Logger.info(&"heartbeat");
+let mut iv = Interval.new(1.secs());
+loop {
+    let missed = iv.tick() - 1;
+    if missed > 0 {
+        print(f"fell behind by {missed} tick(s)");
     }
+    heartbeat();
 }
+```
+
+There is no `MissedTickBehavior` knob: the return value is the report,
+and catching up is the fixed policy.
+
+### `AsyncInterval` — the stream form
+
+```verum
+interval(period: Duration) -> AsyncInterval
+interval_ms(ms: Int) -> AsyncInterval
+AsyncInterval.new(period) -> AsyncInterval
+aiv.reset()
+```
+
+It implements `Stream` with `Item = ()`, so it composes with the stream
+combinators rather than being ticked by hand:
+
+```verum
+interval(Duration.millis(100))
+    .take(5)
+    .for_each(|_| { print("tick"); })
+    .await;
 ```
 
 ---
 
 ## `Time` namespace
 
-Convenience static methods:
+Convenience static methods. Wall-clock time is deliberately not here:
+it is a capability, reached through the `Clock` context, not a static
+anyone can call. For a monotonic point use `Instant.now()`.
 
 ```verum
-Time.now() -> Duration                 // monotonic, since epoch
+Time.now() -> Duration                  // monotonic, since epoch
 Time.monotonic() -> Int                 // raw nanoseconds
-Time.system_time() -> SystemTime
-Time.instant() -> Instant
 Time.sleep(duration)
 Time.sleep_ms(ms)                       Time.sleep_secs(secs)
 ```

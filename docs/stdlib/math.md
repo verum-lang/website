@@ -308,8 +308,8 @@ type Rng is protocol {
 };
 
 type XorShift128 is { ... };          type PCG is { ... };
-XorShift128.seed(key) -> XorShift128
-PCG.seed(key) -> PCG
+XorShift128.new(seed: UInt64) -> XorShift128
+PCG.new(seed: UInt64, stream: UInt64) -> PCG   // two words: seed and stream
 
 rng.uniform_01() -> Float                // [0.0, 1.0)
 rng.uniform(lo, hi) -> Int / Float
@@ -367,31 +367,43 @@ linspace(start, stop, n) -> Tensor<Float, shape[n]>
 rand<Float, shape[3, 4]>()             // uniform [0, 1)
 randn<Float, shape[3, 4]>()            // standard normal
 
-// Shape & indexing
-t.shape() -> Shape        t.dtype() -> DType
-t.reshape<shape[...]>() / t.squeeze() / t.unsqueeze(axis)
-t.transpose() / t.permute<[Int; N]>(axes)
-t.flatten() / t.slice(...) / t.gather(indices) / t.scatter(indices, values)
+// Shape — these ARE methods on the tensor
+t.shape()  t.rank()  t.ndim()  t.dim(i)  t.numel()
+t.reshape(...)  t.squeeze()  t.unsqueeze(axis)  t.permute(axes)
+t.slice(...)  t.get(...)  t.set(...)  t.item()  t.cast(...)  t.to(device)
+t.contiguous()  t.is_contiguous()  t.clone()  t.device()
 
-// Arithmetic
-t + other  /  -t  /  t * other  /  t.matmul(other)  /  t.mm(b)  /  t.bmm(b)
-t.sum() / t.sum(axis: 0) / t.mean() / t.prod()
-t.max() / t.min() / t.argmax() / t.argmin()
-t.softmax(axis) / t.log_softmax(axis)
-t.layer_norm() / t.batch_norm() / t.rms_norm()
+// Everything else is a FREE FUNCTION taking the tensor by reference
+transpose(&t)          flatten(&t)          cumsum(&t, axis)
+matmul(&a, &b)         mm(&a, &b)           bmm(&a, &b)
+sum(&t)  mean(&t)  prod(&t)  argmax(&t)  argmin(&t)     // whole tensor
+sum_axis(&t, axis)     mean_axis(&t, axis)  max_axis(&t, axis)
+min_axis(&t, axis)     argmax_axis(&t, axis)  all_axis / any_axis
+softmax(&t)            softmax_axis(&t, axis)   log_softmax(&t, axis)
 
-// Comparison
-t.eq(other) / ne / lt / le / gt / ge         // -> Tensor<Bool, S>
-t.logical_and / or / not
+// Comparison — free, and they return a Bool tensor
+eq(&a, &b)  ne(&a, &b)  lt(&a, &b)  le(&a, &b)  gt(&a, &b)  ge(&a, &b)
 
 // Selection
-where_cond(mask: Tensor<Bool>, a: Tensor, b: Tensor) -> Tensor
-t.clamp(lo, hi) / t.masked_fill(mask, value) / t.lerp(other, t_val)
+where_tensor(&mask, &a, &b)      where_scalar(&mask, a, b)
+masked_select(&t, &mask)   masked_sum / masked_mean / masked_min / masked_max
 
 // Composition
 cat(&tensors, axis) / stack(&tensors, axis)
 split(t, sizes, axis) / chunk(t, n, axis)
+hstack / vstack / dstack
 ```
+
+:::caution Call style
+The tensor API is **free functions over `&DynTensor<T>`**, not methods.
+`t.matmul(other)` does not compile; `matmul(&t, &other)` does. Only the
+shape and storage operations in the first block are methods.
+
+Normalisation is likewise not a tensor method: `layer_norm(shape)` and
+`rms_norm(dim)` **build a module** (`LayerNorm`, `RMSNorm`) that you then
+apply. There is no `batch_norm`, no `masked_fill`, no `logical_and`, and
+a tensor does not report its own `dtype`.
+:::
 
 ---
 
@@ -524,9 +536,10 @@ type Optimizer is protocol { fn step(&mut self, grads: &Params); }
 SGD.new(params, lr, momentum, weight_decay)
 AdamW.new(params, lr, betas, weight_decay)
 
-// Schedulers
-LRScheduler.cosine(initial_lr, min_lr, max_steps)
-LRScheduler.step(initial_lr, gamma, step_size)
+// Schedulers — `LRScheduler` is a protocol (`get_lr(step) -> Float`),
+// so you construct a concrete one, not a factory method on the protocol.
+CosineScheduler.new(initial_lr, min_lr, warmup_steps, total_steps)
+LinearWarmup { target_lr, warmup_steps }
 
 // Loss
 mse_loss(pred, target) / cross_entropy(pred, target) / bce_loss(pred, target)
