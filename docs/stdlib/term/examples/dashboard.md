@@ -18,7 +18,7 @@ A live system dashboard showing:
 mount core.term.app.*;
 // `interval` is re-exported by core.term.app, but a bare call to it
 // currently resolves to core.async's one-argument `interval` instead
-// (T0931). The alias sidesteps the collision.
+// The alias sidesteps the collision.
 mount core.term.app.subscription.{interval as sub_interval};
 mount core.term.widget.*;
 

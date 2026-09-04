@@ -28,7 +28,7 @@ reuses the existing language surface:
 3. **Per-module kernel-discharge bridges** declared as
    `@kernel_discharge(<intrinsic>)` axioms — one per architectural
    sub-system. Same pattern as `core.verify.separation_soundness`
-   (#161) and `core.verify.codegen_soundness` (#162).
+   and `core.verify.codegen_soundness`.
 
 Zero new keywords; zero new compiler phases; everything reuses the
 existing attribute + axiom + cross-side pin machinery.

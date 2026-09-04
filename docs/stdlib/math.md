@@ -342,7 +342,7 @@ reached. Measured 2026-09-02:
 ```
 verum run             shape ok
 verum run --tier aot  PANIC: verum_tensor_arange_i: no Tier-1 lowering
-                      yet (T0193/T0179)
+                      yet
 ```
 
 This is deliberate. A helper declared without a body would either break

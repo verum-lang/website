@@ -4,7 +4,10 @@ title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
 status_detail: >-
-  2026-07-16: tensor first real suite — interp 65/65 zero-ignore on main (T0193 wire canon; T0199 stale-bake+carrier-gate and T0200 kernel class closed; T0225 restored the AOT tier at HEAD); Tier-1 tensor compiles, values staged under T0179/T0201; largest open: MEM-PTR-DEREF-TIER0-1, UMBRELLA-REEXPORT-RESOLVE-1 (T0175 in flight).
+  The tensor surface runs its full conformance suite under the interpreter.
+  Ahead-of-time compilation covers the core tensor operations and refuses
+  the rest loudly. Raw-pointer dereference and one name-resolution path
+  through umbrella re-exports are the two open areas.
 ---
 
 # `core.intrinsics` — Compiler intrinsics
@@ -54,14 +57,14 @@ per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
 | `arithmetic` | ⚠️ partial | Interp green core (129 live). **ARITH-PURE-BODY-1**: the 14 historically-nil intrinsics (`widening_mul`, `carrying_add`, `borrowing_sub`, `checked_shl/shr/rem/next_power_of_two`, `overflowing_neg/shl/shr`, `saturating_div`, `ilog10`, `leading_sign_bits`, `is_power_of_two`) are now pure Verum bodies over the registered primitives — full 14-function battery green on the v20 bake. AOT sweep pending. |
 | `bitwise` | ✅ complete | Both tiers green (127/127). |
 | `float` | ⚠️ partial | Interp 85 live; 7 pins (`roundeven/rint/nearbyint`, `minimum/maximum`, `is_subnormal`/sign classify need opcodes); AOT libm cluster open (`fneg`/`fms`, `hypot`/`cbrt`/`expm1`/`log1p`/`powi`). |
-| `memory` | ⚠️ partial | Value-level + **raw-pointer harness landed** (property/integration over the `cbgr_allocate` bridge). **MEM-BULK-ADDR-DUAL-1 fixed**: `memcpy`/`memmove`/`memset`/`memcmp`/`secure_zero` now honest at Tier-0 (dual int-or-pointer extraction). `ptr_is_aligned_to` registered. Open: MEM-PTR-DEREF-TIER0-1 (`ptr_read` identity / `ptr_write` no-op at Tier-0 — the two-physical-worlds provenance model, task #16), MEM-SLICE-INTRINSIC-FATREF-1 (slice family re-routed to the canonical CbgrExtended ops — verification in flight), MEM-TRANSMUTE-FLOAT-1. |
+| `memory` | ⚠️ partial | Value-level operations and the raw-pointer bridge are covered. `memcpy`, `memmove`, `memset`, `memcmp` and `secure_zero` accept either an integer address or a pointer, and `ptr_is_aligned_to` is available. **Known limitations:** under the interpreter `ptr_read` returns its argument unchanged and `ptr_write` does nothing — the interpreter and native code do not share one address space, so a raw dereference has no meaning in the first; and `transmute` between a float and its bit pattern is not yet honest there either. Use the typed slice operations, or compile ahead of time, when you need real pointer semantics. |
 | `atomic` | ⚠️ partial | Interp 30/30; AOT 25/30 (compare-and-swap `(observed, succeeded)` tuple under AOT — ATOMIC-CAS-AOT). |
 | `type_info` | ⚠️ partial | `T.size`/`T.bits`/… property surface complete both tiers (102 tests). The legacy meta-fn forms (`size_of<T>()`, `align_of<T>()`) are `@deprecated` and return 0 through every path — use the type-property syntax. |
 | `conversion` | ⚠️ partial | Interp 60 live; AOT 52/60 (f32/f64 bit-reinterpret + endianness round-trip flake). |
 | `control` | ⚠️ partial | Both tiers 36/36; 1 pin (generic `expect<T>` result mis-tag under arithmetic). |
 | `platform` | ✅ complete | Both tiers green. |
-| `tensor` | ⚠️ partial | **First real suite 2026-07-16 (T0193)** — the old "audit-only, JIT gate covers it" rationale was disproved: the JIT gate exercises kernels, not the intrinsic WIRE, and ~30 of ~70 ops had divergent operand shapes. Wire canon `[dst][mode?][arg-regs]` landed (envelope-authoritative stream advance, dtype-converting writes, axis-aware softmax/argmax, moded Rand/Reduce/Index/Conv/Softmax). Interp 65/65 zero-ignore (T0199 closed — stale-bake T0219 + registry-derived carrier gate; T0200 closed — struct-pointer-as-buffer class swept across five kernels). Tier-1: core ops (new/fill/from_slice/get/set/binop/unop/matmul/reduce/reshape/transpose/softmax/clone) have real IR bodies — leg in triage; the extended surface panics loudly by design until the T0179 staging lands IR bodies (was: 60 declared-no-body externs). |
-| `simd` / `gpu` | ❔ undocumented | simd: suite blocked by INTRINSIC-RESOLVE-NONDET-1 (T0175, fix in flight) + splat/reduce surface landing under T0116. gpu: wire-shape fix + suites in flight under GPU-OPERAND-SHAPE-1 (T0177). Both owned by an active peer session — see the pool tasks. |
+| `tensor` | ⚠️ partial | The full surface runs under the interpreter with real CPU kernels, and its conformance suite passes with nothing skipped. The wire format every tensor intrinsic uses — `[dst][mode?][arg-registers]` — is now one authority shared by the emitter and the interpreter; an earlier audit found roughly thirty of seventy operations had drifted from it, which is why the op tables on this page are verified against the enums rather than maintained by hand. **Ahead of time:** the core operations (`new`, `fill`, `from_slice`, element access, `binop`, `unop`, `matmul`, `reduce`, `reshape`, `transpose`, `softmax`, `clone`) compile to real code; every other operation raises a runtime error naming itself rather than failing at link time. |
+| `simd` / `gpu` | ❔ undocumented | Neither surface is documented yet. `simd` is waiting on a name-resolution defect that makes intrinsic lookup non-deterministic, and on the splat and reduce operations landing; `gpu` is waiting on a correction to its operand shape and on its first conformance suite. Treat both as unavailable rather than as untested. |
 | `lowlevel/*` | ⚠️ partial | Arch files (x86_64/aarch64/kernel/mmio) audit-only (privileged/@llvm_only). The umbrella's cross-platform surface (`CpuCapabilities`, `detect_capabilities()`, SIMD width constants) is suite-covered; **CFG-CONST-SELECT-1** pinned (@cfg on const items takes the fallback branch — `MAX_SIMD_WIDTH` = 128 on aarch64). |
 | `runtime/tier,time,text,mem_raw,cbgr` | ⚠️ partial | Full suites, interp green; see audits for per-module AOT residuals. |
 | `runtime/sync` | ⚠️ partial | 13/13 interp (restored 2026-07-15 by **ARCHIVE-REF-TIER-DROP-1** — baked signatures lost `&unsafe`/`&checked`/`mut`); AOT green under `--exact`. |
@@ -713,12 +716,12 @@ simd_reduce_xor<V, T>(v: V) -> T
 ## Tensor
 
 Runtime tensor compute over **opaque handles** (`Int` at the surface
-until the dedicated handle type lands — T0179/T0202). Backs
+until the dedicated handle type lands). Backs
 `math.tensor` and the autodiff stack. The interpreter executes real
 CPU kernels (`interpreter/tensor.rs`; SVD/QR/eig/einsum/conv2d
 included); Tier-1 lowers to `verum_tensor_*` IR bodies.
 
-**Wire contract (T0193).** Every tensor intrinsic emits
+**Wire contract.** Every tensor intrinsic emits
 `TensorExtended` with operands `[dst][mode?][arg-registers…]` — all
 values arrive in registers, never as inline immediates, and the
 operand-byte envelope (not the arm's reads) advances the instruction
@@ -744,7 +747,7 @@ Pass these to `tensor_new` / `tensor_fill` / `tensor_from_slice` /
 Reads (`tensor_get_scalar → Float`) and writes (`tensor_set_scalar`,
 fills, `from_slice` copies) are **dtype-converting** in both
 directions — an F32/int tensor can never silently read back zeros
-(the pre-T0193 write path was F64-only and no-op'd for every other
+(an earlier write path was F64-only and did nothing for every other
 dtype).
 
 ### Op-code tables (mirror the VBC enums — do not trust older docs)
@@ -764,7 +767,7 @@ dtype).
 5 var (axis &lt; 0 reduces all).
 `tensor_cumulative`: 0 sum · 1 prod.
 
-> The 2026-07-16 sweep (T0198) found the previous op listings drifted
+> An audit found the previous op listings had drifted
 > from the enums — `math.autodiff`'s sigmoid was emitting **tanh**.
 > These tables are verified against `TensorUnaryOp`/`TensorBinaryOp`/
 > `TensorReduceOp`/`CompareOp` byte values.
@@ -825,30 +828,31 @@ its documented **primary factor**: `tensor_qr → Q`,
 `tensor_svd → singular values`, `tensor_lu → U`,
 `tensor_eig`/`tensor_eigh → eigenvalues`, `tensor_topk → values`,
 `tensor_split`/`split_at → List of handles`. The full multi-factor
-surface is staged under the T0179 epic.
+surface is still being filled in.
 
 ### Tier contract
 
 * **Interpreter (Tier 0)** — full surface, real kernels;
-  conformance: `core-tests/intrinsics/tensor` (63/0/2).
+  conformance: `core-tests/intrinsics/tensor`.
 * **AOT (Tier 1)** — the core group (`new`/`fill`/`from_slice`/
   element access/`binop`/`unop`/`matmul`/`reduce`/`reshape`/
   `transpose`/`softmax`/`clone`) has real IR bodies; every other op
   currently lowers to a **loud runtime panic** naming the op
-  (`"<op>: no Tier-1 lowering yet"`) instead of the previous
-  declared-but-undefined externs. IR bodies land per-op under T0179;
-  axis-honoring reduce/softmax at Tier-1 is T0201.
+  (`"<op>: no Tier-1 lowering yet"`) rather than to a
+  declared-but-undefined extern, so an unsupported op fails where you
+  called it instead of at link time. Axis-honouring reduce and softmax
+  are among those not yet lowered.
 
 ### Open defects
 
-| Class | Task |
+| Limitation | What it means for you |
 |---|---|
-| Broadcast kernel returns nil for the NumPy row-tile | T0199 |
-| `det`/`trace` value channel (0.0 / int-bits-as-double) | T0200 |
-| Tier-1 reduce/softmax ignore `axis` | T0201 |
-| Handles are headerless `Box` ptrs — garbage f-string render, every tensor leaks | T0202 |
-| View strides ignored by element accessors | T0196 |
-| Script-cache survives wire changes (phantom regressions) | T0197 |
+| Broadcasting returns nothing for a row-tile against a matrix | Expand the operand explicitly before the operation. |
+| `det` and `trace` answer through the wrong value channel | Their results are not usable; compute from a factorisation instead. |
+| Reduction and softmax ignore `axis` when compiled ahead of time | They reduce over everything. Under the interpreter `axis` is honoured. |
+| A tensor handle carries no header | It renders as noise inside an f-string, and tensors are not reclaimed — a long-running loop grows. |
+| Element access ignores the strides of a view | Read through the base tensor rather than through a view. |
+| The script cache survives a change to the tensor wire format | Clear `~/.verum/script-cache` after upgrading, or a stale body will run. |
 
 ---
 

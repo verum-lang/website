@@ -38,7 +38,7 @@ Measured 2026-09-03, comparing all 46 status-bearing pages against the
 589 rows of `core-tests/INVENTORY.md`:
 
 **247 of those rows carry `unverified`, a sixth token this table does
-not define.** It was introduced by the T0220 liveness gate to mark a row
+not define.** It was introduced by the liveness gate to mark a row
 whose status had never actually been asserted — the ABSENCE of a
 conformance level rather than one of the five. Taking it as "weakest"
 propagates it into every aggregate: 32 of the 46 pages would become

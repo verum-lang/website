@@ -61,8 +61,8 @@ test today). They are aligned only when the status reads **stable**.
 
 ### Open upstream defects gating context test runs (2026-06-01)
 
-The bare-variant collision (task #17/#39) and the `global_ctors` stage-3
-stub cascade (task #47) that previously gated the whole suite are
+The bare-variant name collision and the constructor-registration
+cascade that previously gated the whole suite are
 **resolved** — `scope` / `error` / `provider` / `mod` and most of
 `standard` are GREEN under `--interp`. Three codegen defects remain,
 all in the cross-module / archive-loaded **CLASS-9** family, all needing a
@@ -96,7 +96,7 @@ are pinned with minimal repros and worked around to preserve coverage.
 `partial` status reflects the interpreter tier only. Of the two AOT
 blockers: the parallel-codegen LLVM SIGSEGV (`verum test --aot` default
 `parallel=true` was not thread-safe across per-test native compilation) is
-**fixed** (unique per-test artifact paths, commit `f1c0510e3`); the
+**fixed** (each test now writes to its own artifact path); the
 remaining blocker is a `MakeVariantTyped` field-count / tag ABI mismatch
 that miscompiles ADT construction — `Scope.Singleton.name()` still returns
 the wrong value under `--aot` (verified 2026-06-01). Promotion to

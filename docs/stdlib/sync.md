@@ -16,7 +16,7 @@ and `Send`/`Sync` marker protocols.
 
 <StdlibStatus
   status="partial"
-  detail="3261 LOC of tests / 254 @test entries across 9 submodules — 8/9 stable under --interp, waitgroup partial (interpreter Tier-0 handle-table landed, defect class § A closed; §B duration-add intercept removed)."
+  detail="Nine submodules with conformance suites; eight are stable under the interpreter. `waitgroup` is partial: it has an interpreter-side handle table, and adding a duration to a wait deadline is not yet honoured there."
   defects={[
     {area: 'sync/waitgroup', summary: 'Closed § A: Tier-0 interpreter stubbed all WaitGroup intrinsics as inert no-ops with fixed return values; tests silently passed/failed against the wrong counter state. Real handle-table now lives at crates/verum_vbc/src/interpreter/waitgroup.rs.'},
     {area: 'sync/waitgroup', summary: 'Closed § B: method_dispatch.rs:4059 had a Duration-bias \"add\" intercept on Int-receivers that fired for any single-field-record-unboxed record (every WaitGroup{handle: Int}.add(delta) silently dropped to a bare Int+Int sum). Same defect class as [[duration_single_field_record_unboxing_2026-05-27]].'},
@@ -52,7 +52,7 @@ tiers is itself a test failure.
 | Module | Status | Conformance suite |
 |---|---|---|
 | `atomic.vr`    | **stable** | [core-tests/sync/atomic](https://github.com/verum-lang/verum/tree/main/core-tests/sync/atomic) — 8 unit + 14 property + 10 regression. MemoryOrdering 5-variant pairwise disjointness + `name()` canonical-token injectivity + Eq laws (added this round). AtomicInt/AtomicBool single-threaded load/store/fetch_add round-trip in regression suite. Live atomic contention deferred to vcs/specs/L2-standard/sync/atomic/. |
-| `mutex.vr`     | **stable** | [core-tests/sync/mutex](https://github.com/verum-lang/verum/tree/main/core-tests/sync/mutex) — 22 unit + 12 property + 5 regression. Mutex.new + poison/clear_poison/is_poisoned state-machine + PoisonError construction + TryLockError 2-variant ADT (WouldBlock / Poisoned). Default-via-`new(0)` workaround pinned in regression (task #17 close-gate). Live lock/contention at L2. |
+| `mutex.vr`     | **stable** | [core-tests/sync/mutex](https://github.com/verum-lang/verum/tree/main/core-tests/sync/mutex) — 22 unit + 12 property + 5 regression. Mutex.new + poison/clear_poison/is_poisoned state-machine + PoisonError construction + TryLockError 2-variant ADT (WouldBlock / Poisoned). Default-via-`new(0)` workaround pinned in regression as a pinned regression. Live lock/contention at L2. |
 | `rwlock.vr`    | **stable** | [core-tests/sync/rwlock](https://github.com/verum-lang/verum/tree/main/core-tests/sync/rwlock) — 14 unit + 10 property + 4 regression. RwLock.new + poison protocol + re-exported error types (LockResult / TryLockResult / PoisonError / TryLockError) destructure round-trip + multi-instance independence matrix. Writer-preference fairness pinned by data-shape; live verification at L2. |
 | `semaphore.vr` | **stable** | [core-tests/sync/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/sync/semaphore) — 15 unit + 8 property + 4 regression. try_acquire / release / try_acquire_many / release_many full sequential cycle. add_permits dual-bump (capacity AND availability) + forget_permit asymmetric shrink + binary() ≡ new(1) pinned in regression. Live contention at L2. |
 | `condvar.vr`   | **partial** | [core-tests/sync/condvar](https://github.com/verum-lang/verum/tree/main/core-tests/sync/condvar) — 12 unit + 7 property + 5 regression, of which 9 @ignore'd (audit § 3.6 — Tier-0 futex FFI symbol gap; notify_one/notify_all calls trip "FFI symbol not found: FfiSymbolId(61)").  Live path (Condvar.new + Default + waiter_count + WaitTimeoutResult shape + CondvarNotifyGuard + producer_consumer_pair) all GREEN.  notify_one/notify_all and live wait/wait_timeout/wait_while at vcs/specs/L2-standard/sync/condvar/. |
@@ -346,7 +346,7 @@ Bits 32-61: phase (30 bits = ~1.07 billion phases)
 Bit  62:    terminated
 Bit  63:    UNUSED (sign bit — historically held terminated, which
             silently corrupted phase decoding via arithmetic-right-
-            shift; task #32 moved the flag to bit 62)
+            shift; the flag now lives at bit 62)
 ```
 
 Phase-advance under concurrent register / arrive_and_await uses a CAS
