@@ -128,12 +128,18 @@ One caveat about the spelling. `IO` is not a declared context anywhere
 in `core/` — the declared set is `Logger`, `Database`, `Clock`,
 `FileSystem`, `Random`, `Config`, `Cache`, `Metrics`, `Tracer`, `Auth`
 and their kin. A positive `using [IO]` is refused with
-`error<E605>: undefined context: IO`; a negative `using [!IO]` is
-accepted, because negative contexts are not validated against the
-declared set. So `pure`'s documented expansion to `using [!IO, !State<_>,
-!Random]` names one context that exists and two spellings that do not,
-which is exactly why `pure` is checked by property inference (the table
-above) rather than by the context system.
+`error<E605>: undefined context: IO`. A negative `using [!IO]` used to be
+accepted — negative contexts were not validated against the declared set
+— but that gap was closed (T1095), and **both directions now refuse an
+undeclared name**: measured 2026-09-04, `using [!IO]` gives the same
+`error<E605>: undefined context: IO`.
+
+So `pure`'s documented expansion to `using [!IO, !State<_>, !Random]`
+names one context that exists and two spellings that do not — and
+writing that expansion by hand is now refused in both polarities. `pure`
+itself is unaffected, because it is checked by property inference (the
+table above) rather than by the context system: `pure fn double(n: Int)
+-> Int { n * 2 }` checks clean.
 
 These are compile-time claims measured with `verum check`; a later phase
 may add its own diagnostics.
