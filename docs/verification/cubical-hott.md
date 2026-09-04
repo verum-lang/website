@@ -152,7 +152,7 @@ let n: Nat = transport(p, 42);
 ```
 
 A separate, **kernel-internal** cubical-reduction set lives in
-the kernel's normalisation support `normalize_core` —
+`crates/verum_kernel/src/support.rs::normalize_core` —
 `HComp` face-bot / face-top, `Transp` (i1 / Refl-path / const-carrier),
 `Glue` face-bot / face-top, and the PathOver degenerate-loop
 collapse. These fire whenever the kernel normalises a CoreTerm

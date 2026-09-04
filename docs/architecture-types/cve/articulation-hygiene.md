@@ -403,7 +403,7 @@ classifier extends without modification of any enum.
 Cross-side parity: every smart constructor + every component
 enum variant is pin-tested by
 [`pin_fixpoint_class_four_canonical`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/tests/k_arch_v_alignment.rs)
-in the kernel/Verum alignment test.
+in `crates/verum_kernel/tests/k_arch_v_alignment.rs`.
 
 **`SelfReferenceWitness`** (`core/architecture/types.vr:908`) — the
 operator + fixed-point pair plus the cited fixpoint class:
@@ -421,7 +421,7 @@ Maybe<SelfReferenceWitness>` (`core/architecture/types.vr:945`)
 alongside the existing `purpose`, `substrate`, `anchoring`,
 `e_sense` declarations. AP-040's predicate
 `check_self_reference_without_operator` at
-the kernel's anti-pattern predicates enforces
+`crates/verum_kernel/src/arch_anti_pattern.rs` enforces
 that any cog whose `Shape` exhibits a self-X pattern carries a
 non-`None` witness.
 

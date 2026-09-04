@@ -322,7 +322,7 @@ Verum cogs may iterate `anti_pattern_full_roster()` to build
 runtime walks (e.g. an in-process audit cog that records which
 patterns its codebase has cleared).  The roster size is pinned by
 the cross-side test in
-the kernel/Verum alignment test
+`crates/verum_kernel/tests/k_arch_v_alignment.rs`
 (`pin_anti_pattern_code_count_canonical`) — adding a code requires
 updating both the kernel-side `AntiPatternCode::full_list()` and the
 Verum-side roster in the same change-set, and giving the new pattern
@@ -398,7 +398,7 @@ Every check returns `Option<AntiPatternViolation>` — `None` means the
 predicate holds (no violation), `Some(v)` carries the structured
 diagnostic.  `check_all_anti_patterns` walks every function and
 aggregates violations.  The cross-side pin test in
-the kernel/Verum alignment test `pin_all_canonical_codes_have_check_function`
+`crates/verum_kernel/tests/k_arch_v_alignment.rs::pin_all_canonical_codes_have_check_function`
 asserts every entry in this table has a matching `pub fn check_*` in
 the source, so the enum and the table move in lockstep.
 
