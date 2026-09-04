@@ -185,6 +185,11 @@ fn identity<const N: Int, T: Numeric>() -> Matrix<N, N, T> {
 let m3: Matrix<3, 3, Float> = identity<3, Float>();
 ```
 
+This example is the intended shape, not working code today: `for i in
+0..N` reads the parameter as a VALUE, and a const generic read as a
+value gives `nil` — see the measured warning at the end of this section.
+
+
 Const generics can carry **refinements**:
 
 ```verum
@@ -433,6 +438,18 @@ Rank-2 is how Verum expresses:
 
 See [cookbook/calc-proofs](/docs/cookbook/calc-proofs) for a rank-2
 example building a verified fold-combinator.
+
+:::caution The record field does not survive the bake
+
+Written exactly as above — a `fn<R>(...)` as a RECORD FIELD — the field
+bakes as `Unit`, so the transducer you get back is not the function you
+wrote. The type checker accepts the declaration; the value is lost
+between there and the archive. Tracked as T0997.
+
+Rank-2 in a plain function signature is a separate question and is not
+covered by that measurement.
+
+:::
 
 ## Lifetime / region parameters
 

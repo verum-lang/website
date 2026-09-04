@@ -124,6 +124,20 @@ protected     fn type_relative()    { ... }   // see below
   a non-`pub` module is still reachable by its full path, and the
   compiler enforces the **minimum** visibility along that path.
 
+:::caution The compiler does not enforce these scopes yet
+
+The table above is the design, and the modifiers parse and are carried.
+Access control is not applied: measured on a fresh cog on 2026-08-31, a
+second module mounted and called a modifier-less `fn`, an `internal fn`,
+and a non-public type's constructor from `probe_cog.util.math`, and all
+of them ran.
+
+Write the modifiers — they are how the intent is recorded, and they are
+what the check will read when it exists — but do not rely on them to
+keep a caller out. Tracked as T1023.
+
+:::
+
 ## Protocol coherence
 
 For any `implement P for T`, at least one of `P` or `T` must be defined
