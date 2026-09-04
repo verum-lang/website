@@ -219,11 +219,18 @@ context that declares it: `readonly()` above returns a `Store` whose
 `write` is a no-op or a panic, and the language does not enforce that
 promise for you.
 
-:::caution The method is not checked
-A transform names a method, but the compiler does not verify that the
-context declares one — `Store.nonexistent()` compiles today and fails
-when the call is made. Contexts and their methods are resolved from
-the function signature, not from a registry of declarations.
+:::note The method IS checked — this caution was stale
+Measured 2026-09-04. Calling a method the context does not declare is
+refused at compile time with its own diagnostic:
+
+    context Store { fn read(url: Text) -> Text; }
+    fn f(k: Text) -> Text using [Store] { Store.nonexistent(k) }
+      -> error<E606>: context `Store` has no method `nonexistent`
+
+The same file with only the declared `Store.read` compiles clean, so
+the refusal is the check firing and not the example failing for another
+reason. The page previously said the opposite; it was written before
+`E606` existed.
 :::
 
 ### Named and aliased contexts
