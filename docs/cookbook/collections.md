@@ -320,11 +320,18 @@ Per [semantic honesty](/docs/foundations/semantic-honesty):
 - `Deque<T>` and `BinaryHeap<T>` commit to their implementation by
   name.
 
-For a **specific** layout, use the `with` attenuation:
+The `with [...]` clause is **capability** attenuation — it narrows what
+a value may be used for (`Read`, `Write`, `Network`, `FileSystem`, or a
+capability you name yourself), not how it is laid out:
 
 ```verum
-type PackedList<T> is List<T> with [Contiguous, GrowthFactor<2>];
+type ReadOnlyLog is List<Text> with [Read];
 ```
+
+For a **specific** layout there is no knob on the semantic types. Take
+the layout you need directly: a fixed-size array `[Byte; 64]` is
+contiguous by construction, and `@repr(C)` pins a record's field order
+for FFI.
 
 ## Pitfalls
 

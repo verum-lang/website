@@ -30,20 +30,26 @@ extern "C" {
     fn foo_shutdown();
 }
 
-@ownership(transfer_to = "caller", borrow = ["xs"])
-@memory_effects(Reads("xs"), Writes("out"), Allocates)
-@thread_safe = true
-@errors_via = ReturnCode(0 => (), n => Error.new(&f"foo error {n}"))
 ffi FooC {
+    @extern("libfoo.so")
     fn init() -> Result<(), Error>;
+    @extern("libfoo.so")
     fn compute(xs: &[Float]) -> Result<Float, Error>;
+    @extern("libfoo.so")
     fn shutdown();
 }
 ```
 
 The `ffi FooC { ... }` block is the **typed** wrapper; the
-`extern "C"` block is the raw binding. The compiler generates
-marshalling code between them per the annotations.
+`extern "C"` block is the raw binding. Each entry point names the
+library it comes from with `@extern`.
+
+The grammar also reserves per-boundary contract clauses inside the
+block — `memory_effects = ...;`, `thread_safe = ...;`,
+`errors_via = ...;`, `@ownership(...)`, and `requires` / `ensures`
+(`grammar/verum.ebnf`, *2.7 FFI Boundary Declarations*). The parser
+does not accept them yet, and nothing generates marshalling code from
+them, so write the conversion by hand as the next section does.
 
 ### Simpler form for small libraries
 
@@ -159,7 +165,8 @@ For transparent newtypes over primitives, `@repr(transparent)`.
 Passing a Verum function as a callback requires `extern "C"`:
 
 ```verum
-extern "C" fn on_tick(ctx: *mut Void, ms: Int64) {
+@extern("C")
+fn on_tick(ctx: *mut Void, ms: Int64) {
     let state = unsafe { &mut *(ctx as *mut TimerState) };
     state.ticks += 1;
 }

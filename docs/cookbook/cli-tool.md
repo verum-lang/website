@@ -12,11 +12,11 @@ description: Arguments, subcommands, config, error reporting.
 `core.base.env` declares `args() -> List<Text>`, and all three
 spellings compile today:
 
-```verum
-mount core.base.env;            env.args()
-mount core.base.env.{args};     args()
-                                core.base.env.args()
-```
+| `mount` | call site |
+|---|---|
+| `mount core.base.env;` | `env.args()` |
+| `mount core.base.env.{args};` | `args()` |
+| *(none needed)* | `core.base.env.args()` |
 
 Omit the mount and the bare `env` does **not** fail as an unknown name.
 It resolves to `core/meta/contexts.vr`'s `fn env(key: Text) ->
