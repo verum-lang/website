@@ -53,9 +53,9 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 | `thin_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/thin_ref/` — 4 files + audit. **D2/CLASS-9 CLOSED 2026-05-29**: `UseAfterFreeError.new(...)` cross-module field round-trip now correct — root was `resolve_field_index`'s descriptor path comparing `fd.name.0` (a `ctx.strings` StringId) against `field_name_indices[field]` (a separate intern namespace), false-matching at index 0; fixed by string-authoritative resolution. `.new(...)`/`.message()`/`.eq()` tests un-ignored, all GREEN under `--interp` (audit §8). |
 | `fat_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/fat_ref/` — 4 files + audit (static-shape only) |
 | `hazard.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/hazard/` — **47/47 GREEN 2026-07-05** (was whole-module SIGSEGV): live `hazard_stats()` / `force_reclaim_all()` / `cleanup_thread_hazards()` all pass after TYPE-NAME-INFERENCE-1 + PROTOCOL-ITER-1 + CALLSYNC-R0-CLOBBER-1 (audit §8) |
-| `epoch.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — read + write surface. **D1 CLOSED 2026-05-29**: `increment_epoch_for_tests` re-routed through the scalar-shadow cell + atomic ops (the implemented epoch mechanism that `current_epoch`/`reset_for_tests` already use), instead of the unimplemented record-shaped `static mut` method path; 3 increment tests un-ignored, GREEN under `--interp`. The general `&mut static_mut_struct.scalar_field` codegen cell-backing remains a separate language-level gap (task #9). |
+| `epoch.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — `core-tests/mem/epoch/` — the read and write surface is covered. Epoch advance goes through the same scalar cell and atomic operations that `current_epoch` and the reset helper use, so a test-driven advance and a real one cannot diverge. |
 | `allocator.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/allocator/` — static-shape + live cbgr_alloc round-trip via public `Heap<T>` / `Shared<T>` (audit §A closed); §B realloc-cross-boundary + §C ctx-allocator + §D protocol-impls + §E AllocStats + §F AOT sweep open |
-| `arena.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="partial" /> | <TestCovBadge cov="full" /> | `core-tests/mem/arena/` — constants + `ArenaConfig.{default,fixed,custom}` constructors + `ArenaError` 4-variant `is`-disjoint sweep + per-variant `.message()` payload-content assertions all green; live-lifecycle suite GREEN (task #8 closed 2026-05-24); single-field record-variant Eq pin un-@ignore'd 2026-07-05 — **60/60/0** |
+| `arena.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="partial" /> | <TestCovBadge cov="full" /> | `core-tests/mem/arena/` — `core-tests/mem/arena/` — the constants, the `ArenaConfig` constructors (`default`, `fixed`, `custom`), a disjointness sweep over the four `ArenaError` variants and the message payload of each are all covered, as is the live allocation lifecycle. |
 | `segment.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/segment/` — Mimalloc-style 32 MiB chunks |
 | `heap.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/heap/` — thread-local fast path; live heap_alloc lifted via public `Heap.new` (audit §B closed); HeapError 7-variant + HeapStats 8-field surface exhausted + From&lt;SegmentError&gt; lift covered (audit §D closed) |
 | `diagnostics.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/diagnostics/` — read-only observer surface |
@@ -69,302 +69,39 @@ The dedicated-suite-pending modules are tracked in
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 
-### Defect status (2026-07-06 `--aot`) — 123 → 48 failures; 6 modules green both tiers
+### Known limitations
 
-Six fundamental classes landed (`53e13bf29` + `72d2a9578`; the second
-re-lands the interp handler batch dropped by a concurrent branch
-reset).  Post-fix per-module `--aot` (was → now): size_class 50/38 →
-**88/0**, capability 93/4 → **97/0**, fat_ref 40/2 → **42/0**,
-cap_audit 39/1 → **40/0**, epoch **43/0**, diagnostics **29/0**,
-hazard 44/3 → 46/1, header 58/9 → 65/2, cap_audit_ring 27/9 → 34/2,
-allocator 40/23 → 50/13, arena 51/9 → 53/7, segment 38/7 → 39/6, heap
-45/7 → 46/6, thin_ref 38/1 → 38/1, mod 77/10 → 77/10.  Interp gate
-re-validated on the same binary: **861/861/0**.
+Two things in this module behave differently from the rest, and both
+have a workaround.
 
-| Class | One line |
-|---|---|
-| CONST-ARRAY-RETTYPE-1 | Composite-typed consts archived `return_type=Unit` → AOT `GetE` indexed the zeroed object header (`SIZE_CLASSES[0]`=0). Declared TypeRef now rides into the descriptor. |
-| DEREF-INTERIOR-1 | `Deref` of a `RefListElement` result double-dereferenced (record element's zero header word as an address — ring `commit` EXC 0x18); interior marks pass through `Deref` and survive `Mov`. |
-| CLONE-AOT-ALIAS-1 | AOT `Clone` pointer-aliased heap objects (`[Slot{…}; 256]` = 256 aliases of one slot); now `checked_malloc+memcpy` with statically-tracked sizes, cleared on register reuse. |
-| HEAP-INTORAW-1 (AOT twin) | Transparent-Heap identity for `into_raw`/`from_raw` + statically-true `is_valid` on both dispatch forms. |
-| SIGNATURE-PREPASS-1 | Stage-1 method stubs carry declared return types — the for-in classifier now sees `List.drain → Drain<T>` regardless of module order; `reclaim` compiles to the protocol loop on BOTH tiers. |
-| PRECOMPILE-TARGET-SWEEP-1 | Stdlib walkers skip `target/` — harness residue was compiled as stdlib (355 of 580 field-intern fallbacks) and thrashed the precompile hash. |
+**A cross-module static constructor taking five or more arguments
+returns a record whose fields read back shifted.** The constructor
+writes its fields correctly; the reader lands on the wrong slots,
+because field-index resolution falls through its type-aware lookups to
+a name-keyed fallback that does not know which type it is resolving
+for. `UseAfterFreeError.new(...)` is the case this was found on, and
+every cross-module `Type.new(...)` of that arity is affected.
 
-Residual 48, attributed on **pure HEAD** (`d1c721f36..14007a8a1`
-window, minimal repros filed): the archive f-string-of-int
-`.message()` memmove crash under `--aot` (every error-variant message
-test across segment/arena/heap/allocator/mod), `Shared.strong_count`
-AOT, ring `recent()` slot-0 skip, and 4 singletons — the concurrent
-text/float-AOT wave's frontier; coordination data handed over.
+Construct with a record literal at the call site instead:
 
-### Defect status (2026-07-05 `--interp`) — frontier CLOSED
+```verum
+// Shifted — the reads land on the wrong fields.
+let e = UseAfterFreeError.new(a, b, c, d, e);
 
-**All 15 modules GREEN: 861 passed / 0 failed / 0 ignored** at
-`--test-threads 4` (parallel runs no longer crash).  The three residual
-defects from the 2026-06-19 table below plus two regressions that had
-accumulated since are closed by five fundamental `verum_vbc` fixes
-(commit `799cff9b2`); the last three `@ignore` pins are un-gated
-(`c3e4236bb`).
-
-| Closed defect | Class | Root cause → fix |
-|---|---|---|
-| hazard whole-module SIGSEGV (killed every parallel run) | TYPE-NAME-INFERENCE-1 + PROTOCOL-ITER-1 + CALLSYNC-R0-CLOBBER-1 | SCREAMING_CASE static-mut receivers classified as TYPE namespaces (miss-fallback returned the static's NAME as a type) and Path-only instance-receiver resolution left `self.retired.drain(…)` untyped → for-in lowered a `Drain<T>` through native IterNew, which mapped every non-builtin type_id to ITER_TYPE_LIST and read the record as a List header (value-dependent SIGSEGV).  IterNew/IterNext now dispatch the Iterator protocol for unknown records via resolved `<Type>.next`; the protocol call surfaced a latent kernel bug — `call_function_sync` clobbered the caller's r0 (`self`) via `return_reg=Reg(0)` — fixed with save/restore. |
-| cap_audit_ring 27/9 (`commit` wrote `.event` at slot 4 of a 2-field record; `count()` stuck at 0) | CAP-AUDIT-SLOT-LAYOUT-1 + ATOMIC-CAS-ZEROINIT-1 | The Cast inference arm resolved only single-ident Path targets, so `as *mut CapAuditSlot` carried no type and the deref-field write fell to the global intern (proven via `VERUM_TRACE_FIELDSHIFT`).  Independently, size-8 atomic CAS compares NaN-boxed patterns while a fresh static-mut cell is raw zero — `NEXT_SEQ`'s inlined fetch_add lost every increment.  Cast/Deref arms now resolve every type shape (incl. `*mut`/`*const` carriers); the CAS accepts the raw-zero never-stored pattern for `expected == 0`. |
-| allocator 61/2 (`Heap.into_raw` field-OOB; `Shared.strong_count` not found) | HEAP-INTORAW-1 / SHARED-STRONGCOUNT-1 | The Tier-0 runtime wrapper representations (`Heap<T>` = CBGR data pointer; `Shared<T>` = `[refcount, value]` object) do not match the source-level records, so the compiled bodies misread memory.  Shape-guarded intercepts on both dispatch paths (`wrapper_runtime.rs` static-`Call` twin + `CallM` arms); `clone` bumps the refcount on all three clone arms, binding-drop decrements it, `*shared` derefs to the inner value. |
-| heap `get_heap_stats` NullPointer whenever `core.mem.segment` was mounted | XMOD-CALL-ID-BAND-1 | Archive bytecode kept ctx-GLOBAL ids for cross-module calls while local calls were remapped to `[0, N)` — overlapping id spaces made the id-keyed external-name lookup structurally ambiguous (heap's LOCAL `get_heap` id collided with the recorded cross-module id of `atomic_fetch_add_int`).  Cross-module ids now re-home into the reserved band `[0x2000_0000, 0x4000_0000)` at precompile — disjoint spaces by construction. |
-| 3 `@ignore` pins (mod §3.4 umbrella `has_capability`, diagnostics §B `can_read` 5-way collision, arena single-field-variant Eq) | dispatch-collision class | Closed by the interim dispatch waves (public-mount re-export traversal; receiver-type-aware CallM; single-field unboxing); each verified green by direct probe before un-gating. |
-
-Cross-tier: the `--aot` sweep is in flight; results land in this table
-and the frontmatter when complete.  Attribution note: the time/ and
-async/ suite failures visible on current main reproduce identically on
-pure HEAD without this batch (clean-baseline build `d1c721f36`) — they
-belong to the concurrent intrinsics wave and are tracked separately.
-
-### Defect status (2026-06-19 `--interp`) — historical
-
-
-
-The five `mem-codegen-fixes` codegen fixes (table below) were
-**consolidated and re-validated** this cycle on branch
-`mem-conformance-work` (isolated worktree, dedicated `CARGO_TARGET_DIR`,
-archive regenerated), PLUS a new **static-mut method-receiver fix**
-(commit on this branch). **12 of 15 modules are now fully green**:
-header 67/0, thin_ref 39/0, fat_ref 42/0, capability 97/0, size_class
-88/0, arena 59/0, diagnostics 28/0, **epoch 43/0**, **cap_audit 40/0**,
-**mod 86/0**, **heap 52/0**. The 4 partial modules (allocator 61/2,
-cap_audit_ring 27/9, hazard 40/7, segment 44/1) are now THREE distinct
-codegen defects (see the "Still open" table below), not one family.
-
-**Resolved (branch `mem-codegen-fixes`):**
-
-| Was | Now | Root cause → fix |
-|---|---|---|
-| `epoch` 40/3 | **43/0** | `@thread_local` **record** `static mut` (`THREAD_EPOCH_CACHE`) is not cell-backed (its `&mut self` method read garbage); `@thread_local` **scalar** static-mut IS. → `cached_epoch`/`invalidate_epoch_cache` rerouted to thread-local scalar shadows, mirroring `GLOBAL_EPOCH_COUNTER`. |
-| `cap_audit_ring` SIGSEGV | **27/9** | `extract_type_name_from_ast` had no `Array` arm → `static mut R:[T;N]` got a garbage type-name → `R[i].field` resolved against the global field interner (wrong slot; `slot.state` read garbage → SIGSEGV). → added the `Array` arm + `extract_element_type` strips `[T]`/`[T;N]`. |
-| `allocator` 56/7 | **61/2** | (a) **array-const name-collision** `allocator.SIZE_CLASSES:[Int;11]` vs `size_class.SIZE_CLASSES:[Int;73]` — `compile_pending_constants` looked the pending const up by bare name so both shared one `FunctionId` and dedup dropped one (loser's qualified archive descriptor vanished) → now looks up by source-module-qualified name. (b) **Heap/Shared wrapper-method dispatch** — `let b = Heap.new(rec)` was typed as the inner `T`, so `b.is_valid()` dispatched to `T` → type the binding as the wrapper `Heap<T>`/`Shared<T>` + auto-deref field access to the inner `T`. |
-| `mod` 84/2 | **86/0** | `HEADER_SIZE` umbrella re-export tie-break was pure-alphabetical, so the type-associated `core.mem.MemSegment.HEADER_SIZE` beat the module `core.mem.header.HEADER_SIZE`. → prefer a **module** parent (lower_snake) over a **type** parent (CapitalCase). |
-
-**Closed this cycle:** `cap_audit` 38/2 → **40/0**. The two failures
-were a **test bug**, not field contamination: the tests read
-`event.epoch_at_event`, which is not a field of `CapEvent` (the field
-is `timestamp_ns`). The bare name resolved *leniently* to a wrong slot
-(returning a contaminated value) instead of erroring, so the
-field-independence asserts compared garbage. Pointed at the real field.
-(The lenient unknown-field resolution that returns a wrong slot instead
-of a hard error is itself a language defect — tracked.)
-
-**Closed this cycle (#2):** `heap` 51/1 → **52/0** via the static-mut
-method-receiver fix above (`get_heap_stats` → `get_heap()` →
-`CURRENT_HEAP.as_mut()`).
-
-**Still open** (now three DISTINCT defects, not one family):
-
-| Module(s) | Defect | Root cause | Fix locus |
-|---|---|---|---|
-| `cap_audit_ring` (9) | `InvalidOpcode 29` (pc 254) | static-mut **array** element address-of `&mut CAP_AUDIT_RING[idx]` in the `commit`/`recent` archive bodies emits mis-sized operands → PC desync. (Standalone repro: `&mut ARR[idx]` on a `static mut [Rec; N]` → null deref / `RefListElement` on non-List backing.) | VBC codegen: static-mut array element address-of + archive regen. |
-| `segment` (1) | `field access OOB type_id=0` in `lock_segments` | `result.1` of `atomic_compare_exchange_u32` (a **tuple** return) mis-dispatches to `LocalHeap.release_segment` instead of projecting tuple field 1. | tuple-projection field-access codegen. |
-| `hazard` (7) | `NullPointerAt 0x62` in `LocalHeap.free_local` | record-static-mut field / list walk (`THREAD_HAZARD_RECORD.retired`, `GLOBAL_HAZARD_DOMAIN`) reaches a null interior — the method-receiver fix cleared the `.scan_hazards()` dispatch but the record-field reads underneath still null-deref. | record-static-mut field read backing. |
-| `allocator` (2) | `Shared.strong_count` not found on `Object`; `Heap.into_raw` field-OOB | `Shared.new(99)` infers no inner type from an unsuffixed int literal (binding falls back to `Object`, method-table lookup fails between `Shared`/`Weak` candidates); `into_raw` by-value `self`. | literal→`Int` default; by-value-self dispatch. |
-
-**Root-cause correction (2026-06-19):** the earlier hypothesis that
-hazard/heap/segment shared a "record `static mut` write-persistence /
-cell-backing" defect was **disproved** by minimal repros — heap-object
-lifetime across frames is fine (`static mut Maybe<Rec>` whole read/write
-and cross-frame reads pass). heap was actually the method-receiver
-mis-dispatch (now fixed); hazard/segment are the two distinct codegen
-issues above.
-
-### Round-17 expansion (2026-05-28) — `core.mem.mod/` first-pass + foundation-layer property law sweeps
-
-Three commits landed:
-
-**1. `mem/mod/` 4-file conformance suite** (commit `8efa39d08`) —
-   first coverage of the `core/mem/mod.vr` umbrella manifest. 41
-   active unit + 19 property + 18 integration + 9 regression tests +
-   `audit.md` covering the 3 module-root types (`UseAfterFreeError`,
-   `RevocationError`, `CbgrTier`) and the umbrella re-export contract.
-
-**2. `mem/epoch/` + `mem/hazard/` property sweep** (commit `84a329253`)
-   — epoch property 85→250 LOC (4→13 laws); hazard property 38→235 LOC
-   (3→17 laws); hazard integration 41→200 LOC (2→11 tests). Closes
-   foundation-layer algebraic-law gaps for EpochCache 3-field
-   isolation, `needs_reclaim` threshold sweep,
-   `estimated_retired_bytes` 5×5 Cartesian product law,
-   MAX_THREADS / RETIRED_THRESHOLD power-of-two pins, and footprint
-   analysis composed with HEADER_SIZE / SEGMENT_SIZE /
-   DEFAULT_ARENA_CAPACITY.
-
-**3. `mem/heap/` + `mem/arena/` property sweep** (commit `d533408b7`)
-   — heap property 53→300 LOC (3→16 laws); arena property 40→230 LOC
-   (4→18 laws). HeapStats 8-field isolation + balance algebra
-   (`alloc_count == dealloc_count + live_count` no-leak invariant +
-   bytes balance + monotonicity); ArenaConfig
-   `.default()`/`.fixed()`/`.custom()` constructor invariants +
-   ArenaError 4-variant disjointness + payload-conjunctive Eq laws.
-
-#### NEW defects surfaced
-
-##### §1. Cross-module instance-method-body field-access shift
-
-`UseAfterFreeError.message()` body reads `self.<field>` at the WRONG
-offsets when invoked on instances constructed in test code, because
-the method body's compilation context is `core/mem/mod.vr` and the
-precompiled-archive's field layout for `UseAfterFreeError` isn't
-fully threaded into `compile_field_access` at the method-body
-codegen site.
-
-Demonstration (interpolated output under `--interp` 2026-05-28):
-
-```text
-let e: UseAfterFreeError = UseAfterFreeError {
-    expected_gen:   5,    actual_gen:     6,
-    expected_epoch: 1,    actual_epoch:   2,
-    type_name:      "Shared<Int>",
-};
-print(e.message());
-// Output: "use-after-free detected for 1: expected gen=5 epoch=5,
-//                                         actual gen=6 epoch=6"
+// Correct — the literal resolves its own field names.
+let e = UseAfterFreeError { ptr: a, generation: b, epoch: c,
+                            allocated_at: d, freed_at: e };
 ```
 
-Decoded shift:
+**Compiled ahead of time, a `for` loop over an iterator crashes at run
+time.** The loop dereferences the iterator's backing pointer through an
+unchecked reference. Code that constructs, matches and reads
+records compiles and runs correctly; only iteration is affected. This
+is why the tier column below says `--interp` for modules whose data
+surface is complete — the limit is one code-generation defect in the
+loop, not anything about the module.
 
-| Field | Logical slot | `.message()` reads slot |
-|---|---:|---:|
-| `expected_gen`   | 0 | 0 ✓ |
-| `actual_gen`     | 1 | 1 ✓ |
-| `expected_epoch` | 2 | 0 ❌ (reads expected_gen) |
-| `actual_epoch`   | 3 | 1 ❌ (reads actual_gen) |
-| `type_name`      | 4 | 2 ❌ (reads expected_epoch) |
-
-Same root cause class as the existing
-`use_after_free_error_field_shift_2026-05-27` defect (see below) but
-surfaced at the instance-method-body codegen site rather than the
-cross-module static-method return path. Pinned `@ignore`'d in
-`core-tests/mem/mod/unit_test.vr §1-§2`.
-
-##### §2. Umbrella-mount dispatch collision: `has_capability`
-
-When `has_capability` is mounted via the umbrella
-(`mount core.mem.{has_capability}` routing through `mod.vr`'s
-`public mount .capability.{has_capability}` re-export), a 2-arg call
-`has_capability(flags, cap)` is dispatched to the SAME-NAME 2-arg
-method `AllocationHeader.has_capability(&self, cap)` defined at
-`core/mem/header.vr:636`.
-
-```text
-let flags: UInt16 = CAP_OWNED;
-assert(has_capability(flags, CAP_READ));
-// Runtime: NullPointerAt { op: "opcode 0x78",
-//                          site: "AllocationHeader.load_capabilities",
-//                          pc: 0 }
-```
-
-The first UInt16 argument (CAP_OWNED) is re-interpreted as a
-`&AllocationHeader` pointer (= null), faulting on the first
-`self.load_capabilities()` call.
-
-**Direct submodule mount works**: `mount core.mem.capability.{has_capability}`
-resolves to the free function correctly (29 GREEN tests in
-`core-tests/mem/capability/`). The defect is specific to
-umbrella-mount dispatch, not bare-name dispatch.
-
-**Fundamental fix surface**:
-1. The dispatcher's bare-name lookup must distinguish free-fn-arity-N
-   from impl-block-method-arity-(N-1)-plus-receiver dispatch.
-2. Or — umbrella-re-exported free fns must carry their canonical
-   source-module identity in their function-id key.
-
-Pinned `@ignore`'d in `core-tests/mem/mod/unit_test.vr §8` +
-`regression_test.vr §H`.
-
-### Round-14 expansion (2026-05-27) — +26 new integration tests
-
-The latest expansion landed 26 new integration tests across 4 mem
-submodules under `--interp`:
-
-| Submodule | New tests | Sections covered |
-|---|---:|---|
-| `capability` | +9 | §7 composition with `GEN_*` lifecycle; §8 capability lattice ordering (top/bottom/idempotence/associativity); §9 `has_capability` bit-mask invariants (monotone-under-or, zero-mask, has_all_capabilities-universal-self) |
-| `size_class` | +6 | §9 `aligned_size` semantic (passthrough for align ≤ `MAX_ALIGN_SIZE`, overhead for oversized); §10 round-trip law `size_to_bin · bin_to_size` + monotone-over-doubling; §11 blocks-per-page lower bound |
-| `header` | +6 | §6 9-flag power-of-two layout + 6 pairwise-distinctness; §7 `GEN_UNALLOCATED < GEN_INITIAL < GEN_MAX < UInt32.MAX` chained inequality + headroom > 2^31; §8 compound flag operations (OR/XOR) |
-| `heap` | +5 | §4 HeapStats zero-state invariants (8-field baseline + live-count + bytes-outstanding + page-and-cache activity); §5 DIRECT_LOOKUP_SIZE + PAGE_HEADER_SIZE drift pins |
-
-All 26 tests pass under `--interp` (~28-30s each).  Test budget for
-full round-14 sweep: ~13 minutes wall-clock.
-
-### Known open defect — cross-module record-return field-access shift
-
-The `UseAfterFreeError.new(...)` (5-arg static constructor) returns a
-record whose field reads at the test site shift by +2 indices.  The
-constructor body writes fields at correct offsets; the test-side
-field READS land on wrong slots because `compile_field_access` falls
-through `resolve_field_index`'s type-aware lookups and lands on the
-global `intern_field_name(field_name)` fallback.
-
-**Affected sites**: every cross-module `Type.new(...)` (5+ args) call
-where the test expects to read distinct field values back.  Workaround
-pinned in `core-tests/mem/thin_ref/unit_test.vr §5`: construct via
-direct record literal at the test site, NOT via the cross-module
-`.new(...)` constructor.
-
-**Attempted fix**: a defensive `self.types`-by-name fallback in
-`resolve_field_index` (commit `ab8e707f4`) regressed 3 previously-GREEN
-record-literal tests; reverted in commit `585728904`.  The correct
-fundamental fix must preserve the 4-way cache consistency
-`(type_name_to_id, self.types, type_field_layouts,
-type_field_type_names)` holistically — likely at the archive-load
-path (`import_archive_type_with_protocol_remap` in
-`crates/verum_vbc/src/codegen/mod.rs:15771-15820`) rather than at
-downstream consumers.
-
-Pinned by memory entry `use_after_free_error_field_shift_2026-05-27.md`,
-audit `core-tests/mem/thin_ref/audit.md §6-§7`, and the corresponding
-`@ignore` pins in `unit_test.vr §6` (3 tests in thin_ref + 1 in
-diagnostics).  Same defect class as
-`[[btree_pattern_match_ref_generic_class]]` and
-`[[enactment_field_access_oob_2026-05-24]]`.
-
-### Cross-tier validation status
-
-The `Tier` column reflects validated status under `verum test --interp`
-(Tier 0 VBC interpreter) as of the latest mem-suite sweep.  Tier 2
-(`verum test --aot`, LLVM AOT) verification of the full suite was, until
-2026-06-01, blocked at the **runner level**: `verum test --aot` runs
-with `[test].parallel = true` by default, and the runner contained two
-independent parallelism bugs that crashed the *whole* run with an
-in-process compiler `SIGSEGV` during `generate_native` (see
-defect-class catalogue §23 — AOT-PARALLEL-1 (verum repo, `docs/architecture/defect-class-catalogue.md`)):
-
-1. **Colliding artifact paths.**  Per-test build artifacts (the merged
-   `target/test/test_<stem>.merged.vr`, the output binary, the derived
-   `.o`/`.ll`, and the shared `verum_runtime_stubs.c`/`.o`) were keyed on
-   the test file's `file_stem`, which repeats across every module (all
-   `unit_test.vr` → stem `"unit_test"`).  Parallel workers clobbered each
-   other's files → corrupt source → malformed IR → SIGSEGV.  Fixed by
-   `unique_merged_stem` (folds the source path + test fn into every
-   artifact name).
-2. **LLVM backend not thread-safe.**  Even with unique artifacts, LLVM's
-   per-process pass registry / subtarget caches / `cl::opt` globals are
-   not safe to drive from multiple threads at once.  Fixed by a
-   process-global `llvm_backend_lock()` around the optimisation + object
-   emission window.
-
-(The earlier "WinSock `recv` arity" hypothesis was disproved — a single
-`--aot` test compiles and passes; the blocker was the *parallel* runner,
-not a stdlib symbol.)  With both fixed, `verum test --aot` completes.
-
-**First post-fix `--aot` baseline** (mem `capability` + `cap_audit` +
-`cap_audit_ring`, 173 tests, 0 compiler SIGSEGV): **125 pass / 48 fail**.
-Every failure is the same per-test defect — **AOT-ITER-1** (catalogue
-§18): tests whose bodies iterate `for x in …iter()` (the exhaustive
-property laws and integration scenarios) crash at *runtime*
-("process terminated by signal") on the raw `&unsafe T` iterator
-backing-pointer deref. Pure-data tests (constants, ADT construct/match,
-field round-trips) pass `--aot` cleanly. So the `Tier` column stays
-`--interp` per-module until AOT-ITER-1 §18 closes — that single codegen
-fix un-crashes the for-loop tests suite-wide and lets the mem modules
-promote to `--interp ✓ / --aot ✓`. (Record-variant construction,
-catalogue §-pending, is a smaller secondary surface.)
+Under the interpreter both work.
 
 ## File-by-file API surface
 

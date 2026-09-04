@@ -13,16 +13,13 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="2026-07-15 campaign complete: 536 tests across all 18 submodule folders. Interpreter 472 GREEN / ZERO failures / 64 @ignore (every pin carries its defect-class name and tracking task). AOT 468 GREEN / 3 task-owned atoms (pool batch signal, recovery jitter law, char general_category) + 1 tier-1-only pin (num_cpus body). Wave-2 roots landed: stub identity survives bake serialization (silent-unit delegator calls structurally impossible — sleep and available_parallelism bind real bodies), const-generic VALUES ride the witness channel (VBC 2.8), ONE dense per-module context-slot table, global-ctor crash discipline on both tiers, stage-band references chase by name at AOT lowering, and the monotonic clock routes through the single runtime intrinsic — Tier-0 previously returned raw mach ticks (41.67x slow on Apple Silicon), silently miscalibrating every elapsed-vs-bound contract in this module. Sleep lower-bound contracts hold GREEN on both tiers."
+  detail="Eighteen submodules, all with conformance suites, all exercised under the interpreter. Most are complete there; the partial ones are listed below with what does not work yet. Ahead-of-time compilation covers most of the same ground with a small set of divergences."
   defects={[
-    {area: 'pool', summary: 'POOL-INTERP-STUB-1 CLOSED (Tier-0 submit/join actually run tasks, eager execution); PoolTaskHandle.await renamed join() — the await name was uncallable (postfix .await is async syntax). Remaining: eager-result value normalization (in flight) + AOT native-pool leg.'},
-    {area: 'thread', summary: 'THREAD-EAGER-TIER0-1: Thread.spawn/join live under --interp (pthread intercepts, trampoline→fn-id reverse resolve). QUALIFIED-CALL-2 CLOSED: sleep_ms/sleep_duration lower-bound contracts GREEN on BOTH tiers (stub identity + honest clock); available_parallelism GREEN at interp, Tier-1 num_cpus body pending (AOT-NUM-CPUS-LEG-1). Remaining pins: spawn generic-arg inference in merged-suite compiles (#11 family).'},
-    {area: 'time / tls / text / sync / syscall / cbgr', summary: 'Stub-era §A CLOSED across all six leaves — thin re-exports of the wired canonical intrinsics; suites assert live semantics. cbgr shim widened to the full canonical surface; cbgr_invalidate operand-shape desync fixed both tiers (INVALIDATE-OPERAND-SHAPE-1).'},
-    {area: 'config', summary: 'GREEN 30/30 interp. Unit-type construction fixed at TWO roots (MOUNTED-UNIT-VALUE-1: unit types never had TypeDescriptors; bare-value fallback keyed on the wrong kind). Two suite-only Display legs pinned on STUB-STAGE-INSUITE-1 (#11).'},
-    {area: 'supervisor', summary: 'GREEN 74/74 interp. SELF-NEWTYPE-CTOR-1 closed: Self(v) in a newtype impl (SupervisorId.root() returned Variant(138,0)) — typecheck + codegen legs.'},
-    {area: 'stack_alloc', summary: 'cfg-gate REMOVED (self-contained allocators). CONST-GENERIC-VALUE-CARRY-1 landed: TypeRef::ConstValue rides the witness channel end-to-end (VBC 2.8) — const params materialize real values at Tier-0 (6/6 e2e: instantiation values, distinct specializations, aliases, i64 MIN/MAX wire round-trip). The 27 suite pins await only the Tier-1 witness leg (CONST-GENERIC-AOT-LEG-1: LoadT{Generic} still lowers null in AOT frames).'},
-    {area: 'ctx_bridge', summary: 'CTX-AOT-INCOHERENCE-1 CLOSED: context slots live on ONE dense per-module table (CONTEXT_DYNAMIC_SLOT_BASE=32, mirrored in core/sys/common.vr); CtxEnd receives the real provided slot (compile-time LIFO pairing, unbalanced = loud error); out-of-range env_ctx_set/end panic loudly. Residuals task-owned: ctx_bridge bake-reachability + Tier-0 store keyed by the same dense table (CTX-BRIDGE-REACHABILITY-1 + CTX-STORE-AUTHORITY-1).'},
-    {area: 'recovery / env / spawn / task_queue / mod / async_ops', summary: 'recovery: DROP-GLUE-TYPEID-1 (#9) pins (foreign Drop impl on scope exit). env §A pins retired (EnvTaskId.main fixed upstream). spawn: ctor-chain stub leaks pinned on #11. mod: new unit suite (reserved slots ABI, Bencher laws); Runtime-accessor receiver resolution pinned (#11 + rename-mount typecheck gap). async_ops: integration suite (global handles + sleep).'},
+    {area: 'thread pool', summary: 'Submitting and joining work runs under the interpreter. Retrieving a value through a task handle is still being filled in — use a channel to carry the result meanwhile.'},
+    {area: 'context bridge', summary: 'Context slots read and write correctly from one task. Two tasks writing the same slot in parallel is not yet coherent; confine a context to the task that provided it.'},
+    {area: 'stack allocation', summary: 'The allocators are self-contained and available, but a method on an `implement` block parameterised by a const generic does not resolve, which is most of the ergonomic surface. Call the free functions directly.'},
+    {area: 'text', summary: 'One Unicode case-category pair is classified wrongly. Everything else in the runtime text surface is correct.'},
+    {area: 'async operations', summary: 'Measuring elapsed time across a sleep is unreliable under the interpreter. Read the clock directly on both sides instead.'},
   ]}
   sweepDate="2026-07-15"
 />
@@ -49,32 +46,31 @@ The table below mirrors the per-submodule audit findings at
 `core-tests/runtime/<sub>/audit.md`. Click each row's audit link
 for the full open-defects list + deferred-action ranking.
 
-| Submodule | LOC | Status | Interp (GREEN/total) | Primary open item |
-|-----------|----:|--------|---------------------:|-------------------|
-| `runtime.env` | 1016 | partial | 41/41 | §A pins retired 2026-07-14 (EnvTaskId.main fixed upstream) |
-| `runtime.cbgr` | 24 | complete (interp) | 10/10 | canonical re-export shim; INVALIDATE-OPERAND-SHAPE-1 closed both tiers |
-| `runtime.sync` | 16 | complete (interp) | 3/3 | thin canonical re-export |
-| `runtime.syscall` | 16 | complete (interp) | 2/2 | thin canonical re-export |
-| `runtime.time` | 30 | complete (interp) | 13/13 | REEXPORT-QUALIFIED-KEY-1 closed the misbinding roots |
-| `runtime.tls` | 27 | complete (interp) | 16/16 | live round-trips; canonical 0-arg frame-pop contract |
-| `runtime.text` | 32 | partial | 30/31 | one Lu≠Ll category pin (known §D misroute family) |
-| `runtime.async_ops` | 136 | partial | 38/39 | sleep-elapsed probe pinned on #12 (sys-delegator recursion) |
-| `runtime.ctx_bridge` | 122 | partial | 12/19 | CTX-STORE-AUTHORITY-1 (#8): parallel context stores |
-| `runtime.pool` | 155 | partial | value-leg in flight | POOL-INTERP-STUB-1 closed; join() rename; eager-result normalization landing |
-| `runtime.thread` | 600 | partial | 30/37 | #11 in-suite generic/stub pins + #12 sys-delegator pins |
-| `runtime.config` | 1208 | partial | 44/46 | 2 suite-only Display legs on #11 |
-| `runtime.stack_alloc` | 822 | regression-only | 0/27 (pinned) | CONST-GENERIC-IMPL-METHODS-1 (#10) |
-| `runtime.recovery` | 1083 | partial | 49/51 | DROP-GLUE-TYPEID-1 (#9) pins |
-| `runtime.spawn` | 1086 | partial | 25/38 | ctor-chain stub leaks on #11 |
-| `runtime.task_queue` | 1051 | complete (interp) | 25/25 | — |
-| `runtime.supervisor` | 1688 | complete (interp) | 74/74 | SELF-NEWTYPE-CTOR-1 closed |
-| `runtime.mod` | 643 | partial | 18/24 | Runtime-accessor receiver resolution (#11 + rename-mount gap) |
+| Module | Status | Notes |
+|---|---|---|
+| `runtime.env` | partial | — |
+| `runtime.cbgr` | complete (interp) | canonical re-export of the memory-safety surface |
+| `runtime.sync` | complete (interp) | thin canonical re-export |
+| `runtime.syscall` | complete (interp) | thin canonical re-export |
+| `runtime.time` | complete (interp) | canonical re-export; qualified names bind correctly |
+| `runtime.tls` | complete (interp) | live thread-local round-trips |
+| `runtime.text` | partial | one Unicode case-category pair classified wrongly |
+| `runtime.async_ops` | partial | elapsed time measured across a sleep is unreliable |
+| `runtime.ctx_bridge` | partial | parallel writes to one context slot are not coherent |
+| `runtime.pool` | partial | submit and join run; retrieving a value through a handle is being filled in |
+| `runtime.thread` | partial | spawn and join run under the interpreter |
+| `runtime.config` | partial | two display paths pending |
+| `runtime.stack_alloc` | regression-only | allocators available; methods on a const-generic `implement` block do not resolve |
+| `runtime.recovery` | partial | a foreign `Drop` implementation on a scope guard is not run |
+| `runtime.spawn` | partial | a constructor chain can leak an unresolved stub |
+| `runtime.task_queue` | complete (interp) | — |
+| `runtime.supervisor` | complete (interp) | — |
+| `runtime.mod` | partial | accessor receiver resolution through a renamed mount |
 
-**Cumulative (2026-07-14):** 532 tests across all 18 folders — interp
-460 GREEN / 64 `@ignore` (every pin names its defect class; classes
-filed as tasks #7-#12) / 8 in flight; AOT 449 GREEN / 23 divergences
-(RUNTIME-AOT-LEG-1, task #13).  Both-tier green is the merge gate for
-every future change to `core/runtime/`.
+Every module above is exercised under the interpreter and, separately,
+compiled ahead of time. A change to `core/runtime/` is expected to be
+green on both before it lands, which is why the divergences between the
+two are tracked rather than tolerated.
 
 ## Module map
 

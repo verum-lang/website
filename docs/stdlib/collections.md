@@ -76,14 +76,14 @@ together pending the realloc fix.
 | `set.vr`            | **partial** | [core-tests/collections/set](https://github.com/verum-lang/verum/tree/main/core-tests/collections/set) — 23 unit + 10 property + 5 integration + 4 pinned regressions. Set.insert returns Bool (was Unit); Set.union / Set.intersection auto-deref CBGR ref needle. |
 | `multiset.vr`       | **partial** | [core-tests/collections/multiset](https://github.com/verum-lang/verum/tree/main/core-tests/collections/multiset) — 21 unit + 10 property + 5 integration + 12 regressions. Construction / insert / remove / count / contains / clear / cardinality / distinct_len / is_subset / with-empty algebraic ops green; per-element-correct union/intersection/sum/difference and direct iter() pinned (gated on MultisetIter wrapping Map.iter() — wrapper-type dispatch defect, same class as slice §D). |
 | `deque.vr`          | **stable** | [core-tests/collections/deque](https://github.com/verum-lang/verum/tree/main/core-tests/collections/deque) — 44 unit + 8 property + 5 integration + 2 pinned regressions (**44/44 active green** on `--interp` validated 2026-05-27). **Round 12 expansion**: Sections 8–14 added (get / get_mut after wrap-around / contains / clear+refill / with_capacity / singleton edge cases / repeated push_front / drain-to-empty refill / alternating push-pop). Stdlib type-decl field order matches runtime intercept allocation. |
-| `heap.vr`           | **partial** | [core-tests/collections/heap](https://github.com/verum-lang/verum/tree/main/core-tests/collections/heap) — 32 unit + 5 property + 4 integration + 5 regressions, **51/52 green** on `--interp` validated 2026-05-27 (1 pre-existing fail). **Round 12 (completed)**: Sections 6–14 added (with_capacity / push_pop 3 variants / replace 2 variants / try_push / singleton / inserted-in-both-orders / duplicates / to_list-into_list / clear / 16-elem drain). Migrated `push_pop` and `replace` from raw `unsafe { ptr_read(as_mut_slice().as_mut_ptr()); ... }` to safe `self.data.get(0) + self.data.set(0, value)` (commit 383ea7278). Eliminated the `List.swap` dispatch panic on receiver mis-classified as `InterruptCell(Int)`. Earlier branch: Heap.into_inner CBGR runtime intercept (commit `bd2553407`); array-dispatch polarity defect closed. |
+| `heap.vr`           | **partial** | [core-tests/collections/heap](https://github.com/verum-lang/verum/tree/main/core-tests/collections/heap) — construction, `push_pop` and `replace` in every variant, `try_push`, singletons, insertion in either order, duplicates, the list conversions, `clear` and bulk drain are all covered. The internals moved off raw pointer reads onto the safe indexed accessors. **Known limitation:** `into_inner` does not dispatch when the receiver is generic. |
 | `btree.vr`          | **regression-only** | [core-tests/collections/btree](https://github.com/verum-lang/verum/tree/main/core-tests/collections/btree) — 6 unit + 5 property + 2 integration + 17 regressions.  **Pattern-match ref-deref CLOSED 2026-05-24** (commit 9d39011e1 — IsVar/GetVariantData/AsVar handlers now auto-deref heap-interior pointers in `cbgr_mutable_ptrs`).  Stdlib refactored `BTreeMap.get/get_mut/insert/remove` from `.as_ref().expect()` to `match &self.root { Some(node) => … }`.  **Residual**: end-to-end `m.insert(1,100); m.get(&1)` still hits `field index 3 OOB on size 24` inside `search_node` chain — `&Heap<BTreeNode<K,V>>` argument-passing through generic methods loses inner T type (sister defect tracked separately).  Empty-state surface remains green. |
 | `slice.vr`          | **partial** | [core-tests/collections/slice](https://github.com/verum-lang/verum/tree/main/core-tests/collections/slice) — 47 unit + 10 property + 5 integration + 17 regressions (5 PASS-GUARDs + 12 defect-pins), **56/56 (`test_slice_*` filter) green** on `--interp` validated 2026-05-27. **Round 12 expansion**: Sections 7–11 added (index_of / rindex_of value-search; contains via full + subrange; get/first + get/last Maybe-destructure coherence; slice-of-slice nesting independence; split_at boundary cases zero/one/full). **index_of/rindex_of CLOSED 2026-05-24** (commit d05ffd479). Slice-only methods (eq_slice/cmp_slice/to_list/binary_search/partition_point/chunks/windows) still unreachable via CallM because `&[T]` shares the `List` runtime kind. |
-| `lru.vr`            | **stable**  | [core-tests/collections/lru](https://github.com/verum-lang/verum/tree/main/core-tests/collections/lru) — 21 unit + 9 property + 5 integration + 5 PASS-GUARDs (**41/41 green** on `--interp` validated 2026-05-23). Construction with capacity clamp, insert prior-value return, get/peek/remove/contains, clear, capacity-pressure eviction, LRU order tracking via touch-on-get, stats (size/hits/misses/evicted), peek-no-touch invariant — all conformance-tested. |
+| `lru.vr`            | **stable**  | [core-tests/collections/lru](https://github.com/verum-lang/verum/tree/main/core-tests/collections/lru) — construction with a capacity clamp, the prior value returned by `insert`, `get` / `peek` / `remove` / `contains`, `clear`, eviction under capacity pressure, recency tracking through `get`, the size / hit / miss / eviction counters, and the invariant that `peek` does not change recency — all covered. |
 | `ttl_cache.vr`      | **regression-only** | [core-tests/collections/ttl_cache](https://github.com/verum-lang/verum/tree/main/core-tests/collections/ttl_cache) — 6 unit + 5 property + 3 integration + 11 regressions (4 PASS-GUARDs on the working surface + 7 @ignore'd insert-path pins). Fundamental source-level defect closed in this branch: `ttl_cache.vr:109` called the non-existent `Instant.add_duration(Duration)`; fixed to use the canonical `Instant.checked_add(Duration) -> Maybe<Instant>` API.  Same fix landed at the parallel QUIC PMTU site (`path_mtu.vr:138`).  Promotes to **stable** after `cargo build --release` refreshes the embedded precompiled stdlib in the verum binary. |
-| `bloom.vr`          | **partial** | [core-tests/collections/bloom](https://github.com/verum-lang/verum/tree/main/core-tests/collections/bloom) — 4/4 non-`@ignore`'d regressions green on `--interp` validated 2026-05-24. **Task #47 CLOSED**: cross-module Call name-encoding via stage-3 stub pre-register (`pre_register_unique_public_free_functions` in `pipeline/stdlib_bootstrap.rs`) + finalize-time `emit_missing_stub_descriptors_with_callm(false)` descriptor synthesis. `BloomFilter.try_new` body compiles cleanly; at archive load, `ArchiveBodyRemap`'s Tier-2b name fallback resolves stub_id → real user-side FunctionId via the archive-wide `archive_func_by_name` index. 4 `@ignore`'d §B pins remaining are gated on a SEPARATE defect class (HMAC-SHA256 `[Byte; 64]` IndexOutOfBounds in `core.mac.hmac.HmacSha256.finalize`). |
-| `hyperloglog.vr`    | **partial** | [core-tests/collections/hyperloglog](https://github.com/verum-lang/verum/tree/main/core-tests/collections/hyperloglog) — 14/15 green on `--interp` validated 2026-05-24. Task #47 unblock spread here automatically: all HLL constructors + precision constants + HllError variant + `merge` precision-mismatch all green. 1 `@ignore`'d for `add_then_estimate` semantic (separate defect class). |
-| `count_min.vr`      | **partial** | [core-tests/collections/count_min](https://github.com/verum-lang/verum/tree/main/core-tests/collections/count_min) — 6/8 green on `--interp` validated 2026-05-24. Task #47 unblock spread here automatically: all construction tests + CountMinError variant algebra green. 2 `@ignore`'d for `add_increments_total` / `estimate_non_negative` populated-state semantic (same HMAC-SHA256 class as bloom §B). |
+| `bloom.vr`          | **partial** | [core-tests/collections/bloom](https://github.com/verum-lang/verum/tree/main/core-tests/collections/bloom) — `BloomFilter.try_new` and the error variants are covered. **Known limitation:** the hashing helper it shares with the other probabilistic structures does not resolve when reached across a module boundary, so a populated filter cannot be exercised yet. |
+| `hyperloglog.vr`    | **partial** | [core-tests/collections/hyperloglog](https://github.com/verum-lang/verum/tree/main/core-tests/collections/hyperloglog) — the constructors, the precision constants, the error variant and the precision-mismatch case of `merge` are all covered. **Known limitation:** adding an element and then estimating shares the cross-module resolution defect described under `bloom`. |
+| `count_min.vr`      | **partial** | [core-tests/collections/count_min](https://github.com/verum-lang/verum/tree/main/core-tests/collections/count_min) — construction and the error algebra are covered. **Known limitation:** adding increments and estimating from a populated sketch shares the cross-module resolution defect described under `bloom`. |
 | `reservoir.vr`      | **partial**  | [core-tests/collections/reservoir](https://github.com/verum-lang/verum/tree/main/core-tests/collections/reservoir) — 14 unit + 7 property + 4 integration + 4 pinned regressions (CSPRNG-gated replacement phase) |
 | `consistent_hash.vr`| **partial** | [core-tests/collections/consistent_hash](https://github.com/verum-lang/verum/tree/main/core-tests/collections/consistent_hash) — 5 unit + 5 property + 2 integration + 4 PASS-GUARDs + 1 @ignore'd populated-ring pin. Empty-ring surface (new / with_virtual_nodes / node_count / position_count / node_for_key-on-empty / nodes_for_key-on-empty / DEFAULT_VIRTUAL_NODES) green; add_node integration deferred pending Text.from reachability. |
 | `adjacency_list.vr` | **partial** | [core-tests/collections/adjacency_list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/adjacency_list) — 4 unit + 3 property + 2 integration + 5 regressions (3 PASS-GUARDs + 2 @ignore'd edge-mutator pins). add_edge panics with field-write-out-of-bounds (same layout-drift class as BTreeMap §A but for the inner edge-Map). Vertex-only surface green. |
@@ -1143,64 +1143,33 @@ unlocks coverage in multiple downstream modules at once.
 
 ## Architectural snapshot 2026-05-23
 
-A full re-audit of the `--interp` test surface across every
-`core-tests/collections/<module>/regression_test.vr` was completed
-on 2026-05-23. Snapshot of the regression-suite pass rates:
+Not every collection is equally ready. This is what works today under
+the interpreter, and what to reach for instead where it does not.
 
-| Module | Regression suite | Notes |
+| Module | State | What does not work yet |
 |---|---|---|
-| `lru`              | full unit + regression green (41/41) | stable |
-| `deque`            | 29/29 green                          | stable (uplifted from partial) |
-| `set`              | 8/10 (2 `@ignore`d)                  | `into_list` / `extract_if` pinned |
-| `map`              | 6/8 (2 `@ignore`d)                   | `Map.from` / `get_key_value` pinned |
-| `heap`             | 10/11 (1 fail)                        | `Heap.into_inner` generic-receiver dispatch |
-| `list`             | 5/11 (6 `@ignore`d)                   | `List.of` / `from_elem` / `fill` / `sort_by` / `is_sorted` pinned |
-| `slice`            | 6/14 (1 fail + 7 `@ignore`d)         | `position` misdispatch |
-| `multiset`         | 0/7 (all `@ignore`d)                  | `iter()` wrapper-dispatch class |
-| `reservoir`        | 4/4 green                            | partial (sample-phase tests outside regression file) |
-| `toposort`         | 5/6 (1 `@ignore`d)                   | `Text.from` error-payload pinned |
-| `trie`             | 0/3 (all `@ignore`d)                  | `Map.get_mut` dispatch |
-| `btree`            | all `@ignore`d                        | record-storage corruption on `SetF` of `Maybe<Heap<T>>` |
-| `bloom`            | 3 fail + 8 `@ignore`d                 | cross-module `fill_secure` (task #47) |
-| `hyperloglog`      | similar to `bloom`                    | task #47 |
-| `count_min`        | similar to `bloom`                    | task #47 |
-| `alias_sampler`    | construction-gated                    | task #47 + record-layout |
+| `lru` | stable | — |
+| `deque` | stable | — |
+| `reservoir` | usable | the sampling phase is less covered than construction |
+| `toposort` | usable | an error payload built from `Text.from` is wrong |
+| `heap` | usable | `Heap.into_inner` does not dispatch on a generic receiver |
+| `set` | usable | `into_list` and `extract_if` |
+| `map` | usable | `Map.from` and `get_key_value` |
+| `list` | usable | `List.of`, `from_elem`, `fill` and the shuffle helpers |
+| `slice` | usable | `position` dispatches to the wrong method |
+| `multiset` | limited | `iter()` does not dispatch through the wrapper |
+| `trie` | limited | `Map.get_mut` does not dispatch |
+| `btree` | **avoid** | a record field holding an optional heap value is cleared on write, so `BTreeMap.insert` followed by `get` faults. Use `Map` until this lands. |
+| `bloom` / `hyperloglog` / `count_min` | limited | the hashing helper they share does not resolve across module boundaries |
+| `alias_sampler` | limited | construction is blocked by the same resolution defect |
 
-### Architectural close-outs (single root cause clusters)
+The three probabilistic structures and `alias_sampler` share ONE cause,
+not four: a call that crosses a module boundary is resolved by numeric
+id within the producing module, so a stdlib body reached transitively —
+one whose home module the program never mounted directly — can land on
+an unrelated function. It is a single fix, and closing it moves all
+four at once.
 
-Six of the regression-only modules above share **two** architectural
-root causes, not the per-module defects the original audit suggested:
-
-1. **Task #47 — cross-module Call name-encoding** (4 modules: bloom,
-   hyperloglog, count_min, partially alias_sampler).  The stdlib's
-   bytecode format currently encodes cross-module function calls as
-   raw `Call(func_id)`.  At archive load time, the per-module remap
-   resolves the id within the producer module only; transitively-
-   loaded stdlib bodies whose home isn't directly mounted by the user
-   fall through Tier-3 identity fallback and land on whatever
-   unrelated function happens to occupy the resolved id (live failure:
-   `DequeIntoIter.zip_longest`, `DequeDrain.map`).  Documented in
-   `crates/verum_vbc/src/codegen/mod.rs:5687-5750` with historical
-   experiments showing per-module extern-stub synthesis explodes
-   `runtime.vbca` from 12.9 MB to 110-134 MB.  The fundamental fix is
-   to change the bytecode encoding to embed the function name as a
-   `StringId` so the user-side merge resolves by name once per Call
-   site, not once per `(module × imported-function)` pair.
-
-2. **BTreeMap record-storage corruption** (2 modules: btree, partially
-   adjacency_list).  `SetF` of a `Maybe<Heap<T>>`-typed field somehow
-   resets the record's data area to 0 bytes.  Reproduced minimally:
-   `let mut m: BTreeMap<Int,Int> = BTreeMap.new(); m.insert(1,100);
-   m.get(&1);` → `Panic: field access out of bounds: field index 0
-   exceeds object data size 0`.  No Rust-side intercept for BTreeMap
-   exists (only for iterator wrappers), so this is pure codegen +
-   runtime `SetF` behaviour for nested-Heap fields.  Fix path: audit
-   the `SetF` handling for record fields holding `Maybe<Heap<T>>` /
-   `Maybe<Shared<T>>`, OR add an explicit BTreeMap runtime intercept
-   that controls the allocation slot count.
-
-Closing either of these architectural defects promotes multiple
-collection modules from `regression-only` to `partial` or `stable` in
-one fix.  The per-module audit files under
-`core-tests/collections/<module>/audit.md` carry the full per-defect
-inventory for each.
+`btree` and `adjacency_list` share the other: writing a record field
+whose type is an optional heap value resets the record's data area, so
+a later read finds nothing there.

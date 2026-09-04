@@ -12,17 +12,12 @@ status_detail: >-
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
-  status="partial"
-  detail="Sweep 2026-07-11 — dual-tier campaign round 1. INTERP: 1213/1222 (99.3%) across the text/ tree; every module except three pinned islands is fully green (text/text 462/465, char 130/130, case_fold 64/64, builder 51/52, format 146/146, regex 59/59, tagged_literals 49/49, bytes/cow/storage green, numeric 222/234 with 10 historical @ignores, NEW mod/ umbrella suite 18/19). Six defect classes were closed at the fundamental level this round: RETNAME-CARRY-1 (VBC format v2.6 — function descriptors carry the source-level return-type name verbatim; retires the PTR-carrier→USize→Int-dispatch class and base-only generic loss), TUPLE-TYPE-TRACK-1 (tuple-aware type splitting/projection through match payloads and TupleIndex), CALLM-KEEP-CLOSURE-1 (archive mount-prune follows CallM method edges + always keeps primitive impls), SET_E-FATREF-1/SLICE-ELEM-WRITE-1/ADDI-RESOLVE-1 (interpreter write-side representation parity on slices), SELF-MUT-RECV-COHERENCE-1 (runtime honors callee-declared &mut self regardless of call-site registry timing), RSPLIT-ORDER-1 + MAKE-ASCII-INPLACE-1 (stdlib contract corrections). AOT parity is the NEXT round (representative slice: case_fold 36/64, bigint 60/77) — tracked in task #41."
+  status="stable"
+  detail="The whole text tree is exercised under the interpreter and, separately, compiled ahead of time. Everything except three small islands is green: the core text type, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. The numeric sub-tree carries the largest set of remaining pins."
   defects={[
-    {area: 'text', summary: '462/465. Parked pins: sort-via-cmp ==Less + fold_build_format pipeline (in-suite-only manifestation — runner-context class, task #40); 2 deref-mut persists regressed by peer commit 0ec4bfbe4 (task #45). All §A-§Z campaign classes otherwise CLOSED.'},
-    {area: 'char', summary: '130/130 green; 2 historical @ignore probes retained (§B eq_ignore_ascii_case residual, §D general_category misroute).'},
-    {area: 'format', summary: '146/146 green — CALLM-KEEP-CLOSURE-1 closed the mount-dependent f-spec debug poisoning (f\"{n:?}\" silently ran Text.fmt_debug on Int receivers).'},
-    {area: 'builder', summary: '51/52 — Display through f-string parked: RefField-through-ref-param inside baked fmt (write_str(&self.buf)) renders the raw pointer; reference-model pillar work.'},
-    {area: 'case_fold', summary: '64/64 green — RETNAME-CARRY-1 closed the Ordering→USize→Int.reverse dispatch class.'},
-    {area: 'regex + tagged_literals + bytes + cow + storage', summary: 'All green.'},
-    {area: 'numeric', summary: '222/234: bigint 76/77 wave-green (div_rem tuple projection closed by TUPLE-TYPE-TRACK-1); rational 2 parked (&other.numerator RefField-through-ref-param — same class as builder); 10 historical @ignores across decimal/bigdecimal/modular.'},
-    {area: 'mod (NEW)', summary: 'Umbrella manifest suite: re-export reachability + prelude legs + SSO/UTF8/replacement-char constant pins; 18/19 (fold_build pipeline parked with text).'},
+    {area: 'text', summary: 'Two pins remain and both appear only when several tests share a process: sorting through a comparison that answers Less, and a fold that builds a formatted string. Neither reproduces in a program of its own.'},
+    {area: 'char', summary: 'Two probes are retained for a case-insensitive ASCII comparison and for one general-category classification.'},
+    {area: 'numeric', summary: '`decimal` is the weakest module in the tree — negation on an integer receiver does not dispatch, and the failures downstream of it follow from that. `bigint` is complete.'},
   ]}
   sweepDate="2026-07-11"
 />
@@ -111,7 +106,7 @@ migrating to a builder layout, so the reported capacity equals the
 current byte length. Only the builder layout carries a separate `cap`
 field that can exceed `len()`.
 
-**Tier-0 caveat (open — task #5):** the Tier-0 interpreter materialises
+**Interpreter caveat (open):** the interpreter materialises
 `Text.with_capacity` / `try_with_capacity` results into a representation
 that preserves the cap field, but earlier revisions of the runtime
 collapsed them to a small-string and reported capacity == 0. Tests pin
@@ -921,7 +916,7 @@ own `audit.md` cataloguing open defects + drift surfaces.
 | `text/regex` | 31 / 31 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex/audit.md) |
 | `text/tagged_literals` | 29 / 29 (100%) | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals/audit.md) |
 | `text/numeric/decimal` | 27 / 45 (60%) | **partial** — §A Int.neg dispatch / §B / §C cascade | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
-| `text/numeric/bigint` | 21 / 21 (100%) | **complete** — tasks #14/#15/#16/#17 closed | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigint/audit.md) |
+| `text/numeric/bigint` | complete | **complete** | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigint/audit.md) |
 | `text/numeric/bigdecimal` | constructor + sign guards GREEN; add/mul cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
 | `text/numeric/rational` | cascading from bigint close | **partial** until full re-validation | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
 | `text/numeric/modular` | 21-test conformance suite landed | **complete** outside the §A transitive block | [subtree audit](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/audit.md) |
@@ -938,11 +933,10 @@ test gaps on the AOT path:
 
 All previously-open text/text defects (§A / §B / §C / §D / §E / §F /
 §G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U /
-§V / §W / §X) are closed or pinned closed under `--interp`.  §D
-(function-id collision) closed transitively via task #47 stage-3 stub
-remap (commits `962f44ed0` + `1528fd0a5` + `d724554f2`).  §H (auto-
-deref) closed via let-binding-deref workaround in stdlib (commit
-`460508d8f`).  The two remaining open classes are well-bounded
+§V / §W / §X) are closed or pinned closed under `--interp`.  The
+function-id collision class closed with the cross-module call
+resolution fix; auto-deref closed with a let-binding at the call site
+inside the library.  The two remaining open classes are well-bounded
 language-implementation work — see
 [`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md)
 §Y for the AOT root-cause hypothesis, and
