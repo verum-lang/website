@@ -44,6 +44,22 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      # Public docs must not carry internal-development artefacts.
+      # CLAUDE.md has banned them since the site existed and nothing
+      # enforced it; a census found 243 occurrences across 30 files.
+      # Baseline is ZERO — the pages were cleaned first and this landed
+      # after, so zero is a fact rather than an aspiration.
+      #
+      # The commit-hash class asks the verum repository whether a
+      # hex-looking token actually resolves as an object, because a
+      # regex cannot tell `deadbeef` (a placeholder the reader is meant
+      # to see) from a real hash. That repository is not checked out
+      # here, so this run gates the other four classes and reports hex
+      # candidates as UNVERIFIED rather than failing on a question it
+      # cannot answer.
+      - name: No internal artefacts in public docs
+        run: python3 scripts/check-no-internal-artefacts.py
+
       - name: Build (strict)
         run: npm run build
         env:

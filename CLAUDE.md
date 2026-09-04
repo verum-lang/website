@@ -19,6 +19,37 @@ as an engineering changelog. The following classes of content are
 | Source LOC counts (`~2.4K`, `633-LOC`, `5 000 lines of Rust`, …) | Drift on every commit; useless to language users. | Describe roles and audit budgets ("single-reviewer / single-session audit budget", "one Rust crate"). |
 | Specific test counts (`1 341 lib tests`, `1 818 full suite`) | Drift on every commit. | "Extensive lib-test suite", "regression-pinned via `cargo test -p verum_kernel --lib`". |
 
+### Enforced
+
+`scripts/check-no-internal-artefacts.py`, run by CI on every pull
+request. **Baseline is zero**, not today's count: a ratchet at N makes
+"no new artefacts" the standard when the standard is "none".
+
+Two things it deliberately does NOT flag, each because flagging them
+would make the gate red on a correct page:
+
+* **A Rust source path.** The table above PRESCRIBES it as the
+  replacement for a commit hash. The measure is whether a reader can
+  get there — `arch.rs:1126` names a line that has already moved, a
+  GitHub blob URL to the same file opens when clicked, and neither is
+  the class this bans.
+* **A performance characteristic.** "a 50 K-LOC project", "≥ 50 KLOC/s"
+  and "all 6 tests passed" (a tutorial's own expected output) are kept
+  by the section below. Only the unambiguous source-size spelling —
+  "5 000 lines of Rust" — is matched.
+
+A hex-looking token is only a hash if `git cat-file` resolves it in the
+verum repository: `deadbeef` is a placeholder the reader is meant to
+see, and `4028235e38` is the tail of `3.4028235e38` on a page about
+numeric limits. Where that repository is not checked out, the gate
+reports such tokens as unverified rather than failing on a question it
+cannot answer.
+
+Every class carries a must-match and a must-NOT-match example, checked
+before any count is read (`--self-test`). Four of the five classes
+report zero, and without that check "found nothing" and "the pattern
+broke" would be the same output.
+
 ### Why this discipline matters
 
 The website ships as the public-facing surface. Readers — language
