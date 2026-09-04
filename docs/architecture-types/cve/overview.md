@@ -321,8 +321,7 @@ maturity criteria govern. Compatibility, not concession.
 | **`TraditionTransmitting`** | The artefact's identity is in multi-generational reproduction. | CVE captures the transmission lineage's articulable invariants. |
 
 The Verum-side `CognitiveSubstrate` enum
-(`core/architecture/types.vr:589`, mirrored in
-`crates/verum_kernel/src/arch.rs:910`) exposes all four. In
+(`core/architecture/types.vr:589`) exposes all four. In
 strict-mode `[T]` cogs, omitting an explicit substrate
 declaration triggers
 [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038):
@@ -416,8 +415,7 @@ CHL is the eponym, **not** the only valid anchoring. CVE applies
 in two regimes: **methodological CVE** (before formal anchoring in
 a domain) and **anchored-formal CVE** (after). A `[T]` Theorem cog
 under a non-CHL foundation without a declared `FormalAnchoring`
-(`core/architecture/types.vr:652`, mirrored in
-`crates/verum_kernel/src/arch.rs:946`)
+(`core/architecture/types.vr:652`)
 triggers [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
 (predicate `check_anchoring_overextension` at
 `crates/verum_kernel/src/arch_anti_pattern.rs:2300`):
@@ -465,8 +463,7 @@ thresholds on each of the three axes. The declaration is fixed
   representation in one category).
 
 The Verum-side `Purpose` type
-(`core/architecture/types.vr:768`, mirrored in
-`crates/verum_kernel/src/arch.rs:1054`)
+(`core/architecture/types.vr:768`)
 captures this; the threshold enums
 (`CveThresholdK` at `types.vr:698` / `arch.rs:986`,
 `CveThresholdV` at `types.vr:712` / `arch.rs:1008`,

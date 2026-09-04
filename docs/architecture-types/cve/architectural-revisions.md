@@ -101,8 +101,7 @@ closure:
   [`AntiPatternCode` roster](../anti-patterns/articulation.md#cve-articulation-hygiene-band-ap-033--ap-040)
   (`core/architecture/anti_patterns.vr:133`)
   + [`ArchitecturalDefect` record](#defect-record)
-  (`core/architecture/types.vr:836`, mirrored in
-  `crates/verum_kernel/src/arch.rs:1126`) make the procedure
+  (`core/architecture/types.vr:836`) make the procedure
   machine-tractable.
 
 This closes the recursion of the architectural law: its
@@ -203,11 +202,9 @@ recoverable from the abbreviated narrative in each case).
 **Operationalisation (CVE-L0).**
 
 - [`ExecutabilitySense`](./three-axes.md#three-senses) enum with
-  three variants — `core/architecture/types.vr:532`, mirrored
-  in `crates/verum_kernel/src/arch.rs:877`;
+  three variants — `core/architecture/types.vr:532`;
 - soundness pin `executability_sense_canonical_unique` —
-  `core/architecture/types.vr:1364`, cross-side asserted at
-  `crates/verum_kernel/tests/k_arch_v_alignment.rs:515`;
+  `core/architecture/types.vr:1364`;
 - `ShapeDeclarations.e_sense: Maybe<ExecutabilitySense>` field
   — `core/architecture/types.vr:945`;
 - audit-record format carries `e_sense` explicitly.
@@ -284,8 +281,7 @@ boundary explicit.
 - new type `CognitiveSubstrate` with four variants
   (`AnalyticDecompositional`, `HolisticRelational`,
   `ActionCentric`, `TraditionTransmitting`) —
-  `core/architecture/types.vr:589`, mirrored in
-  `crates/verum_kernel/src/arch.rs:910`;
+  `core/architecture/types.vr:589`;
 - `ShapeDeclarations.substrate: Maybe<CognitiveSubstrate>` field
   — `core/architecture/types.vr:945`;
 - [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
@@ -318,8 +314,7 @@ formal anchoring) from *anchored-formal CVE* (after).
 **Operationalisation (CVE-L0).**
 
 - new type `FormalAnchoring` with seven variants on both sides
-  — `core/architecture/types.vr:652`, mirrored in
-  `crates/verum_kernel/src/arch.rs:946`;
+  — `core/architecture/types.vr:652`;
 - `ShapeDeclarations.anchoring: Maybe<FormalAnchoring>` field
   — `core/architecture/types.vr:945`;
 - [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
@@ -443,8 +438,7 @@ The Verum-side operationalisation of these seven defects'
 fixes landed in two layers:
 
 - **Type-system layer** — new types in
-  `core/architecture/types.vr`, mirrored in
-  `crates/verum_kernel/src/arch.rs`:
+  `core/architecture/types.vr`:
   `ExecutabilitySense` (`types.vr:532` / `arch.rs:877`),
   `CognitiveSubstrate` (`types.vr:589` / `arch.rs:910`),
   `FormalAnchoring` (`types.vr:652` / `arch.rs:946`),

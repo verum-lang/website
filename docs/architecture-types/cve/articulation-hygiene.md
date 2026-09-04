@@ -341,8 +341,7 @@ $$
 $$
 
 The Verum-side `FixpointClass`
-(`core/architecture/types.vr:917`, mirrored in
-`crates/verum_kernel/src/arch.rs:1156`) inhabits this universal
+(`core/architecture/types.vr:917`) inhabits this universal
 classifier directly: it is the record type
 $(\mathrm{category}, \mathrm{endomorphism\_class}, \mathrm{theorem})$
 where each component is a separate enum:
@@ -406,8 +405,7 @@ enum variant is pin-tested by
 [`pin_fixpoint_class_four_canonical`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/tests/k_arch_v_alignment.rs)
 in `crates/verum_kernel/tests/k_arch_v_alignment.rs:653`.
 
-**`SelfReferenceWitness`** (`core/architecture/types.vr:908`,
-mirrored in `crates/verum_kernel/src/arch.rs:1190`) — the
+**`SelfReferenceWitness`** (`core/architecture/types.vr:908`) — the
 operator + fixed-point pair plus the cited fixpoint class:
 
 ```verum

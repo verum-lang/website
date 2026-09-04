@@ -71,8 +71,7 @@ for the canonical disambiguation:
 | **Post-factum chronicle** | Accumulated history of past execution | material for §15 antifragility chronicle, NOT the E axis |
 
 The Verum-side `ExecutabilitySense` enum
-(`core/architecture/types.vr:532`, mirrored in
-`crates/verum_kernel/src/arch.rs:877`) exposes all three; the
+(`core/architecture/types.vr:532`) exposes all three; the
 soundness pin `executability_sense_canonical_unique`
 (`core/architecture/types.vr:1364`) enforces that exactly one
 (`StructuralReadiness`) anchors CVE-E. Conflating the senses

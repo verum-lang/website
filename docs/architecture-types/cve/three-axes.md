@@ -152,12 +152,10 @@ source of unclear judgements that mask the real state of an
 artefact. The CVE-E axis rests on **one** of these senses and
 must distinguish it from its neighbours. Verum's
 `ExecutabilitySense` enum
-(`core/architecture/types.vr:532`, mirrored in
-`crates/verum_kernel/src/arch.rs:877`)
+(`core/architecture/types.vr:532`)
 exposes all three; the soundness pin
 `executability_sense_canonical_unique`
-(`core/architecture/types.vr:1364`, cross-side asserted at
-`crates/verum_kernel/tests/k_arch_v_alignment.rs:515`)
+(`core/architecture/types.vr:1364`)
 enforces that exactly one of them (`StructuralReadiness`)
 anchors CVE-E.
 
