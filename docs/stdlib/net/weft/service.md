@@ -97,15 +97,15 @@ Usage pattern — outer-to-inner chain:
 let svc = ServiceBuilder.new(my_handler)
     .layer(TracingLayer.new())
     .layer(TimeoutLayer.ms(5000))
-    .layer(RateLimitLayer.new(rps = 1000))
-    .layer(AuthLayer.jwt(secret))
+    .layer(RateLimitLayer.new(1000, 100))    // rps, burst
+    .layer(SpiffeAuthLayer.jwt(secret))
     .build();
 ```
 
 Order matches Tower semantics: the **first layer attached** is
 **outermost** at request time. In the example above:
 
-1. `AuthLayer` runs first (innermost wrap, outermost gate) — the
+1. `SpiffeAuthLayer` runs first (innermost wrap, outermost gate) — the
    request is authenticated before anything else sees it.
 2. Authenticated requests flow through `RateLimitLayer`.
 3. Rate-limited requests get a `TimeoutLayer` deadline.
@@ -175,12 +175,12 @@ Verum compiler verifies, at type-check time:
 - `TracingLayer.wrap` has properties subset of `{Pure, Allocates}`.
   A trace layer that quietly opens a database connection is a
   compile error.
-- `AuthLayer.wrap` may add `IO + Fallible` (token validation may
+- `SpiffeAuthLayer.wrap` may add `IO + Fallible` (token validation may
   fail and may hit an identity provider). Composition propagates.
 - `TimeoutLayer.wrap` adds `Async`. Trivially satisfies any inner.
 
 This means the framework can audit a middleware chain by effect
-profile: at compile time we know `AuthLayer + TracingLayer +
+profile: at compile time we know `SpiffeAuthLayer + TracingLayer +
 TimeoutLayer` cannot quietly look in the database, because they do
 not declare `using [Database]` and do not have effect `IO` other
 than auth's narrow identity-provider call.

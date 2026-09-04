@@ -124,7 +124,7 @@ let app = Router.new()
     .get("/", index)
     .layer(TracingLayer.new())     // outermost first; wraps the whole router
     .layer(TimeoutLayer.ms(5000))
-    .layer(RateLimitLayer.new(rps = 1000));
+    .layer(RateLimitLayer.new(1000, 100));   // rps, burst
 ```
 
 You can also layer **on individual sub-routers**:
@@ -132,7 +132,11 @@ You can also layer **on individual sub-routers**:
 ```verum
 let admin = Router.new()
     .get("/dashboard", admin_dashboard)
-    .layer(AuthLayer.admin_only());
+    .layer(SpiffeAuthLayer.jwt(admin_secret()));   // `jwt` or `mtls`;
+                                                  // there is no
+                                                  // `admin_only` — the
+                                                  // scoping is the nest
+                                                  // below, not the layer
 
 let app = Router.new()
     .nest("/admin", admin)        // auth applies only to /admin/*

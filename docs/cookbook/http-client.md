@@ -5,6 +5,33 @@ description: Make typed GET/POST requests with TLS, headers, and retries.
 
 # HTTP client
 
+:::info `Http` is your context, not the library's
+`core.net.http` gives you the vocabulary — `Request`, `Response`,
+`Headers`, `Method`, `StatusCode`, `HttpUrl`, `Cookie` — and the seam:
+
+```verum
+public type HttpClient is protocol {
+    async fn send(&self, request: Request) -> Result<Response, HttpError>;
+};
+```
+
+It ships **no transport**, and nothing in the tree implements that
+protocol. So `Http` below is a context you declare and `provide`, the
+way every example on this site uses it:
+
+```verum
+mount core.net.http.{Request, Response, HttpError};
+
+context Http {
+    async fn get(url: &Text) -> Result<Response, HttpError>;
+    async fn post(url: &Text) -> RequestBuilder;
+}
+```
+
+That is the point of the seam rather than a gap in it: the transport is
+swappable, and a test provides a recorded one without touching a socket.
+:::
+
 ### Simple GET
 
 ```verum
@@ -12,7 +39,7 @@ async fn fetch(url: &Text) -> Result<Text, HttpError>
     using [Http]
 {
     let resp = Http.get(url).await?;
-    resp.body_text().await
+    Result.Ok(resp.body_text())      // synchronous: the body is already here
 }
 
 async fn main() using [Http] {
@@ -36,7 +63,7 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
 
     match resp.status.code() {
         200..=299 => {
-            let text = resp.body_text().await?;
+            let text = resp.body_text();
             json.parse<User>(&text).map_err(HttpError.from)
         }
         401 => Result.Err(HttpError.Unauthorized),
@@ -100,7 +127,7 @@ async fn robust_get(url: &Text) -> Result<Text, HttpError>
 }
 
 async fn fetch_once(url: &Text) -> Result<Text, HttpError> using [Http] {
-    Http.get(url).await?.body_text().await
+    Http.get(url).await?.body_text()
 }
 ```
 

@@ -246,6 +246,7 @@ fn format_record(rec: &ValidRecord) -> Text {
 ```verum
 mount core.async.*;
 mount core.io.*;
+mount core.base.env;
 mount .self.reader.read_from_stdin;
 mount .self.parser.parse_loop;
 mount .self.validator.validate_loop;

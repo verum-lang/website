@@ -126,16 +126,19 @@ fn format_counts(counts: &List<Counts>, fmt: OutputFormat) -> Text {
 
 ## 5. Main
 
-:::note `env.args()` below is blocked by a compiler defect, not a doc error
-`env` refers to `core.base.env`, and `env.args()` is genuinely the
-intended way to read command-line arguments. But the bare `env`
-identifier currently resolves to an unrelated compiler-internal
-context method instead of that module, so this line fails to compile
-as written today. The example is correct Verum; the name resolution
-underneath it isn't, yet.
+:::note `env.args()` compiles — with its `mount`
+`core.base.env` declares `args() -> List<Text>` and that is the
+intended way to read command-line arguments. Without `mount
+core.base.env;` the bare `env` resolves to a prelude-visible
+`fn env(key: Text) -> Maybe<Text>` from `core/meta/contexts.vr`, and the
+error is a type error about that function rather than an unknown name.
+An earlier version of this note called it a compiler defect; the mount
+was missing. See the [CLI cookbook page](/docs/cookbook/cli-tool).
 :::
 
 ```verum
+mount core.base.env;
+
 fn print_help() {
     print(&"usage: wordcount [--format=text|json|csv] FILE...\n");
 }

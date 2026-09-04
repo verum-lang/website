@@ -159,7 +159,8 @@ fn train_step(
 
 fn accuracy(model: &MNISTNet, images: &Tensor<Float32>, labels: &Tensor<Int32>) -> Float {
     let logits = model.forward(images);         // [N, 10]
-    let preds = logits.argmax(axis = 1);         // [N]
+    let preds = argmax_axis(&logits, 1);        // [N] — free fn, and the
+                                            // axis form has its own name
     let correct = preds.eq(labels).sum().to_scalar() as Int;
     correct as Float / (labels.shape().dim(0) as Float)
 }

@@ -249,17 +249,20 @@ The workhorse. Composes `intros`, `simp`, `assumption`, `omega`, and a
 bounded search over in-scope lemmas. The default when no tactic is
 specified by an `@verify(formal)` function.
 
-Parameterised form:
+`auto` takes **no parameters** — `tactic auto() { auto }`. There is no
+`depth`, `lemmas` or `timeout` setting to pass, and no named-argument
+call form in the language at all: `arg_list` in `grammar/verum.ebnf` is
+a list of expressions, so `auto(depth = 8)` parses `depth = 8` as an
+assignment and fails with `unbound variable: depth`.
+
+The library's way of varying a tactic is a **separate tactic**, not an
+options bag — `simp()` beside `simp_with(lemmas)`, `intro()` beside
+`intro_as(name)`, `destruct(var)` beside `destruct_as(...)`. To bring
+extra lemmas into a search, name them:
 
 ```verum
-auto(depth = 8, lemmas = [my_lemma, other])
+proof by { simp_with([my_lemma, other]); auto }
 ```
-
-Settings:
-
-- `depth`: bound on the search depth. Default 4.
-- `lemmas`: lemmas in addition to the default in-scope set.
-- `timeout`: milliseconds. Default 500.
 
 ### `smt`
 
@@ -271,16 +274,10 @@ selected by the router. See
 proof by smt
 ```
 
-Parameterised form:
-
-```verum
-smt(backend = "smt-backend",      // force backend
-    logic   = "QF_LIA",  // force SMT-LIB logic
-    timeout = 10000)     // milliseconds
-```
-
-Useful when you know the goal fits a specific theory; otherwise let
-the router pick.
+`smt` takes no parameters either — `tactic smt() { smt }`. Backend,
+logic and timeout are the router's decision, not a call argument; see
+[verification/smt-routing](/docs/verification/smt-routing) for what
+steers it.
 
 ## Cubical type theory
 

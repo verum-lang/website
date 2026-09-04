@@ -174,27 +174,28 @@ every spawned task finishes before `process_bounded` returns.
 For long-running background tasks that need restart semantics — use
 `Supervisor` instead of `nursery`:
 
+`Supervisor` is a **protocol** with no implementor in the tree;
+`SupervisorHandle` is the concrete one. A child's start function is an
+argument to `supervise`, not a field on its spec — `ChildSpec` carries
+only policy: `name`, `restart`, `shutdown_timeout_ms`, `max_restarts`,
+`restart_window_secs`, `priority`.
+
 ```verum
 async fn main() using [Logger] {
-    let sup = Supervisor.new(SupervisionStrategy.OneForOne);
+    let sup = SupervisorHandle.root(SupervisorConfig.one_for_one("root"));
 
-    sup.spawn(ChildSpec {
-        name: "metrics-publisher",
-        task: || publish_loop(),
-        restart: RestartPolicy.Permanent,
-        isolation: IsolationLevel.SendOnly,
-        max_restarts: 5,
-        within: 60.secs(),
-    });
+    sup.supervise(
+        || publish_loop(),
+        ChildSpec.permanent("metrics-publisher")
+            .with_restart_limits(5, 60),        // 5 restarts per 60s
+    ).await?;
 
-    sup.spawn(ChildSpec {
-        name: "cache-sweeper",
-        task: || cache_sweep_loop(),
-        restart: RestartPolicy.Transient,
-        ..Default.default()
-    });
+    sup.supervise(
+        || cache_sweep_loop(),
+        ChildSpec.temporary("cache-sweeper"),
+    ).await?;
 
-    sup.run().await;
+    sup.shutdown().await
 }
 ```
 

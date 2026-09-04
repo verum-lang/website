@@ -191,29 +191,34 @@ fs.set_permissions(path, perms)?;
 
 ## Memory-mapped files
 
-For read-only access to large files, memory-mapping beats repeated
-`read` calls:
+:::caution Not available
+There is no `core.io.mmap`. `core/io/` is `buffer`, `engine`, `file`,
+`fs`, `mod`, `path`, `process`, `protocols` and `stdio` — the module
+this section used to tell you to mount has never existed, and neither
+have `Mmap` and `MmapMut`. The only mapping code in the tree is the
+SQLite VFS's `MmapPolicy`, which decides a size and does not map
+anything.
+
+Until a mapping API lands, read large files through `BufReader` and a
+chunk loop. It costs the `read` calls that mapping would have saved,
+and it works today:
 
 ```verum
-mount core.io.mmap;
-
-let mm = Mmap.open(path)?;                             // read-only
-let bytes: &[Byte] = mm.as_slice();
-
-// Random access without system calls:
-for chunk in bytes.chunks(4096) {
-    process(chunk);
+fn scan_chunks(path: &Path) -> IoResult<()> using [FileSystem] {
+    let file = File.open(path)?;
+    let mut reader = BufReader.with_capacity(64 * 1024, file);
+    let mut chunk: [Byte; 4096] = [0; 4096];
+    loop {
+        // `&mut chunk[..]`, not `&mut chunk` — the slice is what `read`
+        // takes, and the bare array coerces to an empty one.
+        let n = reader.read(&mut chunk[..])?;
+        if n == 0 { break; }
+        process(&chunk[..n]);
+    }
+    Result.Ok(())
 }
-// `mm` is unmapped on drop.
 ```
-
-For writable mmap:
-
-```verum
-let mut mm = MmapMut.open(path)?;
-mm.as_mut_slice()[0] = 42;
-mm.flush()?;                                           // sync
-```
+:::
 
 ## Async I/O
 

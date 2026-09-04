@@ -7,25 +7,29 @@ description: Arguments, subcommands, config, error reporting.
 
 ### Minimal
 
-:::note `env.args()` does not compile today — the API is right, the name resolution is not
+:::note `env` needs its `mount`, and the failure names something else
 
-`env` refers to `core.base.env`, which declares `args() -> List<Text>`,
-and that is the intended way to read command-line arguments. The bare
-`env` identifier currently resolves to an unrelated compiler-internal
-context method instead of the module, so the line below fails to
-compile as written. The same note appears on the
-[CLI tutorial](/docs/tutorials/cli-tool).
-
-Until that is fixed, this compiles and does the same thing:
+`core.base.env` declares `args() -> List<Text>`, and all three
+spellings compile today:
 
 ```verum
-mount core.shell.script.{args};
-let argv = args();
+mount core.base.env;            env.args()
+mount core.base.env.{args};     args()
+                                core.base.env.args()
 ```
 
+Omit the mount and the bare `env` does **not** fail as an unknown name.
+It resolves to `core/meta/contexts.vr`'s `fn env(key: Text) ->
+Maybe<Text>`, which the prelude makes visible, so the error is
+`no method named 'args' found for type 'fn(Text) -> Maybe<Text>'` —
+a type error about a different `env` entirely. An earlier version of
+this note read that as name resolution being broken for the module. It
+is not; the mount was missing.
 :::
 
 ```verum
+mount core.base.env;
+
 fn main() {
     let argv = env.args();
     match argv.get(1) {
@@ -52,6 +56,8 @@ fn print_help() {
 ### With subcommands
 
 ```verum
+mount core.base.env;
+
 type Command is
     | Build { release: Bool, target: Maybe<Text> }
     | Test  { filter: Maybe<Text> }

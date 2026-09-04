@@ -202,7 +202,7 @@ client closes its half:
 
 ```verum
 async fn handle_subscribe(mut req: H3Request) -> H3Response {
-    let body = req.body_bytes().await;
+    let body = &req.body;          // a `List<Byte>` field, not a method
     let topic_text = match Text.from_utf8(body.as_slice()) {
         Ok(t) => t,
         Err(_) => return H3Response.status(400_u16),

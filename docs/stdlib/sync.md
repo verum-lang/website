@@ -291,18 +291,21 @@ on truly-uncontended condvars (kernel returns immediately when nothing
 is waiting). See `core/sync/condvar.vr:217-230`.
 
 ```verum
-let (mu, cv) = producer_consumer_pair(Queue.new());
+// `producer_consumer_pair<T>(initial: T) -> (Mutex<T>, Condvar)` takes
+// whatever you want guarded. There is no bare `Queue` in the library —
+// `Deque` is the double-ended one.
+let (mu, cv) = producer_consumer_pair(Deque.new());
 // Producer
 {
     let mut q = mu.lock().unwrap_or_else(|p| p.into_inner());
-    q.push(msg);
+    q.push_back(msg);
     cv.notify_one();
 }
 // Consumer
 {
     let mut q = mu.lock().unwrap_or_else(|p| p.into_inner());
     q = cv.wait_while(q, |q| q.is_empty()).unwrap();
-    let msg = q.pop().unwrap();
+    let msg = q.pop_front().unwrap();          // FIFO: front, not back
 }
 ```
 

@@ -132,8 +132,10 @@ async fn hello() -> Response {
 // captures and offers `path_param` / `path_param_int` / `query_param`.
 async fn echo_name(req: WeftRequest) -> Response {
     match req.path_param(&"name") {
-        Maybe.Some(name) => Response.ok(f"Hello, {name}!"),
-        Maybe.None       => Response.ok("no name"),
+        Maybe.Some(name) =>
+            Response.new(StatusCode.ok()).body(f"Hello, {name}!".into_bytes()),
+        Maybe.None =>
+            Response.new(StatusCode.ok()).body("no name".into_bytes()),
     }
 }
 
@@ -149,15 +151,27 @@ fn main() {
 }
 ```
 
-:::note `Response.ok(...)` on this page
+:::note Which `Response` a weft handler returns
 
-`core/net/http.vr` defines `Response` with the builders `new(status)`,
-`status(code)`, `body(bytes)` and `header(name, value)` — there is no
-`ok(body)` constructor there, and `core/net/weft/app.vr`'s own doc
-comment reaches for a `Response.text(...)` that is not defined either.
-The examples below keep the `Response.ok(...)` spelling they were
-written with; treat the exact constructor as unverified until the weft
-response surface is settled.
+Not weft's own — `core/net/weft/mod.vr` re-exports it:
+
+```verum
+public mount core.net.http.{Response, StatusCode, Method, Headers, Version};
+```
+
+So the builders are `core/net/http.vr`'s: `new(status)`, `status(code)`,
+`body(bytes)`, `header(name, value)`, with `StatusCode.ok()` for the
+200. There is no `ok(body)` and no `text(body)` — `core/net/weft/app.vr`
+reaches for the latter in its own doc comment and it is not defined
+either. A 200 with a text body is
+
+```verum
+Response.new(StatusCode.ok()).body(text.into_bytes())
+```
+
+Do not confuse this with `H3Response.ok(body)` on the HTTP/3 pages,
+which is real (`core/net/h3/request.vr:139`) and takes `List<Byte>`.
+Same word, different type, and only one of them has the shortcut.
 :::
 
 ## REST API with DI, validation, errors
@@ -200,16 +214,27 @@ fn main() using [Config] {
         .route("/users/:id", Method.Get, get_user)
         .layer(TracingLayer.new())
         .layer(TimeoutLayer.ms(5000))
-        .layer(RateLimitLayer.new(RateConfig { rps: 1000, burst: 100 }))
-        .layer(AuthLayer.jwt(Config.get_or("jwt.secret", "")));
+        .layer(RateLimitLayer.new(1000, 100))     // rps, burst — two Ints
+        .layer(SpiffeAuthLayer.jwt(Config.get_or("jwt.secret", "")));
 
-    let root = Supervisor.new(supervisor_config());
-    root.add_child(ChildSpec.permanent("db")
-        .with_start(|| PostgresDatabase.connect(Config.get_or("db.url", ""))));
-    root.add_child(ChildSpec.permanent("http")
-        .with_start(|| WeftApp.new(app).bind("0.0.0.0:8080").serve()));
+    // `Supervisor` is a PROTOCOL and nothing implements it —
+    // `SupervisorHandle` is the concrete one. `root` for the top of the
+    // tree, `new` for a subtree.
+    let root = SupervisorHandle.root(supervisor_config());
 
-    root.run().await
+    // The start function belongs to `supervise`, not to the spec: a
+    // ChildSpec carries restart policy, timeouts and priority, and the
+    // factory is the other half of the call.
+    root.supervise(
+        || PostgresDatabase.connect(Config.get_or("db.url", "")),
+        ChildSpec.permanent("db"),
+    ).await?;
+    root.supervise(
+        || WeftApp.new(app).bind("0.0.0.0:8080").serve(),
+        ChildSpec.permanent("http"),
+    ).await?;
+
+    root.shutdown().await
 }
 ```
 
