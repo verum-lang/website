@@ -107,6 +107,101 @@ CLASSES = {
 
 HASH_CANDIDATE = re.compile(r"`([0-9a-f]{7,40})`")
 
+# A SIXTH CLASS, AND IT IS NOT "DOES IT LOOK INTERNAL" BUT "DOES IT
+# RESOLVE". Proposed by verum-6c after measuring 49 `verum_x::y::Z`
+# citations on one page: 48 name things the tree contains and are the
+# GOOD version of an internal reference — they name a thing rather than
+# a location, and they move only when the API moves. One did not
+# resolve. That one is the defect.
+#
+# The case that motivated it, from `stdlib/base.md`:
+#
+#     "this constant must update in lockstep with
+#      `verum_runtime::cbgr::HEADER_SIZE`"
+#
+# There is no `verum_runtime` crate and no `HEADER_SIZE` anywhere. The
+# instruction was right about the discipline and pointed at nothing for
+# it to hold against — worse than a stale reference, because a reader
+# cannot tell an unfollowable citation from one they failed to follow.
+#
+# THE MESSAGE IS AN OBSERVATION, NOT A DIAGNOSIS. Its first run found
+# `verum_audit::self_audit` in a table whose other rows are DOTTED Verum
+# module paths (`core.math.diakrisis.canonicalize`). So the anomaly may
+# be a dead crate OR a Verum path written with Rust `::` syntax, and the
+# gate cannot tell. It reports what it checked — no `crates/<name>` in
+# the tree — and leaves the reading to whoever owns the page.
+#
+# CONSERVATIVE ON PURPOSE: only the CRATE is checked. Resolving
+# `::module::Item` would need the module tree and would start refusing
+# re-exports, which is how a check acquires exceptions. A crate that
+# does not exist is unambiguous.
+CRATE_CITATION = re.compile(r"(?<![\w/.])(verum_\w+)::")
+
+
+def crate_exists(name: str, repo: Path) -> bool:
+    return (repo / "crates" / name).is_dir() or any(
+        (repo / "crates").glob(f"*/{name}")
+    )
+
+
+# A PAGE MAY LEGITIMATELY NAME THINGS OUTSIDE THIS TREE, and the only
+# thing separating that from rot is prose this gate cannot read.
+#
+# The case, measured: `articulation-hygiene.md` has a table headed "the
+# discipline applied to existing chain features" whose rows name a
+# SIBLING project — `synarc.cognition.holon_operator`,
+# `core.math.diakrisis.canonicalize`. None of them resolves here, and
+# none of them is a defect. One row was spelled `verum_audit::self_audit`
+# and that spelling — not its resolvability — is what made it look
+# different from its neighbours. Two sessions read that cell opposite
+# ways and both were wrong, because neither looked at the row beside it.
+#
+# So: a citation whose TABLE SIBLINGS are also unresolvable is about
+# something else, and is skipped. A single dead reference sitting among
+# live ones still fires, which is the case this class exists for.
+_ROW = re.compile(r"^\s*\|")
+_ANY_PATH = re.compile(r"(?<![\w/.])([a-z][\w]*(?:(?:::|\.)[\w]+)+)")
+
+
+def siblings_also_unresolvable(lines: list[str], i: int, repo: Path) -> bool:
+    """Is this hit inside a table whose OTHER rows also name nothing here?"""
+    if not _ROW.match(lines[i]):
+        return False
+    lo = i
+    while lo > 0 and _ROW.match(lines[lo - 1]):
+        lo -= 1
+    hi = i
+    while hi + 1 < len(lines) and _ROW.match(lines[hi + 1]):
+        hi += 1
+    others = 0
+    unresolved = 0
+    for j in range(lo, hi + 1):
+        if j == i:
+            continue
+        for m in _ANY_PATH.finditer(lines[j]):
+            others += 1
+            # WALK THE WHOLE PATH, not its head. `core.math.diakrisis`
+            # has a head that resolves — `core/` is the stdlib — and a
+            # tail that does not, and checking only the head made every
+            # such row count as live. That is what let the sibling test
+            # fail on its own three-pole probe.
+            segs = re.split(r"::|\.", m.group(1))
+            live = crate_exists(segs[0], repo)
+            if not live:
+                base = repo.joinpath(*segs)
+                live = (
+                    base.exists()
+                    or base.with_suffix(".vr").exists()
+                    or base.with_suffix(".rs").exists()
+                )
+            if not live:
+                unresolved += 1
+    # Needs company: one sibling proves nothing, and a table of one row
+    # is not a table.
+    return others >= 2 and unresolved == others
+
+
+
 
 def resolves_as_object(token: str, repo: Path) -> bool:
     """Does the verum repository know this token as an object?"""
@@ -153,6 +248,37 @@ SELFTEST = [
 ]
 
 
+# THE SIBLING NARROWING GETS ITS OWN THREE POLES, because its failure
+# mode is silence — it can only ever REMOVE findings, so a broken
+# version reports the same clean zero as a clean tree. Its first
+# version passed two of these three: a table row whose siblings were
+# `core.math.diakrisis.canonicalize` counted as live, because the test
+# looked at the path's HEAD (`core/` exists) instead of walking it.
+SIBLING_SELFTEST = [
+    (["A lone dead reference: `verum_nowhere::thing`."], 0, True,
+     "prose, no table — must fire"),
+    (["| live | `verum_smt::backend` | ok |",
+      "| live | `verum_kernel::proof_tree` | ok |",
+      "| dead | `verum_alsonowhere::x` | fires |"], 2, True,
+     "a dead row among live ones — must fire"),
+    (["| other | `synarc.cognition.holon_operator` | elsewhere |",
+      "| other | `core.math.diakrisis.canonicalize` | elsewhere |",
+      "| other | `verum_thirdnowhere::y` | skipped |"], 2, False,
+     "every sibling names another project — must be silent"),
+]
+
+
+def sibling_selftest(repo: Path) -> int:
+    bad = 0
+    for lines, idx, want_fire, why in SIBLING_SELFTEST:
+        skipped = siblings_also_unresolvable(lines, idx, repo)
+        fired = not skipped
+        if fired != want_fire:
+            print(f"  SELFTEST FAIL [siblings] fired={fired}, wanted {want_fire}: {why}")
+            bad += 1
+    return bad
+
+
 def selftest() -> int:
     bad = 0
     for cls, positive, negative, why in SELFTEST:
@@ -194,6 +320,16 @@ def main(argv: list[str]) -> int:
             print(f"PROBE-FAILED: HEAD ({head!r}) does not resolve in {repo}.")
             print("The hash check would report every hash as clean; refusing to run.")
             return 2
+        # The sibling narrowing can only ever REMOVE findings, so a
+        # broken one is silent. Its three poles run here, where the
+        # repository it needs is known. Verified by inverting a pole and
+        # watching this refuse — the first wiring did NOT run and the
+        # inversion changed nothing, which is exactly the failure the
+        # narrowing itself is guarding against.
+        if sibling_selftest(repo):
+            print("PROBE-FAILED: the sibling narrowing disagrees with its own")
+            print("examples. It would silently drop findings; refusing to run.")
+            return 2
         if resolves_as_object("ed25519", repo):
             print("PROBE-FAILED: `ed25519` resolved as an object; the probe is not selective.")
             return 2
@@ -204,11 +340,22 @@ def main(argv: list[str]) -> int:
 
     for f in sorted(DOCS.rglob("*.md")):
         rel = str(f.relative_to(DOCS))
-        for i, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+        for idx, line in enumerate(lines):
+            i = idx + 1
             for name, rx in CLASSES.items():
                 for m in rx.finditer(line):
                     found[name] += 1
                     rows.append((rel, i, name, m.group(0)))
+            for m in CRATE_CITATION.finditer(line):
+                crate = m.group(1)
+                if not have_repo:
+                    continue
+                if not crate_exists(crate, repo) and not siblings_also_unresolvable(
+                    lines, idx, repo
+                ):
+                    found["no such crate in the tree"] += 1
+                    rows.append((rel, i, "no such crate in the tree", crate))
             for m in HASH_CANDIDATE.finditer(line):
                 tok = m.group(1)
                 if tok in HEX_NAMES:
@@ -252,7 +399,8 @@ def main(argv: list[str]) -> int:
     print("           tracker numbers, FV identifiers, test counts, LOC counts.")
     print("  NOT checked: anything the five banned classes in CLAUDE.md do")
     print("           not name — a bare `verum_crate::module::Item`, for one,")
-    print("           which is neither a hash nor the path form that replaces it.")
+    print("           which RESOLVES — a `verum_x::y::Z` naming a crate the tree")
+    print("           contains is the good version and is deliberately kept.")
     return 0
 
 
