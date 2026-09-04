@@ -17,7 +17,7 @@ proofs, but integrated directly into the language.
 ```verum
 theorem reverse_reverse<T>(xs: List<T>): xs.reverse().reverse() == xs {
     proof by induction xs {
-        case [] => qed;
+        case [] => qed
         case [x, ..rest] => {
             have h: rest.reverse().reverse() == rest by ih;
             calc {
@@ -106,7 +106,7 @@ extensibility** below).
 ```verum
 theorem sum_first_n(n: Int { self >= 0 }): sum(0..=n) == n * (n+1) / 2 {
     proof by induction n {
-        case 0 => qed;
+        case 0 => qed
         case k + 1 => {
             calc {
                 sum(0..=k+1)
@@ -185,7 +185,7 @@ lemma map_length<A, B>(xs: List<A>, f: fn(A) -> B) ->
     xs.map(f).len() == xs.len()
 {
     proof by induction xs {
-        case []            => qed;
+        case []            => qed
         case [h, ..t]      => by rewrite ih; auto
     }
 }
@@ -196,8 +196,8 @@ lemma map_length<A, B>(xs: List<A>, f: fn(A) -> B) ->
 ```verum
 lemma roundtrip(x: Maybe<Int>): from_maybe(to_maybe(x)) == x {
     proof by cases x {
-        case None    => qed;
-        case Some(n) => qed;
+        case None    => qed
+        case Some(n) => qed
     }
 }
 ```

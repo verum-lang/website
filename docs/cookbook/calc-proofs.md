@@ -43,8 +43,8 @@ direction). Final relation is the **loosest** in the chain.
 
 ```verum
 lemma reverse_reverse<T>(xs: List<T>): xs.reversed().reversed() == xs {
-    by induction xs {
-        case []            => qed;
+    proof by induction xs {
+        case []            => qed
         case [head, ..tail] => {
             calc {
                 [head, ..tail].reversed().reversed()
@@ -66,7 +66,7 @@ lemma reverse_reverse<T>(xs: List<T>): xs.reversed().reversed() == xs {
 
 ```verum
 lemma sum_first_n(n: Int { self >= 0 }): sum(0..=n) == n * (n + 1) / 2 {
-    by induction n {
+    proof by induction n {
         case 0 => {
             calc {
                 sum(0..=0)
