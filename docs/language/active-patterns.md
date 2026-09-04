@@ -205,10 +205,11 @@ module-local. Patterns can be defined in implement blocks and inherit
 the implementer's generic parameters.
 
 ```verum
-implement<T: Ord> List<T> {
-    pub pattern Sorted(xs: &Self) -> Bool =
-        forall i in 0..xs.len()-1. xs[i] <= xs[i+1];
-}
+// A pattern is a top-level item: `impl_item` in the grammar admits
+// `fn`, a type alias, a const and a proof clause — not `pattern` — so
+// a pattern scoped to a type carries its type parameter itself.
+pub pattern Sorted<T: Ord>(xs: &List<T>) -> Bool =
+    forall i in 0..xs.len()-1. xs[i] <= xs[i+1];
 
 match numbers {
     List.Sorted() => "already sorted",

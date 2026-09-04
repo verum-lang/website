@@ -145,7 +145,7 @@ Active patterns are named, user-defined matchers. They come in two flavours:
 
 ```verum
 fn is_even(n: Int) -> Bool { n % 2 == 0 }
-pattern Even(n: Int) = is_even(n);
+pattern Even(n: Int) -> Bool = is_even(n);
 
 match n {
     Even()  => "even",
