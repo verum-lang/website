@@ -495,14 +495,16 @@ fixpoint-class citation traces to a `[T]`-status proof.
 ### 8.4 The discipline applied to existing chain features
 
 Several chain-level concepts that look like self-reference are
-already articulated as operator+fixed-point:
+already articulated as operator+fixed-point. The paths below name
+modules in the **chain** project, not in this tree — none of them
+resolves under `core/` or `crates/`, and they are not meant to:
 
 | Concept | Operator | Fixed point | Class |
 |---------|----------|-------------|-------|
 | Validator-set rotation (§A2.6) | `synarc.consensus.rotation_operator` | active validator set | `fixpoint_class_tarski()` (monotone on stake-weighted lattice) |
 | Holon coinductive guardedness (§L6) | `synarc.cognition.holon_operator` | self-similar holon at depth-N | `fixpoint_class_adamek()` (continuous functor on coalgebra) |
 | Diakrisis canonical articulation (§A1.1) | `core.math.diakrisis.canonicalize` | unique canonical form | `fixpoint_class_banach()` (contracting on Bures metric) |
-| Audit-bundle self-application (§L4) | `verum_audit::self_audit` | `[T]`-status audit cog | `fixpoint_class_custom_fixpoint("CVE chronicle self-application")` |
+| Audit-bundle self-application (§L4) | `chain.audit.self_audit` | `[T]`-status audit cog | `fixpoint_class_custom_fixpoint("CVE chronicle self-application")` |
 
 Each of these is a legitimate self-reference because the cog
 declares the operator and fixed point explicitly. AP-040 catches
