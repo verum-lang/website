@@ -60,6 +60,15 @@ jobs:
       - name: No internal artefacts in public docs
         run: python3 scripts/check-no-internal-artefacts.py
 
+      # A documented limitation must say WHEN it was measured. Nothing
+      # can verify prose; this enforces the convention that makes prose
+      # falsifiable. Written after sixteen pages were rewritten with
+      # their limitations restated as undated present-tense fact — ten
+      # of the ten checked were false, and the dates were the only
+      # signal a reader had that the old text was archaeology.
+      - name: Documented limitations carry a measurement date
+        run: python3 scripts/check-limitations-are-dated.py
+
       - name: Build (strict)
         run: npm run build
         env:
