@@ -95,7 +95,8 @@ This is the dual of induction's termination check: induction demands
 the input shrink; coinduction demands the output grow.
 
 :::warning The productivity check cannot be what rejects it today
-Measured 2026-09-03: the productive definition and the unproductive one
+Measured 2026-09-03 and re-measured 2026-09-04: the productive
+definition and the unproductive one
 produce the **same** diagnostic, so the rejection is not the productivity
 check speaking.
 
