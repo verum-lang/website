@@ -83,12 +83,33 @@ followed (`pre_release` vs `prerelease`, `peer_addr` vs `peer`).
 
 ## Module — `E2xx`
 
-| Code | Meaning |
-|------|---------|
-| `E200` | import not found |
-| `E201` | circular import |
-| `E202` | private item imported |
-| `E203` | module not found |
+| Code | Meaning | Emitted? |
+|------|---------|----------|
+| `E200` | import not found | **no** — see below |
+| `E201` | circular import | yes |
+| `E202` | private item imported | **no** |
+| `E203` | module not found | **no** — see below |
+
+:::warning Three of these four never fire
+Measured 2026-09-04: only `E201` has an emit site. `E200`, `E202` and
+`E203` are registry entries that nothing produces, and the conditions
+they name are reported by the **type** codes instead:
+
+```verum
+mount core.zzz.nothing;                      // error<E402>: module `core.zzz` not found
+mount core.collections.list.{NoSuchSymbol};  // error<E401>: cannot find `NoSuchSymbol` in module …
+```
+
+So a reader who meets "module not found" and looks up `E203` finds a
+code the compiler will never show them, while the one they did see —
+`E402` — is filed under Type below, described as "module not found;
+also `Send` not implemented, and …". One code, several jobs.
+
+`E202` fires for nothing because import privacy is not enforced at all:
+the five-level visibility table in
+[language/modules](/docs/language/modules) is documentation of an
+intent, not of a check.
+:::
 
 ## Memory — `E3xx`
 
@@ -105,17 +126,25 @@ diagnostics enforce.
 
 ## Type — `E4xx`
 
+Four of these carry more than one meaning. The table gives the registry's
+own wording, because the second meaning is usually the one you will meet:
+
 | Code | Meaning |
 |------|---------|
 | `E400` | type mismatch |
-| `E401` | invalid cast |
-| `E402` | `Send` bound not satisfied |
-| `E403` | `Sync` bound not satisfied |
-| `E404` | missing protocol implementation |
+| `E401` | a name is not found in the module named; also an invalid assignment or cast |
+| `E402` | **module not found**; also `Send` not implemented, and mixed `Int`/`Float` arithmetic |
+| `E403` | infinite (self-referential) type; also `Sync` not implemented, and undefined function |
+| `E404` | inferred type is not fully determined — annotate it; also a missing protocol implementation, and an unknown field or method |
 | `E405` | protocol method not implemented |
 | `E406` | type inference failure |
 | `E407` | recursive type without indirection |
 | `E408` | dependent value-argument arity mismatch |
+
+A code with three meanings cannot be looked up the way this page is
+meant to be used — you read the message, not the number. The overload
+is why `E200`/`E203` above are dead: their conditions were folded into
+`E401`/`E402` and the module namespace was left standing.
 
 `E400` is the most common diagnostic in the language, and its message always
 names both sides. Three shapes are worth recognising:
@@ -198,32 +227,37 @@ budget. Narrowing a refinement or splitting a lemma usually resolves it. See
 `E600` means a function declared `using [Database]` was called from a scope
 with no `provide` for it. See [Context system](../language/context-system.md).
 
-## Async — `E7xx`
+## Async — `E7xx`, FFI — `E8xx`, Internal — `E9xx`
 
-| Code | Meaning |
-|------|---------|
-| `E700` | future cancelled unexpectedly |
-| `E701` | async boundary violation |
-| `E702` | task join error |
+:::warning None of these nine has an emit site
+Measured 2026-09-04: every code below is a registry entry that no part
+of the compiler produces. Three whole categories are reserved rather
+than live.
 
-## FFI — `E8xx`
+| Code | Meaning | Emitted? |
+|------|---------|----------|
+| `E700` | future cancelled unexpectedly | no |
+| `E701` | async boundary violation | no |
+| `E702` | task join error | no |
+| `E800` | unsafe FFI violation | no |
+| `E801` | ABI mismatch | no |
+| `E802` | null pointer dereference in FFI | no |
+| `E900` | internal compiler error | no |
+| `E901` | compiler assertion failed | no |
+| `E902` | unexpected compiler state | no |
 
-| Code | Meaning |
-|------|---------|
-| `E800` | unsafe FFI violation |
-| `E801` | ABI mismatch |
-| `E802` | null pointer dereference in FFI |
+They are listed because the registry has them and `verum --explain`
+will answer for them — not because a program can provoke one. An async
+misuse or an FFI mistake surfaces today as an ordinary `E4xx` type
+error, and an internal failure as a panic with a backtrace rather than
+a coded diagnostic.
 
-## Internal — `E9xx`
+`make check-doc-error-codes` holds this at fourteen cited-but-unemitted
+codes, so the list cannot quietly grow.
+:::
 
-| Code | Meaning |
-|------|---------|
-| `E900` | internal compiler error |
-| `E901` | compiler assertion failed |
-| `E902` | unexpected compiler state |
-
-An `E9xx` is always a compiler bug, never a problem with your program.
-Please report it with the smallest input that reproduces it.
+An `E9xx`, if one ever appears, is a compiler bug and never a problem
+with your program. Report it with the smallest input that reproduces it.
 
 ## Reading a diagnostic
 
