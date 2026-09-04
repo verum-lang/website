@@ -15,8 +15,8 @@ otherwise.
 
 ```verum
 extern "C" {
-    fn malloc(size: Int) -> *unsafe mut Byte;
-    fn free(ptr: *unsafe mut Byte);
+    fn malloc(size: Int) -> *mut Byte;
+    fn free(ptr: *mut Byte);
     fn printf(fmt: *const Byte, ...) -> Int;
 }
 ```
@@ -63,7 +63,8 @@ ffi MyLib {
     requires      len >= 0 && len <= 1024;
     requires      out != null;
     ensures       result >= 0 => bytes_written_up_to(out, result);
-    memory_effects = Reads(input), Writes(out);
+    memory_effects = Reads(input);
+    memory_effects = Writes(out);
     thread_safe   = true;
     errors_via    = ReturnCode(result < 0);
     @ownership(transfer_to = "caller", borrow = [input])
@@ -137,7 +138,7 @@ type CStruct is {
 
 ```verum
 @repr(transparent)
-type Handle is (*unsafe mut Byte);
+type Handle is (*mut Byte);
 ```
 
 ## String interop
@@ -225,7 +226,8 @@ ffi Sodium {
     ) -> Int;
 
     requires      message_len >= 0;
-    memory_effects = Reads(message, nonce, key), Writes(ciphertext);
+    memory_effects = Reads(message, nonce, key);
+    memory_effects = Writes(ciphertext);
     thread_safe   = true;
     errors_via    = ReturnCode(result != 0);
     @ownership(borrow = [message, nonce, key, ciphertext])
