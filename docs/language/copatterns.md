@@ -145,9 +145,11 @@ currently behaves. Two things are missing, both measured 2026-09-04:
 
 * copattern bodies still fail inference, the same diagnostic as the
   warning above — so `hamming()` does not typecheck;
-* `merge3`, `map_stream` and `Stream.take` are not defined anywhere in
-  `core/` — the `Stream<T>` protocol on this page declares `.head` and
-  `.tail` and nothing else.
+* `merge3` and `map_stream` are declared nowhere in `core/`, and
+  `.take(10)` is not available here: the `Stream<T>` protocol on this
+  page declares `.head` and `.tail` and nothing else. (`core.async.
+  stream` does have a `take`, on a different, asynchronous `Stream` —
+  which is why the call reads as though it should work.)
 
 Read it as the shape of the definition. The `.head`/`.tail` walk in
 the section above is the part you can write today.

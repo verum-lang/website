@@ -104,7 +104,14 @@ type Database.TxScope  is Database with [Read, Write, Transaction];
 ```
 
 :::caution The dotted name does not parse yet — the capability does
-Measured 2026-09-04. `with [...]` is real and works; it is the dotted
+Measured 2026-09-04. `with [...]` is real and ENFORCED — a call to a
+method the attenuation drops is refused:
+
+    fn f(x: FileRead) -> Unit { x.write_all("x") }
+      -> error<E306>: capability violation: method `write_all` on
+                     `File` requires `WriteOnly` capability
+
+It is the dotted
 declaration name that the parser refuses, here and in every example
 below that uses one:
 
