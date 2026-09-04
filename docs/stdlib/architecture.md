@@ -235,7 +235,8 @@ The kernel-side primitives live in `crates/verum_kernel::arch*`.
 side pin: any drift (new variant on one side, renamed field on the
 other, severity-band reshuffle) fails CI before merge.
 
-This is the same alignment discipline as `verum_common::well_known_types`
+This is the same alignment discipline as
+`crates/verum_common/src/well_known_types.rs`
 ↔ `core/base/primitives.vr` — single canonical source-of-truth on
 the kernel side, Verum-native projection on the library side, pin
 test failing on drift.

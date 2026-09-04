@@ -811,7 +811,9 @@ h.header_size()        -> Int        // CBGR header byte size — currently 32
 All introspection methods use atomic loads with `ORDERING_ACQUIRE`, so
 they synchronise correctly across threads. `header_size()` returns the
 constant `32`; if the allocator's `AllocationHeader` ever changes size,
-**this constant must update in lockstep with `verum_runtime::cbgr::HEADER_SIZE`** —
+**this constant must update in lockstep with
+`crates/verum_common/src/layout.rs::ALLOCATION_HEADER_SIZE`** (which is
+32 today, and is the value `header_size()` reports) —
 the inline `- 32` offset is repeated at six sites inside
 `core/base/memory.vr` and is tracked as a hoist-to-constant audit item.
 
