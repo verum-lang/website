@@ -116,7 +116,7 @@ The merge happened in two steps:
    coherence content folded into articulation.
 
 2. The CVE articulation-hygiene band (AP-033..AP-040) was added
-   in commit `e1cd9cd6` (2026-05) and slotted into the same
+   in 2026-05 and slotted into the same
    articulation page rather than receiving its own band — the
    patterns describe how cogs articulate their CVE discharge,
    which is structurally close to the existing articulation

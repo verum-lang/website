@@ -78,8 +78,7 @@ module hierarchies. Aggregate count + per-module breakdown:
 monad / effect / ludics layer ships with theorems whose ensures
 clauses **state the actual law** rather than just `true`. 173
 let-bindings naming intermediate β-reducts across 9 monad files
-demonstrate the multi-step proof-body pattern (commit `3fc5255f`
-+ companion `11b68b5e`).
+demonstrate the multi-step proof-body pattern.
 
 ### Wave 2 — `core/theory_interop/` (37 axioms)
 
@@ -94,7 +93,7 @@ demonstrate the multi-step proof-body pattern (commit `3fc5255f`
 predicates; gauge-decidability axioms gate on the `GaugeVerdict`
 verdict bucket; congruence-closure axioms invoke the actual
 `closure_merged` / `closure_representative` API on a constructed
-`CongruenceClosure` value. Commit `533189ea`.
+`CongruenceClosure` value.
 
 ### Wave 3 — `core/math/frameworks/diakrisis_acts.vr` (17 axioms)
 
@@ -107,8 +106,7 @@ verdict bucket; congruence-closure axioms invoke the actual
 
 **Result**: All 17 catalogue boundary axioms (110.T–127.T) ship
 with kernel-checkable ensures clauses routing through the
-existing `core.action.{articulation, enactments}` surface. Commit
-`2c32e43a`.
+existing `core.action.{articulation, enactments}` surface.
 
 ### Wave 4 — `core/math/foundations/self_recognition.vr` (9 axioms)
 
@@ -117,7 +115,7 @@ K-Norm / K-FwAx / K-Adj-Unit / K-Adj-Counit) plus
 ladder-monotonicity and articulation-hygiene axioms are now
 witness-parameterised over `Articulation` / `Enactment` carriers.
 The kernel WITNESSES its OWN rules through its α ⊣ ε round-trip
-machinery (commit `0587d4da`).
+machinery.
 
 ### Wave 5 — `core/math/rich_s/{examples,non_examples}.vr` (20 axioms)
 
@@ -126,7 +124,7 @@ linear+! / Eff / Lurie / cohesive / NCG / motivic + ZFC-inacc) +
 7 non-example axioms (R1..R5 violators + Proposition 3.2 closure).
 Each example asserts its claimed `n_S` value via the `R::n_S()`
 protocol method; each non-example takes a `violated_index: Int`
-parameter naming the failed R-condition (commit `327838c6`).
+parameter naming the failed R-condition.
 
 ### Wave 6 — `core/math/strata.vr` + `connes_reconstruction.vr` (11 axioms)
 
@@ -135,7 +133,7 @@ L_Abs-emptiness / strict-inclusion non-collapse). Connes: 7
 spectral-triple axioms threading conjunction of (i)–(vii)
 through `is_compact_resolvent` / `algebra_dimension >= 0`
 predicates; reconstruction theorem now requires-and-ensures the
-full conjunction (commit `1fb014d3`).
+full conjunction.
 
 ### Wave 7 — `core/math/{concrete_accessible, stack_model}.vr` + `frameworks/{schreiber_dcct, diakrisis_stack_model}.vr` (20 axioms)
 
@@ -158,8 +156,6 @@ full conjunction (commit `1fb014d3`).
     (131.T / 131.L1 / 131.L2 / 131.L3 / 134.T) ensure α ⊣ ε
     round-trip via `articulation_eq(alpha_of(epsilon(α)), α)`.
 
-Commit `c207faa3`.
-
 ### Wave 8 — `core/math/frameworks/diakrisis_extensions.vr` + `bounded_arithmetic/` (16 axioms)
 
   * `diakrisis_extensions.vr` (4): Theorems 136.T / 137.T / 140.T /
@@ -171,8 +167,6 @@ Commit `c207faa3`.
     0=LOGSPACE, 1=P, 2=P-via-PIND, 3=NP-search, 4=PH,
     999_999=ω-1, 1_000_000=ω). The weak-AFN-T result gates on
     the stratum-index range 0..5.
-
-Commit `e08f3b0c`.
 
 ### Wave 9 — `core/math/{graph, examples, s_definable/class_s_s}.vr` (15 axioms/theorems)
 
@@ -187,8 +181,6 @@ Commit `e08f3b0c`.
     U_2-smallness axioms ensure `m.closure_depth() >= 0` via the
     SSMembership carrier protocol.
 
-Commit `f563586a`.
-
 ### Wave 10 — `core/math/frameworks/{lurie_htt, baez_dolan, diakrisis}.vr` (12 axioms)
 
   * `lurie_htt.vr` (5): every HTT theorem axiom ensures protocol-
@@ -202,8 +194,6 @@ Commit `f563586a`.
     witness-parameterised over `Articulation` / `Enactment`;
     no-universal-practice-dual gates on a `claimed_universal:
     Bool == false` precondition.
-
-Commit `87cd1435`.
 
 ### Wave 11 — MSFS theorem corpus (25 axioms)
 
@@ -235,7 +225,7 @@ V3-promoted to witness-parameterised form. Per-stage breakdown:
   * Appendix B (Paraconsistent extension): Definition B.1 + Theorem B.2
     over `S: RichS` classical-kernel witness.
 
-Commits `59e0750` + `b92b290` in the verum-msfs-corpus repo. The
+In the verum-msfs-corpus repo. The
 MSFS corpus now ships with **zero active tautological axioms** across
 its flagship 14-stage theorem layer; the 5 remaining `weak_axioms_anchor`
 markers carry stage-index discriminators and serve as catalogue

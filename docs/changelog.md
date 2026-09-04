@@ -1654,8 +1654,8 @@ all three plus the Decimal-backed NUMERIC encode path.
 surface is now fully libc-free across all three pieces:
 
   - **i64 → decimal** — `verum_internal_i64_to_decimal`
-    (already shipped at 3a111f8e).
-  - **strtod** — pure-IR strtod (3bbd867c).
+    (already shipped).
+  - **strtod** — pure-IR strtod.
   - **f64 → decimal** —
     `verum_internal_f64_to_decimal` LLVM IR helper (this
     release).  Bit-pattern NaN / Inf / zero special-cases,
@@ -1669,7 +1669,7 @@ surface is now fully libc-free across all three pieces:
 V0 boundary: no scientific notation, `|v| > i64::MAX` saturates,
 no round-half-to-even.
 
-Companion sweep at 45cd3904 — `runtime.rs::get_or_declare_strtol`
+Companion sweep — `runtime.rs::get_or_declare_strtol`
 was forward-declaring `verum_internal_strtol` bodyless and
 relying on a separate emit path to fill it.  Programs hitting
 `verum_text_parse_int` without also tripping the VBC
@@ -1816,7 +1816,7 @@ Char / Text are deferred — `formula_to_smt` itself can't lower
 them today, so adding extraction arms would silently never fire.
 
 Combined with the prior three fixes
-(`467ed00d` + `53f0be85` + `2a069f04`), SMT-backed exhaustiveness
+(a three-step fix), SMT-backed exhaustiveness
 now verifies AND extracts witnesses end-to-end without any
 placeholder / hardcoded data, across both supported sorts.
 
@@ -1844,7 +1844,7 @@ its contract pins three load-bearing properties: all branches
 walked, pure-literal formulas yield empty, duplicates preserved
 (dedup is the caller's contract).
 
-Combined with the prior two-step fix (`467ed00d` + `53f0be85`),
+Combined with the prior two-step fix,
 SMT-backed exhaustiveness now verifies guards end-to-end without
 any placeholder/hardcoded data. A guard like `n if n > 0` now:
 (1) lifts its `Expr` to `PatternRow.guard`, (2) lifts `"n"` to
@@ -2213,7 +2213,7 @@ defects.
 
 ### Fixed — `CodegenConfig.validate` default-off until stdlib emit is clean (2026-04-29)
 
-Commit `1c4ddcc1` wired `CodegenConfig.validate` to actually run
+A later change wired `CodegenConfig.validate` to actually run
 the post-emit structural validator instead of being a documented
 no-op. The validator immediately surfaced approximately 8 400
 pre-existing encoding bugs in stdlib bytecode, blocking
