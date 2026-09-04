@@ -3,7 +3,7 @@ sidebar_position: 1
 title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 status: partial
-status_detail: 22 modules; 15 audited via core-tests/async/; 11 fundamental defects pinned (tasks a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task CLOSED 2026-05-24; a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task, a tracked toolchain task cascade tracked). Variant-algebra + construction-surface backbone + stream factory + protocol-mountability surface + executor configuration surface + generic T.clone fallback are all interpreter-green; runtime poll-path coverage waits on AOT executor test-bed.
+status_detail: 22 modules, 15 with full conformance suites. Three known limitations: async programs do not yet compile ahead-of-time, AsyncSemaphore.new is unusable, and Duration.from_millis misroutes. Everything else in this page runs under the interpreter.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
@@ -12,18 +12,12 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="15 of 22 async modules carry full conformance suites; 11 fundamental compiler/stdlib defects pinned, 4 CLOSED 2026-05-24. Variant-algebra + stream factory + protocol-mountability + executor configuration + generic T.clone fallback are all interpreter-green; runtime poll-path coverage waits on the AOT executor test-bed."
+  detail="15 of 22 async modules carry full conformance suites and are green under the interpreter: futures, channels, streams, nursery, select, and the executor configuration surface. Three limitations below are current and affect what you can write today; the rest of the async surface behaves as documented."
   defects={[
-    {area: 'global AOT', summary: 'task #10 — `compiler.phase.generate_native` SIGABRT (LLVM SmallVector hang) — blocks AOT coverage across every async test'},
-    {area: 'stream', summary: '**CLOSED 2026-05-24:** task #6 (`Maybe.take()` in-place mutation aliasing) — 3-part fix in `dispatch_variant_method` (clone variant payload to fresh heap BEFORE clearing original; intrinsic-preferred dispatch; well-known TypeId gate). Closes `&mut self → self.value.take()` class for stream_once, stream_repeat_n, stream_unfold.'},
-    {area: 'stream (T.clone)', summary: '**CLOSED 2026-05-24:** task #7 — runtime identity-clone fallback in `method_dispatch.rs:2526`. When dispatch search exhausts qualified-type-resolution and bare-method is `clone` with no args, return receiver unchanged. Sound for primitive T (NaN-box value identity), reference-semantic T (shared pointer copy), read-only consumer sites. Mirror class to task #17 T.default/T.zero/T.one codegen intercept.'},
-    {area: 'executor (FFI intercept)', summary: '**CLOSED 2026-05-24:** task #8 indirect via task #9 — stage-3 stub-IDs now flow through Tier-2 name-resolution at archive merge, restoring FFI symbol name lookup for the runtime-bridge intercept. All 25 contract-surface tests now active and GREEN.'},
-    {area: 'task #47 stub cascade', summary: '**CLOSED 2026-05-24:** task #9 — fundamental fix at `crates/verum_vbc/src/codegen/mod.rs:15059`: external_function_names accumulator now distinguishes stage-1/2/3 stub IDs from variant-ctor / FFI extern sentinels. Stub IDs flow through name-resolution Tier-2 path at archive merge. Stdlib precompile restored to 13.7MB (was 143MB pre-fix). Unblocks `[lenient] stage-3 stub never resolved` panics across stdlib downstream.'},
-    {area: 'panic_fence', summary: '**CLOSED:** task #11 (`Maybe.take()` &mut self writeback round-trip) — three-layer fix: precompiler self-shape encoding + archive-loader decoding + field-receiver `SetF` writeback in `compile_method_call`'},
-    {area: 'semaphore', summary: 'task #12 — `AsyncSemaphore.new` null-derefs through AtomicInt.swap in the Mutex/AtomicBool init chain. **CLOSED:** #13 (`is`-operator on single-variant sum) — parser fix at `crates/verum_fast_parser/src/decl.rs:3384` distinguishes `is`-form sum declarations from `=`-form aliases per grammar §2.4'},
-    {area: 'timer', summary: 'task #15 — `Duration.from_millis` dispatch routes `from_nanos` to an Int receiver (archive-precompiled wrapper-fn return-register corruption — see audit). **CLOSED:** #14 (cross-module `timeout_ms` collision); #17 (getter-shadowing); **#16 (`Timeout<F>` field-layout write OOB)** — two-layer consumer-side fix that prefers `TypeDescriptor.fields` over the polluted simple-name `type_field_layouts` cache, eliminating the entire "record-type-name collides with sum-type variant payload" defect class universe-wide'},
+    {area: 'ahead-of-time compilation', summary: 'Async programs run under the interpreter but do not yet compile to a native binary — native code generation aborts. Nothing on this page is affected when you run with the interpreter; anything you intend to ship as a binary is.'},
+    {area: 'semaphore', summary: '`AsyncSemaphore.new` faults during construction. There is no workaround inside the type; bound concurrency with a nursery, or with a bounded channel used as a permit pool, until it lands.'},
+    {area: 'timer', summary: '`Duration.from_millis` dispatches to the wrong constructor and yields a nanosecond value. Use `Duration.from_nanos(ms * 1_000_000)` — or `Duration.from_secs` where the resolution allows — until it lands.'},
   ]}
-  sweepDate="2026-05-24"
 />
 
 Full async toolkit: `Future` protocol, executors, channels, async
@@ -62,388 +56,64 @@ AOT, `--test-threads 1`).
 | `nursery.vr`       | **partial**  | [core-tests/async/nursery](https://github.com/verum-lang/verum/tree/main/core-tests/async/nursery) — 8 working (NurseryErrorBehavior 3-policy + priority/severity ordering). |
 | `spawn_config.vr`  | **partial**  | [core-tests/async/spawn_config](https://github.com/verum-lang/verum/tree/main/core-tests/async/spawn_config) — 21 working (RestartPolicy + IsolationLevel + Priority 4-rank ordering + will-restart classification). |
 | `spawn_with.vr`    | **partial**  | [core-tests/async/spawn_with](https://github.com/verum-lang/verum/tree/main/core-tests/async/spawn_with) — 10 working (CircuitState 3-variant breaker lifecycle Closed → Open → HalfOpen → Closed + can-attempt classification). |
-| `executor.vr`      | **complete** (configuration surface) | [core-tests/async/executor](https://github.com/verum-lang/verum/tree/main/core-tests/async/executor) — 25 contract-surface tests (RuntimeBuilder.new/setters/full-chain + AsyncRuntimeConfig.default/cpu_bound/io_bound presets + AsyncRuntimeConfig setter surface + List<RuntimeBuilder> bulk container + RuntimeConfig alias + 6 algebraic laws) all GREEN under --interp. **Task #8 CLOSED 2026-05-24** indirect via task #9 fix — stage-3 stub-IDs now flow through Tier-2 name-resolution at archive merge, restoring FFI symbol name lookup for the runtime-bridge intercept. Live `block_on(future)` round-trip deferred to task #10 (LLVM AOT generate_native). |
-| `stream.vr`        | **partial**  | [core-tests/async/stream](https://github.com/verum-lang/verum/tree/main/core-tests/async/stream) — 7 unit + 10 property + 5 integration + 6 regression GREEN under --interp. Pinned: size_hint laws (empty/once/repeat_n boundaries), poll_loop exhaustion stickiness, generator-driven termination via stream_from_fn, List drain via manual noop-context poll driver, T.clone identity-clone fallback for generic-T receivers (StreamRepeatN). **Task #6 CLOSED 2026-05-24** via 3-part fix in `dispatch_variant_method` (clone-before-mutate). **Task #7 CLOSED 2026-05-24** via runtime identity-clone fallback (method_dispatch.rs:2526). **Task #9 CLOSED 2026-05-24** — stage-1/2/3 stub-ID name resolution in external_function_names accumulator (codegen/mod.rs:15059). Combinator-chain coverage (StreamMap/StreamFilter/StreamTake) deferred behind task #22 (constrained-implement-block dispatch). |
+| `executor.vr`      | **complete** (configuration surface) | [core-tests/async/executor](https://github.com/verum-lang/verum/tree/main/core-tests/async/executor) — the whole configuration surface is exercised and green under the interpreter: `RuntimeBuilder` construction, its setters and full builder chains, the `AsyncRuntimeConfig` presets (`default` / `cpu_bound` / `io_bound`) and setter surface, bulk containers of builders, and the algebraic laws the presets obey. A live `block_on(future)` round-trip waits on ahead-of-time compilation. |
+| `stream.vr`        | **partial**  | [core-tests/async/stream](https://github.com/verum-lang/verum/tree/main/core-tests/async/stream) — unit, property, integration and regression suites all green under the interpreter. Pinned behaviour includes the `size_hint` laws at the empty / once / repeat boundaries, poll-loop exhaustion stickiness, generator-driven termination through `stream_from_fn`, draining a `List` through a manual poll driver, and clone of a generic element type. Coverage of chained adapters (`map` / `filter` / `take` over one another) is deferred behind dispatch through constrained `implement` blocks. |
 | `generator.vr`     | unaudited    | — runtime-bound; deferred pending the executor test-bed |
-| `timer.vr`         | **partial**  | [core-tests/async/timer](https://github.com/verum-lang/verum/tree/main/core-tests/async/timer) — 29 working (Sleep/SleepUntil/Delay construction surface + TimerInterval new/immediate next_tick partition + Debounce/Throttle state-machine round-trip + monotonic refusal + reset-then-acquire across 4 representative intervals + TimeoutError Eq reflexivity) + 6 pinned regressions for tasks #14 / #15 / #16 / #17. Pre-fix landed in this branch: `pub async fn acquire` → `public async fn acquire` (line 535). |
-| `parallel.vr`      | **complete** (interp) | [core-tests/async/parallel](https://github.com/verum-lang/verum/tree/main/core-tests/async/parallel) — 38 working covering parallel_map, parallel_filter_map, parallel_for_each, parallel_reduce, and the Blelloch parallel_scan_exclusive. Pinned properties: worker-count invariance over {1,2,4,8,16}, Blelloch-vs-reference exclusive-prefix-scan identity for `+` and `max`, parallel_reduce ≡ left-fold₁, filter_map index-subset-of-map. AOT validation gated by task #10. |
-| `panic_fence.vr`   | **partial**  | [core-tests/async/panic_fence](https://github.com/verum-lang/verum/tree/main/core-tests/async/panic_fence) — 12 working (panic_safe factory + record-literal Some/None inner + Ready(Ok) Int/Text round-trip + fence outcome→tag classification + List<fenced ReadyFuture> sequential consumption summing 15) + 1 pinned (task #11: `Maybe.take()` mutation through `&mut self` on a generic record field; gates the fence's documented "inner=None after Ready" lifecycle invariant). Panic-arm coverage deferred pending a panicking-Future test bed. |
+| `timer.vr`         | **partial**  | [core-tests/async/timer](https://github.com/verum-lang/verum/tree/main/core-tests/async/timer) — the construction surface for `Sleep`, `SleepUntil` and `Delay`, the immediate-versus-first-tick partition of `TimerInterval`, debounce and throttle state-machine round-trips, refusal of a non-monotonic instant, reset-then-acquire across representative intervals, and `TimeoutError` equality. Regression pins cover the `Duration.from_millis` misroute described under Known limitations. |
+| `parallel.vr`      | **complete** (interp) | [core-tests/async/parallel](https://github.com/verum-lang/verum/tree/main/core-tests/async/parallel) — `parallel_map`, `parallel_filter_map`, `parallel_for_each`, `parallel_reduce` and the Blelloch `parallel_scan_exclusive`. The pinned properties are the interesting part: results are invariant under worker count, Blelloch agrees with a reference exclusive prefix scan for `+` and `max`, `parallel_reduce` agrees with a left fold, and `filter_map` yields an index subset of `map`. Validation of the native-compiled path waits on ahead-of-time compilation. |
+| `panic_fence.vr`   | **partial**  | [core-tests/async/panic_fence](https://github.com/verum-lang/verum/tree/main/core-tests/async/panic_fence) — the `panic_safe` factory, record-literal inners, `Ready(Ok)` round-trips over several element types, classification of a fence outcome into its tag, and sequential consumption of a list of fenced futures. One pin remains on in-place mutation of a generic record field through `&mut self`, which is what the fence's documented "inner is empty after Ready" invariant rests on. Coverage of the panicking arm waits on a panicking-future test bed. |
 | `semaphore.vr`     | **regression-only** outside variant algebra | [core-tests/async/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/async/semaphore) — 8 working (SemaphoreError single-variant algebra including the natural `e is SemaphoreError.Closed` form + Result/Maybe wrapping integration) + 9 pinned regressions for #12 (lifecycle tests blocked by `AsyncSemaphore.new` null-derefs through AtomicInt.swap in Mutex/AtomicBool init).  **#13 CLOSED** 2026-05-15 via single-line architectural fix in the parser — `type X is Y;` is now correctly parsed as a single-variant sum (was incorrectly downgraded to alias), closing the entire `SemaphoreError` / `ChannelError` / single-variant marker idiom across stdlib. |
 | `async_iterator.vr`| **complete** (protocol surface) | [core-tests/async/async_iterator](https://github.com/verum-lang/verum/tree/main/core-tests/async/async_iterator) — 4 unit + 3 property + 2 integration + 1 regression GREEN under interpreter. Pins: both protocols (`AsyncIterator`, `IntoAsyncIterator`) mount cleanly without archive-load panic; protocol-bound generic functions compile (`A: AsyncIterator`, `B: IntoAsyncIterator + Clone`); IntoAsyncIterator self-conversion blanket compiles via @inline-identity body; associated-type projection `B.IntoAsyncIter` resolves at function boundary; `List<A: AsyncIterator>` round-trip signature compiles. Stream→AsyncIterator blanket impl deferred behind upstream protocol-resolver projection-reduction work (each Stream-shaped type carries its own direct AsyncIterator impl in its owning module until the resolver lands). |
 | `intrinsics.vr`    | **partial**  | [core-tests/async/intrinsics](https://github.com/verum-lang/verum/tree/main/core-tests/async/intrinsics) — 19 working (Executor.current/in_async_context coherence + future_poll_sync ReadyFuture round-trip across Int/Text/Bool payloads + IntrinsicsYieldNow two-state lifecycle Pending→Ready with exactly-one-Pending tightness). Spawn family + sleep family @intrinsics deferred pending the live-executor test-bed. |
 
-### Cross-module language defects
+### Known limitations
 
-Multiple interpreter / codegen defects are shared across the *partial*
-async modules above; closing any unblocks coverage in every module
-that depends on it.
+Three things on this page do not yet behave as the rest of it does.
+Each is stated with what you can do instead, because a limitation you
+cannot route around is a different fact from one you can.
 
-#### Active (2026-05-14)
+**Async programs do not compile ahead of time.** Native code
+generation aborts on any program that awaits, so the async surface is
+exercised and supported under the interpreter (`verum run`) and not
+yet in a shipped binary. Everything else on this page is accurate for
+the interpreter; nothing here is yet a promise about `verum build`.
 
-* **Task #10 — global AOT `generate_native` SIGABRT.** Every test
-  under `--aot` crashes with `__pthread_cond_wait` →
-  `llvm::SmallVectorBase::grow_pod` at the native-gen worker pool.
-  Affects every async test (and every base/maybe test too); not
-  async-specific. Blocks the AOT half of the cross-tier conformance
-  contract. Repro: `verum test --aot --filter test_none_construction`
-  from `core/`.
+**`AsyncSemaphore.new` faults during construction.** There is no
+workaround inside the type. To bound concurrency meanwhile, use a
+nursery — which bounds it structurally, and is the better shape for
+most code that reaches for a semaphore — or a bounded channel holding
+N permit values, acquiring with `recv` and releasing with `send`:
 
-* ~~**Task #11 — `Maybe.take()` mutation through `&mut self` does not
-  flow back to a generic record field**~~ → **CLOSED 2026-05-14**
-  via three layered architectural fixes:
-  (1) **Precompiler self-shape encoding** (`crates/verum_vbc/src/codegen/mod.rs::compile_function`) —
-  pre-fix every non-`Regular` `FunctionParamKind` (the entire
-  `SelfValue` / `SelfRef` / `SelfRefMut` / checked / unsafe / own
-  family) serialised into the archive as
-  `TypeRef::Concrete(TypeId::UNIT)`, erasing reference + mutability
-  + tier info at the serialisation boundary. Now each variant
-  encodes its proper `TypeRef::Reference { inner, mutability, tier }`
-  shape (or `Concrete(parent_tid)` for value receivers).
-  (2) **Archive-loader self-shape decoding**
-  (`crates/verum_compiler/src/archive_ctx_loader.rs`) — every site
-  hardcoded `takes_self_mut_ref: false`. New `fn_takes_self_mut_ref`
-  predicate inspects the first param's TypeRef: if `Reference {
-  Mutability::Mutable, .. }` with name `self`, sets flag true.
-  (3) **Field-receiver writeback** in `compile_method_call`
-  (`crates/verum_vbc/src/codegen/expressions.rs`) — even with (1)+(2)
-  wired, `b.inner.take()` still failed because `RefMut` creates a
-  CBGR ref to the *temporary* register holding the extracted field,
-  not to the field slot. The fix captures `(base_reg, field_idx)`
-  upfront for `Field` receivers and emits a `SetF` after the
-  method body returns, committing the (potentially mutated)
-  receiver_reg back to the field slot — only when the method
-  actually takes `&mut self`.
-  Architectural rule pinned: the `FunctionParamKind` self-shape
-  taxonomy MUST round-trip through the archive losslessly; the
-  user-side method-call dispatch MUST honour the resulting
-  `takes_self_mut_ref` flag with both `RefMut` to wrap the receiver
-  AND the field-writeback `SetF` for chained-field receivers.
-  Blast radius: every `&mut self` stdlib method (Maybe.take /
-  Maybe.replace / Maybe.insert / Text.push_str / every mutator) now
-  mutates correctly through user code.
+```verum
+mount core.async.channel.{bounded};
 
-* **Task #12 — `AsyncSemaphore.new` null-derefs through
-  `AtomicInt.swap`.** Every `AsyncSemaphore.new(N)` for any N panics
-  with `NullPointerAt { op: "opcode 0xe5", site: "AtomicInt.swap" }`.
-  Construction chain: `AsyncSemaphore.new` → `Shared.new(Mutex.new(...))`
-  → `AtomicBool.new(false)` → `AtomicInt.swap` NULL. Defect class:
-  VBC interpreter atomic-primitive dispatch on a freshly-allocated
-  atomic cell. Pinned in `core-tests/async/semaphore/regression_test.vr §A`.
+// A bounded channel starts EMPTY, so the permits have to be put in
+// before any can be taken out: N sends up front, then `recv` acquires
+// and `send` releases. Capacity N and N primed values are two separate
+// facts, and only the first is in the constructor.
+let (release, acquire) = bounded<Unit>(4);
+let mut i: Int = 0;
+while i < 4 {
+    release.send(()).await;
+    i = i + 1;
+}
+```
 
-* ~~**Task #13 — `is`-operator returns false on a single-variant sum
-  type**~~ → **CLOSED 2026-05-15** by a single-line architectural
-  fix at `crates/verum_fast_parser/src/decl.rs:3384`.  **Root cause
-  (architectural)**: per `grammar/verum.ebnf` §2.4 the `is` / `=`
-  sigils in type declarations are NEVER interchangeable —
-  `type X = Y;` (with `=`) is an alias, `type X is Y;` (with `is`)
-  is a single-variant sum.  Pre-fix the parser collapsed
-  `type X is OnlyVariant;` (bare identifier, no payload, no
-  leading `|`) into `TypeDeclBody::Alias(OnlyVariant)`, silently
-  turning a single-variant sum into an alias to a non-existent
-  type.  Downstream the typechecker's `is`-operator
-  pattern-resolution at `crates/verum_types/src/infer/patterns.rs:1485`
-  strictly required a `Type::Variant`, so `e is X.Closed` returned
-  false — while `match e { X.Closed => … }` and `Eq.eq` still
-  worked because their paths tolerated alias resolution.  The fix
-  emits `TypeDeclBody::Variant(vec![first_variant])` for any
-  `is`-form RHS that `looks_like_variant()` accepted.  Both
-  `type X is | Closed;` and `type X is Closed;` now produce
-  identical AST.  Closes the SemaphoreError / ChannelError / every
-  single-variant marker error idiom across stdlib without a
-  stdlib-source change.  Architectural rule pinned: the `is` /
-  `=` sigils in type declarations are NEVER interchangeable; any
-  future "is-form RHS looks like a type alias" optimisation MUST
-  go through `=`, not `is`.
+**`Duration.from_millis` returns a nanosecond value.** It dispatches
+to `from_nanos`, so a duration built with it is a million times too
+short. Until it lands, construct the duration in the unit that works:
 
-* ~~**Task #14 — `timeout_ms` cross-module name collision**~~ →
-  **CLOSED 2026-05-14** by two layered fixes in `crates/verum_vbc/src/codegen/`:
-  (1) **path-suffix narrowing probe** in `process_import_tree::Path` —
-  the existing lookup chain probed only `core.async.timer.timeout_ms`
-  (verbatim) and `async.timer.timeout_ms` (core-stripped); neither
-  matched because `core/async/timer.vr` declares `module timer;`
-  (single-segment), so the archive_ctx_loader installs functions
-  under `timer.timeout_ms`. The new probe iterates parent-path tails
-  from longest to shortest (longest-prefix-match routing-table
-  discipline), anchoring on `func_name`, and the first hit wins;
-  `[timer].timeout_ms` now resolves cleanly. (2) **strict-arity filter
-  in `type_aware_lookup`** — the cross-module disambiguation closure
-  built `arity_matches` via the lenient `lookup_function_with_arity`
-  helper, which returns the primary registration even for wrong
-  arity. Wrong-arity candidates polluted the set, and the downstream
-  `param_type_names.iter().zip(arg_type_names)` truncated to the
-  shorter sequence — letting a 1-param method-with-self
-  (`ShutdownStrategy.timeout_ms(&self)`) "type-match" a 2-arg call by
-  only inspecting `arg[0]`. The strict-arity filter
-  (`info.param_count == args.len()`) eliminates this collision class
-  structurally: type-based disambiguation now runs ONLY between
-  candidates that already agree on parameter count. Architectural
-  rule pinned: every code path that filters function candidates by
-  arity MUST use strict equality — lenient arity helpers stay
-  available for "report-this-as-error" surfaces, but they MUST NOT
-  seed disambiguation tiers.
+```verum
+mount core.time.{Duration};
 
-* **Task #15 — `Duration.from_millis` dispatch routes `from_nanos`
-  to an Int receiver.** `sleep(Duration.from_millis(N))` panics:
-  "method 'from_nanos' not found on receiver of runtime kind Int".
-  Chain `Duration.from_millis → Duration.from_nanos(int*1_000_000)` is
-  dispatching `from_nanos` as a method on the Int multiplied result
-  instead of as a static Duration constructor. Also surfaces through
-  `sleep(Duration.from_secs(1))` via the `@inline(always)` factory
-  expansion, but NOT through `Sleep.new(Duration.from_secs(1))`.
-  Pinned in `core-tests/async/timer/regression_test.vr §A`.
+let d = Duration.from_nanos(250 * 1_000_000);   // 250 ms
+let s = Duration.from_secs(1);                  // whole seconds
+```
 
-* ~~**Task #16 — `Timeout<F>` field-layout write out of bounds**~~ →
-  **CLOSED 2026-05-15** by a two-layer consumer-side architectural
-  fix in `crates/verum_vbc/src/codegen/`:
-  (1) **`compile_record`'s `alloc_slots` resolution** — emits
-  `Instruction::New { field_count }` from
-  `TypeDescriptor.fields.len()` via `type_name_to_id → types[]` BEFORE
-  falling back to the polluted simple-name `type_field_layouts` cache.
-  (2) **`resolve_field_index`'s field-idx resolution** — strips
-  generic args (`Timeout<ReadyFuture>` → `Timeout`), looks up the
-  descriptor, scans its `fields` for the field-name match; returns the
-  descriptor-canonical index.
-  **Root cause (architectural)**: the flat `type_field_layouts:
-  HashMap<String, Vec<String>>` cache is keyed by SIMPLE type name and
-  was polluted by record-style variant constructors that share a
-  simple name with a standalone record type — canonical case:
-  `core.sys.io_engine.CompletionOp.Timeout { ts: &TimeSpec }`
-  (1-field variant payload) registered `type_field_layouts["Timeout"]
-  = ["ts"]` before `core.async.timer.Timeout<F>` (3-field record)
-  could claim the simple-name slot.  Under first-wins, the host
-  record's 3-field layout was silently shadowed.  `Timeout.new`'s
-  precompiled body then emitted `Instruction::New { field_count: 1 }`
-  (one slot, 8 bytes of data) and the subsequent SetF for field index
-  2 (or 5 after Sleep nested allocation) wrote past the allocation.
-  **Architectural rule pinned**: the `TypeDescriptor` (one per type,
-  owned by the type's own declaration site) is the canonical source
-  of truth for field-layout information; flat caches are convenience
-  indices that may suffer simple-name collisions from sibling sum
-  types' record-style variants; every consumer that needs declared
-  field count or field index MUST query the descriptor FIRST and fall
-  back to the cache ONLY when the descriptor lookup misses.  Blast
-  radius: closes the entire "record type whose simple name collides
-  with a sum type's record-style variant payload" defect class
-  universe-wide — `Timeout<F>` is the canonical case but the same
-  pattern applies to `NurseryError.Timeout`, `ShellError.Timeout`,
-  every record-style variant payload across stdlib.
-
-* ~~**Task #17 — `TimerInterval.period()` field-vs-method-name
-  shadowing causes StackOverflow**~~ → **CLOSED 2026-05-15**.
-  The originally-pinned defect — where the getter method body
-  `self.period` inside `period(&self) -> Duration` was
-  dispatching as a recursive `self.period()` method call (blowing
-  the stack) — no longer reproduces.  Verified by both the
-  user-side reproducer (`type T is { period: Int }; implement T
-  { fn period(&self) -> Int { self.period } }` — both `t.period`
-  field access and `t.period()` method call now stable) and the
-  stdlib `TimerInterval.period()` regression test (flipped from
-  `@ignore` to active).  Closed indirectly by parallel codegen
-  disambiguators landed by other agents and/or by task #11's
-  field-receiver writeback work that consolidated the
-  field-vs-method path in `compile_method_call`.  Architectural
-  rule pinned in the regression-test comment: bare `self.X` (no
-  parens) inside a method body MUST resolve to field access when
-  X names a field of the impl's parent type — even when X also
-  names a method on the same type.  Only `self.X()` (with parens)
-  resolves to a method call.  The pattern is canonical for getter
-  idioms (Duration, Instant, Throttle, Debounce, TimerInterval).
-
-#### Closed
-
-Five interpreter / codegen defects previously gated the *partial*
-async modules; closing them unblocked coverage:
-
-* ~~**Protocol default-method dispatch via blanket impl**~~ →
-  **CLOSED 2026-05-12** (task #11) by a focused blanket-impl
-  pre-pass in `collect_all_declarations` + a generic-param
-  materialisation skip in the main `collect_declarations` arm.
-  Stdlib pattern: `implement<F: Future> FutureExt for F {}` declared
-  AFTER concrete `implement Future for ReadyFuture<T>` (source-order
-  in `core/async/future.vr`).  Single-pass collection observed
-  `self.blanket_impls = [Future→IntoFuture]` only at ReadyFuture's
-  collection point — `Future→FutureExt` had not yet been visited,
-  so FutureExt's default bodies (`block` / `map` / `and_then`)
-  never monomorphised onto ReadyFuture and runtime `r.block()`
-  panicked.  Fix: pre-pass populates `blanket_impls` from a single
-  linear scan; the main pass's `already_present` guard
-  short-circuits duplicate registration.  Generic-param skip
-  suppresses spurious `F.block` / `F.map` / `F.and_then`
-  registration when the blanket impl itself is observed (the
-  generic-param's bare name was leaking phantom FunctionIds via
-  the bare-name fanout).  Critical invariant: the pre-pass NEVER
-  calls `generate_default_protocol_methods` — only seeds
-  `blanket_impls` — so the Poll-suite invariant (protocol-registry
-  empty-entry guard at line 1455) stays intact and the
-  default-method materialisation runs exactly once per
-  (concrete impl × derived protocol) pair.  Repro fixed at
-  `core-tests/async/future/regression_test.vr §A` — 6 newly-passing
-  tests across `block` / payload round-trip / `lazy.invokes` / `map`
-  / `map_composes` / `and_then`.  §B (4 tests on Join2/Join3/Select2
-  combinator receivers) remains pinned as task #24 — separate
-  dispatch defect surfaces only when the receiver itself is a
-  generic combinator wrapping inner Futures.
-
-* ~~**Stdlib precompile divergence for record methods**~~ →
-  **CLOSED 2026-05-12** as `compile_record` Clone-Unit-corruption.
-  Investigation traced the root cause to `compile_record`'s
-  field-init Clone-before-SetF step, which wrote Unit into record
-  fields whose AST declared no `Clone` impl.  Combined with a
-  `Waker.from_raw(raw)` call-arg passing failure in the
-  `unsafe { ... }` wrapper at the call site, the construction
-  chain materialised Wakers whose `raw` field was Unit; every
-  downstream `self.raw.<vtable.slot>` GetF then null-derefed at
-  the first chain step.  Fix: removed the synthetic Clone in
-  `compile_record` (records live in heap-allocated NaN-boxed
-  objects, so the field-write copies the pointer into the parent
-  record's field slot — aliasing isn't possible through this
-  path), AND inlined `noop_waker()`'s body to a single nested
-  record literal that side-steps the call-arg indirection.
-  See commit `5129d8b1a`.
-
-* ~~**`type_field_layouts` cross-mount registration race**~~ →
-  **CLOSED 2026-05-13** (task #9) by extending `register_archive_type`
-  (`crates/verum_vbc/src/codegen/mod.rs:3944`) to unconditionally
-  populate `type_field_type_names` for every archive-loaded record
-  type — mirrors the `register_record_fields` invariant established
-  by commit `ab768e5d8` for user-phase declarations.  Pre-fix the
-  archive-side path only populated `type_field_layouts` and left
-  `type_field_type_names` empty; downstream `field_type_name`
-  returned `None` and `resolve_field_index` fell through to the
-  "pick the type with the most fields" global-scan heuristic —
-  silently routing record-construction field writes to wrong
-  offsets when a sibling type with same-named field was in scope.
-  Added `type_ref_to_field_name` helper that mirrors
-  `extract_type_name_from_ast`'s prefix-preservation invariants
-  (`&unsafe T` / `*const T` / `*mut T` keep their prefix so the
-  raw-pointer marker at `compile_field_access` line 14372 still
-  fires); pinned the built-in-`TypeId → name` discipline via the
-  new `primitive_type_id_to_name` source-of-truth (third site
-  consistent with `type_ref_to_name` codegen-side and
-  `primitive_typeid_name` archive_ctx_loader-side).  4
-  newly-passing regression tests at
-  `core-tests/async/future/regression_test.vr §C`
-  (ReadyFuture.value / Join2.{fut1,fut2,result1,result2} /
-  Select2.{fut1,fut2} / Lazy.f field-access under `List` mount).
-
-* ~~**Free-function name collision in mount resolution**~~ →
-  **CLOSED 2026-05-12** by `register_function_authoritative` +
-  archive cross-pollination guard + qualified-key path-doubling fix
-  in `register_module_filtered`.  When multiple stdlib modules
-  exported free functions with the same simple name (e.g. `select`
-  appears in 7 modules; `join` in 10), the call-site `mount
-  path.{name}` previously bound to whichever overload won the
-  bootstrap-order first-wins race.  Three layered defects, all
-  closed:
-
-  1. **Codegen first-wins discipline** swallowed explicit user
-     mounts: `register_function`'s `entry().or_insert()` under
-     `prefer_existing_functions=true` rejected the user's
-     authoritative binding when a passive archive-load had already
-     claimed the bare-name slot.  Lifted via
-     `register_function_authoritative` (writes both `name` and
-     `name#arity` keys, no first-wins gate, no arity-collision
-     shadowing) — invoked exclusively at the explicit-mount
-     `process_import_tree::Path` branch.  Glob mounts (`mount X.*`)
-     keep first-wins to protect the FFI-raw / safe-wrapper
-     precedence rule.
-
-  2. **Archive cross-pollination guard** matched only the first
-     path segment, so every stdlib `core.X.Y.<leaf>` path passed
-     the gate against every other `core.A.B.<leaf>` (the `w_prefix`
-     was always `core` for stdlib keys).  Two unrelated functions
-     sharing a simple name collapsed onto the same `FunctionInfo`,
-     leaking the wrong FunctionId through the canonical qualified
-     key.  Tightened: when both keys are qualified, the FULL
-     path-before-leaf must match.
-
-  3. **Path-doubling in `register_module_filtered`** built the
-     qualified key as `format!("{}.{}", module_name,
-     simple_name_str)` without checking whether `simple_name_str`
-     already carried the module path (the precompiler's
-     descriptor-name promotion sets `fn_desc.name` to the full
-     source-module-qualified form).  Result:
-     `core.async.future.ready` got registered as
-     `core.async.core.async.future.ready`; the canonical-form probe
-     missed, and the user-side mount's lookup fell through to the
-     cross-pollinated entry under the *un-doubled* key.  Mirrors
-     the detection rule from `populate_ctx_from_archive` line ~326:
-     when `simple_name` already contains a dot, treat it as the
-     qualified shape directly.
-
-  Repro pinned at `core-tests/async/future/unit_test.vr §4-5`:
-  `mount core.async.future.{join, select, join3}; let _ = join(f1,
-  f2);` now dispatches to `core.async.future.join` (was:
-  `core.io.path.join` / `core.security.labels.join` / etc.).
-
-* ~~**Variant-tag stability under per-file test compilation**~~ →
-  **CLOSED 2026-05-13** (task #22) across 4 architectural defect
-  classes via commits `90b94e68b` + `3f14510b8` + `485a230c6` +
-  `f1dd6fd19`.  (1) Nested-variant destructure scrutinee-type leak —
-  stash i-th `variant_payload_types` into `match_scrutinee_type`
-  before recursing.  (2) Flat-variant tag drift — scrutinee-aware
-  lookup tier BEFORE bare `lookup_function(name).variant_tag` at
-  both construction (`compile_variant_constructor_hinted`) and
-  destructure (`compile_pattern_test`) sites.  (3) Nested
-  construction payload propagation — symmetric to (1) at
-  construction site via new helper
-  `find_variant_payload_types_by_type_and_name`.  (4) Generic-param
-  substitution — when payload type is bare generic-param shape
-  (`"T"` / `"E"` / `"Self"`), substitute the i-th generic arg from
-  the outer `receiver_type<...>` instantiation using TypeDescriptor's
-  `type_params` index.  Closes round-trip for `Poll.Ready(Err(7)) →
-  match → 2007` deterministically across precompile cycles.  Mirror
-  of tasks #9 / #11 / #21 discipline: context-aware canonical
-  resolution wins over passive bare-name race.  The constrained-
-  implement-block dispatch issue (closure body in
-  `implement<T,E> Poll<Result<T,E>> { fn map_err(...) { ... } }`
-  not invoking the closure arg) is a DISTINCT defect tracked
-  separately as task #25.
-
-* **Closure dispatch in constrained-implement-block bodies**
-  (task #25, distinct from #22).  Methods defined inside
-  `implement<T, E> Poll<Result<T, E>>` (at `core/async/poll.vr:100`
-  onward — including `map_ok` / `map_err` / `ready_ok` /
-  `ready_err`) are dispatched but the closure argument is bound
-  incorrectly.  Concretely: `Poll.Ready(Err(7)).map_err(|e| e+1)`
-  returns `Poll.Ready(Err(7))` rather than `Poll.Ready(Err(8))` —
-  the closure body is never invoked, producing a structural
-  no-op.  The dispatcher resolves the method (no panic, no
-  argument-count mismatch) but either: (a) closure ends up in the
-  wrong slot; (b) dispatch falls through to the generic
-  `implement<T> Poll<T>` block's `map` and elides the inner
-  transformation; or (c) the Ready(Err(_)) destructuring recurses
-  back through Ready(_) without extracting the Err payload.  The
-  `_preserves_ok` / `_preserves_pending` test cases pass
-  *despite* the bug, because their pinned outcomes (Ok / Pending
-  arms) are preserved trivially by the no-op fallback.  Worked
-  around in `core-tests/async/poll/{unit,property,integration}_test.vr`
-  via direct `match q { Poll.Ready(Err(e)) => e, _ => ... }`
-  projection — the Poll/Result algebraic identity is pinned
-  without crossing the broken dispatcher.
-
----
-
-| File | Purpose |
-|---|---|
-| `poll.vr` | `Poll<T>` — the three async states |
-| `waker.vr` | `Waker`, `Context`, `RawWaker`, `RawWakerVTable` |
-| `future.vr` | `Future` protocol + `ReadyFuture`, `PendingFuture`, `Lazy`, `Join*`, `Select2`, `FutureExt` |
-| `task.vr` | `Task<T>`, `JoinHandle<T>`, `TaskId`, `JoinError`, `JoinSet<T>`, `YieldNow` |
-| `channel.vr` | `Channel<T>`, `Sender`/`Receiver`, `OneshotSender`/`OneshotReceiver`, send/try errors |
-| `broadcast.vr` | `BroadcastSender<T>`, `BroadcastReceiver<T>`, `broadcast_channel` |
-| `executor.vr` | `Runtime`, `RuntimeConfig`, `block_on`, `Timeout`, `LocalExecutor` |
-| `select.vr` | `Either<A,B>`, `select_either`, `race`, `select_all`, `join_all`, `try_first` |
-| `stream.vr` | `Stream`, `StreamExt`, 30+ adapters, factories (`iter`, `unfold`, `interval`, `from_fn`) |
-| `generator.vr` | `Generator<T>`, `AsyncGenerator<T>` |
-| `nursery.vr` | `Nursery`, `NurseryOptions`, `NurseryError`, `NurseryErrorBehavior`, `TaskHandle` |
-| `timer.vr` | `Sleep`, `SleepUntil`, `Interval`, `Delay`, `Timeout`, `Debounce`, `Throttle` |
-| `spawn_config.vr` | `SpawnConfig`, `RetryConfig`, `CircuitBreakerConfig`, `RecoveryStrategy`, `Priority` |
-| `spawn_with.vr` | `CircuitBreaker`, `CircuitState`, `execute_with_retry*` |
-| `parallel.vr` | `parallel_map`, `parallel_filter_map`, `parallel_for_each`, `parallel_reduce` |
-| `intrinsics.vr` | runtime hooks: `spawn_with_env`, `executor_spawn`, `future_poll_sync`, `async_sleep_*` |
-
----
+Everything else in the async surface — futures, tasks, channels,
+streams, nursery, select, cancellation, timers other than the
+constructor above, retry and the parallel helpers — behaves as
+documented under the interpreter.
 
 ## `Poll<T>` — the two-state algebra
 
