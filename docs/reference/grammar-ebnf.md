@@ -742,7 +742,7 @@ writes the dependent function itself and lets it elaborate:
 ```verum
 fn replicate<T>(n: Int { self >= 0 }, x: T) -> [T; n] { [x; n] }
 
-fn push<T>(v: List<T, n>, x: T) -> List<T, n + 1>
+fn push<T>(v: List<T, n>, x: T) -> List<T, n + 1>;
     where n: Nat
     ensures |result| == |v| + 1
 { ... }

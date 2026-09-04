@@ -325,7 +325,7 @@ public pure fn is_sorted<T: Ord>(xs: &List<T>) -> Bool {
 type Sorted<T: Ord> is List<T> { is_sorted(self) };
 
 @verify(formal)
-fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>
+fn insert<T: Ord>(xs: Sorted<T>, x: T) -> Sorted<T>;
     where ensures is_sorted(result)
 {
     let mut out = xs.clone();

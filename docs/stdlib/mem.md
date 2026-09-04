@@ -357,7 +357,7 @@ type HazardStats is {
     thread_count:    Int,    // registered threads
 };
 
-fn hazard_stats() -> HazardStats
+fn hazard_stats() -> HazardStats;
 
 implement HazardStats {
     fn needs_reclaim(&self) -> Bool {

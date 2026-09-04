@@ -120,9 +120,9 @@ Each variant has:
 
 ```verum
 implement WeftError {
-    public fn category(&self) -> WeftErrorCategory
-    public fn status(&self) -> StatusCode
-    public fn public_message(&self) -> Text
+    public fn category(&self) -> WeftErrorCategory;
+    public fn status(&self) -> StatusCode;
+    public fn public_message(&self) -> Text;
 }
 
 implement IntoResponse for WeftError {

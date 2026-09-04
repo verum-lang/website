@@ -119,8 +119,8 @@ implement SimNetworkConfig {
 public type NetworkEventStream is { /* opaque */ };
 
 implement NetworkEventStream {
-    public fn new(rng: SeededRng, config: SimNetworkConfig) -> NetworkEventStream
-    public fn next_event(&self) -> NetworkEvent
+    public fn new(rng: SeededRng, config: SimNetworkConfig) -> NetworkEventStream;
+    public fn next_event(&self) -> NetworkEvent;
 }
 ```
 

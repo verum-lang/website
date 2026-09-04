@@ -697,8 +697,8 @@ rx#"..."     re#"..."     // Regex
 
 ```verum
 public fn validate_json(s: Text) -> Bool   // must start { } / [ ] / " "
-public fn validate_sql(s: Text)  -> Bool   // must start with SELECT/INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/WITH (case-insensitive)
-public fn validate_uri(s: Text)  -> Bool   // must contain ://
+public fn validate_sql(s: Text)  -> Bool   // must start with SELECT/INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/WITH (case-insensitive);
+public fn validate_uri(s: Text)  -> Bool   // must contain ://;
 ```
 
 These validators are **structural shape** checks, not full parsers —

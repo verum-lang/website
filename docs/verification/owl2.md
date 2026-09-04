@@ -459,7 +459,7 @@ public type Person is { ... };
 // A subsumption check.
 @verify(formal)
 @theorem
-public fn person_is_animal(p: Person) -> (p is Animal)
+public fn person_is_animal(p: Person) -> (p is Animal);
     proof by simp[SubClassOf, owl2_subclass_chain];
 ```
 

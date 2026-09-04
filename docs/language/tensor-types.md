@@ -18,7 +18,7 @@ description: Shape-typed multi-dimensional arrays with compile-time shape checki
 fn image_channels(img: Tensor<Float32, [3, H, W]>) -> Int { 3 }
 
 // Shape-polymorphic — H and W can vary, compiler keeps track.
-fn resize<H, W>(img: Tensor<Float32, [3, H, W]>)
+fn resize<H, W>(img: Tensor<Float32, [3, H, W]>);
              -> Tensor<Float32, [3, 224, 224]> { ... }
 
 // Matmul: the inner dimensions must agree, or the type checker rejects.

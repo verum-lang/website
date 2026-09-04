@@ -89,7 +89,7 @@ the lenses:
 ```verum
 // absdiff.vr
 @verify(formal)
-fn abs_diff(a: Int, b: Int) -> Int
+fn abs_diff(a: Int, b: Int) -> Int;
     ensures result >= 0
 {
     if a >= b { a - b } else { b - a }

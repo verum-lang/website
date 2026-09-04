@@ -112,7 +112,7 @@ fn build_response(user: Int, req: Request) -> Response {
     Response { body: f"{user}: {req.path}" }
 }
 
-fn handle(req: Request) -> Response
+fn handle(req: Request) -> Response;
     using [Database, Logger, Clock, RateLimiter]
 {
     let now = Clock.now();
