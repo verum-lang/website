@@ -26,8 +26,11 @@ Production-ready:
   normaliser with computational univalence, higher-kinded types,
   protocol specialisation, existentials, GATs.
 - **Memory**: three-tier CBGR with generation + epoch tracking,
-  11.8–14.5 ns per check, escape analysis, promotion to
-  `&checked T`.
+  **~0.93 ns per check** (measured, `verum_cbgr`'s `production_targets`
+  bench, `generation_and_epoch_check`; target is ≤ 15 ns), escape
+  analysis, promotion to `&checked T`. The 11.8–14.5 ns this line
+  carried is the figure from the optimisation the changelog records —
+  superseded, and still correct there as history.
 - **Verification**: gradual from `@verify(runtime)` through
   `@verify(thorough)` to `@verify(certified)`; SMT layer with
   capability-based routing; proof extraction; cache with 60–70%
