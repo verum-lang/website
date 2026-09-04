@@ -103,6 +103,24 @@ type Database.ReadOnly is Database with [Read];
 type Database.TxScope  is Database with [Read, Write, Transaction];
 ```
 
+:::caution The dotted name does not parse yet — the capability does
+Measured 2026-09-04. `with [...]` is real and works; it is the dotted
+declaration name that the parser refuses, here and in every example
+below that uses one:
+
+    type FileRead  is File with [Read];        parses
+    type File.Read is File with [Read];
+      -> error<E044>: Parse error: expected `is` keyword in type
+                      definition
+
+`grammar/verum.ebnf` agrees with the parser: `type_def` takes a plain
+`identifier`, not a path. So the dotted spelling on this page is the
+convention we intend, not the one you can write today.
+
+Write the attenuation with a plain name — `DatabaseReadOnly`,
+`FileRead` — and everything else on this page is unchanged.
+:::
+
 The dotted name is a nested path; the dot has no runtime meaning —
 it's purely a naming convention to group related refinements.
 

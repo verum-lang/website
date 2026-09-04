@@ -108,6 +108,26 @@ type UniqueIds is List<Id>
            where i != j. self[i] != self[j];
 ```
 
+:::caution A quantified refinement on a TYPE does not parse yet
+Measured 2026-09-04. The quantifier is fine and the `where` is fine —
+it is the pair, in type position, that the parser does not take:
+
+    type C is Int where value > 0;                        parses
+    fn f(..) where ensures (forall i in 0..3. xs[i] > 0)  parses
+    type D is List<Int> where forall i in 0..3. self[i] > 0;
+      -> error<E018>: Parse error: unexpected operator `>`,
+                      expected operator `=>`
+
+`grammar/verum.ebnf` allows it — `value_where_clause = 'where',
+['value'], refinement_expr` and `refinement_expr = expression`, and a
+quantifier is an expression. So the grammar and this page agree, and
+the parser is the one out of step.
+
+Until it catches up, write the quantified form in `requires` /
+`ensures` on the functions that build or consume the value — the
+section below — which does parse and is checked.
+:::
+
 ### In `requires` / `ensures`
 
 Function pre- and post-conditions:
