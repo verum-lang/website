@@ -129,7 +129,7 @@ The pin test enforces that every kernel `tag()` / `code()` /
 ## 2. The pin test contract
 
 The cross-side pin test lives at
-`crates/verum_kernel/tests/k_arch_v_alignment.rs` and enforces
+the kernel/Verum alignment test and enforces
 **53 pin tests** covering: 38-rule real-Typing across all three
 foundations, the full anti-pattern closure, and transitive
 multi-hop closure.  The pin tests fall into eight bands:
@@ -317,7 +317,7 @@ The transitive-multi-hop closure (AP-019 + AP-024) introduces
 its own pin band — four additional pins that lock in the kernel
 ↔ compiler boundary for cross-cog DFS traversal.
 
-The walker itself lives in `crates/verum_kernel/src/arch_transitive.rs`.
+The walker itself lives on the kernel side.
 Two policy adapters
 (`resolve_transitive_lifecycle_regressions`,
 `resolve_transitive_foundation_downgrades`) compose against
@@ -334,7 +334,7 @@ that propagate into `DiagnosticContext`.
 
 ### `pin_transitive_walker_present`
 
-Asserts that `crates/verum_kernel/src/arch_transitive.rs` ships
+Asserts that the kernel's transitive-architecture walker ships
 the canonical surface:
 
 - `pub fn for_each_transitive_peer`
@@ -363,7 +363,7 @@ Asserts that the compiler crate exposes the two `Session`
 helpers and that `verum_compiler/src/pipeline/ats_v_phase.rs`
 calls them.  This closes the "wired in unit tests but not in
 real builds" failure mode.  The pin reads
-`crates/verum_compiler/src/session.rs` for
+the compiler session for
 `resolve_transitive_lifecycle_regressions` /
 `resolve_foundation_downgrades` declarations and
 `ats_v_phase.rs` for matching call sites plus the populated
@@ -516,7 +516,7 @@ To audit alignment health for a given concept (e.g. "is
 
 1. Look up the type in the §1 sub-tables to confirm it is in
    the shared zone with N variants pinned.
-2. Open `crates/verum_kernel/tests/k_arch_v_alignment.rs` and
+2. Open the kernel/Verum alignment test and
    search for a `pin_<name>_variants_aligned` test.  If present,
    variant alignment is enforced.
 3. If no specific pin exists, the type is covered by the

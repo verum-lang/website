@@ -418,7 +418,7 @@ under a non-CHL foundation without a declared `FormalAnchoring`
 (`core/architecture/types.vr:652`)
 triggers [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
 (predicate `check_anchoring_overextension` at
-`crates/verum_kernel/src/arch_anti_pattern.rs:2300`):
+the kernel's anti-pattern predicates):
 the artefact silently inherits CHL semantics it does not satisfy.
 
 The formal anchoring does **not** assert CVE applies only where
@@ -484,7 +484,7 @@ When configuration meets thresholds, the audit closes —
 declared role. Without a declared purpose,
 [`AP-037 BoundlessAudit`](../anti-patterns/articulation.md#ap-037)
 (predicate `check_boundless_audit` at
-`crates/verum_kernel/src/arch_anti_pattern.rs:2230`)
+the kernel's anti-pattern predicates)
 fires in strict mode: the audit becomes perennial critique rather
 than a terminating procedure.
 

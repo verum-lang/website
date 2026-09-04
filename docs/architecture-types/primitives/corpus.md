@@ -198,7 +198,7 @@ covered by single-hop AP-005 / AP-009).
 | AP-024 `TransitiveLifecycleRegression` | `self.lifecycle.rank > terminal.lifecycle.rank` along the chain | `resolve_transitive_lifecycle_regressions` |
 
 The shared graph-theoretic primitive lives in
-[`crates/verum_kernel/src/arch_transitive.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/src/arch_transitive.rs)
+[the kernel's transitive-architecture walker](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/src/arch_transitive.rs)
 as a depth-first walker:
 
 The walker exposes a single `for_each_transitive_peer` entry

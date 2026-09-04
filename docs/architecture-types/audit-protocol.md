@@ -523,7 +523,7 @@ intrinsics (`kernel_arch_composition_engine`,
 the bundle, every one of which has a Verum-side `axiom`
 declaration mirrored to a kernel-side `dispatch_intrinsic` arm.
 The cross-side pin test in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs` asserts both
+the kernel/Verum alignment test asserts both
 sides agree.
 
 ## 10. The transitive peer-resolution layer

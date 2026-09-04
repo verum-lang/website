@@ -141,7 +141,7 @@ the pattern from `linalg`.
 
 Four backends share the MLIR pipeline. The canonical mapping is
 the `GpuTarget` enum in
-`crates/verum_codegen/src/mlir/vbc_lowering.rs` — every row below
+the MLIR VBC-lowering pass — every row below
 is a direct projection of that enum's `target_triple()` /
 `dialect()` / `memory_space()` accessors:
 

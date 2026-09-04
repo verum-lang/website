@@ -242,7 +242,7 @@ public fn agreement_status_disjoint_pin() -> Bool        // Agree / Disagree dis
 
 The Verum-side helpers mirror Rust-side computations in
 `verum_kernel::arch::*`.  Drift breaks the architectural type
-checker, so [`crates/verum_kernel/tests/k_arch_v_alignment.rs`](./cross-side-pin.md)
+checker, so [the kernel/Verum alignment test](./cross-side-pin.md)
 pins both sides — variant counts, tag strings, helper presence —
 and fails CI on any divergence.
 

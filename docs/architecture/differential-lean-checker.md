@@ -48,7 +48,7 @@ The two implementations were authored separately against the same
 abstract specification (the typing rules in
 `docs/research/proof-tree-formalization.md`, a document that does not
 exist in either repository as of 2026-09-03 — the specification is
-carried by `crates/verum_kernel/src/proof_tree.rs` instead) — they are
+carried by the kernel's proof tree instead) — they are
 intended
 to disagree only when one of them has a bug.
 

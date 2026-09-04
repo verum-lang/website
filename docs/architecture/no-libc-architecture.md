@@ -114,7 +114,7 @@ miscompiles cross builds: a Linux host producing a macOS binary
 cannot use the host's libc convention.
 
 The canonical inspection API lives in
-`crates/verum_codegen/src/llvm/target_triple.rs` and exposes
+the target-triple helpers and exposes
 boolean predicates over the target's OS family (Linux / Darwin /
 Windows) and architecture (`aarch64` / `x86_64`). Every codegen
 decision that branches on platform reads through this surface.
