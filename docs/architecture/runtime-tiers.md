@@ -197,6 +197,31 @@ compile-time **safety tier** that determines what runtime checking
 the compiler emits for it. The tier is a per-reference decision
 made by CBGR analysis, not a global setting.
 
+:::caution Two enums, and this table is the other one
+`core/runtime/env.vr` does define `ExecutionTier` with these four
+variants — but it is chosen **once per build**, not per reference:
+`core/runtime/mod.vr:466`'s `detect_cbgr_tier()` picks among them with
+`@cfg(debug_assertions)`, `@cfg(runtime = "embedded")` and
+`@cfg(feature = "cbgr_gen")`. It is a global switch.
+
+The per-reference decision this page describes is a **different enum
+with three variants** — `CbgrTier` / `ReferenceTier` in
+`crates/verum_cbgr/src/tier_types.rs`: `Tier0` (runtime-checked,
+~15 ns), `Tier1` (compiler-proven, 0 ns), `Tier2` (manual proof, 0 ns).
+That is the one escape analysis produces, the one CLAUDE.md documents,
+and the one the `&T` / `&checked T` / `&unsafe T` syntax selects.
+
+Nothing in `crates/` ever names `Tier2_Gen` or `Tier3_Unchecked`, so
+the stdlib's third and fourth variants are not outcomes the compiler's
+analysis can reach. And the overheads disagree: `ExecutionTier`'s own
+`overhead_ns` answers 15/8/3/0, while the compiler's model and the
+measurement below put Tier1 at 0 ns / ~0.93 ns.
+
+A third, unrelated `ExecutionTier` lives in `verum_compiler` for the
+interpreter/AOT split — the collision the paragraph after this table
+warns about is a real one, between three enums rather than two.
+:::
+
 Four tiers are defined in `core/runtime/env.vr` as the enum
 `ExecutionTier`:
 

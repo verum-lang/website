@@ -59,10 +59,16 @@ public type MemoryContext is {
 
 ### Runtime safety tiers (CBGR)
 
-The `cbgr_tier` field is **not** an execution-mode tier; it is a compile-time
-annotation per function indicating how much runtime safety the
-compiler has to insert. The four tiers are defined in
-`core/runtime/env.vr`:
+The `cbgr_tier` field is **not** an execution-mode tier. Nor is it a
+per-function annotation, which this paragraph used to claim:
+`core/runtime/mod.vr:466` fills it from `detect_cbgr_tier()`, which
+chooses by `@cfg(debug_assertions)` and the embedded-runtime flags —
+once, for the whole build.
+
+The per-reference tier the compiler actually assigns is the
+three-variant `CbgrTier` in `crates/verum_cbgr`; see
+[runtime tiers](/docs/architecture/runtime-tiers) for why the two do not
+line up. The four variants below are this field's own enum:
 
 | Variant           | Overhead per deref                              | Guarantee                                    |
 |-------------------|-------------------------------------------------|----------------------------------------------|

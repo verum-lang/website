@@ -68,9 +68,10 @@ meta fn twice(x: Int) -> Int { x + x }      // compiles clean
 only `proc_macro_*` in the tree is a **Rust** derive macro inside the
 LLVM bindings crate.
 
-`@repr` could not be tested this way: on a function it is a target
-error, which aborts before the unknown-attribute check runs. Its probe
-is reported as untested rather than counted as passing.
+`@repr` was the one probe the control marked untested: on a function it
+is a target error, which aborts before the unknown-attribute check. Run
+again on a type — where it belongs — the control fires and `@repr(C)`
+warns about nothing, so it is known. 145 tested, none left untested.
 
 Thirteen more were unknown until the same day for a different reason:
 they were registered but missing from the parser's own list, so the
