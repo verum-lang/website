@@ -50,7 +50,7 @@ print(async);                   // identifier — legal
 ```
 
 Below is the full contextual keyword list, grouped by purpose. The
-authority is the lexer: `crates/verum_lexer/src/token.rs` carries 112
+authority is the lexer's token table, which carries 112
 `#[token("…")]` keywords, three of them reserved, so 109 are contextual.
 This page names every one.
 

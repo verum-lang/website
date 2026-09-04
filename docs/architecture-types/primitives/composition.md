@@ -130,7 +130,7 @@ parenthesisation.
 The associativity law is enforced by the kernel-discharge axiom
 [`kernel_arch_composition_associative`](../operationalisation.md)
 declared in `core.architecture.composition`.  The kernel proptest
-harness in `crates/verum_kernel/src/arch_composition.rs` samples
+harness in the kernel's architecture-composition module samples
 valid Shape triples and asserts left-fold ≡ right-fold across the
 entire input space.  A violation is not a separate AP-NNN code in
 the canonical 40-pattern catalog (AP-001..AP-040) — it surfaces

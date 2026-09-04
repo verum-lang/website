@@ -41,7 +41,7 @@ representative bug class this design pattern surfaces.
 
 | Kernel | Implementation |
 |--------|----------------|
-| **Trusted-base** | The kernel's bidirectional type checker over a de Bruijn `Term` calculus (`crates/verum_kernel/src/proof_checker.rs`).  The verdict authority. |
+| **Trusted-base** | The kernel's bidirectional type checker over a de Bruijn `Term` calculus.  The verdict authority. |
 | **Lean reference** | Independent re-implementation in Lean 4 (`verification/external/lean/VerumExternalReplay/ReferenceChecker.lean`) over a structurally-identical `Term` ADT. Mirrors all four DEFECT fixes (η-completeness, universe-overflow guard, whnf fuel ceiling, claimed-type-is-a-type validation). |
 
 The two implementations were authored separately against the same

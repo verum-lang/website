@@ -16,7 +16,7 @@ compiler, one file per attribute, with `@zzq_control_absent` and
     92 documented attributes tested
     24 report `warning<W0400>: unknown attribute`
 
-They are absent from `crates/verum_types/src/attr/standard.rs` as well,
+They are absent from the compiler's standard-attribute table as well,
 so nothing anywhere implements them:
 
 `@access_pattern` `@autopoietic` `@bit_offset` `@branch_probability`
