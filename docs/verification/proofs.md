@@ -181,12 +181,12 @@ Typical experienced-user workflow: 60% of obligations are `by auto`,
 ### Structural induction on lists
 
 ```verum
-lemma map_length<A, B>(xs: List<A>, f: fn(A) -> B) ->
+lemma map_length<A, B>(xs: List<A>, f: fn(A) -> B):
     xs.map(f).len() == xs.len()
 {
     proof by induction xs {
         case []            => qed
-        case [h, ..t]      => by rewrite ih; auto
+        case [h, ..t]      => { by rewrite ih; auto }
     }
 }
 ```
