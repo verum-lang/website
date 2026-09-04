@@ -220,7 +220,7 @@ check; any keyword appearing where an identifier is required emits:
 
 Verum reserves only THREE words outright: `let`, `fn`, `is`
 (grammar/verum.ebnf, "Reserved"). Everything else — `type`, `match`,
-`mount`, `where`, control-flow words, and the rest of the ~60-word
+`mount`, `where`, control-flow words, and the rest of the 109-word
 roster — is CONTEXTUAL: a keyword where the grammar expects it, an
 ordinary identifier elsewhere. The parser's identifier-position check
 rejects a contextual keyword only in positions where accepting it

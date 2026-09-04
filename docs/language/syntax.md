@@ -21,7 +21,7 @@ Only three are **reserved** and cannot be used as identifiers:
 let   fn   is
 ```
 
-The remaining ~60 keywords are **contextual** — they are keywords where
+The remaining 109 keywords are **contextual** — they are keywords where
 the grammar expects them and ordinary identifiers elsewhere. For
 example, `async` is a keyword only before `fn` or at the start of
 a block expression; it is a valid variable name otherwise.

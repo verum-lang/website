@@ -35,7 +35,7 @@ let is_valid = true;        // fine, for the same reason
 A keyword is a whole token. `fn_pointer` and `is_valid` are ordinary
 identifiers, and the compiler accepts them.
 
-## Contextual — approximately 60
+## Contextual — 109
 
 Contextual keywords take the keyword role only when the grammar
 expects them. In any other position they are ordinary identifiers.
@@ -50,7 +50,9 @@ print(async);                   // identifier — legal
 ```
 
 Below is the full contextual keyword list, grouped by purpose. The
-canonical enumeration lives in the [grammar reference](/docs/reference/grammar-ebnf).
+authority is the lexer: `crates/verum_lexer/src/token.rs` carries 112
+`#[token("…")]` keywords, three of them reserved, so 109 are contextual.
+This page names every one.
 
 ### Visibility
 
@@ -64,12 +66,20 @@ absence of any visibility).
 ### Declarations
 
 ```
-type    module    mount    implement    context    protocol    extends
-const   static    meta     ffi          extern     pattern
+type    module    mount    link        implement   context   protocol
+extends const     static   meta        ffi         extern    pattern
+using   layer
 ```
 
 Each introduces a top-level or contained item; see the corresponding
-item production in the grammar.
+item production in the grammar. `link` is the second spelling of
+`mount` — the grammar's `mount_stmt` accepts either. `using [...]`
+declares the contexts a function demands, and is the keyword the whole
+context system turns on; `layer` groups `provide` statements into a
+named bundle (`layer AppLayer { provide Ctx = expr; }`).
+
+`volatile` is a pointer-type modifier rather than an item keyword —
+`*volatile UInt32`, for MMIO — and belongs with the type system below.
 
 ### Control flow
 
@@ -142,7 +152,14 @@ where    requires    ensures    invariant    decreases    result
 theorem    lemma       axiom        corollary    proof
 calc       have        show         suffices     obtain
 by         qed         induction    cases        contradiction
-forall     exists      tactic       from
+forall     exists      tactic       from         implies
+assumption
+```
+
+Tactic names are keywords too, not identifiers:
+
+```
+auto    blast    simp    smt    ring    field    omega    trivial
 ```
 
 See [language/proof-dsl](/docs/language/proof-dsl) and
