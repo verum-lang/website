@@ -11,7 +11,7 @@ justified by a tactic or lemma. It reads like algebra homework.
 ### The simplest chain
 
 ```verum
-theorem squaring(a: Int, b: Int) -> (a + b) * (a + b) == a*a + 2*a*b + b*b {
+theorem squaring(a: Int, b: Int): (a + b) * (a + b) == a*a + 2*a*b + b*b {
     calc {
         (a + b) * (a + b)
       == { by distributivity }   (a + b) * a + (a + b) * b
@@ -27,7 +27,7 @@ Each `==` is a step. The `{ by … }` justifies the rewrite.
 ### Mixed relations
 
 ```verum
-theorem bounded(x: Int { 0 <= self && self <= 10 }) -> x + 1 <= 11 {
+theorem bounded(x: Int { 0 <= self && self <= 10 }): x + 1 <= 11 {
     calc {
         x + 1
       <= { by refinement_bound } 10 + 1
@@ -42,7 +42,7 @@ direction). Final relation is the **loosest** in the chain.
 ### With a named lemma
 
 ```verum
-lemma reverse_reverse<T>(xs: List<T>) -> xs.reversed().reversed() == xs {
+lemma reverse_reverse<T>(xs: List<T>): xs.reversed().reversed() == xs {
     by induction xs {
         case []            => qed;
         case [head, ..tail] => {
@@ -65,7 +65,7 @@ lemma reverse_reverse<T>(xs: List<T>) -> xs.reversed().reversed() == xs {
 ### Sum-of-first-n proof
 
 ```verum
-lemma sum_first_n(n: Int { self >= 0 }) -> sum(0..=n) == n * (n + 1) / 2 {
+lemma sum_first_n(n: Int { self >= 0 }): sum(0..=n) == n * (n + 1) / 2 {
     by induction n {
         case 0 => {
             calc {

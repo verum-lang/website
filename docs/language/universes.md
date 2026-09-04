@@ -21,7 +21,7 @@ fn id<A>(x: A) -> A { x }
 fn id_poly<universe u, A: Type(u)>(x: A) -> A { x }
 
 // A proposition lives in Prop (proof-irrelevant).
-theorem add_comm(a: Int, b: Int) -> (a + b == b + a) : Prop { ... }
+theorem add_comm(a: Int, b: Int): (a + b == b + a) : Prop { ... }
 ```
 
 :::info Status
@@ -110,7 +110,7 @@ type NonZero is Int { self != 0 };
 Two proofs of the same proposition are definitionally equal:
 
 ```verum
-theorem both_proofs_equal(n: Int, p1: n != 0, p2: n != 0) -> (p1 == p2) : Prop
+theorem both_proofs_equal(n: Int, p1: n != 0, p2: n != 0): (p1 == p2) : Prop
 { by refl }  // holds by proof irrelevance
 ```
 
