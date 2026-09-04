@@ -7,23 +7,45 @@ description: Arguments, subcommands, config, error reporting.
 
 ### Minimal
 
+:::note `env.args()` does not compile today — the API is right, the name resolution is not
+
+`env` refers to `core.base.env`, which declares `args() -> List<Text>`,
+and that is the intended way to read command-line arguments. The bare
+`env` identifier currently resolves to an unrelated compiler-internal
+context method instead of the module, so the line below fails to
+compile as written. The same note appears on the
+[CLI tutorial](/docs/tutorials/cli-tool).
+
+Until that is fixed, this compiles and does the same thing:
+
 ```verum
-fn main() -> Result<(), Error> {
-    let args = env.args();
-    match args.get(1).map(|s| s.as_str()) {
-        Maybe.Some("--help") | Maybe.Some("-h") => print_help(),
-        Maybe.Some(name)                        => greet(&name),
-        Maybe.None                              => print_help(),
+mount core.shell.script.{args};
+let argv = args();
+```
+
+:::
+
+```verum
+fn main() {
+    let argv = env.args();
+    match argv.get(1) {
+        Maybe.Some(first) => {
+            if first == "--help" || first == "-h" {
+                print_help();
+            } else {
+                greet(&first);
+            }
+        }
+        Maybe.None => print_help(),
     }
-    Result.Ok(())
 }
 
 fn greet(name: &Text) {
-    print(&f"Hello, {name}!");
+    print(f"Hello, {name}!");
 }
 
 fn print_help() {
-    println(&"usage: greet <name>");
+    print("usage: greet <name>");
 }
 ```
 
