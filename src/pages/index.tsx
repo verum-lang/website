@@ -223,11 +223,19 @@ fn report<S: Drawable>(s: &S) {
       'Bounded channels give you backpressure by construction; `select` races ' +
       'sources; structured spawning keeps every task owned by a scope that ' +
       'joins it — no orphaned work, no ambient executor state.',
-    code: `async fn producer(tx: Sender<Int>, n: Int) {
+    code: `mount core.async.channel.{bounded, Sender, Receiver};
+
+async fn producer(tx: Sender<Int>, n: Int) {
     let mut i = 0;
     while i < n {
         tx.send(i).await;      // blocks when the buffer is full:
         i = i + 1;             // backpressure is automatic
+    }
+}
+
+async fn consume(rx: Receiver<Int>) {
+    while let Some(v) = rx.recv().await {
+        print(f"got {v}");
     }
 }
 
