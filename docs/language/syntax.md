@@ -526,14 +526,14 @@ See **[Context System](/docs/language/context-system)** for details.
 ```verum
 fn sort<T>(xs: &mut List<T>) where T: Ord { ... }
 
-fn process<T, U>(xs: &List<T>) -> List<U>;
+fn process<T, U>(xs: &List<T>) -> List<U>
     where T: Clone + Debug,
           U: From<T>,
           type U.Item: Display
 { ... }
 
 @verify(formal)
-fn transfer(from: &mut Account, to: &mut Account, amount: Money);
+fn transfer(from: &mut Account, to: &mut Account, amount: Money)
     requires amount > 0
     requires from.balance >= amount
     ensures  to.balance == old(to.balance) + amount
