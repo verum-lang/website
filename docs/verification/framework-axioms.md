@@ -226,8 +226,7 @@ Every canonical kernel rule
 `K_Pos`, `K_Elim`, `K_Smt`, `K_FwAx`, `K_Eps_Mu`,
 `K_Universe_Ascent`, `K_Round_Trip`, `K_Epsilon_Of`, `K_Alpha_Of`,
 `K_Modal_Box`, `K_Modal_Diamond`, `K_Modal_Big_And`, `K_Shape`,
-`K_Flat`, `K_Sharp`) carries a `LemmaStatus`
-(`crates/verum_kernel/src/soundness/mod.rs::LemmaStatus`) with one
+`K_Flat`, `K_Sharp`) carries a `LemmaStatus` with one
 of three values:
 
 | Status | Meaning | Audit-clean? |
@@ -242,7 +241,7 @@ either `Proved` (full structural proof in Lean / Coq + per-rule
 + shape-checked postulate in Cubical Agda) or
 `DischargedByFramework` (cited upstream proof). **No rules sit
 at `Admitted`** — see
-`crates/verum_kernel/src/soundness/mod.rs::iou_axiom_specs()`,
+the kernel's IOU axiom specifications,
 which returns `vec![]`. Adding a brand-new rule that hasn't yet
 been proved is allowed (it lands as `Admitted` plus an
 `iou_axiom_specs` entry), but the audit gate flips to failure

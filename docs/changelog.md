@@ -1291,7 +1291,7 @@ impossible mistakes.
   "all features on" entry point.
 
 * **`CanonicalCert::expected_outcome` + helpers** —
-  `crates/verum_kernel/src/canonical_battery.rs` had its 24-cert
+  the kernel's canonical battery had its 24-cert
   battery's expected verdicts encoded twice: in the cert
   constructor's shape and in a parallel `expected_verdict(id)`
   arm-table lookup. Folded the verdict into `CanonicalCert`
@@ -1506,7 +1506,7 @@ walker that policy adapters can compose against.
     `run_arch_phase_for_attrs_registry_aware` populates both
     fields from the parsed shape.
   - **Pin tests** — four new entries in
-    `crates/verum_kernel/tests/k_arch_v_alignment.rs` raise the
+    the kernel/Verum alignment tests raise the
     cross-side pin total from 39 → 43:
     `pin_transitive_walker_present`,
     `pin_phase_inputs_transitive_fields_present`,

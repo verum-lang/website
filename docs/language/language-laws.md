@@ -72,8 +72,8 @@ constructor — qualify to disambiguate).
 
 :::warning `E431` does not exist yet
 Measured 2026-09-03: `E431` is in no registry entry and at no emit site,
-while `E430` and `E432` — named in the same comment of
-`crates/verum_error/src/registry.rs` — are both present.
+while `E430` and `E432` — named in the same place in that registry —
+are both present.
 
 The situation it describes is not diagnosed at all, and resolves
 silently by source order:

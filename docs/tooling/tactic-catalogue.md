@@ -485,7 +485,7 @@ schema below.
 :::note What "holds" means for these laws
 Eight of the twelve have a dedicated predicate
 (`check_andthen_left_identity` and siblings in
-`crates/verum_smt/src/tactic_laws.rs`) deciding them on structural
+the canonical law table) deciding them on structural
 equality of combinator trees; the other four are exercised through
 `normalize()`. 32 unit tests cover them over the primitive tactics, and
 two of those pin the inventory itself — that `SIMPLIFIER_APPLIES` has

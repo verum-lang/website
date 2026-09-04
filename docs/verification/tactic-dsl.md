@@ -229,8 +229,8 @@ Tactic ::= atomic        -- any @tactic meta fn
 
 Twelve semantic laws hold. They are listed once, in
 [the tactic catalogue](/docs/tooling/tactic-catalogue#the-12-algebraic-laws),
-which is generated from `CANONICAL_LAW_TABLE` in
-`crates/verum_smt/src/tactic_laws.rs` — the single source of truth that
+which is generated from the canonical law table — the single source
+of truth that
 the simplifier, the `verum tactic laws` CLI and
 `verum_verification::tactic_combinator` all read from.
 
@@ -416,7 +416,7 @@ Five patterns to avoid when authoring tactics.
 Measured 2026-09-03: nothing in `verum_smt` or `verum_verification`
 inspects a tactic tree for these shapes, and `W501` is in no error-code
 registry — the only place that string occurs is a doc comment in
-`crates/verum_verification/src/level.rs`, where it names the
+the verification-level definition, where it names the
 soft-fail-fallback warning, a different diagnostic entirely. Read the
 list as authorship guidance, not as something the compiler will catch
 for you.
