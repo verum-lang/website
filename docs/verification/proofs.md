@@ -22,10 +22,10 @@ theorem reverse_reverse<T>(xs: List<T>): xs.reverse().reverse() == xs {
             have h: rest.reverse().reverse() == rest by ih;
             calc {
                 [x, ..rest].reverse().reverse()
-              = (rest.reverse().concat([x])).reverse()       by def reverse;
-              = [x].concat(rest.reverse().reverse())         by reverse_append;
-              = [x].concat(rest)                             by h;
-              = [x, ..rest]                             by def concat;
+              == { by unfold reverse } (rest.reverse().concat([x])).reverse()
+              == { by reverse_append } [x].concat(rest.reverse().reverse())
+              == { by h } [x].concat(rest)
+              == { by unfold concat } [x, ..rest]
             };
             qed
         }
@@ -110,9 +110,9 @@ theorem sum_first_n(n: Int { self >= 0 }): sum(0..=n) == n * (n+1) / 2 {
         case k + 1 => {
             calc {
                 sum(0..=k+1)
-              = sum(0..=k) + (k+1)       by def sum;
-              = k*(k+1)/2 + (k+1)        by ih;
-              = (k+1)*(k+2)/2            by ring;
+              == { by unfold sum } sum(0..=k) + (k+1)
+              == { by ih } k*(k+1)/2 + (k+1)
+              == { by ring } (k+1)*(k+2)/2
             };
             qed
         }

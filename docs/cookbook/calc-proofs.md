@@ -48,10 +48,10 @@ lemma reverse_reverse<T>(xs: List<T>): xs.reversed().reversed() == xs {
         case [head, ..tail] => {
             calc {
                 [head, ..tail].reversed().reversed()
-              == { by def reversed }        (tail.reversed().concat([head])).reversed()
+              == { by unfold reversed }        (tail.reversed().concat([head])).reversed()
               == { by reverse_append_lemma} [head].concat(tail.reversed().reversed())
               == { by ih }                  [head].concat(tail)
-              == { by def concat }          [head, ..tail]
+              == { by unfold concat }          [head, ..tail]
             };
             qed
         }
@@ -70,14 +70,14 @@ lemma sum_first_n(n: Int { self >= 0 }): sum(0..=n) == n * (n + 1) / 2 {
         case 0 => {
             calc {
                 sum(0..=0)
-              == { by def sum }    0
+              == { by unfold sum }    0
               == { by arithmetic } 0 * (0 + 1) / 2
             }
         }
         case k + 1 => {
             calc {
                 sum(0..=k+1)
-              == { by def sum }    sum(0..=k) + (k+1)
+              == { by unfold sum }    sum(0..=k) + (k+1)
               == { by ih }         k*(k+1)/2 + (k+1)
               == { by ring }       (k+1)*(k+2)/2
               == { by arithmetic } (k+1) * ((k+1) + 1) / 2
