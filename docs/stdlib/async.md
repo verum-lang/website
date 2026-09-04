@@ -3,7 +3,11 @@ sidebar_position: 1
 title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 status: partial
-status_detail: 22 modules, 15 with full conformance suites. Three known limitations: async programs do not yet compile ahead-of-time, AsyncSemaphore.new is unusable, and Duration.from_millis misroutes. Everything else in this page runs under the interpreter.
+status_detail: >-
+  22 modules, 15 with full conformance suites. Three limitations are
+  known and current — async programs do not yet compile ahead of time,
+  AsyncSemaphore.new is unusable, and Duration.from_millis misroutes.
+  Everything else on this page runs under the interpreter.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
