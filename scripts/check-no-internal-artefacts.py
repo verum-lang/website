@@ -240,7 +240,19 @@ def main(argv: list[str]) -> int:
         print(f"check-no-internal-artefacts: {total} internal artefact(s) in public docs.")
         print("Baseline is ZERO. See CLAUDE.md for what to write instead.")
         return 1
+    # NAME WHAT WAS CHECKED. "OK (baseline 0)" is true and reads as a
+    # statement about the docs rather than about this gate's five
+    # classes. A peer measured 235 references of the form
+    # `verum_x::y::Z` — no file path, so nothing here sees them — while
+    # this printed a clean zero. The number was right; what a reader
+    # took from it was not, and the repair belongs in the OUTPUT rather
+    # than in the pattern, because the form is not one the rule bans.
     print("check-no-internal-artefacts: OK (baseline 0)")
+    print("  checked: commit hashes (resolved against the verum repo),")
+    print("           tracker numbers, FV identifiers, test counts, LOC counts.")
+    print("  NOT checked: anything the five banned classes in CLAUDE.md do")
+    print("           not name — a bare `verum_crate::module::Item`, for one,")
+    print("           which is neither a hash nor the path form that replaces it.")
     return 0
 
 
