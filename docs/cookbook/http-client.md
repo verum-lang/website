@@ -15,7 +15,7 @@ async fn fetch(url: &Text) -> Result<Text, HttpError>
     resp.body_text().await
 }
 
-async fn main() using [IO, Http] {
+async fn main() using [Http] {
     let body = fetch(&"https://example.com/").await.unwrap();
     println(&body);
 }

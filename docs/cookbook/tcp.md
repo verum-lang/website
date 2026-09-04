@@ -16,7 +16,7 @@ mount core.io.*;
 mount core.async.*;
 
 async fn echo_server(addr: &Text) -> IoResult<()>
-    using [IO, Logger]
+    using [Logger]
 {
     let listener = TcpListener.bind(addr).await?;
     Logger.info(f"listening on {addr}");
@@ -154,7 +154,7 @@ races `accept` against the signal:
 mount core.signal.{ctrl_c};
 
 async fn echo_server_graceful(addr: &Text) -> IoResult<()>
-    using [IO, Logger]
+    using [Logger]
 {
     let listener = TcpListener.bind(addr).await?;
     let stop = Shared.new(AtomicBool.new(false));

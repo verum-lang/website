@@ -46,7 +46,7 @@ status updates where freshness matters more than count.
 ### Running several schedules concurrently
 
 ```verum
-async fn scheduler() using [IO, Logger] {
+async fn scheduler() using [Logger] {
     let mut fast = Interval.new(500.millis());
     let mut slow = Interval.new(10.secs());
     let mut hourly = Interval.new(1.hours());

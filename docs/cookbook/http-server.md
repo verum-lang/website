@@ -17,7 +17,7 @@ mount core.net.http.*;
 mount core.io.*;
 mount core.async.*;
 
-async fn serve() using [IO, Database, Logger, Network] {
+async fn serve() using [Database, Logger, Network] {
     let listener = TcpListener.bind("0.0.0.0:8080").await?;
     Logger.info("listening on :8080");
 
@@ -185,7 +185,7 @@ letting available handlers complete:
 mount core.signal.{signal_stream};
 mount core.sys.signal.{Signal};
 
-async fn serve_graceful() using [IO, Database, Logger, Network] {
+async fn serve_graceful() using [Database, Logger, Network] {
     let listener = TcpListener.bind("0.0.0.0:8080").await?;
     Logger.info("listening on :8080");
 

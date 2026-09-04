@@ -62,7 +62,7 @@ mount core.io.*;
 mount .self.types.RawRecord;
 
 pub async fn read_from_stdin(tx: Sender<RawRecord>)
-    using [IO, Logger]
+    using [Logger]
     -> Result<Int, Error>
 {
     let stdin = stdin();
@@ -192,7 +192,7 @@ mount .self.types.ValidRecord;
 pub async fn write_loop(
     mut rx: Receiver<ValidRecord>,
     path: &Path,
-) -> Result<Int, Error> using [IO, Logger] {
+) -> Result<Int, Error> using [Logger] {
     let file = OpenOptions.new()
         .create(true).append(true)
         .open_async(path).await?;
@@ -255,7 +255,7 @@ mount .self.types.*;
 const PARSER_WORKERS: Int = 4;
 const CHANNEL_CAPACITY: Int = 1024;
 
-async fn run_pipeline(output_path: &Path) -> Result<(), Error> using [IO, Logger] {
+async fn run_pipeline(output_path: &Path) -> Result<(), Error> using [Logger] {
     // Wire the stages.
     let (raw_tx,   raw_rx)   = bounded<RawRecord>(CHANNEL_CAPACITY);
     let (parsed_tx, parsed_rx) = bounded<ParsedRecord>(CHANNEL_CAPACITY);
@@ -401,7 +401,7 @@ module tests {
     }
 
     @test
-    async fn backpressure_throttles_sender() using [IO, Clock] {
+    async fn backpressure_throttles_sender() using [Clock] {
         // Slow consumer: sleep after each recv.
         let (tx, mut rx) = bounded<Int>(4);
 

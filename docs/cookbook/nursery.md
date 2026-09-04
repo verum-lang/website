@@ -175,7 +175,7 @@ For long-running background tasks that need restart semantics — use
 `Supervisor` instead of `nursery`:
 
 ```verum
-async fn main() using [IO, Logger] {
+async fn main() using [Logger] {
     let sup = Supervisor.new(SupervisionStrategy.OneForOne);
 
     sup.spawn(ChildSpec {

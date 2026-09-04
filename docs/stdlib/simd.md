@@ -265,7 +265,7 @@ fn vec_add(a: &[Float], b: &[Float], c: &mut [Float], n: Int) {
     }
 }
 
-fn main() using [IO, GpuDevice] {
+fn main() using [GpuDevice] {
     let cfg = GpuConfig.auto();
     let a = GpuBuffer.from_slice(&[1.0, 2.0, 3.0, 4.0]);
     let b = GpuBuffer.from_slice(&[10.0, 20.0, 30.0, 40.0]);

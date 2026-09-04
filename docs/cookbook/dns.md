@@ -15,7 +15,7 @@ concurrency.
 ```verum
 mount core.net.*;
 
-async fn print_ips(host: &Text) using [IO, Network] {
+async fn print_ips(host: &Text) using [Network] {
     match lookup_host_async(host).await {
         Result.Ok(addrs) => {
             for a in &addrs { print(f"{host} -> {a}"); }

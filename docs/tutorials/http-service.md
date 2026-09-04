@@ -298,7 +298,7 @@ mount .self.http.route;
 
 const MAX_INFLIGHT: Int = 1024;     // upper bound on concurrent tasks
 
-async fn serve() using [IO, Store, Clock, Logger] {
+async fn serve() using [Store, Clock, Logger] {
     let listener = TcpListener.bind(&"0.0.0.0:8080").await?;
     Logger.info(&"listening on :8080");
 
@@ -401,7 +401,7 @@ module tests {
     }
 
     @test
-    async fn shorten_then_redirect() using [IO, Clock] {
+    async fn shorten_then_redirect() using [Clock] {
         let store = MemoryStore.new();
         let logger = NullLogger.new();
 

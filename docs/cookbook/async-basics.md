@@ -40,13 +40,13 @@ let result = f.await;                                      // runs here
 
 ```verum
 // Top-level (not async)
-fn main() using [IO, Http] {
+fn main() using [Http] {
     let result = block_on(fetch(&url));
     print(f"{result:?}");
 }
 
 // Inside another async fn
-async fn worker() using [IO, Http] {
+async fn worker() using [Http] {
     let result = fetch(&url).await?;
     print(f"{result:?}");
 }
