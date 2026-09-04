@@ -96,13 +96,33 @@ reverse-proxy kit (see below).
 
 ## Hello world in 20 lines
 
+:::note `Response.ok(...)` was not a thing — and nothing in the library was using it either
+
+Measured 2026-09-04: `Response.ok` does not exist anywhere in `core/`.
+`core/net/http.vr` declares `Response` as a builder — `new(status)`,
+`.status()`, `.body(List<Byte>)`, `.header()` — and
+`Response.new(StatusCode.ok())` compiles.
+
+Worth saying WHY the drift went unnoticed: nothing in `core/`
+constructs an `http.Response` at all. The type is declared, the weft
+handlers pass it around in their signatures, and no code path builds
+one — so no compile ever disagreed with the page. `core/net/weft/app.vr`
+carries the same mistake in its own doc comment, with a third spelling
+(`Response.text(...)`, also absent).
+
+:::
+
+
 ```verum
 @runtime(work_stealing)
-mount core.net.weft.{Router, Method, Response, WeftApp, WeftRequest};
-mount core.net.http.{Request};
+mount core.net.weft.{Router, Method, WeftApp, WeftRequest};
+mount core.net.http.{Request, Response, StatusCode};
 
 async fn hello() -> Response {
-    Response.ok("Hello from Weft!")
+    // NOT `Response.ok(body)` — that constructor does not exist. The type
+    // is a builder: `new(status)`, then `.status()`, `.body(List<Byte>)`
+    // and `.header(name, value)`. `StatusCode.ok()` is the 200.
+    Response.new(StatusCode.ok())
 }
 
 // A path parameter is read from the request, not destructured in the

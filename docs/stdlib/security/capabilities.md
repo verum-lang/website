@@ -311,17 +311,27 @@ fn audit_job() {
 
 ### CLI-gated capabilities (runtime check + compile-time plumbing)
 
-A pattern for operator tools:
+A pattern for operator tools — written as a SKETCH, because three of
+its four lines are not Verum as they stand:
 
-```verum
+```text
 fn main(args: Args) {
-    if args.contains("--unsafe") {
-        grant_cap!("unsafe_ffi", || run_diagnostics());
+    if args.contains("--unsafe") {       // Args is an Iterator: no `contains`
+        grant_cap!("unsafe_ffi", ...);   // no `!` macros in the language,
+                                         // and no `grant_cap` in core/
     } else {
         run_normal();
     }
 }
 ```
+
+Checked 2026-09-04: `Args` (`core/base/env.vr:201`) implements
+`Iterator`, so the membership test goes through the iterator rather
+than a `contains` method; `grant_cap` appears nowhere in `core/`; and
+Verum has no `name!(...)` macro form at all — every compile-time
+construct is spelled `@name(...)`. The shape of the pattern — decide at
+run time, gate the capability — is the point; the spelling above is
+not the API.
 
 (This is a pattern; Verum doesn't yet have `grant_cap!` as a
 first-class macro. Today you'd have two main-branch builds or a
