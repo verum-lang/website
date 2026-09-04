@@ -109,7 +109,7 @@ These operators have fixed semantics:
 | `?`       | Propagate `Result.Err` / `Maybe.None`.                  |
 | `.await`  | Future suspension.                                      |
 | `is`      | Pattern test (`value is Pattern`, `x is Type`).         |
-| `as`      | Type cast (`x as Int`, `&x as *unsafe mut T`).          |
+| `as`      | Type cast (`x as Int`, `&x as *mut T`).          |
 | `\|>`     | Pipe — `a \|> f(args)` desugars to `f(a, args)`.        |
 | `??`      | Null-coalesce — `a ?? b` = `a.unwrap_or(b)`.            |
 | `.`       | Field / method access.                                  |
@@ -182,7 +182,7 @@ See [language/patterns](/docs/language/patterns) and
 ```verum
 let n: Int = 3.7 as Int;        // truncates to 3 (via Float.to_int)
 let s: Int = "42" as Int;       // parses — error at compile time if impossible
-let p: *unsafe mut Byte = slice.as_ptr();
+let p: *mut Byte = slice.as_ptr();
 let b: Byte = (n as u8);
 ```
 

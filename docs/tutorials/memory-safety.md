@@ -164,14 +164,14 @@ drop to tier 2:
 @repr(C)
 pub type RawNode<T> is {
     value: T,
-    next:  *unsafe mut RawNode<T>,
-    prev:  *unsafe mut RawNode<T>,
+    next:  *mut RawNode<T>,
+    prev:  *mut RawNode<T>,
 };
 
 @repr(C)
 pub type RawDll<T> is {
-    head: *unsafe mut RawNode<T>,
-    tail: *unsafe mut RawNode<T>,
+    head: *mut RawNode<T>,
+    tail: *mut RawNode<T>,
     len:  Int,
 };
 
@@ -184,7 +184,7 @@ implement<T> RawDll<T> {
     //         mode only; no external references to `self.head` exist.
     pub unsafe fn push_front(&mut self, value: T) {
         let layout = Layout.new<RawNode<T>>();
-        let new_node: *unsafe mut RawNode<T> = alloc(layout) as *unsafe mut _;
+        let new_node: *mut RawNode<T> = alloc(layout) as *mut _;
         *new_node = RawNode { value, next: self.head, prev: null_mut() };
 
         if !self.head.is_null() {

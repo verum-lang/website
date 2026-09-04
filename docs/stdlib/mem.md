@@ -125,7 +125,7 @@ can say without measuring each claim.
 
 ```verum
 type ThinRef<T> is {
-    ptr: *unsafe T,
+    ptr: *const T,
     generation: UInt32,
     epoch_caps: UInt32,       // high 16 bits: epoch; low 16: capability flags
 };
@@ -139,7 +139,7 @@ allocation's `AllocationHeader` on every deref.
 
 ```verum
 type FatRef<T> is {
-    ptr: *unsafe T,
+    ptr: *const T,
     generation: UInt32,
     epoch_caps: UInt32,       // epoch in high 16 bits, capabilities in low 16
     metadata: UInt64,         // slice length, dyn-protocol vtable pointer, etc.
@@ -357,7 +357,7 @@ type HazardStats is {
     thread_count:    Int,    // registered threads
 };
 
-hazard_stats() -> HazardStats
+fn hazard_stats() -> HazardStats
 
 implement HazardStats {
     fn needs_reclaim(&self) -> Bool {
@@ -809,14 +809,14 @@ const PAGE_SIZE:       Int = 4096;            // architecture-dependent
 
 ```verum
 type UseAfterFreeError is {
-    ptr: *unsafe Byte,
+    ptr: *const Byte,
     gen_expected: UInt32,
     gen_actual:   UInt32,
     epoch_expected: UInt32,
     epoch_actual:   UInt32,
 };
 
-type RevocationError is { ptr: *unsafe Byte, revoker: Text };
+type RevocationError is { ptr: *const Byte, revoker: Text };
 type AllocError      is OutOfMemory | InvalidLayout | Refused;
 ```
 
