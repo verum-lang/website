@@ -22,9 +22,9 @@ theorem reverse_reverse<T>(xs: List<T>): xs.reverse().reverse() == xs {
             have h: rest.reverse().reverse() == rest by ih;
             calc {
                 [x, ..rest].reverse().reverse()
-              = (rest.reverse() ++ [x]).reverse()       by def reverse;
-              = [x] ++ rest.reverse().reverse()         by reverse_append;
-              = [x] ++ rest                             by h;
+              = (rest.reverse().concat([x])).reverse()       by def reverse;
+              = [x].concat(rest.reverse().reverse())         by reverse_append;
+              = [x].concat(rest)                             by h;
               = [x, ..rest]                             by def concat;
             };
             qed

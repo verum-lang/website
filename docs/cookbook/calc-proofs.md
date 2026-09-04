@@ -48,9 +48,9 @@ lemma reverse_reverse<T>(xs: List<T>): xs.reversed().reversed() == xs {
         case [head, ..tail] => {
             calc {
                 [head, ..tail].reversed().reversed()
-              == { by def reversed }        (tail.reversed() ++ [head]).reversed()
-              == { by reverse_append_lemma} [head] ++ tail.reversed().reversed()
-              == { by ih }                  [head] ++ tail
+              == { by def reversed }        (tail.reversed().concat([head])).reversed()
+              == { by reverse_append_lemma} [head].concat(tail.reversed().reversed())
+              == { by ih }                  [head].concat(tail)
               == { by def concat }          [head, ..tail]
             };
             qed

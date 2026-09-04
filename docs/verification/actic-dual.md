@@ -148,7 +148,7 @@ are public and stable; user code may pick either.
 ```verum
 public fn epsilon(alpha: Articulation) -> Enactment {
     Enactment {
-        name:            "ε(" ++ articulation_as_text(alpha) ++ ")",
+        name:            "ε(".concat(articulation_as_text(alpha)).concat(")"),
         steps:           List.new(),
         activation_rank: 0,
         articulation:    alpha,
