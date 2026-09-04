@@ -130,7 +130,7 @@ in `core/` — the declared set is `Logger`, `Database`, `Clock`,
 and their kin. A positive `using [IO]` is refused with
 `error<E605>: undefined context: IO`. A negative `using [!IO]` used to be
 accepted — negative contexts were not validated against the declared set
-— but that gap was closed (T1095), and **both directions now refuse an
+— but that gap is closed, and **both directions now refuse an
 undeclared name**: measured 2026-09-04, `using [!IO]` gives the same
 `error<E605>: undefined context: IO`.
 

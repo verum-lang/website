@@ -444,7 +444,7 @@ example building a verified fold-combinator.
 Written exactly as above — a `fn<R>(...)` as a RECORD FIELD — the field
 bakes as `Unit`, so the transducer you get back is not the function you
 wrote. The type checker accepts the declaration; the value is lost
-between there and the archive. Tracked as T0997.
+between there and the archive. Tracked.
 
 Rank-2 in a plain function signature is a separate question and is not
 covered by that measurement.

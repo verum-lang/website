@@ -46,9 +46,9 @@ let [x, y, z]: [Int; 3] = fixed_three();
 `[T; N]` is now `error<E400>: this pattern binds 2 element(s), but the
 type is [_; 3]`. Until this date a short pattern compiled and silently
 dropped the extra elements, and a long one compiled and failed at RUN
-time with "Index out of bounds" (T1125).
+time with "Index out of bounds".
 
-**And the annotation no longer discards the initialiser** (T1122). A
+**And the annotation no longer discards the initialiser.** A
 fixed-size array annotation on a `let` whose initialiser was a CALL used
 to bind a zero-filled array of the right length. `[Int; N]` and
 `[Float; N]` were affected; `Bool`, `Text` and `Byte` were not.
