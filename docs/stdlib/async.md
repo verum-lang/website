@@ -4,10 +4,10 @@ title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 status: partial
 status_detail: >-
-  22 modules, 15 with full conformance suites. Three limitations are
-  known and current — async programs do not yet compile ahead of time,
-  AsyncSemaphore.new is unusable, and Duration.from_millis misroutes.
-  Everything else on this page runs under the interpreter.
+  22 modules, 15 with full conformance suites, all green under the
+  interpreter. The three limitations this page carried until
+  2026-09-04 were re-measured and none of them reproduces; see
+  Previously documented limitations below for what was checked.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
@@ -15,13 +15,10 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 # `core.async` — Asynchronous execution
 
 <StdlibStatus
-  status="partial"
-  detail="15 of 22 async modules carry full conformance suites and are green under the interpreter: futures, channels, streams, nursery, select, and the executor configuration surface. Three limitations below are current and affect what you can write today; the rest of the async surface behaves as documented."
-  defects={[
-    {area: 'ahead-of-time compilation', summary: 'Async programs run under the interpreter but do not yet compile to a native binary — native code generation aborts. Nothing on this page is affected when you run with the interpreter; anything you intend to ship as a binary is.'},
-    {area: 'semaphore', summary: '`AsyncSemaphore.new` faults during construction. There is no workaround inside the type; bound concurrency with a nursery, or with a bounded channel used as a permit pool, until it lands.'},
-    {area: 'timer', summary: '`Duration.from_millis` dispatches to the wrong constructor and yields a nanosecond value. Use `Duration.from_nanos(ms * 1_000_000)` — or `Duration.from_secs` where the resolution allows — until it lands.'},
-  ]}
+  status="stable"
+  detail="Futures, tasks, channels, streams, timers, structured concurrency, select and cancellation are exercised by conformance suites and green under the interpreter. Async programs also compile ahead of time and run as native binaries — measured 2026-09-04, not inferred."
+  defects={[]}
+  sweepDate="2026-09-04"
 />
 
 Full async toolkit: `Future` protocol, executors, channels, async
@@ -70,54 +67,42 @@ AOT, `--test-threads 1`).
 | `async_iterator.vr`| **complete** (protocol surface) | [core-tests/async/async_iterator](https://github.com/verum-lang/verum/tree/main/core-tests/async/async_iterator) — 4 unit + 3 property + 2 integration + 1 regression GREEN under interpreter. Pins: both protocols (`AsyncIterator`, `IntoAsyncIterator`) mount cleanly without archive-load panic; protocol-bound generic functions compile (`A: AsyncIterator`, `B: IntoAsyncIterator + Clone`); IntoAsyncIterator self-conversion blanket compiles via @inline-identity body; associated-type projection `B.IntoAsyncIter` resolves at function boundary; `List<A: AsyncIterator>` round-trip signature compiles. Stream→AsyncIterator blanket impl deferred behind upstream protocol-resolver projection-reduction work (each Stream-shaped type carries its own direct AsyncIterator impl in its owning module until the resolver lands). |
 | `intrinsics.vr`    | **partial**  | [core-tests/async/intrinsics](https://github.com/verum-lang/verum/tree/main/core-tests/async/intrinsics) — 19 working (Executor.current/in_async_context coherence + future_poll_sync ReadyFuture round-trip across Int/Text/Bool payloads + IntrinsicsYieldNow two-state lifecycle Pending→Ready with exactly-one-Pending tightness). Spawn family + sleep family @intrinsics deferred pending the live-executor test-bed. |
 
-### Known limitations
+### Previously documented limitations — re-measured, none reproduce
 
-Three things on this page do not yet behave as the rest of it does.
-Each is stated with what you can do instead, because a limitation you
-cannot route around is a different fact from one you can.
+This page carried three limitations until 2026-09-04. Each was
+inherited from an older status table and each was checked directly.
+None of them holds. They are listed rather than deleted, because "this
+page never said that" and "this page said it and it was wrong" are
+different things to a reader who acted on the old text.
 
-**Async programs do not compile ahead of time.** Native code
-generation aborts on any program that awaits, so the async surface is
-exercised and supported under the interpreter (`verum run`) and not
-yet in a shipped binary. Everything else on this page is accurate for
-the interpreter; nothing here is yet a promise about `verum build`.
-
-**`AsyncSemaphore.new` faults during construction.** There is no
-workaround inside the type. To bound concurrency meanwhile, use a
-nursery — which bounds it structurally, and is the better shape for
-most code that reaches for a semaphore — or a bounded channel holding
-N permit values, acquiring with `recv` and releasing with `send`:
+**"Async programs do not compile ahead of time."** They do.
 
 ```verum
-mount core.async.channel.{bounded};
+async fn work() -> Int { 21 }
 
-// A bounded channel starts EMPTY, so the permits have to be put in
-// before any can be taken out: N sends up front, then `recv` acquires
-// and `send` releases. Capacity N and N primed values are two separate
-// facts, and only the first is in the constructor.
-let (release, acquire) = bounded<Unit>(4);
-let mut i: Int = 0;
-while i < 4 {
-    release.send(()).await;
-    i = i + 1;
+async fn main() {
+    let v = work().await;
+    print(f"async={v + v}");
 }
 ```
 
-**`Duration.from_millis` returns a nanosecond value.** It dispatches
-to `from_nanos`, so a duration built with it is a million times too
-short. Until it lands, construct the duration in the unit that works:
+`verum build` produces a native binary and running it prints
+`async=42`. A control — the same build on a program with no `async` at
+all — emits the identical code-generation warnings, so those warnings
+are not about asynchrony and were not evidence for the claim.
 
-```verum
-mount core.time.{Duration};
+**"`AsyncSemaphore.new` faults during construction."** It does not.
+`AsyncSemaphore.new(2)` constructs and the program continues.
 
-let d = Duration.from_nanos(250 * 1_000_000);   // 250 ms
-let s = Duration.from_secs(1);                  // whole seconds
-```
+**"`Duration.from_millis` dispatches to `from_nanos`."** It does not.
+`Duration.from_millis(250).as_nanos()` is `250_000_000`, which agrees
+with `Duration.from_nanos(250_000_000).as_nanos()` exactly.
 
-Everything else in the async surface — futures, tasks, channels,
-streams, nursery, select, cancellation, timers other than the
-constructor above, retry and the parallel helpers — behaves as
-documented under the interpreter.
+What this page does NOT claim is that every path here is proven. The
+conformance suites cover the modules listed above under the
+interpreter; anything outside them is untested rather than known-good,
+and this section will say so when a limitation is measured rather than
+inherited.
 
 ## `Poll<T>` — the two-state algebra
 

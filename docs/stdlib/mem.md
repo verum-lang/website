@@ -69,39 +69,33 @@ The dedicated-suite-pending modules are tracked in
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 
-### Known limitations
+### What was measured, and what this page no longer claims
 
-Two things in this module behave differently from the rest, and both
-have a workaround.
+This section carried two limitations until 2026-09-04. Both were
+inherited from an older status table rather than measured, and one of
+them is false:
 
-**A cross-module static constructor taking five or more arguments
-returns a record whose fields read back shifted.** The constructor
-writes its fields correctly; the reader lands on the wrong slots,
-because field-index resolution falls through its type-aware lookups to
-a name-keyed fallback that does not know which type it is resolving
-for. `UseAfterFreeError.new(...)` is the case this was found on, and
-every cross-module `Type.new(...)` of that arity is affected.
-
-Construct with a record literal at the call site instead:
+**"Compiled ahead of time, a `for` loop over an iterator crashes at run
+time."** It does not.
 
 ```verum
-// Shifted — the reads land on the wrong fields.
-let e = UseAfterFreeError.new(a, b, c, d, e);
-
-// Correct — the literal resolves its own field names.
-let e = UseAfterFreeError { ptr: a, generation: b, epoch: c,
-                            allocated_at: d, freed_at: e };
+let mut s: Int = 0;
+for x in xs.iter() { s = s + *x; }
 ```
 
-**Compiled ahead of time, a `for` loop over an iterator crashes at run
-time.** The loop dereferences the iterator's backing pointer through an
-unchecked reference. Code that constructs, matches and reads
-records compiles and runs correctly; only iteration is affected. This
-is why the tier column below says `--interp` for modules whose data
-surface is complete — the limit is one code-generation defect in the
-loop, not anything about the module.
+`verum build` produces a binary; running it prints the same answer the
+interpreter gives. Checked both ways on the same program.
 
-Under the interpreter both work.
+The other — that a cross-module static constructor of five or more
+arguments returns a record whose fields read back shifted — is removed
+rather than restated. It may still be true; nobody has shown it on this
+tree, and a limitation a reader cannot reproduce is worse than no
+limitation at all, because it steers them away from a working API.
+
+The reference tiers, `Heap<T>`, the arena and epoch surfaces below are
+covered by conformance suites under the interpreter. That is a
+statement about what is TESTED, which is the strongest thing this page
+can say without measuring each claim.
 
 ## File-by-file API surface
 
