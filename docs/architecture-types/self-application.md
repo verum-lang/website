@@ -38,7 +38,9 @@ own `@arch_module(...)` annotation:
 )
 module core.architecture.types;
 
-mount core.prelude.{Bool, Int, Maybe, List, Text};
+// No mount: `Bool`, `Int`, `Maybe`, `List` and `Text` are always in
+// scope. There is no `core.prelude` module to name — the prelude is
+// seeded by the compiler, not mounted by a program.
 
 // =====================================================================
 // The eight architectural primitives — declared here, checked by ATS-V
@@ -90,7 +92,7 @@ Three concrete consequences:
    are `Definition`-class declarations whose discharge is
    trivial.
 2. **The cog's `Foundation.ZfcTwoInacc` declaration is checked
-   against its imports.** It mounts only `core.prelude` (which
+   against its imports.** It mounts nothing beyond the compiler-seeded prelude (which
    itself is ZFC-grounded), so the foundation discipline is
    honoured.
 3. **The cog's `composes_with` discipline is checked.** The cog

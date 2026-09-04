@@ -334,9 +334,11 @@ Benchmarks live in `benches/`:
 
 ```verum
 @bench
-fn sort_1000_random() using [Bench] {
-    let xs = List.random_ints(1000);
-    Bench.iter(|| xs.clone().sort());
+fn sort_1000_random() using [Benchmark] {
+    // The context is `Benchmark`; `Bencher` is what it hands you.
+    let xs = random_ints(1000);
+    let mut b = Benchmark.new("sort_1000_random");
+    b.iter(|| xs.clone().sort());
 }
 ```
 

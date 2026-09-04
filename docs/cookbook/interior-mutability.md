@@ -224,24 +224,36 @@ async fn write_setting(key: Text, value: Value)
 returns an exclusive guard. Writer starvation is prevented by the
 default scheduling policy.
 
-## `AtomicArc<T>` — swap whole values atomically
+## Swapping whole values — read-heavy state
 
-For read-heavy, occasionally-replaced state:
+:::caution `AtomicArc<T>` does not exist
+`core/sync/atomic.vr` has `AtomicBool`, `AtomicInt`, `AtomicU8` …
+`AtomicU64` and `AtomicPtr<T>` — scalar cells and a raw pointer. There
+is no atomically swappable shared pointer, so there is no wait-free
+reader path for a whole value.
+:::
+
+What the library gives you is `RwLock<Shared<T>>`: readers share, the
+writer replaces the handle, and the old value stays alive as long as any
+reader still holds its `Shared<_>`.
 
 ```verum
-let config = AtomicArc.new(Shared.new(Config.default()));
+let config = RwLock.new(Shared.new(Config.default()));
 
-// Reader — common case, wait-free:
-let snapshot = config.load();
-process(&snapshot);
+// Reader — shared, and cheap, but not wait-free:
+{
+    let snapshot = config.read().clone();     // clone the handle, not the Config
+    process(&snapshot);
+}
 
-// Writer — rare, replaces the whole Arc:
-let new_config = Config.load_from_file();
-config.store(Shared.new(new_config));
+// Writer — rare, replaces the whole handle:
+let fresh = Config.load_from_file();
+*config.write() = Shared.new(fresh);
 ```
 
-Readers never block; writers swap atomically. The old `Config` is
-kept alive by existing readers until they release their `Shared<_>`.
+Cloning the `Shared` inside the read guard and dropping the guard
+immediately is the point: the work in `process` then runs outside the
+lock, so a slow reader does not block the writer.
 
 ## Pitfalls
 

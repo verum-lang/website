@@ -331,9 +331,9 @@ per-OID guards, NULL discipline, and TEXT + BINARY wire-format
 coverage on every path.
 
 ```verum
-mount core.database.postgres.row.Row;
+mount core.database.postgres.row.PgRow;
 
-let row: Row = pool.acquire().await?
+let row: PgRow = pool.acquire().await?
     .query_one(&"SELECT id, name, active, created_at FROM users WHERE id = $1".into(),
                [Some(TvInt4(42))]).await?;
 

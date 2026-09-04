@@ -39,13 +39,16 @@ of `Msg`s and assert the final model state — no mocking required.
 
 Render into a buffer of fixed size and compare its string projection:
 
+`Frame` has no public constructor — a test cannot build one — so a
+snapshot test goes one level down, to the `Buffer` a widget renders
+into. `Widget.render(area, buf)` is the seam:
+
 ```verum
 @test
 fn counter_renders_expected_frame() {
     let m = CounterModel { count: 7 };
     let mut buf = Buffer.new(30, 5);
-    let mut frame = Frame.over(&mut buf, Rect.new(0, 0, 30, 5));
-    m.view(&mut frame);
+    m.widget().render(Rect.new(0, 0, 30, 5), &mut buf);
 
     let lines = buf.to_lines();
     assert_eq(lines[0], "╭─ Counter: 7 ──────────────╮");
@@ -53,17 +56,26 @@ fn counter_renders_expected_frame() {
 }
 ```
 
-Or with a snapshot file:
+`Buffer` also carries `from_rect`, `get`, `set_string`, `set_style`,
+`fill`, `merge` and `reset`.
 
-```verum
-let lines = buf.to_lines();
-snapshot_assert("tests/snapshots/counter_7.txt", &lines.join("\n"));
-```
-
-`snapshot_assert` is provided by `core.test.snapshot`. First run writes
-the file; subsequent runs compare and diff.
+:::caution No snapshot helper
+`snapshot_assert` and `core.test.snapshot` do not exist — there is no
+`core/test/` directory. Compare against literals as above, or write the
+file yourself; nothing in the library does the write-then-diff dance.
+:::
 
 ## 3. Integration tests with a virtual terminal
+
+:::caution Not shipped
+None of this section exists. `VirtualTerminal`, `ManualRuntime`,
+`type_keys`, `expect_row`, `run_one_frame` and
+`block_on_with_fake_clock` are absent from `core/` — measured, not
+guessed: each name has zero occurrences in the tree. The shape below is
+what such a harness would look like; today, layers 1 and 2 are the
+whole story, and they cover more than they look like they do because
+`update` is pure and `view` renders into a `Buffer` you own.
+:::
 
 For tests that need real event → Msg → render round-trips, drive a mock
 terminal:

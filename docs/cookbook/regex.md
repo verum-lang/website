@@ -233,16 +233,19 @@ backtracking is possible.
 
 ## Substitution in a builder
 
-For complex replacements with state:
+:::caution Closure replacement is not available
+There is no `RegexReplaceBuilder`, no `with_closure` and no
+`replace_all_with`. `Regex` offers two replacements and both take a
+replacement **string**:
 
 ```verum
-let mut builder = RegexReplaceBuilder.new(rx#"\b(\w+)\b");
-builder.with_closure(|m, out| {
-    let word = m.as_str();
-    out.push_str(&word.to_upper());
-});
-let result = builder.run(&input);
+rx.replace(text, replacement)        // first match
+rx.replace_all(text, replacement)    // every match
 ```
+
+For a per-match computation, iterate the matches yourself and build the
+output — the engine will not call back into your code.
+:::
 
 Useful for case transformations, surrounding markup, or
 context-sensitive rewrites.

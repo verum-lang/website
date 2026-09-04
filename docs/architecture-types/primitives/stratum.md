@@ -125,7 +125,8 @@ certificate:
 @arch_module(stratum: MsfsStratum.LFnd)
 module my_app.production;
 
-mount core.meta.absolute_reflective;     // <-- LAbs-stratum content
+mount core.meta.absolute_reflective;     // <-- illustrative name;
+                                         //     LAbs-stratum content
 
 // AP-007 fires: LFnd cog mentions LAbs content.
 ```

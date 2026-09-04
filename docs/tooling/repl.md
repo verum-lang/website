@@ -258,8 +258,13 @@ repl`) or a one-line script — `verum file.vr` runs a script directly.
 
 ## Using the REPL programmatically
 
-Verum's REPL ships with an embeddable API in
-`core.eval.repl`:
+:::caution The embeddable API is not in the standard library
+`core/eval/` is two files, `cbpv.vr` and `mod.vr`, and there is no
+`Repl` type anywhere in `core/`. The REPL is a compiler-side component
+(`crates/verum_interactive`), not something a `.vr` program can mount
+today. The shape below is what an embedding would look like; it does
+not compile.
+:::
 
 ```verum
 mount core.eval.repl;

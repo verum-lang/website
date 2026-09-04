@@ -251,22 +251,16 @@ match json.parse<ServerConfig>(&input) {
 
 ## 6. Streaming parse (large files)
 
-For a file that doesn't fit in memory:
+:::caution There is no event parser
+`core/encoding/json.vr` exports four types — `JsonValue`, `JsonMap`,
+`JsonError`, `JsonErrorKind` — and no `StreamParser`, no `JsonEvent`.
+Parsing is whole-document: it builds a `JsonValue`.
 
-```verum
-let mut reader = BufReader.new(File.open(path)?);
-let mut parser = json.StreamParser.new(&mut reader);
-
-while let Maybe.Some(event) = parser.next().await? {
-    match event {
-        JsonEvent.ObjectStart => { ... }
-        JsonEvent.KeyValue(key, value) => process(key, value),
-        JsonEvent.ObjectEnd => { ... }
-        JsonEvent.ArrayStart => { ... }
-        _ => { }
-    }
-}
-```
+So a file that does not fit in memory cannot be parsed as one document
+today. What works is splitting the input before parsing, which is why
+the JSON Lines form below is not a lesser alternative here — it is the
+one that runs.
+:::
 
 For JSON Lines (one object per line):
 

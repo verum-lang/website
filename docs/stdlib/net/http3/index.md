@@ -123,22 +123,29 @@ receiver can process header blocks out of order.
   literals are encoded Huffman-compressed when that strictly
   decreases byte count.
 
-### Encoder / decoder pair
+### One session, both directions
+
+There is no `Encoder` type and no `Decoder` type. QPACK is a single
+`QpackSession` carrying both dynamic tables — yours and the peer's —
+which is why its constructor takes two capacities:
 
 ```verum
-mount core.net.h3.qpack.{encoder, decoder};
-mount core.net.h3.qpack.encoder.{Encoder};
-mount core.net.h3.qpack.decoder.{Decoder, HeaderField};
+mount core.net.h3.qpack.session.{QpackSession};
+mount core.net.h3.qpack.{QpackHeaderField};
 
-fn roundtrip(headers: &List<HeaderField>) -> Result<List<HeaderField>, QpackError> {
-    let mut enc = Encoder.new(/* capacity */ 0);
-    let wire = enc.encode_field_section(headers)?;
-
-    let mut dec = Decoder.new();
-    let parsed = dec.decode_field_section(wire.as_slice())?;
-    Ok(parsed)
+fn roundtrip(
+    headers: &List<QpackHeaderField>,
+) -> Result<List<QpackHeaderField>, QpackDecodeError> {
+    let mut qp = QpackSession.new(0, 0);      // own cap, peer cap
+    let wire = qp.encode_field_section(headers)?;
+    qp.decode_field_section(wire.as_slice())
 }
 ```
+
+The instruction streams are the session's too — `drain_encoder_out`,
+`drain_decoder_out`, `on_peer_encoder_bytes`, `on_peer_decoder_bytes` —
+and capacity is changed with `set_encoder_capacity`, not
+`set_max_capacity`.
 
 With dynamic table capacity 0 (the v0.1 default), the encoder runs in
 "static + literal" mode — no inter-stream coordination needed. This

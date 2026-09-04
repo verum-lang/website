@@ -463,7 +463,8 @@ public module prelude {
 Add to your file with:
 
 ```verum
-mount core.sync.prelude.*;
+mount core.sync.*;              // no `prelude` submodule — `mod.vr`
+                                // re-exports 35 names directly
 ```
 
 ---

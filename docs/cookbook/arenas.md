@@ -66,22 +66,28 @@ through the arena. Outside the block, normal CBGR allocation resumes.
 
 ---
 
-## Region-based — `new_region`
+## Region-based — not shipped
 
-For borrow-checked region lifetimes without a separate handle type:
+:::caution `new_region` does not exist
+There is no `core.security.new_region` and no `Region<'_, T>`. The
+closure-scoped form this section described was never implemented; the
+arena the library actually ships is the `GenerationalArena` above, and
+its scope is explicit rather than lexical:
 
 ```verum
-mount core.security.new_region;
+let mut arena = GenerationalArena.new(64 * 1024);
+let mark = arena.snapshot();
 
-let stats = new_region(|r: Region<'_, ParseNode>| {
-    let root = parse_into_region(source, &r);
-    compute_statistics(&root)       // root lives in `r`; freed when `r` ends
-});
+let root = parse_into_arena(source, &mut arena);
+let stats = compute_statistics(&root);
+
+arena.restore(mark);      // everything allocated since `mark` is gone
 ```
 
-`new_region` is a scope-delimited arena: the closure receives a
-borrowed region, can allocate into it, and the region is released on
-return.
+`snapshot`/`restore` give the same nesting a scoped region would, and
+`reset()` empties the whole arena and bumps its generation — which is
+what makes a stale handle detectable rather than dangling.
+:::
 
 ---
 
@@ -136,7 +142,10 @@ On an M3 Max:
 |---|---|---|
 | `Heap<Node>` per node | 145 ms | 88 MB |
 | `GenerationalArena` | 82 ms | 42 MB |
-| `new_region` | 78 ms | 40 MB |
+
+The table used to carry a third row, `new_region` at 78 ms / 40 MB.
+Nothing could have produced those numbers: the API does not exist. They
+are removed rather than corrected.
 
 Your mileage varies with node size and access pattern — an arena
 beats per-object heap allocation when the objects are small and the

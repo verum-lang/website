@@ -139,15 +139,23 @@ async fn echo_name(req: WeftRequest) -> Response {
     }
 }
 
-fn main() {
+async fn main() {
     let app = Router.new()
         .route("/", Method.Get, hello)
         .route("/hello/:name", Method.Get, echo_name);
 
-    WeftApp.new(app)
-        .bind("0.0.0.0:8080")
-        .serve()
-        .await
+    // `bind` hands back `Result<Server<_>, Text>` — an address already
+    // in use is an ordinary error here, not a panic — so it is unwrapped
+    // before `serve`, which lives on `Server` and not on the `Result`.
+    // Two fallible steps, and both errors are `Text`: `bind` can fail on
+    // an address already in use, `serve` on the accept loop.
+    let outcome = match WeftApp.new(app).bind("0.0.0.0:8080") {
+        Result.Ok(server) => server.serve().await,
+        Result.Err(e)     => Result.Err(e),
+    };
+    if let Result.Err(e) = outcome {
+        eprintln(&f"server stopped: {e}");
+    }
 }
 ```
 

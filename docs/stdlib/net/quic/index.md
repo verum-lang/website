@@ -142,21 +142,20 @@ provers consulted) surface in that audit.
 this surface when you don't need to customise individual layers.
 
 ```verum
-mount core.net.quic.api.{QuicClient, QuicClientConfig};
-mount core.net.addr.{SocketAddr};
-mount core.time.duration.{Duration};
+mount core.net.quic.api.client.{QuicClient, QuicClientOptions};
 
-async fn fetch_example() -> Result<(), QuicError> {
-    let peer = SocketAddr.from_text("203.0.113.10:4433").unwrap();
+async fn fetch_example() -> Result<(), QuicClientError> {
+    // `QuicClientOptions`, not `QuicClientConfig`, and its `default()`
+    // already sets the transport parameters an example would otherwise
+    // spell out: initial_max_data 1 MiB, bidi-local stream data 256 KiB.
+    // `with_alpn` takes a LIST of protocols, and `with_system_trust` is
+    // a constructor rather than a link in the chain.
+    let opts = QuicClientOptions.with_system_trust()
+        .with_alpn([b"h3"]);
 
-    let config = QuicClientConfig.new()
-        .with_server_name("example.test")
-        .with_alpn(b"h3")
-        .with_initial_max_data(1 << 20)
-        .with_initial_max_stream_data_bidi_local(1 << 16)
-        .with_idle_timeout(Duration.from_secs(30));
-
-    let mut conn = QuicClient.connect(peer, config).await?;
+    // `connect` takes the AUTHORITY as text and resolves it itself —
+    // there is no SocketAddr to build first.
+    let mut conn = QuicClient.connect(&"example.test:4433", opts).await?;
     let mut stream = conn.open_bidi_stream().await?;
     stream.write_all(b"GET /\r\n").await?;
     let mut buf: [Byte; 4096] = [0; 4096];

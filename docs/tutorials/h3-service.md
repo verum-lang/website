@@ -254,12 +254,21 @@ let qpack_hit_rate = stats.qpack_static_hit_ratio();
 
 Prometheus scrape endpoint:
 
+There is no `core.net.h3.stats_prometheus` — HTTP/3 ships no metrics
+module of its own. The Prometheus surface is weft's registry, and a
+`MetricsLayer` is what feeds it:
+
 ```verum
-pub fn prometheus_expose() -> List<Byte> {
-    mount core.net.h3.stats_prometheus;
-    stats_prometheus.expose(&server)
+mount core.net.weft.metrics.{WeftMetricsRegistry, MetricsLayer};
+
+fn prometheus_expose(registry: &WeftMetricsRegistry) -> Text {
+    registry.render_prometheus()
 }
 ```
+
+`WeftMetricsRegistry` also gives you `counter(name)`, `histogram(name)`
+and their `_snapshot` readers directly, for anything the layer does not
+record for you.
 
 Wire-level traces fan out through `core.tracing` — every QUIC packet
 processed, every TLS handshake flight, every QPACK dynamic-table

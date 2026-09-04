@@ -293,18 +293,29 @@ Verum uses `List<T>` (not Rust's `Vec<T>`) and constructs lists via
 
 ## TLS
 
-Enable HTTPS with `TlsListener`:
+There is no `TlsListener` and no `TlsConfig.new()`. The server side is
+`TlsConfig.server()` for the config and `TlsAcceptor` for the socket,
+and the identity goes in as parsed values rather than paths:
 
 ```verum
-let tls_config = TlsConfig.new()
-    .with_cert_file("/etc/tls/cert.pem")?
-    .with_key_file("/etc/tls/key.pem")?
-    .with_alpn_protocols(&["h2", "http/1.1"]);
+mount core.net.tls.{TlsConfig, TlsAcceptor};
+mount core.security.x509.credential.{Certificate, PrivateKey};
 
-let listener = TlsListener.bind_with("0.0.0.0:443", tls_config).await?;
+let cert = Certificate.from_pem(&fs.read_text("/etc/tls/cert.pem").await?)?;
+let key  = PrivateKey.from_pem(&fs.read_text("/etc/tls/key.pem").await?)?;
+
+let tls_config = TlsConfig.server()
+    .with_identity(cert, key)
+    .with_alpn(["h2", "http/1.1"]);
+
+let acceptor = TlsAcceptor.from_config(tls_config);
 ```
 
-The rest of the loop is identical — `TlsListener.accept_async` returns
+`with_cert_file` / `with_key_file` / `with_alpn_protocols` do not exist;
+the real names are `with_identity` and `with_alpn`, and the config also
+carries `with_min_version` / `with_max_version` / `with_verify_mode`.
+
+The rest of the loop is identical — `acceptor.accept(stream)` returns
 a `TlsStream` that implements the same read/write interface.
 
 ## Tests
@@ -344,7 +355,7 @@ async fn test_user_not_found() {
 | **Read limits**        | `read_body_limited(max_bytes)` on every handler. |
 | **Timeouts**           | `timeout(30.secs(), req.parse())` around IO.  |
 | **Graceful shutdown**  | SIGINT → stop accepting → drain nursery.         |
-| **TLS**                | `TlsListener.bind_with(...)`.                    |
+| **TLS**                | `TlsAcceptor.from_config(TlsConfig.server()…)`.  |
 | **CORS**               | Middleware that sets `Access-Control-*` headers.  |
 | **Metrics**            | Wrap every handler; emit `Metrics.observe(...)`. |
 | **Logging**            | Structured — `Logger.info(f"...")` with request id.|
@@ -354,7 +365,7 @@ async fn test_user_not_found() {
 ## See also
 
 - **[`stdlib/net`](/docs/stdlib/net)** — `Request`, `Response`,
-  `TcpStream`, `TlsListener`.
+  `TcpStream`, `TlsAcceptor`, `TlsStream`.
 - **[Nursery](/docs/cookbook/nursery)** — structured shutdown.
 - **[Resilience](/docs/cookbook/resilience)** — retry, circuit
   breaker, rate limiter.
