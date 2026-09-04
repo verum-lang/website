@@ -28,6 +28,30 @@ A derive synthesises a protocol implementation from the structural
 shape of a type. The user writes one line of `@derive(P)`; the
 compiler produces an `implement P for T { ... }` block.
 
+:::caution What compiles today, and what does not
+The `meta fn` half of every example below is real — `meta fn twice(x:
+Int) -> Int { x + x }` type-checks clean, and `grammar/verum.ebnf` names
+`meta` as the way a user-defined macro is declared.
+
+The **registration markers are not**. `@proc_macro_derive`,
+`@proc_macro_attribute`, `@proc_macro` and `@declarative` each answer
+`warning<W0400>: unknown attribute` — they are Rust's vocabulary, and
+the grammar has no `proc_macro` production. The only `proc_macro_*` in
+the tree is a Rust derive inside the LLVM bindings crate.
+
+Nor is the other end wired. `@derive(X)` accepts any name and applies
+almost nothing:
+
+```verum
+@derive(my_marker)   // warning<W0507>: not applied — no generator yet
+@derive(Clone)       // warning<W0507>: the same, for a built-in protocol
+```
+
+So a macro you write cannot yet be attached to a call site. Both halves
+warn rather than fail, which means the code compiles and the macro does
+nothing — read the warnings. The shapes below are the intended design.
+:::
+
 ### Shape
 
 ```verum

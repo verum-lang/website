@@ -31,6 +31,47 @@ silent no-op: the code compiles and the attribute does nothing. That
 matters most for `@cap` — see the note on
 [capabilities](/docs/stdlib/security/capabilities).
 
+### Re-measured 2026-09-04, across the whole site
+
+The run above tested the 92 attributes on THIS page. Repeating it over
+every ```verum block on the site — 145 attributes, one probe file each,
+`@zzq_control_nonsense` inside every file so a dead probe is visible by
+name rather than as a silent zero — gives **77 warned**, of which 47 are
+written in attribute position (the other 30 are meta-function calls like
+`@stringify(x)`, which are not attributes and are expected to warn when
+applied as one). Eleven of the 47 are already named above; the remaining
+36 appear on pages that give the reader no warning:
+
+`@admissibility_certificate` `@arch_corpus` `@assign_to`
+`@bridge_encoding` `@bridge_foundation` `@bridge_tier`
+`@context_adaptive_literal` `@corecursive` `@current_location`
+`@declarative` `@deterministic` `@display` `@generated_for_shape`
+`@grad` `@interpolation_handler` `@lift` `@meta` `@mtac`
+`@mtac_decision` `@plan` `@println` `@proc_macro`
+`@proc_macro_attribute` `@proc_macro_derive` `@repeat`
+`@retracted_as_of` `@runtime` `@serde` `@specialise_for`
+`@suffixed_literal` `@suppress` `@tactic_provider` `@tag` `@theorem`
+`@traced` `@trigger`
+
+One cluster in that list is not a set of missing attributes but a
+borrowed vocabulary. `@proc_macro`, `@proc_macro_derive`,
+`@proc_macro_attribute` and `@declarative` are Rust's words for
+declaring a macro. Verum declares one with the **`meta` modifier**, and
+that works today:
+
+```verum
+meta fn twice(x: Int) -> Int { x + x }      // compiles clean
+```
+
+`grammar/verum.ebnf` says so in as many words — "User-defined macros
+(declared with `meta`)" — and has no `proc_macro` production at all. The
+only `proc_macro_*` in the tree is a **Rust** derive macro inside the
+LLVM bindings crate.
+
+`@repr` could not be tested this way: on a function it is a target
+error, which aborts before the unknown-attribute check runs. Its probe
+is reported as untested rather than counted as passing.
+
 Thirteen more were unknown until the same day for a different reason:
 they were registered but missing from the parser's own list, so the
 compiler called them unknown while the registry knew them. Those work
