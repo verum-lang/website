@@ -109,7 +109,7 @@ Race multiple futures; the first to complete wins.
 select {
     bytes = fetch(url1).await => process(bytes),
     bytes = fetch(url2).await => process(bytes),
-    _     = sleep(5.seconds) => Err(Error.Timeout),
+    _     = sleep(5.seconds).await => Err(Error.Timeout),
 }
 
 select biased {            // try arms in order; useful for prioritisation

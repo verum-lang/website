@@ -169,8 +169,8 @@ case <-time.After(5 * time.Second): timeout()
 
 ```verum
 select {
-    v = rx1.recv() => handle(v),
-    v = rx2.recv() => handle(v),
+    v = rx1.recv().await => handle(v),
+    v = rx2.recv().await => handle(v),
     _ = sleep(5.secs()) => timeout(),
 }
 ```

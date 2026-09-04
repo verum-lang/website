@@ -137,13 +137,13 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
     let mut buf = [0u8; 4096];
     loop {
         match select {
-            r = stream.read_async(&mut buf) => r,
+            r = stream.read_async(&mut buf).await => r,
             _ = sleep(30.secs()) => Result.Err(IoError.Timeout),
         } {
             Result.Ok(0) => break,
             Result.Ok(n) => {
                 select {
-                    w = write_everything(&mut stream, &buf[..n]) => {
+                    w = write_everything(&mut stream, &buf[..n]).await => {
                         if w.is_err() { break; }
                     }
                     _ = sleep(10.secs()) => {
@@ -196,8 +196,8 @@ async fn echo_server_graceful(addr: &Text) -> IoResult<()>
     nursery(on_error: wait_all) {
         while !stop.load(MemoryOrdering.Acquire) {
             match select {
-                r = listener.accept_async() => r,
-                _ = sleep(100.millis()) => continue,  // re-check flag
+                r = listener.accept_async().await => r,
+                _ = sleep(100.millis()).await => continue,  // re-check flag
             } {
                 Result.Ok((stream, peer)) => {
                     Logger.info(f"{peer} connected");

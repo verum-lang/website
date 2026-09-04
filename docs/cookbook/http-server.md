@@ -201,7 +201,7 @@ async fn serve_graceful() using [Database, Logger, Network] {
     nursery(on_error: wait_all) {
         while !shutdown.load(MemoryOrdering.Acquire) {
             match select {
-                accept = listener.accept_async() => accept,
+                accept = listener.accept_async().await => accept,
                 _ = sleep(100.millis()) => continue,
             } {
                 Result.Ok((stream, peer)) => {
