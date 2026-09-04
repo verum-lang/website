@@ -105,8 +105,8 @@ YonedaVerdict {
         ObserverAgreement {
             observer: Observer.Auditor("compliance"),
             status: AgreementStatus.Agree,
-            base_observation: <auditor view>,
-            alt_observation: <auditor view>,
+            base_observation: auditor_view,
+            alt_observation: auditor_view,
         },
     ],
     equivalent: true,
