@@ -262,8 +262,7 @@ The Verum-side closure witness is the function
 `core/architecture/types.vr` (returns the canonical
 `Lifecycle` glyph for any input cell), cross-side mirrored at
 `crates/verum_kernel/src/arch.rs::seven_configurations_closure_witness`,
-pin-tested by `pin_seven_configurations_closure_exhaustive` in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs`.
+pin-tested by `pin_seven_configurations_closure_exhaustive` in.
 
 ## 10. The deciding rule — three actions {#deciding-rule}
 

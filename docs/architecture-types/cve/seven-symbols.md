@@ -26,8 +26,7 @@ ShapeDeclarations {
 
 `Lifecycle`: `[D]` Definition (the seven glyphs are defined
 here; downstream sites use the definitions). Cross-side pin:
-`pin_lifecycle_seven_glyphs_canonical` in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs`.
+`pin_lifecycle_seven_glyphs_canonical` in.
 
 Every Verum artefact carries exactly one of seven canonical CVE
 statuses, surfaced as a single-character glyph. The glyphs are

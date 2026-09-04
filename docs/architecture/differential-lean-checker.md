@@ -247,8 +247,7 @@ debug investigation pattern is:
 
 When **adding a new cert** to the battery:
 
-1. Append a `BatteryCert` to `load_differential_battery()` in
-   `crates/verum_cli/src/commands/audit.rs`. Use a stable ID for
+1. Append a `BatteryCert` to `load_differential_battery()` in. Use a stable ID for
    future regression-bibliography reference.
 2. Run `verum audit --differential-lean-checker`. The new cert
    must reach 24+1 unanimous agreement before merge.

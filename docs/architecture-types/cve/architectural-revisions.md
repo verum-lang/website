@@ -236,18 +236,16 @@ preservation without change).
 **Operationalisation (CVE-L0).**
 
 - new types
-  `Purpose` (`core/architecture/types.vr:768`,
-  `crates/verum_kernel/src/arch.rs:1054`),
-  `CveThresholdK` (`types.vr:698`, `arch.rs:986`),
-  `CveThresholdV` (`types.vr:712`, `arch.rs:1008`),
-  `CveThresholdE` (`types.vr:727`, `arch.rs:1030`)
+  `Purpose` (`core/architecture/types.vr:768`),
+  `CveThresholdK` (`types.vr:698`),
+  `CveThresholdV` (`types.vr:712`),
+  `CveThresholdE` (`types.vr:727`)
   on both sides;
 - `ShapeDeclarations.purpose: Maybe<Purpose>` field —
   `core/architecture/types.vr:945`;
 - [`AP-037 BoundlessAudit`](../anti-patterns/articulation.md#ap-037)
   fires on a strict-mode `[T]` cog without a declared purpose
-  — predicate `check_boundless_audit` at
-  `crates/verum_kernel/src/arch_anti_pattern.rs:2230`;
+  — predicate `check_boundless_audit`;
 - the audit dispatcher's terminating function consults the
   declared thresholds before issuing a `verdict`.
 
@@ -286,8 +284,7 @@ boundary explicit.
   — `core/architecture/types.vr:945`;
 - [`AP-038 ImplicitSubstrate`](../anti-patterns/articulation.md#ap-038)
   fires on a strict-mode `[T]` cog without a declared substrate
-  — predicate `check_implicit_substrate` at
-  `crates/verum_kernel/src/arch_anti_pattern.rs:2264`.
+  — predicate `check_implicit_substrate` at.
 
 ### Defect 4 — Curry-Howard-Lawvere over-extrapolation
 
@@ -320,8 +317,7 @@ formal anchoring) from *anchored-formal CVE* (after).
 - [`AP-039 AnchoringOverextension`](../anti-patterns/articulation.md#ap-039)
   fires on a strict-mode `[T]` cog under a non-CHL foundation
   without a declared anchoring — predicate
-  `check_anchoring_overextension` at
-  `crates/verum_kernel/src/arch_anti_pattern.rs:2300`.
+  `check_anchoring_overextension` at.
 
 ### Defect 5 — Culturally particular lineage
 
@@ -351,8 +347,7 @@ welcome parallel anchorings as their formalisation matures.
 - the [lineage boundary section](./overview.md#lineage-boundary)
   documents the choice and the open directions;
 - the `FormalAnchoring::CustomAnchoring(name)` variant
-  (`core/architecture/types.vr:652`,
-  `crates/verum_kernel/src/arch.rs:946`) supports user-registered
+  (`core/architecture/types.vr:652`) supports user-registered
   anchorings from any tradition.
 
 ### Defect 6 — Stratification dogma
@@ -439,13 +434,13 @@ fixes landed in two layers:
 
 - **Type-system layer** — new types in
   `core/architecture/types.vr`:
-  `ExecutabilitySense` (`types.vr:532` / `arch.rs:877`),
-  `CognitiveSubstrate` (`types.vr:589` / `arch.rs:910`),
-  `FormalAnchoring` (`types.vr:652` / `arch.rs:946`),
-  `Purpose` (`types.vr:768` / `arch.rs:1054`),
-  `ArchitecturalDefect` (`types.vr:836` / `arch.rs:1126`),
-  `DefectKind` (`types.vr:795` / `arch.rs:1079`),
-  `Resolution` (`types.vr:805` / `arch.rs:1104`).
+  `ExecutabilitySense` (`types.vr:532`),
+  `CognitiveSubstrate` (`types.vr:589`),
+  `FormalAnchoring` (`types.vr:652`),
+  `Purpose` (`types.vr:768`),
+  `ArchitecturalDefect` (`types.vr:836`),
+  `DefectKind` (`types.vr:795`),
+  `Resolution` (`types.vr:805`).
 - **Anti-pattern layer** — entries 037, 038, 039 of the
   canonical AP roster for purpose, substrate, and anchoring
   disclosure (AP-033..AP-036 already existed for citation /
@@ -591,8 +586,7 @@ discipline. See:
   SelfReferenceWitness}` and
   `verum_kernel::arch_anti_pattern::check_self_reference_without_operator`.
 - Cross-side pin: `pin_fixpoint_class_four_canonical` and
-  `pin_self_reference_witness_format` in
-  `crates/verum_kernel/tests/k_arch_v_alignment.rs`.
+  `pin_self_reference_witness_format` in.
 
 The promotion of §16 from "deferred at L2" to "first-class at L4"
 is recorded as the **second** entry of the architectural-revision
