@@ -65,8 +65,8 @@ is explicit.
 ## 3. Tagged-literal shell dispatch
 
 ```verum
-let users = sh#"awk -F: '{print $1}' /etc/passwd"#?;
-let count = sh#"echo {users.len()} users"#?;
+let users = sh#"awk -F: '{print $1}' /etc/passwd"?;
+let count = sh#"echo {users.len()} users"?;
 ```
 
 `sh#"..."` is parser-level — the contents are validated against
@@ -169,11 +169,11 @@ without spawning subprocesses.
 
 ```verum
 let (alice, bob) = parallel(
-    || sh#"curl -s https://alice.example/profile"#,
-    || sh#"curl -s https://bob.example/profile"#,
+    || sh#"curl -s https://alice.example/profile",
+    || sh#"curl -s https://bob.example/profile",
 )?;
 
-fanout(["a.txt", "b.txt", "c.txt"], |path| sh#"shasum {path}"#)?
+fanout(["a.txt", "b.txt", "c.txt"], |path| sh#"shasum {path}")?
 ```
 
 | Primitive | Use case |

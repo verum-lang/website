@@ -156,18 +156,25 @@ it independently until this is fixed.
 
 ### `math.constants`
 
-```verum
-const PI: Float          const E: Float             const TAU: Float
-const PHI: Float         const SQRT2: Float
-const EPSILON: Float     const INFINITY: Float       const NAN: Float
+*Refinement-based semantic aliases*
 
-// Refinement-based semantic aliases
-type NonNegative is Float { self >= 0.0 };
-type Positive    is Float { self > 0.0 };
-type UnitInterval is Float { 0.0 <= self && self <= 1.0 };
-type Probability is UnitInterval;
-type Angle       is Float;           // radians
-```
+| | |
+|---|---|
+| `const PI: Float` |  |
+| `const E: Float` |  |
+| `const TAU: Float` |  |
+| `const PHI: Float` |  |
+| `const SQRT2: Float` |  |
+| `const EPSILON: Float` |  |
+| `const INFINITY: Float` |  |
+| `const NAN: Float` |  |
+| `type NonNegative is Float { self >= 0.0 }` |  |
+| `type Positive` |  |
+| `is Float { self > 0.0 }` |  |
+| `type UnitInterval is Float { 0.0 <= self && self <= 1.0 }` |  |
+| `type Probability is UnitInterval` |  |
+| `type Angle` | radians |
+| `is Float` |  |
 
 ### `math.elementary`
 
@@ -409,17 +416,16 @@ a tensor does not report its own `dtype`.
 
 ## Layer 5 — GPU
 
-```verum
-type GPUBackend, DeviceId, DeviceInfo, ComputeCapability;
-type DeviceSelector, DeviceRegistry;
-type MemorySpace, DevicePtr<T>, GPUBuffer<T>, PinnedBuffer<T>;
-type Stream, Event, LaunchConfig, CudaGraph;
-
-GPUBackend.default() -> GPUBackend
-device.allocate<T>(count) -> GPUBuffer<T>
-device.launch(config, kernel, args)
-device.sync()
-```
+| | |
+|---|---|
+| `type GPUBackend, DeviceId, DeviceInfo, ComputeCapability` |  |
+| `type DeviceSelector, DeviceRegistry` |  |
+| `type MemorySpace, DevicePtr<T>, GPUBuffer<T>, PinnedBuffer<T>` |  |
+| `type Stream, Event, LaunchConfig, CudaGraph` |  |
+| `GPUBackend.default() -> GPUBackend` |  |
+| `device.allocate<T>(count) -> GPUBuffer<T>` |  |
+| `device.launch(config, kernel, args)` |  |
+| `device.sync()` |  |
 
 See [`simd.gpu`](/docs/stdlib/simd#gpu-simdgpu) and
 [`intrinsics → gpu`](/docs/stdlib/intrinsics#gpu) for device-side
@@ -602,14 +608,14 @@ QuantizedLinear.new(in_dim, out_dim, bits: Int)    // INT4/INT8
 
 ### `math.guardrails`
 
-```verum
-ContentClassifier.new(categories, threshold)
-Guardrail.new(&classifiers)
-PIIFilter.new(patterns)
-TopicGuardrail.new(allowed_topics)
-GuardrailChain.new(&rails)
-GuardedAgent.new(agent, chain)
-```
+| | |
+|---|---|
+| `ContentClassifier.new(categories, threshold)` |  |
+| `Guardrail.new(&classifiers)` |  |
+| `PIIFilter.new(patterns)` |  |
+| `TopicGuardrail.new(allowed_topics)` |  |
+| `GuardrailChain.new(&rails)` |  |
+| `GuardedAgent.new(agent, chain)` |  |
 
 ### `math.rag`
 
