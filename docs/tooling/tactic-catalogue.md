@@ -306,7 +306,7 @@ First-success choice over a list.  Equivalent to nested `orelse`
 but reads better at three+ alternatives.  Singleton form
 collapses: `first_of([t]) ≡ t`.
 
-```verum
+```text
 first { refl | assumption | auto | smt }
 ```
 
@@ -319,7 +319,7 @@ makes no progress.  Termination is guaranteed by the proof-state
 manager's "goal-unchanged" detector — any tactic that doesn't
 advance the state halts the loop.
 
-```verum
+```text
 repeat { simp ; rewrite_with(assoc) }
 ```
 
@@ -386,7 +386,7 @@ operationally a no-op.
 Focus on the `i`-th goal (1-based).  Runs `body` on that goal
 alone; other goals are preserved for later.
 
-```verum
+```text
 split ; 1: { auto } ; 2: { ring }
 ```
 
@@ -398,7 +398,7 @@ After `split` produces two goals, run `auto` on the first and
 Focus on the goal labelled `label`.  Goal labels come from
 `intro_as` / `case` introductions.
 
-```verum
+```text
 destruct h ;
   case left  => { auto } ;
   case right => { contradiction }
@@ -433,7 +433,7 @@ the proof can cite by name.  This contrasts with backward chaining
 Forward-style hypothesis introduction.  Proves `T` via `proof`,
 binds it as `h`, and continues with the original goal.
 
-```verum
+```text
 have h : x > 0 := { norm_num } ; rewrite_with(h)
 ```
 
@@ -448,7 +448,7 @@ inference can't pick the right witness.  The arguments substitute
 into the lemma's type variables in declaration order; mismatched
 arity fails immediately.
 
-```verum
+```text
 apply add_comm with [a, b]
 ```
 
@@ -648,8 +648,8 @@ tactic auto_solve() {
 }
 
 // Apply a lemma with up to two arguments inferred.
-tactic apply_or_apply_with(lemma: Tactic) {
-    apply(lemma) || try { apply_with(lemma, []) }
+tactic apply_or_apply_with(lem: Tactic) {
+    apply(lem) || try { apply_with(lem, []) }
 }
 ```
 
