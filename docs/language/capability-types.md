@@ -116,7 +116,7 @@ type DatabaseReadOnly is Database with [Read];
 type DatabaseTxScope  is Database with [Read, Write, Transaction];
 ```
 
-:::caution The dotted name does not parse yet — the capability does
+:::note The attenuation is enforced, and the name is a plain identifier
 Measured 2026-09-04. `with [...]` is real and ENFORCED — a call to a
 method the attenuation drops is refused:
 
@@ -124,25 +124,16 @@ method the attenuation drops is refused:
       -> error<E306>: capability violation: method `write_all` on
                      `File` requires `WriteOnly` capability
 
-It is the dotted
-declaration name that the parser refuses, here and in every example
-below that uses one:
-
-    type FileRead  is File with [Read];        parses
-    type FileRead is File with [Read];
-      -> error<E044>: Parse error: expected `is` keyword in type
-                      definition
-
-`grammar/verum.ebnf` agrees with the parser: `type_def` takes a plain
-`identifier`, not a path. So the dotted spelling on this page is the
-convention we intend, not the one you can write today.
-
-Write the attenuation with a plain name — `DatabaseReadOnly`,
-`FileRead` — and everything else on this page is unchanged.
+A grouped, dotted declaration name — `type File.Read is ...` — is not
+available: `type_def` takes a plain `identifier`, not a path
+(`grammar/verum.ebnf`), and the parser agrees, reporting `error<E044>:
+expected `is` keyword in type definition`. Prefix instead of grouping —
+`FileRead`, `DatabaseReadOnly`, `DbAdmin` — which is what `core/` and
+`core-tests/` already write.
 :::
 
-The dotted name is a nested path; the dot has no runtime meaning —
-it's purely a naming convention to group related refinements.
+The prefix is a naming convention only; it has no runtime meaning. What
+carries the meaning is the capability list.
 
 A function boundary can then speak in the narrow name:
 
