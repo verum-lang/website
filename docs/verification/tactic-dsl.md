@@ -122,14 +122,14 @@ public type Proposition is
 meta fn refl_if_identical(goal: &Goal) -> TacticResult {
     match goal.prop {
         Eq(lhs, rhs) if prop_eq(lhs, rhs) => {
-            TacticResult.Closed(@quote(refl(?{goal.ty})))
+            TacticResult.Closed(quote { refl(?{goal.ty}) })
         }
         _ => TacticResult.Unknown
     }
 }
 ```
 
-`@quote(expr)` builds a `CoreTerm` that stands for `expr` with
+`quote { expr }` builds a `CoreTerm` that stands for `expr` with
 `?{…}` interpolations substituted. `prop_eq` is a stdlib helper
 for structural equality on Propositions.
 
@@ -184,14 +184,14 @@ A rewrite tactic applies a lemma as a left-to-right rewrite:
 
 ```verum
 @tactic
-meta fn rewrite_with(goal: &Goal, lemma: &Text) -> TacticResult {
+meta fn rewrite_with(goal: &Goal, lemma_name: &Text) -> TacticResult {
     // Look up the lemma's statement.
-    let lemma_prop = goal.scope.lookup_lemma(lemma)?;
+    let lemma_prop = goal.scope.lookup_lemma(lemma_name)?;
     // Expect it to be an equality l == r.
     let (lhs, rhs) = match lemma_prop {
         ForAll(_, _, Eq(l, r)) => (l, r),
         Eq(l, r) => (l, r),
-        _ => return TacticResult.Failed("lemma is not an equality"),
+        _ => return TacticResult.Failed("lemma_name is not an equality"),
     };
     // Find occurrences of lhs in the goal; replace with rhs.
     let rewritten = goal.prop.replace(lhs, rhs);
@@ -279,7 +279,7 @@ A tactic may cite a `@framework` axiom as its closure step:
 @framework("baez_dolan", "HDA §4.2")
 meta fn g2_symmetry(goal: &Goal) -> TacticResult {
     // Emits the Baez-Dolan theorem as an asserted axiom.
-    let axiom_term = @quote(baez_dolan_aut_g2);
+    let axiom_term = quote { baez_dolan_aut_g2 };
     TacticResult.Closed(axiom_term)
 }
 ```
@@ -392,7 +392,7 @@ Tactics are testable like any other Verum code:
 @test
 fn test_split_conjunction() {
     let goal = Goal {
-        prop: And([Atomic(@quote(true)), Atomic(@quote(true))]),
+        prop: And([Atomic(quote { true }), Atomic(quote { true })]),
         hyps: List.new(),
         scope: ScopeInfo.empty(),
     };
@@ -448,10 +448,14 @@ generation:
 ### 10.1 `Quote` / `` ` ``
 
 ```verum
-let handle = quote { auto; simp }
-// or with backtick syntax:
-let handle = `(auto; simp)
+fn build() {
+    let handle = quote { auto; simp };
+}
 ```
+
+There is no backtick shorthand: `` `(auto; simp) `` is not a token the
+lexer knows, and `quote { … }` is the form the grammar defines and
+`core/` uses in 105 files.
 
 `Quote(t)` returns a first-class value representing `t`
 *without* executing it. The handle can be passed as an
@@ -468,7 +472,7 @@ not observe `t`'s effects until Unquote.
 
 ```verum
 tactic run_with_fallback(handle: Tactic) {
-    try { $(handle) } else { smt }
+    try { handle } else { smt }
 }
 ```
 

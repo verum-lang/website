@@ -49,9 +49,9 @@ exact same execution bit-for-bit.
 public type TestClock is { /* opaque */ };
 
 implement TestClock {
-    public fn seeded(seed: UInt64) -> TestClock
-    public fn advance(&self, by: Duration)
-    public fn now_ns(&self) -> Int
+    public fn seeded(seed: UInt64) -> TestClock;
+    public fn advance(&self, by: Duration);
+    public fn now_ns(&self) -> Int;
 }
 ```
 
