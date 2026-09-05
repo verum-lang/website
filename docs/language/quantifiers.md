@@ -30,7 +30,7 @@ The grammar unifies three styles:
 
 ### Type-based — *the set is the type*
 
-```verum
+```text
 forall x: Int. x + 0 == x
 exists y: Float. y * y == 2.0
 ```
@@ -40,7 +40,7 @@ with `y² = 2`".
 
 ### Collection-based — *the set is a value*
 
-```verum
+```text
 forall x in xs. x > 0
 exists u in users. u.is_admin()
 ```
@@ -64,7 +64,7 @@ slice ranges).
 
 An optional `where` clause filters the domain:
 
-```verum
+```text
 forall x in items where x.is_valid(). x.score > 0
 exists n: Int in 0..1000 where n % 7 == 0. n > 500
 ```
@@ -76,7 +76,7 @@ Semantically, `forall x in S where Q(x). P(x)` is `∀ x∈S. Q(x) ⇒ P(x)`;
 
 Quantifiers take a comma-separated list of bindings:
 
-```verum
+```text
 forall x: Int, y: Int. x + y == y + x
 
 exists i in 0..xs.len(), j in 0..xs.len()
@@ -100,13 +100,23 @@ Quantifiers on a field's refinement constrain every value:
 
 ```verum
 type SortedList is List<Int>
-    where forall i in 0..self.len()-1. self[i] <= self[i+1];
+    where forall i in 0..self.len()-1. (self)[i] <= (self)[i+1];
 
 type UniqueIds is List<Id>
-    where forall i in 0..self.len(),
-                 j in 0..self.len()
-           where i != j. self[i] != self[j];
+    where forall i in 0..self.len(), j in 0..self.len()
+           where i != j. (self)[i] != (self)[j];
 ```
+
+:::note Why the parentheses, and why one line
+
+`self[i]` inside a quantifier body is rejected — `unexpected operator
+'=='` — while `self[0] == 1` in a refinement without a quantifier, and
+`xs[i]` for a parameter inside one, both parse. `(self)[i]` and
+`self.get(i)` are the two spellings that work today; A84 in the debt
+register carries the isolation. And the binder list has to stay on one
+line: `forall i in …,` with `j in …` on the next is refused.
+
+:::
 
 :::caution A quantified refinement on a TYPE does not parse yet
 Measured 2026-09-04. The quantifier is fine and the `where` is fine —
@@ -174,7 +184,7 @@ theorem sum_nonneg(xs: &List<Int>)
 The binder is a **pattern**, not just an identifier, so you can
 destructure:
 
-```verum
+```text
 forall (k, v) in map. v > 0
 forall Entry { id, priority } in queue. priority >= 0
 ```
