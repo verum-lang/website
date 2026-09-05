@@ -107,7 +107,7 @@ type MemProt is bitflags {
     None   = 0x0,
     Read   = 0x1,
     Write  = 0x2,
-    Exec   = 0x4,
+    Exec   = 0x4
 };
 
 type MapFlags is bitflags {
@@ -116,7 +116,7 @@ type MapFlags is bitflags {
     Anon    = 0x20,
     Fixed   = 0x10,
     Stack   = 0x20000,
-    HugeTlb = 0x40000,
+    HugeTlb = 0x40000
 };
 
 type MemoryOrdering is Relaxed | Acquire | Release | AcqRel | SeqCst;
@@ -352,9 +352,9 @@ public type ValidFd is Fd where |fd| fd.0 >= 0;
 ### Standard descriptors
 
 ```verum
-public const STDIN_FD: ValidFd = Fd(0) as ValidFd
-public const STDOUT_FD: ValidFd = Fd(1) as ValidFd
-public const STDERR_FD: ValidFd = Fd(2) as ValidFd
+public const STDIN_FD: ValidFd = Fd(0) as ValidFd;
+public const STDOUT_FD: ValidFd = Fd(1) as ValidFd;
+public const STDERR_FD: ValidFd = Fd(2) as ValidFd;
 ```
 
 ---
@@ -443,16 +443,16 @@ its receiver on `.unlock()` — releasing without explicit unlock is
 also safe (handled by `Drop`).
 
 ```verum
-public type FileLockKind is Shared | Exclusive
+public type FileLockKind is Shared | Exclusive;
 
 public type LockRegion is {
     start: Int,
     length: Int,    // -1 = "from start to EOF"
-}
+};
 
 public type LockError is
     | Conflict(owner_pid: Maybe<Int>)
-    | IoError(err: OSError)
+    | IoError(err: OSError);
 ```
 
 The 5-state SQLite locking protocol (SHARED / RESERVED / PENDING /
@@ -470,11 +470,11 @@ sync_directory}` over reaching into the catch-all common namespace,
 so the intent is visible at the import site.
 
 ```verum
-public mount core.sys.common.full_fsync
-public mount core.sys.common.data_only_fsync
-public mount core.sys.common.sync_directory
-public mount core.sys.common.pread
-public mount core.sys.common.pwrite
+public mount core.sys.common.full_fsync;
+public mount core.sys.common.data_only_fsync;
+public mount core.sys.common.sync_directory;
+public mount core.sys.common.pread;
+public mount core.sys.common.pwrite;
 ```
 
 Per-platform backends:
@@ -969,12 +969,12 @@ type AccessMode is Volatile | Sync | Relaxed;
 type Register<T, const ADDR: UInt64> is { mode: AccessMode };
 type MemoryRegion is { base: *mut Byte, length: Int, cacheable: Bool };
 
-fn volatile_load<T>(addr: UInt64) -> T
-fn volatile_store<T>(addr: UInt64, value: T)
-fn barrier(order: MemoryOrdering)
-fn dmb()                                        // data memory barrier (arm64)
-fn dsb()                                        // data sync barrier
-fn isb()                                        // instruction sync barrier
+fn volatile_load<T>(addr: UInt64) -> T;
+fn volatile_store<T>(addr: UInt64, value: T);
+fn barrier(order: MemoryOrdering);
+fn dmb();                                        // data memory barrier (arm64)
+fn dsb();                                        // data sync barrier
+fn isb();                                        // instruction sync barrier
 ```
 
 ### Interrupts
