@@ -138,7 +138,7 @@ async fn ci() using [ShellContext] {
 
 ```verum
 async fn tail_logs() using [ShellContext] {
-    async for line in stream_lines("journalctl -u myservice -f") {
+    for await line in stream_lines("journalctl -u myservice -f") {
         let line = line?;
         if line.contains("FATAL") { alert(&line).await; }
     }

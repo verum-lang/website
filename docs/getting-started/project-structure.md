@@ -249,7 +249,7 @@ Plus `protected` as a protocol-local refinement:
 
 ```verum
 type User is protocol {
-    protected fn sensitive_hash(&self) -> Hash;  // subtypes only
+    fn sensitive_hash(&self) -> Hash;   // visible to every implementor
 };
 ```
 

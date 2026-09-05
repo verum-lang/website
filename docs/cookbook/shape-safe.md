@@ -97,7 +97,7 @@ shape; if the source shape can't broadcast to it, compile error.
 fn vstack<const M1: Int, const M2: Int, const N: Int>(
     a: &Matrix<M1, N, Float>,
     b: &Matrix<M2, N, Float>,
-) -> Matrix<{M1 + M2}, N, Float> {
+) -> Matrix<M1 + M2, N, Float> {
     concat(&[a, b], axis = 0)
 }
 ```
