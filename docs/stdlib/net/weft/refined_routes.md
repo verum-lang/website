@@ -26,7 +26,7 @@ type SlugText is Text where |s| {
 The router applies the predicate at request time and the type system
 verifies, at compile time, that handler parameters are assignment-
 compatible with the URL pattern's refinement. Handler authors write
-`Path<UserId>` and the compiler proves the value reaching the handler
+`PathParam<UserId>` and the compiler proves the value reaching the handler
 satisfies the refinement.
 
 Source: `core/net/weft/refined_routes.vr`.
@@ -91,7 +91,7 @@ a refined parameter directly:
 ```verum
 type UserId is Int where |n| { n >= 1 && n <= 1_000_000_000 };
 
-async fn get_user(Path(id): Path<UserId>) -> Json<User> {
+async fn get_user(PathParam(id): PathParam<UserId>) -> Json<User> {
     // SMT has proved: id is in [1, 10^9]. No defensive check needed.
 }
 
@@ -99,11 +99,11 @@ let app = Router.new()
     .route("/users/:id", Method.Get, get_user);
 ```
 
-The compiler verifies, at type-check time, that `Path<UserId>` can
+The compiler verifies, at type-check time, that `PathParam<UserId>` can
 absorb the value of `:id`:
 
 1. The router's pattern declares `:id` as an unbound `Text` segment.
-2. The handler signature requires `Path<UserId>`.
+2. The handler signature requires `PathParam<UserId>`.
 3. SMT discharges the obligation `forall s: Text. parse_int(s) in [1, 10^9]`
    for the parser used by `int_between`.
 4. If the obligation fails (e.g. the handler expected
@@ -195,8 +195,8 @@ type ApiVersion is Text where |s| {
 };
 
 async fn handle_v(
-    Path(version): Path<ApiVersion>,
-    Path(action): Path<Text>,
+    PathParam(version): PathParam<ApiVersion>,
+    PathParam(action): PathParam<Text>,
 ) -> Response {
     match version {
         "v1" => v1_handle(action),
@@ -219,7 +219,7 @@ type UserId is Int where |n| { n >= 1 && n <= 1_000_000_000 };
 let app = Router.new()
     .route("/users/:id", Method.Get, get_user);
 
-async fn get_user(Path(id): Path<UserId>) -> Result<Json<User>, ApiError> {
+async fn get_user(PathParam(id): PathParam<UserId>) -> Result<Json<User>, ApiError> {
     // id is guaranteed positive and within the database's index space.
     // No need for a defensive `if id < 1 { return ... }`.
     db.find_user(id).await
@@ -233,7 +233,7 @@ type VerifiedUser is User where |u| { u.email_verified };
 type PremiumUser is VerifiedUser where |u| { u.subscription.is_active };
 
 async fn premium_only(
-    Path(id): Path<UserId>,
+    PathParam(id): PathParam<UserId>,
     Ctx(user): Ctx<PremiumUser>,
 ) -> Response {
     // SMT has chained: id valid AND user.email_verified AND user.subscription.is_active.
