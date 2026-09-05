@@ -199,7 +199,13 @@ type ApiError is
     | NotFound | Validation(Text) | Internal(Text) | Unauthorized;
 
 implement IntoResponse for ApiError {
-    fn into_response(self) -> Response { /* ... */ }
+    fn into_response(self) -> Response {
+        match self {
+            ApiError.NotFound     => resp_not_found(),
+            ApiError.Validation(m) => resp_bad_request(&m),
+            _                      => resp_internal_error(),
+        }
+    }
 }
 
 async fn get_user(PathParam(id): PathParam<UserId>)
