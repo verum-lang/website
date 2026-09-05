@@ -205,20 +205,28 @@ whether to recover.
 ## `RwLock<T>` — many readers, one writer
 
 ```verum
-let settings = Shared.new(RwLock.new(Settings.default()));
+context Settings {
+    fn read() -> Shared<RwLock<SettingsData>>;
+    fn write() -> Shared<RwLock<SettingsData>>;
+}
 
 async fn read_setting(key: &Text) -> Maybe<Value>
-    using [Settings = Shared<RwLock<Settings>>]
+    using [Settings]
 {
     Settings.read().await.get(key).cloned()
 }
 
 async fn write_setting(key: Text, value: Value)
-    using [Settings = Shared<RwLock<Settings>>]
+    using [Settings]
 {
     Settings.write().await.set(key, value);
 }
 ```
+
+The concrete value is supplied where the context is provided, not in the
+`using` clause — `provide Settings = Shared.new(RwLock.new(...));`. A
+`using` clause names contexts (optionally aliased with `as`); it does not
+bind their types.
 
 `read()` returns a read-only guard; many can coexist. `write()`
 returns an exclusive guard. Writer starvation is prevented by the

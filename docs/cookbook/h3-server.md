@@ -59,8 +59,8 @@ onto it are not defined — `no method named \`text\` found for type
 
 ```verum
 let body: List<Byte> = "ok".as_bytes().to_list();
-H3Response.ok(body)
-H3Response.status(404 as UInt16).with_header("x-k", "v")
+H3Response.ok(body);
+H3Response.status(404 as UInt16).with_header("x-k", "v");
 ```
 
 The examples below are left in their original form rather than

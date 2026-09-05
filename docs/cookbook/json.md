@@ -171,13 +171,16 @@ match raw.get("user").and_then(|u| u.get("name")) {
 ### Path-based access
 
 ```verum
-if let Maybe.Some(email) = raw.path("user.contact.email")? {
-    // email is Data — use .as_text(), .as_int(), etc.
-}
+fn read_contact(raw: Data) -> Result<(), JsonError> {
+    if let Maybe.Some(email) = raw.path("user.contact.email")? {
+        // email is Data — use .as_text(), .as_int(), etc.
+    }
 
-// With JSONPath:
-for match in raw.jpath(jpath#"$.users[*].name") {
-    print(match);
+    // With JSONPath:
+    for name in raw.jpath(jpath#"$.users[*].name") {
+        print(name);
+    }
+    Ok(())
 }
 ```
 
