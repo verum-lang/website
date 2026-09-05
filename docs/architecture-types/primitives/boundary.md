@@ -282,7 +282,7 @@ module my_app.external;
 
 @bridge_encoding(from: WireEncoding.VerumNative,
                  to:   WireEncoding.ProtoBuf("api_v1.proto"))
-public fn translate(internal: InternalMsg) -> ExternalMsg
+public fn translate(internal: InternalMsg) -> ExternalMsg;
 ```
 
 The bridge function is itself an architectural artefact and is

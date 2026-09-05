@@ -148,13 +148,11 @@ proof corpora — the admissibility certificate makes the
 admission explicit:
 
 ```verum
-@arch_module(
-    stratum: MsfsStratum.LAbs,
-    @admissibility_certificate(
-        method:    "forcing extension",
-        citation:  "Shoenfield 1971 — absoluteness of forcing",
-        condition: "ground model is L (the constructible hierarchy)",
-    ),
+@arch_module(stratum: MsfsStratum.LAbs)
+@admissibility_certificate(
+    method:    "forcing extension",
+    citation:  "Shoenfield 1971 — absoluteness of forcing",
+    condition: "ground model is L (the constructible hierarchy)",
 )
 module my_app.advanced.absolute_proof;
 ```

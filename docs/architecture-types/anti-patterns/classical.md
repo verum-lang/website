@@ -314,6 +314,7 @@ spelling
         executable:          Maybe.Some("verum extract --target=rust"),
     },
 )
+module my_app.checkout;
 ```
 
 or the flat fields `cve_closure_C: "…", cve_closure_V_strategy:

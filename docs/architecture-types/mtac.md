@@ -259,19 +259,17 @@ must be rotated within 90 days of its creation*. The MTAC
 encoding:
 
 ```verum
-@arch_module(
-    lifecycle: Lifecycle.Theorem("v1.0"),
-    @mtac(
-        decision: Decision {
-            point:       TimePoint { value: 0 },           // creation time
-            by_observer: Observer.Operator,
-            proposition: ArchProposition.InvariantHolds("key_rotated"),
-            modality:    ModalAssertion.Before(
-                point: TimePoint { value: 90 * 86400 },    // 90 days later
-                prop:  ArchProposition.InvariantHolds("key_rotated"),
-            ),
-        }
-    ),
+@arch_module(lifecycle: Lifecycle.Theorem("v1.0"))
+@mtac(
+    decision: Decision {
+        point:       TimePoint { value: 0 },           // creation time
+        by_observer: Observer.Operator,
+        proposition: ArchProposition.InvariantHolds("key_rotated"),
+        modality:    ModalAssertion.Before(
+            point: TimePoint { value: 90 * 86400 },    // 90 days later
+            prop:  ArchProposition.InvariantHolds("key_rotated"),
+        ),
+    }
 )
 module my_app.crypto.key_rotation;
 ```
