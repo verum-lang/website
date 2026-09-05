@@ -305,8 +305,9 @@ fn example() -> Result<(), DbError> {
     blurb:
       'A safe reference, a compiler-proven safe reference, and an unsafe reference — ' +
       'all the same type family, chosen per use site. The default tier carries a ' +
-      'per-access generation check; escape analysis routinely promotes hot-path ' +
-      'references to the proven-safe tier with zero residual cost. The unsafe tier ' +
+      'per-access generation check; escape analysis promotes the references it can ' +
+      'prove to the zero-cost tier and tells you which ones it could not, and why. ' +
+      'The unsafe tier ' +
       'is available where you need it (FFI, custom allocators) — and visible to the ' +
       'audit when you use it.',
     code: `fn sum_ages(users: &List<User>) -> Int {
@@ -319,8 +320,9 @@ fn example() -> Result<(), DbError> {
 }
 
 // $ verum analyze --escape
-// sum_ages: most references promoted to &checked
-//   safe by default, zero-cost where provable`,
+//   sum_ages: 1 of 5 refs promoted to &checked T (0ns)
+//   4 kept at Tier 0 — escapes scope
+//   Estimated savings: ~150ns/execution   Analysis time: 149us`,
   },
   {
     title: 'No hidden runtime',
