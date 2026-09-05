@@ -147,14 +147,14 @@ the next item, so the consumer and producer take turns cooperatively.
 
 An `async fn*` returns `Stream<T>`; the `Stream` protocol has:
 
-```verum
-.map(|x| f(x)) .filter(|x| pred(x)) .take(n) .skip(n)
-.chunks(size) .window(size) .throttle(duration) .timeout(duration)
-.flatten() .flat_map(|x| stream_expr)
-.buffer(max_in_flight) .buffer_unordered(max_in_flight)
-.merge(other) .zip(other)
-.scan(init, |acc, x| update) .fold_async(init, |acc, x| future)
-```
+| adapter | adapter | adapter |
+|---|---|---|
+| `.map(\|x\| f(x))` | `.filter(\|x\| pred(x))` | `.take(n)` |
+| `.skip(n)` | `.chunks(size)` | `.window(size)` |
+| `.throttle(duration)` | `.timeout(duration)` | `.flatten()` |
+| `.flat_map(\|x\| stream_expr)` | `.buffer(max_in_flight)` | `.buffer_unordered(max_in_flight)` |
+| `.merge(other)` | `.zip(other)` | `.scan(init, \|acc, x\| update)` |
+| `.fold_async(init, \|acc, x\| future)` |  |  |
 
 Example: concurrent HTTP fetches with bounded parallelism:
 
@@ -193,9 +193,8 @@ want deterministic cleanup at a specific point.
 An `async fn*` that yields `Result<T, E>` is common. A helper:
 
 ```verum
-async fn* try_lines(path: &Path) -> Text
+async fn* try_lines(path: &Path) throws(IoError) -> Text
     using [FileSystem]
-    throws(IoError)
 {
     let file = File.open_async(path).await?;
     let mut reader = BufReader.new(file);
