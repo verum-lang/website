@@ -132,13 +132,15 @@ pattern that binds whatever the partial pattern extracted.
 Parameterised partial patterns work the same way:
 
 ```verum
-pattern RegexMatch(re: Regex)(s: &Text) -> Maybe<List<Text>> =
-    re.captures(s).map(|caps| caps.groups());
+pattern RegexMatch(re: Text)(s: &Text) -> Maybe<List<Text>> =
+    Regex.new(re).captures(s).map(|caps| caps.groups());
 
-match email {
-    RegexMatch(rx#"^([^@]+)@([^@]+)$")(groups) =>
-        print(f"user = {groups[0]}, domain = {groups[1]}"),
-    _ => print("invalid email"),
+fn describe(email: &Text) {
+    match email {
+        RegexMatch("^([^@]+)@([^@]+)$")(groups) =>
+            print(f"user = {groups[0]}, domain = {groups[1]}"),
+        _ => print("invalid email"),
+    }
 }
 ```
 
