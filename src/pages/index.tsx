@@ -657,9 +657,9 @@ const NUMBERS = [
     body: 'Measured cost of the default-tier reference check on the production benchmark — against a 15 ns budget. Escape analysis promotes most hot-path accesses to exactly zero.',
   },
   {
-    icon: '1.4 M',
-    title: 'Lines parsed per second',
-    body: 'Front-end throughput on macOS arm64. A compile-speed contract test fails the build below 50 K — the headroom above that floor is measured, not asserted.',
+    icon: '2.5 M',
+    title: 'Lines lexed per second',
+    body: 'Front-end throughput on an M-series laptop, from the repository\u2019s own criterion bench; parsing the same corpus runs at 370–490 K. A compile-speed contract test fails the build below 50 K, so the headroom is enforced, not just claimed.',
   },
   {
     icon: '1×',
