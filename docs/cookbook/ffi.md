@@ -32,9 +32,16 @@ extern "C" {
 
 ffi FooC {
     @extern("libfoo.so")
-    fn init() -> Result<(), Error>;
-    @extern("libfoo.so")
     fn compute(xs: &[Float]) -> Result<Float, Error>;
+
+    requires       xs.len() > 0;
+    memory_effects = Reads(xs) + Allocates;
+    thread_safe    = true;
+    errors_via     = ReturnCode(result < 0);
+    @ownership(borrow)
+
+    @extern("libfoo.so")
+    fn init() -> Result<(), Error>;
     @extern("libfoo.so")
     fn shutdown();
 }
@@ -42,14 +49,16 @@ ffi FooC {
 
 The `ffi FooC { ... }` block is the **typed** wrapper; the
 `extern "C"` block is the raw binding. Each entry point names the
-library it comes from with `@extern`.
+library it comes from with `@extern`, and the contract clauses that
+follow a function belong to it: `requires` / `ensures`,
+`memory_effects`, `thread_safe`, `errors_via` and `@ownership`
+(`grammar/verum.ebnf`, *2.7 FFI Boundary Declarations*).
 
-The grammar also reserves per-boundary contract clauses inside the
-block — `memory_effects = ...;`, `thread_safe = ...;`,
-`errors_via = ...;`, `@ownership(...)`, and `requires` / `ensures`
-(`grammar/verum.ebnf`, *2.7 FFI Boundary Declarations*). The parser
-does not accept them yet, and nothing generates marshalling code from
-them, so write the conversion by hand as the next section does.
+The clauses attach to the function above them, so a block that opens
+with a clause and no function does not parse. Their values are checked:
+`thread_safe = 42` is rejected as "expected 'true' or 'false'", and
+`memory_effects = Zzz` as "expected memory effect". Combine effects with
+`+`, not a comma.
 
 ### Simpler form for small libraries
 
