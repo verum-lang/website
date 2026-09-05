@@ -514,7 +514,11 @@ implement<const SIZE: Int> StackAllocator<SIZE> {
     public fn dealloc(&mut self, ptr: *mut Byte, layout: Layout);   // LIFO only
     public fn save(&self) -> StackSavepoint;
     public fn restore(&mut self, savepoint: StackSavepoint);
-    public fn capacity(&self) / used() / remaining() / watermark() / alloc_count() -> Int;
+    public fn capacity(&self) -> Int;
+    public fn used(&self) -> Int;
+    public fn remaining(&self) -> Int;
+    public fn watermark(&self) -> Int;
+    public fn alloc_count(&self) -> Int;
     public fn reset(&mut self);       // keeps the lifetime watermark
     public fn reset_all(&mut self);   // clears the watermark too
 }

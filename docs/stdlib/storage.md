@@ -140,17 +140,17 @@ signed headers — alterations invalidate the signature.
 
 ```verum
 public type ObjectStore is protocol {
-    async fn put(&self, key, data, options)
+    async fn put(&self, key: &Text, data: &[Byte], options: &Options)
         -> Result<ObjectMetadata, StorageError>;
-    async fn get(&self, key, options)
+    async fn get(&self, key: &Text, options: &Options)
         -> Result<(ObjectMetadata, List<Byte>), StorageError>;
-    async fn head(&self, key)
+    async fn head(&self, key: &Text)
         -> Result<ObjectMetadata, StorageError>;
-    async fn delete(&self, key)
+    async fn delete(&self, key: &Text)
         -> Result<(), StorageError>;
-    async fn list(&self, options)
+    async fn list(&self, options: &Options)
         -> Result<ListPage, StorageError>;
-    fn presign(&self, key, options)
+    fn presign(&self, key: &Text, options: &Options)
         -> Result<Text, StorageError>;
     async fn head_bucket(&self)
         -> Result<(), StorageError>;

@@ -896,12 +896,15 @@ type RetryConfig is {
     backoff_factor: Float,
     jitter: Bool,
 };
-RetryConfig.fixed(attempts, delay_ms)
-RetryConfig.exponential(attempts, initial_ms)
-
-execute_with_retry(|| call_api(), max_attempts = 3, backoff_ms = 100)
-execute_with_retry_config(|| call_api(), config)
 ```
+
+| | |
+|---|---|
+| `RetryConfig.fixed(attempts, delay_ms)` | |
+| `RetryConfig.exponential(attempts, initial_ms)` | |
+| `execute_with_retry(\|\| call_api(), max_attempts = 3, backoff_ms = 100)` | |
+| `execute_with_retry_config(\|\| call_api(), config)` | |
+
 
 ### Circuit breaker
 
