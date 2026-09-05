@@ -117,13 +117,17 @@ Conditions can check:
 - Any of:          `@cfg(any(debug, test))`
 
 ```verum
-if @cfg(feature = "metrics") {
-    record_metric("request", duration);
+fn handle(duration: Int) {
+    if @cfg(feature = "metrics") {
+        record_metric("request", duration);
+    }
 }
 
 // Compile-time branch — dead code eliminated:
-type Backend is @cfg(target_os = "linux") { EpollBackend }
-                                    else  { KqueueBackend };
+@cfg(target_os = "linux")
+type Backend is EpollBackend;
+@cfg(target_os = "macos")
+type Backend is KqueueBackend;
 ```
 
 See `@cfg` conditions in the full form at
@@ -244,13 +248,13 @@ Is `T` a variant (sum) type?
 
 Is `T` a tuple type?
 
-### `@implements<T, P>()`
+### `@implements(T, P)`
 
 Does `T` implement protocol `P`?
 
 ```verum
 meta fn debug_if_possible<T>(x: T) {
-    if @implements<T, Debug>() {
+    if @implements(T, Debug) {
         @println("{x:?}");
     } else {
         @println("<{@type_name<T>()}>");
@@ -498,7 +502,7 @@ meta fn derive_display<T>() -> TokenStream {
 | `@is_struct<T>()`   | `Bool`                   | compile |
 | `@is_enum<T>()`     | `Bool`                   | compile |
 | `@is_tuple<T>()`    | `Bool`                   | compile |
-| `@implements<T,P>()`| `Bool`                   | compile |
+| `@implements(T,P)`| `Bool`                   | compile |
 | `@field_access<T>(e, f)` | expression          | compile |
 | `@embed(path)`      | `Bytes`                  | compile (BuildAssets) |
 | `@embed_glob(pat)`  | `List<(Text, Bytes)>`    | compile (BuildAssets) |

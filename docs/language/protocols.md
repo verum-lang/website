@@ -70,7 +70,7 @@ implement Display for User {
     }
 }
 
-implement<T> Iterator for Range<T: Numeric + Ord> {
+implement<T: Numeric + Ord> Iterator for Range<T> {
     type Item = T;
     fn next(&mut self) -> Maybe<T> {
         if self.current < self.end {
@@ -306,7 +306,7 @@ A protocol can be declared as a context:
 context protocol Logger {
     fn info(&self, msg: Text);
     fn error(&self, msg: Text);
-};
+}
 ```
 
 Context protocols can be both **required** by functions (`using

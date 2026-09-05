@@ -114,7 +114,8 @@ public fn hmac_sha512(key: &[Byte], data: &[Byte]) -> [Byte; 64];
 mount core.mac.hmac.{hmac_sha256};
 mount core.subtle.constant_time.{constant_time_eq};
 
-const COOKIE_KEY: [Byte; 32] = /* loaded from secrets, NOT hard-coded */ ;
+// loaded from secrets, NOT hard-coded
+const COOKIE_KEY: [Byte; 32] = load_secret("cookie_key");
 
 fn sign_cookie(payload: &[Byte]) -> (List<Byte>, [Byte; 32]) {
     let tag = hmac_sha256(&COOKIE_KEY, payload);
