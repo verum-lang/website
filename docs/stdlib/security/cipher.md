@@ -395,7 +395,7 @@ row 3:  n0  n1  n2  n3      n0 = counter, n1..n3 = nonce
 
 #### Quarter-round
 
-```verum
+```text
 quarter_round(a, b, c, d):
     a += b;  d ^= a;  d = d.rotate_left(16);
     c += d;  b ^= c;  b = b.rotate_left(12);
