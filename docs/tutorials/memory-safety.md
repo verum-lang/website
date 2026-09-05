@@ -118,14 +118,25 @@ mid-iteration mutation.
 ### Check the generated code
 
 ```bash
-$ verum check --tier-report | head -20
-  src/t0.vr:6   DllT0.new          T0 ref: 0   T1 ref: 0   T2 ref: 0
-  src/t0.vr:10  DllT0.push_front   T0 ref: 2   T1 ref: 0   T2 ref: 0
-  src/t0.vr:22  DllT0.iter         T0 ref: 1   T1 ref: 1   T2 ref: 0
+$ verum analyze --escape
+  -> Promotion Opportunities:
+  -> push_front (main.vr)
+    1 of 2 refs promoted to &checked T (0ns)
+    Promotion rate: 50.0%
+  -> sum (main.vr)
+    1 of 3 refs promoted to &checked T (0ns)
+    Promotion rate: 33.3%
+
+  ! References Kept at Tier 0 (~15ns CBGR):
+  ! sum (main.vr)
+    2 ref(s) at Tier 0
+      - Escapes scope: 2
 ```
 
-The `iter` function's `current` binding is automatically
-**promoted to tier 1** — the compiler proved it cannot escape.
+Every reference the analysis can prove local is **promoted to tier 1**
+for free; the ones it keeps at tier 0 come with the reason it could not
+— here, they escape the scope. The report is per function, and it runs
+on a project, not a single file.
 
 ## Step 3 — Tier 1: explicit `&checked`
 
@@ -242,7 +253,7 @@ fn escapes_via_ref(out: &mut &Int) {
 ```
 
 The compiler prints promotion/rejection reasons via
-`verum check --tier-report`.
+`verum analyze --escape`.
 
 ## Step 6 — Build and benchmark
 
@@ -282,7 +293,7 @@ compiler to prove every `&T` safe or fail.
 - **Tier 2** (`&unsafe T`) is for FFI and low-level code that owns
   its safety proof.
 - The compiler's **CBGR pass** promotes where safe and reports the
-  result via `verum check --tier-report`.
+  result via `verum analyze --escape`.
 - The `[runtime].cbgr_mode` manifest field lets you pick the
   policy per profile.
 

@@ -216,14 +216,18 @@ kind = "full"
 
 ```bash
 $ verum doc --open core                # generate + open docs
-$ verum doc --search "Iterator"        # search
+$ verum doc --format json              # machine-readable output
+$ verum doc --search "Iterator"        # NOT IMPLEMENTED — see note below
 $ verum api --signature "fn map"       # NOT IMPLEMENTED — see note below
 ```
 
 :::warning `verum api` does not exist
 Measured 2026-09-03: `verum api --help` answers `error: unrecognized
-subcommand`. There is no signature-search command. `verum doc` generates
-documentation and is the nearest thing that ships.
+subcommand`, and `verum doc --search` answers `error: unexpected
+argument '--search' found` (re-measured 2026-09-05). There is no search
+of any kind. `verum doc` generates documentation — `--open`,
+`--format`, `--no-deps`, `--document-private-items` — and is the nearest
+thing that ships.
 :::
 
 Source lives at `core/`.

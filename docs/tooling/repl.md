@@ -42,9 +42,13 @@ The REPL auto-loads the current project's modules if launched from a
 project root; otherwise it starts with only the prelude.
 
 ```bash
-$ verum repl --no-project         # start clean, no project context
-$ verum repl --session prev.vr    # load session
+$ verum repl --preload prev.vr    # load a file, then drop into the REPL
+$ verum repl --skip-verify        # skip SMT verification of loaded code
 ```
+
+To start with only the prelude, launch the REPL from a directory that is
+not a project root — there is no flag that suppresses project loading
+from inside one.
 
 ## Expressions and definitions
 
@@ -198,7 +202,7 @@ fibonacci(30)
 ## Session replay
 
 ```bash
-$ verum repl --session my-session.vr
+$ verum repl --preload my-session.vr
 ```
 
 Loads `my-session.vr`, replays each expression, drops into the REPL
@@ -286,8 +290,8 @@ shell).
 
 ### Slow startup with large projects
 
-A project with 100+ source files takes 1-3 s to index. Use
-`--no-project` if you're just testing a snippet.
+A project with 100+ source files takes 1-3 s to index. Launch the REPL
+from outside the project root if you are just testing a snippet.
 
 ### SMT cache in REPL
 
