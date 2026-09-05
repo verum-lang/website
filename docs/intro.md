@@ -174,7 +174,7 @@ emitted at build time. **See
 | Memory safety | borrow checker (no opt-out without `unsafe`) | three tiers: safe by default, compiler-proven-safe where provable, manually-proven-safe at FFI boundary |
 | Effects / contexts | hidden globals + ad-hoc thread-locals | explicit `using [...]` clause — propagates across async, no implicit injection. Same grammar drives runtime DI and compile-time meta-contexts |
 | SMT integration | none / single backend | multi-backend (general SMT plus specialised dependent / exhaustiveness / refinement adapters) with capability routing |
-| Proof export | external | Lean / Coq / Dedukti / Metamath / Isabelle export plus program extraction |
+| Proof export | external | Lean / Coq / Dedukti / Metamath certificates plus program extraction; Coq, Lean 4, Mizar and Isabelle read back in with `verum foreign-import` |
 | Stdlib type names | implementation-leaking (`Vec`, `String`, `HashMap`) | semantic-honest (`List`, `Text`, `Map`, `Heap`, `Shared`) |
 | Framework axioms | implicit / undocumented | every cited axiom carries a structured citation; the trusted boundary is enumerable |
 | Audit surface | per-tool, ad-hoc | every claim mechanically observable; gates aggregate to a single load-bearing verdict |
