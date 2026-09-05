@@ -599,7 +599,7 @@ const TOOLS = [
   {
     icon: '⚙',
     title: 'verum build — Tier 1',
-    body: 'Native AOT through LLVM: one self-contained binary holding the native-C parity bar (1×), speaking syscalls (or libSystem / kernel32) directly. Cross-target flags included.',
+    body: 'Native AOT through LLVM: one self-contained binary, speaking syscalls (or libSystem / kernel32) directly — this is the path aimed at the native-C bar. Cross-target flags included.',
   },
   {
     icon: '✎',
