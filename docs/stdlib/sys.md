@@ -305,16 +305,16 @@ arena entirely inert under Tier 0. See
 Refinement-typed value types used by the I/O engine protocol below.
 
 ```verum
-public type Port is UInt16
-public type BoundPort is Port where |p| p > 0
+public type Port is UInt16;
+public type BoundPort is Port where |p| p > 0;
 
-public type EngineDuration is (UInt64)            // always non-negative
-public type NonZeroDuration is EngineDuration where |d| d.0 > 0
+public type EngineDuration is (UInt64);           // always non-negative
+public type NonZeroDuration is EngineDuration where |d| d.0 > 0;
 
-public type TimeSpec is { tv_sec: Int64, tv_nsec: Int64 }
+public type TimeSpec is { tv_sec: Int64, tv_nsec: Int64 };
 
-public type Fd is (Int32)
-public type ValidFd is Fd where |fd| fd.0 >= 0
+public type Fd is (Int32);
+public type ValidFd is Fd where |fd| fd.0 >= 0;
 ```
 
 ### `EngineDuration` constructors and accessors

@@ -20,11 +20,11 @@ public type Event is
     | FocusLost;
 
 implement Event {
-    fn is_key(&self)    -> Bool
-    fn is_mouse(&self)  -> Bool
-    fn is_resize(&self) -> Bool
-    fn as_key(&self)    -> Maybe<KeyEvent>
-    fn as_mouse(&self)  -> Maybe<MouseEvent>
+    fn is_key(&self)    -> Bool;
+    fn is_mouse(&self)  -> Bool;
+    fn is_resize(&self) -> Bool;
+    fn as_key(&self)    -> Maybe<KeyEvent>;
+    fn as_mouse(&self)  -> Maybe<MouseEvent>;
 }
 ```
 
@@ -40,11 +40,11 @@ public type KeyEvent is {
 public type KeyEventKind is Press | Release | Repeat;
 
 implement KeyEvent {
-    fn press(code: KeyCode) -> KeyEvent
-    fn with_mods(code: KeyCode, mods: Modifiers) -> KeyEvent
-    fn is_ctrl_c(&self) -> Bool
-    fn is_escape(&self) -> Bool
-    fn is_enter(&self)  -> Bool
+    fn press(code: KeyCode) -> KeyEvent;
+    fn with_mods(code: KeyCode, mods: Modifiers) -> KeyEvent;
+    fn is_ctrl_c(&self) -> Bool;
+    fn is_escape(&self) -> Bool;
+    fn is_enter(&self)  -> Bool;
 }
 ```
 
