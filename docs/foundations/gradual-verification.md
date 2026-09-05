@@ -24,7 +24,7 @@ version adds a better backend, your annotations don't change.
 ```verum
 @verify(formal)
 fn transfer(from: &mut Account, to: &mut Account, amount: Money)
-    where requires amount > 0 && from.balance >= amount
+    requires amount > 0 && from.balance >= amount
     where ensures  from.balance == old(from.balance) - amount
     where ensures  to.balance   == old(to.balance)   + amount
 { ... }
@@ -66,7 +66,7 @@ verify_strategy =
 ```verum
 @verify(runtime)
 fn experimental(x: Int) -> Int
-    where requires x > 0
+    requires x > 0
     where ensures  result > 0
 {
     x * 2                // requires + ensures checked at runtime
@@ -111,7 +111,7 @@ fn safe_div(a: Int, b: Int { self != 0 }) -> Int {
 ```verum
 @verify(formal)
 fn balance_after_debit(balance: Money, debit: Money) -> Money
-    where requires debit >= 0 && balance >= debit
+    requires debit >= 0 && balance >= debit
     where ensures  result == balance - debit
     where ensures  result >= 0
 {
@@ -262,7 +262,7 @@ spec".
 ```verum
 @verify(synthesize)
 fn maximum(xs: &List<Int>) -> Int
-    where requires xs.len() > 0
+    requires xs.len() > 0
     where ensures  result == max_of(xs)
     where ensures  xs.contains(result)
 {
@@ -301,7 +301,7 @@ pub fn verify_signature(msg: &[Byte], sig: &Signature, pk: &PublicKey) -> Bool
 // Domain logic; SMT at full power
 @verify(formal)
 pub fn transfer(from: &mut Account, to: &mut Account, amount: Money)
-    where requires amount > 0
+    requires amount > 0
     where ensures  from.balance + to.balance == old(from.balance + to.balance)
 { ... }
 

@@ -130,9 +130,9 @@ All provable by `omega`. The compiler accepts it.
 ```verum
 implement RingBuffer {
     pub fn push(&mut self, value: Int)
-        where requires self.len < self.capacity
-        where ensures  self.len == old(self.len) + 1
-        where ensures  self.capacity == old(self.capacity)
+        requires self.len < self.capacity
+        ensures        self.len == old(self.len) + 1
+        ensures        self.capacity == old(self.capacity)
     {
         self.data[self.tail] = value;
         self.tail = (self.tail + 1) % self.capacity;
@@ -192,8 +192,8 @@ fn push_if_space(buf: &mut RingBuffer, value: Int) -> Bool {
 ```verum
 implement RingBuffer {
     pub fn pop(&mut self) -> Maybe<Int>
-        where ensures result.is_some() => self.len == old(self.len) - 1
-        where ensures result.is_none() => self.len == old(self.len)
+        ensures       result.is_some() => self.len == old(self.len) - 1
+        ensures       result.is_none() => self.len == old(self.len)
     {
         if self.len == 0 {
             return Maybe.None;
@@ -218,10 +218,10 @@ implement RingBuffer {
         let mut total = 0;
         let mut i = 0;
         while i < self.len
-            where invariant 0 <= i && i <= self.len,
-                  invariant total == self.data
-                      .iter().skip(self.head).take(i).sum()
-            where decreases self.len - i
+            invariant 0 <= i && i <= self.len
+            invariant total == self.data
+                          .iter().skip(self.head).take(i).sum()
+            decreases self.len - i
         {
             total += self.data[(self.head + i) % self.capacity];
             i += 1;
@@ -270,8 +270,8 @@ Remove the `requires` from `push`:
 
 ```verum
 pub fn push(&mut self, value: Int)
-    // removed: where requires self.len < self.capacity
-    where ensures self.len == old(self.len) + 1
+    // removed: requires self.len < self.capacity
+    ensures       self.len == old(self.len) + 1
 {
     ...
 }
