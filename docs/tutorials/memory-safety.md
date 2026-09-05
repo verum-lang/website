@@ -93,12 +93,12 @@ implement<T> DllT0<T> {
         }
     }
 
-    fn node_iter(&self) -> impl Iterator<Item = &Node<T>> {
+    fn* node_iter(&self) -> &Node<T> {
         let mut current = self.head.as_ref();
-        gen{
-            let n = current.unwrap().as_ref();
-            current = n.next.as_ref();
-            n
+        while let Maybe.Some(n) = current {
+            let node = n.as_ref();
+            yield node;
+            current = node.next.as_ref();
         }
     }
 }
