@@ -94,25 +94,32 @@ cofix fn bad() -> Stream<Int> {
 This is the dual of induction's termination check: induction demands
 the input shrink; coinduction demands the output grow.
 
-:::warning The productivity check cannot be what rejects it today
-Measured 2026-09-03 and re-measured 2026-09-04: the productive
-definition and the unproductive one
-produce the **same** diagnostic, so the rejection is not the productivity
-check speaking.
+:::warning A copattern arm body is not checked — write it with care
+Re-measured 2026-09-05, and the finding is worse than the one this note
+carried before. On 2026-09-04 a copattern body produced an inference
+error. It now produces **silence**: the arm bodies are not checked at
+all, neither their types nor their names.
 
-    cofix fn nats_from(n: Int) -> Stream<Int> { .head => n, .tail => ... }
-      -> error: Type inference for expression kind 'copattern body'
-                requires additional context.
+    cofix fn spin() -> Stream<Int> { .head => "not an int", .tail => spin() }
+      -> accepted, by `verum check` AND `verum build`
 
-    cofix fn bad() -> Stream<Int> { .head => bad().head(), .tail => bad() }
-      -> the identical error
+    cofix fn spin() -> Stream<Int> { .head => undefined_name_xyz, ... }
+      -> accepted
 
-A copattern body does not typecheck at all — the control fails exactly
-as the subject does — so a negative test on this page's `bad()` would
-pass for the wrong reason. `check_cofix_productivity` exists in the
-pipeline and is called; it is not reached, because inference stops
-first. The conformance spec `070_copattern_basic.vr` carries
-`@expect: pass` and reports nine errors.
+    fn plain() -> Int { "not an int" }        // the control
+      -> error<E400>: Type mismatch: expected 'Int', found 'Text'
+
+The control fails in the same invocation, so the checker is running —
+the silence is specific to copattern arms.
+
+The productivity check inherits the silence. `spin()` with every
+self-call unguarded — `.head => spin().head(), .tail => spin().tail()` —
+is accepted, so **nothing on this page rejects an unproductive
+definition today**. `check_cofix_productivity` is wired and reachable;
+it has nothing to work on. Tracked as A79.
+
+Read the examples below as the shape of the definition. The compiler
+will not catch a mistake inside an arm for you yet.
 :::
 
 ## Coinductive protocols
@@ -144,8 +151,9 @@ textbook coinductive definition.
 It is written the way the feature is meant to read, not the way it
 currently behaves. Two things are missing, both measured 2026-09-04:
 
-* copattern bodies still fail inference, the same diagnostic as the
-  warning above — so `hamming()` does not typecheck;
+* copattern arm bodies are not checked at all (the warning above), so
+  `hamming()` does not typecheck — it is *accepted without being
+  checked*, which is not the same thing and is worse;
 * `merge3` and `map_stream` are declared nowhere in `core/`, and
   `.take(10)` is not available here: the `Stream<T>` protocol on this
   page declares `.head` and `.tail` and nothing else. (`core.async.
@@ -201,9 +209,18 @@ side of the definition.
 
 ## Bisimulation proofs
 
-To prove two streams equal, Verum's proof DSL has a bisimulation tactic:
+To prove two streams equal you need bisimulation: agreement on `.head`,
+and a bisimulation on the two `.tail`s. The verifier implements it —
+`verum_smt::coinductive::CoinductiveChecker` discharges stream equality
+through Z3 — but it is reachable only from Rust today. There is no
+surface tactic: `bisimulation` appears nowhere in `grammar/verum.ebnf`,
+and the block below is rejected with `expected proof step (have, show,
+suffices, let, obtain, …)`.
+
+The shape the surface syntax is meant to take:
 
 ```verum
+// not yet supported: `bisimulation` is not a surface tactic — see above
 theorem nat_plus_zero(n: Int)
     ensures nats_from(n) == map_stream(|x| x + 0, nats_from(n))
 {
