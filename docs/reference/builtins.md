@@ -328,8 +328,8 @@ pick when `async_worker_threads = 0`.
 ### `sleep_ms` / `sleep_ns`
 
 ```verum
-fn sleep_ms(ms: Int)
-fn sleep_ns(ns: Int)
+fn sleep_ms(ms: Int);
+fn sleep_ns(ns: Int);
 ```
 
 Block the current thread (or task, when called from an `async` fn)
