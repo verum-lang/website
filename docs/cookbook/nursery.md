@@ -242,9 +242,13 @@ type NurseryError is
 
 Two recover syntaxes:
 
+`recover` attaches to a `try`, it is not a statement of its own:
+
 ```verum
 // Match-arm form:
-recover {
+try {
+    run_nursery()
+} recover {
     NurseryError.Timeout => default_value,
     NurseryError.Cancelled => Result.Err(Error.Cancelled),
     NurseryError.Single(e) => Result.Err(e),
@@ -252,7 +256,9 @@ recover {
 }
 
 // Closure form:
-recover |e| {
+try {
+    run_nursery()
+} recover |e| {
     log_error(e);
     Result.Err(Error.from(e))
 }

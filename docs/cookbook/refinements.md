@@ -46,9 +46,9 @@ a proof — usually one `@verify(formal)` or an explicit `ensures`.
 
 ```verum
 type NonEmpty<T>           is List<T> { self.len() > 0 };
-type AtLeast<T, const N>   is List<T> { self.len() >= N };
-type AtMost<T, const N>    is List<T> { self.len() <= N };
-type ExactLen<T, const N>  is List<T> { self.len() == N };
+type AtLeast<T, const N: Int>   is List<T> { self.len() >= N };
+type AtMost<T, const N: Int>    is List<T> { self.len() <= N };
+type ExactLen<T, const N: Int>  is List<T> { self.len() == N };
 
 fn first<T: Copy>(xs: &NonEmpty<T>) -> T {
     xs[0]                                // indexing is safe — the refinement proves it

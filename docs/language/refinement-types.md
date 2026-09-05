@@ -167,8 +167,8 @@ type Octet        is Int   { 0 <= self && self <= 255 };
 
 ```verum
 type NonEmpty<T>          is List<T> { self.len() > 0 };
-type AtLeast<T, const N>  is List<T> { self.len() >= N };
-type ExactLen<T, const N> is List<T> { self.len() == N };
+type AtLeast<T, const N: Int>  is List<T> { self.len() >= N };
+type ExactLen<T, const N: Int> is List<T> { self.len() == N };
 ```
 
 ### Sortedness / structure
@@ -200,8 +200,8 @@ fn first<T: Copy>(xs: &NonEmpty<T>) -> T {
 fn try_first<T: Copy>(xs: &List<T>) -> Maybe<T> {
     if xs.len() > 0 {
         // Refinement of xs promoted inside this branch.
-        let view: &NonEmpty<T> = xs;  // discharge: xs.len() > 0 ✓
-        Maybe.Some(first(view))
+        let nonempty: &NonEmpty<T> = xs;  // discharge: xs.len() > 0 ✓
+        Maybe.Some(first(nonempty))
     } else {
         Maybe.None
     }
