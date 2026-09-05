@@ -53,9 +53,9 @@ async fn scheduler() using [Logger] {
 
     loop {
         select {
-            _ = fast.tick()   => handle_fast().await,
-            _ = slow.tick()   => handle_slow().await,
-            _ = hourly.tick() => handle_hourly().await,
+            _ = fast.tick().await   => handle_fast().await,
+            _ = slow.tick().await   => handle_slow().await,
+            _ = hourly.tick().await => handle_hourly().await,
         }
     }
 }
@@ -68,8 +68,8 @@ async fn run_until_stop(stop: Shared<AtomicBool>) using [Logger] {
     let mut ticker = Interval.new(1.secs());
     while !stop.load(MemoryOrdering.Acquire) {
         select {
-            _ = ticker.tick() => do_work().await,
-            _ = sleep(50.millis()) => continue,     // quick check of the flag
+            _ = ticker.tick().await => do_work().await,
+            _ = sleep(50.millis()).await => continue,     // quick check of the flag
         }
     }
 }

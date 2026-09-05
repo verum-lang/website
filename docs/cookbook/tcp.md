@@ -138,7 +138,7 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
     loop {
         match select {
             r = stream.read_async(&mut buf).await => r,
-            _ = sleep(30.secs()) => Result.Err(IoError.Timeout),
+            _ = sleep(30.secs()).await => Result.Err(IoError.Timeout),
         } {
             Result.Ok(0) => break,
             Result.Ok(n) => {
@@ -146,7 +146,7 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
                     w = write_everything(&mut stream, &buf[..n]).await => {
                         if w.is_err() { break; }
                     }
-                    _ = sleep(10.secs()) => {
+                    _ = sleep(10.secs()).await => {
                         Logger.warn(f"{peer} write timeout");
                         break;
                     }

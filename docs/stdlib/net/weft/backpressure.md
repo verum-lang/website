@@ -37,7 +37,7 @@ Bounds available requests at a fixed integer.
 public type ConcurrencyLimitLayer is { max: Int };
 
 implement ConcurrencyLimitLayer {
-    public fn new(max: Int) -> ConcurrencyLimitLayer
+    public fn new(max: Int) -> ConcurrencyLimitLayer;
 }
 ```
 
@@ -63,7 +63,7 @@ public type RateConfig is {
 public type RateLimitLayer is { config: RateConfig };
 
 implement RateLimitLayer {
-    public fn new(config: RateConfig) -> RateLimitLayer
+    public fn new(config: RateConfig) -> RateLimitLayer;
 }
 ```
 
@@ -86,7 +86,7 @@ Converts `Pending` from inner into immediate `Err(Overloaded)`.
 public type LoadShedLayer<S> is { inner: S };
 
 implement<S: Service<...>> LoadShedLayer<S> {
-    public fn new(inner: S) -> LoadShedLayer<S>
+    public fn new(inner: S) -> LoadShedLayer<S>;
 }
 ```
 
@@ -106,7 +106,7 @@ The Netflix concurrency-limits algorithm (Vegas), ported.
 public type AdaptiveConcurrencyLayer is { /* opaque */ };
 
 implement AdaptiveConcurrencyLayer {
-    public fn vegas() -> AdaptiveConcurrencyLayer
+    public fn vegas() -> AdaptiveConcurrencyLayer;
 }
 ```
 
@@ -137,7 +137,7 @@ public type CoDelConfig is {
 public type CoDelLayer is { config: CoDelConfig };
 
 implement CoDelLayer {
-    public fn new(config: CoDelConfig) -> CoDelLayer
+    public fn new(config: CoDelConfig) -> CoDelLayer;
 }
 ```
 
@@ -191,16 +191,16 @@ For handler authors writing connection-event-loops:
 ```verum
 select biased {
     _ = shutdown_signal.await => return drain_and_stop(),
-    req = high_priority_queue.recv() => handle_critical(req).await,
-    req = normal_queue.recv() => handle(req).await,
-    req = low_priority_queue.recv() => {
+    req = high_priority_queue.recv().await => handle_critical(req).await,
+    req = normal_queue.recv().await => handle(req).await,
+    req = low_priority_queue.recv().await => {
         if admission_limit.try_acquire() {
             handle(req).await
         } else {
             respond(503, "Retry-After: 5")
         }
     },
-    _ = timeout(100.millis()) => continue,
+    _ = timeout(100.millis()).await => continue,
 }
 ```
 
