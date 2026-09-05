@@ -134,14 +134,16 @@ Typical patterns:
 
 ```verum
 // Fire a Tick every 60 ms for animations.
-interval(Duration.from_millis(60), || Msg.AnimationTick)
-
-// Combine a clock and a filesystem watcher.
-sub_batch([
-    every(Duration.from_secs(1), |t| Msg.Clock(t)),
-    sub_from_stream(Heap(fs_watcher("./"))),
-])
 ```
+
+| | |
+|---|---|
+| `interval(Duration.from_millis(60), \|\| Msg.AnimationTick)` |  |
+| `// Combine a clock and a filesystem watcher.` |  |
+| `sub_batch([` |  |
+| `every(Duration.from_secs(1), \|t\| Msg.Clock(t)),` |  |
+| `sub_from_stream(Heap(fs_watcher("./"))),` |  |
+| `])` |  |
 
 ## Execution model
 

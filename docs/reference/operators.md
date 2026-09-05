@@ -216,14 +216,14 @@ for chainable pipelines; see
 
 ## Optional chaining `?.`
 
-```verum
-user?.address?.city?.name       // returns `Maybe.None` if any step is None
+*Equivalent to:*
 
-// Equivalent to:
-user.and_then(|u| u.address)
-    .and_then(|a| a.city)
-    .and_then(|c| c.name)
-```
+| | |
+|---|---|
+| `user?.address?.city?.name` | returns `Maybe.None` if any step is None |
+| `user.and_then(\|u\| u.address)` |  |
+| `.and_then(\|a\| a.city)` |  |
+| `.and_then(\|c\| c.name)` |  |
 
 Each `?.method()` short-circuits on `Maybe.None`; the result type is
 `Maybe<Final>`.

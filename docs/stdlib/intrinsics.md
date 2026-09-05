@@ -1102,10 +1102,14 @@ type CpuCapabilities is {
     has_crc32: Bool,         has_popcnt: Bool,       has_lzcnt: Bool,
     has_atomic_16b: Bool,
 };
-detect_capabilities() -> CpuCapabilities
-const MAX_SIMD_WIDTH: Int;
-const PREFERRED_SIMD_WIDTH: Int;
 ```
+
+| | |
+|---|---|
+| `detect_capabilities() -> CpuCapabilities` |  |
+| `const MAX_SIMD_WIDTH: Int` |  |
+| `const PREFERRED_SIMD_WIDTH: Int` |  |
+
 
 ### `lowlevel/x86_64.vr` (x86_64 only)
 

@@ -71,11 +71,11 @@ assert(clk.now_ns() == 250_000_000);
 public type SeededRng is { /* opaque */ };
 
 implement SeededRng {
-    public fn new(seed: UInt64) -> SeededRng
-    public fn next_u64(&self) -> UInt64
-    public fn next_u32(&self) -> UInt32
-    public fn next_bounded(&self, max: Int) -> Int
-    public fn flip(&self) -> Bool
+    public fn new(seed: UInt64) -> SeededRng;
+    public fn next_u64(&self) -> UInt64;
+    public fn next_u32(&self) -> UInt32;
+    public fn next_bounded(&self, max: Int) -> Int;
+    public fn flip(&self) -> Bool;
 }
 ```
 
@@ -137,13 +137,13 @@ public type RoundRobinSchedule is { /* ... */ };
 public type RandomSchedule is { rng: SeededRng };
 
 implement RoundRobinSchedule {
-    public fn new() -> RoundRobinSchedule
-    public fn pick_next(&self, ready_count: Int) -> Int
+    public fn new() -> RoundRobinSchedule;
+    public fn pick_next(&self, ready_count: Int) -> Int;
 }
 
 implement RandomSchedule {
-    public fn new(rng: SeededRng) -> RandomSchedule
-    public fn pick_next(&self, ready_count: Int) -> Int
+    public fn new(rng: SeededRng) -> RandomSchedule;
+    public fn pick_next(&self, ready_count: Int) -> Int;
 }
 ```
 
@@ -161,18 +161,18 @@ public type SimConfig is {
 };
 
 implement SimConfig {
-    public fn chaos_from_seed(seed: UInt64) -> SimConfig
+    public fn chaos_from_seed(seed: UInt64) -> SimConfig;
 }
 
 public type WeftSimulator is { /* opaque */ };
 
 implement WeftSimulator {
-    public fn new(cfg: SimConfig) -> WeftSimulator
-    public fn run<App>(app: App)                         // run the user app inside the sim
-    public fn advance(&self, by: Duration)               // step simulation
-    public fn check<F>(&self, predicate: F)              // record a property to check
-    public fn invariants_ok(&self) -> Bool               // all checks held throughout
-    public fn assert_invariant<F>(&self, predicate: F)   // single-shot assertion
+    public fn new(cfg: SimConfig) -> WeftSimulator;
+    public fn run<App>(app: App);                        // run the user app inside the sim
+    public fn advance(&self, by: Duration);              // step simulation
+    public fn check<F>(&self, predicate: F);             // record a property to check
+    public fn invariants_ok(&self) -> Bool;              // all checks held throughout
+    public fn assert_invariant<F>(&self, predicate: F);  // single-shot assertion
 }
 ```
 

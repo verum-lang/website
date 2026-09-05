@@ -444,14 +444,14 @@ whether statements span one line or many.
 
 A **path** is a dotted sequence of identifiers that names an item:
 
-```verum
-core.io.print
-core.collections.Map
-core.math.frameworks.lurie_htt.sheafification_is_infinity_topos
-self.field
-super.function
-crate.types.User
-```
+| | |
+|---|---|
+| `core.io.print` |  |
+| `core.collections.Map` |  |
+| `core.math.frameworks.lurie_htt.sheafification_is_infinity_topos` |  |
+| `self.field` |  |
+| `super.function` |  |
+| `crate.types.User` |  |
 
 Roots:
 

@@ -334,7 +334,7 @@ holding one — is `error<E303>`. A function's own parameters are exempt:
 a parameter arrived by being moved in and its scope end is where it is
 destroyed, so requiring it to move on again would make
 `fn close(h: Handle) { }` — the canonical consumer — the one thing a
-linear type could not have.
+type linear could not have.
 
 Consuming a value in EACH arm of a `match` is correct and accepted,
 because exactly one arm runs. Consuming it in one arm and using it after

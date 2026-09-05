@@ -524,11 +524,14 @@ type FileType is
     | Dir
     | Symlink
     | Unknown;
-
-ft.is_file() -> Bool
-ft.is_dir() -> Bool
-ft.is_symlink() -> Bool
 ```
+
+| | |
+|---|---|
+| `ft.is_file() -> Bool` |  |
+| `ft.is_dir() -> Bool` |  |
+| `ft.is_symlink() -> Bool` |  |
+
 
 > **Note** (#io-10): The 4-variant FileType collapses POSIX's 8 types
 > (block / char device / fifo / socket dropped into Unknown). Consumers

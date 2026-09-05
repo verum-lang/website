@@ -253,7 +253,7 @@ Verum has *two* linearity-related surfaces, easy to confuse:
 
 The type-level modifier (`affine type Foo` or `linear type Foo`)
 constrains the *type's destruction contract* — every value of an
-affine type carries the same "at most once" rule across its
+type affine carries the same "at most once" rule across its
 lifetime.
 
 The binder-level quantity (`@quantity(N)` per this page) constrains

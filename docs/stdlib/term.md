@@ -245,21 +245,22 @@ type Styled is protocol {
 
 ```verum
 Block.new()
-    .title(&"  Title  ")
-    .borders(Borders.All)              // All | Top | Left | Right | Bottom | None
-    .border_type(BorderType.Round)     // Round | Double | Thick | Thin | Plain
-    .border_style(Style.new().fg(Color.Cyan))
-    .style(Style.new().bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 })))
-
-Paragraph.new(&"body text")
-    .block(Block.new().borders(Borders.All))
-    .alignment(Alignment.Left)
-    .wrap(Wrap.Wrap)                   // No | Wrap | Truncate
-    .style(Style.new().fg(Color.White))
-
-Line.new(&spans)           // a single styled line
-Span.new(&"text").fg(Color.Red)      // an inline styled run
 ```
+
+| | |
+|---|---|
+| `.title(&"  Title  ")` |  |
+| `.borders(Borders.All)` | All \| Top \| Left \| Right \| Bottom \| None |
+| `.border_type(BorderType.Round)` | Round \| Double \| Thick \| Thin \| Plain |
+| `.border_style(Style.new().fg(Color.Cyan))` |  |
+| `.style(Style.new().bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 })))` |  |
+| `Paragraph.new(&"body text")` |  |
+| `.block(Block.new().borders(Borders.All))` |  |
+| `.alignment(Alignment.Left)` |  |
+| `.wrap(Wrap.Wrap)` | No \| Wrap \| Truncate |
+| `.style(Style.new().fg(Color.White))` |  |
+| `Line.new(&spans)` | a single styled line |
+| `Span.new(&"text").fg(Color.Red)` | an inline styled run |
 
 ### Interactive widgets
 

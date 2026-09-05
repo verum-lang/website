@@ -129,10 +129,13 @@ implement<T> Deref for Boxy<T> {
 }
 
 let b: Boxy<List<Int>> = Boxy { inner: [10, 20, 30] };
-
-b[1]        // 20   — indexing through Deref
-b.len()     // 3    — method call through Deref
 ```
+
+| expression | |
+|---|---|
+| `b[1]` | 20 — indexing through `Deref` |
+| `b.len()` | 3    — method call through Deref |
+
 
 The canonical case is a lock guard: `MutexGuard<List<T>>` derefs to
 `List<T>`, so `guard[i]`, `guard.len()` and `guard.field` all read the
@@ -211,9 +214,12 @@ if the analysis succeeds.
 
 ## Raw pointers
 
-```verum
-*const T        *mut T        *volatile T        *volatile mut T
-```
+| | |
+|---|---|
+| `*const T` |  |
+| `*mut T` |  |
+| `*volatile T` |  |
+| `*volatile mut T` |  |
 
 Raw pointers are produced via `ptr.addr_of!`, `ptr.addr_of_mut!`, or
 FFI boundary casts. They do not carry lifetime; dereferencing them is

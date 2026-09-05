@@ -101,18 +101,24 @@ public type FlexItem is {
     max_size: Maybe<Int>,
     align_self: Maybe<AlignItems>,
 };
-
-FlexLayout.row()
-FlexLayout.column()
-    .wrap(w)            .justify(j)         .align_items(a)
-    .align_content(ac)  .gap(n)
-    .compute(container: Rect, items: &List<FlexItem>) -> List<Rect>
-
-FlexItem.new()
-    .grow(f: Float)     .shrink(f: Float)   .fixed(n: Int)
-    .percentage(p: Int) .min(n: Int)        .max(n: Int)
-    .align(a: AlignItems)
 ```
+
+| | |
+|---|---|
+| `FlexLayout.row()` |  |
+| `FlexLayout.column()` |  |
+| `.wrap(w)` |  |
+| `.justify(j)` |  |
+| `.align_items(a)` |  |
+| `.align_content(ac)  .gap(n)` |  |
+| `.compute(container: Rect, items: &List<FlexItem>) -> List<Rect>` |  |
+| `FlexItem.new()` |  |
+| `.grow(f: Float)` |  |
+| `.shrink(f: Float)` |  |
+| `.fixed(n: Int)` |  |
+| `.percentage(p: Int) .min(n: Int)` |  |
+| `.max(n: Int)` |  |
+| `.align(a: AlignItems)` |  |
 
 ## Grid layout
 

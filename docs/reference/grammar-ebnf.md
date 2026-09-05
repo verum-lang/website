@@ -1497,21 +1497,24 @@ calc_step =
 calc_relation = '==' | '<' | '<=' | '>' | '>=' | '!=' ;
 ```
 
-```verum
-theorem sum_first_n(n: Int { self >= 0 })
-    -> sum(0..=n) == n * (n+1) / 2
-{
-    proof by induction n {
-        case 0 => qed
-        case k + 1 => calc {
-            sum(0..=k+1)
-          == { by unfold sum }   sum(0..=k) + (k+1)
-          == { by ih }        k*(k+1)/2 + (k+1)
-          == { by ring }      (k+1)*(k+2)/2 ;
-        };
-    }
-}
-```
+| | |
+|---|---|
+| `theorem sum_first_n(n: Int { self >= 0 })` |  |
+| `-> sum(0..=n) == n * (n+1) / 2` |  |
+| `{` |  |
+| `proof by induction n {` |  |
+| `case 0 => qed` |  |
+| `case k + 1 => calc {` |  |
+| `sum(0..=k+1)` |  |
+| `== { by unfold sum }` |  |
+| `sum(0..=k) + (k+1)` |  |
+| `== { by ih }` |  |
+| `k*(k+1)/2 + (k+1)` |  |
+| `== { by ring }` |  |
+| `(k+1)*(k+2)/2` |  |
+| `}` |  |
+| `}` |  |
+| `}` |  |
 
 ---
 

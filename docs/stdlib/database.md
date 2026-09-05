@@ -149,7 +149,7 @@ COMMIT or ROLLBACK because of an early return / panic / forgotten
 branch) becomes lexically impossible.
 
 ```verum
-public affine type Transaction is {
+public type affine Transaction is {
     started_at_depth: Int,    // tx-depth snapshot for sanity check
     kind: TxKind,             // Deferred / Immediate / Exclusive
 };
