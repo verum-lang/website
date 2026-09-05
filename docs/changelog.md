@@ -481,10 +481,10 @@ with **garbage instead of an error**:
 ```verum
 let mut handles: List<Future<Int>> = List.new();
 handles.push(spawn(async { work(1).await }));
-handles[0].await          // a large negative integer, not the result
+handles[0].await;         // a large negative integer, not the result
 
 let h: Future<Int> = spawn(async { work(1).await });
-h.await                   // the same
+h.await;                  // the same
 ```
 
 The second is the one to know about: *writing the type down broke the
