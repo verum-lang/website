@@ -409,7 +409,7 @@ the minimal kernel. Axioms invalidate the certificate.
 theorem banking_invariant(account: &Account) {
     // proof must be axiom-free and pass the external kernel check
     proof {
-        have balance_ok: account.balance >= 0 by account.invariant();
+        have balance_ok: account.balance >= 0 by apply(account_invariant)();
         show account.balance + 0 == account.balance by omega
     }
 }

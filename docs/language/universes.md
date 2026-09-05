@@ -273,7 +273,7 @@ Verum uses **non-cumulative** universes by default:
 something in a higher universe, you explicitly lift:
 
 ```verum
-@lift(+1)
+@lift(1)
 type Bigger<A: Type(u)> is { inner: A };
 // Bigger<X> : Type(u + 1)
 ```
@@ -372,7 +372,7 @@ level.
 ### `warning[W1105]: forced cumulative lift`
 
 You used a `Type(0)` value where a `Type(1)` value was expected and
-the compiler auto-lifted. Quiet it with an explicit `@lift(+1)` or
+the compiler auto-lifted. Quiet it with an explicit `@lift(1)` or
 make the definition universe-polymorphic.
 
 ## FAQ
