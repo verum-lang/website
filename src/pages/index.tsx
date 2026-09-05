@@ -72,7 +72,7 @@ function Hero() {
           <p className={styles.heroDesc}>
             Sum types and exhaustive matching, protocols and generics,
             structured async, memory safety without a garbage collector, and a
-            batteries-included standard library built on nothing but syscalls —
+            batteries-included standard library with no libc underneath it —
             that is the everyday language. Then, in the same file, the ceiling
             rises: refinement types when invariants matter, contracts when
             correctness pays, machine-checked proofs when it is load-bearing.
