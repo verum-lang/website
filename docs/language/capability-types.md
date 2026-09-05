@@ -93,14 +93,27 @@ capabilities:
 [Read, Execute]        // two slots, both required
 ```
 
+:::caution The union form does not compile yet
+
+The comma form is implemented; the union form is not. `Resource with
+[Read, Execute]` parses, `Resource with [Read | Execute]` reports
+`unclosed delimiter ']'` — the parser reads one identifier per
+capability slot and stops at the `|`. The alternation is in the grammar
+(`capability_or_expr`), so this is a gap in the parser, not a decision
+against the feature; it is tracked as A78 in the tech-debt register.
+Write the requirement as a comma list, or as two overloads, until it
+lands.
+
+:::
+
 ## Declaring refined types
 
 Use `type` to name a particular attenuation:
 
 ```verum
-type Database.Full     is Database with [Read, Write, Admin];
-type Database.ReadOnly is Database with [Read];
-type Database.TxScope  is Database with [Read, Write, Transaction];
+type DatabaseFull     is Database with [Read, Write, Admin];
+type DatabaseReadOnly is Database with [Read];
+type DatabaseTxScope  is Database with [Read, Write, Transaction];
 ```
 
 :::caution The dotted name does not parse yet — the capability does
@@ -116,7 +129,7 @@ declaration name that the parser refuses, here and in every example
 below that uses one:
 
     type FileRead  is File with [Read];        parses
-    type File.Read is File with [Read];
+    type FileRead is File with [Read];
       -> error<E044>: Parse error: expected `is` keyword in type
                       definition
 
@@ -134,11 +147,11 @@ it's purely a naming convention to group related refinements.
 A function boundary can then speak in the narrow name:
 
 ```verum
-pub fn rates(db: Database.ReadOnly) -> List<Rate> {
+pub fn rates(db: DatabaseReadOnly) -> List<Rate> {
     db.query("SELECT ...").rows()
 }
 
-pub fn migrate(db: &mut Database.Full)
+pub fn migrate(db: &mut DatabaseFull)
     using [MigrationLog]
 {
     with_transaction(db, |c| {
@@ -181,7 +194,7 @@ type Mutation is protocol {
 }
 ```
 
-A `Mutation` cannot accept a `Database.ReadOnly` — the protocol bound
+A `Mutation` cannot accept a `DatabaseReadOnly` — the protocol bound
 forbids it.
 
 ## Capability assertion at call sites
@@ -221,9 +234,9 @@ positions, same net effect, but explicit parentheses are preferred.
 ### Read-only file handle
 
 ```verum
-type File.Read is File with [Read];
+type FileRead is File with [Read];
 
-fn count_lines(f: File.Read) -> Int {
+fn count_lines(f: FileRead) -> Int {
     f.lines().count()
     // f.write(...) is a type error here.
 }
@@ -232,9 +245,9 @@ fn count_lines(f: File.Read) -> Int {
 ### Admin-only migration
 
 ```verum
-type Db.Admin is Database with [Read, Write, Admin];
+type DbAdmin is Database with [Read, Write, Admin];
 
-pub fn migrate_v3(db: Db.Admin) using [Logger] {
+pub fn migrate_v3(db: DbAdmin) using [Logger] {
     db.write("CREATE TABLE ...");
     db.write("ALTER ROLE ...");
 }
@@ -247,10 +260,10 @@ surface privilege failures at the function boundary.
 ### Minimal auth-safe logger
 
 ```verum
-type Logger.NoAuth is Logger with [Logging];
+type LoggerNoAuth is Logger with [Logging];
 // Logger is presumed to potentially carry [Logging, Metrics, Config, Auth]
 
-fn fire_and_forget(msg: Text, log: Logger.NoAuth) {
+fn fire_and_forget(msg: Text, log: LoggerNoAuth) {
     log.info(msg);
     // log.auth_token() is a type error
 }
