@@ -501,7 +501,7 @@ const SLICE_SPAN_CONTINUE:    UInt8 = 3;
 const SEGMENT_NORMAL:         UInt8 = 0;
 const SEGMENT_HUGE:           UInt8 = 1;
 
-type Segment is MemSegment;             // alias
+type Segment is MemSegment;             // alias;
 type SegmentError is
     | MmapFailed   { code: Int }
     | MunmapFailed { code: Int }
@@ -509,10 +509,10 @@ type SegmentError is
     | UnsupportedOs { op: Text }
     ;
 
-fn segment_alloc(thread_id: UInt64) -> Result<&mut MemSegment, SegmentError>
-fn segment_free(seg: &mut MemSegment)
-fn segment_abandon(seg: &mut MemSegment)
-fn ptr_to_segment(ptr: &unsafe Byte) -> &MemSegment
+fn segment_alloc(thread_id: UInt64) -> Result<&mut MemSegment, SegmentError>;
+fn segment_free(seg: &mut MemSegment);
+fn segment_abandon(seg: &mut MemSegment);
+fn ptr_to_segment(ptr: &unsafe Byte) -> &MemSegment;
 ```
 
 Allocations are grouped into 73 size classes spaced at ~12.5%
@@ -643,10 +643,10 @@ type RevocationError is
     ;
 
 implement RevocationError {
-    fn null_pointer(type_name: Text) -> RevocationError
-    fn capability_violation(type_name: Text) -> RevocationError
-    fn already_revoked(type_name: Text) -> RevocationError
-    fn internal_error(type_name: Text, reason: Text) -> RevocationError
+    fn null_pointer(type_name: Text) -> RevocationError;
+    fn capability_violation(type_name: Text) -> RevocationError;
+    fn already_revoked(type_name: Text) -> RevocationError;
+    fn internal_error(type_name: Text, reason: Text) -> RevocationError;
 }
 ```
 

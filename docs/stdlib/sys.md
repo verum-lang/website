@@ -248,13 +248,13 @@ type ContextError is
     | SlotEmpty
     | InvalidSlot;
 
-fn ctx_get(slot: Int) -> Maybe<Int>
-fn ctx_get_mut(slot: Int) -> Maybe<&mut Int>
-fn ctx_set(slot: Int, value: Int)
-fn ctx_has(slot: Int) -> Bool
-fn ctx_clear(slot: Int)
-fn ctx_push_frame() -> Result<(), ContextError>
-fn ctx_pop_frame() -> Result<(), ContextError>
+fn ctx_get(slot: Int) -> Maybe<Int>;
+fn ctx_get_mut(slot: Int) -> Maybe<&mut Int>;
+fn ctx_set(slot: Int, value: Int);
+fn ctx_has(slot: Int) -> Bool;
+fn ctx_clear(slot: Int);
+fn ctx_push_frame() -> Result<(), ContextError>;
+fn ctx_pop_frame() -> Result<(), ContextError>;
 ```
 
 User code interacts with this via `provide` / `using` — see
@@ -384,7 +384,7 @@ type CompletionResult is {
     flags: Int,
 };
 
-fn create_io_engine(config: IoEngineConfig) -> Result<Heap<IOEngine>, IoError>
+fn create_io_engine(config: IoEngineConfig) -> Result<Heap<IOEngine>, IoError>;
 ```
 
 Platform picks:
@@ -422,10 +422,10 @@ public type FsEvent is {
 }
 
 @must_consume
-public type FsWatcher is { inner: FsWatcherImpl }
+public type FsWatcher is { inner: FsWatcherImpl };
 
 implement FsWatcher {
-    public fn new() -> Result<FsWatcher, Text>
+    public fn new() -> Result<FsWatcher, Text>;
     // .watch(path) — add a target to the watcher
     // .recv()      — block for the next FsEvent
     // .recv_with_timeout(d) — bounded wait
@@ -490,12 +490,12 @@ Per-platform backends:
 ## Initialization
 
 ```verum
-fn verum_init(cfg: InitConfig) -> Result<(), InitError>
-fn verum_shutdown()
-fn is_initialized() -> Bool
+fn verum_init(cfg: InitConfig) -> Result<(), InitError>;
+fn verum_shutdown();
+fn is_initialized() -> Bool;
 
-fn init_thread() -> Result<(), InitError>
-fn cleanup_thread()
+fn init_thread() -> Result<(), InitError>;
+fn cleanup_thread();
 
 type InitError is
     | AlreadyInitialized
@@ -507,8 +507,8 @@ type PanicInfo is {
     location: SourceLocation,
     thread_id: Int,
 };
-fn panic_impl(info: &PanicInfo) -> !
-fn set_panic_handler(h: fn(&PanicInfo) -> !)
+fn panic_impl(info: &PanicInfo) -> !;
+fn set_panic_handler(h: fn(&PanicInfo) -> !);
 ```
 
 ---
@@ -648,27 +648,27 @@ async boundary (e.g. in low-level test harnesses).
 ```verum
 public type RawTcpStream is { fd: Int };
 implement RawTcpStream {
-    public fn connect(host: Text, port: Int) -> Maybe<RawTcpStream>
-    public fn send(&self, data: Text) -> Int
-    public fn recv(&self, max_len: Int) -> Text
-    public fn close(&self)
-    public fn raw_fd(&self) -> Int
+    public fn connect(host: Text, port: Int) -> Maybe<RawTcpStream>;
+    public fn send(&self, data: Text) -> Int;
+    public fn recv(&self, max_len: Int) -> Text;
+    public fn close(&self);
+    public fn raw_fd(&self) -> Int;
 }
 
 public type RawTcpListener is { fd: Int };
 implement RawTcpListener {
-    public fn bind(port: Int) -> Maybe<RawTcpListener>
-    public fn accept(&self) -> Maybe<RawTcpStream>
-    public fn close(&self)
-    public fn raw_fd(&self) -> Int
+    public fn bind(port: Int) -> Maybe<RawTcpListener>;
+    public fn accept(&self) -> Maybe<RawTcpStream>;
+    public fn close(&self);
+    public fn raw_fd(&self) -> Int;
 }
 
 public type RawUdpSocket is { fd: Int };
 implement RawUdpSocket {
-    public fn bind(port: Int) -> Maybe<RawUdpSocket>
-    public fn send_to(&self, data: Text, host: Text, port: Int) -> Int
-    public fn recv(&self, max_len: Int) -> Text
-    public fn close(&self)
+    public fn bind(port: Int) -> Maybe<RawUdpSocket>;
+    public fn send_to(&self, data: Text, host: Text, port: Int) -> Int;
+    public fn recv(&self, max_len: Int) -> Text;
+    public fn close(&self);
 }
 ```
 
