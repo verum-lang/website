@@ -104,7 +104,7 @@ pub fn priv_operation() { ... }
 pub fn reveal_for_audit(x: Labeled<Text>) -> Text { ... }
 
 @cap(name = "admin")
-pub async fn drop_table(name: &Text) using [Database with [Admin]] {
+pub async fn drop_table(name: &Text) using [Database] {
     Database.execute(sql#"DROP TABLE ${name}").await?;
 }
 ```
@@ -174,7 +174,7 @@ mount core.security.labels.{Label, Labeled, labeled};
 @cap(name = "declassify", domain = "Secret")
 pub fn summary_for_audit(data: Labeled<UserData>) -> Text {
     let raw = declassify(data);   // legal — we hold the cap
-    f"anonymised: {}", raw.id.hash())
+    f"anonymised: {raw.id.hash()}"
 }
 ```
 
@@ -369,9 +369,9 @@ A function that needs both:
 
 ```verum
 @cap(name = "admin")
-async fn drop_table(name: &Text) using [Database with [Admin]] {
+async fn drop_table(name: &Text) using [Database] {
     // @cap ensures this binary has the `admin` capability compiled in.
-    // `using [Database with [Admin]]` ensures this call ran with an
+    // `using [Database]` ensures this call ran with an
     // admin-scoped Database connection at runtime.
     Database.execute(sql#"DROP TABLE ${name}").await?;
 }

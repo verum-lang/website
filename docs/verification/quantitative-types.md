@@ -219,7 +219,7 @@ take both a CBGR reference and a linear value:
 ```verum
 public fn write_through(
     @quantity(1) handle: FileHandle,
-    &checked buf: [u8],
+    buf: &checked [u8],
 ) -> Result<()>;
 ```
 

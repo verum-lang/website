@@ -16,12 +16,12 @@ The client machine progresses through these six states:
 
 ```verum
 public type ClientSm is
-    | @Start(Start)
-    | @WaitServerHello(WaitServerHello)
-    | @WaitEncryptedExtensions(WaitEncryptedExtensions)
-    | @WaitCertCr(WaitCertOrCr)
-    | @WaitFinished(WaitFinished)
-    | @Connected(Connected);
+    | Start(Start)
+    | WaitServerHello(WaitServerHello)
+    | WaitEncryptedExtensions(WaitEncryptedExtensions)
+    | WaitCertCr(WaitCertOrCr)
+    | WaitFinished(WaitFinished)
+    | Connected(Connected);
 ```
 
 Each `recv_*` method returns the *next* state value. The compiler

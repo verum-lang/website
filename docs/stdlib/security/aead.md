@@ -204,7 +204,8 @@ fn round_trip(
 mount core.security.cipher.aes.{AesKey256};
 mount core.security.aead.aes_gcm.{Aes256Gcm};
 
-let key: AesKey256 = /* 32 bytes */ ;
+// 32 bytes, from your key store
+let key: AesKey256 = load_key();
 let cipher = Aes256Gcm.new(&key);
 // identical encrypt/decrypt API to Aes128Gcm
 ```

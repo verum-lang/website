@@ -110,20 +110,17 @@ yet wrapped or a non-standard reply shape.
 
 ```verum
 public type StreamEntry is { id: Text, fields: List<(Text, Text)> };
-
-pub fn xadd(client, key, entry)
-    -> Result<Text, RedisError>;
-pub fn xrange(client, key, start, end)
-    -> Result<List<StreamEntry>, RedisError>;
-pub fn xread(client, keys, last_ids, count, block_ms)
-    -> Result<Map<Text, List<StreamEntry>>, RedisError>;
-pub fn xreadgroup(client, group, consumer, keys, ids, count, block_ms)
-    -> Result<Map<Text, List<StreamEntry>>, RedisError>;
-pub fn xack(client, key, group, ids)
-    -> Result<Int, RedisError>;
-pub fn xgroup_create(client, key, group, start_id, mkstream)
-    -> Result<(), RedisError>;
 ```
+
+| function | parameters | returns |
+|---|---|---|
+| `xadd` | `client, key, entry` | `Result<Text, RedisError>` |
+| `xrange` | `client, key, start, end` | `Result<List<StreamEntry>, RedisError>` |
+| `xread` | `client, keys, last_ids, count, block_ms` | `Result<Map<Text, List<StreamEntry>>, RedisError>` |
+| `xreadgroup` | `client, group, consumer, keys, ids, count, block_ms` | `Result<Map<Text, List<StreamEntry>>, RedisError>` |
+| `xack` | `client, key, group, ids` | `Result<Int, RedisError>` |
+| `xgroup_create` | `client, key, group, start_id, mkstream` | `Result<(), RedisError>` |
+
 
 Stream semantics match Redis 5+: append-only log keyed per stream,
 consumer-group acknowledgement, optional `MKSTREAM` on first
