@@ -48,27 +48,31 @@ public type AckRange is { smallest: UInt64, largest: UInt64 }
     where smallest <= largest;
 
 public type AckRanges is List<AckRange>
-    where @forall i in 0..self.len()-1 =>
+    where forall i in 0..self.len()-1.
         self[i].smallest > self[i+1].largest + 1;     // strictly desc, gap ≥ 2
 ```
 
-:::warning `@forall` is not syntax the compiler has
-Measured 2026-09-03: a block using `@forall` fails to parse —
-`error<E018>: expected identifier or keyword after @`. The token exists
-as a proof keyword (`forall`, no `@`), and `@forall` appears nowhere in
-`grammar/verum.ebnf`, `core/`, or the conformance suite.
+:::note `@forall` was the wrong spelling; `forall` is real
 
-The suite records the same gap from the other side.
+An earlier revision of this page wrote `@forall … => …` and a warning
+here recorded that it does not parse — `error<E018>: expected identifier
+or keyword after @`, and `@forall` appears nowhere in
+`grammar/verum.ebnf`, `core/`, or the conformance suite. That much was
+right.
+
+What the warning got wrong is the conclusion. The un-prefixed form IS
+syntax: re-measured 2026-09-05, `forall i in 0..n. p` parses in a
+`requires`, in an `ensures`, in a `where` clause on a type, and inside
+`@verify(...)`. The eight occurrences on this page are `forall … .` now
+and the blocks compile.
+
+One caveat stands, from the other side. The conformance suite's
 `vcs/specs/L2-standard/net/quic/v3_ackranges_theorem.vr` states the
-pairwise step over two concrete ranges and says why:
+pairwise step over two concrete ranges rather than the quantified form,
+because Z3 discharges the (i, i+1) step and not the quantifier. Parsing
+it and PROVING it are different questions, and this note is only about
+the first.
 
-> The full universally-quantified form needs `@forall` over a `List`;
-> Z3 can discharge the pairwise (i, i+1) step when stated at the level
-> of two concrete ranges.
-
-So the quantified-over-a-list invariant on this page is the intended
-notation, not the current one. A non-quantified `where` clause —
-`type R is { a: Int, b: Int } where a <= b;` — does compile.
 :::
 
 `AckRanges.insert(pn)` carries a postcondition:
@@ -76,7 +80,7 @@ notation, not the current one. A non-quantified `where` clause —
 ```verum
 implement AckRanges {
     public fn insert(&mut self, pn: UInt64) -> Result<(), AckError>
-        ensures @forall i in 0..self.len()-1 =>
+        ensures forall i in 0..self.len()-1.
             self[i].smallest > self[i+1].largest + 1;
 }
 ```
@@ -96,7 +100,7 @@ theorem v3_insert_preserves_invariant
 }
 ```
 
-`well_formed` is the same `@forall` predicate the type carries. The
+`well_formed` is the same `forall` predicate the type carries. The
 verifier takes the AST of `insert` (which lives in
 `core/net/quic/ack_ranges.vr`), encodes it via `verum_smt::backend`,
 and emits the verification
@@ -144,7 +148,7 @@ The most structural of the ten. `VerifiedChain` carries:
 ```verum
 public type VerifiedChain is List<Certificate>
     where self.len() > 0
-       && @forall i in 0..self.len()-2 =>
+       && forall i in 0..self.len()-2.
               self[i+1].public_key.verify(
                   self[i].tbs_signed,
                   self[i].signature,

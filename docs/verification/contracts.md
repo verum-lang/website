@@ -152,7 +152,7 @@ you supply it.
 A function with `throws(E)` commits to a contract on its error cases:
 
 ```verum
-fn parse_u32(s: Text) -> Int throws(ParseError)
+fn parse_u32(s: Text) throws(ParseError) -> Int
     ensures result >= 0
     ensures result <= U32_MAX
 {

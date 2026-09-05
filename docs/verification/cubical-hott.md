@@ -231,10 +231,10 @@ The grammar exposes three cubical-specific tactics in its
 `category_law`, plus the descent verifier `descent_check`.
 
 ```verum
-theorem circle_loop_squared_is_refl() ->
+theorem circle_loop_squared_is_refl():
     HottPath<Circle>(trans(Base, Base, Base, Loop, Loop), refl(Base))
 {
-    by cubical;
+    proof by cubical
 }
 ```
 
