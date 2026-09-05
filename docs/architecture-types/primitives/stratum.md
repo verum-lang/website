@@ -251,16 +251,22 @@ module my_app.classical.continuum_proof;
 module my_app.advanced.reflection_proofs;
 ```
 
-The audit chronicle enumerates the stratum distribution:
+The audit walks the corpus and reports each cog's stratum:
 
 ```
-$ verum audit --arch-corpus --filter=stratum
+$ verum audit --arch-corpus
 
-stratum LFnd     : 256 cogs   (97%)
-stratum LCls     : 8   cogs   (3%)
-stratum LClsTop  : 1   cog    (<1%)
-stratum LAbs     : 0   cogs   (with certificate)
+ATS-V whole-corpus cross-cog architectural analysis
+─────────────────────────────────────────────────────
+  N annotated cogs walked; M cross-cog violations.
+
+  Cog                     Foundation      Stratum   Modality
+  ──────────────────────  ──────────────  ────────  ────────
+  …
 ```
+
+One row per cog, with a Stratum column — there is no `--filter` and no
+distribution summary; count the column if you want one.
 
 The bulk of cogs at `LFnd` is the healthy state. Climbing the
 stratum hierarchy is acceptable but should be deliberate.
