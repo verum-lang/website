@@ -435,7 +435,11 @@ Look for:
 
 ```verum
 @trigger(length(sort(xs)), length(xs))
-ensures forall xs: List<Int>. length(sort(xs)) == length(xs)
+theorem sort_preserves_length():
+    forall xs: List<Int>. length(sort(xs)) == length(xs)
+{
+    proof by induction
+}
 ```
 
 **Step 4** — re-verify:

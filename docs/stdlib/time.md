@@ -76,10 +76,17 @@ Time span with nanosecond resolution.
 
 ```verum
 Duration.new(secs: Int, nanos: Int) -> Duration
-Duration.from_secs(secs)    Duration.from_millis(ms)    Duration.from_micros(us)
-Duration.from_nanos(ns)     Duration.from_secs_f64(f)
-Duration.ZERO              Duration.MAX
 ```
+
+| | |
+|---|---|
+| `Duration.from_secs(secs)` |  |
+| `Duration.from_millis(ms)` |  |
+| `Duration.from_micros(us)` |  |
+| `Duration.from_nanos(ns)` |  |
+| `Duration.from_secs_f64(f)` |  |
+| `Duration.ZERO` |  |
+| `Duration.MAX` |  |
 
 ### Literal sugar (on any integer)
 

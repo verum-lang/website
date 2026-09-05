@@ -94,15 +94,17 @@ once the substitution is in normal form.
 
 ```verum
 mount core.types.poly_kinds.{k_type, k_arrow, k_var, kind_unify};
-
-// (α → *) ~ (* → β) ⇒ α ↦ *, β ↦ *
-let lhs = k_arrow(k_var("α"), k_type());
-let rhs = k_arrow(k_type(), k_var("β"));
-match kind_unify(lhs, rhs) {
-    KindUnifyResult.KindOk { bindings } => /* α ↦ *, β ↦ * */ ,
-    KindUnifyResult.KindError { reason } => panic(reason),
-}
 ```
+
+| | |
+|---|---|
+| `// (α → *) ~ (* → β) ⇒ α ↦ *, β ↦ *` |  |
+| `let lhs = k_arrow(k_var("α"), k_type())` |  |
+| `let rhs = k_arrow(k_type(), k_var("β"))` |  |
+| `match kind_unify(lhs, rhs) {` |  |
+| `KindUnifyResult.KindOk { bindings } => /* α ↦ *, β ↦ * */ ,` |  |
+| `KindUnifyResult.KindError { reason } => panic(reason),` |  |
+| `}` |  |
 
 ### Convenience helpers
 

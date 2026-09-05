@@ -64,10 +64,10 @@ REVERSED        HIDDEN
 CROSSED_OUT     OVERLINED
 ```
 
-```verum
-Style.new().bold().italic().fg(Color.Yellow)
-Style.new().add_modifier(Modifier.BOLD.union(Modifier.UNDERLINED))
-```
+| the two spellings | |
+|---|---|
+| `Style.new().bold().italic().fg(Color.Yellow)` | the shorthand |
+| `Style.new().add_modifier(Modifier.BOLD.union(Modifier.UNDERLINED))` | the explicit form |
 
 `add_modifier` specifies what to turn on, `sub_modifier` what to explicitly
 turn off when merging with ambient style — useful when temporarily
