@@ -48,11 +48,21 @@ type Vec2l  = Vec<Int64, 2>;
 type Vec16b = Vec<Int8, 16>;
 type Vec8s  = Vec<Int16, 8>;
 
-// 256-bit
-type Vec8f, Vec4d, Vec8i, Vec4l, Vec32b, Vec16s;
+// 256-bit — same element types, twice the lanes
+type Vec8f  = Vec<Float32, 8>;
+type Vec4d  = Vec<Float64, 4>;
+type Vec8i  = Vec<Int32, 8>;
+type Vec4l  = Vec<Int64, 4>;
+type Vec32b = Vec<Int8, 32>;
+type Vec16s = Vec<Int16, 16>;
 
 // 512-bit
-type Vec16f, Vec8d, Vec16i, Vec8l, Vec64b, Vec32s;
+type Vec16f = Vec<Float32, 16>;
+type Vec8d  = Vec<Float64, 8>;
+type Vec16i = Vec<Int32, 16>;
+type Vec8l  = Vec<Int64, 8>;
+type Vec64b = Vec<Int8, 64>;
+type Vec32s = Vec<Int16, 32>;
 ```
 
 ### Construction
@@ -125,24 +135,34 @@ v.masked_scatter(base, indices, mask: Mask<N>)
 type Mask<N: meta USize> is (/* opaque — SIMD mask */);
 
 // Aliases
-type Mask4, Mask8, Mask16;
-
-Mask<N>.all()     Mask<N>.none()
-m.count() -> USize              m.any() -> Bool      m.all_active() -> Bool
-m.and(&other) / m.or(&other) / m.not()
+type Mask4  = Mask<4>;
+type Mask8  = Mask<8>;
+type Mask16 = Mask<16>;
 ```
+
+| mask operation |
+|---|
+| `Mask<N>.all()` |
+| `Mask<N>.none()` |
+| `m.count() -> USize` |
+| `m.any() -> Bool` |
+| `m.all_active() -> Bool` |
+| `m.and(&other)` |
+| `m.or(&other)` |
+| `m.not()` |
+
 
 ---
 
 ## CPU feature flags (compile-time constants)
 
-```verum
-const HAS_SSE42:  Bool;
-const HAS_AVX:    Bool;
-const HAS_AVX2:   Bool;
-const HAS_AVX512: Bool;
-const HAS_NEON:   Bool;
-```
+| capability constant | |
+|---|---|
+| `HAS_SSE42` | `Bool` |
+| `HAS_AVX` | `Bool` |
+| `HAS_AVX2` | `Bool` |
+| `HAS_AVX512` | `Bool` |
+| `HAS_NEON` | `Bool` |
 
 Used with `@cfg` for conditional compilation:
 
@@ -207,10 +227,16 @@ type Block is { x: Int, y: Int, z: Int };
 ### Grid & Block helpers
 
 ```verum
-Grid.d1(x)  Grid.d2(x, y)  Grid.d3(x, y, z)
-Block.d1(x) Block.d2(x, y) Block.d3(x, y, z)
-block.total_threads() -> Int
 ```
+
+| launch geometry |
+|---|
+| `Grid.d1(x)` |
+| `Grid.d2(x, y)` |
+| `Grid.d3(x, y, z)` |
+| `Block.d1(x) Block.d2(x, y) Block.d3(x, y, z)` |
+| `block.total_threads() -> Int` |
+
 
 ### Config factories
 
