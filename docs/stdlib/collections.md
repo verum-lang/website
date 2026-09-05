@@ -210,29 +210,29 @@ rather than past the header; returning a copy is the retreat from that.
 
 ### Mutation
 
-```verum
-xs.push(value)
-xs.pop() -> Maybe<T>
-xs.insert(index, value)
-xs.remove(index) -> T
-xs.swap_remove(index) -> T         // O(1); destroys order
-xs.swap(i, j)
-xs.clear()
-xs.truncate(len)
-xs.extend(other)                   // extend from an iterator
-xs.retain(|x| pred(x))             // keep only matching elements
-xs.dedup()                         // remove consecutive duplicates (T: PartialEq)
-xs.dedup_by(|a, b| same(a, b))
-xs.dedup_by_key(|x| key(x))
-xs.sort()                          // T: Ord
-xs.sort_by(|a, b| a.cmp(b))
-xs.sort_by_key(|x| key(x))
-xs.sort_unstable()                 // T: Ord, faster, not stable
-xs.reverse()
-xs.fill(value)                     // T: Clone
-xs.fill_with(|| make())
-xs.resize(new_len, value)          // T: Clone
-```
+| | |
+|---|---|
+| `xs.push(value)` |  |
+| `xs.pop() -> Maybe<T>` |  |
+| `xs.insert(index, value)` |  |
+| `xs.remove(index) -> T` |  |
+| `xs.swap_remove(index) -> T` | O(1); destroys order |
+| `xs.swap(i, j)` |  |
+| `xs.clear()` |  |
+| `xs.truncate(len)` |  |
+| `xs.extend(other)` | extend from an iterator |
+| `xs.retain(\|x\| pred(x))` | keep only matching elements |
+| `xs.dedup()` | remove consecutive duplicates (T: PartialEq) |
+| `xs.dedup_by(\|a, b\| same(a, b))` |  |
+| `xs.dedup_by_key(\|x\| key(x))` |  |
+| `xs.sort()` | T: Ord |
+| `xs.sort_by(\|a, b\| a.cmp(b))` |  |
+| `xs.sort_by_key(\|x\| key(x))` |  |
+| `xs.sort_unstable()` | T: Ord, faster, not stable |
+| `xs.reverse()` |  |
+| `xs.fill(value)` | T: Clone |
+| `xs.fill_with(\|\| make())` |  |
+| `xs.resize(new_len, value)` | T: Clone |
 
 ### Slicing
 
@@ -413,10 +413,12 @@ is undefined. Collect the changes and apply after, or use `retain`.
 
 ### Construction
 
-```verum
-Set.new()      Set.with_capacity(cap)      Set.from(values)
-let s: Set<Int> = Set.from([1, 2, 3]);
-```
+| | |
+|---|---|
+| `Set.new()` |  |
+| `Set.with_capacity(cap)` |  |
+| `Set.from(values)` |  |
+| `let s: Set<Int> = Set.from([1, 2, 3])` |  |
 
 ### Size & access
 
@@ -504,11 +506,12 @@ the caller pick prevents silent wrong-size bugs.
 
 ### Construction
 
-```verum
-Multiset.new()      Multiset.with_capacity(cap)
-let m = Multiset.from([1, 2, 2, 3, 3, 3]);
-let m = Multiset.from_counts([(1, 1), (2, 2), (3, 3)]);  // (element, multiplicity)
-```
+| | |
+|---|---|
+| `Multiset.new()` |  |
+| `Multiset.with_capacity(cap)` |  |
+| `let m = Multiset.from([1, 2, 2, 3, 3, 3])` |  |
+| `let m = Multiset.from_counts([(1, 1), (2, 2), (3, 3)])` | (element, multiplicity) |
 
 ### Access
 
@@ -587,10 +590,11 @@ insertion order compare equal.
 
 Ring buffer. O(1) push/pop at both ends.
 
-```verum
-Deque.new()     Deque.with_capacity(cap)
-let q = [1, 2, 3];
-```
+| | |
+|---|---|
+| `Deque.new()` |  |
+| `Deque.with_capacity(cap)` |  |
+| `let q = [1, 2, 3]` |  |
 
 ```verum
 q.len()  q.is_empty()  q.capacity()
@@ -651,17 +655,17 @@ let Reverse((k, v)) = h.pop().unwrap();  // (1, "one")
 
 ### Protocol implementations
 
-```verum
-implement<T: Ord>                       IntoIterator for BinaryHeap<T>;
-implement<T: Ord + Eq>                  Eq           for BinaryHeap<T>;  // sorts then compares
-implement<T: Ord + Clone>               Clone        for BinaryHeap<T>;
-implement<T: Ord>                       Default      for BinaryHeap<T>;
-implement<T: Ord + Debug>               Debug        for BinaryHeap<T>;
-implement<T: Ord + Display>             Display      for BinaryHeap<T>;
-implement<T: Ord + Hash + Clone>        Hash         for BinaryHeap<T>;  // sorts then hashes
-implement<T: Ord>                       FromIterator for BinaryHeap<T>;
-implement<T: Ord>                       Extend       for BinaryHeap<T>;
-```
+| bounds | protocol | type | |
+|---|---|---|---|
+| `implement<T: Ord>` | `IntoIterator` | `BinaryHeap<T>` |  |
+| `implement<T: Ord + Eq>` | `Eq` | `BinaryHeap<T>` | sorts then compares |
+| `implement<T: Ord + Clone>` | `Clone` | `BinaryHeap<T>` |  |
+| `implement<T: Ord>` | `Default` | `BinaryHeap<T>` |  |
+| `implement<T: Ord + Debug>` | `Debug` | `BinaryHeap<T>` |  |
+| `implement<T: Ord + Display>` | `Display` | `BinaryHeap<T>` |  |
+| `implement<T: Ord + Hash + Clone>` | `Hash` | `BinaryHeap<T>` | sorts then hashes |
+| `implement<T: Ord>` | `FromIterator` | `BinaryHeap<T>` |  |
+| `implement<T: Ord>` | `Extend` | `BinaryHeap<T>` |  |
 
 `Eq` and `Hash` both **sort the contents before comparing/hashing**
 so the `a == b → hash(a) == hash(b)` invariant holds across distinct
@@ -678,19 +682,21 @@ Red-black tree (B-factor 12 internally, cache-friendly). `K: Ord`.
 
 ### Common operations (BTreeMap/BTreeSet both)
 
-```verum
-.new() / .from_iter(iter)
-.len()   .is_empty()
-.insert(k, v) / .insert(v)
-.remove(&k) -> Maybe<V>
-.get(&k) / .get_mut(&k)
-.contains_key(&k) / .contains(&v)
-.iter()                   // sorted ascending
-.keys() / .values() / .values_mut()     // map only
-.into_iter()     .drain(range)
-.retain(|k, v| pred) / |v| pred
-.clear()
-```
+| | |
+|---|---|
+| `.new() / .from_iter(iter)` |  |
+| `.len()` |  |
+| `.is_empty()` |  |
+| `.insert(k, v) / .insert(v)` |  |
+| `.remove(&k) -> Maybe<V>` |  |
+| `.get(&k) / .get_mut(&k)` |  |
+| `.contains_key(&k) / .contains(&v)` |  |
+| `.iter()` | sorted ascending |
+| `.keys() / .values() / .values_mut()` | map only |
+| `.into_iter()` |  |
+| `.drain(range)` |  |
+| `.retain(\|k, v\| pred) / \|v\| pred` |  |
+| `.clear()` |  |
 
 ### Ordered operations
 

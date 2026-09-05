@@ -652,9 +652,9 @@ function Toolchain() {
 
 const NUMBERS = [
   {
-    icon: '0.93 ns',
+    icon: '1.3 ns',
     title: 'Memory-safety check',
-    body: 'Measured cost of the default-tier reference check on the production benchmark — against a 15 ns budget. Escape analysis promotes most hot-path accesses to exactly zero.',
+    body: 'Cost of the default-tier reference check, from the repository\u2019s own criterion bench: 125 ns for a batch of 100, and 1.2–1.7 ns for a single check. The design budget is 15 ns, so the guarantee is an order of magnitude inside it.',
   },
   {
     icon: '2.5 M',
