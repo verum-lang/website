@@ -59,7 +59,7 @@ one-stage `meta fn`. Multi-stage quoting has a real cognitive cost.
 ## Declaring a multi-stage function
 
 ```verum
-meta(2) fn generator_for<T>() -> quote(2)
+meta(2) fn generator_for<T>() -> TokenStream
     using [TypeInfo, AstAccess]
 {
     let name = TypeInfo.name_of<T>();
@@ -124,7 +124,7 @@ and splices the result into the enclosing quote. Shorthand: `${expr}`
 when the stage is unambiguous (usually the next stage up).
 
 ```verum
-meta(2) fn outer() -> quote(2) {
+meta(2) fn outer() -> TokenStream {
     let fields = compute_fields();   // stage-2 binding
 
     quote(2) {
@@ -148,7 +148,7 @@ outer stage into an inner quote, `$$var` performs one stage
 unescape. Every additional `$` strips one stage.
 
 ```verum
-meta(2) fn replicate(body: TokenStream) -> quote(2) {
+meta(2) fn replicate(body: TokenStream) -> TokenStream {
     quote(2) {
         meta fn inner() -> TokenStream {
             quote {
@@ -201,7 +201,7 @@ a stage-1 quote is invisible from stage 0 unless explicitly
 transported by splicing it at the stage-crossing point.
 
 ```verum
-meta(2) fn cross_hygiene() -> quote(2) {
+meta(2) fn cross_hygiene() -> TokenStream {
     let outer_name = Hygiene.gensym("outer");
 
     quote(2) {
@@ -254,7 +254,7 @@ build:
 pub meta(2) fn specialise_for(
     shape: List<Int>,
     f: FnAst
-) -> quote(2)
+) -> TokenStream
     using [TypeInfo, AstAccess, Hygiene]
 {
     quote(2) {

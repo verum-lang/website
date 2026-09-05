@@ -77,8 +77,10 @@ meta fn answer() -> TokenStream {
 A convenience form. These two lines are equivalent:
 
 ```verum
-quote { let $name = 0; }
-quote { let ${name} = 0; }
+fn both_spellings(name: Text) {
+    let a = quote { let $name = 0; };
+    let b = quote { let ${name} = 0; };
+}
 ```
 
 The `$var` form requires that `var`'s name would parse as an

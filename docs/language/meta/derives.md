@@ -232,7 +232,7 @@ type Config is {
     host: Text,
     port: Int,
     @default(value = 30) timeout_s: Int,
-    @default(fn = Uuid.new_v4) request_id: Uuid,
+    @default(with = Uuid.new_v4) request_id: Uuid,
 };
 ```
 

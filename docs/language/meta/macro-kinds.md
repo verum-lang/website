@@ -234,11 +234,20 @@ square brackets (array-like) or braces (block-like):
 
 ```verum
 let m = @matrix[
-    1 0 0;
-    0 1 0;
-    0 0 1;
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
 ];
 
+```
+
+A brace-delimited invocation is parsed as an EXPRESSION, not as a raw
+token tree, so a DSL whose content is not Verum — HTML, say — does not
+get through today. `quote { <div> }` does, because `quote` takes a token
+tree; `@html_block{ <div> }` gives "standalone comparison operator is
+not a valid expression". The shape a DSL macro is meant to take:
+
+```text
 let dsl = @html_block{
     <div class="card">
       <h2>{title}</h2>
@@ -270,7 +279,7 @@ function body required. It is Verum's answer to Rust's
 
 ### Shape
 
-```verum
+```text
 @declarative
 pub macro vec3 {
     ( $x:expr , $y:expr , $z:expr ) => quote {
@@ -316,7 +325,7 @@ kind. Supported kinds:
 Fragments can be repeated with `$( … )sep` where `sep` is an
 optional separator token:
 
-```verum
+```text
 @declarative
 pub macro println {
     ( $fmt:literal $( , $arg:expr )* ) => quote {
