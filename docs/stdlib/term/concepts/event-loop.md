@@ -87,7 +87,7 @@ Each `Subscription` variant hoists to one detached task on startup:
 | `Interval(d, f)` | `loop { sleep(d).await; tx.try_send(f()) }` |
 | `Every(d, f)` | `loop { sleep(d).await; tx.try_send(f(Instant.now())) }` |
 | `Once(d, f)` | `sleep(d).await; tx.try_send(f())` |
-| `StreamSub(s)` | `async for x in s { tx.try_send(x) }` |
+| `StreamSub(s)` | `for await x in s { tx.try_send(x) }` |
 | `Batch([s…])` | spawn one detached task per nested subscription |
 
 All tasks check `cancel.is_cancelled()` around every `try_send`, so a `Quit`

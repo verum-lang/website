@@ -70,16 +70,19 @@ public type KeyCode is
 ```verum
 public type Modifiers is { bits: UInt8 };
 
-Modifiers.NONE
-Modifiers.SHIFT   Modifiers.CTRL
-Modifiers.ALT     Modifiers.SUPER
-Modifiers.HYPER   Modifiers.META
-
 implement Modifiers {
-    fn contains(&self, m: Modifiers) -> Bool
-    fn union(&self, m: Modifiers)    -> Modifiers
-    fn empty(&self) -> Bool
+    fn contains(&self, m: Modifiers) -> Bool;
+    fn union(&self, m: Modifiers)    -> Modifiers;
+    fn empty(&self) -> Bool;
 }
+```
+
+| constant | | |
+|---|---|---|
+| `Modifiers.NONE` | | |
+| `Modifiers.SHIFT` | `Modifiers.CTRL` | |
+| `Modifiers.ALT` | `Modifiers.SUPER` | |
+| `Modifiers.HYPER` | `Modifiers.META` | |
 ```
 
 ## `MouseEvent`
@@ -131,7 +134,7 @@ implement AsyncIterator for AsyncEventStream {
 Usage:
 ```verum
 let mut events = AsyncEventStream.stdin();
-async for event in &mut events {
+for await event in &mut events {
     match event { Event.Key(ke) => ..., _ => ... }
 }
 ```
