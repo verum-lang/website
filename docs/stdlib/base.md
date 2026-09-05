@@ -152,15 +152,15 @@ m.unwrap_or_default()      // requires T: Default
 
 ### Transforming
 
-```verum
-m.map(|x| x + 1)                              // Maybe<U>
-m.and_then(|x| if x > 0 { Some(x) } else { None })
-m.or_else(|| compute_fallback())
-m.map_or(default, |x| x + 1)
-m.map_or_else(|| default(), |x| x + 1)
-m.filter(|x| *x > 0)
-m.flatten()                  // Maybe<Maybe<T>> -> Maybe<T> (T: Default)
-```
+| | |
+|---|---|
+| `m.map(\|x\| x + 1)` | Maybe<U> |
+| `m.and_then(\|x\| if x > 0 { Some(x) } else { None })` |  |
+| `m.or_else(\|\| compute_fallback())` |  |
+| `m.map_or(default, \|x\| x + 1)` |  |
+| `m.map_or_else(\|\| default(), \|x\| x + 1)` |  |
+| `m.filter(\|x\| *x > 0)` |  |
+| `m.flatten()` | Maybe<Maybe<T>> -> Maybe<T> (T: Default) |
 
 ### Combining
 
@@ -259,15 +259,15 @@ r.err()      // Result<T,E> -> Maybe<E>
 
 ### Unwrapping
 
-```verum
-r.unwrap()                 // E: Debug; panics on Err
-r.unwrap_err()             // T: Debug; panics on Ok
-r.expect("must succeed")
-r.expect_err("must fail")
-r.unwrap_or(default)
-r.unwrap_or_else(|e| recover(e))
-r.unwrap_or_default()      // T: Default
-```
+| | |
+|---|---|
+| `r.unwrap()` | E: Debug; panics on Err |
+| `r.unwrap_err()` | T: Debug; panics on Ok |
+| `r.expect("must succeed")` |  |
+| `r.expect_err("must fail")` |  |
+| `r.unwrap_or(default)` |  |
+| `r.unwrap_or_else(\|e\| recover(e))` |  |
+| `r.unwrap_or_default()` | T: Default |
 
 ### Transforming
 
@@ -976,11 +976,14 @@ resume_unwind(panic_info) -> !
 
 ### Compile-time helpers
 
-```verum
-@file()        @line()        @column()
-@function()    @module()
-@current_location()
-```
+| | |
+|---|---|
+| `@file()` |  |
+| `@line()` |  |
+| `@column()` |  |
+| `@function()` |  |
+| `@module()` |  |
+| `@current_location()` |  |
 
 `PanicInfo` carries `message: Text`, optional `Location { file, line, column }`.
 `set_panic_handler(hook)` installs a global hook (`fn(&PanicInfo)`).
@@ -1071,11 +1074,14 @@ type Data is
 
 ### Construction & parsing
 
-```verum
-Data.null()     Data.from_int(42)    Data.from_text("hi")
-Data.empty_object()    Data.empty_array()
-parse_json(input) -> Result<Data, DataError>
-```
+| | |
+|---|---|
+| `Data.null()` |  |
+| `Data.from_int(42)` |  |
+| `Data.from_text("hi")` |  |
+| `Data.empty_object()` |  |
+| `Data.empty_array()` |  |
+| `parse_json(input) -> Result<Data, DataError>` |  |
 
 ### Type predicates and accessors
 
@@ -1144,11 +1150,12 @@ external cog (e.g. `toml`, `serde_json`-equivalent) drive the format.
 
 Helper builders:
 
-```verum
-ListSerializer.serialize_element(&value)
-MapSerializer.serialize_key(&k);  MapSerializer.serialize_value(&v)
-RecordSerializer.serialize_field(name, &value)
-```
+| | |
+|---|---|
+| `ListSerializer.serialize_element(&value)` |  |
+| `MapSerializer.serialize_key(&k)` |  |
+| `MapSerializer.serialize_value(&v)` |  |
+| `RecordSerializer.serialize_field(name, &value)` |  |
 
 `SerdeError` is the common error: constructors include
 `unexpected_type(expected, found)`, `missing_field(name)`,
@@ -1161,11 +1168,13 @@ RecordSerializer.serialize_field(name, &value)
 ```verum
 type StackFrame is { function: Text, file: Text, line: Int, column: Int };
 type Backtrace  is { frames: List<StackFrame> };
-
-Backtrace.capture() -> Backtrace          // current stack (best-effort)
-Backtrace.from_frames(frames) -> Backtrace
-bt.frames() / bt.is_empty() / bt.len()
 ```
+
+| | |
+|---|---|
+| `Backtrace.capture() -> Backtrace` | current stack (best-effort) |
+| `Backtrace.from_frames(frames) -> Backtrace` | |
+| `bt.frames()`, `bt.is_empty()`, `bt.len()` | |
 
 ### `ErrorProtocol`
 
@@ -1233,16 +1242,16 @@ let l: LogLevel = level_warn();
 
 ### `LogRecord` construction
 
-```verum
-LogRecord.new(level, message, fields)              // 3-arg canonical
-LogRecord.simple(level, message)                   // shortcut, fields = []
+*Chainable builder methods (each returns a new record):*
 
-// Chainable builder methods (each returns a new record):
-rec.with_field(key, value)
-rec.with_module_path(path)
-rec.with_file(file)
-rec.with_line(line)
-```
+| | |
+|---|---|
+| `LogRecord.new(level, message, fields)` | 3-arg canonical |
+| `LogRecord.simple(level, message)` | shortcut, fields = [] |
+| `rec.with_field(key, value)` |  |
+| `rec.with_module_path(path)` |  |
+| `rec.with_file(file)` |  |
+| `rec.with_line(line)` |  |
 
 ### `LogRecordBuilder` — imperative builder
 
