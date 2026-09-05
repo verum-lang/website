@@ -59,7 +59,10 @@ Closes any goal if the hypotheses include a logical contradiction
 (e.g. `h: False`, or `a > b` together with `a <= b`).
 
 ```verum
-theorem ex_falso(p: Bool, h: p, nh: !p) ensures forall x: Int. x == x
+theorem ex_falso(p: Bool)
+    given h: p
+    given nh: !p
+    ensures forall x: Int. x == x
 {
     proof by contradiction
 }
@@ -74,7 +77,7 @@ Introduces one variable or hypothesis from the goal:
 - `forall x: T. P(x)` → `P(x)` with `x: T` in context.
 - `P -> Q` → goal becomes `Q` with `h: P` in context.
 
-```verum
+```text
 // Goal: forall n: Int. n == n
 proof {
     intro n;
@@ -93,7 +96,7 @@ implication. A common opening move.
 Provides the exact proof term — used when the caller has a witness.
 
 ```verum
-theorem refl<T>(x: T) -> Path<T>(x, x)
+theorem refl<T>(x: T): Path<T>(x, x)
 {
     proof by exact(path_refl(x))
 }
@@ -104,7 +107,7 @@ theorem refl<T>(x: T) -> Path<T>(x, x)
 Applies a lemma or hypothesis. Matches the goal against the lemma's
 conclusion; remaining premises become new subgoals.
 
-```verum
+```text
 // Goal: 0 <= n * n
 proof {
     apply square_nonneg;    // square_nonneg: forall n. 0 <= n * n
@@ -118,7 +121,7 @@ proof {
 Rewrite-based simplifier. Applies a curated lemma set — *simp lemmas*
 — plus user-marked rewrites (`@simp`) until a fixed point is reached.
 
-```verum
+```text
 proof by simp
 ```
 
@@ -134,7 +137,7 @@ set.
 Expands a definition one step. Useful when `simp` refuses because of
 opacity:
 
-```verum
+```text
 proof {
     unfold is_sorted;          // expand the predicate
     simp;
@@ -147,7 +150,7 @@ proof {
 Rewrites the goal left-to-right by the given equality. Right-to-left
 is `rewrite(eq, ltr = false)`.
 
-```verum
+```text
 proof {
     rewrite add_comm(a, b);    // replaces `a + b` with `b + a`
     simp
@@ -163,7 +166,7 @@ arithmetic with +, −, ·-by-constant, <, ≤, =, ≠, and quantifiers.
 
 Solves:
 
-```verum
+```text
 ensures 2 * (a + b) == 2 * a + 2 * b
 ensures forall i in 0..n. 0 <= i < n
 ```
@@ -186,7 +189,8 @@ Like `ring` but over fields — allows division by nonzero. Requires
 hypotheses that denominators are nonzero.
 
 ```verum
-theorem div_dist(a: Float, b: Float, c: Float, h: c != 0.0)
+theorem div_dist(a: Float, b: Float, c: Float)
+    given h: c != 0.0
     ensures (a + b) / c == a/c + b/c
 {
     proof by field
@@ -211,7 +215,7 @@ theorem sum_nonneg(xs: List<Int>)
 
 Equivalent explicit form:
 
-```verum
+```text
 proof {
     induction xs;
     // Generates:
@@ -260,7 +264,7 @@ options bag — `simp()` beside `simp_with(lemmas)`, `intro()` beside
 `intro_as(name)`, `destruct(var)` beside `destruct_as(...)`. To bring
 extra lemmas into a search, name them:
 
-```verum
+```text
 proof by { simp_with([my_lemma, other]); auto }
 ```
 
@@ -270,7 +274,7 @@ Hands the goal to the SMT layer — a single adapter or a portfolio,
 selected by the router. See
 [verification/smt-routing](/docs/verification/smt-routing).
 
-```verum
+```text
 proof by smt
 ```
 
@@ -329,7 +333,7 @@ in sheaf-theoretic and scheme-theoretic verification contexts.
 
 Runs tactics in order. Common idiom:
 
-```verum
+```text
 proof {
     intros;
     simp;
@@ -341,7 +345,7 @@ proof {
 
 If `t` fails (leaves goals unchanged or errors), run `t2` instead.
 
-```verum
+```text
 proof by try { auto } else { smt }
 ```
 
@@ -355,7 +359,7 @@ did nothing.
 Apply `t` until it stops making progress. With a bound `n`, at most
 `n` times.
 
-```verum
+```text
 proof by repeat { simp; rewrite some_rule }
 ```
 
@@ -364,7 +368,7 @@ proof by repeat { simp; rewrite some_rule }
 Try each `t_i` in order; the first one that succeeds wins. If all
 fail, `first` fails.
 
-```verum
+```text
 proof by first {
     omega ;         // cheap, often works
     ring ;
@@ -377,7 +381,7 @@ proof by first {
 Apply `t` to every remaining subgoal. After an `induction` that
 spawns several cases, use `all_goals` to close them uniformly:
 
-```verum
+```text
 proof {
     induction xs;
     all_goals { simp; omega }
@@ -389,7 +393,7 @@ proof {
 Apply `t` only to the *i*-th subgoal (1-based). Useful when different
 subgoals need different approaches.
 
-```verum
+```text
 proof {
     induction xs;
     focus(1) { simp };          // base case
