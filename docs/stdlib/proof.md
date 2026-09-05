@@ -50,7 +50,7 @@ fn proof_certificate(
     proof_object: Text,
     duration_ms: Int { >= 0 },
     timestamp: Text,
-) -> ProofCertificate
+) -> ProofCertificate;
 ```
 
 ### `BundleMetadata`
@@ -146,7 +146,7 @@ fn reflected_fn(
     body_smtlib: Text,
     return_sort: Text,
     parameter_sorts: List<Text>,
-) -> ReflectedFunction
+) -> ReflectedFunction;
 ```
 
 ### `ReflectabilityVerdict`
@@ -161,7 +161,7 @@ fn is_reflectable(
     is_pure: Bool,
     is_total: Bool,
     is_closed: Bool,
-) -> ReflectabilityVerdict
+) -> ReflectabilityVerdict;
 ```
 
 A function is reflectable iff all three conditions hold. Typical
