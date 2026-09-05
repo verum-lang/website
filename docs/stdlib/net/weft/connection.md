@@ -45,7 +45,7 @@ public async fn serve_http1<T: WeftTransport, S: Handler>(
     token: CancellationToken,
     draining: Shared<AtomicBool>,
     config: ConnectionConfig,
-) -> Result<(), ConnError>
+) -> Result<(), ConnError>;
 ```
 
 Generic over the transport (`WeftTransport` protocol) and the
@@ -135,7 +135,7 @@ fn decide_keep_alive(
     version: &Version,
     headers: &Headers,
     server_allows: Bool,
-) -> Bool
+) -> Bool;
 ```
 
 Rules:

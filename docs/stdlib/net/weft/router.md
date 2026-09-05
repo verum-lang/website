@@ -168,8 +168,8 @@ type ValidApiVersion is Text where |s| {
 type UserId is Int where |n| { n >= 1 && n <= 1_000_000_000 };
 
 async fn get_user(
-    Path(version): Path<ValidApiVersion>,
-    Path(id): Path<UserId>,
+    PathParam(version): PathParam<ValidApiVersion>,
+    PathParam(id): PathParam<UserId>,
 ) -> Json<User> {
     // SMT has already proved: version is one of v1/v2/v3,
     // id is in [1, 10^9]. Defensive checks are provably unnecessary.
@@ -182,7 +182,7 @@ let app = Router.new()
 If you forget to update `ValidApiVersion` to add `"v4"`, the route
 `/api/v4/users/42` returns 400 (refinement violation). If you
 register a handler for `/api/:version/users/:id` that expects
-`Path<DifferentRefinement>`, the compiler rejects the registration
+`PathParam<DifferentRefinement>`, the compiler rejects the registration
 with an SMT-derived counterexample.
 
 This is the **monotonic refinement composition** rule:

@@ -126,7 +126,7 @@ async fn hello() -> Response {
 }
 
 // A path parameter is read from the request, not destructured in the
-// signature: a pattern like `Path(name): Path<Text>` is an axum-style
+// signature: a pattern like `PathParam(name): PathParam<Text>` is an axum-style
 // extractor and does not parse in Verum — a parameter takes an
 // identifier, not a tuple-variant pattern. `WeftRequest` carries the
 // captures and offers `path_param` / `path_param_int` / `query_param`.
@@ -202,7 +202,7 @@ implement IntoResponse for ApiError {
     fn into_response(self) -> Response { /* ... */ }
 }
 
-async fn get_user(Path(id): Path<UserId>)
+async fn get_user(PathParam(id): PathParam<UserId>)
     -> Result<Json<User>, ApiError>
     using [Database]
 {
@@ -258,8 +258,8 @@ type ValidApiVersion is Text where |s| { s == "v1" || s == "v2" || s == "v3" };
 type UserId is Int where |n| { n >= 1 && n <= 1_000_000_000 };
 
 async fn get_user(
-    Path(version): Path<ValidApiVersion>,
-    Path(id): Path<UserId>,
+    PathParam(version): PathParam<ValidApiVersion>,
+    PathParam(id): PathParam<UserId>,
 ) -> Json<User> {
     // The SMT solver has already proved version is one of v1/v2/v3
     // and id is in [1, 10^9]. Defensive checks become provably

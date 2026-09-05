@@ -99,7 +99,7 @@ implement<H: Handler + Send + Sync + 'static> PlainHttp1Runner<H> {
         token: CancellationToken,
         draining: Shared<AtomicBool>,
         connection_cfg: ConnectionConfig,
-    ) -> PlainHttp1Runner<H>
+    ) -> PlainHttp1Runner<H>;
 }
 ```
 
@@ -115,7 +115,7 @@ public async fn accept_loop<R: ConnectionRunner + Clone + Send + Sync + 'static>
     token: CancellationToken,
     draining: Shared<AtomicBool>,
     runner: R,
-) -> Result<(), Text>
+) -> Result<(), Text>;
 ```
 
 Generic over the runner — zero-cost polymorphism via

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Handler & FromRequest extractors
-description: Convert Verum async functions into Services via typed extractors. Path<T>, Query<T>, Json<T>, BodyText, BodyBytes — refinement-typed parsing in handler signatures.
+description: Convert Verum async functions into Services via typed extractors. PathParam<T>, QueryParam<T>, Json<T>, BodyText, BodyBytes — refinement-typed parsing in handler signatures.
 ---
 
 # `core.net.weft.handler` + `core.net.weft.json_extractor`
