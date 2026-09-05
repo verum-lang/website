@@ -562,8 +562,8 @@ function StdlibSection() {
         <h2>The standard library ships whole</h2>
         <p>
           Fifty-plus top-level modules, written in Verum on the no-libc
-          substrate and baked into the toolchain binary. Every name below is a
-          directory in <code>core/</code> today — not a roadmap.
+          substrate and baked into the toolchain binary. Every name below resolves to a
+          module in <code>core/</code> today — not a roadmap.
         </p>
       </div>
       <div className={styles.stdlibGrid}>
@@ -657,12 +657,12 @@ const NUMBERS = [
   {
     icon: '1.4 M',
     title: 'Lines parsed per second',
-    body: 'Front-end throughput, held by a compile-speed contract test in the repository — a regression fails the build, not a quarterly report.',
+    body: 'Front-end throughput on macOS arm64. A compile-speed contract test fails the build below 50 K — the headroom above that floor is measured, not asserted.',
   },
   {
     icon: '1×',
-    title: 'Native-C runtime',
-    body: 'Parity with C is the bar, not the ceiling — whole-program optimization aims beyond it. Interpreter startup is effectively instant, and both paths execute the same bytecode with identical semantics.',
+    title: 'The runtime bar',
+    body: 'Parity with C is the target the design is held to — no libc, direct syscalls, whole-program optimization. It is the bar, not a benchmark result: performance is measured per subsystem, and this number is what those measurements are judged against.',
   },
   {
     icon: '0',
