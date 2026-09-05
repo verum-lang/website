@@ -104,16 +104,15 @@ Two things are worth noticing:
 
 ```bash
 $ verum run
-     Linking hello
-    Finished dev [unoptimized + debuginfo] target(s) in 1.2s
-      Binary ./target/debug/hello (~53 KB)
-        note CBGR ~15ns/check (use &checked for hot paths)
-Interpreting src/main.vr
-        note compiled in 0.00s
+Interpreting /path/to/hello/src/main.vr
 Hello from hello!
 Sum: 15
-        note executed in 0.00s
+        note executed in 0.03s
 ```
+
+There is no link step and no binary: `verum run` interprets, so the
+only lines are the file it is interpreting, your program's output, and
+how long it took.
 
 `verum run` compiles to VBC bytecode and executes it in the
 interpreter by default. Use `--aot` to compile-and-execute the native
@@ -207,7 +206,7 @@ fn main() {
 ```bash
 $ verum verify src/main.vr
          --> Verifying src/main.vr
-error<E500>: refinement constraint failed: {<predicate>}
+error<E500>: refinement constraint failed: {… > 0}
   --> src/main.vr:4:5
   │
 2 │ 
@@ -215,6 +214,9 @@ error<E500>: refinement constraint failed: {<predicate>}
 4 │     0
   │     ^
 5 │ }
+6 │ 
+  │
+error: compilation failed with 1 error
 ```
 
 `verum build` in the `application` profile falls back to runtime
@@ -237,11 +239,11 @@ for the full decision matrix.
 `verum new` already scaffolded `tests/main_test.vr` with two starter
 tests (`test_example`, `test_semantic_types`) — those run alongside
 the ones you add now, so don't be surprised to see four tests instead
-of two. Create `tests/greet_test.vr`:
+of two. Create `tests/greet_test.vr`. A test file needs no `mount` for
+the cog it belongs to; `greet` is in scope because the test is part of
+the same cog:
 
 ```verum
-mount hello.*;
-
 @test
 fn greet_returns_non_empty() {
     let result = greet("Verum");
@@ -251,7 +253,7 @@ fn greet_returns_non_empty() {
 
 @test
 fn greet_includes_name() {
-    let result = greet("Alice");
+    let result: Text = greet("Alice");
     assert(result.contains("Alice"));
 }
 ```
@@ -260,16 +262,33 @@ Run tests:
 
 ```bash
 $ verum test
-   compiling hello v0.1.0 (./hello)
-    finished in 0.2s
-     running 4 tests
-test greet_test::greet_returns_non_empty ... ok
-test greet_test::greet_includes_name ... ok
-test main_test::test_example ... ok
-test main_test::test_semantic_types ... ok
+     Testing hello v0.1.0 (aot)
 
-test result: ok. 4 passed; 0 failed
+running 4 tests (tier=aot, threads=2)
+test greet_test::greet_returns_non_empty ... ok (…)
+test greet_test::greet_includes_name ... ok (…)
+test main_test::test_example ... ok (…)
+test main_test::test_semantic_types ... ok (…)
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 4 total; finished in …
 ```
+
+`verum test` builds and runs each test as a native binary — the
+`tier=aot` in the header — so the first run pays an AOT compile per
+test. The durations are elided here because they are dominated by that
+compile and by your machine.
+
+:::note Why `let result: Text` in the second test
+
+`greet` returns `Greeting`, a refinement of `Text`. Calling `.contains`
+on that value goes through AOT method dispatch, which currently loses
+the base type and aborts — `verum test` runs at `tier=aot` by default,
+so the test would fail there while passing under the interpreter.
+Binding through the base type avoids it. Tracked as A79; `.len()` and
+`.is_empty()` on the same value are unaffected, which is why the first
+test needs no annotation.
+
+:::
 
 `@test` marks a function as a test. Tests run in parallel by default;
 see [tooling/cli](/docs/tooling/cli) for test filtering and options.

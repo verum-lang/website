@@ -227,7 +227,7 @@ trusted boundary of any proof corpus — no hidden postulates.
 @derive(Eq, Ord, Hash, Debug, Clone)
 type Version is { major: Int, minor: Int, patch: Int };
 
-meta fn repeat(n: Int, body: quote) -> quote {
+meta fn repeat(n: Int, body: TokenStream) -> TokenStream {
     quote { for _ in 0..${n} { ${body} } }
 }
 

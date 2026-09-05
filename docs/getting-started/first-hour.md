@@ -102,7 +102,15 @@ fn main() {
 
 ```bash
 $ verum verify absdiff.vr
-  ✓ abs_diff: Proved in 0.08s
+         --> Verifying absdiff.vr
+
+Verification Report:
+============================================================
+  ✓ abs_diff: Proved in 0.02s
+  ✓ main: Proved in 0.00s
+
+Summary: 2 proved, 0 failed, 0 timeout, 0 skipped
+    Finished Verification complete
 ```
 
 The `ensures` clause is not a comment — the SMT solver *proves* it
