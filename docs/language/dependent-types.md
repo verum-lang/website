@@ -294,10 +294,10 @@ mount core.math.tensor.{Tensor, matmul, softmax, reshape};
 
 fn attention<
     T: Numeric,
-    meta B: USize,          // batch
-    meta H: USize,          // heads
-    meta L: USize,          // sequence length
-    meta D: USize,          // per-head dimension
+    const B: USize,          // batch
+    const H: USize,          // heads
+    const L: USize,          // sequence length
+    const D: USize,          // per-head dimension
 >(
     q: &Tensor<T, [B, H, L, D]>,
     k: &Tensor<T, [B, H, L, D]>,

@@ -676,7 +676,7 @@ type CancelReason is
     | Cancelled
     | Timeout { deadline: Instant }
     | ParentCancelled
-    | Aborted(Text)
+    | Aborted(Text);
 ```
 
 Children of a cancelled parent see `ParentCancelled` — not the parent's

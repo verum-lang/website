@@ -8,9 +8,10 @@ title: Functions
 ## Anatomy
 
 ```verum
-pub async fn fetch_user<T: Parse>(id: UserId) -> Result<T, Error>
-    using   [Http, Logger, Cache]
+pub async fn fetch_user<T: Parse>(id: UserId)
     throws  (NetworkError | ParseError)
+    -> Result<T, Error>
+    using   [Http, Logger, Cache]
     where   ensures result is Ok(u) => u.id == id
 {
     Logger.info(f"fetching user {id}");
@@ -299,8 +300,7 @@ the full semantics and **[cookbook → adding verification](/docs/cookbook/addin
 ## Error handling
 
 ```verum
-fn parse_port(s: Text) -> Result<Int, Error>
-    throws(ParseError)
+fn parse_port(s: Text) throws(ParseError) -> Result<Int, Error>
 {
     let n = s.parse<Int>()?;
     if n < 0 || n > 65535 {

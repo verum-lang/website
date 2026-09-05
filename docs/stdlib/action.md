@@ -94,8 +94,7 @@ public type Monad is protocol {
     fn bind<A, B>(m: Self.T<A>, f: fn(A) -> Self.T<B>) -> Self.T<B>;
 };
 
-public type StrongMonad is protocol {
-    extends Monad;
+public type StrongMonad is protocol extends Monad {
     fn strength<A, B>(a: A, m: Self.T<B>) -> Self.T<(A, B)>;
 };
 
