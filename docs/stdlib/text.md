@@ -256,21 +256,21 @@ s.remove_matches(pattern: &Text)                            // &mut self
 
 ### Mutation (`&mut self`)
 
-```verum
-s.push(ch: Char)
-s.push_byte(b: Byte)                  // assumes valid UTF-8 context
-s.push_str(other: &Text)
-s.insert(idx: Int, ch: Char)
-s.insert_str(idx: Int, other: &Text)
-s.truncate(new_len: Int)
-s.clear()
-s.pop() -> Maybe<Char>
-s.remove(idx: Int) -> Char
-s.retain(predicate: fn(Char) -> Bool)
-s.reserve(additional: Int)
-s.shrink_to_fit()
-s.shrink_to(min_capacity: Int)
-```
+| | |
+|---|---|
+| `s.push(ch: Char)` |  |
+| `s.push_byte(b: Byte)` | assumes valid UTF-8 context |
+| `s.push_str(other: &Text)` |  |
+| `s.insert(idx: Int, ch: Char)` |  |
+| `s.insert_str(idx: Int, other: &Text)` |  |
+| `s.truncate(new_len: Int)` |  |
+| `s.clear()` |  |
+| `s.pop() -> Maybe<Char>` |  |
+| `s.remove(idx: Int) -> Char` |  |
+| `s.retain(predicate: fn(Char) -> Bool)` |  |
+| `s.reserve(additional: Int)` |  |
+| `s.shrink_to_fit()` |  |
+| `s.shrink_to(min_capacity: Int)` |  |
 
 ### Padding & Centering
 
@@ -535,14 +535,16 @@ public type FormatSpec is {
     alternate: Bool,
     format_type: Maybe<Char>,
 };
-
-FormatSpec.default()                   // (' ', Left, Minus, None, None, false, None)
-FormatSpec.new()                       // alias of default()
-spec.with_width(w)
-spec.with_precision(p)
-spec.with_align(a)
-spec.with_fill(c)
 ```
+
+| | |
+|---|---|
+| `FormatSpec.default()` | (' ', Left, Minus, None, None, false, None) |
+| `FormatSpec.new()` | alias of default() |
+| `spec.with_width(w)` |  |
+| `spec.with_precision(p)` |  |
+| `spec.with_align(a)` |  |
+| `spec.with_fill(c)` |  |
 
 ### `Formatter` / `TextFormatter`
 
@@ -567,12 +569,12 @@ implement Debug for Point {
 
 ### Debug helpers
 
-```verum
-f.debug_struct("Name").field("x", &x).field("y", &y).finish()
-f.debug_tuple("Name").field(&a).field(&b).finish()
-f.debug_list().entries(iter).finish()
-f.debug_map().entries(iter).finish()
-```
+| | |
+|---|---|
+| `f.debug_struct("Name").field("x", &x).field("y", &y).finish()` |  |
+| `f.debug_tuple("Name").field(&a).field(&b).finish()` |  |
+| `f.debug_list().entries(iter).finish()` |  |
+| `f.debug_map().entries(iter).finish()` |  |
 
 ### Print functions (require `[IO]`)
 

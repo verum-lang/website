@@ -19,13 +19,20 @@ public type Color is
     | Rgb(Rgb)                 // TrueColor
     | Hsl(Hsl)                 // converted to Rgb at render
     | Lab(Lab);                // CIELAB; used for perceptual computations
-
-// Common constants
-Color.Black  Color.DarkRed   Color.DarkGreen  Color.DarkYellow
-Color.DarkBlue Color.DarkMagenta Color.DarkCyan  Color.Grey
-Color.DarkGrey Color.Red    Color.Green       Color.Yellow
-Color.Blue   Color.Magenta  Color.Cyan        Color.White
 ```
+
+| | |
+|---|---|
+| `// Common constants` |  |
+| `Color.Black  Color.DarkRed` |  |
+| `Color.DarkGreen  Color.DarkYellow` |  |
+| `Color.DarkBlue Color.DarkMagenta Color.DarkCyan  Color.Grey` |  |
+| `Color.DarkGrey Color.Red` |  |
+| `Color.Green` |  |
+| `Color.Yellow` |  |
+| `Color.Blue` |  |
+| `Color.Magenta  Color.Cyan` |  |
+| `Color.White` |  |
 
 ```verum
 Rgb.new(r: UInt8, g: UInt8, b: UInt8) -> Rgb
@@ -65,20 +72,28 @@ Style.new() -> Style
 
 ```verum
 public type Modifier is { bits: UInt16 };
-
-Modifier.NONE
-Modifier.BOLD              Modifier.DIM
-Modifier.ITALIC            Modifier.UNDERLINED
-Modifier.DOUBLE_UNDERLINED Modifier.CURLY_UNDERLINED
-Modifier.SLOW_BLINK        Modifier.RAPID_BLINK
-Modifier.REVERSED          Modifier.HIDDEN
-Modifier.CROSSED_OUT       Modifier.OVERLINED
-
-    fn contains(&self, m: Modifier) -> Bool
-    fn union(&self, m: Modifier)    -> Modifier
-    fn intersect(&self, m: Modifier) -> Modifier
-    fn difference(&self, m: Modifier) -> Modifier
 ```
+
+| | |
+|---|---|
+| `Modifier.NONE` |  |
+| `Modifier.BOLD` |  |
+| `Modifier.DIM` |  |
+| `Modifier.ITALIC` |  |
+| `Modifier.UNDERLINED` |  |
+| `Modifier.DOUBLE_UNDERLINED Modifier.CURLY_UNDERLINED` |  |
+| `Modifier.SLOW_BLINK` |  |
+| `Modifier.RAPID_BLINK` |  |
+| `Modifier.REVERSED` |  |
+| `Modifier.HIDDEN` |  |
+| `Modifier.CROSSED_OUT` |  |
+| `Modifier.OVERLINED` |  |
+| `fn contains(&self, m: Modifier) -> Bool` |  |
+| `fn union(&self, m: Modifier)` |  |
+| `-> Modifier` |  |
+| `fn intersect(&self, m: Modifier) -> Modifier` |  |
+| `fn difference(&self, m: Modifier) -> Modifier` |  |
+
 
 ## `Theme`
 
@@ -94,10 +109,13 @@ public type Theme is {
     error:       Color,
     border:      Color,
 };
-
-Theme.dark()  -> Theme
-Theme.light() -> Theme
 ```
+
+| | |
+|---|---|
+| `Theme.dark()  -> Theme` |  |
+| `Theme.light() -> Theme` |  |
+
 
 ## `ColorProfile`
 

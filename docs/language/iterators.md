@@ -80,11 +80,11 @@ xs.iter().map(|x| x * x)      // 100, 225, 289
 `fn(&Self.Item) -> Bool`, so their parameter is `&&Int` and a comparison
 needs both stars:
 
-```verum
-xs.iter().filter(|n| **n > 12)      // not *n, not n
-xs.iter().any(|n| **n > 16)
-xs.iter().position(|n| **n == 15)
-```
+| | |
+|---|---|
+| `xs.iter().filter(\|n\| **n > 12)` | not *n, not n |
+| `xs.iter().any(\|n\| **n > 16)` |  |
+| `xs.iter().position(\|n\| **n == 15)` |  |
 
 The rule to carry: **transform closures take the item, predicate closures
 take a reference to it.** If a comparison complains, add a star; if it
@@ -190,7 +190,7 @@ implement Iterator for Countdown {
         self.n = self.n - 1;
         Maybe.Some(self.n)
     }
-};
+}
 ```
 
 A type that can also be walked from the back implements
