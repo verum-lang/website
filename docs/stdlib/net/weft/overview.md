@@ -224,12 +224,18 @@ async fn get_user(PathParam(id): PathParam<UserId>)
 }
 
 fn main() using [Config] {
-    let app = Router.new()
-        .route("/users/:id", Method.Get, get_user)
+    // `layer` belongs to `ServiceBuilder`, not to `Router`: the router is
+    // the innermost service and the builder wraps it. See
+    // `core/net/weft/service.vr` and the example in `timeout.vr`.
+    let router = Router.new()
+        .route("/users/:id", Method.Get, get_user);
+
+    let app = ServiceBuilder.new(router)
         .layer(TracingLayer.new())
         .layer(TimeoutLayer.ms(5000))
         .layer(RateLimitLayer.new(1000, 100))     // rps, burst — two Ints
-        .layer(SpiffeAuthLayer.jwt(Config.get_or("jwt.secret", "")));
+        .layer(SpiffeAuthLayer.jwt(Config.get_or("jwt.secret", "")))
+        .build();
 
     // `Supervisor` is a PROTOCOL and nothing implements it —
     // `SupervisorHandle` is the concrete one. `root` for the top of the

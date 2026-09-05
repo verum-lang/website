@@ -51,9 +51,13 @@ Behaviour:
 ## Usage
 
 ```verum
-let app = Router.new()
-    .route("/admin", Method.Get, admin_handler)
-    .layer(SpiffeAuthLayer.new(trust_bundle));
+// `layer` is `ServiceBuilder`'s; the router is the service it wraps.
+let router = Router.new()
+    .route("/admin", Method.Get, admin_handler);
+
+let app = ServiceBuilder.new(router)
+    .layer(SpiffeAuthLayer.new(trust_bundle))
+    .build();
 
 async fn admin_handler(
     Ctx(p): Ctx<Principal>,

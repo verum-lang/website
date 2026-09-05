@@ -214,18 +214,21 @@ fresh keys.
 ## Composition in a Weft pipeline
 
 ```verum
-mount core.net.weft.service.{Layer};
+mount core.net.weft.service.{Layer, ServiceBuilder};
 mount core.net.proxy.{circuit_breaker.CircuitBreakerLayer,
                       retry.RetryLayer,
                       upstream_pool.UpstreamPool};
 
 fn build_proxy(pool: UpstreamPool) -> Service {
-    Service.builder()
+    // `Service` is a PROTOCOL (`core/net/weft/service.vr`) and has no
+    // `builder`; the type that composes layers is `ServiceBuilder`, and it
+    // wraps the INNERMOST service — here the handler — then `build()`s.
+    ServiceBuilder.new(proxy_handler)
         .layer(RateLimiter.token_bucket(1000, 1000))
         .layer(CircuitBreakerLayer.new(5, 10_000, 3))
         .layer(RetryLayer.new(3, 25, 1000, Some(RetryBudget.new(100))))
         .layer(UpstreamPool.as_layer(pool))
-        .service(proxy_handler)
+        .build()
 }
 ```
 

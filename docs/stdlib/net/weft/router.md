@@ -120,28 +120,39 @@ which renders as 404 Not Found.
 Router itself is a `Handler`, so:
 
 ```verum
-let app = Router.new()
-    .get("/", index)
+// `layer` belongs to `ServiceBuilder`, not to `Router` — the router is
+// the innermost service and the builder wraps it. Verified against
+// `core/net/weft/service.vr` (`ServiceBuilder.new / layer / build`) and the
+// worked example in `core/net/weft/timeout.vr`.
+let router = Router.new()
+    .get("/", index);
+
+let app = ServiceBuilder.new(router)
     .layer(TracingLayer.new())     // outermost first; wraps the whole router
     .layer(TimeoutLayer.ms(5000))
-    .layer(RateLimitLayer.new(1000, 100));   // rps, burst
+    .layer(RateLimitLayer.new(1000, 100))    // rps, burst
+    .build();
 ```
 
 You can also layer **on individual sub-routers**:
 
 ```verum
-let admin = Router.new()
-    .get("/dashboard", admin_dashboard)
-    .layer(SpiffeAuthLayer.jwt(admin_secret()));   // `jwt` or `mtls`;
-                                                  // there is no
-                                                  // `admin_only` — the
-                                                  // scoping is the nest
-                                                  // below, not the layer
+let admin_router = Router.new()
+    .get("/dashboard", admin_dashboard);
 
-let app = Router.new()
+let admin = ServiceBuilder.new(admin_router)
+    // `jwt` or `mtls`; there is no `admin_only` — the scoping is the
+    // `nest` below, not the layer.
+    .layer(SpiffeAuthLayer.jwt(admin_secret()))
+    .build();
+
+let routes = Router.new()
     .nest("/admin", admin)        // auth applies only to /admin/*
-    .nest("/api", public_api)
-    .layer(TracingLayer.new());   // tracing applies to everything
+    .nest("/api", public_api);
+
+let app = ServiceBuilder.new(routes)
+    .layer(TracingLayer.new())    // tracing applies to everything
+    .build();
 ```
 
 ## `match_request` — direct matching API
