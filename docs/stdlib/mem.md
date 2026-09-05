@@ -501,7 +501,7 @@ const SLICE_SPAN_CONTINUE:    UInt8 = 3;
 const SEGMENT_NORMAL:         UInt8 = 0;
 const SEGMENT_HUGE:           UInt8 = 1;
 
-type Segment is MemSegment;             // alias;
+type Segment is MemSegment;             // alias
 type SegmentError is
     | MmapFailed   { code: Int }
     | MunmapFailed { code: Int }
