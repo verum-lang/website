@@ -445,11 +445,13 @@ type ArenaConfig is {
     max_capacity:     Int,    // bytes; 0 = no limit
     growth_factor:    Int,    // percentage; 200 = double on growth
 };
-
-ArenaConfig.default()               // 64 KiB / 256 MiB / 2×
-ArenaConfig.fixed(capacity: Int)    // capacity / capacity / no-grow (100%)
-ArenaConfig.custom(initial, max, growth)
 ```
+
+| constructor | initial / max / growth |
+|---|---|
+| `ArenaConfig.default()` | 64 KiB / 256 MiB / 2× |
+| `ArenaConfig.fixed(capacity: Int)` | capacity / capacity / no-grow (100%) |
+| `ArenaConfig.custom(initial, max, growth)` | |
 
 ### Errors — `ArenaError`
 
@@ -578,10 +580,12 @@ type HeapError is
     | SegmentError       { inner: SegmentError }    // From<SegmentError>
     | UseAfterFree
     ;
-
-e.message() -> Text                                  // human-readable
-HeapError.from(seg_err: SegmentError) -> HeapError   // From impl
 ```
+
+| | |
+|---|---|
+| `e.message() -> Text` | human-readable |
+| `HeapError.from(seg_err: SegmentError) -> HeapError` | `From` impl |
 
 Implements `Display` (routes via `.message()`), `Debug`, and `Eq`
 (per-variant; payload-bearing variants compare payloads).
@@ -619,13 +623,13 @@ type UseAfterFreeError is {
 
 implement UseAfterFreeError {
     fn new(eg: UInt32, ag: UInt32, ee: UInt16, ae: UInt16,
-           tn: Text) -> UseAfterFreeError
-    fn null_pointer(type_name: Text) -> UseAfterFreeError
-        // sets both gens to GEN_UNALLOCATED — `.message()` routes
-        // through the "null pointer" branch.
+           tn: Text) -> UseAfterFreeError;
+    // `null_pointer` sets both gens to GEN_UNALLOCATED — `.message()`
+    // routes through the "null pointer" branch.
+    fn null_pointer(type_name: Text) -> UseAfterFreeError;
     fn capability_violation(capability: Text, type_name: Text)
-        -> UseAfterFreeError
-    fn message(&self) -> Text   // null-pointer / use-after-free branches
+        -> UseAfterFreeError;
+    fn message(&self) -> Text;  // null-pointer / use-after-free branches
 }
 ```
 
@@ -686,11 +690,13 @@ type CapEvent is {
     capabilities_after:  UInt16,
     epoch_at_event:     UInt32,
 };
-
-CapEvent.new(kind, target_ptr, gen_before, gen_after, caps_before,
-             caps_after, epoch) -> CapEvent      // returns seq=0
-event.bumped_generation() -> Bool                // true for Revoke + GenBump
 ```
+
+| | |
+|---|---|
+| `CapEvent.new(kind, target_ptr, gen_before, gen_after, caps_before, caps_after, epoch) -> CapEvent` | returns seq=0 |
+| `event.bumped_generation() -> Bool` | true for Revoke + GenBump |
+
 
 `bumped_generation()` is **kind-driven**, not diff-driven: it returns
 `true` iff the kind is `Revoke` or `GenBump`, regardless of whether
