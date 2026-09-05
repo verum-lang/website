@@ -292,11 +292,13 @@ consumed at most once per `Future`. But **awaiting a linear future
 more than once** is a type error:
 
 ```verum
-async fn fetch(tok: linear AuthToken) -> Response using [Net] {
+type linear AuthToken is { bytes: List<Byte> };
+
+async fn fetch(tok: AuthToken) -> Response using [Net] {
     http_get_with(tok).await
 }
 
-fn bad(t: linear AuthToken) {
+fn bad(t: AuthToken) {
     let fut = fetch(t);
     let r1 = fut.await;
     // let r2 = fut.await; // ERROR: fut is linear, already awaited
@@ -315,7 +317,7 @@ type linear Open     is { socket: Socket, session: Session };
 type linear Closed   is {};
 
 implement Pending {
-    fn handshake(self) -> Open throws(HandshakeError) {
+    fn handshake(self) throws(HandshakeError) -> Open {
         let session = negotiate(&self.socket)?;
         Open { socket: self.socket, session: session }
     }
@@ -408,7 +410,7 @@ A linear value flowing through a context boundary is still linear:
 
 ```verum
 fn run<C>(action: fn(Tx) -> Result using C) -> Result
-    using C + [Database]
+    using [Database]
 {
     let tx = db_begin();
     action(tx)  // tx consumed by action, or action errors

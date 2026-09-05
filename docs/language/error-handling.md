@@ -42,7 +42,7 @@ E>` (with `None` lifted to a specific error).
 Some functions declare a typed error boundary:
 
 ```verum
-fn parse_addr(s: Text) -> Addr throws(ParseError | DnsError) {
+fn parse_addr(s: Text) throws(ParseError | DnsError) -> Addr {
     let text_addr = validate_syntax(s)?;   // may throw ParseError
     resolve(text_addr)?                    // may throw DnsError
 }
