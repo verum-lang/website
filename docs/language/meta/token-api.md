@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 title: Token-Stream API
-description: The `TokenStream`, `Ident`, `Literal`, `Span`, and AST-node types that macro bodies manipulate.
+description: The `TokenStream`, `Token`, `Literal` and `Span` types that macro bodies manipulate — and which parts of this page are not shipped.
 ---
 
 # The token-stream API
@@ -12,8 +12,30 @@ programmatic shape that `quote` cannot express directly, it reaches
 for the token-stream API.
 
 This page documents the types and operations every non-trivial meta
-function will touch. The API is provided by the `AstAccess`
-meta-context.
+function will touch.
+
+:::caution Half of this page is a design, not an API
+Measured against `core/meta/` on 2026-09-06, name by name. WHAT IS
+SHIPPED, all in `core/meta/token.vr` unless noted: `TokenStream`,
+`TokenTree`, `Token`, `TokenKind`, `TokenGroup`, `Delimiter`,
+`Spacing`, `Keyword`, `Literal`, `StringKind`, `LexError`; `Span` and
+`MetaSpan` (`span.vr`); `QuoteBuilder`, `GroupBuilder`, `QuotePart`
+(`quote.vr`); `TypeKind`, `FieldInfo`, `VariantInfo`, `GenericParam`,
+`ProtocolInfo`, `FunctionInfo` (`reflection.vr`).
+
+WHAT IS NOT, anywhere in `core/`: `Ident`, `Punct`, `Group`,
+`HygieneMark`, `Hygiene`, `AstAccess`, and every `*Ast` type —
+`FnAst`, `TypeAst`, `ImplAst`, `ExprAst`, `StmtAst`, `PatternAst`,
+`ProtocolAst`, `ContextAst`, `AttributeAst`, `BlockAst` — along with
+`TypeInfo`, `CompileDiag`, `Quotable` and `Param`. Sections that rest
+on them carry their own marker below.
+
+The shipped half is corrected against the source in this pass: the
+token tree is `| Leaf(Token) | Grouped(TokenGroup)`, not four variants;
+the group type is `TokenGroup`, not `Group`; and `Delimiter`'s variants
+are `Parenthesis` / `Brace` / `Bracket` / `Invisible`, not `Paren` /
+… / `None` (`core/meta/token.vr:409`).
+:::
 
 ## The data model
 
@@ -30,11 +52,12 @@ Metaprogramming works at two levels of granularity:
    treat the input as "a function" or "a type", not as a bag of
    tokens.
 
-Both views co-exist. An `FnAst` can always be reduced to a
-`TokenStream` via `to_tokens()`; a `TokenStream` can be parsed into
-an `FnAst` via `AstAccess.parse_fn(&tokens)` when the tokens really
-are a function. The `TokenStream` form is more permissive, the
-`FnAst` form catches more errors up front.
+Both views are intended to co-exist, with a reduction in each
+direction. ONLY THE FIRST IS SHIPPED: token trees are real and the
+`*Ast` layer is not, so today the second level is reached through
+`core/meta/reflection.vr`'s `FunctionInfo`, `FieldInfo` and their kin
+rather than through a parsed `FnAst`. The caution above lists what
+exists; the sections below say so where it matters.
 
 ## `TokenStream`
 
@@ -42,11 +65,11 @@ The primary type. A `TokenStream` is an ordered sequence of
 `TokenTree`s.
 
 ```verum
+// core/meta/token.vr:436 — two variants, not four. A single token
+// carries its own kind; only a delimited run needs its own type.
 type TokenTree is
-    | Ident(Ident)
-    | Literal(Literal)
-    | Punct(Punct)
-    | Group(Delimiter, TokenStream);
+    | Leaf(Token)
+    | Grouped(TokenGroup);
 
 type TokenStream is {
     tokens: List<TokenTree>,
@@ -95,6 +118,15 @@ cannot lex; it does not parse, so a stream that comes back clean can
 still fail `AstAccess.parse_item`.
 
 ## `Ident`
+
+:::caution `Ident` is not shipped
+There is no `Ident` type in `core/`, and no `Hygiene` or `HygieneMark`
+either. A single token is `Token { kind: TokenKind, … }`
+(`core/meta/token.vr:505`), and an identifier is a `TokenKind`, not a
+type of its own. Everything in this section — the factories, the
+rename helpers, `Hygiene.gensym` — describes the API this design
+wants, not one a `.vr` program can call today.
+:::
 
 An identifier carries a name, a span, and a hygiene context.
 
@@ -156,6 +188,13 @@ and pattern-match on the variants to inspect. `Literal` is quotable:
 
 ## `Punct`
 
+:::caution `Punct` is not shipped
+`Spacing` IS real (`core/meta/token.vr:700`, variants `Joint` and
+`Alone`), and the distinction this section draws is the right one. The
+`Punct` type that carries it is not: punctuation reaches a macro body
+as a `Token` whose `kind` says so.
+:::
+
 A punctuation token — `+`, `->`, `::`, `{`, etc. Rarely
 hand-constructed; usually emerges from `quote { ... }` or
 `tokenize(...)` and is consumed by pattern-matching.
@@ -170,20 +209,51 @@ the next one (like `-` followed by `>` to form `->`). Hand-written
 punctuation usually wants `Spacing.Alone`; multi-character operators
 use `Joint`.
 
-## `Group`
+## `TokenGroup`
 
-A `Group` is a bracketed sub-stream:
+A `TokenGroup` is a bracketed sub-stream:
 
 ```verum
-type Delimiter is | Paren | Brace | Bracket | None;
-type Group is { delim: Delimiter, inner: TokenStream, span: Span };
+// core/meta/token.vr:409 and :420
+type Delimiter is
+    | Parenthesis   // ( ... )
+    | Brace         // { ... }
+    | Bracket       // [ ... ]
+    | Invisible;    // no delimiter
+
+type TokenGroup is {
+    delimiter: Delimiter,
+    tokens: TokenStream,
+    span: Span,
+};
 ```
 
-Use `Group.new(Delimiter.Paren, inner_ts)` to wrap. `Delimiter.None`
-exists for invisible grouping — used by the expander to preserve
-precedence without introducing visible parentheses.
+`Delimiter.Invisible` is the one worth knowing: it exists for grouping
+that the expander needs and the reader must not see — preserving
+precedence without introducing visible parentheses. It is the variant
+this page previously called `None`, which is also the name of a
+`Maybe` variant, so the rename is worth more than a spelling
+correction.
 
 ## AST node types
+
+:::caution Everything from here to the worked example is a design
+`AstAccess` and every `*Ast` type below — `FnAst`, `TypeAst`,
+`ImplAst`, `ExprAst`, `StmtAst`, `PatternAst`, `ProtocolAst`,
+`ContextAst`, `AttributeAst`, `BlockAst` — occur nowhere in `core/`,
+and neither do `TypeInfo`, `CompileDiag`, `Quotable` or `Param`. The
+sections that follow are worth reading as the shape the macro layer is
+being built towards; none of them compiles.
+
+WHAT DOES EXIST for the two jobs these sections describe. For
+reflection: `core/meta/reflection.vr` declares `TypeKind`,
+`FieldInfo`, `VariantInfo`, `VariantKind`, `GenericParam`,
+`ProtocolInfo`, `AssociatedTypeInfo` and `FunctionInfo` — structured,
+and reachable — so the "what fields does this type have" question has
+an answer; it is simply not spelled `TypeInfo.of<T>()`. For building
+output: `core/meta/quote.vr` has `QuoteBuilder`, `GroupBuilder` and the
+`quote { … }` form, which is where the `Building code` page starts.
+:::
 
 `AstAccess.parse_*` functions turn a `TokenStream` into a typed AST
 node. The structured types are:
@@ -309,15 +379,40 @@ A source position range. Every AST node and every token carries a
 `verum expand-macros` to
 trace provenance, and by the LSP to locate hover tooltips.
 
-| Method                         | Returns         | Purpose                                 |
-|--------------------------------|-----------------|-----------------------------------------|
-| `Span.current()`               | `Span`          | the current call site                   |
-| `span.file()`                  | `Text`          | the source file path                    |
-| `span.line()`                  | `Int`           | 1-based line                            |
-| `span.column()`                | `Int`           | 1-based column                          |
-| `span.byte_range()`            | `(Int, Int)`    | byte offsets                            |
-| `span.join(other: Span)`       | `Span`          | smallest containing range               |
-| `span.source_text()`           | `Text`          | the source bytes at this span           |
+`Span` is a public alias for `MetaSpan` (`core/meta/span.vr:101`), and
+it is an OPAQUE HANDLE — `{ id, hygiene, flags }` — not a file, line and
+column. That is the shape worth understanding before the table: a span
+identifies a position, and resolving it to a human-readable location is
+a separate, fallible step.
+
+| Method                          | Returns                 | Purpose                                        |
+|---------------------------------|-------------------------|------------------------------------------------|
+| `Span.call_site()`              | `Span`                  | the caller's span — the usual choice           |
+| `Span.def_site()`               | `Span`                  | the macro definition's own span                 |
+| `Span.mixed_site()`             | `Span`                  | call-site hygiene, def-site resolution          |
+| `Span.synthetic()`              | `Span`                  | no source position at all                       |
+| `span.location()`               | `Maybe<SourceLocation>` | file, line and column — MAYBE, see below        |
+| `span.start()` / `span.end()`   | `Int`                   | byte offsets                                    |
+| `span.len()` / `span.is_empty()`| `Int` / `Bool`          | width                                           |
+| `span.join(other)`              | `Span`                  | smallest containing range                       |
+| `span.subspan(start, end)`      | `Maybe<Span>`           | a narrower span inside this one                 |
+| `span.source_text()`            | `Maybe<Text>`           | the source bytes, when there are any            |
+| `span.overlaps` / `.contains`   | `Bool`                  | range relations                                  |
+| `span.is_expansion()` / `.is_synthetic()` | `Bool`        | where this span came from                       |
+| `span.resolved_at_call_site()` / `.resolved_at_def_site()` | `Span` | re-hygiene an existing span          |
+
+THE TWO `Maybe`s ARE THE POINT. `location()` and `source_text()` both
+return `Maybe` because a synthetic span — one a macro invented — has no
+file and no source bytes, and a macro that assumes otherwise crashes on
+its own output. `SourceLocation` (`span.vr:295`) is where `file`, `line`
+and `column` actually live:
+
+```verum
+match span.location() {
+    Maybe.Some(loc) => print(loc.display()),
+    Maybe.None      => print("<synthetic>"),
+}
+```
 
 Spans are mostly handled for you — any identifier, literal, or AST
 node you receive already has one, and `to_tokens()` preserves them.
