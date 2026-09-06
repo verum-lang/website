@@ -176,7 +176,7 @@ Functions with no explicit return type return `()`.
 ## Generator functions
 
 ```verum
-fn* fibonacci() -> Iterator<Int> {
+fn* fibonacci() -> Int {
     let (mut a, mut b) = (0, 1);
     loop {
         yield a;
@@ -184,15 +184,27 @@ fn* fibonacci() -> Iterator<Int> {
     }
 }
 
-async fn* stream_events() -> AsyncIterator<Event> using [Ws] {
+async fn* stream_events() -> Event using [Ws] {
     while let Maybe.Some(e) = Ws.next().await {
         yield e;
     }
 }
 ```
 
-- `fn*` — sync generator, returns `Iterator<T>`.
-- `async fn*` — async generator, returns `AsyncIterator<T>`.
+**A generator declares the type it YIELDS, not the type it returns.**
+`fn* fibonacci() -> Int` is a function whose callers receive an
+`Iterator<Item = Int>`; the `-> Int` describes one `yield`. Writing
+`-> Iterator<Int>` says the generator yields whole iterators.
+
+- `fn*` — sync generator; declare `-> T`, callers get `Iterator<Item = T>`.
+- `async fn*` — async generator; declare `-> T`, callers get
+  `AsyncIterator<Item = T>`, which is a `Stream<T>`.
+
+`grammar/verum.ebnf` states the rule at the `yield` production
+(`fn* range(n: Int) -> Int`), and the standard library writes it the
+same way: `core/shell/command.vr` declares
+`async fn* stream_lines(&self) -> Result<Text, ShellError>`, yielding
+one result at a time.
 
 ## Loop invariants and decreases
 
