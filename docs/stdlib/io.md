@@ -721,6 +721,31 @@ The following defect classes are tracked in `core-tests/io/<sub>/audit.md`:
 | #io-15 | Real async I/O via io_uring / kqueue / IOCP | core.io.engine 1-2 weeks |
 | #io-16 | Sandboxed `IoEngine` test harness | infra 1 day |
 
+:::danger Windows file I/O is not implemented
+
+The two Windows rows above (#io-9 open-flag mapping, #io-11 permissions)
+read as finishing touches on a working port. They are not. **There is no
+Windows file layer at all**, and the number is easy to check:
+`core/sys/windows/kernel32.vr` declares **three** `public fn safe_*`
+wrappers in total, of which exactly one — `safe_close` — is a file
+operation. `open`, `read`, `write`, `lseek`, `fstat`, `fsync`,
+`ftruncate` and `dup` have no wrapper to call, and neither `core/io/file.vr`
+nor `core/io/fs.vr` can bind them: their `@cfg(target_os = "windows")`
+mount blocks bind `safe_close`, `Stat` and the flag constants, and
+nothing else.
+
+Everything on this page describing files, directories and paths is
+therefore **Linux and macOS**. Path parsing — `Path`, `PathBuf`,
+`Prefix`, `MAIN_SEPARATOR` — is pure text manipulation and does work
+everywhere, which is why the Windows spellings above are real. Opening a
+file is not.
+
+Tracked as T1211 in the task pool. It is stated here rather than left to
+be inferred from a gaps table, because a reader who ships to Windows on
+the strength of #io-9's "0.5 day" estimate will find out at runtime.
+
+:::
+
 ---
 
 ## Cross-references
