@@ -410,7 +410,7 @@ single-field-record unboxing optimisation, this caused
 the underlying `__waitgroup_add_raw` intrinsic and return a bare
 `handle + delta` instead — corrupting every conformance test that
 expected a counter increment. The intercept has been removed; Duration's
-`Add::add` continues to dispatch through its Verum-side body + the
+`Add.add` continues to dispatch through its Verum-side body + the
 `time_duration_add` intrinsic. Same defect surface as
 [`[[duration_single_field_record_unboxing_2026-05-27]]`](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration/audit.md#section-g).
 

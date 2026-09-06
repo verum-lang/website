@@ -188,7 +188,10 @@ To add a backend `XYZ`:
 3. Surface `SearchError.InvalidQuery(<filter-shape>)` for
    any combinator the backend can't lower losslessly; NEVER silently
    degrade to a permissive query.
-4. Surface `SearchError::IndexConfigUnsupported(<option-name>)` at
-   `create_index` time for unsupported config flags.
+4. Surface `SearchError.SchemaConflict(<option-name>)` at
+   `create_index` time for unsupported config flags. (This item named
+   an `IndexConfigUnsupported` variant until 2026-09-06;
+   `core/search/types.vr` does not declare one, so the instruction
+   could not be followed.)
 5. Add a regression test under `core-tests/search/xyz/` that
    exercises the full protocol surface against a backend stub.

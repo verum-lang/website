@@ -210,7 +210,7 @@ DbError -> IoError`. The logging middleware unrolls the whole chain
 into a structured JSON record; the client sees only the top-level
 `public_message()`.
 
-A normative rule for `Layer::wrap` is that it must not lose `source()`
+A normative rule for `Layer.wrap` is that it must not lose `source()`
 of the wrapped error — `TimeoutLayer` wraps `S.Error` in
 `TimeoutError.Inner(err)` and `into_response` on the outer recursively
 calls `source().into_response()`. Compiler enforces this via an
