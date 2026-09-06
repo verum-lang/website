@@ -12,7 +12,20 @@ testing. Three layers of tests cover the whole stack:
 
 ## 1. Unit-test `update`
 
+The two models below are YOURS, not the library's — a TUI model is
+whatever record your `update` is implemented on. `CounterModel` is
+introduced on the model page; `DataModel` is the second one this file
+uses, and it is spelled out here so the block stands alone:
+
 ```verum
+type DataModel is { rows: List<Text>, loading: Bool };
+
+implement DataModel {
+    public fn default() -> DataModel {
+        DataModel { rows: [], loading: false }
+    }
+}
+
 @test
 fn increment_bumps_counter() {
     let mut m = CounterModel { count: 0 };

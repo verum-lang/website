@@ -89,18 +89,40 @@ addressable by name in `proof by my_tactic`.
 A `Goal` has three accessors:
 
 ```verum
+// Transcribed from `core/math/tactics.vr` on 2026-09-06.
 public type Goal is {
-    prop: Proposition,
-    hyps: List<Hypothesis>,
-    scope: ScopeInfo,
+    /// The proposition to be proved.
+    proposition: TacticProp,
+    /// Local hypotheses in scope, keyed by name.
+    hypotheses:  List<Hypothesis>,
+    /// An optional display hint used by the interactive mode.
+    label:       Maybe<Text>,
 };
 
-public type Hypothesis is {
-    name: Text,
-    ty:   Proposition,
-    src:  HypSource,  // UserRequires | Theorem(lemma_name) | Synthesized
-};
+public type Hypothesis is { name: Text, hyp: TacticProp };
+
+public type TacticProp is (Int);
+
+public type TacticResult is
+    | Success { remaining_goals: List<TacticProp> }
+    | Failure { reason: Text };
 ```
+
+:::caution This block did not match the library, in every field
+It read `prop: Proposition`, `hyps: List<Hypothesis>` and
+`scope: ScopeInfo`. The declared names are `proposition`, `hypotheses`
+and `label`; the declared type is `TacticProp` (a newtype over `Int`,
+not the rich `Proposition` sum described below); and **`ScopeInfo` is
+declared nowhere** — neither in `core/` nor on this page — so a reader
+copying the block had a field referring to a type that does not exist.
+`Hypothesis` likewise has two fields (`name`, `hyp`), not three, and
+there is no `HypSource`.
+
+The `Proposition` sum shown in the next block is a DESIGN SKETCH of a
+richer proposition view, not the type `Goal` currently carries. Read it
+as the shape the DSL is heading toward; `TacticProp` is what a tactic
+receives today.
+:::
 
 `Proposition` is a discriminated view over `CoreTerm`:
 
