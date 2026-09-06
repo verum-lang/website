@@ -52,7 +52,7 @@ reference):
                 └──────────┬───────────┘
                            ▼
                 ┌──────────────────────┐
-                │  L4  VDBE            │  Program (97 opcodes),
+                │  L4  VDBE            │  Program (89 opcodes),
                 │     (bytecode VM)    │  Register, Cursor table
                 └──────────┬───────────┘
                            ▼
@@ -232,7 +232,8 @@ opaque to the VDBE except via the cursor methods.
 ## L4 — VDBE
 
 **Responsibility.** Run the bytecode programs L5 emits.  A
-register-SSA virtual machine with **97 opcodes** (vs 147 in C-SQLite —
+register-SSA virtual machine with **89 opcodes** (counted 2026-09-06 in
+`core/database/sqlite/native/l4_vdbe/opcode.vr`; this page said 97) (vs 147 in C-SQLite —
 the deltas are codepoints we don't yet generate, not opcodes that map
 to behaviour).
 
