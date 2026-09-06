@@ -79,22 +79,36 @@ reordering. Mix with numbered access: `caps.get(1)` still works.
 ## Iterate all matches
 
 ```verum
+// `find_all` answers a `List<Text>`, EAGERLY — there is no
+// `find_iter`, and the matches are already Texts, so no `.as_str()`.
 let tokens = rx#"\w+";
-for m in tokens.find_iter(&text) {
-    print(f"token: {m.as_str()}");
+for m in tokens.find_all(text) {
+    print(f"token: {m}");
 }
 
-// With captures:
+// `captures` answers `Maybe<List<Text>>` for the FIRST match only —
+// group 0 is the whole match, 1.. are the groups. There is no
+// `captures_iter` and no `Captures` object with `.get(i)`.
 let pairs = rx#"(\w+)\s*=\s*(\w+)";
-for caps in pairs.captures_iter(&config) {
-    let key = caps.get(1).unwrap().as_str();
-    let val = caps.get(2).unwrap().as_str();
-    apply(key, val);
+match pairs.captures(config) {
+    Maybe.Some(caps) => apply(caps[1], caps[2]),
+    Maybe.None       => {}
 }
 ```
 
-Both iterators are **lazy** — they produce matches on demand, not
-eagerly.
+:::caution Neither is lazy, and there is no all-matches captures
+
+`Regex` is `as_str` / `captures` / `find` / `find_all` / `is_match` /
+`new` / `replace` / `replace_all` / `split`. `find_all` builds the
+whole `List<Text>` before returning, so on a large input it allocates
+every match whether you consume them or not — this section previously
+claimed both forms were lazy, which was a performance promise about
+methods that do not exist.
+
+To walk the captures of EVERY match you currently loop yourself:
+`find_all` for the match texts, then `captures` on each.
+
+:::
 
 ## Replace
 

@@ -225,17 +225,32 @@ type Reply is { status: Int, message: Text };
 
 let reply = Reply { status: 200, message: "ok".to_text() };
 
-let text: Text        = json.to_text(&reply)?;
-let pretty: Text      = json.to_text_pretty(&reply)?;
-let bytes: List<Byte> = json.to_bytes(&reply)?;
+// `core.encoding.json` serialises a `JsonValue`, through two FREE
+// functions — there is no `json.to_text` / `to_text_pretty` /
+// `to_bytes` / `to_writer` taking your record directly.
+let v: JsonValue = json_of(&reply);        // yours to write, or build
+                                           // with json_int / json_text / …
+let text: Text   = json.stringify(&v);
+let pretty: Text = json.stringify_pretty(&v);
 
-// Stream to a writer:
-let mut f = File.create("out.json")?;
-json.to_writer(&reply, &mut f)?;
+// Via `Data` instead, if the value is already dynamic:
+let d: Data      = data.parse_json(text)?;
+let round: Text  = d.to_json();
+let pretty2      = d.to_json_pretty();
+
+// Writing it out is an ordinary file write; nothing streams JSON.
+file.write_bytes(&"out.json", text.as_bytes())?;
 ```
 
-`to_text_pretty` emits two-space indent; use `json.to_text_pretty_with(&reply, options)`
-for custom indent / array/object formatting.
+:::caution No indent options, and nothing streams
+
+`stringify_pretty` has one format and takes no options —
+`to_text_pretty_with(value, options)` does not exist, so custom indent
+or array/object formatting is not configurable. Neither is there a
+writer sink: `to_writer` is absent and a document is built in memory
+before it is written.
+
+:::
 
 ## 5. Handling errors
 
