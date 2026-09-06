@@ -119,7 +119,7 @@ const COOKIE_KEY: [Byte; 32] = load_secret("cookie_key");
 
 fn sign_cookie(payload: &[Byte]) -> (List<Byte>, [Byte; 32]) {
     let tag = hmac_sha256(&COOKIE_KEY, payload);
-    (payload.to_vec(), tag)
+    (payload.to_list(), tag)   // `to_list`; `vec` is not Verum vocabulary
 }
 
 fn verify_cookie(payload: &[Byte], tag: &[Byte; 32]) -> Bool {

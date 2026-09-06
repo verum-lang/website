@@ -90,12 +90,20 @@ embarrassingly wrong on very dark or very saturated inputs (two visually
 identical colours can be far apart in RGB; two different colours can be
 close). CIELAB is designed to be approximately perceptually uniform.
 
-Enforce an explicit profile for dev/testing:
+:::caution The profile cannot be forced
 
-```verum
-mount core.term.style.profile.ColorProfile;
-terminal.set_color_profile(ColorProfile.Base16);    // force 16-color on kitty
-```
+There is no `set_color_profile`. `Terminal` fixes
+`color_profile: ColorProfile.TrueColor` when it is constructed
+(`core/term/render/frame.vr:81`) and exposes a GETTER only —
+`t.color_profile() -> ColorProfile` at :154. So a program can ask which
+profile it is rendering under, and cannot choose one.
+
+For dev/testing, degrade at the point of use: read
+`t.color_profile()` and pick your own palette from it, or render
+through a `Style` you build for the target depth. Forcing the terminal
+into Base16 is not available today.
+
+:::
 
 ## Themes
 
