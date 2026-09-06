@@ -52,8 +52,6 @@ public type WireType is
     | Varint
     | Fixed64
     | LengthDelim
-    | StartGroup      // decoder-only variant; encoder never emits
-    | EndGroup        // decoder-only variant; encoder never emits
     | Fixed32;
 ```
 
