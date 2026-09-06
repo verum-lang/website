@@ -24,7 +24,7 @@ When the law was first gated, on 2026-08-08:
 
 Re-measured 2026-09-02, the gate reports four upward edges:
 
-```
+```text
 [fail] 4 UPWARD edge(s) across 4 mount site(s):
     base.env(r1.0)           -> text.format(r2.0)
     sys.fs_watch(r1.0)       -> text.format(r2.0)

@@ -248,13 +248,29 @@ stream.set_nodelay(true)?;                  // disable Nagle
 stream.set_keepalive(true)?;                // TCP keepalive
 stream.set_read_timeout(Maybe.Some(30_000))?;   // ms; None = block forever
 stream.set_write_timeout(Maybe.Some(10_000))?;
-stream.set_linger_secs(0)?;                 // close immediately on drop
+stream.set_nonblocking(true)?;
 
 listener.set_nonblocking(true)?;            // (automatic for async)
-listener.set_backlog(1024)?;                // SYN backlog
-listener.set_reuse_addr(true)?;
-listener.set_reuse_port(true)?;             // multiple listeners
 ```
+
+**Backlog and `SO_REUSEPORT` are chosen at BIND time, not set
+afterwards** — `TcpListener` has no setter for either, and this is a
+shape difference rather than a spelling one: by the time you hold a
+listener, the socket is already listening:
+
+```verum
+let l = TcpListener.bind_with_backlog(&addr, 1024)?;   // SYN backlog
+let l = TcpListener.bind_reuseport(&addr)?;            // multiple listeners
+```
+
+`TcpStream` is `connect` / `connect_from` / `local_addr` / `peer_addr` /
+`set_keepalive` / `set_nodelay` / `set_nonblocking` / `set_read_timeout`
+/ `set_write_timeout` / `shutdown` / `try_clone` / `as_raw_fd`, and
+`TcpListener` is `bind` / `bind_reuseport` / `bind_with_backlog` /
+`accept` / `incoming` / `incoming_async` / `local_addr` /
+`set_nonblocking` / `as_raw_fd`. `set_linger_secs` and `set_reuse_addr`
+are in neither: close-on-drop linger is not exposed, and `SO_REUSEADDR`
+is not separately settable.
 
 ## Client side
 
