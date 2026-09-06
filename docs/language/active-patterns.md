@@ -262,7 +262,7 @@ arms are complete under an `@verify(formal)` function — see
 | Total, no params                     | `pattern Even(n) -> Bool = n%2==0;`                       | `Even()`                 |
 | Total, with params                   | `pattern InRange(lo, hi)(n) -> Bool = lo<=n<=hi;`          | `InRange(0, 100)()`      |
 | Partial, no params                   | `pattern Parse(s) -> Maybe<Int> = s.parse_int();`          | `Parse()(n)`             |
-| Partial, with params                 | `pattern Match(re)(s) -> Maybe<...> = re.match(s);`        | `Match(rx#"...")(g)`     |
+| Partial, with params                 | `pattern Match(re)(s) -> Maybe<Text> = re.find(s);`        | `Match(rx#"...")(g)`     |
 | Generic partial                      | `pattern First<T>(xs) -> Maybe<T> = xs.first();`           | `First()(h)`             |
 
 ## Grammar

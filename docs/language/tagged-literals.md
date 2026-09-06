@@ -304,7 +304,7 @@ A tagged literal's result type interacts with the full type system:
 let even: Int { self % 2 == 0 } = 42;
 
 // A regex with refined length (compile-time):
-let short_id: Regex { self.pattern_len() <= 16 } = rx#"[A-Z]{4}";
+let short_id: Regex { self.as_str().len() <= 16 } = rx#"[A-Z]{4}";
 
 // Tagged literals as const context:
 const ROUTE: Url = url#"https://verum-lang.org/docs";

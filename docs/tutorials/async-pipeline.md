@@ -209,12 +209,14 @@ pub async fn write_loop(
             // `write_all` comes from the `Write` protocol and is
             // SYNCHRONOUS — `BufWriter` has no async writer.
             || writer.write_all(line.as_bytes()),
+            // `RetryConfig` has exactly four fields, and
+            // `backoff_factor` is an Int multiplier, not a Float.
+            // There is no `jitter`.
             RetryConfig {
-                max_attempts: 3,
-                initial_backoff_ms: 50,
-                max_backoff_ms: 500,
-                backoff_factor: 2.0,
-                jitter: true,
+                max_retries: 3,
+                initial_delay_ms: 50,
+                max_delay_ms: 500,
+                backoff_factor: 2,
             }
         ).await;
 

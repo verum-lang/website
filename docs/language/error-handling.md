@@ -193,16 +193,20 @@ async fn push_all(events: NonEmpty<Event>) -> Result<(), Error>
     };
 
     for ev in events.iter() {
-        let outcome = retry.execute(|| async {
-            breaker.call(|| post_event(ev)).await
-        }).await;
+        // Retry is a FREE function taking a config, not a method on a
+        // `retry` object: `execute_with_retry_config(f, config)` in
+        // `core.async.spawn_with`. It returns after `max_retries`, so
+        // EXHAUSTION IS THE `Err` — there is no `retry.exhausted()`
+        // predicate to ask, and the retrying happens inside.
+        let outcome = execute_with_retry_config(
+            || breaker.call(|| post_event(ev)),
+            RetryConfig.default(),
+        );
 
         match outcome {
-            Result.Ok(_)                 => Logger.info(&f"sent {ev.id}"),
+            Result.Ok(_)                  => Logger.info(&f"sent {ev.id}"),
             Result.Err(Error.CircuitOpen) => return Result.Err(Error.CircuitOpen),
-            Result.Err(e) if retry.exhausted() =>
-                return Result.Err(Error.Exhausted),
-            Result.Err(e) => Logger.warn(&f"retrying {ev.id}: {e}"),
+            Result.Err(e)                 => return Result.Err(Error.Exhausted),
         }
     }
     Result.Ok(())
@@ -213,7 +217,7 @@ Layer-by-layer:
 
 1. **Prevent** — `events: NonEmpty<Event>` removes the empty-batch
    edge case at the call boundary.
-2. **Verify** — `retry.exhausted()` is refinement-tracked so the
+2. **Verify** — the retry budget is carried in `RetryConfig` so the
    compiler knows the branch is reachable only after the retry budget
    is spent.
 3. **Handle** — `Result` is threaded through, no `?`-shortcuts that
