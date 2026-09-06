@@ -26,21 +26,36 @@ Production-ready:
   normaliser with computational univalence, higher-kinded types,
   protocol specialisation, existentials, GATs.
 - **Memory**: three-tier CBGR with generation + epoch tracking,
-  **~0.93 ns per check** (measured, `verum_cbgr`'s `production_targets`
-  bench, `generation_and_epoch_check`; target is ≤ 15 ns), escape
-  analysis, promotion to `&checked T`. The 11.8–14.5 ns this line
-  carried is the figure from the optimisation the changelog records —
-  superseded, and still correct there as history.
+  **1.2–1.7 ns per check** (re-measured 2026-09-05, `verum_cbgr`'s
+  `production_targets` bench: 1.61 ns valid, 1.69 ns
+  `generation_and_epoch_check`, 1.20 ns invalid, 1.25 ns per check in a
+  100-check batch; target is ≤ 15 ns), escape analysis, promotion to
+  `&checked T`.
+
+  Two superseded figures, kept named so neither reappears: this line
+  carried **~0.93 ns** until 2026-09-06, which the re-measurement above
+  contradicts on the very bench it cited, and **11.8–14.5 ns** before
+  that, which is the figure from the optimisation the changelog records
+  and is still correct there as history. The 2026-09-05 run was taken on
+  a loaded machine, so these are floors rather than clean numbers —
+  stated rather than hidden, and worth re-running before quoting
+  anywhere a reader will act on them.
 - **Verification**: gradual from `@verify(runtime)` through
   `@verify(thorough)` to `@verify(certified)`; SMT layer with
-  capability-based routing; proof extraction; cache with 60–70%
-  hit rate.
+  capability-based routing; proof extraction; a subsumption cache.
+
+  The **60–70% hit rate** this line carried is removed rather than
+  updated. It cites no run, and the only figure in the tree —
+  `verum_verification/src/subsumption.rs` — is `> 90%` written as a
+  TARGET in a module comment, not a measurement. Two numbers that
+  disagree and neither of which came from a run is worse than none.
 - **Concurrency**: `async fn`, `.await`, structured concurrency via
   `nursery`, supervision trees, channels (MPSC / broadcast / oneshot),
   work-stealing executor.
-- **VBC bytecode**: ~350 opcodes (primary + extended tables), full
-  interpreter (37-file dispatch table), LLVM AOT path
-  (native-C parity bar), MLIR GPU path.
+- **VBC bytecode**: 250 primary opcodes plus the extended sub-op tables,
+  full interpreter (**62**-file dispatch table, counted 2026-09-06 —
+  this line said 37), LLVM AOT path (native-C parity bar), MLIR GPU
+  path.
 - **Stdlib**: a substantial `.vr` tree across `core/` — `base`,
   `collections`, `text`, `mem`, `async`, `sync`, `runtime`, `io`,
   `time`, `sys`, `term`, `net`, `math`, `simd`, `meta`, `proof`,
@@ -50,7 +65,20 @@ Production-ready:
   3.17 with refinement hints, DAP debugger, Playbook TUI, REPL,
   formatter, linter, package manager.
 
-Conformance: **1506 / 1507** VCS checks pass (99.93%).
+Conformance: the suite is **7136 spec files** as of 2026-09-06 —
+3129 L0-critical, 1528 L2-standard, 702 L1-core, 345 L3-extended,
+91 L4-performance, and 1341 outside the level tree.
+
+**The pass RATE on this page was stale and is not replaced with a
+guess.** It read "1506 / 1507 checks pass (99.93%)", a denominator that
+matches no level and no total the suite now has; it was true of a
+smaller suite and has not been re-run since. A percentage carried
+forward past the corpus it was measured on is worse than no percentage,
+because it reads as current.
+
+The living truth is `docs/architecture/tech-debt-register.md` plus
+`core-tests/INVENTORY.md` in the repository, and a fresh figure belongs
+here only with the date of the run that produced it.
 
 ## Currently shipping (next minor)
 
