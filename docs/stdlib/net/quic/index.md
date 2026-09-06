@@ -174,23 +174,32 @@ packet-number spaces, and the loss detector; the caller supplies
 datagrams via `on_inbound_datagram` and drains outbound frames via
 `drain_outbound`.
 
-```verum
-mount core.net.quic.connection_sm.{QuicConnectionSm, QuicRole, ConnState};
-mount core.net.quic.transport.{SimNetwork};
+:::caution That loop cannot be written, and not because of the names
 
-fn drive_client(net: &mut SimNetwork, mut sm: ClientSm) -> Result<(), SmError> {
-    while !sm.is_established() {
-        while let Some(dgram) = sm.drain_outbound() {
-            net.send(dgram);
-        }
-        if let Some(dgram) = net.recv() {
-            sm.on_inbound_datagram(dgram)?;
-        }
-        sm.on_tick();
-    }
-    Ok(())
-}
-```
+`is_established`, `drain_outbound`, `on_inbound_datagram` and `on_tick`
+are all absent from `core/net/quic/connection_sm/` — but renaming them
+would not save the shape. **The SM is TYPE-STATE.** It is
+`QuicConnectionSm<Initial>`, and `promote_to_handshake` / `promote_to_app`
+CONSUME it and return `QuicConnectionSm<Handshake>` /
+`QuicConnectionSm<OneRtt>` — different types. A `while !sm.is_established()`
+loop over one mutable binding has nowhere to put that transition; the
+compiler tracks the handshake instead of a runtime predicate, which is
+the point of the design and the opposite of what the example showed.
+
+The pieces that do exist, so a reader can find the seam:
+
+| what the loop wanted | what to call |
+|---|---|
+| feed an inbound packet | `parse_long_packet` / `parse_short_packet` (`rx.vr`) |
+| drain outbound | `HandshakeDriver.take_outbound()` -> `List<(PnSpaceKind, QuicFrame)>` |
+| "is it established" | `HandshakeDriver.handshake_complete() -> Bool`, and the type after `promote_to_app` |
+| a tick | `path_control.on_timer(pm, now) -> TimerOutcome` |
+
+A worked driver is not written here rather than guessed at: getting the
+promotion order wrong in a documentation example is worse than saying
+the example was fiction.
+
+:::
 
 `SimNetwork` provides a deterministic, in-memory packet-loss injector
 for unit-testing the SM under arbitrary loss patterns
