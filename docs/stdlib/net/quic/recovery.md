@@ -182,7 +182,9 @@ public type Pacer is {
 
 public type PacerDecision is Send | NotYet(Duration);
 
-let decision = pacer.next_send(now, next_packet_size);
+// `check(bytes_requested, now)` — note the argument ORDER: bytes
+// first, then the instant. There is no `next_send`.
+let decision = pacer.check(next_packet_size, now);
 ```
 
 See [`pacer_surface`](#references) and

@@ -19,7 +19,7 @@ type UserId is Int where |n| { n >= 1 && n <= 1_000_000_000 };
 
 type SlugText is Text where |s| {
     s.len() > 0 && s.len() <= 64 &&
-    s.all_chars(|c| c.is_alphanumeric() || c == '-')
+    s.chars().all(|c| c.is_alphanumeric() || c == '-')
 };
 ```
 
