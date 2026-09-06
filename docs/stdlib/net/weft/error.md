@@ -173,7 +173,7 @@ implement IntoResponse for ApiError {
             NotFound(what) =>
                 Response.not_found(f"{what} not found"),
             ValidationError(errors) =>
-                Response.bad_request(Json(errors)),
+                Response.bad_request(Json { inner: errors }),
             InternalError(msg) => {
                 // To the log: full detail.
                 Logger.error(f"internal: {msg}");

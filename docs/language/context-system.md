@@ -80,7 +80,8 @@ fn fetch_user(id: UserId) -> User using [Logger, Database] {
 
 fn main() {
     let log = ConsoleLogger.new(LogLevel.Info);
-    let db  = PostgresDatabase.connect(...)?;
+    let pg_config = PgConfig.new("localhost", 5432, "app", "", "app");
+    let db  = PgAdapter.connect(&pg_config)?;
     provide Logger = log;
     provide Database = db in {
         fetch_user(UserId(42));
@@ -478,9 +479,10 @@ A typical top-level entry point layers every context once:
 
 ```verum
 fn main() {
+    let pg_config = PgConfig.new("localhost", 5432, "app", "", "app");
     provide Logger   = ConsoleLogger.new(LogLevel.Info),
             Clock    = SystemClock.new(),
-            Database = PostgresDatabase.connect(&db_url),
+            Database = PgAdapter.connect(&pg_config),
             Metrics  = PrometheusMetrics.new()
     {
         let mut server = HttpServer.bind(&":8080").await?;

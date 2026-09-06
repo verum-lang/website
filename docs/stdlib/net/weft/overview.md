@@ -187,6 +187,12 @@ Same word, different type, and only one of them has the shortcut.
 ```verum
 @runtime(work_stealing)
 mount core.net.weft.*;
+mount core.runtime.{SupervisorHandle, ChildSpec};
+// `SupervisorConfig` is the parameter type of `SupervisorHandle.root`, and
+// `core/runtime/mod.vr` does not re-export it — the file submodule is the
+// only path that resolves.
+mount core.runtime.supervisor.{SupervisorConfig};
+mount core.database.postgres.{PgAdapter, PgConfig};
 
 type UserId is Int where |n| { n >= 1 };
 
@@ -202,7 +208,9 @@ implement IntoResponse for ApiError {
     fn into_response(self) -> Response {
         match self {
             ApiError.NotFound     => resp_not_found(),
-            ApiError.Validation(m) => resp_bad_request(&m),
+            // `resp_bad_request()` takes no arguments — the body is
+            // attached with `resp_with_body_text`.
+            ApiError.Validation(m) => resp_with_body_text(resp_bad_request(), m),
             _                      => resp_internal_error(),
         }
     }
@@ -218,7 +226,7 @@ async fn get_user(PathParam(id): PathParam<UserId>)
     let user = find_user(id)
         .map_err(|e| ApiError.Internal(f"{e}"))?;
     match user {
-        Some(u) => Ok(Json(u)),
+        Some(u) => Ok(Json { inner: u }),
         None    => Err(ApiError.NotFound),
     }
 }
@@ -240,17 +248,25 @@ fn main() using [Config] {
     // `Supervisor` is a PROTOCOL and nothing implements it —
     // `SupervisorHandle` is the concrete one. `root` for the top of the
     // tree, `new` for a subtree.
-    let root = SupervisorHandle.root(supervisor_config());
+    let root = SupervisorHandle.root(SupervisorConfig.one_for_one("api"));
 
     // The start function belongs to `supervise`, not to the spec: a
     // ChildSpec carries restart policy, timeouts and priority, and the
     // factory is the other half of the call.
     root.supervise(
-        || PostgresDatabase.connect(Config.get_or("db.url", "")),
+        || PgAdapter.connect(&PgConfig.new(
+               Config.get_or("db.host", "localhost"),
+               5432,
+               Config.get_or("db.user", "app"),
+               Config.get_or("db.password", ""),
+               Config.get_or("db.name", "app"),
+           )),
         ChildSpec.permanent("db"),
     ).await?;
     root.supervise(
-        || WeftApp.new(app).bind("0.0.0.0:8080").serve(),
+        // `bind` returns `Result<Server<H>, Text>` — `serve` is the
+        // SERVER's, so the result is unwrapped first.
+        || WeftApp.new(app).bind("0.0.0.0:8080")?.serve(),
         ChildSpec.permanent("http"),
     ).await?;
 

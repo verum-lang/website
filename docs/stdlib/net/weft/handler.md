@@ -252,7 +252,7 @@ async fn create_user(
     input.validate().map_err(ApiError.Validation)?;
     let id = db.save(input.into_user()).await
         .map_err(|e| ApiError.Internal(f"{e}"))?;
-    Ok(Json(User { id, ..input.into_user() }))
+    Ok(Json { inner: User { id, ..input.into_user() } })
 }
 ```
 
