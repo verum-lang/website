@@ -279,7 +279,10 @@ $ verum bench
    dll-push-front/checked   4.2 ns/op
 ```
 
-The `managed` profile always runs the 15 ns check; `mixed` eliminates
+The numbers above are for the whole `push_front`, not for a bare
+reference check — that is 1.2–1.7 ns, re-measured 2026-09-05, and 15 ns
+is the design CEILING rather than the cost. The `managed` profile always
+runs the check; `mixed` eliminates
 the check where provably safe (the default); `checked` forces the
 compiler to prove every `&T` safe or fail.
 
