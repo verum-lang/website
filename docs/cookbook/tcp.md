@@ -164,8 +164,8 @@ async fn handle_client_with_timeout(mut stream: TcpStream, peer: SocketAddr)
 Alternatively, set socket-level timeouts once:
 
 ```verum
-stream.set_read_timeout_ms(30_000)?;
-stream.set_write_timeout_ms(10_000)?;
+stream.set_read_timeout(Maybe.Some(30_000))?;   // ms; None = block forever
+stream.set_write_timeout(Maybe.Some(10_000))?;
 ```
 
 Socket-level timeouts return `IoError.Timeout` from the underlying
@@ -246,8 +246,8 @@ When the semaphore is saturated, new connections back up in the TCP
 ```verum
 stream.set_nodelay(true)?;                  // disable Nagle
 stream.set_keepalive(true)?;                // TCP keepalive
-stream.set_read_timeout_ms(30_000)?;
-stream.set_write_timeout_ms(10_000)?;
+stream.set_read_timeout(Maybe.Some(30_000))?;   // ms; None = block forever
+stream.set_write_timeout(Maybe.Some(10_000))?;
 stream.set_linger_secs(0)?;                 // close immediately on drop
 
 listener.set_nonblocking(true)?;            // (automatic for async)
