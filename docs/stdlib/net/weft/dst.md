@@ -199,8 +199,21 @@ async fn property_no_connection_leak(
     //                    .with_reorder_permille(2)
     //                    .with_partition_permille(1),
     //   }
-    sim.run(my_server_app);
-    sim.assert_invariant(|s| s.connections.all(|c| c.properly_closed()));
+    // There is no `run` and no `assert_invariant`. The CALLER drives:
+    // `advance(by: Duration)` moves the seeded clock and bumps the tick
+    // counter, and `check` records a violation without aborting.
+    //
+    // `check<F: fn() -> Bool>(&self, invariant: F)` takes a NULLARY
+    // closure — it is not handed the simulator, so the predicate closes
+    // over whatever state it needs.
+    for _ in range(0, 10_000) {
+        step_my_server_app(&sim);
+        sim.check(|| my_app_connections_all_properly_closed());
+    }
+
+    // `check` only RECORDS; ask at the end, and report the tick count
+    // so a failing seed is replayable to the step.
+    assert(sim.invariants_ok(), &f"invariant broke after {sim.ticks()} ticks");
 }
 ```
 
