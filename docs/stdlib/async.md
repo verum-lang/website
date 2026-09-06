@@ -823,18 +823,17 @@ loop {
 
 ```verum
 type RuntimeConfig is { ... };
-type Runtime is { ... };
+type AsyncRuntime is { ... };              // `core.async.executor`
 type LocalExecutor is { ... };
 type TimeoutError is ();
 type ExecutionEnv is { ... };               // θ+ context
 
-Runtime.new() -> RuntimeBuilder
-builder.worker_threads(n).stack_size(bytes)
-       .io_engine(IoEngineKind.IoUring)
-       .max_tasks(n)
-       .build() -> Runtime
+RuntimeBuilder.new() -> RuntimeBuilder
+builder.stack_size(bytes).max_tasks(n)
+       .enable_work_stealing().enable_io().enable_time()
+       .build() -> AsyncRuntime
 
-rt.block_on(future) -> Output
+rt.block_on(future) -> Output              // rt: AsyncRuntime
 rt.spawn(future) -> JoinHandle<T>
 rt.shutdown() / rt.shutdown_timeout(duration)
 rt.enter()                                 // set current runtime for this thread
@@ -845,7 +844,7 @@ rt.enter()                                 // set current runtime for this threa
 ```verum
 block_on(future) -> Output                 // uses default runtime
 spawn(future) -> JoinHandle<T>
-current_runtime() -> Maybe<&Runtime>
+current_runtime() -> Maybe<&AsyncRuntime>
 ```
 
 ### `LocalExecutor`

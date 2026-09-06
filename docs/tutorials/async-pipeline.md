@@ -303,10 +303,11 @@ fn main() {
         .map(|s| Path.from(s.as_str()))
         .unwrap_or(Path.from(&"ingest.log"));
 
-    let rt = Runtime.new(RuntimeConfig.default()
-        .worker_threads(PARSER_WORKERS + 4)
-        .io_engine(IoEngineKind.IoUring))
-        .expect("runtime");
+    let rt = RuntimeBuilder.new()
+        .enable_work_stealing()
+        .enable_io()
+        .enable_time()
+        .build();
 
     rt.block_on(async {
         provide Logger = ConsoleLogger.new(LogLevel.Info) in {

@@ -330,10 +330,11 @@ async fn serve_one(mut stream: TcpStream, peer: SocketAddr) -> Result<(), Error>
 }
 
 fn main() {
-    let rt = Runtime.new(RuntimeConfig.default()
-        .worker_threads(8)
-        .io_engine(IoEngineKind.IoUring))
-        .expect("runtime");
+    let rt = RuntimeBuilder.new()
+        .enable_work_stealing()
+        .enable_io()
+        .enable_time()
+        .build();
 
     rt.block_on(async {
         // Several contexts at once: comma-separated bindings and ONE
