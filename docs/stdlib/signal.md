@@ -45,7 +45,7 @@ public fn signal_stream(signals: &[Signal]) -> SignalStream;
 
 `Signal` is a sum type over the common POSIX signals (`Signal.Int`,
 `Signal.Term`, `Signal.Hup`, `Signal.Usr1`, `Signal.Usr2`,
-`Signal.Chld`, `Signal.Pipe`). An empty slice yields a stream that
+`Signal.Child`, `Signal.Pipe`). An empty slice yields a stream that
 terminates on first `.next()`. Multiple overlapping subscriptions
 are fanned out — every subscriber sees every matching signal.
 

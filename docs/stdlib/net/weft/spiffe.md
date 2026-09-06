@@ -46,7 +46,12 @@ Behaviour:
 - For JWT: validates the `Authorization: Bearer` token signature,
   extracts the SPIFFE ID claim.
 - On success: `provide Principal = ...` for the request scope.
-- On failure: returns `WeftError.Forbidden`.
+- On failure: returns an `AuthRejection` — `MissingCredential`,
+  `InvalidCredential(Text)`, `Expired` or `UntrustedSource`
+  (`core/net/weft/spiffe.vr`). `WeftError` has no `Forbidden`
+  variant; its roster is `BadRequest`, `RouteNotFound`,
+  `MethodNotAllowed`, `ExtractionRejected`, `Timeout`, `Overloaded`,
+  `UpstreamIo` and `Internal`.
 
 ## Usage
 

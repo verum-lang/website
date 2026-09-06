@@ -428,7 +428,9 @@ Beyond the declarative patterns, the Verum-side cog
 that close known attack vectors against the declarative surface:
 
 - `kernel_arch_capability_ontology_check` (closes AT-1) —
-  registry validation for `Capability.Custom { tag, schema }`.
+  registry validation for `Capability.CustomCapability(Text)` — the
+  variant carries one `Text` tag, not a `{ tag, schema }` record
+  (`core/architecture/types.vr:241`).
 - `kernel_arch_theorem_cve_required` (closes AT-2) —
   `Lifecycle.Theorem(...)` requires CVE-closure regardless of
   `strict`.

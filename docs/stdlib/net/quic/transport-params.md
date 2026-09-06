@@ -86,9 +86,14 @@ active_connection_id_limit   ≥ 2       (MIN_ACTIVE_CID_LIMIT)
 max_udp_payload_size         ≥ 1200    (MIN_MAX_UDP_PAYLOAD_SIZE)
 ```
 
-The call site treats a `false` return as fatal
-(`TransportError.ProtocolViolation`). The SMT layer discharges V9 at compile
-time ([`v9_transport_params_theorem`](#references)).
+The call site treats a `false` return as fatal, closing the connection
+with the QUIC transport error code `PROTOCOL_VIOLATION` (`0x0A`,
+`TransportErrorCode.PROTOCOL_VIOLATION` in `core/net/quic/error.vr`).
+There is no `TransportError.ProtocolViolation` variant — the
+`TransportError` sum in `core/net/quic/transport/abstraction.vr` carries
+`TooLarge`, `IoFailed` and `WouldBlock`, and the wire-level code is a
+separate constant. The SMT layer discharges V9 at compile time
+([`v9_transport_params_theorem`](#references)).
 
 ## Wire encoding
 

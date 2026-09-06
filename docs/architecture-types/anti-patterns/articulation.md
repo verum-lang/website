@@ -623,7 +623,7 @@ a circular self-reference without the witness. AP-040 closes the
    - `Capability.Read(ResourceTag.Database("synarc.governance.constitution"))`
      declared by the `synarc.governance.constitution` cog →
      self-X via capability target.
-   - `Capability.Custom { tag: "synarc:holon/<self>" }` declared by
+   - `Capability.CustomCapability("synarc:holon/<self>")` declared by
      the cog whose path matches `<self>` → self-X via custom tag.
 3. The check is **string-level**, not semantic; it catches the
    bare assertion. Subtle semantic self-reference (e.g., a cog

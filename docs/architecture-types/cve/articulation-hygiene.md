@@ -435,7 +435,7 @@ A cog's `Shape` exhibits a **self-X pattern** when at least one of:
    tag string contains the cog's own path (e.g. `Capability.Read(
    ResourceTag.Database("synarc.governance.constitution"))` from
    the `synarc.governance.constitution` cog).
-3. A `Capability.Custom { tag, ... }` whose tag contains the cog's
+3. A `Capability.CustomCapability(tag)` whose tag contains the cog's
    own path (chain-domain self-reference via `synarc:holon/<self>`
    or similar).
 

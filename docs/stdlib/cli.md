@@ -38,6 +38,28 @@ runtime.
 
 ## 2. Declarative API — `@command` derive (Phase 1)
 
+:::caution Not shipped
+The derive does not run yet — measured, not guessed.  `core/cli/derive.vr`
+declares its own status as *"Phase 1 — semantic-only, scaffolding for the
+meta1 macro pass"* and says outright: *"Until the macro pass lands,
+hand-written code uses `cli.builder`."*  Copying the block below and
+running it today gives `error: No main function found in VBC module`,
+because the entry point Verum recognises is `fn main()` or
+`fn main(args: List<Text>)` — a typed `fn main(args: Args) -> ExitCode`
+is part of the desugaring that has not landed.
+
+Two smaller differences from the library while you read: the derive's own
+contract spells its arguments with `=` (`@command(name = "tool", version
+= "1.0")`), and the handler is a named function taking a
+`&HandlerContext`, not `main`.  `core/cli/derive_example.vr` is the
+end-to-end shape the library itself maintains.
+
+**What works today** is §1 above — `App.new`, the fluent builder, and the
+combinator parser.  `ExitCode.Ok` and `ExitCode.ok()` are both real
+(`core/cli/error.vr`); everything else in this section describes the
+planned surface.
+:::
+
 The terse, recommended form.  Annotate a record type with
 `@command(...)` and let the compiler generate the spec:
 
@@ -190,16 +212,24 @@ the canonical roster:
 
 | Variant | Code | When |
 |---|---:|---|
-| `Success`        |   0 | clean termination |
-| `Usage`          |  64 | bad invocation (missing arg, unknown flag) |
-| `DataError`      |  65 | input data malformed |
-| `NoInput`        |  66 | input file not found / unreadable |
-| `Unavailable`    |  69 | service unavailable (network, daemon) |
-| `Software`       |  70 | internal-software bug (panic surfaced) |
-| `OsError`        |  71 | OS-level call failed |
-| `IoError`        |  74 | I/O error |
-| `Cancelled`      | 130 | SIGINT — `Ctrl-C` |
-| `CapabilityDenied` | 143 | permission policy denied (`--allow=…`) |
+| `Ok` | 0 | success |
+| `GenericError` | 1 | generic error |
+| `Usage` | 2 | bad argv / parse error |
+| `DataErr` | 65 | invalid input data |
+| `NoInput` | 66 | input file unreadable |
+| `NoUser` | 67 | addressee unknown |
+| `NoHost` | 68 | host unknown |
+| `Unavailable` | 69 | service unavailable |
+| `Software` | 70 | internal software error |
+| `OsErr` | 71 | OS-level error |
+| `CantCreate` | 73 | cannot create output |
+| `IoErr` | 74 | generic I/O failure |
+| `TempFail` | 75 | temporary failure (try again) |
+| `NoPerm` | 77 | permission denied |
+| `ConfigErr` | 78 | configuration error |
+| `SigInt` | 130 | interrupted (Ctrl-C) |
+| `SigTerm` | 143 | terminated |
+| `Custom(Int)` | *n* | any code the roster above does not name |
 
 `ExitCode` converts in one direction only: `code(&self) -> Int` gives
 the POSIX number (`Ok` → 0, `Usage` → 2, `DataErr` → 65, …). There is no

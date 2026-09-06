@@ -501,7 +501,7 @@ catalog of attack vectors):
 
 | Axiom                                              | Closes | Explanation |
 |---|---|---|
-| `kernel_arch_capability_ontology_check`            | AT-1   | Every `Capability.Custom { tag, schema }` must have its `tag` registered before passing the ATS-V phase.  Blocks injection of fake high-privilege capabilities. |
+| `kernel_arch_capability_ontology_check`            | AT-1   | Every `Capability.CustomCapability(tag)` must have its `tag` registered before passing the ATS-V phase.  Blocks injection of fake high-privilege capabilities. |
 | `kernel_arch_theorem_cve_required`                 | AT-2   | `Lifecycle.Theorem(...)` requires full CVE-closure regardless of the `strict` flag — Theorem-status semantically implies CVE+. |
 | `kernel_arch_yoneda_canonical_roster_complete`     | AT-3   | A Yoneda equivalence verdict is binding only when the `agreements` list spans the full canonical 5-roster.  Blocks single-observer fabrication. |
 | `kernel_arch_consumes_format_check`                | AT-5   | `consumes` field entries must match `<resource>/<positive_int> <unit>`.  Format violations surface as AP-025 DeclarationDrift. |

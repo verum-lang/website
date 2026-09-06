@@ -43,8 +43,8 @@ choosing.
 | 0 | `WireType.Varint` | `int32`, `int64`, `uint32`, `uint64`, `bool`, `enum`, `sint32`, `sint64` |
 | 1 | `WireType.Fixed64` | `fixed64`, `sfixed64`, `double` |
 | 2 | `WireType.LengthDelim` | `string`, `bytes`, embedded message, packed repeat |
-| 3 | `WireType.StartGroup` *(rejected)* | (proto2 legacy, not emitted; decoders reject with `UnsupportedGroup`) |
-| 4 | `WireType.EndGroup` *(rejected)* | (as above) |
+| 3 | *(no variant — rejected)* | proto2 group start; `WireType` does not model it, and `WireType.from_u8` answers `ProtobufError.UnsupportedGroup` |
+| 4 | *(no variant — rejected)* | proto2 group end; as above |
 | 5 | `WireType.Fixed32` | `fixed32`, `sfixed32`, `float` |
 
 ```verum

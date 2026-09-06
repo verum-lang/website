@@ -100,9 +100,11 @@ fn load_config(path: &Path) -> Result<ServerConfig, Error>
 }
 ```
 
-The refinement `port: Int { 1 <= self && self <= 65535 }` is checked
-**during parsing**. A port out of range fails with
-`DataError.RefinementViolation { field: "port", value: 80000 }`.
+The refinement `port: Int { 1 <= self && self <= 65535 }` is enforced
+where the value becomes a `ServerConfig` — that is, in the
+**deserialisation** step, not in `parse`, which only ever produces a
+`JsonValue`. A port out of range is a `SerdeError`
+(`core/base/serde.vr`); there is no `RefinementViolation` variant.
 
 ### Renaming
 
@@ -229,28 +231,47 @@ for custom indent / array/object formatting.
 
 ## 5. Handling errors
 
-`json.parse` returns `Result<T, DataError>`:
+:::caution The error surface here was wrong
+This section described a `DataError` sum with `MissingField` and
+`RefinementViolation` arms, and a `json.parse<T>` taking a type
+parameter. None of those exist — measured against
+`core/encoding/json.vr` and `core/base/data.vr`. Two DIFFERENT error
+types were being conflated, which is worth stating because the
+distinction is the useful part.
+:::
+
+`json.parse(source: &Text) -> Result<JsonValue, JsonError>` — it takes no
+type parameter and it always yields a `JsonValue`. `JsonError` is a
+**record**, not a sum, so you read its fields rather than matching arms:
 
 ```verum
-match json.parse<ServerConfig>(&input) {
-    Result.Ok(cfg) => process(cfg),
+mount core.encoding.json.{parse, JsonError, JsonErrorKind};
 
-    Result.Err(DataError.ParseError { msg, line, col }) =>
-        eprint(f"bad JSON at {line}:{col}: {msg}"),
-
-    Result.Err(DataError.TypeMismatch { expected, got, path }) =>
-        eprint(f"type mismatch at {path}: expected {expected}, got {got}"),
-
-    Result.Err(DataError.MissingField { name, at_path }) =>
-        eprint(f"missing field {name} at {at_path}"),
-
-    Result.Err(DataError.RefinementViolation { field, value, predicate }) =>
-        eprint(f"field {field} = {value} violates {predicate}"),
-
+match parse(&input) {
+    Result.Ok(value) => process(value),
     Result.Err(e) =>
-        eprint(f"json error: {e:?}"),
+        eprint(f"bad JSON at {e.line}:{e.column}: {e.message}"),
 }
 ```
+
+`e.kind` is a `JsonErrorKind` when you need to branch on the reason —
+`UnexpectedEof`, `UnexpectedChar`, `InvalidEscape`, `InvalidNumber`,
+`InvalidUnicode`, `DepthLimit`, `StringTooLong`, `ArrayTooLarge`,
+`ObjectTooLarge` or `TrailingGarbage`. Note what is NOT in that list:
+there is no arm for a missing field or a violated refinement, because
+`parse` produces a `JsonValue` and never consults your record type.
+
+Those belong to the **deserialisation** layer instead
+(`core/base/serde.vr`), whose error type is `SerdeError`, built with
+`SerdeError.missing_field(name)`, `SerdeError.unknown_field(name)` and
+`SerdeError.unexpected_type(expected, found)`. So the two questions have
+two answers: *is this text JSON at all* is `JsonError`, and *does this
+JSON fit my record* is `SerdeError`.
+
+`DataError` (`core/base/data.vr`) is a third thing again — the error type
+of the dynamic `Data` value in §3, with `TypeMismatch { expected, actual }`,
+`KeyNotFound { key }`, `IndexOutOfBounds { index, length }`,
+`ParseError { message }` and `InvalidCast { from, to }`.
 
 ## 6. Streaming parse (large files)
 
@@ -279,11 +300,13 @@ for line in reader.lines() {
 
 ### Number precision
 
-JSON has one numeric type; Verum's `Data.Number` stores both `Int`
-and `Float` separately. A number like `9007199254740993` may be
-represented as `Float` in a round-trip through some libraries —
-`Data.Int` preserves precision up to 64-bit, but a JSON document
-coming from JavaScript may already have been rounded.
+JSON has one numeric type; Verum keeps two. `Data` (§3) carries
+`Data.Int(Int)` and `Data.Float(Float)` as separate variants — there is
+no `Data.Number` — and `JsonValue` does the same with `JsonInt` and
+`JsonFloat`. A number like `9007199254740993` may already have been
+rounded to a `Float` by a producer that has only one numeric type;
+`Data.Int` preserves precision up to 64-bit, but it cannot recover
+what JavaScript rounded before you saw it.
 
 For financial data, deserialize into refined integers or
 `BigDecimal`, not `Float`.
