@@ -70,10 +70,12 @@ pub async fn read_from_stdin(tx: Sender<RawRecord>)
     let mut line_no = 0;
 
     loop {
-        let mut line = Text.new();
-        match reader.read_line_async(&mut line).await? {
-            0 => break,                                   // EOF
-            _ => {
+        // `BufReader.next_line_async` answers `IoResult<Maybe<Text>>`;
+        // EOF is `Maybe.None`. There is no `read_line_async`, and the
+        // byte-count-of-0 EOF test it implied does not exist either.
+        match reader.next_line_async().await? {
+            Maybe.None => break,                          // EOF
+            Maybe.Some(line) => {
                 line_no += 1;
                 let rec = RawRecord {
                     line_no,
@@ -204,7 +206,9 @@ pub async fn write_loop(
 
         // Retry with exponential backoff on transient write failures.
         let result = execute_with_retry_config(
-            || writer.write_all_async(line.as_bytes()),
+            // `write_all` comes from the `Write` protocol and is
+            // SYNCHRONOUS — `BufWriter` has no async writer.
+            || writer.write_all(line.as_bytes()),
             RetryConfig {
                 max_attempts: 3,
                 initial_backoff_ms: 50,

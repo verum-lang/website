@@ -113,15 +113,18 @@ For sequences involving suspension (network, files, streams):
 async fn* lines_from(path: &Path) -> Result<Text, IoError>
     using [FileSystem]
 {
-    let file = AsyncFile.open(path).await?;   // core.io.file.AsyncFile
+    // `AsyncFile.open` takes the path as `&Text`, not `&Path`.
+    let file = AsyncFile.open(&path.to_text()).await?;
     let mut reader = BufReader.new(file);
 
     loop {
-        let mut line = Text.new();
-        match reader.read_line_async(&mut line).await {
-            Result.Ok(0)  => return,                            // EOF
-            Result.Ok(_)  => yield Result.Ok(line.trim_end().to_text()),
-            Result.Err(e) => yield Result.Err(e),
+        // `next_line_async` answers `IoResult<Maybe<Text>>` — EOF is
+        // `Maybe.None`, not a zero byte count. There is no
+        // `read_line_async`.
+        match reader.next_line_async().await {
+            Result.Ok(Maybe.None)       => return,                  // EOF
+            Result.Ok(Maybe.Some(line)) => yield Result.Ok(line.trim_end().to_text()),
+            Result.Err(e)               => yield Result.Err(e),
         }
     }
 }
@@ -196,12 +199,13 @@ An `async fn*` that yields `Result<T, E>` is common. A helper:
 async fn* try_lines(path: &Path) throws(IoError) -> Text
     using [FileSystem]
 {
-    let file = AsyncFile.open(path).await?;   // core.io.file.AsyncFile
+    let file = AsyncFile.open(&path.to_text()).await?;
     let mut reader = BufReader.new(file);
     loop {
-        let mut line = Text.new();
-        if reader.read_line_async(&mut line).await? == 0 { return; }
-        yield line.trim_end().to_text();
+        match reader.next_line_async().await? {
+            Maybe.None       => return,                 // EOF
+            Maybe.Some(line) => yield line.trim_end().to_text(),
+        }
     }
 }
 ```
