@@ -29,6 +29,24 @@ the next tick still fires on schedule (not 50 ms later).
 
 ### "Catch up on missed ticks" behaviour
 
+:::caution Not shipped
+`MissedTickBehavior` and `set_missed_tick_behavior` do not exist —
+measured, not guessed: zero occurrences in the tree.  `Interval` is real
+(`core/async/interval.vr:69`) with `new(period)` and `tick()`, but the
+behaviour is not configurable.  What it does instead is REPORT: `tick()`
+returns the number of periods elapsed since the last one — "normally 1, but
+can return more if the caller was slow and missed one or more ticks" — so
+the caller decides whether to catch up or skip.
+
+```verum
+let mut ticker = Interval.new(100.millis());
+let missed = ticker.tick();           // 1 when on time, >1 when behind
+if missed > 1 { /* skip the backlog, or replay it — your choice */ }
+```
+
+The table below is the shape a configurable policy would take.
+:::
+
 ```verum
 let mut ticker = Interval.new(100.millis());
 ticker.set_missed_tick_behavior(MissedTickBehavior.Skip);

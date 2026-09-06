@@ -96,6 +96,19 @@ silently expire mid-session.
 
 ## `SpiffeClientTransport` — outgoing mTLS
 
+:::caution Not shipped
+`SpiffeClientTransport` does not exist — measured, not guessed: zero
+occurrences in the tree.  Neither does a constructor for `HttpClient`,
+which `core/net/http.vr:722` declares as a PROTOCOL and leaves for you to
+implement; the one `implement HttpClient for SimpleHttpClient` in the tree
+is inside a `///` comment.
+
+What `core/net/weft/spiffe.vr` ships is the INBOUND side: `Principal`,
+`TrustBundleProvider`, `AuthMode`, `SpiffeAuthLayer`, `SpiffeAuthHandler`
+and `AuthRejection`.  The shape below is what an outgoing transport would
+look like once a client exists.
+:::
+
 For service-to-service calls, `SpiffeClientTransport` uses the
 local SVID as a client certificate:
 
