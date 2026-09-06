@@ -195,6 +195,16 @@ let resolver = Resolver.new().cache_capacity(0);
 
 ## DNS-over-HTTPS (DoH)
 
+:::caution Not shipped
+`DnsTransport` and `with_transport` do not exist — measured, not guessed:
+zero occurrences in the tree, and `core/net/dns.vr` contains no DoH,
+`dns-query` or HTTPS reference at all.  `Resolver` is real
+(`core/net/dns.vr:1145`); its builder is `nameserver`, `nameserver_ip`,
+`timeout_ms`, `retries`, `search_domain`, `ndots` and `use_tcp` — plain
+UDP with a TCP fallback.  The shape below is what a DoH transport would
+look like.
+:::
+
 For privacy-sensitive deployments, use a DoH transport:
 
 ```verum
