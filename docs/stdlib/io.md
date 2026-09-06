@@ -226,17 +226,33 @@ let n = write_async(writer, buf).await?;  // WriteFuture<W>
 flush_async(writer).await?;               // FlushFuture<W>
 ```
 
-:::caution Five convenience names do not exist
+:::caution The convenience names are on the TYPES, not the protocols
 
 `read_to_end_async`, `write_all_async`, `shutdown_async`,
-`read_line_async` and `lines_async` — together with the `AsyncLines`
-type — appear nowhere in `core/`. There is no async line reader: loop
-over `read_async` and split the buffer yourself, or do the line work
-synchronously on a worker.
+`read_line_async` and `lines_async` appear nowhere in `core/`, and this
+block used to declare all five as protocol methods. Three other pages
+were written against it, so if you copied
+`reader.read_line_async(&mut line).await` from this site, that is where
+it came from.
 
-This block previously declared all five as protocol methods, and three
-other pages were written against it. If you copied `reader.read_line_async(&mut line).await`
-from this site, that is where it came from.
+The CAPABILITIES exist — under different names, on concrete types:
+
+| what you wanted | what to call | on |
+|---|---|---|
+| `read_line_async` | `next_line_async()` → `IoResult<Maybe<Text>>` | `BufReader` |
+| `read_to_end_async` | `read_to_end(&mut List<Byte>)` | `AsyncFile` |
+| `write_all_async` | `write_all(...)` | `AsyncFile` |
+| `read_to_string` | `read_to_string(&mut Text)` | `AsyncFile` |
+
+Note the SHAPE change on the first row: `next_line_async` answers
+`Maybe<Text>` — `Maybe.None` is EOF — where the fictional
+`read_line_async` answered a byte count and `0` meant EOF. Code
+translated name-for-name will loop forever.
+
+`lines_async` and the `AsyncLines` type have no counterpart: write the
+loop. And `AsyncFile`'s async methods are sync-under-async today
+(`next_line_async` is literally `self.next_line()`), which is the same
+caveat as the paragraph below.
 
 :::
 
