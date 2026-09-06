@@ -247,14 +247,36 @@ xs.split_last()  -> Maybe<(&T, &[T])>
 ### Iteration
 
 ```verum
-xs.iter()                 // Iterator<&T>
-xs.iter_mut()             // Iterator<&mut T>
-xs.into_iter()            // consumes xs
-xs.drain(a..b)            // removes and yields a range
-xs.chunks(n)              // non-overlapping windows; ChunksIter
-xs.chunks_exact(n)        // exact-sized chunks + remainder
-xs.windows(n)             // sliding window of n; WindowsIter
-xs.enumerate()            // convenience (.iter().enumerate() also works)
+xs.iter()                 // ListIter<T>      lazy, Item = &T
+xs.iter_mut()             // ListIterMut<T>   lazy, Item = &mut T
+xs.into_iter()            // IntoList<T>      lazy, Item = T; consumes xs
+xs.drain(start, end)      // Drain<T>         lazy, Item = T
+
+xs.chunks(n)              // List<List<T>>    MATERIALISED
+xs.chunks_exact(n)        // List<List<T>>    MATERIALISED, remainder DROPPED
+xs.chunks_exact_remainder(n)  // List<T>      the part chunks_exact drops
+xs.windows(n)             // List<List<T>>    MATERIALISED
+xs.enumerate()            // List<(Int, T)>   MATERIALISED
+```
+
+Two things in that list are easy to read past, and both change what the
+code does rather than how it looks.
+
+**`drain` takes two `Int`s, not a range.** `core/collections/list.vr`
+declares `fn drain(&mut self, start: Int, end: Int) -> Drain<T>`;
+`xs.drain(a..b)` does not typecheck.
+
+**The lower group allocates.** `List` does not implement `Iterator` —
+`chunks`, `windows` and `enumerate` are methods on `List` itself and each
+one builds the whole result before returning it, so `xs.chunks(n)` on a
+million-element list allocates a million elements' worth of chunks
+whether or not you consume them all. The lazy forms exist and are reached
+through `iter()`, which does implement `Iterator`:
+
+```verum
+xs.iter().chunks(n)       // ChunksIter<ListIter<T>>   — lazy
+xs.iter().windows(n)      // WindowsIter<ListIter<T>>  — lazy
+xs.iter().enumerate()     // lazy
 ```
 
 ### Searching
@@ -369,14 +391,38 @@ occ.remove_entry() -> (K, V)
 ### Iteration
 
 ```verum
-m.iter()        // Iterator<(&K, &V)>
-m.iter_mut()    // Iterator<(&K, &mut V)>
-m.into_iter()   // consumes m
-m.keys()        // Iterator<&K>
-m.values()      // Iterator<&V>
-m.values_mut()  // Iterator<&mut V>
-m.drain()       // consuming drain — Iterator<(K, V)>
+m.iter()        // MapIter<K, V>        Item = (K, V)
+m.iter_mut()    // MapIterMut<K, V>     Item = (&K, &mut V)
+m.into_iter()   // MapIntoIter<K, V>    Item = (K, V); consumes m
+m.keys()        // MapKeys<K, V>        Item = K
+m.values()      // MapValues<K, V>      Item = V
+m.values_mut()  // MapValuesMut<K, V>   Item = &mut V
+m.drain()       // MapDrain<K, V>       Item = (K, V); consuming
 ```
+
+**`iter`, `keys` and `values` yield OWNED values, not references** —
+`MapKeys.next` returns `Maybe<K>`, not `Maybe<&K>`. That is the opposite
+of `List.iter()`, which yields `&T`.
+
+The split is designed rather than accidental, and the shape of it says
+so: the three accessors that yield owned values take `&self`, and the
+three that hand out borrows — `iter_mut`, `values_mut`, `drain` — all
+take `&mut self`. An oversight would be uniform. The mechanism behind it
+is visible in `core/collections/map.vr`: entries live in an
+open-addressed block with tombstones, and `resize` moves them, so a
+borrow into that block outlives its address as soon as an `insert`
+triggers a rehash — which is exactly what `&mut self` on the borrowing
+half prevents you from doing while a borrow is live.
+
+The practical consequence is that `K` and `V` must be copyable or
+cloneable to be iterated at all, and that
+
+```verum
+for k in m.keys() { … }        // k is a K — you own it
+for (k, v) in m.iter_mut() { } // k is a &K, v is a &mut V
+```
+
+do not agree about what `k` is.
 
 ### Examples
 
@@ -442,13 +488,18 @@ s.retain(|v| pred(v))
 ### Set algebra
 
 ```verum
-a.union(&b)         // Iterator<&T>
-a.intersection(&b)  // Iterator<&T>
-a.difference(&b)    // Iterator<&T>
-a.symmetric_difference(&b)  // Iterator<&T>
+a.union(&b)                 // Set<T>   — a NEW set, not an iterator
+a.intersection(&b)          // Set<T>
+a.difference(&b)            // Set<T>
+a.symmetric_difference(&b)  // Set<T>
 
-a.is_disjoint(&b)   a.is_subset(&b)   a.is_superset(&b)
+a.is_disjoint(&b)   a.is_subset(&b)   a.is_superset(&b)   // Bool
 ```
+
+**All four return a `Set<T>` outright**, built eagerly — `union` clones
+`self` and inserts the other side's elements. They are not lazy views,
+there is nothing to `.collect()`, and `Set<T>` has no `.copied()`. Each
+therefore requires `T: Clone`.
 
 ### Example
 
@@ -456,9 +507,9 @@ a.is_disjoint(&b)   a.is_subset(&b)   a.is_superset(&b)
 let a: Set<Int> = Set.from([1, 2, 3, 4]);
 let b: Set<Int> = Set.from([3, 4, 5, 6]);
 
-let union: Set<Int>      = a.union(&b).copied().collect();     // {1..6}
-let intersect: Set<Int>  = a.intersection(&b).copied().collect(); // {3,4}
-let diff: Set<Int>       = a.difference(&b).copied().collect();   // {1,2}
+let union: Set<Int>      = a.union(&b);                 // {1,2,3,4,5,6}
+let intersect: Set<Int>  = a.intersection(&b);          // {3,4}
+let diff: Set<Int>       = a.difference(&b);            // {1,2}
 ```
 
 ### Protocol implementations
