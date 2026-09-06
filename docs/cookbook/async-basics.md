@@ -321,13 +321,21 @@ succeeds, the `errdefer` is skipped.
 ## Running in a specific executor
 
 ```verum
-let rt = Runtime.new()
-    .worker_threads(4)
-    .on_shutdown(|| print("shutting down"))
+// The builder is `RuntimeBuilder`, and its whole surface is
+// `stack_size`, `max_tasks`, `enable_work_stealing`, `enable_io`,
+// `enable_time`, `build`. There is no `worker_threads` and no
+// `on_shutdown` hook.
+let rt = RuntimeBuilder.new()
+    .max_tasks(4096)
+    .enable_work_stealing()
+    .enable_io()
+    .enable_time()
     .build();
 
 let result = rt.block_on(fetch(&url));
-rt.shutdown_timeout(5.secs());
+// `AsyncRuntime.shutdown()` takes no deadline — there is no
+// `shutdown_timeout`. Bound the WORK instead, before you get here.
+rt.shutdown();
 ```
 
 `Runtime` is the configurable alternative to `block_on`. For most

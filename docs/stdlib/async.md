@@ -840,8 +840,7 @@ builder.stack_size(bytes).max_tasks(n)
 
 rt.block_on(future) -> Output              // rt: AsyncRuntime
 rt.spawn(future) -> JoinHandle<T>
-rt.shutdown() / rt.shutdown_timeout(duration)
-rt.enter()                                 // set current runtime for this thread
+rt.shutdown()                              // no deadline variant exists
 ```
 
 ### Global helpers
