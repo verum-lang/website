@@ -400,6 +400,15 @@ m.values_mut()  // MapValuesMut<K, V>   Item = &mut V
 m.drain()       // MapDrain<K, V>       Item = (K, V); consuming
 ```
 
+**Iteration order is UNSPECIFIED.** `Map` is open-addressed with
+tombstones and `resize` moves entries, so the order is a function of
+hashes and of the insert history — measured: inserting
+`zebra, apple, mango, kiwi` and iterating the keys gives
+`mango kiwi apple zebra`. Nothing in `core/collections/map.vr` promises
+otherwise, and the `Hash` impl below is deliberately order-independent
+for the same reason. Sort the keys when you need an order, and never
+compare a `Map`'s iteration against a literal in a test.
+
 **`iter`, `keys` and `values` yield OWNED values, not references** —
 `MapKeys.next` returns `Maybe<K>`, not `Maybe<&K>`. That is the opposite
 of `List.iter()`, which yields `&T`.
