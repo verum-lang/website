@@ -192,23 +192,53 @@ type BufRead is protocol extends Read {
 ### Async variants
 
 ```verum
-type AsyncRead is protocol {
-    async fn read_async(&mut self, buf: &mut [Byte]) -> IoResult<Int>;
-    async fn read_to_end_async(&mut self, buf: &mut List<Byte>) -> IoResult<Int>;
-}
+// core/async/io_protocols.vr — the protocols are POLL-based. They are
+// what you IMPLEMENT, and none of their methods is an `async fn`.
+public type AsyncRead is protocol {
+    fn poll_read(&mut self, cx: &mut Context, buf: &mut List<Byte>)
+        -> Poll<IoResult<Int>>;
+};
 
-type AsyncWrite is protocol {
-    async fn write_async(&mut self, buf: &[Byte]) -> IoResult<Int>;
-    async fn write_all_async(&mut self, buf: &[Byte]) -> IoResult<()>;
-    async fn flush_async(&mut self) -> IoResult<()>;
-    async fn shutdown_async(&mut self) -> IoResult<()>;
-}
+public type AsyncWrite is protocol {
+    // `buf` is `&List<Byte>`, not a slice — byte-typed end to end, and
+    // the declaration says so in its own comment. Reaching for
+    // `&[Byte]` here is the reflex this block is correcting.
+    fn poll_write(&mut self, cx: &mut Context, buf: &List<Byte>)
+        -> Poll<IoResult<Int>>;
+    fn poll_flush(&mut self, cx: &mut Context)    -> Poll<IoResult<()>>;
+    fn poll_shutdown(&mut self, cx: &mut Context) -> Poll<IoResult<()>>;
+};
 
-type AsyncBufRead is protocol extends AsyncRead {
-    async fn read_line_async(&mut self, buf: &mut Text) -> IoResult<Int>;
-    fn lines_async(self) -> AsyncLines;
-}
+public type AsyncBufRead is protocol {
+    fn poll_fill_buf(&mut self, cx: &mut Context) -> Poll<IoResult<List<Byte>>>;
+    fn consume(&mut self, amt: Int);
+};
 ```
+
+**What you CALL is a set of free functions, not methods.** Awaiting
+happens on the future they hand back:
+
+```verum
+mount core.async.io_protocols.{read_async, write_async, flush_async};
+
+let n = read_async(reader, buf).await?;   // ReadFuture<R>
+let n = write_async(writer, buf).await?;  // WriteFuture<W>
+flush_async(writer).await?;               // FlushFuture<W>
+```
+
+:::caution Five convenience names do not exist
+
+`read_to_end_async`, `write_all_async`, `shutdown_async`,
+`read_line_async` and `lines_async` — together with the `AsyncLines`
+type — appear nowhere in `core/`. There is no async line reader: loop
+over `read_async` and split the buffer yourself, or do the line work
+synchronously on a worker.
+
+This block previously declared all five as protocol methods, and three
+other pages were written against it. If you copied `reader.read_line_async(&mut line).await`
+from this site, that is where it came from.
+
+:::
 
 The current async I/O implementation runs sync I/O on a worker thread
 ("sync-under-async") — real `io_uring` / `kqueue` / IOCP routing through
