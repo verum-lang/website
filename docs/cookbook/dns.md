@@ -33,15 +33,17 @@ example.com -> 2606:2800:220:1:248:1893:25c8:1946
 ```
 
 `lookup_host_async(host)` returns **all** A + AAAA records as a
-`List<IpAddress>`. For a specific family:
+`List<IpAddr>`. The family-specific forms are SYNCHRONOUS — there is no
+`lookup_host_v4_async` / `lookup_host_v6_async`:
 
 ```verum
-lookup_host_v4_async(host)      // IPv4 only
-lookup_host_v6_async(host)      // IPv6 only
+lookup_host_v4(host)      // Result<List<Ipv4Addr>, DnsError>
+lookup_host_v6(host)      // Result<List<Ipv6Addr>, DnsError>
 ```
 
-The three functions differ only in which `DnsRecordType` they query —
-`A`, `AAAA`, or both — and which they expose.
+The whole async surface of `core.net.dns` is three free functions —
+`lookup_host_async`, `lookup_addr_async`, `resolve_async`. Everything
+else, including every `Resolver` method, is synchronous.
 
 ## Reverse resolution (PTR)
 
@@ -116,92 +118,99 @@ Use a `Resolver` when you need:
 
 ```verum
 let resolver = Resolver.new()
-    .nameserver_ip(Ipv4Addr.new(1, 1, 1, 1))         // Cloudflare
-    .nameserver_ip(Ipv4Addr.new(8, 8, 8, 8))         // Google
+    .nameserver_ip(Ipv4Addr.new(1, 1, 1, 1))   // Cloudflare
+    .nameserver_ip(Ipv4Addr.new(8, 8, 8, 8))   // Google
     .timeout_ms(3_000)
-    .max_retries(2)
-    .prefer_tcp(false)                                // use UDP first
-    .validate_dnssec(true);                           // DNSSEC if available
+    .retries(2)
+    .use_tcp(false)          // UDP first, TCP fallback on truncation
+    .search_domain("corp.internal")
+    .ndots(1);
 ```
 
-### Common record types
+The full builder is `new`, `system`, `nameserver`, `nameserver_ip`,
+`timeout_ms`, `retries`, `search_domain`, `ndots`, `use_tcp` — that is
+all of it. There is no DNSSEC validation and no per-resolver cache.
+
+### Record types
+
+**`Resolver`'s query methods are SYNCHRONOUS.** The module's entire
+async surface is three free functions — `lookup_host_async`,
+`lookup_addr_async`, `resolve_async` — and none of them takes a
+`Resolver`. Call the methods below directly, or move the call off the
+executor yourself.
 
 ```verum
-// A — IPv4 addresses
-let ips_v4 = resolver.lookup_a_async("example.com").await?;
-// List<Ipv4Addr>
+// A + AAAA together — there is no separate lookup_a / lookup_aaaa
+let ips = resolver.lookup("example.com")?;              // List<IpAddr>
 
-// AAAA — IPv6 addresses
-let ips_v6 = resolver.lookup_aaaa_async("example.com").await?;
-// List<Ipv6Addr>
+// MX — priority paired with the exchange host
+let mxs = resolver.lookup_mx("example.com")?;           // List<(Int, Text)>
+for (priority, exchange) in &mxs { print(f"{priority} {exchange}"); }
 
-// CNAME — canonical name
-let cn = resolver.lookup_cname_async("www.example.com").await?;
-// Maybe<Text>
+// TXT
+let txts = resolver.lookup_txt("_dmarc.example.com")?;  // List<Text>
 
-// MX — mail exchangers, with priority
-let mxs = resolver.lookup_mx_async("example.com").await?;
-// List<MxRecord { preference: Int, exchange: Text }>
-for mx in &mxs { print(f"{mx.preference} {mx.exchange}"); }
+// SRV — ONE name, already assembled; not (service, proto, domain)
+let srv = resolver.lookup_srv("_imap._tcp.example.com")?;
+// List<(Int, Int, Int, Text)> — priority, weight, port, target
 
-// TXT — text records
-let txts = resolver.lookup_txt_async("_dmarc.example.com").await?;
-// List<Text>
+// NS
+let ns = resolver.lookup_ns("example.com")?;            // List<Text>
 
-// SRV — service discovery
-let srv = resolver.lookup_srv_async("_imap", "_tcp", "example.com").await?;
-// List<SrvRecord { priority, weight, port, target }>
-
-// NS — authoritative name servers
-let ns = resolver.lookup_ns_async("example.com").await?;
-// List<Text>
-
-// SOA — start of authority
-let soa = resolver.lookup_soa_async("example.com").await?;
-// SoaRecord
+// PTR — reverse
+let name = resolver.lookup_ptr(&addr)?;                 // Text
 ```
+
+CNAME and SOA have no dedicated method. Reach them through `query`,
+which is the general form:
 
 ### Arbitrary query type
 
 ```verum
-let records = resolver.query_async(
-    "example.com",
-    DnsRecordType.A,
-).await?;
-// List<DnsRecord>
+let entries = resolver.query("example.com", DnsRecordType.A)?;
+// List<DnsRecordEntry> — each is { record: DnsRecord, ttl: Int }
 
-for record in &records {
-    match record {
-        DnsRecord.A(addr)              => print(f"A {addr}"),
-        DnsRecord.AAAA(addr)           => print(f"AAAA {addr}"),
-        DnsRecord.CNAME(name)          => print(f"CNAME {name}"),
-        DnsRecord.MX(pref, host)       => print(f"MX {pref} {host}"),
-        DnsRecord.TXT(text)            => print(f"TXT {text}"),
-        _                              => print(f"unknown: {record:?}"),
+for entry in &entries {
+    print(f"ttl={entry.ttl}");
+    match entry.record {
+        DnsRecord.A(addr)                    => print(f"A {addr}"),
+        DnsRecord.AAAA(addr)                 => print(f"AAAA {addr}"),
+        DnsRecord.CNAME(name)                => print(f"CNAME {name}"),
+        DnsRecord.MX { priority, exchange }  => print(f"MX {priority} {exchange}"),
+        DnsRecord.TXT(text)                  => print(f"TXT {text}"),
+        DnsRecord.NS(host)                   => print(f"NS {host}"),
+        DnsRecord.PTR(name)                  => print(f"PTR {name}"),
+        DnsRecord.SRV { priority, weight, port, target }
+                                             => print(f"SRV {target}:{port}"),
+        DnsRecord.SOA { mname, serial, .. }  => print(f"SOA {mname} {serial}"),
     }
 }
 ```
 
+`DnsRecordType` is `A | AAAA | CNAME | MX | TXT | NS | PTR | SRV | SOA |
+ANY`. Note the record carries a TTL beside it — the entry is the pair,
+not the record alone.
+
 ## Caching
 
-The default resolver caches results according to record TTLs. Cache
-hits are ~50 ns (a hash-map lookup). Cache misses incur the
-round-trip to the nameserver.
+:::danger There is no cache
 
-```verum
-resolver.cache_clear();                  // invalidate all cached results
-resolver.cache_invalidate("example.com"); // specific hostname only
+`core/net/dns.vr` contains the string "cache" **zero** times. Every
+query goes to a nameserver.
 
-let stats = resolver.cache_stats();
-print(f"hit rate: {stats.hit_rate}");
-print(f"entries: {stats.entries}");
-```
+This section previously documented `cache_clear()`,
+`cache_invalidate(host)`, `cache_stats()` with a `hit_rate`, a
+`Resolver.new().cache_capacity(0)` builder for deterministic tests, and
+a "~50 ns (a hash-map lookup)" figure for a cache hit. None of those
+names exists, so none of that was measured — a performance number
+attached to an absent mechanism is the clearest possible sign a page has
+drifted from its library.
 
-For deterministic testing, disable caching entirely:
+If you need caching, hold the results yourself: `lookup` returns a
+`List<IpAddr>` and `query` returns `List<DnsRecordEntry>` whose `ttl`
+field is the value a cache would key its expiry on.
 
-```verum
-let resolver = Resolver.new().cache_capacity(0);
-```
+:::
 
 ## DNS-over-HTTPS (DoH)
 
