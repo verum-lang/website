@@ -577,7 +577,8 @@ DistributedDataParallel.new(module, process_group)
 FSDP.new(module, sharding_strategy)          // fully-sharded data parallel
 
 ActorMesh.new(layout)                          Supervision(...)
-RDMA.connect(peer)                             // remote direct memory access
+RdmaContext                                    // remote direct memory access:
+  get_ref(actor_id, &tensor) / prefetch(&refs) / wait_all()
 ```
 
 ---
