@@ -542,6 +542,21 @@ async fn test_handler() {
 }
 ```
 
+:::note Which of those four ships, and which you write
+`core/` ships the CONTEXTS — `Logger`, `Clock`, `Database`, `Metrics` and
+29 others are declared in `core/context/standard.vr` — and exactly one of
+the doubles above: `NullLogger` (`core/base/log.vr:535`).  The other three
+are yours, and that is the design rather than a gap: a double is written
+against your schema, not the library's.
+
+```verum
+// The three the example swaps in are declared by the test, not by core.
+type MockDatabase is {};
+type FakeClock is { at: Instant };
+type NullMetrics is {};
+```
+:::
+
 No mocking framework. No DI container. Contexts are just types;
 `provide` is just assignment; the compiler does the rest.
 
