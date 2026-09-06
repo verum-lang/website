@@ -104,7 +104,7 @@ async fn reload_with_jitter() using [Logger, Random] {
     loop {
         // ±5 seconds of jitter
         let jitter_ms = Random.int_range(-5000, 5000);
-        sleep(base + jitter_ms.milliseconds()).await;
+        sleep(base + jitter_ms.millis()).await;   // `millis`, not `milliseconds`
         reload_config().await;
     }
 }
@@ -120,9 +120,20 @@ async fn daily_at(hour: Int, minute: Int, task: fn() -> Future<()>)
     using [Clock]
 {
     loop {
-        let now = Clock.system_time();
-        let next = now.next_at(hour, minute);
-        let wait = next.duration_since(&now).unwrap();
+        // `SystemTime` is UNIX_EPOCH / checked_add / checked_sub /
+        // duration_since / duration_since_epoch / elapsed /
+        // from_timestamp / from_timestamp_millis / now / timestamp /
+        // timestamp_millis / timestamp_nanos. There is no `next_at`,
+        // and `core/time` ships no calendar type at all — no `Date`,
+        // no `DateTime` — so "the next HH:MM" is arithmetic you do on
+        // the epoch second yourself, including the local-offset and
+        // DST questions the stdlib does not answer for you.
+        let now  = Clock.system_time();
+        let secs = now.timestamp();
+        let today_midnight = secs - (secs % 86_400);          // UTC
+        let mut target = today_midnight + hour * 3600 + minute * 60;
+        if target <= secs { target = target + 86_400; }
+        let wait = Duration.secs(target - secs);
         sleep(wait).await;
         task().await;
     }
