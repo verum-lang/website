@@ -159,7 +159,11 @@ for entry in fs.walk_dir(path)? {
 
 ```verum
 let md = fs.metadata(path)?;
-print(f"size={md.len()} modified={md.modified()?} mode={md.permissions()?:o}");
+// `modified_secs` / `accessed_secs` / `created_secs` answer seconds as
+// an Int — there is no `modified()`. `permissions()` answers a
+// `Permissions`, not a number, so ask it for its `mode()` before
+// formatting it octal.
+print(f"size={md.len()} modified={md.modified_secs()} mode={md.permissions().mode():o}");
 
 let t = md.file_type();
 if t.is_file()    { ... }
@@ -179,14 +183,14 @@ let target   = fs.read_link(path)?;                  // → Path
 ## Permissions
 
 ```verum
-let mut perms = fs.metadata(path)?.permissions();
-perms.set_mode(0o644);
-fs.set_permissions(path, perms)?;
+// `Permissions` is built FROM a mode, not mutated into one: its surface
+// is `from_mode`, `mode`, `readonly`, `set_readonly`. There is no
+// `set_mode` on it, and no `fs.set_mode` helper either.
+fs.set_permissions(path, Permissions.from_mode(0o644))?;
 
-@cfg(unix)
-{
-    fs.set_mode(path, 0o755)?;                        // Unix helper
-}
+// Read the current mode, flip a bit, write it back:
+let mode = fs.metadata(path)?.permissions().mode();
+fs.set_permissions(path, Permissions.from_mode(mode | 0o111))?;   // +x
 ```
 
 ## Memory-mapped files
