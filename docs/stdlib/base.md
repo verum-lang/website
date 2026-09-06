@@ -1103,8 +1103,9 @@ d.remove(key) -> Maybe<Data>
 d.at(index)      d.at_mut(index)
 d.push(value) -> Result<(), DataError>
 d.pop() -> Maybe<Data>
-d.len()          d.is_empty()
-d.keys()         d.values()
+d.len() -> Int   d.is_empty() -> Bool
+d.keys()   -> Maybe<List<Text>>     // None unless this is an Object
+d.values() -> Maybe<List<Data>>     // None unless this is an Object
 ```
 
 ### Path access, merging, output
