@@ -82,7 +82,7 @@ fn deref(r: ThinRef<T>) -> &T {
 
 Three loads, one compare, one conditional branch. On the
 `production_targets` bench (x86_64, release build) this measures
-**~0.93 ns** — well under the ≤ 15 ns design target set in
+**1.2–1.7 ns** — well under the ≤ 15 ns design target set in
 [`docs/detailed/cbgr-implementation`](https://github.com/verum-lang/verum/blob/main/docs/detailed/cbgr-implementation.md).
 
 ## Why not just bounds-check?
@@ -140,7 +140,7 @@ call, from the parameter's declared capability set.)
 
 ## When the check is elided
 
-The compiler emits the full CBGR check (~0.93 ns measured) for
+The compiler emits the full CBGR check (1.2–1.7 ns, re-measured 2026-09-05) for
 `&T`. It emits **nothing** for `&checked T` — escape analysis
 (one of eleven compile-time analyses in `verum_cbgr`) has proved
 the check unnecessary. The proof is witnessed in the compilation

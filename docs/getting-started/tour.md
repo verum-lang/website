@@ -86,7 +86,7 @@ a portfolio — based on the theory mix of the predicate.
 ## 5. Three-tier references
 
 ```verum
-fn managed(x: &T)         { /* ~0.93 ns CBGR check (measured) */ }
+fn managed(x: &T)         { /* 1.2–1.7 ns CBGR check (measured) */ }
 fn proven (x: &checked T) { /* 0 ns — compiler verified */ }
 fn escape (x: &unsafe T)  { /* 0 ns — you swear it's OK */ }
 ```
@@ -95,7 +95,7 @@ Start with `&T`. Profile. When escape analysis proves a reference
 cannot dangle, promote it to `&checked T`. Use `&unsafe T` only when
 you have an obligation the compiler cannot verify and you are willing
 to discharge it by inspection. The CBGR check lives in `verum_cbgr`
-and measures ~0.93 ns today against a 15 ns design target.
+and measures 1.2–1.7 ns today against a 15 ns design target.
 
 ## 6. Explicit contexts
 

@@ -124,7 +124,7 @@ Ahead-of-time compilation through LLVM — the default for
   floor Verum designs for, and whole-program optimization (fusion,
   devirtualization, CBGR check elimination) hunts for more.
 - **CBGR**: tier-aware. `&T` references emit a CBGR check
-  (measured ~0.93 ns on the `production_targets` bench against a
+  (re-measured 1.2–1.7 ns on the `production_targets` bench against a
   ≤ 15 ns design target); `&checked T` and `&unsafe T` compile to
   direct loads (0 ns). Escape analysis elides 50–90 % of remaining
   Tier 0 checks.
@@ -215,7 +215,7 @@ Nothing in `crates/` ever names `Tier2_Gen` or `Tier3_Unchecked`, so
 the stdlib's third and fourth variants are not outcomes the compiler's
 analysis can reach. And the overheads disagree: `ExecutionTier`'s own
 `overhead_ns` answers 15/8/3/0, while the compiler's model and the
-measurement below put Tier1 at 0 ns / ~0.93 ns.
+measurement below put Tier1 at 0 ns / 1.2–1.7 ns.
 
 A third, unrelated `ExecutionTier` lives in `verum_compiler` for the
 interpreter/AOT split — the collision the paragraph after this table
@@ -227,8 +227,8 @@ Four tiers are defined in `core/runtime/env.vr` as the enum
 
 | Variant           | Overhead per deref              | What's checked                             | How it's reached                               |
 |-------------------|---------------------------------|--------------------------------------------|------------------------------------------------|
-| `Tier0_Full`      | ≤ 15 ns target (measured ~0.93 ns on `production_targets`) | generation + epoch + bounds | default for `&T` when analysis is uncertain    |
-| `Tier1_Epoch`     | ~0.93 ns                        | generation + epoch                         | analysis proves bounds safe                    |
+| `Tier0_Full`      | ≤ 15 ns target (re-measured 1.2–1.7 ns on `production_targets`) | generation + epoch + bounds | default for `&T` when analysis is uncertain    |
+| `Tier1_Epoch`     | 1.2–1.7 ns                        | generation + epoch                         | analysis proves bounds safe                    |
 | `Tier2_Gen`       | < Tier1_Epoch (design target)    | generation only                            | analysis proves bounds + epoch safe            |
 | `Tier3_Unchecked` | 0 ns                            | nothing — caller asserts safety            | explicit `&unsafe T` or proven `&checked T`    |
 
@@ -384,7 +384,7 @@ deref(&T) = 1 load (pointer) + 1 load (header) + 1 compare + 1 branch
 code sequence per CBGR safety tier:
 
 - `Ref` / `RefMut` (`Tier0_Full`) → full CBGR validation (≤ 15 ns
-  design target; ~0.93 ns measured for the gen + epoch fast path).
+  design target; 1.2–1.7 ns (re-measured 2026-09-05) for the gen + epoch fast path).
 - `RefChecked` (`Tier3_Unchecked` after verification) → direct
   `llvm.load`, 0 ns.
 - `RefUnsafe` (`Tier3_Unchecked`) → direct `llvm.load`, 0 ns.

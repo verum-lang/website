@@ -71,7 +71,7 @@ lifetime annotation is discarded and constrains nothing, so it is not
 an escape hatch for a case CBGR cannot express. Use `&checked T` when
 you want the compiler to refuse code that would need a runtime check.
 
-**Three reference tiers.** `&T` is CBGR-checked (~0.93 ns per
+**Three reference tiers.** `&T` is CBGR-checked (1.2–1.7 ns per
 deref, measured on the `production_targets` bench — a single
 cacheline-local generation+epoch compare).
 Escape analysis promotes most `&T` to `&checked T` (zero cost) at

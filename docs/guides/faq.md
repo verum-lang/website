@@ -22,7 +22,7 @@ Expect early-adopter friction.
 LLVM-AOT builds hold a **native-C parity bar (1×)** — a workload
 running below parity is treated as a defect to close, not a range
 to accept. The
-[CBGR reference model](/docs/language/cbgr) adds ~0.93 ns
+[CBGR reference model](/docs/language/cbgr) adds 1.2–1.7 ns
 (measured on the `production_targets` bench, well under the
 ≤ 15 ns design target) to non-promoted dereferences — invisible
 in most code; measurable in tight loops (where escape analysis
@@ -40,7 +40,7 @@ dependency.
 No. CBGR is the memory model: unique ownership (`Heap<T>`),
 atomically ref-counted sharing (`Shared<T>`), and borrowed references
 (`&T`) that carry a generation counter checked on deref
-(~0.93 ns). No GC pauses.
+(1.2–1.7 ns). No GC pauses.
 
 ### What about async?
 

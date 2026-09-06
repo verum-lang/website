@@ -20,7 +20,7 @@ For unsized types (slices, `dyn Protocol`), the reference is a 32-byte
 `FatRef<T>` carrying an additional length or vtable pointer.
 
 **Each dereference** performs one CBGR check against the object's
-header — measured at ~0.93 ns on the `production_targets` bench
+header — re-measured at 1.2–1.7 ns on the `production_targets` bench
 (x86_64, release build), well under the ≤ 15 ns design target. If
 the generation has advanced, the check aborts with a
 `UseAfterFreeError`.
@@ -59,7 +59,7 @@ before that pattern was found, so it's been pulled rather than left
 looking more authoritative than it is.
 
 `&checked T` is typically used:
-- on hot paths where even the ~0.93 ns per deref compounds into
+- on hot paths where even the 1.2–1.7 ns per deref compounds into
   measurable overhead (billions of iterations per frame);
 - at function boundaries where the caller naturally provides a short-lived reference;
 - in generic numeric / iterator code where the compiler's escape
@@ -276,7 +276,7 @@ survives all the way from the compiler to the executor:
 
 | Opcode | Hex | Tier | Runtime behaviour |
 |--------|-----|------|-------------------|
-| `Ref` | 0x70 | 0 | CBGR-validated deref (~0.93 ns measured) |
+| `Ref` | 0x70 | 0 | CBGR-validated deref (1.2–1.7 ns, re-measured 2026-09-05) |
 | `RefMut` | 0x71 | 0 | mutable CBGR-validated |
 | `Deref` | 0x72 | — | deref with validation |
 | `DerefMut` | 0x73 | — | mutable deref with validation |

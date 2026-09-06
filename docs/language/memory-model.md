@@ -14,7 +14,7 @@ The answer has three parts:
    performance tradeoff per reference.
 2. **CBGR** — Capability-Based Generational References — a fast
    runtime check that prevents use-after-free. Measured at
-   **~0.93 ns** on the `production_targets` bench, well under the
+   **1.2–1.7 ns** on the `production_targets` bench, well under the
    ≤ 15 ns design target.
 3. **Escape analysis** that promotes CBGR references to zero-cost
    checked references whenever it can prove the check is unnecessary.
@@ -175,7 +175,7 @@ duplicate explicitly, call `.clone()`.
 
 | Concept | Syntax | Cost |
 |---------|--------|------|
-| Managed reference | `&T` | ~0.93 ns CBGR check (measured; target ≤ 15 ns) |
+| Managed reference | `&T` | 1.2–1.7 ns CBGR check (re-measured 2026-09-05; target ≤ 15 ns) |
 | Checked reference | `&checked T` | 0 ns |
 | Unsafe reference | `&unsafe T` | 0 ns |
 | Mutable variants | `&mut T`, `&checked mut T`, ... | same as above |

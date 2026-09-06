@@ -190,7 +190,7 @@ productions. For quick jumps:
 | **Capability** | A type-level permission: `T with [Read, Write]` narrows what can be done with `T`.                          |
 | **Cog**        | A package — a distributable unit of Verum code with a `verum.toml` manifest.                                |
 | **Tier**       | A level in the three-tier reference model: `&T` (tier 0), `&checked T` (tier 1), `&unsafe T` (tier 2).       |
-| **CBGR**       | Capability-Based Generational References — the default memory-safety mechanism. ~0.93 ns per check (measured; target ≤ 15 ns). |
+| **CBGR**       | Capability-Based Generational References — the default memory-safety mechanism. 1.2–1.7 ns per check (re-measured 2026-09-05 on a loaded machine, so a floor; target ≤ 15 ns). |
 | **VBC**        | Verum ByteCode — the language's unified IR, interpreted or compiled to native via LLVM.                     |
 | **Stage**      | Metaprogramming tier: 0 = runtime, 1 = first meta, N = meta-meta-… Each `quote` targets stage N − 1.         |
 | **Framework axiom** | An external result postulated via `@framework(identifier, "citation")`. Every use surfaces in `verum audit --framework-axioms` — no hidden axioms. |

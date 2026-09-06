@@ -72,8 +72,8 @@ line up. The four variants below are this field's own enum:
 
 | Variant           | Overhead per deref                              | Guarantee                                    |
 |-------------------|-------------------------------------------------|----------------------------------------------|
-| `Tier0_Full`      | ≤ 15 ns target (~0.93 ns measured for gen+epoch) | Full CBGR: generation + epoch + bounds       |
-| `Tier1_Epoch`     | ~0.93 ns                                        | Generation + epoch only                      |
+| `Tier0_Full`      | ≤ 15 ns target (1.2–1.7 ns (re-measured 2026-09-05) for gen+epoch) | Full CBGR: generation + epoch + bounds       |
+| `Tier1_Epoch`     | 1.2–1.7 ns                                        | Generation + epoch only                      |
 | `Tier2_Gen`       | < Tier1_Epoch                                   | Generation only                              |
 | `Tier3_Unchecked` | 0 ns                                            | No runtime checks (requires `unsafe`)        |
 
