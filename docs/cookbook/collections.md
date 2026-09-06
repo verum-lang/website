@@ -206,13 +206,16 @@ for (k, v) in &btree_map { ... }
 For the largest K items, `BinaryHeap` is O(n log k), not O(n log n):
 
 ```verum
+// `BinaryHeap` already ships `top_k` and `bottom_k`; this is the shape
+// they have, kept because writing it is how you learn the `Reverse`
+// trick. Reach for `heap.top_k(k)` in real code.
 fn top_k<T: Ord>(items: &List<T>, k: Int) -> List<T> {
     let mut heap: BinaryHeap<Reverse<T>> = BinaryHeap.with_capacity(k);
     for item in items.iter() {
         heap.push(Reverse(item.clone()));
         if heap.len() > k { heap.pop(); }
     }
-    heap.into_sorted_vec().into_iter().map(|Reverse(x)| x).collect()
+    heap.into_sorted_list().into_iter().map(|Reverse(x)| x).collect()
 }
 ```
 

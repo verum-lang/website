@@ -314,11 +314,16 @@ let mut set: JoinSet<Int> = JoinSet.new();
 set.spawn(task_a());
 set.spawn(task_b());
 
-while let Maybe.Some(res) = set.join_next().await {
+// `JoinSet<T>` IS the future — `implement<T> Future for JoinSet<T>`
+// with `Output = Result<T, JoinError>`. Awaiting it yields the FIRST
+// task to finish and removes that task from the set, so the loop
+// condition is emptiness. There is no `join_next`.
+while !set.is_empty() {
+    let res = set.await;
     match res {
         Result.Ok(value) => ...,
         Result.Err(JoinError.Cancelled) => ...,
-        Result.Err(JoinError.Panicked(info)) => ...,
+        Result.Err(JoinError.Panicked)  => ...,   // no payload
     }
 }
 ```
