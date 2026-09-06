@@ -162,7 +162,9 @@ When the schema is unknown at compile time, parse into
 `core.base.data.Data`:
 
 ```verum
-let raw: Data = json.parse_to_data(&text)?;
+// The entry point is a FREE function in `core.base.data`, and it takes
+// an owned `Text`. There is no `json.parse_to_data`.
+let raw: Data = data.parse_json(text)?;
 
 match raw.get("user").and_then(|u| u.get("name")) {
     Maybe.Some(Data.Text(name)) => print(f"name = {name}"),
@@ -172,24 +174,30 @@ match raw.get("user").and_then(|u| u.get("name")) {
 
 ### Path-based access
 
-```verum
-fn read_contact(raw: Data) -> Result<(), JsonError> {
-    if let Maybe.Some(email) = raw.path("user.contact.email")? {
-        // email is Data — use .as_text(), .as_int(), etc.
-    }
+:::caution No JSONPath
 
-    // With JSONPath:
-    for name in raw.jpath(jpath#"$.users[*].name") {
-        print(name);
+`core/` has no JSONPath: `jpath` appears nowhere in the tree and there
+is no `jpath#"…"` literal. Dotted-key traversal via `Data.path` is the
+whole of it; anything selecting across a collection (`$.users[*].name`)
+you write as a loop.
+
+:::
+
+```verum
+fn read_contact(raw: Data) -> Result<(), DataError> {
+    // `path` walks dotted keys and answers `Maybe<&Data>` — no `?`,
+    // because a missing key is None rather than an error.
+    if let Maybe.Some(email) = raw.path("user.contact.email") {
+        // email is &Data — narrow it with the match below
     }
-    Ok(())
+    Result.Ok(())
 }
 ```
 
 ### Type narrowing
 
 ```verum
-let value: Data = json.parse_to_data(&text)?;
+let value: Data = data.parse_json(text)?;
 
 match value {
     Data.Null           => print("null"),
