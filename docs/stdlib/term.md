@@ -145,9 +145,9 @@ Style.new()
     .remove_modifier(Modifier.Italic)
 
 type Theme is { ... };
-Theme.builtin(&"dark") / Theme.builtin(&"light")
-Theme.from_colors(palette: &Map<Text, Color>) -> Theme
-theme.style(&"headline")             theme.color(&"accent")
+Theme.dark() -> Theme                Theme.light() -> Theme
+Theme.auto_detect(bg_color: Maybe<Rgb>) -> Theme
+theme.role(&"primary")               theme.role(&"text_dim")
 ```
 
 ---

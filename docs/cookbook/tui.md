@@ -214,17 +214,29 @@ fn update(&mut self, msg: Msg) -> Command<Msg> {
 ### Colour themes
 
 ```verum
-let theme = Theme.builtin("dark");
-// or
-let theme = Theme.from_colors(&Map.from([
-    ("headline", Color.Rgb(Rgb { r: 255, g: 140, b: 0 })),
-    ("body",     Color.White),
-    ("accent",   Color.Cyan),
-]));
+let theme = Theme.dark();          // or Theme.light()
+// or follow the terminal's reported background colour
+let theme = Theme.auto_detect(Maybe.Some(Rgb.new(12, 12, 16)));
 
+// A theme is a record of Style fields; `role` looks one up by name.
+// Roles: surface, surface_dim, on_surface, primary, on_primary,
+// secondary, on_secondary, error, warning, success, info, border,
+// border_focused, divider, text, text_dim, text_muted,
+// text_highlight, selection, cursor. An unknown name yields Style.new().
 Paragraph.new(text)
-    .style(theme.style(&"body"))
+    .style(theme.role(&"text"))
     .render(f, area);
+
+// A custom theme is a record literal — every role is named explicitly.
+// Verum has no record-update shorthand: start from a built-in theme and
+// rebind the fields you want to change.
+let base = Theme.dark();
+let branded = Theme {
+    primary: Style.new().fg(Color.TrueColor(Rgb.new(255, 140, 0))),
+    text:    base.text,
+    surface: base.surface,
+    // ... the remaining roles, each taken from `base`
+};
 ```
 
 ### See also
