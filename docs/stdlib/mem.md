@@ -224,7 +224,7 @@ h.header_generation() / h.header_epoch() / h.header_size()
 ```verum
 Shared.new(value) -> Shared<T>
 s.clone() -> Shared<T>              // bumps refcount
-s.weak() -> Weak<T>                 // does not bump strong count
+s.downgrade() -> Weak<T>            // does not bump strong count
 Shared.strong_count(&s) -> Int
 Shared.weak_count(&s) -> Int
 Shared.try_unwrap(s) -> Result<T, Shared<T>>   // succeeds if strong_count == 1
