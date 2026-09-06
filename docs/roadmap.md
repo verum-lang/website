@@ -52,7 +52,8 @@ Production-ready:
 - **Concurrency**: `async fn`, `.await`, structured concurrency via
   `nursery`, supervision trees, channels (MPSC / broadcast / oneshot),
   work-stealing executor.
-- **VBC bytecode**: 250 primary opcodes plus the extended sub-op tables,
+- **VBC bytecode**: 250 primary opcodes plus 863 sub-ops across 20
+  extended tables (1113 total, counted 2026-09-06),
   full interpreter (**62**-file dispatch table, counted 2026-09-06 —
   this line said 37), LLVM AOT path (native-C parity bar), MLIR GPU
   path.

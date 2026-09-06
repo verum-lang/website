@@ -45,7 +45,7 @@ flowchart TD
     L7[L7 API: Database, PreparedStatement, DbError]
     L6[L6 Session: Connection, SchemaCache, TxMode]
     L5[L5 SQL: lexer, parser, resolver, planner, codegen]
-    L4[L4 VDBE: register-SSA bytecode VM, 147 opcodes]
+    L4[L4 VDBE: register-SSA bytecode VM, 89 opcodes]
     L3[L3 B-tree: cursors, page layout, balance]
     L2[L2 Record: varint, type affinity, collation]
     L1[L1 Pager: actor, page cache, WAL + rollback journal]

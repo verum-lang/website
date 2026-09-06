@@ -196,7 +196,8 @@ Phases 4a and 4b run in parallel after Phase 4's core type checking.
 function. Every function in the program — stdlib included — ends up
 as VBC.
 
-- **Opcodes**: the ~200-opcode VBC instruction set
+- **Opcodes**: the VBC instruction set — 250 primary opcodes (1113 with
+  the extended sub-op tables; this line said ~200 until 2026-09-06)
   (see [vbc bytecode](/docs/architecture/vbc-bytecode)).
 - **CBGR opcodes**: Tier-aware lowering emits `Ref` / `RefMut` for
   Tier 0 references, `RefChecked` for Tier 1 (compiler-proven safe),

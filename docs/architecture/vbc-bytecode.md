@@ -139,7 +139,12 @@ materialises a byte-slice FatRef with `elem_size=1`, copying the six
 inline bytes of a small string into a fresh heap buffer so the
 returned reference has a stable address.
 
-Adding up primary + extended tables: just over **350 opcodes**.
+Adding up primary + extended tables: 250 primary opcodes plus 863 sub-ops across 20 extended tables — **1113 in total**, counted 2026-09-06 from `pub enum Opcode` and the twenty `*SubOpcode` enums in `crates/verum_vbc/src/instruction.rs`.
+
+The largest tables are `Tensor` (149), `Gpu` (97), `Math` (84), the
+general `Extended` table (71), `Simd` (67), `Arith` (63), `Ml` (62) and
+`Cbgr` (60). This line said "just over 350" until 2026-09-06, which was
+roughly the primary table plus one or two of the extended ones.
 
 ## Module format
 
