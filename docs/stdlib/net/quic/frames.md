@@ -7,9 +7,13 @@ description: Byte-exact wire layout and classification of every QUIC frame type 
 # QUIC frames — RFC 9000 §19
 
 Every QUIC packet carries a sequence of frames. The frame layer lives in
-`core.net.quic.frame` and exposes a single `Frame` sum type with 22
-variants (20 core frame types from RFC 9000 + `DATAGRAM` variants from
-RFC 9221). Each frame is serialised as:
+`core.net.quic.frame` and exposes a single `QuicFrame` sum type with 24
+variants (`core/net/quic/frame.vr:169`). The count is not the number of
+RFC type codes: several codes share one variant (`AckFrame` covers
+0x02/0x03) and several variants split one concept (`MaxStreamsBidi` /
+`MaxStreamsUni`, `ConnectionCloseTransport` /
+`ConnectionCloseApplication`). The last is `Datagram`, from RFC 9221.
+Each frame is serialised as:
 
 ```
 Type (QUIC varint) || [frame-specific fields]
@@ -45,8 +49,8 @@ Type (QUIC varint) || [frame-specific fields]
 The "Ack-eliciting" column drives whether the peer must send an ACK
 within `max_ack_delay`. "Probing" marks frames that MAY travel on a
 path that hasn't yet been validated (RFC 9000 §9.1). Both attributes
-are public predicates on `Frame`: `Frame.is_ack_eliciting()` and
-`Frame.is_probing()`.
+are public predicates on `QuicFrame`: `QuicFrame.is_ack_eliciting()`
+and `QuicFrame.is_probing()` (`core/net/quic/frame.vr:205`, `:216`).
 
 ## Variable-length integer encoding
 
