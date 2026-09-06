@@ -264,9 +264,14 @@ fn main() using [Config] {
         ChildSpec.permanent("db"),
     ).await?;
     root.supervise(
-        // `bind` returns `Result<Server<H>, Text>` — `serve` is the
-        // SERVER's, so the result is unwrapped first.
-        || WeftApp.new(app).bind("0.0.0.0:8080")?.serve(),
+        // `bind` returns `Result<Server<H>, Text>` and `serve` is the
+        // SERVER's, so the result is unwrapped first — in a `let`, not
+        // with `?.`: that is the OPTIONAL-CHAINING operator, which
+        // resolves through `Maybe` and is a no-op on a `Result`.
+        || {
+            let server = WeftApp.new(app).bind("0.0.0.0:8080")?;
+            server.serve()
+        },
         ChildSpec.permanent("http"),
     ).await?;
 
