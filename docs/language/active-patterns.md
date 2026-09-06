@@ -225,7 +225,7 @@ Patterns can be generic over their subject's type:
 
 ```verum
 pattern NonEmpty<T>(xs: &List<T>) -> Bool = !xs.is_empty();
-pattern First<T>(xs: &List<T>) -> Maybe<T> = xs.first().copied();
+pattern First<T>(xs: &List<T>) -> Maybe<T> = xs.first();
 
 match list {
     First()(hd) => process(hd),
@@ -263,7 +263,7 @@ arms are complete under an `@verify(formal)` function — see
 | Total, with params                   | `pattern InRange(lo, hi)(n) -> Bool = lo<=n<=hi;`          | `InRange(0, 100)()`      |
 | Partial, no params                   | `pattern Parse(s) -> Maybe<Int> = s.parse_int();`          | `Parse()(n)`             |
 | Partial, with params                 | `pattern Match(re)(s) -> Maybe<...> = re.match(s);`        | `Match(rx#"...")(g)`     |
-| Generic partial                      | `pattern First<T>(xs) -> Maybe<T> = xs.first().copied();`  | `First()(h)`             |
+| Generic partial                      | `pattern First<T>(xs) -> Maybe<T> = xs.first();`           | `First()(h)`             |
 
 ## Grammar
 

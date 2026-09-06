@@ -250,10 +250,12 @@ xs.chunks(5)                          // &[T]... fixed chunks
 let a: Set<Int> = Set.from([1, 2, 3]);
 let b: Set<Int> = Set.of(2, 3, 4);
 
-let union:        Set<Int> = a.union(&b).cloned().collect();
-let intersection: Set<Int> = a.intersection(&b).cloned().collect();
-let difference:   Set<Int> = a.difference(&b).cloned().collect();
-let symmetric:    Set<Int> = a.symmetric_difference(&b).cloned().collect();
+// All four return a `Set<T>` outright — built eagerly, not a lazy view.
+// There is no iterator here to `.cloned().collect()`.
+let union:        Set<Int> = a.union(&b);
+let intersection: Set<Int> = a.intersection(&b);
+let difference:   Set<Int> = a.difference(&b);
+let symmetric:    Set<Int> = a.symmetric_difference(&b);
 
 let is_subset   = a.is_subset(&b);
 let is_superset = a.is_superset(&b);
