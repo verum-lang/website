@@ -173,10 +173,16 @@ parameters:
   requests at the same urgency.
 
 ```verum
-mount core.net.h3.priority.{Priority, Urgency};
+// The type is `H3Priority`, and `urgency` / `incremental` are FIELDS,
+// not accessor methods. There is no `Urgency` type — urgency is a
+// `UInt8` in 0..7 (0 = highest, default 3) per RFC 9218 §4.1.
+mount core.net.h3.priority.{H3Priority, parse_header};
 
-let p = Priority.parse("u=1, i").unwrap_or(Priority.default());
-let _ = (p.urgency(), p.incremental());
+// `parse_header` is a FREE function and takes the raw header VALUE as
+// bytes, not a Text — there is no `H3Priority.parse`.
+let p = parse_header(&"u=1, i".as_bytes())
+    .unwrap_or(H3Priority.default());
+let _ = (p.urgency, p.incremental);        // UInt8, Bool
 ```
 
 Priorities are hints — the server-side scheduler uses them to order
