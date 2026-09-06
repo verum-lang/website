@@ -184,16 +184,39 @@ async fn property_no_connection_leak(
     events: Gen<List<NetworkEvent>>,
     schedule: Gen<TaskSchedule>,
 ) {
-    let sim = WeftSimulator.new(SimConfig {
-        clock: TestClock.seeded(seed),
-        rng: SeededRng.new(seed),
-        scheduler: schedule,
-        network: SimNetwork.with_events(events),
-    });
+    // `SimConfig` has exactly three fields — clock, rng, network — and
+    // one seed drives all three, which is what makes a run replayable:
+    let sim = WeftSimulator.new(SimConfig.from_seed(seed));
+    // ...or `SimConfig.chaos_from_seed(seed)` for the loss + latency +
+    // reorder + partition preset. To tune it by hand:
+    //
+    //   SimConfig {
+    //       clock:   TestClock.seeded(seed),
+    //       rng:     SeededRng.new(seed),
+    //       network: SimNetworkConfig.default()
+    //                    .with_packet_loss_permille(5)
+    //                    .with_mean_latency_us(800)
+    //                    .with_reorder_permille(2)
+    //                    .with_partition_permille(1),
+    //   }
     sim.run(my_server_app);
     sim.assert_invariant(|s| s.connections.all(|c| c.properly_closed()));
 }
 ```
+
+Two corrections from 2026-09-06, both of which would stop the snippet
+compiling:
+
+* the network field takes a **`SimNetworkConfig`**, not a `SimNetwork`.
+  `SimNetwork` is a different type in a different subsystem
+  (`core/net/quic/transport/abstraction.vr`, the QUIC datagram
+  simulator) and has no `with_events`. The Weft DST knob is
+  `SimNetworkConfig`, with `default()` / `chaos()` presets and
+  per-dimension builders;
+* `SimConfig` has **no `scheduler` field**. Scheduling policy is a
+  separate object — `RoundRobinSchedule.new()` or
+  `RandomSchedule.new(rng)` — and the generated `TaskSchedule` is handed
+  to the run, not to the config.
 
 Each iteration:
 

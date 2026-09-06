@@ -761,7 +761,7 @@ let recent_total: Float = last_minute.iter().map(|m| m.value).sum();
 > | `len`, `is_empty`, `first`, `last`, `get` | green |
 > | `slice(a,b)`, `slice_from`, `slice_to`, `split_at` | green |
 > | `min`, `max`, `contains` | green |
-> | `iter()` → `SliceIter::next()` | green |
+> | `iter()` → `SliceIter.next()` | green |
 >
 > The slice-only surface — `eq_slice`, `cmp_slice`, `to_list`,
 > `binary_search`, `partition_point`, `position` / `rposition`,

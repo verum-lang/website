@@ -45,7 +45,7 @@ public type ObjectMetadata is {
 `etag` is the strong validator from the backend (typically MD5 for
 single-part uploads, opaque hash for multipart). Consumers
 needing optimistic concurrency check `etag` round-trip via
-`PutOptions::if_match` / `GetOptions::if_none_match`.
+`PutOptions.if_match_etag` / `GetOptions.if_none_match`.
 
 ## Error surface
 
@@ -185,9 +185,9 @@ for streaming upload of arbitrarily large objects.
 1. Add `core/storage/<backend>/` with `mod.vr`.
 2. Implement `ObjectStore` for `<Backend>Adapter`.
 3. Map backend-native errors → `StorageError` variants. Use
-   `StorageError::Backend(msg)` for unmappable cases — never
+   `StorageError.Backend(msg)` for unmappable cases — never
    silently swallow.
-4. Surface continuation-based pagination via `ListPage::next_continuation`;
+4. Surface continuation-based pagination via `ListPage.next_token`;
    one full backend list-call per `list()` invocation. NEVER
    server-side-buffer the full key set.
 5. Add a regression test under `core-tests/storage/<backend>/`

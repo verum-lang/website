@@ -58,12 +58,13 @@ async fn route(req: Request) -> Result<Response, Error>
     using [Database]
 {
     match (req.method, req.uri.path()) {
-        // Static routes
+        // Static routes. The response builders are FREE FUNCTIONS in
+        // `core/net/weft/response_ext.vr`, not methods on `Response`.
         (Method.Get, "/health") =>
-            Response.new(StatusCode.ok()).with_body(b"OK\n".into()).into_ok(),
+            Result.Ok(resp_text("OK\n")),
 
         (Method.Get, "/version") =>
-            Response.json(VersionInfo { version: VERSION }).into_ok(),
+            Result.Ok(resp_json(json.stringify(&version_value()))),
 
         // Dynamic routes
         (Method.Get, path) if path.starts_with("/users/") => {
@@ -147,21 +148,47 @@ let limit: Int = req.uri.query_param("limit")
 ### JSON body
 
 ```verum
+mount core.net.weft.response_ext.{resp_text, resp_json, resp_bad_request};
+mount core.encoding.json;
+
 async fn handle_create_user(req: Request) -> Result<Response, Error>
     using [Database]
 {
-    let body = req.read_body_limited(1024 * 64).await?;
+    let body = req.read_body().await?;      // then check the length yourself
+    if body.len() > 1024 * 64 {
+        return Result.Ok(resp_bad_request());
+    }
     let payload: CreateUserRequest = json.parse(&body)?;
     let user = create_user(&payload)?;      // your helper, over Database.execute
-    Response.json(user).into_ok()
+    Result.Ok(resp_json(json.stringify(&user_to_json(&user))))
 }
-
 @derive(Deserialize)
 type CreateUserRequest is {
     name:  Text { !self.is_empty() && self.len() <= 128 },
     email: EmailAddr,
 };
 ```
+
+:::note Four names on this page were not real, and the JSON one changes your code
+Corrected 2026-09-06, each verified against `core/`:
+
+* **`Response.json(value)` does not exist, and nothing serialises a
+  record for you.** `resp_json(body: Text)` takes JSON **text** that is
+  already built — set the content type, nothing more. Build a
+  `JsonValue` and `json.stringify` it (`core/encoding/json.vr`); there
+  is no `@derive(Serialize)` round-trip on the response path. This is
+  the correction most likely to change what you write.
+* `Response.with_body(..)` is not a method. The builders are free
+  functions: `resp_status`, `resp_ok`, `resp_text`, `resp_json`,
+  `resp_not_found`, `resp_bad_request`, `resp_internal_error`,
+  `resp_with_header`, `resp_with_body_text`, `resp_with_body_bytes`.
+* `.into_ok()` does not exist anywhere. Write `Result.Ok(..)`.
+* `req.read_body_limited(n)` does not exist; read the body and check its
+  length yourself.
+
+`StatusCode.ok()`, `Method.Get`, `json.parse` and `@derive(Deserialize)`
+DO exist and are unchanged.
+:::
 
 The refinement on `name` validates at deserialization time — bodies
 with an empty or too-long name are rejected before they reach the

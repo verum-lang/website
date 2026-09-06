@@ -180,19 +180,40 @@ weft.spiffe.expiry_warning{trust_domain="prod", remaining_seconds=540} 1
 
 ## Capability narrowing through Principal
 
-`Principal` is a context type, so it can be transformed through
-context-system operators:
+:::caution Not shipped
+Compile-time capability narrowing does not exist. There is no
+`Principal.with_role`, no context transformer of any kind in `core/`,
+and `Principal` is a plain RECORD rather than a `context` — nothing
+declares `context Principal`, so it cannot be transformed by
+context-system operators.
 
 ```verum
-async fn admin_handler(
-    Ctx(p): Ctx<Principal.with_role("admin")>,
-) -> Response { ... }
+public type Principal is {
+    spiffe_id:  SpiffeId,
+    expires_at: Instant,
+    /// Claims surfaced from JWT-SVID or cert extensions.
+    /// Key case-preserved; first wins on duplicates.
+    claims:     Map<Text, Text>,
+};
 ```
 
-The `with_role` transformer narrows the context to require a
-specific claim. Compile-time check: a handler that requires
-`with_role("admin")` cannot be reached without a layer that has
-already validated the role.
+The check is a RUNTIME one today, written in the handler:
+
+```verum
+async fn admin_handler(p: &Principal) -> Response {
+    match p.claims().get("role") {
+        Maybe.Some(r) if r == "admin" => { /* ... */ }
+        _ => return Response.new(StatusCode.new(403)),
+    }
+}
+```
+
+`Principal` offers `spiffe_id()`, `expires_at()`, `claims()` and
+`matches(pattern)` — the last does SPIFFE-ID pattern matching, which is
+the identity check the library does provide. Enforce the role in a layer
+if you want it applied uniformly; the compiler will not enforce it for
+you, and this section claimed it would until 2026-09-06.
+:::
 
 ## Status
 

@@ -255,7 +255,7 @@ let config = RwLock.new(Shared.new(Config.default()));
 }
 
 // Writer — rare, replaces the whole handle:
-let fresh = Config.load_from_file();
+let fresh = Config.new();          // the constructor this page declares above
 *config.write() = Shared.new(fresh);
 ```
 

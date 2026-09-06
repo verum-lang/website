@@ -113,7 +113,7 @@ For sequences involving suspension (network, files, streams):
 async fn* lines_from(path: &Path) -> Result<Text, IoError>
     using [FileSystem]
 {
-    let file = File.open_async(path).await?;
+    let file = AsyncFile.open(path).await?;   // core.io.file.AsyncFile
     let mut reader = BufReader.new(file);
 
     loop {
@@ -196,7 +196,7 @@ An `async fn*` that yields `Result<T, E>` is common. A helper:
 async fn* try_lines(path: &Path) throws(IoError) -> Text
     using [FileSystem]
 {
-    let file = File.open_async(path).await?;
+    let file = AsyncFile.open(path).await?;   // core.io.file.AsyncFile
     let mut reader = BufReader.new(file);
     loop {
         let mut line = Text.new();

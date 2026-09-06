@@ -519,6 +519,21 @@ fn dual() using [Database as primary,                // aliased
                  Database as replica]
 ```
 
+:::note `transactional()` is the SYNTAX, not a shipped transformer
+The transformed form is real grammar —
+`transformed_context = context_path, context_transform, {…}` with
+`context_transform = '.', identifier, ['(', [transform_args], ')']` in
+`grammar/verum.ebnf` — and it parses; a conformance spec writes
+`using TransactionalContexts = [Database.transactional(), Cache.scoped()]`.
+
+But `transactional` is not a transformer `core/` provides. Neither is
+`scoped`. The transform position accepts any identifier, and the
+standard library ships none to put there, so the line above shows the
+shape rather than a call you can make today. (It reads as a working
+example on this page and in `core/context/provider.vr`'s own doc
+comment, which is where it came from.)
+:::
+
 See **[Context System](/docs/language/context-system)** for details.
 
 ## Where clauses

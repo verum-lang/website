@@ -103,7 +103,7 @@ touching the connection pipeline.
 
 The outer `Result<_, CancellationError>` is the cancellation
 channel: when the token cancels, `read_cancellable` returns
-`Err(CancellationError::Cancelled)` rather than blocking
+`Err(CancellationError.Cancelled)` rather than blocking
 indefinitely. The runtime registers a cancellation handler that
 cancels the available kernel `recv` syscall.
 

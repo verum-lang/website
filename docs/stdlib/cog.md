@@ -72,7 +72,7 @@ public type Dependency is {
 
 Manifest is parsed from `Verum.toml`; the schema is enforced at
 parse time (missing required fields surface as
-`ManifestError::MissingField`).
+`ManifestError.MissingField`).
 
 ## Archive format (`.vbca`)
 

@@ -185,11 +185,28 @@ diagnostics.
 
 ## Yoneda-equivalence checker (`yoneda.vr`)
 
-`YonedaVerdict::Equivalent | Distinguishable(ShapeObservation)`.
+`YonedaVerdict` is a RECORD, not a sum:
+
+```verum
+public type YonedaVerdict is {
+    schema_version:     Int,
+    agreements:         List<ObserverAgreement>,
+    equivalent:         Bool,
+    disagreement_count: Int,
+};
+```
+
 Two architectural shapes are Yoneda-equivalent iff they agree on
-all observers; the checker enumerates the canonical observer
-roster and surfaces the first disagreeing observer as a
-counter-example.
+all observers, which is what `equivalent` reports; the checker
+enumerates the canonical observer roster and records EVERY observer's
+agreement in `agreements`, with `disagreement_count` as the summary.
+Read the disagreeing observers out of `agreements` — the verdict does
+not carry a single counter-example.
+
+(This paragraph described the verdict as
+`Equivalent | Distinguishable(ShapeObservation)` until 2026-09-06.
+Neither variant exists, and a caller written to `match` on them cannot
+compile. `core/architecture/yoneda.vr` is the source above.)
 
 ## Composition (`composition.vr`)
 

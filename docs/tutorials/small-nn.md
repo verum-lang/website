@@ -103,10 +103,10 @@ pub type MNISTNet is {
 };
 
 implement MNISTNet {
-    fn new(rng: &mut Rng) -> MNISTNet {
+    fn new() -> MNISTNet using [Random, ComputeDevice] {
         MNISTNet {
-            fc1: Linear.new_xavier(784, 128, rng),
-            fc2: Linear.new_xavier(128, 10,  rng),
+            fc1: Linear.new(784, 128, true),   // true = with bias
+            fc2: Linear.new(128, 10,  true),
         }
     }
 }
@@ -127,6 +127,22 @@ implement Module for MNISTNet {
     }
 }
 ```
+
+:::note Where the randomness comes from
+`Linear.new(in, out, use_bias)` draws its initial weights from the
+**`Random` context**, not from an `Rng` you thread through the
+constructor — which is why `MNISTNet.new` declares
+`using [Random, ComputeDevice]` and takes no argument. Seed the context
+once at the top (`provide Random = Rng.new(42);`) and the whole model is
+reproducible.
+
+The initialisation is **Kaiming uniform**, scaled by `in_features`. An
+earlier version of this page called `Linear.new_xavier(in, out, rng)`;
+no such constructor exists. Xavier is available one level down as
+`Parameter.xavier_uniform(fan_in, fan_out)`, so a layer that must use it
+is built with `Linear.new` and then re-initialised through
+`layer.weight`.
+:::
 
 ## 4. Training step
 
@@ -194,8 +210,8 @@ fn main() {
     print(&f"train: {train_images.shape().dim(0)} examples");
     print(&f"test:  {test_images.shape().dim(0)} examples");
 
-    let mut rng = PCG.seed(42);
-    let mut model = MNISTNet.new(&mut rng);
+    let mut rng = Rng.new(42);
+    let mut model = MNISTNet.new();
     let mut optimiser = AdamW.new(model.parameters(), LR, (0.9, 0.999), 0.0001);
 
     let num_batches = train_images.shape().dim(0) / BATCH_SIZE;
@@ -238,7 +254,7 @@ module tests {
 
     @test
     fn forward_shape() {
-        let mut rng = PCG.seed(0);
+        let mut rng = Rng.new(0);
         let m = MNISTNet.new(&mut rng);
         let x = Tensor.zeros<Float32, [16, 784]>();
         let out = m.forward(&x);
@@ -248,7 +264,7 @@ module tests {
 
     @test
     fn parameters_have_gradients() {
-        let mut rng = PCG.seed(0);
+        let mut rng = Rng.new(0);
         let m = MNISTNet.new(&mut rng);
         let x = Tensor.randn<Float32, [4, 784]>(&mut rng);
         let y = Tensor.from_slice<Int32, [4]>(&[0, 1, 2, 3]);

@@ -215,27 +215,47 @@ fresh keys.
 
 ```verum
 mount core.net.weft.service.{Layer, ServiceBuilder};
+mount core.net.weft.backpressure.{RateLimitLayer};
 mount core.net.proxy.{circuit_breaker.CircuitBreakerLayer,
-                      retry.RetryLayer,
+                      retry.{RetryLayer, RetryBudget},
                       upstream_pool.UpstreamPool};
 
 fn build_proxy(pool: UpstreamPool) -> Service {
     // `Service` is a PROTOCOL (`core/net/weft/service.vr`) and has no
     // `builder`; the type that composes layers is `ServiceBuilder`, and it
-    // wraps the INNERMOST service — here the handler — then `build()`s.
-    ServiceBuilder.new(proxy_handler)
-        .layer(RateLimiter.token_bucket(1000, 1000))
+    // wraps the INNERMOST service — here the handler, which OWNS the pool —
+    // then `build()`s.
+    ServiceBuilder.new(proxy_handler(pool))
+        .layer(RateLimitLayer.new(1000, 1000))      // rate_per_sec, burst
         .layer(CircuitBreakerLayer.new(5, 10_000, 3))
-        .layer(RetryLayer.new(3, 25, 1000, Some(RetryBudget.new(100))))
-        .layer(UpstreamPool.as_layer(pool))
+        .layer(RetryLayer.new(3)
+                   .with_backoff(25, 1000)
+                   .with_budget(RetryBudget.new(100)))
         .build()
 }
 ```
 
 Each `Layer` implements the same protocol (wrap a `Handler`, produce
 a new `Handler`), so the stacking order above reads from *inside out*:
-rate-limit first, then circuit-break, then retry, then finally hit
-the upstream pool.
+rate-limit first, then circuit-break, then retry, then finally the
+handler that hits the upstream pool.
+
+Three corrections landed here on 2026-09-06, each of which would have
+stopped a copied snippet from compiling:
+
+* the rate-limit layer is **`RateLimitLayer`**
+  (`core/net/weft/backpressure.vr`), constructed
+  `new(rate_per_sec, burst)`. `RateLimiter` is the PROTOCOL that
+  `TokenBucket` and friends implement, and it has no `token_bucket`
+  constructor;
+* `RetryLayer.new` takes **one** argument, `max_attempts`. Backoff and
+  budget are builder methods — `.with_backoff(base_ms, max_ms)` and
+  `.with_budget(..)` — not positional parameters, and the wrapper is
+  `Maybe.Some`, never bare `Some`;
+* **`UpstreamPool` is not a layer.** It has no `as_layer`, and putting
+  it in the stack misdescribes the architecture: the pool is a resource
+  the innermost handler holds, not a wrapper around one. A layer wraps a
+  `Handler`; the pool is where the wrapped handler finally sends bytes.
 
 ## Performance notes
 

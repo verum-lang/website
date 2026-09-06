@@ -129,41 +129,86 @@ There is no `defer` ceremony.
 
 ```verum
 public type PermissionSet is {
-    can_exec:   List<Text>,           // command allowlist
-    can_read:   List<Text>,           // path-prefix allowlist
-    can_write:  List<Text>,
-    can_network: Bool,
+    /// `Maybe.None` = unrestricted. `Maybe.Some([])` = deny-all.
+    /// `Maybe.Some([..])` = explicit allow-list.
+    run:      Maybe<List<Text>>,
+    fs_read:  Maybe<List<Text>>,
+    fs_write: Maybe<List<Text>>,
+    net:      Maybe<List<Text>>,
+    env:      Maybe<List<Text>>,
+    /// Deny when no allow-list is set. Default `false`, so a script
+    /// without permission frontmatter still runs.
+    strict:   Bool,
 };
 
 public type ShellContext is {
-    cwd:         Text,
-    env:         Map<Text, Text>,
-    permissions: PermissionSet,
-    mock_layer:  Maybe<MockLayer>,
+    cwd:           Maybe<Text>,          // None = inherit parent's cwd
+    env_overrides: List<(Text, Text)>,   // additive, per spawn
+    flavour:       ShellFlavour,
+    shell_program: Maybe<Text>,          // None = autodetect $SHELL / COMSPEC
+    permissions:   PermissionSet,
+    mock:          Maybe<MockLayer>,
+    verbose:       Bool,                 // log every dispatched command
+    dry_run:       Bool,                 // print, don't spawn
 };
 ```
 
-A `ShellContext` declares what the script *may* do. Calling `sh()`
-with a command not in `can_exec` produces `ShellError::Forbidden`
-*before* the command runs. The audit chronicle records every
-denial.
+A `ShellContext` declares what the script *may* do. A command outside
+`permissions.run` produces `ShellError.PermissionDenied` *before* the
+command runs.
+
+**The three-state permission field is the part to read carefully.**
+Each entry is a `Maybe<List<Text>>` and the two "empty" values mean
+opposite things: `Maybe.None` is *unrestricted*, `Maybe.Some([])` is
+*deny everything*. A gate written as "if the list is empty, allow"
+inverts the deny-all case.
+
+Transcribed from `core/shell/context.vr`. Both blocks above were
+previously written with invented field names — `can_exec`, `can_read`,
+`can_write`, `can_network: Bool`, `env: Map<Text, Text>`,
+`mock_layer` — and omitted `strict`, `flavour`, `shell_program`,
+`verbose` and `dry_run` entirely. `can_network: Bool` is the one worth
+naming: the real `net` is an allow-LIST, so the page described a
+coarser permission model than the library implements.
 
 ## 8. MockLayer — testable shell scripts
 
+The mock layer is built from a list of `MockResponse`s and handed to a
+`ShellContext` by a static constructor — there is no chainable
+`.mock(pattern, output)` builder:
+
 ```verum
-let ctx = ShellContext.test()
-    .mock("git status", "On branch main\nnothing to commit\n")
-    .mock("docker ps", "");
+mount core.shell.context.{ShellContext, MockResponse};
 
-provide ShellContext = ctx;
-
-let status = sh_check("git status")?;
-assert(status.contains("nothing to commit"));
+let ctx = ShellContext.mock([
+    MockResponse.success("git status".into(),
+                         "On branch main\nnothing to commit\n".into()),
+    MockResponse.success("docker ps".into(), "".into()),
+]);
 ```
 
-The mock layer intercepts `sh()` calls before they reach the OS,
-returning canned responses. Every Verum shell script is testable
-without spawning subprocesses.
+`MockResponse.success(pattern, stdout)` and
+`MockResponse.failure(pattern, stderr, code)` are the two constructors.
+A pattern matches exactly first, then by substring; `"*"` is a
+catch-all. `ShellContext.lenient_mock([..])` is the same thing with
+`strict_no_match` off, so an unmatched command falls through to a real
+shell instead of raising.
+
+:::caution Not wired to the context system yet
+`provide ShellContext = ctx;` does not yet reach `sh()` / `sh_check()`.
+Both resolve their context by calling `ShellContext.default()`
+INTERNALLY (`core/shell/exec.vr`), so a provided mock context is
+constructed and then ignored — the command still spawns for real.
+
+`vcs/specs/L2-standard/shell/mock_context_integration.vr` says the same
+thing in its own comment and is a `typecheck-pass` spec for exactly
+that reason: it pins the construction surface, which IS shipped, and
+does not claim the dispatch, which is not.
+
+Until that wiring lands, use the mock layer through a `ShellContext`
+you pass explicitly, and read results off `ShellResult` —
+`.stdout()`, `.text()`, `.lines()`, `.code()`, `.success()`.
+:::
 
 ## 9. Concurrency primitives
 

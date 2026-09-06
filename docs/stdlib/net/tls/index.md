@@ -190,11 +190,32 @@ async fn resume_with_0rtt(
     if (early_payload.len() as UInt32) > session.max_early_data_size {
         return Err(TlsError.EarlyDataTooLarge(early_payload.len()));
     }
-    let (mut client, first_wire, early_wire) =
-        TlsClient.new_resumed(cfg, session, early_payload)?;
-    // ship first_wire + early_wire immediately ... drive progress as before.
+    // ⚠ THE RESUMED CONSTRUCTOR DOES NOT EXIST — see the note below.
+    let (mut client, first_wire) = TlsClient.new(cfg)?;
+    // ship first_wire ... drive progress as before.
 }
 ```
+
+:::caution The 0-RTT client entry point is not shipped
+`TlsClient.new_resumed(cfg, session, early_payload)` does not exist, and
+this page presented it as the resumption API until 2026-09-06.
+
+What DOES ship is everything around it, which is why the gap is easy to
+miss. `ClientSession` is complete — `ticket`, `ticket_age_add`,
+`ticket_lifetime_sec`, `cipher_suite`, `resumption_secret`,
+`max_early_data_size`, `created_at`, `ticket_nonce` — and
+`core/net/tls13/handshake/` carries `resumption.vr`, `early_data.vr`,
+`psk.vr` and `resume_verify.vr`. The client STORES a session
+(`TlsClient.session: Maybe<ClientSession>`, filled from the state
+machine's `NewSession(..)` outcome) and hands it back through
+`take_session()`.
+
+What is missing is the other direction: no constructor CONSUMES a
+`ClientSession`. `TlsClient.new(config)` is the only entry point, it
+returns `(TlsClient<Handshaking>, List<Byte>)` — two values, not three —
+and it always initialises `session: Maybe.None`. So a ticket can be
+obtained and persisted today, and cannot yet be presented.
+:::
 
 The server must enforce anti-replay. `zero_rtt_antireplay` offers two
 strategies — single-use tickets (burn on first use) and bloom-filter

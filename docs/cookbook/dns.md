@@ -82,18 +82,28 @@ first successful socket.
 
 ### Happy-eyeballs connect
 
-For latency-sensitive clients, **happy-eyeballs** connects to IPv4 and
-IPv6 in parallel and keeps the first success:
+:::caution Not shipped
+Happy-eyeballs (RFC 8305 — racing IPv4 and IPv6 with a head start for
+v6) is **not implemented**. Neither
+`TcpStream.connect_happy_eyeballs_async` nor `HappyEyeballsOptions`
+exists anywhere in `core/`, and this section described both as if they
+did until 2026-09-06.
+
+What ships today tries the resolved addresses **in order**, IPv6 first,
+and returns the first socket that connects:
 
 ```verum
-let stream = TcpStream.connect_happy_eyeballs_async(
-    "example.com", 443,
-    HappyEyeballsOptions {
-        ipv6_head_start_ms: 300,
-        retry_ipv4_after_ms: 2000,
-    },
-).await?;
+// Synchronous, and async; both resolve through `ToSocketAddrs`
+// and walk the address list sequentially.
+let stream = TcpStream.connect(("example.com", 443))?;
+let stream = TcpStream.connect_async(("example.com", 443)).await?;
 ```
+
+The practical difference is the failure case: a sequential walk pays the
+full connect timeout on an unreachable IPv6 address before it tries
+IPv4, which is the latency happy-eyeballs exists to remove. If you need
+the racing behaviour now, run the two connects under `select` yourself.
+:::
 
 ## Custom resolver
 

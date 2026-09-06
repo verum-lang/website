@@ -162,7 +162,7 @@ implement Http for MockHttp { ... }
 async fn uses_cached_response() {
     let mock = MockHttp {
         responses: Map.from([
-            ("https://a", Response.new(StatusCode.ok()).with_body(b"A".to_vec()))
+            ("https://a", resp_text("A"))   // core.net.weft.response_ext
         ]),
     };
     provide Http = mock;

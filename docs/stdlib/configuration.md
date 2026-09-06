@@ -108,28 +108,51 @@ public fn save_file<T: ConfigSchema>(
 `@derive(ConfigSchema)` on any record type generates the
 `ConfigValue ↔ T` conversion. Refinement types are preserved
 across the round-trip: `port: Int { > 0 && < 65536 }` rejects
-out-of-range values at load time with a structured
-`ConfigError::RefinementFailed` carrying the field path and the
-violated predicate.
+out-of-range values at load time with a structured `ConfigError`
+whose `kind` is `ConfigErrorKind.RefinementViolation`, carrying the
+field path in `path` and the human-readable reason in `message`.
 
 ## Error taxonomy
 
+`ConfigError` is a RECORD carrying one `ConfigErrorKind`, not a sum of
+payload-bearing variants. The position fields are always present, so
+every error can point at the source whether or not it has a semantic
+path:
+
 ```verum
-public type ConfigError is
-      FormatNotRegistered(Text)
-    | ParseError { format: Text, line: Int, column: Int, message: Text }
-    | UnknownField { path: Text }
-    | MissingField { path: Text, expected_type: Text }
-    | TypeMismatch { path: Text, expected: Text, found: Text }
-    | RefinementFailed { path: Text, predicate: Text, value: Text }
-    | InterpolationError(Text)
-    | Io(Text)
-    | Backend(Text);
+public type ConfigError is {
+    format_id:   FormatId,
+    kind:        ConfigErrorKind,
+    line:        Int,          // 1-indexed
+    column:      Int,          // 1-indexed, byte-counted (sources are UTF-8)
+    byte_offset: Int,          // 0-indexed
+    message:     Text,
+    path:        Maybe<Text>,  // set for SEMANTIC errors only
+};
 ```
 
-Every error variant carries the path through the config tree
-(`"server.tls.cert_path"`) so the user can pinpoint the offending
-field without grep.
+The category is the `kind`, and there are 32 of them, grouped by the
+phase that raises them:
+
+| Group | Kinds |
+|---|---|
+| Syntactic | `UnexpectedEof` `UnexpectedChar` `InvalidEscape` `InvalidNumber` `InvalidUnicode` `InvalidDateTime` `InvalidDuration` `InvalidIndent` `InvalidEncoding` `TrailingGarbage` |
+| Structural | `EmptyKey` `DuplicateKey` `KeyAfterValue` `RedefineSuperTable` `TypeMismatchInArray` `UnclosedBlock` |
+| Limits | `DepthLimit` `StringTooLong` `TableTooLarge` `ArrayTooLarge` `TotalSizeExceeded` |
+| Typed loader | `SchemaViolation` `RefinementViolation` `UnknownField` `ValueOutOfRange` |
+| References | `InvalidReference` `CircularReference` |
+| Conversion | `LossyConversion` `UnsupportedFeature` |
+| I/O | `IoFileNotFound` `IoPermissionDenied` `IoOther` |
+
+`path` is `Maybe<Text>` and is populated for SEMANTIC errors — the
+typed-loader and reference groups. A syntax error has a line and a
+column but no path through the config tree, because the tree did not
+parse. The previous version of this page claimed "every error variant
+carries the path"; that was true of the invented taxonomy and is not
+true of the shipped one, and code written to `.path.unwrap()` on a
+parse failure would have panicked.
+
+Transcribed from `core/configuration/error.vr`.
 
 ## Merge + interpolation
 

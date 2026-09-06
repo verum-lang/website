@@ -81,11 +81,42 @@ absolute index assigned at insert time.
 public type DynamicTable is { /* ring-buffer + size accounting */ };
 
 public fn DynamicTable.new(max_capacity: UInt64) -> DynamicTable;
+
 public fn DynamicTable.insert(&mut self, name: Text, value: Text)
-    -> Result<Int, QpackError>;   // returns absolute index
-public fn DynamicTable.get(&self, abs_index: Int) -> Maybe<Entry>;
-public fn DynamicTable.set_max_capacity(&mut self, new_cap: UInt64);
+    -> Result<UInt64, DynamicTableError>;      // absolute index
+public fn DynamicTable.insert_with_name_ref(&mut self, is_static: Bool,
+        name_idx: UInt64, value: Text)
+    -> Result<UInt64, DynamicTableError>;
+public fn DynamicTable.duplicate(&mut self, abs_idx: UInt64)
+    -> Result<UInt64, DynamicTableError>;
+
+public fn DynamicTable.get_by_absolute(&self, abs_idx: UInt64)
+    -> Maybe<DynEntry>;
+public fn DynamicTable.can_insert(&self, entry_size: UInt64) -> Bool;
+public fn DynamicTable.set_capacity(&mut self, new_cap: UInt64)
+    -> Result<(), DynamicTableError>;
+
+// Reference counting keeps an entry alive while a stream still names it.
+public fn DynamicTable.add_ref(&mut self, abs_idx: UInt64)
+    -> Result<(), DynamicTableError>;
+public fn DynamicTable.release_ref(&mut self, abs_idx: UInt64)
+    -> Result<(), DynamicTableError>;
 ```
+
+Transcribed from `core/net/h3/qpack/dynamic_table.vr`. Four drifts are
+worth naming because each one changes caller code:
+
+* `set_max_capacity` does not exist; it is `set_capacity`, and it
+  **returns a `Result`** — it rejects a capacity above the peer's
+  settings with `DynamicTableError.CapacityExceedsSettings` rather than
+  silently accepting it. A caller written against the old `-> ()`
+  signature drops that refusal.
+* the index type is `UInt64`, not `Int`, on every method that takes or
+  returns one;
+* the error type is `DynamicTableError`, not `QpackError`;
+* the accessor is `get_by_absolute` returning `Maybe<DynEntry>` — the
+  name says which index space it reads, which matters here because
+  QPACK also has relative and post-base indices.
 
 Entries evict from the oldest end when `current_size > max_capacity`.
 `current_size = Σ (len(name) + len(value) + 32)` .1.

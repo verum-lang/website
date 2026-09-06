@@ -59,7 +59,7 @@ the bug; the property covers the entire input space.
 
 ```verum
 fn buffer_for(len: Int{ 0 <= it && it <= 8192 }) -> Bytes {
-    Bytes.of_capacity(len)
+    List.with_capacity(len)        // `Bytes` is an alias for `List<Byte>`
 }
 
 @property

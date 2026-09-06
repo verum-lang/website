@@ -189,20 +189,51 @@ DB side stays responsive.
 
 ## 5. Rate limiter
 
-```verum
-let limiter = Shared.new(RateLimiter.token_bucket(
-    rate: 100,        // 100 operations per second
-    burst: 10,        // allow brief burst of 10
-));
+`RateLimiter` is a PROTOCOL with a single, synchronous method, and the
+shipped implementations are the concrete types:
 
-async fn outbound(req: &Request) -> Response using [Http] {
-    limiter.acquire(1).await;     // throttle to rate
-    Http.send(req).await
+```verum
+mount core.net.proxy.rate_limit.{RateLimiter, RateDecision, TokenBucket};
+
+public type RateLimiter is protocol {
+    fn try_admit(&mut self, cost: UInt64, now: Instant) -> RateDecision;
+};
+
+public type RateDecision is Admit | NotNow(Duration);
+```
+
+`TokenBucket.new(capacity, rate_per_s)` — capacity is the burst, so
+"100/s with a burst of 10" is `TokenBucket.new(10, 100)`:
+
+```verum
+let mut limiter = TokenBucket.new(10, 100);
+
+async fn outbound(req: &Request, limiter: &mut TokenBucket)
+    -> Result<Response, Error>
+    using [Http]
+{
+    match limiter.try_admit(1, Instant.now()) {
+        RateDecision.Admit       => Http.send(req).await,
+        RateDecision.NotNow(wait) => {
+            sleep(wait).await;          // YOUR pacing policy
+            Http.send(req).await
+        }
+    }
 }
 ```
 
-Token-bucket rate limiting caps the average rate while still allowing
-brief bursts. For strict pacing (no bursts), use `RateLimiter.fixed_window(rate)`.
+**The waiting is yours to write, and that is the difference worth
+knowing.** `try_admit` DECIDES; it does not queue, block or await. It
+hands back `NotNow(Duration)` — how long until the next token — and the
+caller chooses whether to sleep, shed the request, or fail fast. This
+page previously showed `limiter.acquire(1).await`, which promised a
+limiter that parks the task for you. No such method exists, and code
+written against it would neither compile nor pace anything.
+
+`LeakyBucket.new(capacity, rate_per_s)` and
+`SlidingWindow.new(limit, window_ms)` implement the same protocol for
+strict pacing and for fixed-window counting; `KeyedRateLimiter` wraps
+any of them per key.
 
 ## The full stack — composing everything
 

@@ -192,7 +192,7 @@ public fn handle_request(req: &Request) -> Response {
     log.info(f"received: {req.body}");           // <-- reads body
     let auth = req.headers.get("Authorization");
     if !validate_auth(auth) {                    // <-- auth check AFTER read
-        return Response.unauthorised();
+        return Response.new(StatusCode.new(401));
     }
     process(req)
 }
@@ -227,7 +227,7 @@ Fixed code:
 public fn handle_request(req: &Request) -> Response {
     let auth = req.headers.get("Authorization");
     if !validate_auth(auth) {
-        return Response.unauthorised();
+        return Response.new(StatusCode.new(401));
     }
     log.info(f"received: {req.body}");           // // now after auth
     process(req)

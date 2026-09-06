@@ -76,8 +76,11 @@ The filter algebra is intentionally minimal — every backend can
 lower it to its native query language without lossy
 approximations. Backends that don't support a particular filter
 combinator (e.g. SQLite FTS5 doesn't have native `In` for arbitrary
-arrays) MUST surface `SearchError::FilterNotSupported` rather than
-silently degrade.
+arrays) MUST surface `SearchError.InvalidQuery(...)` naming the
+combinator it could not lower, rather than silently degrade. (This
+paragraph named a `FilterNotSupported` variant until 2026-09-06;
+`core/search/types.vr` has never declared one, so the rule was
+unfollowable as written.)
 
 ## Hit + Results
 
@@ -124,8 +127,8 @@ public type IndexConfig is {
 ```
 
 Backend adapters validate the config against their capabilities at
-`create_index` time and surface `SearchError::IndexConfigUnsupported`
-for unsupported options.
+`create_index` time and surface `SearchError.SchemaConflict(...)`
+for unsupported options — the variant the library actually declares.
 
 ## SearchIndex protocol
 
@@ -152,16 +155,21 @@ so callers can pattern-match on the failure mode.
 
 ```verum
 public type SearchError is
-      IndexNotFound(Text)
-    | IndexAlreadyExists(Text)
-    | DocumentNotFound(Text)
-    | InvalidQuery(Text)
-    | FilterNotSupported(Text)
-    | IndexConfigUnsupported(Text)
     | Network(Text)
-    | Encoding(Text)
+    | InvalidQuery(Text)
+    | IndexNotFound(Text)
+    | DocumentNotFound(Text)
+    | SchemaConflict(Text)
+    | TooManyDocuments { count: Int, limit: Int }
     | Backend(Text);
 ```
+
+Transcribed from `core/search/types.vr`. This page carried four
+variants the library does not declare — `IndexAlreadyExists`,
+`FilterNotSupported`, `IndexConfigUnsupported` and `Encoding` — and
+omitted the two it does: `SchemaConflict` and the struct-shaped
+`TooManyDocuments { count, limit }`. Match on the list above; a match
+arm naming any of the four will not compile.
 
 ## Status
 
@@ -177,7 +185,7 @@ To add a backend `XYZ`:
 
 1. Add `core/search/xyz/` directory with `mod.vr`.
 2. Implement `SearchIndex` for `XyzAdapter`.
-3. Surface `SearchError::FilterNotSupported(<filter-shape>)` for
+3. Surface `SearchError.InvalidQuery(<filter-shape>)` for
    any combinator the backend can't lower losslessly; NEVER silently
    degrade to a permissive query.
 4. Surface `SearchError::IndexConfigUnsupported(<option-name>)` at

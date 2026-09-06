@@ -224,11 +224,17 @@ fn scan_chunks(path: &Path) -> IoResult<()> using [FileSystem] {
 
 For high-throughput servers, use the `_async` variants:
 
+The async surface is a SEPARATE TYPE — `AsyncFile` — not `_async`
+methods bolted onto `File`:
+
 ```verum
-async fn count_errors_async(path: &Path) -> IoResult<Int>
+mount core.io.file.{AsyncFile};
+mount core.io.buffer.{BufReader};
+
+async fn count_errors_async(path: &Text) -> IoResult<Int>
     using [FileSystem]
 {
-    let file = File.open_async(path).await?;
+    let file = AsyncFile.open(path).await?;
     let mut reader = BufReader.new(file);
     let mut count = 0;
     while let Maybe.Some(line) = reader.next_line_async().await? {
@@ -238,10 +244,22 @@ async fn count_errors_async(path: &Path) -> IoResult<Int>
 }
 ```
 
-`open_async` schedules the `open()` syscall on the IO pool; subsequent
-`read_async`/`write_async` calls yield when data is not ready. On
-platforms with `io_uring` (Linux), the read/write goes through the
-uring queue for near-zero syscall overhead.
+`AsyncFile.open` / `.create` / `.open_with_options` schedule the syscall
+on the IO pool; the instance methods `.read`, `.write`, `.read_to_end`,
+`.read_to_string`, `.write_all`, `.flush`, `.sync_all` and `.seek` are
+all `async` and yield when data is not ready. For a whole file in one
+call there are four free functions that skip the handle entirely:
+
+```verum
+public async fn read_to_string_async(path: &Text) -> IoResult<Text>;
+public async fn read_async(path: &Text)           -> IoResult<List<Byte>>;
+public async fn write_async(path: &Text, contents: &Text)      -> IoResult<()>;
+public async fn write_bytes_async(path: &Text, contents: &[Byte]) -> IoResult<()>;
+```
+
+Two corrections from 2026-09-06: there is no `File.open_async` — the
+synchronous `File` has `open` / `create` / `create_new` / `options` and
+nothing async — and the async open takes a `&Text`, not a `&Path`.
 
 ## Error handling
 

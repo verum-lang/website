@@ -53,7 +53,7 @@ public type ArchiveEntryKind is
 ```
 
 `ArchiveEntry` is the **protocol-level** entry view used by
-`Archive::pack` / `unpack`. Per-format adapters convert between
+`Archive.pack` / `unpack`. Per-format adapters convert between
 this universal record and their format-specific representation
 (e.g., `TarEntry` for tar — see `core.archive.tar` for the
 USTAR-mapped field set).
