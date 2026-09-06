@@ -39,22 +39,39 @@ type ClearMode is Entire | AfterCursor | BeforeCursor | Line | LineAfter | LineB
 
 type TermCapabilities is { ... };
 
-RawTerminal.new() -> IoResult<RawTerminal>      
-t.enable_raw_mode() -> IoResult<()>
-t.disable_raw_mode() -> IoResult<()>
-t.enable_mouse_capture()                          t.disable_mouse_capture()
-t.enable_focus_events()                           t.disable_focus_events()
-t.enable_bracketed_paste()                        t.disable_bracketed_paste()
-t.show_cursor(visible: Bool) -> IoResult<()>
-t.set_cursor_shape(shape: CursorShape)
-t.move_cursor(x: Int, y: Int)                      t.clear(mode: ClearMode)
-t.size() -> IoResult<TerminalSize>
-t.enter_alternate_screen()                         t.leave_alternate_screen()
+// `RawTerminal` is a PROTOCOL (`core/term/raw/mod.vr:112`, extends
+// Read + Write), not a type you construct. `termios.vr` and `wincon.vr`
+// implement it; you obtain one from the platform layer.
+t.enable_raw_mode() -> IoResult<()>          t.disable_raw_mode() -> IoResult<()>
+t.enter_alternate_screen() -> IoResult<()>   t.leave_alternate_screen() -> IoResult<()>
+t.size() -> IoResult<TerminalSize>           t.is_tty() -> Bool
 
-EscapeWriter.new(&mut t) -> EscapeWriter
-ew.style(&Style)            ew.fg(Color)          ew.bg(Color)
-ew.reset()                   ew.write_cell(&Cell)
+// ONE setter per mode, taking a Bool — there is no enable_/disable_ pair.
+t.set_mouse_capture(enable: Bool)   -> IoResult<()>
+t.set_focus_events(enable: Bool)    -> IoResult<()>
+t.set_bracketed_paste(enable: Bool) -> IoResult<()>
+t.set_cursor_visible(visible: Bool) -> IoResult<()>
+t.set_cursor_shape(shape: CursorShape) -> IoResult<()>
+
+// `EscapeWriter` is also a PROTOCOL (`core/term/raw/escape.vr:44`,
+// extends Write), and it is where cursor movement and clearing live —
+// not on RawTerminal.
+ew.write_csi(params: &[Int], final_byte: Byte) -> IoResult<()>
+ew.write_osc(code: Int, data: &Text)           -> IoResult<()>
+ew.write_dcs(data: &Text)                      -> IoResult<()>
+ew.move_to(col: Int, row: Int)                 -> IoResult<()>
+ew.clear(mode: ClearMode)                      -> IoResult<()>
+ew.begin_sync()                                 ew.end_sync()
 ```
+
+:::caution Styling is not on `EscapeWriter`
+
+`ew.style()`, `ew.fg()`, `ew.bg()`, `ew.reset()` and `ew.write_cell()`
+do not exist. The protocol emits escape sequences —
+`write_csi` / `write_osc` / `write_dcs` — and styling is composed at
+Layer 3 through `Style` and the render `Buffer`.
+
+:::
 
 Use Layer 0 when you need raw control or are targeting environments
 higher layers don't support.
@@ -99,9 +116,15 @@ InputParser.new() -> InputParser
 parser.feed(bytes: &[Byte]) -> List<Event>
 
 type EventStream is { ... };
-EventStream.new(&RawTerminal) -> EventStream
-stream.next() -> Poll<Event>                      // via Stream protocol
-stream.poll_with_timeout(duration) -> Maybe<Event>
+EventStream.new(...)   EventStream.stdin()
+stream.read()          // blocking
+stream.try_read()      // non-blocking
+stream.poll(...)       stream.drain_pending()      stream.reset()
+
+// `next()` is on the ASYNC one, and there is no `poll_with_timeout`
+// on either.
+type AsyncEventStream is { ... };
+AsyncEventStream.new(...)   AsyncEventStream.stdin()   astream.next()
 ```
 
 ---
@@ -163,13 +186,25 @@ type Cell is {
 
 type Buffer is { ... };
 Buffer.new(width: Int, height: Int) -> Buffer
-b.set_cell(x, y, ch, style)        b.get_cell(x, y) -> Maybe<&Cell>
-b.clear()                           b.clear_region(&rect)
-b.resize(cols, rows)
+Buffer.from_rect(area: Rect) -> Buffer
+
+// Cells are REACHED, not set through a setter: `get_mut` hands back the
+// `&mut RenderCell` you write. And `get` answers a `&RenderCell`
+// directly — NOT a `Maybe` — so an out-of-range index is a bounds
+// error, not a None. `in_bounds` is the check.
+b.get(x: Int, y: Int) -> &RenderCell
+b.get_mut(x: Int, y: Int) -> &mut RenderCell
+b.in_bounds(x: Int, y: Int) -> Bool
+b.set_string(x: Int, y: Int, text: &Text, style: Style) -> Int
+b.set_style(area: Rect, style: Style)
+b.fill(ch: &Text, style: Style)     // the WHOLE buffer, not a region
+b.reset()                            b.merge(&other)     b.to_lines()
 
 type Frame is { ... };              // conceptually a Buffer + metadata
-type Viewport is { ... };
-vp.scroll(dx: Int, dy: Int)         vp.set_scroll(x, y)
+f.size()   f.width()   f.height()   f.render_widget(...)   f.set_cursor(...)
+
+// `Viewport` is a SUM, not a scrollable object:
+type Viewport is Fullscreen | Inline { height: Int } | Fixed { area: Rect };
 
 type Terminal is { ... };
 Terminal.new(backend: Backend) -> IoResult<Terminal>   
@@ -311,7 +346,10 @@ Canvas.new()
     .x_bounds([0.0, 100.0])
     .y_bounds([0.0, 100.0])
     .paint(|ctx| {
-        ctx.draw_line(0.0, 0.0, 50.0, 50.0, Color.Red);
+        // Colour is set on the painter, then the primitive is drawn:
+        // `line` takes four Floats and nothing else.
+        ctx.set_color(Color.Red);
+        ctx.line(0.0, 0.0, 50.0, 50.0);
         ctx.print(25.0, 25.0, "hi");
     })
 
