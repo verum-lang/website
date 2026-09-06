@@ -132,11 +132,17 @@ and is deliberately not provided.
 s.chars()         -> Chars         // Iterator<Char>
 s.bytes()         -> ByteIter      // Iterator<Byte>
 s.char_indices()  -> CharIndices   // Iterator<(Int, Char)>
-s.lines()         -> Lines         // Iterator<&Text> (split on '\n')
-s.matches(pat)    -> TextMatches
-s.match_indices(pat) -> TextMatchIndices
-s.to_chars()     -> List<Char>     // collect-to-list shortcut
+s.lines()         -> Lines         // Iterator<Text> (split on '\n')
+s.matches(pat)    -> TextMatches       // Iterator<Text>
+s.match_indices(pat) -> TextMatchIndices  // Iterator<(Int, Text)>
+s.to_chars()     -> List<Char>     // collect-to-list shortcut, MATERIALISED
 ```
+
+`lines`, `matches` and `match_indices` yield OWNED `Text`, not `&Text` —
+`Lines.next` returns `Maybe<Text>`. Each line is a fresh allocation, so
+splitting a large file into lines costs the file over again. The
+receiver is `&self` and stays borrowed for the iterator's lifetime; it
+is the ITEMS that are owned.
 
 All four iterator types implement `Iterator`, `IntoIterator`, and
 `FusedIterator`.
