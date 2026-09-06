@@ -599,9 +599,12 @@ Verum stacks three additional layers atop the kernels:
 ## 13. The full audit gate catalog
 
 Every claim Verum makes is mechanically observable. As of the
-current revision, `verum audit` exposes **~49 gates** organised
-into eight bands. The `--bundle` aggregator combines them into a
-single L4 load-bearing verdict.
+current revision, `verum audit` exposes **54 gates** organised
+into nine bands (counted 2026-09-06 from `verum audit --help`: 60
+flags, of which six — `--backend` `--color` `--details`
+`--direct-only` `--format` `--strict` — are output modifiers rather
+than gates). This page said "~49" and named 49; every one of those 49
+exists, and five more were shipped without reaching the catalog.
 
 **Kernel-soundness band** (12 gates): `--kernel-rules` ·
 `--kernel-recheck` · `--kernel-soundness` ·
@@ -635,8 +638,25 @@ single L4 load-bearing verdict.
 **Tooling band** (3 gates): `--proof-term-library` ·
 `--signatures` · `--docker`.
 
-**Aggregator** (1 gate): `--bundle` — runs every gate above and
-emits a single L4 load-bearing verdict.
+**Precompiled-stdlib + registry band** (5 gates), added to this
+catalog 2026-09-06 after a diff against the binary — every one had
+shipped undocumented:
+`--stdlib-layers` (layer classification over the embedded archive) ·
+`--proof-archive` (decodes the archive's `theorems` table and
+re-resolves each) · `--cross-format-roundtrip` (per-theorem roundtrip
+over every `@theorem` / `@lemma` / `@corollary`) ·
+`--trust-extension-report` (FV-18, per-rule proved/admitted snapshot) ·
+`--attribute-registry` (exports every attribute the compiler knows,
+with targets and arity).
+
+**Aggregator** (1 gate): `--bundle` — emits a single L4 load-bearing
+verdict. It does NOT run every gate above, which this page previously
+claimed: its own help names the four load-bearing gates it executes in
+dependency order — `--bridge-discharge`, `--kernel-discharged-axioms`,
+`--apply-graph` and `--cross-format-roundtrip` — and aggregates their
+JSON into `target/audit-reports/bundle.json`. The last of those four is
+one of the five that were missing from this catalog, so the page
+omitted a gate the aggregator depends on.
 
 See [Soundness gates](./soundness-gates.md) for the
 predicate-level formalisation and
