@@ -270,8 +270,8 @@ REVOKE | BORROWED | MUTABLE | NO_ESCAPE`. A capability-restricted
 reference declares which subset it carries:
 
 ```verum
-type Database.ReadOnly is Database with [READ];
-type Database.Full     is Database with [READ, WRITE];
+type DatabaseReadOnly is Database with [READ];
+type DatabaseFull     is Database with [READ, WRITE];
 
 fn analyse(db: Database with [READ]) -> Stats { ... }
 ```

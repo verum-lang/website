@@ -826,7 +826,7 @@ capability_name = 'Read' | 'Write' | 'ReadWrite' | 'Admin' | 'Transaction'
 ```
 
 ```verum
-type Database.ReadOnly is Database with [Read];
+type DatabaseReadOnly is Database with [Read];
 fn analyse(db: Database with [Read]) -> Stats { ... }
 ```
 
