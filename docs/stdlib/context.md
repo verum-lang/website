@@ -315,6 +315,22 @@ layer LoggingLayer {
 }
 ```
 
+:::note The layer names are the application's, the contexts are the library's
+`core/context/standard.vr` declares nine contexts — `Logger`, `Database`,
+`Auth`, `Config`, `Cache`, `Metrics`, `Tracer`, `Clock`, `FileSystem` — and
+`layer` is real syntax (`grammar/verum.ebnf`, `layer_def`).  What the
+example binds INTO them is yours: `QueryExecutor`, `Migrations`,
+`PrometheusMetrics` and `ConsoleLogger` are not in `core/`, and a layer is
+exactly the place to name your own.
+
+```verum
+// Declared by the application, not by core.
+type QueryExecutor is {};
+type Migrations is {};
+type PrometheusMetrics is {};
+```
+:::
+
 Compose with `+` (left-to-right; the compiler resolves the dependency
 order and detects cycles at compile time):
 
