@@ -329,7 +329,10 @@ handlers in the style of "allocate freely, do not think about it".
 `core.runtime.supervisor` ships full OTP strategies (OneForOne /
 OneForAll / RestForOne) with type-safe `ChildSpec` API. Outside the
 BEAM ecosystem, no other server framework provides this — Tokio /
-Hyper / Seastar / Netty rely on `JoinError.Panicked` plus manual handling.
+Hyper / Seastar / Netty rely on Tokio's `JoinError::Panic` plus manual
+handling. (Rust spelling, and deliberately so — this sentence is about
+another ecosystem's API, not Verum's. Verum's own variant is
+`JoinError.Panicked`.)
 
 ### 5. Nursery-scoped connections
 
