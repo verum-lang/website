@@ -166,13 +166,22 @@ error[CLI-EARG]: missing required argument 'name'
 when JSON output is requested:
 
 ```verum
-match app.parse_with_errors(env.argv()) {
-    Result.Ok(args)  => main(args),
-    Result.Err(diag) => {
-        if env.is_json_mode() {
-            print(&diag.to_json());
-        } else {
-            diag.render_pretty();
+// `try_run` is the entry that hands the error back; `run_or_exit`
+// calls it with `env.args()` and exits for you. There is no
+// `parse_with_errors`, no `env.argv()` and no `env.is_json_mode()`.
+match app.try_run(env.args()) {
+    Result.Ok(code) => code,
+    Result.Err(err) => {
+        // `ParseError` is a RECORD carrying the structured hints:
+        //   { kind, field: Maybe<Text>, value: Maybe<Text>,
+        //     message: Text, diagnostics: List<ParseDiagnostic> }
+        eprint(&err.message);
+        for d in &err.diagnostics {
+            // `ParseDiagnostic` is a SUM — DidYouMean(Text) |
+            // ExpectedOneOf(List<Text>) | ValidRange(Text) |
+            // SeeHelp(Text) — and `to_text` renders one hint line.
+            // There is no `render_pretty` and no `to_json`.
+            eprint(&d.to_text());
         }
         ExitCode.Usage
     }
