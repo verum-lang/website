@@ -82,14 +82,31 @@ For non-trivial routing, compose on top of `core.net.weft.router`:
 mount core.net.weft.router.{Router};
 
 let router = Router.new()
-    .get(f"/health",   |_| async move { H3Response.ok().text(f"ok") })
+    .get(f"/health",    handle_health)
     .get(f"/users/:id", handle_user_get)
     .post(f"/users",    handle_user_post)
-    .middleware(weft.cors.permissive())
-    .middleware(weft.rate_limit.token_bucket(100, Duration.from_secs(1)));
+    .fallback(handle_404);
 
-server.serve(router.handler()).await?;
+server.serve(|req| router.dispatch(req)).await?;
 ```
+
+:::caution No middleware layer, and no CORS or rate-limit module
+
+`Router` is real and rich — `new` / `get` / `post` / `put` / `patch` /
+`delete` / `route` / `nest` / `fallback` / `dispatch` / `match_request`
+/ `handle`. What it does not have is `middleware`, and there is no
+`weft.cors` and no `weft.rate_limit` module in `core/net/weft` for one
+to take. `permissive()` and `token_bucket(...)` do not exist anywhere.
+
+`router.handler()` is also absent — `dispatch` is the entry point, and
+`nest` plus `fallback` are how composition is expressed today. Wrap
+cross-cutting concerns in your own handler, or in a `nest`ed sub-router.
+
+`H3Response` is `ok` / `status` / `with_header` / `to_field_list`;
+there is no `.text(...)` body builder, so a handler assembles the body
+itself.
+
+:::
 
 ## Streaming responses
 
@@ -127,6 +144,12 @@ mount core.net.h3.push.{PushEmitter};
 server.serve(|mut req: H3Request| async move {
     if req.path() == f"/" {
         // Promise a related asset the client is likely to fetch.
+        // `req.try_push` / `req.emit_pushed` do not exist. Server push
+        // goes through `core.net.h3.push.PushEmitter` — `reserve`,
+        // `grant`, `is_cancelled`, `mark_cancelled`,
+        // `mark_client_goneaway` — and `reserve(encoded_headers)`
+        // answers `Result<PushReservation, PushError>`. The headers go
+        // in ENCODED, so you build the field list first.
         if let Some(push_id) = req.try_push(&f"/style.css").await {
             req.emit_pushed(push_id,
                 H3Response.ok()
