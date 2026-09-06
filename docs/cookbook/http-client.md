@@ -51,7 +51,20 @@ async fn main() using [Http] {
 ### POST JSON
 
 ```verum
-async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
+// `core.net.http.HttpError` describes TRANSPORT failures —
+// ConnectionFailed / DnsError / Timeout / InvalidUrl / InvalidResponse /
+// IoFailure / TlsError / TooManyRedirects / BodyTooLarge. It carries no
+// variant for an HTTP STATUS, because a 401 is a successful exchange.
+// So a caller that wants to react to status codes declares its own
+// error and keeps the transport one inside it.
+type ApiError is
+    | Transport(HttpError)
+    | Unauthorized
+    | RateLimited { retry_after_secs: Int }
+    | Status(Int)
+    | BadPayload(Text);
+
+async fn create_user(name: &Text, email: &Text) -> Result<User, ApiError>
     using [Http]
 {
     let body = json#"""{"name": "${name}", "email": "${email}"}""";
@@ -59,21 +72,25 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, HttpError>
         .header(&"Content-Type", &"application/json")
         .header(&"Authorization", &f"Bearer {env.var(&\"API_TOKEN\")?}")
         .body(body.to_bytes())
-        .send().await?;
+        .send().await
+        .map_err(|e| ApiError.Transport(e))?;
 
     match resp.status.code() {
         200..=299 => {
             let text = resp.body_text();
-            json.parse<User>(&text).map_err(HttpError.from)
+            json.parse<User>(&text).map_err(|e| ApiError.BadPayload(f"{e}"))
         }
-        401 => Result.Err(HttpError.Unauthorized),
+        401 => Result.Err(ApiError.Unauthorized),
         429 => {
-            let retry = resp.headers.get_first(&"Retry-After")
+            // `Headers.get` already answers the FIRST value as a
+            // `Maybe<&Text>`; `get_all` is the one that returns every
+            // occurrence. There is no `get_first`.
+            let retry = resp.headers.get(&"Retry-After")
                 .and_then(|s| s.parse_int().ok())
                 .unwrap_or(60);
-            Result.Err(HttpError.RateLimited { retry_after: retry.seconds() })
+            Result.Err(ApiError.RateLimited { retry_after_secs: retry })
         }
-        code => Result.Err(HttpError.Status(code)),
+        code => Result.Err(ApiError.Status(code)),
     }
 }
 ```
@@ -131,7 +148,17 @@ async fn fetch_once(url: &Text) -> Result<Text, HttpError> using [Http] {
 }
 ```
 
-### Streaming download
+### Download
+
+:::caution The body is not streamed
+
+`Response` holds its body as a `List<Byte>` field and exposes it through
+`body()`, `body_bytes()` and `body_text()` — `core/net/http.vr:613`.
+There is no `into_body_stream`, no `next_chunk`, and no
+`write_all_async`; a response is fully in memory by the time you have
+it. Size the download accordingly, or bound it at the server.
+
+:::
 
 ```verum
 async fn download(url: &Text, dst: &Path) -> Result<(), Error>
@@ -141,12 +168,10 @@ async fn download(url: &Text, dst: &Path) -> Result<(), Error>
     if !resp.status.is_success() {
         return Result.Err(Error.new(&f"HTTP {resp.status.code()}"));
     }
-    let mut writer = BufWriter.new(File.create(dst).await?);
-    let mut body = resp.into_body_stream();
-    while let Maybe.Some(chunk) = body.next_chunk().await? {
-        writer.write_all_async(&chunk).await?;
-    }
-    writer.flush_async().await?;
+    // The whole body, already received. `write_bytes` is a FREE
+    // function in `core.io.file` taking a path as `&Text`, not a
+    // method on `File`.
+    file.write_bytes(&dst.to_text(), resp.body_bytes())?;
     Result.Ok(())
 }
 ```
