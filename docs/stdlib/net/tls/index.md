@@ -83,6 +83,12 @@ async fn tls_handshake(transport: &mut TcpStream)
 
     // Drive to Established.
     loop {
+        // `read_record` is YOURS to write — no transport in `core/`
+        // frames TLS records for you. Read the 5-byte record header,
+        // then its length. For handshake messages specifically,
+        // `core.net.tls13.record.fragment.HandshakeReassembler`
+        // (`push` / `take_next` / `buffered`) does the reassembly once
+        // the records are unwrapped.
         let inbound = transport.read_record().await?;
         match client.progress(inbound.as_slice())? {
             Progress.Done(established) => return Ok(established),
