@@ -485,9 +485,21 @@ s.take_while(|x| pred)     s.skip_while(|x| pred)
 s.chain(other)             s.zip(other)              s.enumerate()
 s.peekable()               s.flatten()               s.fuse()
 s.throttle(rate)           s.debounce(duration)      s.chunks(n)
-s.buffer_unordered(n)      s.buffered(n)
-s.timeout_each(duration)
 ```
+
+:::caution Three combinators on that list do not exist
+
+`buffer_unordered(n)`, `buffered(n)` and `timeout_each(duration)` are
+not declared on any stream type in `core/`. (`buffered` exists in
+`core/database/postgres` and `core/net/tls13` — different types, not
+reachable from a `Stream`.) Everything else above is real and lives in
+`core/async/stream.vr`.
+
+For bounded concurrency, drive the work through a `JoinSet` or a
+semaphore yourself; for a per-item deadline, wrap each future in the
+timeout combinator before it enters the stream.
+
+:::
 
 ### Consumers (terminal)
 
@@ -551,11 +563,14 @@ yield value;                // emit
 Async generators support `.await`:
 
 ```verum
+// `Http.get_streaming` and `body.next_chunk()` do not exist —
+// `Response` holds its body as a `List<Byte>` field and a response is
+// fully received by the time you hold it. The `.await` a generator can
+// use is the request itself.
 async fn* stream_events(url: &Text) -> Event using [Http] {
-    let mut body = Http.get_streaming(url).await?;
-    loop {
-        let chunk = body.next_chunk().await?;
-        for e in parse_chunk(chunk) { yield e; }
+    let resp = Http.get(url).await?;
+    for e in parse_events(resp.body_bytes()) {
+        yield e;
     }
 }
 
@@ -858,7 +873,11 @@ Single-threaded executor for `!Send` futures:
 ```verum
 let exec = LocalExecutor.new();
 exec.spawn_local(future);
-exec.run_until(main_future);
+exec.spawn_local(main_future);
+// `run_until_complete(&mut self) -> Int` takes NO future and returns the
+// number of tasks it drove. Spawn everything first, then drive.
+// There is no `run_until`.
+let completed = exec.run_until_complete();
 ```
 
 ---
