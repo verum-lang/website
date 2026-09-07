@@ -12,8 +12,8 @@ status_detail: >-
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
-  status="stable"
-  detail="The whole text tree is exercised under the interpreter and, separately, compiled ahead of time. Everything except three small islands is green: the core text type, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. The numeric sub-tree carries the largest set of remaining pins."
+  status="partial"
+  detail="The whole text tree is exercised under the interpreter and, separately, compiled ahead of time. Everything except three small islands is green: the core text type, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. The numeric sub-tree carries the largest set of remaining pins. And `slice` does not enforce the bounds contract its own body declares — out-of-range calls clamp silently rather than assert (measured 2026-09-07); see the Slicing section."
   defects={[
     {area: 'text', summary: 'Two pins remain and both appear only when several tests share a process: sorting through a comparison that answers Less, and a fold that builds a formatted string. Neither reproduces in a program of its own.'},
     {area: 'char', summary: 'Two probes are retained for a case-insensitive ASCII comparison and for one general-category classification.'},

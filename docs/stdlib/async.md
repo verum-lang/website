@@ -15,8 +15,8 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 # `core.async` — Asynchronous execution
 
 <StdlibStatus
-  status="stable"
-  detail="Futures, tasks, channels, streams, timers, structured concurrency, select and cancellation are exercised by conformance suites and green under the interpreter. Async programs also compile ahead of time and run as native binaries — measured 2026-09-04, not inferred."
+  status="partial"
+  detail="Futures, tasks, channels, streams, timers, structured concurrency, select and cancellation are exercised by conformance suites and green under the interpreter. Async programs also compile ahead of time and run as native binaries — measured 2026-09-04, not inferred. The `LocalExecutor` sequence this page prescribes panics as soon as it has a task to drive, and `block_on` fails too (measured 2026-09-07); `spawn` plus awaiting the handle works — see the LocalExecutor section."
   defects={[]}
   sweepDate="2026-09-04"
 />
