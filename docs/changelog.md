@@ -1644,7 +1644,7 @@ All three types are wired into `supports_binary`.  Every PG
 built-in scalar plus composite plus array now has a wire codec.
 
 Test fixtures at
-`vcs/specs/L2-standard/db/postgres_numeric_codec.vr` exercise
+`vcs/specs/L2-standard/database/postgres_numeric_codec.vr` exercise
 all three plus the Decimal-backed NUMERIC encode path.
 
 ### Added — AOT no-libc f64 / strtol formatting trio complete (2026-05-04)

@@ -257,7 +257,7 @@ When **finding a kernel disagreement** (i.e., the gate failed):
 1. Add a `defect-N-mirror` cert to the battery that captures the
    minimal failing shape.
 2. Fix the kernel(s). Document the defect in the audit ledger
-   (`docs/architecture/verum-kernel-audit.md` — not written yet).
+   (`docs/architecture/verum-kernel-audit-2026.md`).
 3. Confirm the cert flips to unanimous agreement.
 
 ## 9. Cross-references

@@ -224,9 +224,11 @@ P | Q ≡ Q | P                            (commutativity)
 These congruences are definitional — the module today ships the
 term algebra plus capture-avoiding `substitute`, not a reducer or
 congruence oracle. Callers who need one build it on top of
-`substitute` + pattern matching on `Process`; a reference
-implementation lives in
-`vcs/specs/L3-extended/concurrency/pi_reducer.vr`.
+`substitute` + pattern matching on `Process`. A reference
+implementation was said to live in
+`vcs/specs/L3-extended/concurrency/pi_reducer.vr`; measured 2026-09-07,
+neither that file nor a `concurrency/` directory under `L3-extended`
+exists, and no file named `pi_reducer` exists anywhere in `vcs/`.
 
 ### Multi-party session types
 
