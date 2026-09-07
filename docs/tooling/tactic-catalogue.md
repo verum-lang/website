@@ -487,7 +487,7 @@ Eight of the twelve have a dedicated predicate
 (`check_andthen_left_identity` and siblings in
 `crates/verum_smt/src/tactic_laws.rs`) deciding them on structural
 equality of combinator trees; the other four are exercised through
-`normalize()`. 32 unit tests cover them over the primitive tactics, and
+`normalize()`. A unit suite covers them over the primitive tactics, and
 two of those pin the inventory itself — that `SIMPLIFIER_APPLIES` has
 exactly twelve entries, and that every catalogue law appears in it — so
 a law cannot quietly become documentation-only.

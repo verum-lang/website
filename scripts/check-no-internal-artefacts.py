@@ -77,11 +77,24 @@ CLASSES = {
     # (`[§5](#5-bug-class…)`) and an assembly immediate (`mov w0, #0`)
     # at least as often as it is a ticket, and both are correct.
     "task number": re.compile(
+        # NUMBERED and NAMED. The numbered spellings were here from the
+        # start; the NAMED ones were not, and `docs/stdlib/sys.md`
+        # carried `Task #FUNDAMENTAL-SYS-RAW` and
+        # `#FUNDAMENTAL-CTX-INTRINSICS` straight through a green gate.
+        # A tracker label is meaningless to a reader whether or not it
+        # happens to be spelled with digits.
         r"[Tt]asks?\s*#\d+|\bT0\d{3}\b|\(#\d{1,3}\)|#\d+\s*[-+]\s*#\d+"
+        r"|[Tt]asks?\s*#[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|#[A-Z]{4,}(?:-[A-Z0-9]+)+"
     ),
     "FV identifier": re.compile(r"\b(?:Pre-|post-)?FV-\d+\b"),
     "test count": re.compile(
+        # The first two spellings were here; the third was not, and
+        # `docs/stdlib/sys.md` carried five of it — "8 unit + 6 property
+        # + 6 integration + 2 regression tests" — past a green gate. A
+        # suite-size number drifts on every commit whichever noun it
+        # is attached to.
         r"\b\d[\d\s,]*\s+(?:lib tests|full suite)|\b\d+\s*/\s*\d+\s+(?:green|passing)"
+        r"|\b\d+\s+(?:unit|property|integration|regression)\s+tests?\b"
     ),
     # NARROWER THAN THE RULE'S WORDING, AND DELIBERATELY SO.
     #

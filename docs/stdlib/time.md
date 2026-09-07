@@ -461,8 +461,8 @@ losslessly for ±80 million years around 1970.
 | `duration §A` | `duration.vr` | `Duration.nanos(-1).as_nanos() == 0` (Verum body clamps via `n.max(0)`) but `Duration.from_nanos(-1).as_nanos() == -1` (runtime intrinsic `time_duration_from_nanos` is pure identity). Same split for the 4 scale-tier constructor pairs. | Two options. **A** — update VBC inline sequences (`DurationFromNanos`/`FromMicros`/`FromMillis`/`FromSecs`) to clamp; breaks `duration_parse` negative-input contract. **B** — drop `.max(0)` from Verum body + Sub/Mul impls; Duration becomes signed; aligns with Go/Java/C++ + duration_parse "-15m" surface. Author preference: B. |
 | `duration_parse §A` | `duration_parse.vr` | `parse("-15m").as_nanos() < 0` relies on duration §A intrinsic identity. | Gated on duration §A resolution. |
 | `system_time §A` | `system_time.vr` | `duration_since` arithmetic `secs * NANOS_PER_SEC + nanos` overflows Int64 around `secs ≈ 9.2e9` ≈ year 2262. | Add `SystemTimeError.Overflow` variant + boundary guard + property pin. ~30 min. |
-| `cron §A` | `cron.vr` | No support for vixie-cron extensions (`@hourly`/`W`/`L`/`#n`). | Documented feature gap; ~3h to land behind `extensions: bool` constructor flag. |
-| `rfc3339 §A/§B/§C` | `rfc3339.vr` | Empty fraction / 10+ digit truncation / out-of-range offset pins missing. | ~20 min total for 3 unit tests + 1 boundary guard. |
+| `cron §A` | `cron.vr` | No support for vixie-cron extensions (`@hourly`/`W`/`L`/`#n`). | A documented feature gap; the shape it would take is an `extensions: bool` constructor flag. |
+| `rfc3339 §A/§B/§C` | `rfc3339.vr` | Empty fraction / 10+ digit truncation / out-of-range offset pins missing. | Pins for the three cases plus a boundary guard. |
 | `interval §A/§B` | `interval.vr` | Blocking `Interval.tick()` and `AsyncInterval.poll_next` live-poll tests gated on `@slow` marker + executor harness. | Pin in `vcs/specs/L2-standard/async/` once executor harness lands. |
 
 ## See also

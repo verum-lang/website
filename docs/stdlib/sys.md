@@ -39,61 +39,33 @@ authors, driver writers, and kernel engineers.
 
 ---
 
-## Conformance baseline (2026-06-11)
+## Platform coverage
 
-> **✅ Update: Bug A and Bug B below are CLOSED.** On the fixed build: `durability`
-> 3/8-fail → **11/11**, `darwin/libsystem` TIMEOUT(hang) → **51/0**,
-> `linux/time` TIMEOUT → **20/0**, no regressions — **39/51 leaf
-> modules now fully green**. Remaining failures are a heterogeneous tail
-> (umbrella re-export `Bug C`, method-on-newtype dispatch, assorted
-> assertion failures, codegen/data cluster), tracked in
-> `core-tests/sys/SYS_SPECTRUM_AUDIT.md` §F. The original root-cause
-> writeup is kept below as the fix record.
+`core.sys` is the lowest layer in the library: thin wrappers over the
+operating system, gated per platform. What is available to you depends on
+which platform you build for, and the gap between platforms is wide
+enough to plan around.
 
-A full per-module `--interp` sweep (one process per leaf module, so a
-single interpreter hang/crash isolates instead of aborting the suite)
-puts **37 of 51 `core/sys` leaf modules fully green** (~2010 of ~2150
-`@test`). Every pure-data module — constants, ADTs, bit layouts, error
-enums — passes on both the native (Linux/macOS) and cross-target
-(Windows-on-host) data surfaces. The remaining failures concentrate
-**entirely** in modules that drive real platform/FFI operations, and
-trace to two live compiler defects in the stdlib precompile + archive
-path:
+:::caution Read the per-module table with its date
 
-- **Bug A — cross-module stdlib calls stubbed to nil at precompile.**
-  A call from one stdlib module into another (e.g.
-  `sys.common.full_fsync` → `sys.darwin.libsystem.safe_full_fsync`) is
-  silently replaced with a `LOAD_NIL; RET` stub during the stdlib
-  bootstrap precompile (function-id ordering / two-pass gap). The
-  wrapper then returns `Ok(())`/nil for every input — it never reports
-  `Err` on an invalid fd, and umbrella re-exports of non-zero constants
-  collapse to `0`. This is the dominant cause: `durability` (8),
-  `darwin/mod` umbrella (30), and the FFI-routed single-test failures in
-  `locking`/`darwin/io`/`file_ops`/`fs_watch`/`init`/`io_engine`/`signal`.
-  A *fresh user compile* of the same call resolves correctly, so the
-  defect is confined to the archive precompile.
+The module-by-module table further down was measured on **2026-06-11**
+and has **not been re-verified since**. Treat a `complete` there as "was
+complete in June", not as a promise about today. Where this page and a
+module's own page disagree, believe the module's page — it is smaller and
+gets re-measured more often.
 
-- **Bug B — archive FFI symbols not carried into the consuming module.**
-  `merge_archive_function_bodies` remaps `func_id` / `type_id` /
-  `const_id` / `string_id` references in copied archive bodies but not
-  the `ffi_symbols` table or the `CallFfiC` symbol-index operand, so a
-  body that *does* reach an FFI call indexes the wrong symbol table
-  (`FFI symbol not found: FfiSymbolId(N)`).
+Two things measured more recently, both of which that table predates:
 
-- **AOT is blocked suite-wide** by a separate pre-existing defect:
-  `verum build --aot` reports `E402: module core.sys.common not found`
-  for any program that mounts a stdlib submodule, so the `--aot` half of
-  the interp+aot CI contract cannot yet be met for `sys` (or any
-  module).
+* **There is no Windows file layer.** Not a partial one — see
+  [the file I/O page](./io.md), which names the count of wrappers that
+  exist. Anything on this page describing Windows file behaviour
+  describes an intention.
+* Several `core.sys` surfaces are reachable only through the
+  interpreter; the ahead-of-time path for programmes that mount a
+  standard-library submodule is a separate question this page does not
+  answer.
 
-Full per-module table, VBC evidence, reproductions, and fix surfaces:
-**`core-tests/sys/SYS_SPECTRUM_AUDIT.md`**. The single highest-leverage
-fix is Bug A (two-pass precompile cross-module resolution): it alone
-clears the `durability` + `darwin/mod` clusters (38 tests) plus most of
-the single-test FFI failures; Bug B is the necessary follow-on so the
-un-stubbed calls execute.
-
----
+:::
 
 ## Common types
 
@@ -701,11 +673,11 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 | `mmio.vr`          | **partial** | [core-tests/sys/mmio](https://github.com/verum-lang/verum/tree/main/core-tests/sys/mmio) — 8/8 BarrierKind + compiler_barrier/dmb green + 12 algebraic-law sweeps (BarrierKind 5-variant exhaustive + dispatch-tag pairwise distinctness; MemoryFlags single-bit power-of-two + pairwise disjointness + OR-combines-to-union + self-OR-idempotent; MemoryRegion.end + contains start/middle/exclude-end/exclude-below-start + every-addr-in-range sweep). MemoryFlags const access + MemoryRegion methods consuming MemoryFlags const gated by typechecker `__newtype_inner_X` gap (same as FileDesc.STDIN). MmioRegister<T, MODE> generic + VerifiedRegister ghost-state deferred — require runtime MMIO fixture. |
 | `interrupt.vr`     | **complete** | [core-tests/sys/interrupt](https://github.com/verum-lang/verum/tree/main/core-tests/sys/interrupt) — 3 unit + 8 property + 7 integration + 2 regression. **Kernel-intrinsic registry gap CLOSED 2026-05-27**: replaced 5 `@intrinsic(…)` externs in `core/intrinsics/lowlevel/kernel.vr` (`disable_interrupts`, `enable_interrupts`, `interrupts_enabled`, `restore_interrupts`, `save_and_disable_interrupts`) with safe-default Verum bodies for the host target (return `true` / `0` / no-op). Kernel/embedded targets override via `@cfg(no_runtime)` / per-platform module. The previously-failing `CriticalSection.is_active` chain now compiles cleanly and runs deterministically; full surface (CriticalSection ∘ InterruptCell\<T\> ∘ disable_interrupts ∘ context_switch) is pinned in the conformance suite. Privileged ring-0 paths (`@interrupt(vector = N)`, exception-frame I/O, context_switch) remain VCS-specs domain. |
 | `time_ops.vr`      | **partial** | [core-tests/sys/time_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/time_ops) — the arithmetic API (`SysTimeOpsDuration.from_*`, `as_*`, `zero`) is green under both the interpreter and ahead-of-time compilation, and the clock API (`SysTimeOpsInstant.now`, `elapsed`, `duration_since`) is green after a fix that replaced a hardcoded dependency with real propagation. |
-| `file_ops.vr`      | **partial** | [core-tests/sys/file_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/file_ops) — OpenMode bit-patterns (read=0 / write=0x301 / append=0x409 / create=0x241 / read_write=2) + error-sentinel paths (missing path → None / -1 / false) pinned end-to-end. **Task #FUNDAMENTAL-SYS-RAW CLOSED in this branch** — replaced stale `mount super.raw.*` (pointed at deleted `core/sys/raw.vr` post-migration) with canonical `mount core.intrinsics.runtime.os.{__file_*_raw}`. Pre-fix every `__file_*_raw` call silently compiled to a lenient panic-stub. Happy-path round-trip (write→read of same content) deferred to integration suite with tmpdir fixture. |
-| `net_ops.vr`       | **partial** | [core-tests/sys/net_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/net_ops) — Raw\* canonical-name (RawTcpStream / RawTcpListener / RawUdpSocket; #75 shadow-break) + fd round-trip + connect→None on unroutable-port sweep pinned. **Task #FUNDAMENTAL-SYS-RAW CLOSED** — same architectural fix as file_ops. Live socket round-trip deferred (needs fixture pair). |
-| `process_ops.vr`   | **partial** | [core-tests/sys/process_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/process_ops) — ProcessExitStatus.success ↔ code==0 + Child invalid-fd short-circuit + args/arg_count coherence pinned. **Task #FUNDAMENTAL-SYS-RAW CLOSED** — same architectural fix. spawn / run happy path deferred (needs CI-portable fixture). |
-| `process_native.vr`| **partial** | [core-tests/sys/process_native](https://github.com/verum-lang/verum/tree/main/core-tests/sys/process_native) — 8 unit + 6 property + 6 integration + 2 regression tests. SpawnResult record construction + every-field projection identity across 8 capture configurations (2^3 Bool triples); -1 fd sentinel disjointness from valid fds; fork(2) pid trichotomy via custom ForkOutcome ADT; SpawnResult × List<SpawnResult> fleet iteration + Result<SpawnResult, Text> error funnel + 4-variant CaptureMode dispatch + Maybe<SpawnResult> lift. Live syscall surface (native_spawn / native_kill / native_fd_write_all / native_fd_read_chunk) + Windows path deferred. |
-| `context_ops.vr`   | **partial** | [core-tests/sys/context_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/context_ops) — TLS_SLOT_COUNT=256 + tls_set/get round-trip + context_provide/get/end DI scope + defer_depth tracking pinned end-to-end. **Two fundamental fixes landed in this branch**: (a) **Task #FUNDAMENTAL-SYS-RAW** — replaced stale `mount super.raw.*` with canonical `mount core.intrinsics.runtime.os.{__ctx_*_raw, __defer_*_raw}`; (b) **Task #FUNDAMENTAL-CTX-INTRINSICS** — wired interpreter `__ctx_get_raw` / `__ctx_provide_raw` / `__ctx_end_raw` / `__defer_*_raw` to the real `state.context_stack` + new `state.defer_stack` (pre-fix every TLS/DI/defer raw intrinsic returned constant 0/nil; the interpreter's existing ContextStack opcode-level wiring at 0xB0/0xB1/0xB2 was correct but the raw-function dispatch arm was completely inert). `defer_execute` callback invocation deferred to Tier-1 (interpreter can't synthesise indirect `fn(Int)->Int` dispatch). |
+| `file_ops.vr`      | **partial** | [core-tests/sys/file_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/file_ops) — OpenMode bit-patterns (read=0 / write=0x301 / append=0x409 / create=0x241 / read_write=2) + error-sentinel paths (missing path → None / -1 / false) pinned end-to-end. replaced stale `mount super.raw.*` (pointed at deleted `core/sys/raw.vr` post-migration) with canonical `mount core.intrinsics.runtime.os.{__file_*_raw}`. Pre-fix every `__file_*_raw` call silently compiled to a lenient panic-stub. Happy-path round-trip (write→read of same content) deferred to integration suite with tmpdir fixture. |
+| `net_ops.vr`       | **partial** | [core-tests/sys/net_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/net_ops) — Raw\* canonical-name (RawTcpStream / RawTcpListener / RawUdpSocket; #75 shadow-break) + fd round-trip + connect→None on unroutable-port sweep pinned. same architectural fix as file_ops. Live socket round-trip deferred (needs fixture pair). |
+| `process_ops.vr`   | **partial** | [core-tests/sys/process_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/process_ops) — ProcessExitStatus.success ↔ code==0 + Child invalid-fd short-circuit + args/arg_count coherence pinned. same architectural fix. spawn / run happy path deferred (needs CI-portable fixture). |
+| `process_native.vr`| **partial** | [core-tests/sys/process_native](https://github.com/verum-lang/verum/tree/main/core-tests/sys/process_native) — Unit, property, integration and regression suites. SpawnResult record construction + every-field projection identity across 8 capture configurations (2^3 Bool triples); -1 fd sentinel disjointness from valid fds; fork(2) pid trichotomy via custom ForkOutcome ADT; SpawnResult × List<SpawnResult> fleet iteration + Result<SpawnResult, Text> error funnel + 4-variant CaptureMode dispatch + Maybe<SpawnResult> lift. Live syscall surface (native_spawn / native_kill / native_fd_write_all / native_fd_read_chunk) + Windows path deferred. |
+| `context_ops.vr`   | **partial** | [core-tests/sys/context_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/context_ops) — TLS_SLOT_COUNT=256 + tls_set/get round-trip + context_provide/get/end DI scope + defer_depth tracking pinned end-to-end. Two fixes landed together: (a) replaced stale `mount super.raw.*` with canonical `mount core.intrinsics.runtime.os.{__ctx_*_raw, __defer_*_raw}`; (b) wired interpreter `__ctx_get_raw` / `__ctx_provide_raw` / `__ctx_end_raw` / `__defer_*_raw` to the real `state.context_stack` + new `state.defer_stack` (pre-fix every TLS/DI/defer raw intrinsic returned constant 0/nil; the interpreter's existing ContextStack opcode-level wiring at 0xB0/0xB1/0xB2 was correct but the raw-function dispatch arm was completely inert). `defer_execute` callback invocation deferred to Tier-1 (interpreter can't synthesise indirect `fn(Int)->Int` dispatch). |
 | `signal.vr`        | **regression-only** | [core-tests/sys/signal](https://github.com/verum-lang/verum/tree/main/core-tests/sys/signal) — **Not usable yet.** The signal implementation in the library drifts on two counts: variant tags shift across configuration-gated match arms, and the atomic load and store intrinsics are not registered for the flag type. This is a library defect, not a gap in coverage. |
 | `fs_watch.vr`      | **partial** | [core-tests/sys/fs_watch](https://github.com/verum-lang/verum/tree/main/core-tests/sys/fs_watch) — FsEventKind 5-variant (Created/Modified/Deleted/Renamed/AttribChanged) + Clone impl + FsEvent record round-trip pinned. Integration suite adds exhaustive 5-variant dispatch + `is_content_mutation` predicate (Created/Modified/Deleted vs Renamed/AttribChanged) + `events.iter().filter(content_mutation).count()` reduction over List<FsEvent> + variant pattern round-trip identity. FsWatcher.new() / .watch() / event-stream surface deferred (needs per-platform fixture). |
 | `io_engine.vr`     | **partial** | [core-tests/sys/io_engine](https://github.com/verum-lang/verum/tree/main/core-tests/sys/io_engine) — EngineDuration ring algebra (from/as scaling, saturating add/sub, identity laws) + Fd partition (valid ↔ raw >= 0) + Fd.INVALID = -1 + TimeSpec record pinned end-to-end. Integration suite adds saturating_add at MAX clamp + EngineDuration ↔ TimeSpec round-trip across compound sub-second values + Fd × Maybe open(2) funnel + EngineDuration max-via-fold pattern over List + TimeSpec lift through Maybe pattern-match. IOEngine protocol round-trip + CompletionOp 18-variant + Port/BoundPort refinement validation + RawSocketAddr V4/V6 deferred. |
@@ -743,9 +715,9 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 | **`windows/winsock2`** | **partial** | [core-tests/sys/windows/winsock2](https://github.com/verum-lang/verum/tree/main/core-tests/sys/windows/winsock2) — 22u. POSIX-compat socket constants with cross-platform divergence catalogue pinned: AF_INET=2 (POSIX) / AF_INET6=**23** (Windows-specific, NOT Linux's 10); SOCK_STREAM=1 / SOCK_DGRAM=2 (POSIX); SOCK_NONBLOCK=**0** / SOCK_CLOEXEC=**0** (Windows uses ioctlsocket(FIONBIO) + SetHandleInformation, NOT socket() type flags); IPPROTO_TCP=6 / IPPROTO_UDP=17 (IANA); SOL_SOCKET=**0xFFFF** (Windows-specific, NOT Linux's 1); SO_ERROR=**0x1007** (Windows-specific); SHUT_RD/WR/RDWR=0/1/2 (POSIX); MSG_PEEK=2 (POSIX); MSG_DONTWAIT=**0** (Windows lacks MSG_DONTWAIT); SOCKET_ERROR=-1 (POSIX-compat); INVALID_SOCKET=**0xFFFFFFFFFFFFFFFF_u64** (Windows-specific, SOCKET is unsigned UINT_PTR); WindowsSockaddrIn / WindowsSockaddrIn6 record-shape round-trip with 16-byte IPv6 addr buffer. ws2_32.dll FFI bindings deferred to Windows runner. |
 | **`windows/io`** | **partial** | [core-tests/sys/windows/io](https://github.com/verum-lang/verum/tree/main/core-tests/sys/windows/io) — 7u. MAX_EVENTS=256 (IOCP dequeue cap); DEFAULT_TIMEOUT_MS=1000 / DEFAULT_TIMEOUT_NS=10^9 with cross-unit equivalence `NS / 10^6 == MS`; WindowsIoToken newtype round-trip with 0 and 0xFF..FF sentinels. IocpDriver / async_read / async_write / IocpEventIter deferred to Windows runner. |
 | **`windows/mod`** | **complete** | [core-tests/sys/windows/mod](https://github.com/verum-lang/verum/tree/main/core-tests/sys/windows/mod) — 21u. Umbrella reachability + value preservation across the 8 windows submodules — every documented re-export (NtStatus + STATUS_* / kernel32 Handle constants + GENERIC_/CREATE_/INFINITE/WAIT_/STD_*/INVALID_HANDLE_VALUE / TLS constants / time scale ladder / winsock POSIX-compat divergence catalogue) resolves at compile time and produces the expected value at runtime. |
-| `embedded.vr`      | **partial** | [core-tests/sys/embedded](https://github.com/verum-lang/verum/tree/main/core-tests/sys/embedded) — 19 unit + 13 property + 8 integration + 4 regression tests. StackAllocator bump arithmetic (alignment rounding, sequential allocs, OOM sentinel returns 0, reset semantics) + `used() + remaining() == capacity()` invariant + remaining monotone-decreasing + alignment-relative-to-buffer-base contract + OOM-does-NOT-advance-offset defect-class pin. RingBuffer empty/full/len invariants over positive + zero capacities. PanicAction 3-variant exhaustive dispatch. Integration: Maybe<Int> OOM funnel + bootloader struct-table pattern + two-independent-allocators coexistence + List<Int> pointer-collection ascending-order. Volatile MMIO push/pop + @cfg(runtime="embedded") gated paths (set_panic_action / embedded_panic / Custom handler) deferred to vcs/specs/L0-critical/embedded/. |
-| `no_runtime.vr`    | **complete** | [core-tests/sys/no_runtime](https://github.com/verum-lang/verum/tree/main/core-tests/sys/no_runtime) — 18 unit + 13 property + 8 integration + 4 regression tests. block_on identity over Int/Text/Bool/Int.max/Int.min boundaries; spawn_sync inline-execution identity over 3 function shapes; SyncChannel<T> two-state lifecycle (Empty → Full(T) → Empty) + send-on-Full preserves existing (defect-class pin) + recv-on-Empty is None + N-cycle alternation returns to Empty; NoOpMutex<T> payload-identity sweep over Int domain + lock/unlock preserves value. Integration: SyncChannel producer/consumer pipeline draining List<Int> into accumulator + collecting received back into List + 8-cycle retransmit pattern; NoOpMutex<IntPair> custom-record payload. @cfg(runtime="none") build-mode gate verification + compile-time select!/channels rejection deferred to vcs/specs/L0-critical/. |
-| `mod.vr` (umbrella)| **complete** | [core-tests/sys/mod](https://github.com/verum-lang/verum/tree/main/core-tests/sys/mod) — 17 unit + 10 property + 8 integration + 4 regression tests. Path-equivalence laws: PAGE_SIZE ↔ common.PAGE_SIZE / MAX_CONTEXT_SLOTS ↔ common.MAX_CONTEXT_SLOTS / CONTEXT_STACK_DEPTH ↔ common.CONTEXT_STACK_DEPTH / USIZE_BITS ↔ bitfield.USIZE_BITS. Constant invariants (PAGE_SIZE positive + power-of-two + ≥ 4096; MAX_CONTEXT_SLOTS positive + power-of-two; USIZE_BITS byte-multiple + ≥ 32). Type-identity preservation across umbrella + direct submodule paths for OSError, Fd, MemoryRegion, BarrierKind, MemoryFlags, InitError, TimeSpec, SysContextError, MemProt, MemoryOrdering, MapFlags. Platform-conditional re-exports (linux/darwin/windows) + @cfg(runtime=*) umbrella mounts deferred to per-platform vcs specs. |
+| `embedded.vr`      | **partial** | [core-tests/sys/embedded](https://github.com/verum-lang/verum/tree/main/core-tests/sys/embedded) — Unit, property, integration and regression suites. StackAllocator bump arithmetic (alignment rounding, sequential allocs, OOM sentinel returns 0, reset semantics) + `used() + remaining() == capacity()` invariant + remaining monotone-decreasing + alignment-relative-to-buffer-base contract + OOM-does-NOT-advance-offset defect-class pin. RingBuffer empty/full/len invariants over positive + zero capacities. PanicAction 3-variant exhaustive dispatch. Integration: Maybe<Int> OOM funnel + bootloader struct-table pattern + two-independent-allocators coexistence + List<Int> pointer-collection ascending-order. Volatile MMIO push/pop + @cfg(runtime="embedded") gated paths (set_panic_action / embedded_panic / Custom handler) deferred to vcs/specs/L0-critical/embedded/. |
+| `no_runtime.vr`    | **complete** | [core-tests/sys/no_runtime](https://github.com/verum-lang/verum/tree/main/core-tests/sys/no_runtime) — Unit, property, integration and regression suites. block_on identity over Int/Text/Bool/Int.max/Int.min boundaries; spawn_sync inline-execution identity over 3 function shapes; SyncChannel<T> two-state lifecycle (Empty → Full(T) → Empty) + send-on-Full preserves existing (defect-class pin) + recv-on-Empty is None + N-cycle alternation returns to Empty; NoOpMutex<T> payload-identity sweep over Int domain + lock/unlock preserves value. Integration: SyncChannel producer/consumer pipeline draining List<Int> into accumulator + collecting received back into List + 8-cycle retransmit pattern; NoOpMutex<IntPair> custom-record payload. @cfg(runtime="none") build-mode gate verification + compile-time select!/channels rejection deferred to vcs/specs/L0-critical/. |
+| `mod.vr` (umbrella)| **complete** | [core-tests/sys/mod](https://github.com/verum-lang/verum/tree/main/core-tests/sys/mod) — Unit, property, integration and regression suites. Path-equivalence laws: PAGE_SIZE ↔ common.PAGE_SIZE / MAX_CONTEXT_SLOTS ↔ common.MAX_CONTEXT_SLOTS / CONTEXT_STACK_DEPTH ↔ common.CONTEXT_STACK_DEPTH / USIZE_BITS ↔ bitfield.USIZE_BITS. Constant invariants (PAGE_SIZE positive + power-of-two + ≥ 4096; MAX_CONTEXT_SLOTS positive + power-of-two; USIZE_BITS byte-multiple + ≥ 32). Type-identity preservation across umbrella + direct submodule paths for OSError, Fd, MemoryRegion, BarrierKind, MemoryFlags, InitError, TimeSpec, SysContextError, MemProt, MemoryOrdering, MapFlags. Platform-conditional re-exports (linux/darwin/windows) + @cfg(runtime=*) umbrella mounts deferred to per-platform vcs specs. |
 
 ---
 
@@ -768,7 +740,7 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 > cross-module free-function dispatch defect is closed
 > (see
 > [core-tests/sys/bitfield/audit.md §3.2](https://github.com/verum-lang/verum/tree/main/core-tests/sys/bitfield/audit.md)).
-> 56 unit + 31 property + 22 integration + 3 regression tests are all
+> Unit, property, integration and regression suites are all
 > green under `--interp`.
 >
 > **AOT (2026-06-01):** two AOT-specific compiler defects that blocked the
