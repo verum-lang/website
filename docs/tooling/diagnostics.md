@@ -301,7 +301,7 @@ All of the above is controlled by
 |-------|---------|------------------|
 | `app_name` | `"verum"` | Verbatim brand string surfaced in five places: the `=== {Titlecased} crash report ===` log header (first letter title-cased automatically), the `Build: {app_name} {ver} (...)` line of the human report, the `app_name` field of the JSON envelope's `environment` block, the `{app_name}: internal compiler error...` stderr prefix, and the `run \`{app_name} diagnose bundle\`` hint shown after a crash. Embedders override this to rebrand every surface in one place. |
 | `app_version` | `env!("CARGO_PKG_VERSION")` | Mirrored into `EnvSnapshot.verum_version` (kept under that name for schema stability) and rendered in the human report's Build line. |
-| `report_dir` | `~/.verum/crashes/` | `$HOME`-relative; created at install time so the signal handler doesn't have to. |
+| `report_dir` | `None` | Unset means `default_report_dir()`: `~/.verum/crashes/` when `HOME` (or `USERPROFILE`) resolves, and `$TMPDIR/verum-crashes` when it does not — a headless CI container hits the second. Created at install time so the signal handler doesn't have to. |
 | `retention` | `50` | Older reports rotated off after every successful write — the rotator deletes oldest first by mtime. |
 | `capture_backtrace` | `true` | Also forces `RUST_BACKTRACE=1` so the symbolizer captures frames even if the user hasn't set the env var. |
 | `install_signal_handlers` | `true` | Unix: `SIGSEGV` / `SIGBUS` / `SIGILL` / `SIGFPE` / `SIGABRT` on an alternate signal stack via `sigaltstack`. Windows: `SetUnhandledExceptionFilter`. Set to `false` if a host process owns its own handler. |

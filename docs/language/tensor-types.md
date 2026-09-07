@@ -411,18 +411,19 @@ compile-time constant.
 
 Tooling that drives the shape verifier directly (custom static
 analysis, IDE integrations, advanced lint passes) controls its
-behaviour via `ShapeConfig`. Every documented field is honoured
+behaviour via `verum_verification::tensor_shapes::VerificationConfig`,
+the struct `ShapeVerifier` holds. Every documented field is honoured
 by the verifier (no inert defenses):
 
 | Field | Default | What it controls |
 |-------|---------|------------------|
-| `enable_broadcast` | `true` | Allow broadcasting in element-wise ops. When `false`, `verify_broadcast` rejects any non-identical shape pair. Bounds the verifier to strict-equality semantics for tooling that wants to flag implicit broadcasts. |
-| `enable_polymorphism` | `true` | Permit polymorphic shape variables (e.g. `Tensor<T, [N, M]>`) in unification. When `false`, only fully-resolved static shapes are accepted. |
+| `allow_broadcast` | `true` | Allow broadcasting in element-wise ops. When `false`, `verify_broadcast` rejects any non-identical shape pair. Bounds the verifier to strict-equality semantics for tooling that wants to flag implicit broadcasts. |
+| `require_resolved` | `false` | When `true`, every meta parameter must be resolved — only fully-resolved static shapes are accepted, and polymorphic shape variables (e.g. `Tensor<T, [N, M]>`) are rejected. Note the polarity: the permissive setting is `false`, which is the default. |
 | `max_rank` | `8` | Per-tensor rank ceiling, enforced at the entry of every `verify_*` operation: matmul (both operands), elementwise (both), broadcast (both + result rank check), reduction, transpose, reshape (input + new_shape), and concat (every input). A shape whose `rank()` exceeds `max_rank` surfaces `ShapeError::InvalidOperation { operation, requirement: "rank ≤ max_rank (N)", actual: "rank K" }`, naming the offending operation. Tighten this on memory-constrained targets to surface model architectures that would blow the static-analysis budget; relax it for research workloads with very high-rank tensors. |
 
 A typical override keeps every default except the rank
 ceiling — e.g., to tighten `max_rank` to `4` for a
-memory-constrained target, construct a `ShapeConfig` whose
+memory-constrained target, construct a `VerificationConfig` whose
 `max_rank` is `4` and pass it to `ShapeVerifier`.
 
 The check runs in `O(1)` per call (rank comparison is a single
