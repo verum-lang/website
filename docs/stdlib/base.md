@@ -3,10 +3,6 @@ sidebar_position: 1
 title: base
 description: The Verum prelude — Maybe, Result, Iterator, operator protocols, panic, env, cells.
 status: partial
-status_detail: >-
-  The foundational layer runs under the interpreter with a small set of
-  documented limitations, each listed against its module below with the
-  workaround where one exists.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

@@ -2,7 +2,6 @@
 title: signal
 description: Async signal subscription (SIGTERM, SIGINT, SIGHUP)
 status: partial
-status_detail: Measured 2026-08-08 in a full interpreter run — 20 passed, 0 failed, 5 compile-error, 0 ignored. The page carried `regression-only` while `core-tests/INVENTORY.md` had recorded `partial` since that measurement; the inventory is the truth table this frontmatter mirrors. Cross-tier --aot validation still deferred behind the AOT stdlib build cascade.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

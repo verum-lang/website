@@ -3,11 +3,6 @@ sidebar_position: 5
 title: intrinsics
 description: 700+ compiler intrinsics — arithmetic, bitwise, float, memory, atomic, tensor, GPU, runtime, low-level.
 status: partial
-status_detail: >-
-  The tensor surface runs its full conformance suite under the interpreter.
-  Ahead-of-time compilation covers the core tensor operations and refuses
-  the rest loudly. Raw-pointer dereference and one name-resolution path
-  through umbrella re-exports are the two open areas.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

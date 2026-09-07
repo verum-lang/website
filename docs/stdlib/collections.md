@@ -3,7 +3,6 @@ sidebar_position: 2
 title: collections
 description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every semantic-honest collection.
 status: partial
-status_detail: 'Tier-0 interpreter — GREEN across all 20 submodules as of 2026-06-13 (≈790 active @test pass; only @ignore''d pins remain). Tier-1 AOT — partial: alias_sampler / hyperloglog / consistent_hash / count_min fully green; large mutable collections (deque / heap / lru / map / btree / adjacency_list) fail under --aot because their stdlib mutation bodies (push/insert/grow → realloc of a self pointer field) null-deref at Tier-1 (cross-tier defect, not interp). Two fundamental AOT fixes landed on branch collections-aot-fixes: Text.from_utf8_unchecked/lossy LLVM intercept (unblocked every Text-payload error ctor; count_min 2→6, consistent_hash 19→23) and honouring List.with_capacity(n) in both tiers. See core-tests/INVENTORY.md.'
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

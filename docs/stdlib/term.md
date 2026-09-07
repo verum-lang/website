@@ -3,7 +3,6 @@ sidebar_position: 4
 title: term
 description: 7-layer TUI framework — raw I/O, events, style, render, layout, widgets, app.
 status: undocumented
-status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

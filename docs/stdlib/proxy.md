@@ -2,7 +2,6 @@
 title: core.net.proxy — L7 reverse-proxy toolkit
 description: Upstream connection pools, active health checks, load balancers (round-robin, random, weighted least-conn), Hystrix-style circuit breakers, retry layers with budgets, and token/leaky/sliding-window rate limiters. The building blocks for API gateways and service-mesh data planes.
 status: undocumented
-status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

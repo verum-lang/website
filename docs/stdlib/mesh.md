@@ -2,7 +2,6 @@
 title: mesh
 description: Service-mesh integration (Envoy xDS, Kubernetes Gateway API)
 status: undocumented
-status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

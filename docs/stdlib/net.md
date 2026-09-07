@@ -3,8 +3,6 @@ sidebar_position: 1
 title: net
 description: TCP, UDP, HTTP, TLS, DNS — V-LLSI-native networking with zero FFI.
 status: partial
-status_detail: >-
-  2026-07-05 round 19: 9 submodules stable; addr/dns/http/tls partial; 12 transport modules regression-only pending a network test harness; deep codegen crashers pinned. History: core-tests/INVENTORY.md.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

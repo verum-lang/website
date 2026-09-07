@@ -3,12 +3,6 @@ sidebar_position: 2
 title: simd
 description: Portable SIMD — Vec<T,N>, Mask<N>, arithmetic, reduction, shuffle, gather/scatter, GPU.
 status: regression-only
-status_detail: >-
-  core-tests/simd/gpu/ carries unit tests over the GpuBackend ADT, green
-  under --interp, so the module IS routed through the conformance suite;
-  `undocumented` was one status too pessimistic. The GPU operations themselves
-  are @intrinsic("gpu_*") and need live GPU target compilation, which is why
-  the status stops at regression-only.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

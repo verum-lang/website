@@ -2,14 +2,6 @@
 title: core.tracing — distributed tracing (OpenTelemetry-compatible)
 description: Identifiers, span contexts, spans, samplers, processors, exporters, and W3C Trace Context propagation — the substrate Verum frameworks and drivers instrument against.
 status: partial
-status_detail: >-
-  Every live conformance test is green under `--interp` (identifier,
-  context, attribute, resource, data, sampler, exporter, processor and
-  pipeline suites); the identifier / context / span / sampler suites
-  are also green under `--aot`. Cross-handle shared-state observation
-  (in-memory exporter clones) is pinned as an ignored regression
-  pending interpreter shared-identity support, and the remaining AOT
-  residues track in-flight compiler work — see "Current limitations".
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

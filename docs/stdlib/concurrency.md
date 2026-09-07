@@ -3,7 +3,6 @@ sidebar_position: 5
 title: concurrency
 description: π-calculus processes and session types — formal concurrency foundations.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/concurrency/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task closes. @ignore pins flag surfaced defects with task attribution.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

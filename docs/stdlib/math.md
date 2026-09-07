@@ -3,11 +3,6 @@ sidebar_position: 1
 title: math
 description: Layered mathematics stack — libm, linalg, calculus, tensors, autodiff, NN, SSM, agents, pure math.
 status: partial
-status_detail: >-
-  Majority of submodules carry complete conformance suites (checked
-  arithmetic, constants, tactics families among them); a small residue
-  remains regression-only pending toolchain classes. See the
-  conformance inventory for per-submodule truth.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

@@ -3,7 +3,6 @@ sidebar_position: 24
 title: search
 description: Abstract search subsystem — SearchIndex protocol + concrete adapters (MeiliSearch today; Elasticsearch / Typesense / SQLite FTS5 / in-memory future).
 status: regression-only
-status_detail: Conformance suites landed in core-tests/search/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

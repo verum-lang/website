@@ -3,7 +3,6 @@ sidebar_position: 33
 title: script
 description: Embedded scripting — a host Verum program compiles and runs Verum scripts at runtime, in-process, on the same VBC interpreter.
 status: undocumented
-status_detail: not yet routed through `core-tests/` — there is no `core-tests/script/` suite, so this page reflects source-of-truth at last edit, not verified runtime behaviour.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

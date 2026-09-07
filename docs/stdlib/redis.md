@@ -3,7 +3,6 @@ sidebar_position: 22
 title: redis
 description: Multi-purpose Redis subsystem — RESP3 client + commands + pub/sub + streams + transactions + scripting.
 status: regression-only
-status_detail: Conformance suites landed in core-tests/redis/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';

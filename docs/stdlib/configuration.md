@@ -3,7 +3,6 @@ sidebar_position: 11
 title: configuration
 description: Universal configuration subsystem — parse / serialise / validate / convert / merge / interpolate across formats (TOML / YAML / JSON / INI / env).
 status: regression-only
-status_detail: Conformance suites landed in core-tests/configuration/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
