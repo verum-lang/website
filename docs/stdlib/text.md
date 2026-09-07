@@ -155,6 +155,37 @@ s.substring(start_char, end_char) -> Text      // char range
 s.split_at(mid: Int) -> (Text, Text)           // byte split
 ```
 
+:::warning
+
+**Known limitation, measured 2026-09-07:** `slice` does not enforce its
+own bounds contract when interpreted. The declared body asserts —
+`assert(end >= start && end <= len, "slice end out of bounds")` — but the
+interpreter clamps silently instead:
+
+```verum
+fn main() {
+    let s: Text = "hello";
+    print(f"1..3  -> {s.slice(1, 3)}");
+    print(f"1..99 -> {s.slice(1, 99)}");
+    print(f"9..99 -> {s.slice(9, 99)}");
+    print(f"3..1  -> {s.slice(3, 1)}");
+}
+```
+
+```text
+1..3  -> el
+1..99 -> ello
+9..99 ->
+3..1  ->
+```
+
+The last three are all out of bounds and none of them says so. Check
+indices against `s.len()` yourself rather than relying on the assert to
+catch a mistake — a slice that silently returns less than you asked for
+is the failure mode to expect, not a panic.
+
+:::
+
 ### Predicates
 
 ```verum
