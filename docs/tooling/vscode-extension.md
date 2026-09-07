@@ -122,8 +122,8 @@ recommendations in [CLI](/docs/tooling/cli) and
 
 | Setting | Default | Meaning |
 |---------|---------|---------|
-| `verum.cbgr.enableProfiling` | `false` | Enable CBGR per-deref profiling (≈ 15 ns overhead). |
-| `verum.cbgr.showOptimizationHints` | `false` | Opt-in inlay hints on every `&` reference — compact badges (`0ns` for promotable, `~15ns` for CBGR-tier-0, nothing on `&checked` / `&unsafe`). Skipped in type positions (`fn f(p: &T)`). Off by default; the hover bubble already shows this information on demand. |
+| `verum.cbgr.enableProfiling` | `false` | Enable CBGR per-deref profiling (≈ 1.5 ns per check, measured). |
+| `verum.cbgr.showOptimizationHints` | `false` | Opt-in inlay hints on every `&` reference — compact badges (`0ns` for promotable, `~1.5ns` for CBGR-tier-0, nothing on `&checked` / `&unsafe`). Skipped in type positions (`fn f(p: &T)`). Off by default; the hover bubble already shows this information on demand. |
 
 ### Verification
 

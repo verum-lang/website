@@ -111,7 +111,7 @@ $ verum run
 ```
 
 Every `&self` and every `&Node<T>` in the `node_iter` is a **tier 0
-reference** — 15 ns per dereference. For a DLL traversal, this is
+reference** — 1.2–1.7 ns per dereference. For a DLL traversal, this is
 fine — the generation check protects you from use-after-free and
 mid-iteration mutation.
 
@@ -127,7 +127,7 @@ $ verum analyze --escape
     1 of 3 refs promoted to &checked T (0ns)
     Promotion rate: 33.3%
 
-  ! References Kept at Tier 0 (~15ns CBGR):
+  ! References Kept at Tier 0 (~1.5ns CBGR):
   ! sum (main.vr)
     2 ref(s) at Tier 0
       - Escapes scope: 2
@@ -288,7 +288,7 @@ compiler to prove every `&T` safe or fail.
 
 ## What you learned
 
-- **Tier 0** (`&T`) is the default — 15 ns safety check, suitable for
+- **Tier 0** (`&T`) is the default — a 1.2–1.7 ns safety check, suitable for
   everything by default.
 - **Tier 1** (`&checked T`) is what tier 0 **compiles to** when
   escape analysis succeeds. Use the explicit form when you want to

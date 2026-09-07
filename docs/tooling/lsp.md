@@ -142,7 +142,7 @@ picks up changes on the fly.
 | `cacheTtlSeconds` | int | `300` | Cache entry TTL. |
 | `cacheMaxEntries` | int | `1000` | Cache capacity. On downsize, oldest entries are evicted. |
 | `cbgrEnableProfiling` | bool | `false` | Turn on CBGR runtime profiling instrumentation. |
-| `cbgrShowOptimizationHints` | bool | `false` | Opt-in CBGR inlay hints (`0ns` / `~15ns` badges). |
+| `cbgrShowOptimizationHints` | bool | `false` | Opt-in CBGR inlay hints (`0ns` / `~1.5ns` badges). |
 | `verificationShowCostWarnings` | bool | `true` | Publish diagnostics when a function is slow to verify. |
 | `verificationSlowThresholdMs` | int | `5000` | Threshold above which a function counts as "slow". |
 
