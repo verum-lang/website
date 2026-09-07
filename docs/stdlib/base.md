@@ -600,6 +600,53 @@ type Iterator is protocol {
 .min() / .max()          // -> Maybe<Item> (Item: Ord)
 .min_by_key(|x| key(x)) / .max_by_key
 .min_by(|a,b| cmp) / .max_by
+```
+
+:::warning
+
+**Known limitation, measured 2026-09-07:** `min_by` and `max_by` crash
+the compiler. This call —
+
+```verum
+l.iter().min_by(|a, b| a.cmp(b))
+```
+
+— ends the build with
+
+```text
+verum: internal compiler error — a crash report has been saved.
+       (panic: Expected int, got Some(0))
+```
+
+The keyed forms are fine. Run on the same list:
+
+```verum
+mount core.collections.{List};
+
+fn main() {
+    let l: List<Int> = List.from([3, 1, 2]);
+    match l.iter().min_by_key(|x| *x) {
+        Maybe.Some(v) => print(f"min={v}"),
+        Maybe.None => print("min=none"),
+    }
+    match l.iter().max_by_key(|x| *x) {
+        Maybe.Some(v) => print(f"max={v}"),
+        Maybe.None => print("max=none"),
+    }
+}
+```
+
+```text
+min=1
+max=3
+```
+
+Use those until this note goes away; the difference is the comparator's
+shape, not the iterator.
+
+:::
+
+```verum
 .min_max()               // -> Maybe<(Item, Item)>
 ```
 
