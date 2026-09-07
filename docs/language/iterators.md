@@ -97,6 +97,20 @@ writing when the expression is dense:
 xs.iter().map(|x| *x * *x)    // same as |x| x * x, easier to read
 ```
 
+**Printing sees through a reference as well.** Taking the item out of a
+`match` binds a `&Int`, and both the f-string and an explicit `*` read
+the value rather than the address behind it:
+
+```verum
+match xs.iter().next() {
+    Maybe.Some(v) => print(f"{v}"),   // 10
+    Maybe.None => print("empty"),
+}
+```
+
+The same is true of a record item: `p.x` on a bound `&Point` reads the
+field, no star required.
+
 ## Adapters
 
 Each returns a new lazy iterator. All of these compose with each other
