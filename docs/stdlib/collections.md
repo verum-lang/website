@@ -365,6 +365,26 @@ m.retain(|k, v| pred(k, v))
 m.extend(iter)                         // iter yields (K, V)
 ```
 
+:::warning
+
+**Known limitation, measured 2026-09-07:** four of the methods listed on
+this page compile and then fail at runtime with a null pointer
+dereference. The signatures are correct — they are what `core/` declares
+— but the interpreter carries its own `Map` representation, and these
+are the bodies that read the entries array directly instead of being
+served by the runtime.
+
+| Runs | Fails today |
+|------|-------------|
+| `get`, `remove`, `contains_key`, `retain`, `iter` | `get_mut`, `get_key_value`, `remove_entry`, `entry` (and every `MapEntry` / `OccupiedEntry` method reached through it) |
+
+Each row was run, not inferred. Use `get` + `insert` where you would
+reach for `get_mut` or the entry API; see
+[the cookbook](../cookbook/collections.md#the-entry-api) for a worked
+replacement.
+
+:::
+
 ### Entry API — insert-or-update without double lookup
 
 ```verum

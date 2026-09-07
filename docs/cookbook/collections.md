@@ -84,7 +84,8 @@ set.remove(&value) -> Bool          // true if was present
 
 ## The entry API
 
-The **entry API** is the canonical way to do "insert or update":
+The **entry API** is the shape the standard library declares for
+"insert or update":
 
 ```verum
 let mut counts: Map<Text, Int> = Map.new();
@@ -93,7 +94,44 @@ for word in words.iter() {
 }
 ```
 
-No double lookup, no `.contains_key + .get + .insert` dance.
+One lookup instead of the `.contains_key + .get + .insert` dance.
+
+:::warning
+
+**Known limitation, measured 2026-09-07:** the block above does not run.
+`Map.entry` fails at runtime with a null pointer dereference, and so do
+the other `Map` methods that walk the entries array directly —
+`get_key_value`, `remove_entry`, and the `Entry` methods below. The
+declarations are correct and the signatures are stable; the interpreter
+carries its own `Map` representation that these bodies cannot read.
+
+`Map.get`, `Map.insert`, `Map.remove`, `Map.contains_key`, `Map.len` and
+iteration are unaffected — those are served directly by the runtime.
+
+**What works today**, measured on the same day:
+
+```verum
+mount core.collections.{Map, List};
+
+fn main() {
+    let words: List<Text> = List.from([ "a", "b", "a" ]);
+    let mut counts: Map<Text, Int> = Map.new();
+    for word in words.iter() {
+        let n = counts.get_or(word.clone(), 0);
+        counts.insert(word.clone(), n + 1);
+    }
+    print(f"a={counts.get_or(\"a\", 0)} b={counts.get_or(\"b\", 0)}");
+}
+```
+
+```text
+a=2 b=1
+```
+
+It costs the second lookup the entry API exists to avoid. Prefer it
+until this section drops the warning.
+
+:::
 
 ```verum
 // Or-insert, or-insert-with, or-default:
@@ -157,6 +195,10 @@ let counts: Map<Text, Int> = words
     });
 ```
 
+This uses the entry API, so it carries the same limitation as
+[The entry API](#the-entry-api) above (measured 2026-09-07): it does not
+run today. `get_or` + `insert` inside the fold works.
+
 Or with a comprehension:
 
 ```verum
@@ -184,6 +226,9 @@ for item in &items {
           .push(item.clone());
 }
 ```
+
+Same limitation as [The entry API](#the-entry-api) (measured
+2026-09-07). Read the group with `get_or`, push, then `insert` it back.
 
 ## Sorting
 

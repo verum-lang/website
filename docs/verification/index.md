@@ -645,7 +645,7 @@ shipped undocumented:
 `--proof-archive` (decodes the archive's `theorems` table and
 re-resolves each) · `--cross-format-roundtrip` (per-theorem roundtrip
 over every `@theorem` / `@lemma` / `@corollary`) ·
-`--trust-extension-report` (FV-18, per-rule proved/admitted snapshot) ·
+`--trust-extension-report` (per-rule proved/admitted snapshot) ·
 `--attribute-registry` (exports every attribute the compiler knows,
 with targets and arity).
 
