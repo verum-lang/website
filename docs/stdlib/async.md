@@ -880,6 +880,50 @@ exec.spawn_local(main_future);
 let completed = exec.run_until_complete();
 ```
 
+:::warning
+
+**Known limitation, measured 2026-09-07:** the sequence above panics as
+soon as there is a task to drive.
+
+```text
+Panic: GetFieldNamed: receiver is not a heap object (kind=nil)
+```
+
+Each call is fine alone — `new()`, a lone `spawn_local`, and
+`run_until_complete` on an empty executor all return. The panic needs a
+spawned task that actually gets driven, so a probe that stopped short of
+that would report the API healthy. `block_on` fails too, differently:
+`method 'poll' not found on receiver of runtime kind Int`.
+
+**What drives a future today**, run before it is recommended here:
+
+```verum
+mount core.async.{spawn};
+
+async fn work(n: Int) -> Int { return n * 2; }
+
+fn main() {
+    let handle = spawn(async {
+        let v = work(3).await;
+        print(f"spawned={v}");
+    });
+    handle.await;
+    print("joined");
+}
+```
+
+```text
+spawned=6
+joined
+```
+
+`spawn` returns a handle and awaiting the handle drives the task to
+completion — awaiting works from a synchronous `fn main`. That is the
+shape the shipped async example uses, and it is the one to reach for
+until this note goes away.
+
+:::
+
 ---
 
 ## Spawn configuration
