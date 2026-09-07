@@ -76,7 +76,7 @@ fn handle(req: Request) -> Response using [WebRequest] { ... }
 ## Prefer `&T` to `&checked T` to `&unsafe T`
 
 - **Default to `&T`.** Escape analysis promotes most of them.
-- **Ask for `&checked T` explicitly** when the 15 ns matters and
+- **Ask for `&checked T` explicitly** when even 1.2–1.7 ns matters and
   you want the compiler to prove you can skip it.
 - **Reach for `&unsafe T` only** when you need FFI or primitives; pair
   it with a `// SAFETY: ...` comment.

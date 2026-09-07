@@ -184,7 +184,8 @@ already hot.
 
 Think of CBGR as **trading a small constant-factor overhead on every
 reference dereference for the complete elimination of an entire class
-of CVEs**. For most code, 15 ns is invisible. For hot loops, escape
+of CVEs**. At 1.2–1.7 ns that is invisible in most code. For hot
+loops, escape
 analysis elides the check. For code where it cannot, you can be
 explicit about wanting `&checked T` and let the compiler tell you what
 needs refactoring.

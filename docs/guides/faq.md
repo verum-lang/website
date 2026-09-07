@@ -209,8 +209,9 @@ you to handle.
 
 ### Why three reference tiers?
 
-Because one tier either costs 15 ns always (too expensive for hot
-loops) or zero always (too unsafe for default). Escape analysis
+Because one tier either pays the check always (1.2–1.7 ns — small,
+but not free in a hot loop) or zero always (too unsafe for default).
+Escape analysis
 automatically promotes `&T` to `&checked T` when provably safe; you
 keep the ergonomics, the compiler does the work.
 

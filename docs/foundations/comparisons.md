@@ -63,7 +63,7 @@ is on the roadmap.) In Rust, SMT-based verification lives in external
 tools that re-parse source.
 
 **Three-tier references.** Verum has `&T` (managed, CBGR-checked,
-≈ 15 ns), `&checked T` (compiler-proven, 0 ns), `&unsafe T`
+**1.2–1.7 ns measured**), `&checked T` (compiler-proven, 0 ns), `&unsafe T`
 (programmer-proven, 0 ns). Rust has `&T` (borrow-checked, 0 ns) and
 `unsafe` (programmer-proven). Rust's single tier is more restrictive
 at the source level — CBGR admits patterns Rust's borrow checker

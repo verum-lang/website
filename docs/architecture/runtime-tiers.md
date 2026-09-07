@@ -207,7 +207,8 @@ variants — but it is chosen **once per build**, not per reference:
 The per-reference decision this page describes is a **different enum
 with three variants** — `CbgrTier` / `ReferenceTier` in
 `crates/verum_cbgr/src/tier_types.rs`: `Tier0` (runtime-checked,
-~15 ns), `Tier1` (compiler-proven, 0 ns), `Tier2` (manual proof, 0 ns).
+**1.2–1.7 ns measured**, against a ≤ 15 ns design target), `Tier1`
+(compiler-proven, 0 ns), `Tier2` (manual proof, 0 ns).
 That is the one escape analysis produces, the one CLAUDE.md documents,
 and the one the `&T` / `&checked T` / `&unsafe T` syntax selects.
 

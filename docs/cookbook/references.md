@@ -23,7 +23,7 @@ description: Three reference tiers, one decision.
 
 ### 3. Otherwise
 
-`&T`. The 15 ns is invisible in almost all code.
+`&T`. At **1.2–1.7 ns** the check is invisible in almost all code.
 
 ---
 
@@ -164,4 +164,4 @@ validation at the head of the chain.
 - **[Language → CBGR](/docs/language/cbgr)** — how the check works.
 - **[Architecture → CBGR internals](/docs/architecture/cbgr-internals)**
   — data structures, escape analysis, promotion algorithm.
-- **[Performance](/docs/guides/performance)** — when 15 ns matters.
+- **[Performance](/docs/guides/performance)** — when even 1.2–1.7 ns matters.

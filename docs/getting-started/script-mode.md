@@ -271,7 +271,7 @@ Concretely, a Verum script gets:
   checked at script load. A wrong literal fails before the
   process does any I/O.
 - **Memory safety.** Three-tier CBGR (Cycle-Breaking Generation
-  References). Default `&T` has ~15 ns runtime overhead;
+  References). Default `&T` costs **1.2–1.7 ns** per dereference;
   `&checked T` is compile-time-proven safe and zero-cost. A
   shell-replacement script gets the same `O(1)` no-leak guarantee
   as a long-lived service.

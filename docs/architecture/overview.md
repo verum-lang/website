@@ -425,7 +425,7 @@ pipeline.
 
 ### Why three CBGR tiers?
 
-A single tier forces a trade-off: either pay the 15 ns per-deref
+A single tier forces a trade-off: either pay the per-deref check
 (Rust-style lifetimes + runtime checks) or lean on the programmer
 (raw pointers). Three tiers let the compiler promote automatically
 where safe, ask the programmer where it can't prove safety, and

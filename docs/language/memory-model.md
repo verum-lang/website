@@ -45,7 +45,9 @@ fn process(x: &User) { ... }
 
 - **What it is**: a CBGR-checked reference.
 - **Size**: 16 bytes (`ThinRef`) for sized types, 32 bytes (`FatRef`) for unsized.
-- **Runtime cost**: one generation-check per deref, roughly 15 ns.
+- **Runtime cost**: one generation-check per deref — **1.2–1.7 ns**
+  measured (`cargo bench -p verum_cbgr --bench production_targets`,
+  2026-09-05), against a ≤ 15 ns design target.
 - **Safety**: use-after-free and double-free are runtime-detected.
 
 This is the default. Use it unless you have a reason not to.

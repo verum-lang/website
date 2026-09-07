@@ -34,7 +34,7 @@ reporting rather than a known pattern.
 ### `[V5201]: cannot prove reference is safe for &checked T`
 
 Escape analysis failed to promote a `&T` to `&checked T`. Either:
-1. Drop the `checked` — accept the 15 ns; *or*
+1. Drop the `checked` — accept the check (1.2–1.7 ns); *or*
 2. Restructure the call so the reference's target is provably local.
 
 ### `[V4101]: non-exhaustive patterns`
