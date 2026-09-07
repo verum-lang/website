@@ -308,28 +308,73 @@ bfgs(f, grad, x0, tol, max_iter) -> Vector<Float>
 
 ```verum
 type RandomKey is UInt64;
-type Rng is protocol {
-    fn next_u64(&mut self) -> UInt64;
-    fn split(&self) -> (RandomKey, RandomKey);
-};
 
+// RAW GENERATORS — a stream of bits, nothing else.
 type XorShift128 is { ... };          type PCG is { ... };
 XorShift128.new(seed: UInt64) -> XorShift128
 PCG.new(seed: UInt64, stream: UInt64) -> PCG   // two words: seed and stream
 
+gen.next_u64() -> UInt64      gen.next_bounded(bound) -> UInt64
+gen.next_f64() -> Float       gen.next_f32() -> Float32
+gen.next_bool() -> Bool
+
+// SAMPLING — `Rng` is a RECORD holding a key, and it owns the
+// distributions. The raw generators above do NOT have these.
+type Rng is { key: RandomKey };
+Rng.new(seed: UInt64) -> Rng            Rng.from_key(key) -> Rng
+
 rng.uniform_01() -> Float                // [0.0, 1.0)
-rng.uniform(lo, hi) -> Int / Float
+rng.uniform(low, high) -> Float
 rng.normal_01() -> Float
 rng.normal(mean, std) -> Float
-rng.truncated_normal(lo, hi, mean, std) -> Float
-rng.exponential(lambda) -> Float
-rng.bernoulli(p) -> Bool                  rng.poisson(lambda) -> Int
-rng.gamma(shape, scale) -> Float          rng.beta(alpha, beta) -> Float
-rng.chi_squared(k) -> Float                rng.student_t(df) -> Float
-rng.categorical(probs) -> Int
-rng.permutation(n) -> List<Int>
-rng.shuffle_vec(&mut xs)                   rng.choice(&xs) -> &T
+rng.exponential(rate) -> Float
+rng.bernoulli(p) -> Bool
+rng.uniform_int(bound) -> UInt64
+rng.next_key() -> RandomKey
+rng.permutation(n) -> List<USize>
+rng.shuffle(&mut xs)
 ```
+
+```verum
+mount core.random.{Rng};
+mount core.collections.{List};
+
+fn main() {
+    let mut r = Rng.new(7);
+    let a = r.uniform_01();
+    let b = r.uniform_01();
+    print(f"advances={a != b} in_range={a >= 0.0 && a < 1.0}");
+
+    let mut xs: List<Int> = List.from([1, 2, 3, 4, 5, 6, 7, 8]);
+    r.shuffle(&mut xs);
+    let mut sum = 0;
+    for i in 0..8 { sum = sum + xs[i]; }
+    print(f"shuffle len={xs.len()} sum={sum}");
+}
+```
+
+```text
+advances=true in_range=true
+shuffle len=8 sum=36
+```
+
+:::note Corrected 2026-09-07
+
+This section previously declared `Rng` a protocol with `next_u64` and
+`split`, listed the distributions under it, and showed them after
+`XorShift128.new` — so a reader would reach for `XorShift128.uniform_01`
+and get `no method named uniform_01 found for type XorShift128`. `Rng`
+is a record, the raw generators are separate types, and each list above
+was read off `core/random/deterministic.vr` and run.
+
+Two entries were removed rather than corrected: `shuffle_vec` (the name
+is `shuffle`) and `choice`, which is declared nowhere in `core/`. The
+other distributions — `truncated_normal`, `poisson`, `gamma`, `beta`,
+`chi_squared`, `student_t`, `categorical` — exist as key-taking free
+functions rather than `Rng` methods and are not listed here until
+someone runs them.
+
+:::
 
 ---
 
