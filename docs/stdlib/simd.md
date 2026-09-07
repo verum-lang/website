@@ -94,6 +94,57 @@ v.reduce_add() -> T        v.reduce_mul() -> T
 v.reduce_min() -> T        v.reduce_max() -> T
 ```
 
+:::danger Construction and extraction work; arithmetic and reduction do not
+
+**Known limitation, measured 2026-09-07.** Three separate failures, each
+run rather than inferred.
+
+**1. All seven reductions return their receiver.** `reduce_add`,
+`reduce_mul`, `reduce_min`, `reduce_max`, `reduce_and`, `reduce_or`,
+`reduce_xor` — none of them reduces:
+
+```verum
+Vec4f.from_array([10.0, 20.0, 30.0, 40.0]).reduce_add()
+```
+
+answers `[10.0, 20.0, 30.0, 40.0]`, not `100.0`.
+
+**2. `splat` does not broadcast.** It stores the scalar, so lane 0 reads
+and lanes 1..3 fail with `Invalid operand: GetE: expected pointer`.
+`Vec4f.splat(2.0).reduce_add()` therefore prints `2.0` — a well-formed
+number that is wrong twice over, since neither the broadcast nor the
+reduction happened.
+
+**3. `add` ends the build** with `internal compiler error (panic:
+Expected float, got Some(3))`. The other lane-wise operations are
+unmeasured.
+
+**What works today**, run on the same day:
+
+```verum
+mount core.simd.{Vec4f};
+
+fn main() {
+    let src: [Float32; 4] = [10.0, 20.0, 30.0, 40.0];
+    let v = Vec4f.from_array(src);
+    let out = v.to_array();
+
+    let mut total: Float32 = 0.0;
+    for i in 0..4 { total = total + out[i]; }
+    print(f"lanes={out[0]},{out[1]},{out[2]},{out[3]} total={total}");
+}
+```
+
+```text
+lanes=10.0,20.0,30.0,40.0 total=100
+```
+
+`from_array` fills every lane and `to_array` reads them all back, so the
+vector is a real four-lane value — build it from an array and reduce over
+the array yourself until this note goes away.
+
+:::
+
 ### Comparison → `Mask<N>`
 
 ```verum
