@@ -193,10 +193,17 @@ fn saxpy(alpha: Float, x: &[Float], y: &mut [Float]) {
 ### Profile-guided optimisation
 
 ```bash
-verum build --release --pgo instrument
+verum build --release --pgo instrument   # NOT IMPLEMENTED — see note below
 ./target/release/myprog typical_workload
-verum build --release --pgo optimize
+verum build --release --pgo optimize     # NOT IMPLEMENTED — see note below
 ```
+
+:::warning `--pgo` does not exist
+Measured 2026-09-07: `verum build --help` lists no `--pgo`. The
+optimisation levers the command does carry are `--profile`, `--lto`,
+`--opt-level` and the `--emit-*` family; profile-guided optimisation is
+not among them, in either direction of the two-pass flow shown above.
+:::
 
 Two-pass build. Typical gain: 10–20% on branch-heavy code.
 

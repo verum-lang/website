@@ -178,7 +178,7 @@ deterministic CI consumption.
 ### 3.2 The kernel pass
 
 ```bash
-verum check --hygiene src/
+verum audit --hygiene-strict
 ```
 
 The kernel pass promotes the hygiene profile from advisory metadata

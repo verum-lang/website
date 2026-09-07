@@ -274,7 +274,7 @@ constrained).
 
 ```bash
 verum check src/                     # parses + validates every @quantity(...)
-verum verify --strategy formal src/  # body-level linearity diagnostics
+verum verify src/                    # body-level linearity diagnostics
 verum audit --epsilon                # @enact (Actic) is independent of quantity
 ```
 

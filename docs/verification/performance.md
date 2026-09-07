@@ -44,7 +44,7 @@ The `smt-stats --top 10` command surfaces the obligations where
 solving dominated. Start there.
 
 ```bash
-verum smt-stats --top 10 --by-theory
+verum smt-stats --json
 ```
 
 ---
@@ -238,7 +238,7 @@ solver for an unconstrained goal is time spent on the wrong layer.
 disagree:
 
 ```bash
-verum verify --mode proof --strategy certified <target> --on-disagreement=log
+verum verify --mode proof <target> --compare-modes
 ```
 
 This logs the disagreement without failing the build, so you can
@@ -253,7 +253,7 @@ Increase via `--timeout`. But first verify the obligation is
 actually provable:
 
 ```bash
-verum verify --strategy thorough --solver portfolio --timeout 600
+verum verify --solver portfolio --timeout 600
 ```
 
 If 600 seconds across both backends cannot close it, the
@@ -420,7 +420,7 @@ Slowest obligation: sort_preserves_length (8,421 ms)
 **Step 1** — dump the obligation:
 
 ```bash
-verum verify --dump-smt target/dump --only sort_preserves_length
+verum verify --dump-smt target/dump --function sort_preserves_length
 ```
 
 **Step 2** — inspect `target/dump/sort_preserves_length.smt2`.

@@ -151,22 +151,51 @@ Typical hit rate: 60–70% on incremental rebuilds.
 ## Inspection tools
 
 ```bash
-verum build --timings                    # per-phase time with cache stats
-verum cache stats                        # cache hit rates and sizes
-verum cache diff <commit-a> <commit-b>   # which functions would re-compile
-verum cache explain <fingerprint>        # why this fingerprint changed
-verum cache clear                        # delete all caches
-verum cache prune --older-than 7d        # gc old artefacts
+verum build --timings                 # per-phase time
+verum cache path                      # print the cache root
+verum cache list [--limit N] [--sort] # entries, newest access first
+verum cache show <key>                # metadata for one entry
+verum cache gc --max-size <bytes>     # evict least-recently-accessed
+verum cache clear [--yes]             # delete every entry
 ```
+
+:::warning What `verum cache` manages, and what it does not
+`verum cache` operates the **script cache** — whole-program bytecode
+for `verum run <file>.vr`, keyed per source file. It is not a view of
+the per-function incremental machinery this page describes, and there
+is no command that prints per-function hit rates.
+
+A report of the shape
+
+```
+functions      12,421 total  |  new/changed 38 (0.31%)  |  hit rate 99.69%
+```
+
+stood here as `$ verum cache stats` output. No such subcommand exists
+(the roster is `path`, `list`, `show`, `gc`, `clear`), and neither did
+`cache diff`, `cache explain` or `cache prune`, which were listed
+beside it with arguments each. Measured 2026-09-07.
+:::
 
 ### Example cache report
 
+What the shipped command prints:
+
 ```
-$ verum cache stats
-functions      12,421 total  |  new/changed 38 (0.31%)  |  hit rate 99.69%
-smt            3,210 total   |  new/changed 72 (2.24%)  |  hit rate 97.76%
-stdlib         cached hit    |  last full build 2d ago
+$ verum cache list --limit 2
+cache root : /Users/you/.verum/script-cache
+entries    : 2
+total size : 7.73 MiB
+
+KEY                     SIZE      ACCESSED  COMPILER              SOURCE
+fd2cc4b296d5bd54    2.07 MiB       11m ago  0.1.0                 …/probe/p1214.vr
+c323f83bf201e4a4    5.66 MiB       11m ago  0.1.0                 …/probe/ctrl2.vr
 ```
+
+Note the `COMPILER` column: the cache key carries the compiler
+**version**, so two compilers built from different sources at the same
+version share entries. Rebuilding the compiler does not invalidate this
+cache.
 
 ## Performance impact
 

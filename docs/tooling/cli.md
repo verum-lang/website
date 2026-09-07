@@ -631,10 +631,10 @@ verum workspace exec -- <command> [args...]
 ## Architectural type system (`verum arch`)
 
 ```bash
-verum arch primitives [--format plain|json]
-verum arch catalog    [--format plain|json]
-verum arch rules      [--format plain|json]
-verum arch graph      [--cog NAME] [--format dot|json]
+verum arch query   --at <path> [--json]
+verum arch explain <cog> [--format plain|json]
+verum arch catalog [--format plain|json] [--mtac-only] [--season <n>]
+verum arch check   <file.vr> [--format plain|json] [--strict]
 ```
 
 These commands provide structured machine-readable surfaces for
@@ -643,10 +643,20 @@ design):
 
 | Subcommand | What it surfaces |
 |---|---|
-| `primitives` | The eight ATS-V primitives (Capability / Boundary / Lifecycle / Foundation / Tier / MsfsStratum / CveClosure / VerifyStrategy) with their canonical variant rosters. |
-| `catalog`    | The 40-pattern anti-pattern catalog (AP-001..AP-040). Same data as `verum audit --arch-discharges`, surfaced without running the gate. |
-| `rules`      | The kernel-rule discharge inventory — same data the audit's `--kernel-rules` band reports. |
-| `graph`      | Per-cog `composes_with` graph rendering (Graphviz DOT or JSON). |
+| `query`   | "What may the code at this path do?" — the inferred capability surface (row-solved, transitive), the `@arch_module` pin, and the judgment between them. `--json` is the append-only machine contract. |
+| `explain` | Structured architectural type information for a cog: `Shape` + anti-pattern violations + suggestions. |
+| `catalog` | The anti-pattern catalog with stable codes `ATS-V-AP-NNN`. Measured 2026-09-07: 40 entries. Equivalent to `verum audit --arch-discharges` filtered to the catalog table. |
+| `check`   | ATS-V invariants on one `.vr` file: parses it, walks every module declaration, reads `@arch_module(...)`, runs the catalog and reports violations. A module without the annotation passes vacuously. |
+
+:::note Three names this page used to list do not exist
+`verum arch primitives`, `verum arch rules` and `verum arch graph` were
+documented here with flags and a description each; all three answer
+`error: unrecognized subcommand` (measured 2026-09-07, against the
+subcommand roster `verum arch --help` prints). The kernel-rule
+inventory the `rules` row promised is real, but it is a band of the
+audit — `verum audit --kernel-rules` — not a subcommand here. Nothing
+today prints the ATS-V primitive roster or a `composes_with` graph.
+:::
 
 For the catalog itself see
 **[Architecture-as-Types → anti-pattern overview](/docs/architecture-types/anti-patterns)**.
@@ -654,8 +664,8 @@ For the catalog itself see
 ## Cubical / HoTT primitives (`verum cubical`)
 
 ```bash
-verum cubical primitives  [--format plain|json]
-verum cubical rules       [--format plain|json]
+verum cubical primitives  [--output plain|json] [--category CAT]
+verum cubical rules       [--output plain|json]
 verum cubical face <formula> [--output ...]
 ```
 
@@ -669,7 +679,7 @@ cubical type theory in Verum. See
 ## Knowledge-base import (`verum import`)
 
 ```bash
-verum import --from owl2-fs <FILE> [--out PATH]
+verum import --from owl2-fs <FILE> [--output PATH]
 ```
 
 Inverse of `verum export`. Reads an external knowledge-base
@@ -683,7 +693,7 @@ For Coq / Lean4 / Mizar / Isabelle theorem import see
 ## Program extraction (`verum extract`)
 
 ```bash
-verum extract [--target verum|ocaml|lean|coq] [--out DIR]
+verum extract [INPUT] [--output DIR]
 ```
 
 Walks the project for declarations marked with `@extract` /
@@ -696,8 +706,8 @@ Default output dir is `extracted/`. See
 ## Proof-term verification
 
 ```bash
-verum check-proof    [--cert FILE]
-verum elaborate-proof <FILE> [--out DIR]
+verum check-proof    <FILE.vproof>
+verum elaborate-proof <FILE> [--output-dir DIR]
 ```
 
 `check-proof` re-verifies a `.vproof` JSON certificate
@@ -718,7 +728,7 @@ output is consumable by `check-proof`.
 verum cache path                 # show cache root
 verum cache list                 # entries by hash
 verum cache show <ENTRY>         # entry detail
-verum cache gc [--budget BYTES]  # evict LRU until under budget
+verum cache gc [--max-size BYTES]  # evict LRU until under the size
 verum cache clear                # wipe everything
 ```
 
@@ -758,14 +768,16 @@ built artefact and the running toolchain.
 ```bash
 verum hooks install   [--force]
 verum hooks uninstall
-verum hooks list
+verum hooks status
 ```
 
 Manages git hooks for the current project. The `install`
 subcommand wires
 `verum lint --since HEAD --severity error` + `verum fmt --check`
 into `.git/hooks/pre-commit`. Each generated hook carries a
-header marker so `uninstall` only touches files we wrote.
+header marker so `uninstall` only touches files we wrote, and
+`status` reports whether a hook is installed and whether it is one
+of ours.
 
 ## Shell completions (`verum completions`)
 

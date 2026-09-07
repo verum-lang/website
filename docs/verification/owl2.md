@@ -684,13 +684,13 @@ this property at audit time.
 ## 9. CLI workflow
 
 ```bash
-verum audit --framework-axioms --by-lineage owl2_fs   # OWL 2 footprint
+verum audit --framework-axioms                        # OWL 2 footprint
 verum audit --coord                                    # MSFS coord projection
 verum audit --owl2-classify                            # graph-aware classification (§7)
 verum audit --hygiene                                  # articulation hygiene
 verum audit --epsilon                                  # Actic ε-distribution (incl. ε_classify)
-verum check --hygiene                                  # kernel-level hygiene
-verum verify --strategy formal                         # subsumption / classification
+verum audit --hygiene-strict                           # binding hygiene (CI)
+verum verify --mode proof                              # subsumption / classification
 verum export --to owl2-fs                              # OWL 2 FS emitter (§8)
 verum import --from owl2-fs                            # OWL 2 FS importer
 ```

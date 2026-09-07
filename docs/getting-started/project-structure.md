@@ -325,7 +325,7 @@ Run tests:
 verum test
 verum test --filter "addition"             # by name
 verum test --tier integration              # only integration/
-verum test --verify formal                 # promote strategy for tests
+verum test --tier aot                      # run the suite at tier 1
 ```
 
 ## Benchmarks
@@ -347,7 +347,7 @@ Run:
 ```bash
 verum bench
 verum bench --filter "sort"
-verum bench --compare-to baseline
+verum bench --baseline baseline
 ```
 
 ## Examples

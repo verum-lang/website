@@ -1568,10 +1568,10 @@ emitting one diagnostic per recovery (no cascades).
 ## Tooling
 
 ```bash
-verum grammar dump            # render railroad diagrams
-verum grammar search <rule>   # locate a production
-verum grammar validate FILE   # validate a .vr file against the grammar only
-verum disasm --show-tokens    # tokeniser output for debugging
+verum grammar dump            # does not exist — see note below
+verum grammar search <rule>   # does not exist — see note below
+verum grammar validate FILE   # does not exist — see note below
+verum disasm --show-tokens    # does not exist — see note below
 ```
 
 :::warning None of these four commands exists

@@ -81,7 +81,7 @@ When you mark a function with `@cap(name = "X")`:
    compiler rejects any call path that doesn't transitively carry
    the capability.
 2. **The capability is recorded in the build manifest.** Running
-   `verum analyze --declassifications` lists every declassification
+   `verum analyze --declassifications   # NOT IMPLEMENTED — design only` lists every declassification
    site in the final binary, with file/line and the reason.
 3. **Label-downgrade operations** (`declassify`) refuse to execute
    unless the surrounding function carries the matching `@cap`.
@@ -185,7 +185,7 @@ come through `summary_for_audit` — and reviewers can audit it once.
 ### Every declassify call is audited
 
 ```bash
-verum analyze --declassifications
+verum analyze --declassifications   # NOT IMPLEMENTED — design only
 ```
 
 Prints:
@@ -231,7 +231,7 @@ audit tools something to group on.
 
 ```bash
 verum analyze --context       # all @cap annotations + their call chains
-verum analyze --capabilities  # summary table
+verum analyze --capabilities  # NOT IMPLEMENTED — design only
 ```
 
 Output:
@@ -264,7 +264,7 @@ fn my_module.charge_card
 ### Diff against last release
 
 ```bash
-verum analyze --capabilities-diff origin/main..HEAD
+verum analyze --capabilities-diff origin/main..HEAD   # NOT IMPLEMENTED — design only
 ```
 
 Shows caps added, removed, or now-newly-required. Perfect for PR

@@ -281,7 +281,7 @@ for non-CLI callers.
 ### 4.1 CI fast loop
 
 ```bash
-verum check --strict
+verum check
 ```
 
 Just type-check, invoke SMT only for refinements, 3s timeout each.
@@ -289,8 +289,8 @@ Just type-check, invoke SMT only for refinements, 3s timeout each.
 ### 4.2 Pre-commit full proof
 
 ```bash
-verum verify --mode static --strategy formal --timeout 60 \
-             --counterexample=minimal --export target/verify-ci.json
+verum verify --mode static --timeout 60 \
+             --export target/verify-ci.json
 ```
 
 Every refinement + ensures clause proven; short counterexamples on
@@ -299,10 +299,10 @@ failure; JSON export for dashboard.
 ### 4.3 Release-grade certification
 
 ```bash
-verum verify --mode proof --strategy certified \
-             --export-proofs target/proofs/ \
+verum verify --mode proof \
              --budget 30m \
-             --profile --show-costs
+             --profile --show-cost
+verum export-proofs --to lean --output target/lean/export.lean
 ```
 
 Full kernel replay, portfolio race, cross-validation, certificates
@@ -311,9 +311,9 @@ written for archival. Budget-capped.
 ### 4.4 Targeted debug
 
 ```bash
-verum verify --mode static --strategy thorough \
+verum verify --mode static \
              core/math/arith.vr::safe_div \
-             --counterexample=full --interactive
+             --interactive
 ```
 
 Single obligation, maximum detail, drop into interactive explorer
@@ -438,7 +438,7 @@ verum audit [OPTIONS]
 Example:
 
 ```bash
-verum audit --framework-axioms --cone core.math --format json | jq .
+verum audit --framework-axioms --format json | jq .
 ```
 
 Emits JSON listing every framework axiom used transitively in

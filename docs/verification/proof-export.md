@@ -134,7 +134,7 @@ that must be re-declared (or trusted verbatim) in the target
 system. Running
 
 ```bash
-verum audit --framework-axioms --cone <module>
+verum audit --framework-axioms
 ```
 
 produces exactly this list.
@@ -234,10 +234,10 @@ and Metamath for smallest-TCB archival.
 ## 5. CLI
 
 ```bash
-verum export-proofs target/proofs/ --to lean --out target/lean/
-verum export-proofs target/proofs/ --to coq --out target/coq/
-verum export-proofs target/proofs/ --to dedukti --out target/dk/
-verum export-proofs target/proofs/ --to metamath --out target/mm/
+verum export-proofs target/proofs/ --to lean --output target/lean/export.lean
+verum export-proofs target/proofs/ --to coq --output target/coq/export.v
+verum export-proofs target/proofs/ --to dedukti --output target/dk/export.dk
+verum export-proofs target/proofs/ --to metamath --output target/mm/export.mm
 ```
 
 Additional flags:

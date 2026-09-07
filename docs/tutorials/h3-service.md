@@ -50,18 +50,28 @@ Generate a TLS 1.3 cert + key pair signed with Ed25519 — the modern
 default that warp's signature_algorithms list offers first:
 
 ```bash
-$ verum cert gen \
-    --algorithm ed25519 \
-    --subject "CN=localhost" \
-    --san "DNS:localhost,IP:127.0.0.1" \
-    --validity 365d \
-    --out tls/
+$ mkdir -p tls
+$ openssl req -x509 -newkey ed25519 -noenc \
+    -keyout tls/key.pem -out tls/cert.pem \
+    -days 365 -subj "/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 ```
 
 This drops `tls/cert.pem` (single-cert chain) and `tls/key.pem`
-(Ed25519 private key). For real deployments swap to a Let's Encrypt
-ACME flow via `core.security.x509.acme`; for this tutorial the
-self-signed pair is enough.
+(Ed25519 private key). Verify with
+`openssl x509 -in tls/cert.pem -noout -text` — the signature algorithm
+reads `ED25519` and both SANs are listed. For real deployments swap to
+a Let's Encrypt ACME flow via `core.security.x509.acme`; for this
+tutorial the self-signed pair is enough.
+
+:::note Why openssl and not a verum subcommand
+This step read `verum cert gen --algorithm ed25519 …`. The toolchain
+has no certificate-generation command — `verum --help` lists
+`check-proof`, `elaborate-proof` and `cert-replay`, all of which are
+about SMT and kernel proof certificates, not X.509. The `openssl`
+invocation above was run on 2026-09-07 and produces exactly the two
+files the rest of the tutorial expects.
+:::
 
 ## 3. Domain types
 
