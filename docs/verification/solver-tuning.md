@@ -31,27 +31,31 @@ verification stack. For each, you see:
   Config, or Solver) the field reaches; see [scope discipline](#parameter-scope-discipline)
   for why this matters.
 
-:::warning The **Where set** lines describe an intent, not a working path
-Every field listed is **load-bearing inside the solver**: toggling it in
-Rust has an observable effect on the corresponding solver invocation.
-That is what the 2026-04-29 audit checked, and it still holds.
+Every field listed is **load-bearing**: toggling it has an observable
+effect on the corresponding solver invocation. That is what the
+2026-04-29 audit checked, and it still holds.
 
-What that audit did **not** check, and what a 2026-09-07 re-measurement
-found: **nothing loads solver configuration from a project's manifest.**
-`[verify]` deserializes into `VerifyConfig`
-(`crates/verum_cli/src/config.rs`), which has no `solver` field, no
-`#[serde(flatten)]` and no catch-all — so serde drops `[verify.solver]`
-and every sub-table under it without a warning. The `[smt.*]` prefix
-some of these structs document in their own Rust doc-comments is not a
-working alternative: `SmtConfig::from_toml_file` is called from one
-example programme and from nowhere in `verum_cli`, `verum_compiler` or
-`verum_verification`.
+:::info The **Where set** lines became a working path on 2026-09-07
+Before that date they described an intent. `[verify]` deserialized into
+a `VerifyConfig` with no `solver` field, no `#[serde(flatten)]` and no
+catch-all, so serde dropped `[verify.solver]` and every sub-table under
+it in silence — the values below were accurate about what ran and
+unreachable from a manifest (T1233).
 
-So read the tables below as **what the defaults are and what changing
-them would do** — accurate on both counts — and not yet as a manifest
-API. Tracked as T1233; the [Verum.toml
-reference](/docs/reference/verum-toml#verifysolver--solver-tuning)
-carries the same warning at the section a reader would edit.
+They now deserialize, with `deny_unknown_fields`: a misspelled key or
+table fails the parse and names the offender instead of vanishing. A
+partial table is fine — every field defaults, so setting one key leaves
+its siblings and the other tables alone.
+
+Sub-table names follow the struct: `[verify.solver.qe]`,
+`[verify.solver.sep_logic]`, `[verify.solver.z3]`,
+`[verify.solver.cvc5]`, `[verify.solver.static]`, and so on.
+
+Two sections on this page are outside that surface, for different
+reasons, and both say so where they stand: `RefinementConfig` marks
+`[verify.solver.refinement]` **planned for v0.4**, and
+`SubsumptionConfig` names no manifest location at all — it is reached
+through `RefinementConfig`, not set directly.
 :::
 
 ---

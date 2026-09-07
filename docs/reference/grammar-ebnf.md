@@ -361,9 +361,9 @@ audit walker / CLI driver) dispatch on them at compile time:
 |---|---|---|
 | `@verify(strategy)` | §12 | `verum_smt::verify_strategy::extract_from_attributes` |
 | `@framework(name, "cite")` | §6 | `verum_kernel::axiom::load_framework_axioms` (TCB) |
-| `@framework_translate(s, t, "cite")` | Task C7b | `verum_cli::audit::collect_framework_markers_from` |
-| `@extract[(target)]` / `@extract_witness[(target)]` / `@extract_contract[(target)]` | §8.6 | `verum_cli::extract::collect_extract_requests` |
-| `@enact(epsilon = "...")` | §11 | `verum_cli::audit::audit_epsilon` |
+| `@framework_translate(s, t, "cite")` | Task C7b | `verum_cli::commands::audit::collect_framework_markers_from` |
+| `@extract[(target)]` / `@extract_witness[(target)]` / `@extract_contract[(target)]` | §8.6 | `verum_cli::commands::extract::collect_extract_requests` |
+| `@enact(epsilon = "...")` | §11 | `verum_cli::commands::audit::audit_epsilon` |
 | `@accessibility(λ)` | Diakrisis Axi-4 | audit walker |
 | `@quantity(0 \| 1 \| omega)` | §7.6 | type checker |
 | `@derive(Trait, ...)` | §8.7 | derive macros |

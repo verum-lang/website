@@ -141,38 +141,39 @@ versioned). Useful for IDE integrations and CI dashboards.
 
 ## 4. Extraction pipeline
 
-A counterexample is built in five stages. Each stage reads from
-the previous and may be skipped (per mode).
+A counterexample is built in three steps. Everything in this
+section lives in `verum_smt::counterexample`.
 
-### 4.1 Stage 1 — Raw model extraction
+### 4.1 Steps 1 and 2 — Model extraction and naming
 
-When the SMT layer returns `sat`, the translator asks for the
-model via the solver's native API (`(get-model)` in SMT-LIB). The
-model is a mapping from SMT constants to concrete values
-(integers, booleans, reals, bit-vectors, arrays, sequences). This
-is the starting substrate.
+When the SMT layer returns `sat`, `CounterExampleExtractor::new`
+takes the solver's model and `extract(var_names, constraint)`
+walks it once, keeping the constants whose declaration name
+matches one of the variables asked for and converting each
+interpretation into a `CounterExampleValue` (`Int`, `Bool`,
+`Float`, `Text`, arrays).
 
-Implementation: `verum_smt::model::extract_model(solver) ->
-RawModel`.
+Extraction and naming are the SAME pass, not two: `extract_value`
+finds a constant BY ITS VERUM NAME in the model's declarations,
+so there is no separate raw stage to translate back from.
 
-### 4.2 Stage 2 — De-SMT translation
+Implementation: `verum_smt::counterexample::CounterExampleExtractor`
+— `new(&model)` then `extract(&var_names, constraint)`.
 
-Each SMT constant is mapped back to its Verum name (parameter,
-local binding, or synthesized `skol_<n>` for Skolem constants).
-Values are converted to Verum types (`Int`, `Bool`, `Text`,
-`List<_>`, etc.) using the translator's inverse encoding tables.
+### 4.2 Step 3 — The contradiction line
 
-Implementation: `verum_smt::model::desmtify(raw, trans_ctx)`.
+`CounterExample::new` derives its `description` from the
+assignments and the violated constraint: an empty assignment map
+yields `Constraint '<c>' is always false`, and otherwise the
+description lists `name = value` pairs in sorted order alongside
+the constraint.
 
-### 4.3 Stage 3 — Contradiction synthesis
+This is a formatting step over the model, not an abstract
+interpretation of the goal.
 
-The raw model is plugged into the original obligation's goal; the
-places where the evaluation diverges from expected are identified
-by running the goal expression's abstract interpretation against
-the model. A contradiction statement is produced in plain English
-referencing the actual divergence.
-
-Implementation: `verum_verification::counterexample::synthesize_contradiction`.
+Implementation: `CounterExample::new` (its private
+`generate_description`); rendered for the user by
+`CounterExample::format_with_suggestions`.
 
 ### 4.4 Stage 4 — Minimization
 
@@ -194,41 +195,44 @@ false negatives (false positives are cheap — we keep an
 unused variable; false negatives are bugs — we'd hide a
 relevant one).
 
-**Phase 4b: semantic minimization** (on `Thorough` /
-`Certified`). Delta-debugging pass that requires solver
-re-invocation:
-
-- **Value reduction.** For each integer parameter,
-  binary-search toward zero while the obligation remains
-  falsifiable.
-- **Collection reduction.** For each `List<T>`, repeatedly
-  remove elements and retest.
-- **Constraint pruning.** Drop hypotheses from the context
-  one at a time; those that don't change the outcome are
-  extraneous and are omitted from the report.
+**Phase 4b: delta-debugging minimization**
+(`CounterExampleMinimizer::minimize`, reached through
+`CounterExampleAnalyzer::minimize`). It takes a caller-supplied
+`is_failing` predicate and drops assignments one at a time,
+keeping a variable only when removing it stops the obligation
+failing. The predicate is where a re-solve happens, so the cost
+belongs to the caller rather than to this pass.
 
 Pipeline composition: `extract → minimize_syntactic →
-minimize_semantic`. The syntactic pass reduces the input
-domain for the semantic pass; on Fast-strategy verification,
-only the syntactic pass runs (no re-solve cost).
+minimize`. The syntactic pass reduces the input domain for the
+delta-debugging pass; a caller that supplies no predicate runs
+only the syntactic one (no re-solve cost).
 
-Semantic minimization is capped at 30s by default, tunable
-via `--minimize-timeout`.
+The reductions are per-ASSIGNMENT (drop a variable and retest).
+Value-narrowing inside a variable — binary-searching an integer
+toward zero, shrinking a `List<T>` element by element — is not
+implemented, and neither is a timeout on the pass.
 
-### 4.5 Stage 5 — Fix suggestion
+### 4.5 Step 4 — Suggestions
 
-A pattern-matching pass over the minimized counterexample and the
-AST emits fix suggestions from a curated rule base. Common rules:
+`verum_smt::counterexample::generate_suggestions(counterexample,
+constraint)` reads the CONSTRAINT TEXT and the assignments and
+emits plain-language advice. The rules it has today:
 
-- Integer division: suggest `floor_div` vs `truncating_div`.
-- Unsigned overflow: suggest saturating or widening variants.
-- Off-by-one: suggest `.len() - 1` vs `.len()`.
-- Refinement too strong: suggest the minimal refinement that
-  passes.
+- a numeric comparison whose witness violates it — "Add
+  precondition: require `x > 0`", naming the variable and the
+  bound taken from the constraint;
+- a constraint containing `/` — check for division by zero;
+- a constraint mentioning `length` or `size` — verify indices are
+  within bounds;
+- otherwise a single fallback: "Add stronger preconditions to
+  rule out this case".
 
-Fix rules are defined in `verum_verification::fix_suggestions` and
-are plugin-extensible (see [Tactic DSL](./tactic-dsl.md) for
-authoring).
+The output is rendered by `CounterExample::format_with_suggestions`.
+
+The rule base is a fixed `if`-chain over the constraint string, not
+a plugin surface and not AST-driven; there is no rule module to
+extend.
 
 ### 4.6 Failure-category classification
 
@@ -373,32 +377,33 @@ not conclude either way.
 
 ## 8. Interactive counterexample exploration
 
-The `verum verify --interactive` mode enters a REPL-style
-counterexample explorer for failed obligations:
+`verum verify --interactive` scans the project, lists the files
+with verification issues, and offers a small prompt over them:
 
 ```text
-> load core/math/arith.vr
-Loaded. 4 obligations; 1 failed.
+  Welcome to Verum interactive verification!
+  Scanning project for functions with verification issues...
 
-> show failed
-1. safe_div (ensures, line 42)
+  Files with verification issues:
 
-> explain 1
-<full counterexample as §2>
+    1. core/math/arith.vr
+       Issue: <the verifier's message>
 
-> reduce a
-reducing 'a' via binary search...
-a = -1, b = 2 still falsifies.
+  Commands:
+    1-N:  Re-verify file with increased timeout
+    help: Show proof tactics
+    quit: Exit interactive mode
 
-> reduce b
-b = 1: claim holds. b = 2: fails. Minimal b = 2.
-
-> trace
-Executes the body on the minimized input, showing each intermediate value.
+  >
 ```
 
-Implementation pointer:
-`verum_cli::commands::verify::interactive_explore`.
+So the loop is per-FILE re-verification with a longer budget, plus
+a tactics reminder. Per-obligation commands over a counterexample —
+`show failed`, `explain <n>`, `reduce <var>`, `trace` — are not
+implemented; an earlier revision of this page documented them as
+though they were.
+
+Implementation: `verum_cli::commands::verify::execute_interactive`.
 
 ---
 

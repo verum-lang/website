@@ -232,34 +232,36 @@ Direct passthroughs to the backend configs (`Z3Config`,
 for the full matrix and which solver-adapter parameter scope each
 setting reaches.
 
-:::warning None of this block is read from `Verum.toml` today
-This used to say every field is **load-bearing**. Measured 2026-09-07,
-and the first correction of it understated the gap — the finding is not
-that some structs lack `Deserialize`, it is that **nothing loads solver
-configuration from a project's manifest at all**:
+:::info A misspelled key here is an ERROR, not a shrug
+`[verify.solver]` and its sub-tables deserialize with
+`deny_unknown_fields`. Writing `[verify.solver.sep-logic]` (hyphen) or
+`max_unfoldng_depth` fails the manifest parse and names the offender,
+rather than being dropped.
 
-* `[verify]` deserializes into `VerifyConfig`
-  (`crates/verum_cli/src/config.rs:257`). That struct has **no `solver`
-  field**, no `#[serde(flatten)]` and no catch-all, so serde silently
-  drops `[verify.solver]` and every sub-table under it.
-* `SmtConfig` (`crates/verum_smt/src/config.rs`) CAN deserialize solver
-  settings, and its own docs spell the sections `[smt]`, `[smt.fallback]`,
-  `[smt.portfolio]`, `[smt.validation]` — a different prefix from the one
-  documented here. Its loader `SmtConfig::from_toml_file` is called from
-  exactly one place in the tree: `verum_smt/examples/backend_switching.rs`.
-* `SmtConfig` appears nowhere in `verum_compiler`, `verum_cli` or
-  `verum_verification`.
+That is deliberate, and it is the point of the section's history. Until
+2026-09-07 none of this block was read at all: `VerifyConfig` had no
+`solver` field, no `#[serde(flatten)]` and no catch-all, so serde
+dropped `[verify.solver]` and every table under it in silence — forty-
+seven documented keys, no warning, no error, no effect. A fix that
+stayed quiet about typos would have moved that silence one level down
+instead of closing it. Tracked as T1233.
 
-So a key set here produces no warning, no error and no effect, whichever
-prefix it is written under. The values shown are the defaults each Rust
-struct carries, so they still document what runs — they just cannot be
-changed from the manifest.
+Two consequences worth knowing:
 
-Eight of the ten backing structs also derive only
-`#[derive(Debug, Clone)]` (bisimulation, interpolation, optimizer,
-parallel, qe, sep_logic, unsat_core, static); `Cvc5Config` and one of the
-three `CacheConfig` definitions do derive `Deserialize`. That is a second
-gap behind the first, not an alternative to it. Tracked as T1233.
+* **A partial table is fine.** Every field defaults, so
+  `[verify.solver.qe] simplify_level = 0` leaves the other six keys of
+  that table — and the other nine tables — exactly as they were.
+* **The values are read once, early.** `verum build` and `verum verify`
+  install this block before any verification work begins; the solver
+  layer refuses a later install rather than let one component run on
+  the manifest and another on the defaults.
+
+`[smt]`, `[smt.fallback]`, `[smt.portfolio]` and `[smt.validation]`
+appear in `verum_smt`'s own Rust doc-comments. They are NOT an
+alternative spelling for a project manifest: that loader
+(`SmtConfig::from_toml_file`) reads a standalone file and is called from
+one example programme. In a `Verum.toml`, `[verify.solver.*]` is the
+surface.
 :::
 
 ```toml
@@ -399,14 +401,11 @@ The full chain when you set a value in `verum.toml`:
 
 ```
 Verum.toml [verify.solver.<sub>]
-    ↓ ── NOT CONNECTED (T1233): `VerifyConfig` has no `solver` field,
-    │    so serde drops the table here without a warning
-CompilerOptions (verum_compiler::options)
-    ↓ (passed at session construction)
-Phase config (ContractVerificationPhase::VerificationConfig,
-              verum_smt::static_verification::StaticVerifier)
-    ↓ (forwarded into the subsystem)
-Subsystem config (RefinementConfig, QEConfig, InterpolationConfig, …)
+    ↓ (VerifyConfig.solver — verum_cli::config)
+verum_smt::config::install(…)   ← once, before any verification work
+    ↓ (verum_smt::config::effective)
+Subsystem constructors (QuantifierEliminator::new, StaticVerifier,
+                        SeparationLogic::new, SepLogicEncoder::new)
     ↓ (consulted by the verifier method)
 Backend config (verum_smt::z3_backend::Z3Config,
                 verum_smt::cvc5_backend::Cvc5Config)
@@ -414,12 +413,15 @@ Backend config (verum_smt::z3_backend::Z3Config,
 Adapter Params / SMT-LIB options
 ```
 
-Everything below the first arrow works and is exercised by the solver
-suites. The first arrow is the gap: the chain runs on each struct's
-`Default`, and the manifest cannot reach it. An earlier revision of this
-page claimed every field in the chain had been audited for "set but
-never read"; the audit that produced that sentence measured the arrows
-BELOW the break and not the break itself. Tracked as T1233.
+`Default::default()` is deliberately NOT rerouted through the installed
+configuration — only the `new()` constructors consult it. A test or a
+caller that asks for the literal defaults still gets them, whatever a
+manifest elsewhere says.
+
+An earlier revision of this page claimed every field in the chain had
+been audited for "set but never read". That audit measured the arrows
+below the first one and not the first one itself, which was the arrow
+that did not exist (T1233).
 
 ## `[workspace]`
 
