@@ -232,26 +232,34 @@ intermediate verifier configs — see
 for the full matrix and which solver-adapter parameter scope each
 setting reaches.
 
-:::warning Eight of these sub-tables are not read yet
-This block used to say every field is **load-bearing**. Measured
-2026-09-07: eight of the ten `[verify.solver.*]` sub-tables below —
-47 keys in total — are backed by a struct that derives only
-`#[derive(Debug, Clone)]`, with no `Deserialize` on any definition of
-that name anywhere in the tree, so no TOML reader can populate them.
-Setting one of these keys produces no warning, no error and no effect.
+:::warning None of this block is read from `Verum.toml` today
+This used to say every field is **load-bearing**. Measured 2026-09-07,
+and the first correction of it understated the gap — the finding is not
+that some structs lack `Deserialize`, it is that **nothing loads solver
+configuration from a project's manifest at all**:
 
-    not read   bisimulation, interpolation, optimizer, parallel, qe,
-               sep_logic, unsat_core, static
-    wired      smt-backend  (Cvc5Config, verum_smt/src/config.rs,
-                             derives Serialize + Deserialize)
-    unverified cache        (CacheConfig has three definitions, one of
-                             them deserializable; which one this table
-                             reaches was not established)
+* `[verify]` deserializes into `VerifyConfig`
+  (`crates/verum_cli/src/config.rs:257`). That struct has **no `solver`
+  field**, no `#[serde(flatten)]` and no catch-all, so serde silently
+  drops `[verify.solver]` and every sub-table under it.
+* `SmtConfig` (`crates/verum_smt/src/config.rs`) CAN deserialize solver
+  settings, and its own docs spell the sections `[smt]`, `[smt.fallback]`,
+  `[smt.portfolio]`, `[smt.validation]` — a different prefix from the one
+  documented here. Its loader `SmtConfig::from_toml_file` is called from
+  exactly one place in the tree: `verum_smt/examples/backend_switching.rs`.
+* `SmtConfig` appears nowhere in `verum_compiler`, `verum_cli` or
+  `verum_verification`.
 
-The defaults each struct carries in Rust are what actually runs, and
-they are what the values below document. The gap is the plumbing, not
-the intent — `separation_logic.rs` already warns when its config is
-non-default, expecting these to be settable. Tracked as T1233.
+So a key set here produces no warning, no error and no effect, whichever
+prefix it is written under. The values shown are the defaults each Rust
+struct carries, so they still document what runs — they just cannot be
+changed from the manifest.
+
+Eight of the ten backing structs also derive only
+`#[derive(Debug, Clone)]` (bisimulation, interpolation, optimizer,
+parallel, qe, sep_logic, unsat_core, static); `Cvc5Config` and one of the
+three `CacheConfig` definitions do derive `Deserialize`. That is a second
+gap behind the first, not an alternative to it. Tracked as T1233.
 :::
 
 ```toml
