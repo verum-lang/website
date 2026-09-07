@@ -11,7 +11,11 @@ status_detail: >-
   the status stops at regression-only.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.simd` — Portable SIMD
+
+<StdlibStatus status="regression-only" />
 
 Vectorised data types with platform dispatch. On x86_64 you get
 SSE/AVX/AVX-512 where available; on aarch64 you get NEON/SVE; scalar

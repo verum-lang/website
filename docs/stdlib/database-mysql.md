@@ -5,7 +5,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.database.mysql` — pure-Verum MySQL 8 driver
+
+<StdlibStatus status="undocumented" />
 
 `core.database.mysql` — codename **spindle (mysql backend)** — is a
 pure-Verum implementation of the MySQL 8.0 binary protocol.  Zero

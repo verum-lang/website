@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/verify/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task closes. @ignore pins flag surfaced defects with task attribution.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.verify` — Verification embedding API
+
+<StdlibStatus status="regression-only" />
 
 `core.verify` is the user-facing entry point for embedding
 verification into Verum programs. It is the stdlib complement to

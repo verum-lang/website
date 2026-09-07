@@ -5,7 +5,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/protobuf/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.protobuf` — Protocol Buffers wire-format codec
+
+<StdlibStatus status="regression-only" />
 
 Low-level encoder / decoder for the canonical Protocol Buffers wire
 format. Sufficient to hand-build message layouts for gRPC or Connect

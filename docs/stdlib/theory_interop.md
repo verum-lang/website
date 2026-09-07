@@ -6,7 +6,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.theory_interop` — Theory interoperation layer
+
+<StdlibStatus status="undocumented" />
 
 A computational **∞-topos of formally represented theories**: each
 theory lives as a sheaf, translations between theories are Kan

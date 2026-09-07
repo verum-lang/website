@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/storage/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.storage` — Abstract object-storage subsystem
+
+<StdlibStatus status="regression-only" />
 
 `core.storage` provides a backend-agnostic object-store interface
 (S3-style get / put / head / delete / list / presign). Consumers

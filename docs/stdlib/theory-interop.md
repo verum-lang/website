@@ -6,7 +6,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.theory_interop` — theory interchange primitives
+
+<StdlibStatus status="undocumented" />
 
 A research-facing stdlib module that organises, translates, and
 audits **formally represented theories** as objects in an

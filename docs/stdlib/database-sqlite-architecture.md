@@ -6,7 +6,11 @@ status_detail: not yet routed through `core-tests/` — page reflects source-of-
 sidebar_position: 2
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # Loom — SQLite engine deep-dive
+
+<StdlibStatus status="undocumented" />
 
 This page complements the high-level overview in [`core.database`](./database)
 with a layer-by-layer dissection of every module under

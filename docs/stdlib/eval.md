@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/eval/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. Several @ignore pins flag a tracked toolchain task static-method dispatch defect.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.eval` — Call-by-Push-Value
+
+<StdlibStatus status="regression-only" />
 
 Term algebra for **Call-by-Push-Value** (CBPV) — Levy's unifying
 framework that sits between call-by-value and call-by-name. This

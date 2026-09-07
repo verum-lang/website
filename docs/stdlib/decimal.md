@@ -7,7 +7,11 @@ status_detail: not yet routed through `core-tests/` — page reflects source-of-
 slug: /stdlib/decimal
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.text.numeric.decimal`
+
+<StdlibStatus status="undocumented" />
 
 `Decimal` is a foundational stdlib type for use cases where
 binary float (`Float = f64`) is unsuitable: monetary amounts,

@@ -5,7 +5,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.mesh`
+
+<StdlibStatus status="undocumented" />
 
 **Layer 5.5 — Service-mesh integration**
 

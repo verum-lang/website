@@ -5,7 +5,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.net.proxy` — reverse-proxy toolkit
+
+<StdlibStatus status="undocumented" />
 
 `core.net.proxy` is the *composable-middleware* half of Verum's
 reverse-proxy stack. Where `core.net.weft` provides the full server-

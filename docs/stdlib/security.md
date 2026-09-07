@@ -7,7 +7,11 @@ status_detail: >-
   `core-tests/security/` exists but most crypto primitives gated by `core.sys.common.random_bytes` intrinsic missing from VBC dispatch table (same defect class blocks `collections.bloom` / `hyperloglog` / `count_min` / `reservoir`). Bloom/HLL surface the covered subset active under `--interp`; SHA / HMAC / AES bound by precompile-time collisions on `BLOCK_SIZE` per-module. See `core-tests/INVENTORY.md::collections/bloom` for cross-module shape.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.security`
+
+<StdlibStatus status="regression-only" />
 
 Verum's security stdlib is a consolidated subtree covering:
 

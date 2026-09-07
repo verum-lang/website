@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/redis/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.redis` — Multi-purpose Redis subsystem
+
+<StdlibStatus status="regression-only" />
 
 Production-grade Redis client speaking RESP2 / RESP3. Used as a
 multi-purpose data store: cache, pub/sub, streams (event queue),

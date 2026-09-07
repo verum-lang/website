@@ -10,7 +10,11 @@ status_detail: >-
   conformance inventory for per-submodule truth.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.math` — Mathematics
+
+<StdlibStatus status="partial" />
 
 The largest module in the stdlib — a 10-layer mathematical stack plus a
 substantial pure-mathematics branch. libm-free: every function is

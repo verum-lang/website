@@ -5,7 +5,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/types/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.types` — advanced type-system primitives
+
+<StdlibStatus status="regression-only" />
 
 This module is the user-facing surface of the compiler's research
 machinery. It exposes three orthogonal vocabularies:

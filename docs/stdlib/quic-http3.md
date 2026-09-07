@@ -5,7 +5,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # QUIC and HTTP/3
+
+<StdlibStatus status="undocumented" />
 
 The QUIC + HTTP/3 documentation has moved into dedicated stack sections
 that mirror the real implementation layout:

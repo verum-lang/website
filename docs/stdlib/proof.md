@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/proof/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.proof` — Proof infrastructure
+
+<StdlibStatus status="regression-only" />
 
 Runtime support for `@verify(certified)` and proof-carrying bytecode.
 Two public files; one legacy.

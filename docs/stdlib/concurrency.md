@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/concurrency/<submodule>/ on 2026-05-24 round 7 (post-rebuild recovery). Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task closes. @ignore pins flag surfaced defects with task attribution.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.concurrency` — Process algebra & session types
+
+<StdlibStatus status="regression-only" />
 
 Formal models for concurrent computation: the **π-calculus** (for
 process semantics) and **session types** (for structured protocol

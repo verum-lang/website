@@ -6,7 +6,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — there is no `core-tests/script/` suite, so this page reflects source-of-truth at last edit, not verified runtime behaviour.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.script` — Verum as its own scripting language
+
+<StdlibStatus status="undocumented" />
 
 A host Verum program can compile and run Verum **scripts** at runtime,
 in-process, on the same VBC interpreter the host itself runs on.

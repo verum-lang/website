@@ -6,7 +6,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.term` — Terminal / TUI framework
+
+<StdlibStatus status="undocumented" />
 
 A seven-layer TUI framework. Each layer is self-contained; higher
 layers are optional, so you can drop down to raw mode when you need

@@ -5,7 +5,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.database` — native SQLite ("loom")
+
+<StdlibStatus status="undocumented" />
 
 `core.database.sqlite.native` — codename **loom** — is a pure-Verum
 reimplementation of SQLite 3.x. It ships zero C code; every layer from

@@ -5,7 +5,11 @@ status: undocumented
 status_detail: not yet routed through `core-tests/` — page reflects source-of-truth at last edit, not verified runtime behaviour
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.net.http2` — HTTP/2 + HPACK
+
+<StdlibStatus status="undocumented" />
 
 Pure-Verum implementation of HTTP/2 (RFC 7540) and its sibling header
 compression format HPACK (RFC 7541). `core.net.http2` supplies the

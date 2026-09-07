@@ -7,7 +7,11 @@ status_detail: Conformance suites landed in core-tests/money/ on 2026-05-24. Sub
 slug: /stdlib/money
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.money`
+
+<StdlibStatus status="regression-only" />
 
 Money type with currency-correct arithmetic. Two cogs:
 

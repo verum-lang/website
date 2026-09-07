@@ -10,7 +10,11 @@ status_detail: >-
   through umbrella re-exports are the two open areas.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.intrinsics` — Compiler intrinsics
+
+<StdlibStatus status="partial" />
 
 The compiler-provided bridge between Verum code and CPU/runtime
 operations. Higher-level stdlib modules wrap these with safe APIs;

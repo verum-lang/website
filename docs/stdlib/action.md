@@ -7,7 +7,11 @@ status_detail: Conformance suites landed in core-tests/action/ on 2026-05-24. Su
 slug: /stdlib/action
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.action` — the DC-side Diakrisis enactments
+
+<StdlibStatus status="regression-only" />
 
 The `core.action` module is the **Dependency-Centric (DC)** half
 of Verum's AC/OC duality. Where `core.math` ships the *objects* —

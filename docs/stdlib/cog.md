@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/cog/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. Several @ignore pins flag a tracked toolchain task static-method dispatch defect.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.cog` — Cog tooling subsystem
+
+<StdlibStatus status="regression-only" />
 
 A **cog** is the Verum unit of package distribution: a `.vbca`
 archive containing pre-compiled VBC modules + manifest metadata,

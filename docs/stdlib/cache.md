@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/cache/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. See per-module audit.md for deferred items.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.cache` — Abstract cache subsystem
+
+<StdlibStatus status="regression-only" />
 
 `core.cache` provides a backend-agnostic cache interface. Consumers
 program against the `CacheBackend` protocol and pick a concrete

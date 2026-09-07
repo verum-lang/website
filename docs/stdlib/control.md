@@ -6,7 +6,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/control/<submodule>/ on 2026-05-24 round 5. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes. Several @ignore pins flag a tracked toolchain task static-method dispatch defect.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.control` — Delimited Continuations
+
+<StdlibStatus status="regression-only" />
 
 Term algebra for **delimited continuations** via `shift` and `reset`.
 

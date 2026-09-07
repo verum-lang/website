@@ -5,7 +5,11 @@ status: regression-only
 status_detail: Conformance suites landed in core-tests/encoding/ on 2026-05-24. Subset of public surface verified under --interp; cross-tier --aot validation deferred until a tracked toolchain task (AOT stdlib build cascade) closes.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.encoding`
+
+<StdlibStatus status="regression-only" />
 
 **Layer 4.7 — Data encoding and serialization**
 

@@ -12,7 +12,11 @@ status_detail: >-
   residues track in-flight compiler work — see "Current limitations".
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
 # `core.tracing` — distributed tracing
+
+<StdlibStatus status="partial" />
 
 OpenTelemetry-compatible tracing primitives. `core.tracing` supplies
 identifiers, span contexts, spans, samplers, processors, exporters,

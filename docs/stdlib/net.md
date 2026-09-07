@@ -7,6 +7,10 @@ status_detail: >-
   2026-07-05 round 19: 9 submodules stable; addr/dns/http/tls partial; 12 transport modules regression-only pending a network test harness; deep codegen crashers pinned. History: core-tests/INVENTORY.md.
 ---
 
+import StdlibStatus from '@site/src/components/StdlibStatus';
+
+<StdlibStatus status="partial" />
+
 ## See also
 
 - **[io](/docs/stdlib/io)** — `Read`/`Write`/`AsyncRead`/`AsyncWrite` protocols.
