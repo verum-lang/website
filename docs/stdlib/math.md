@@ -367,12 +367,20 @@ and get `no method named uniform_01 found for type XorShift128`. `Rng`
 is a record, the raw generators are separate types, and each list above
 was read off `core/random/deterministic.vr` and run.
 
-Two entries were removed rather than corrected: `shuffle_vec` (the name
-is `shuffle`) and `choice`, which is declared nowhere in `core/`. The
-other distributions — `truncated_normal`, `poisson`, `gamma`, `beta`,
-`chi_squared`, `student_t`, `categorical` — exist as key-taking free
-functions rather than `Rng` methods and are not listed here until
-someone runs them.
+Nine entries were moved rather than kept as methods. `shuffle_vec`,
+`choice`, `truncated_normal`, `poisson`, `gamma`, `beta`, `chi_squared`,
+`student_t` and `categorical` all exist — as key-taking FREE FUNCTIONS in
+`core/random/deterministic.vr`, not as `Rng` methods:
+
+```verum
+core.random.deterministic.choice(key, &xs) -> T
+core.random.deterministic.shuffle_vec(key, &mut xs)
+```
+
+They are named here rather than listed with signatures, because none of
+them has been run and a signature transcribed from a declaration is a
+claim like any other. `Rng.shuffle` (above) is the method form and was
+run.
 
 :::
 
