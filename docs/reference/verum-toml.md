@@ -226,8 +226,8 @@ integer = seconds).
 
 ### `[verify.solver]` — solver tuning
 
-Direct passthroughs to `SmtBackendConfig` and the
-intermediate verifier configs — see
+Direct passthroughs to the backend configs (`Z3Config`,
+`Cvc5Config`) and the intermediate verifier configs — see
 [Architecture → SMT integration → Configuration knobs](/docs/architecture/smt-integration#configuration-knobs)
 for the full matrix and which solver-adapter parameter scope each
 setting reaches.
@@ -267,8 +267,8 @@ gap behind the first, not an alternative to it. Tracked as T1233.
 # Solver selection
 backend                 = "auto"          # auto | auto | portfolio | capability_router
 
-# SMT-backend context tuning
-[verify.solver.smt-backend]
+# Z3 context tuning — `verum_smt::z3_backend::Z3Config`
+[verify.solver.z3]
 enable_proofs           = true
 minimize_cores          = true
 enable_interpolation    = false
@@ -279,9 +279,14 @@ enable_patterns         = true
 random_seed             = 42              # reproducibility (smt.random_seed)
 auto_tactics            = true            # auto_config Config param
 
-# SMT-backend adapter-level tuning
-[verify.solver.smt-backend]
-logic                   = "ALL"           # SMT-LIB logic name
+# cvc5 adapter tuning — `verum_smt::cvc5_backend::Cvc5Config`
+# (this used to repeat the `[verify.solver.smt-backend]` header above,
+#  which is a duplicate-key error: two backends with different fields
+#  cannot share one table)
+[verify.solver.cvc5]
+logic                   = "ALL"           # ALL | QF_LIA | QF_LRA | QF_BV |
+                                          # QF_NIA | QF_NRA | QF_AX |
+                                          # QF_UFLIA | QF_AUFLIA
 timeout_ms              = 30_000          # tlimit-per
 incremental             = true
 produce_models          = true
@@ -346,10 +351,14 @@ proof_based             = false
 # Optimizer (MaxSAT, Pareto)
 [verify.solver.optimizer]
 incremental             = true            # if false, push/pop are no-ops
-max_solutions           = -1              # -1 = unbounded; positive = Pareto-front cap
+max_solutions           = 100             # Pareto-front cap; the field is
+                                          # `Maybe<usize>`, so a negative
+                                          # sentinel cannot parse — omit the
+                                          # key for the default, which is 100
+                                          # (`unwrap_or(100)`), NOT unbounded
 timeout_ms              = 30_000
 enable_cores            = true
-method                  = "lexicographic" # lexicographic | pareto | box | weighted_sum
+method                  = "lexicographic" # lexicographic | pareto | independent | box
 
 # Parallel portfolio
 [verify.solver.parallel]
@@ -389,22 +398,28 @@ documents every knob the manifest exposes.
 The full chain when you set a value in `verum.toml`:
 
 ```
-verum.toml [verify.solver.<sub>]
-    ↓ (parsed by VerificationConfig in verum_compiler::verification_config)
-CompilerOptions
+Verum.toml [verify.solver.<sub>]
+    ↓ ── NOT CONNECTED (T1233): `VerifyConfig` has no `solver` field,
+    │    so serde drops the table here without a warning
+CompilerOptions (verum_compiler::options)
     ↓ (passed at session construction)
-Phase config (e.g. ContractVerificationPhase, StaticVerifier)
+Phase config (ContractVerificationPhase::VerificationConfig,
+              verum_smt::static_verification::StaticVerifier)
     ↓ (forwarded into the subsystem)
-Subsystem config (e.g. RefinementConfig, QEConfig, InterpolationConfig)
+Subsystem config (RefinementConfig, QEConfig, InterpolationConfig, …)
     ↓ (consulted by the verifier method)
-Backend-specific config (SmtBackendConfig)
+Backend config (verum_smt::z3_backend::Z3Config,
+                verum_smt::cvc5_backend::Cvc5Config)
     ↓ (per-call wiring on each fresh solver)
 Adapter Params / SMT-LIB options
 ```
 
-Every field in this chain has been audited for "set but never
-read" gaps; see the [closure log](/docs/changelog) for the
-full list.
+Everything below the first arrow works and is exercised by the solver
+suites. The first arrow is the gap: the chain runs on each struct's
+`Default`, and the manifest cannot reach it. An earlier revision of this
+page claimed every field in the chain had been audited for "set but
+never read"; the audit that produced that sentence measured the arrows
+BELOW the break and not the break itself. Tracked as T1233.
 
 ## `[workspace]`
 

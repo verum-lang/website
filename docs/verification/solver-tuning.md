@@ -31,11 +31,28 @@ verification stack. For each, you see:
   Config, or Solver) the field reaches; see [scope discipline](#parameter-scope-discipline)
   for why this matters.
 
-Every field listed is **load-bearing**: an audit run on
-2026-04-29 confirmed that toggling each one has an
-observable effect on the corresponding solver invocation.
-Fields are not "best-effort hints" — Verum treats every
-documented knob as a contract.
+:::warning The **Where set** lines describe an intent, not a working path
+Every field listed is **load-bearing inside the solver**: toggling it in
+Rust has an observable effect on the corresponding solver invocation.
+That is what the 2026-04-29 audit checked, and it still holds.
+
+What that audit did **not** check, and what a 2026-09-07 re-measurement
+found: **nothing loads solver configuration from a project's manifest.**
+`[verify]` deserializes into `VerifyConfig`
+(`crates/verum_cli/src/config.rs`), which has no `solver` field, no
+`#[serde(flatten)]` and no catch-all — so serde drops `[verify.solver]`
+and every sub-table under it without a warning. The `[smt.*]` prefix
+some of these structs document in their own Rust doc-comments is not a
+working alternative: `SmtConfig::from_toml_file` is called from one
+example programme and from nowhere in `verum_cli`, `verum_compiler` or
+`verum_verification`.
+
+So read the tables below as **what the defaults are and what changing
+them would do** — accurate on both counts — and not yet as a manifest
+API. Tracked as T1233; the [Verum.toml
+reference](/docs/reference/verum-toml#verifysolver--solver-tuning)
+carries the same warning at the section a reader would edit.
+:::
 
 ---
 
@@ -150,7 +167,7 @@ interpolant as candidate invariant).
 | Field | Default | Effect |
 |-------|---------|--------|
 | `algorithm` | `MBI` | Pick: `McMillan` (proof-based, strongest), `Pudlak` (dual, weakest), `Dual` (combines), `Symmetric` (avoids McMillan/Pudlak bias), `MBI` (model-based, solver-native), `PingPong` / `Pogo` (specialised). |
-| `strength` | `Balanced` | Bias toward stronger or weaker interpolant. |
+| `strength` | `Balanced` | `Weakest` (Pudlák) / `Strongest` (McMillan) / `Balanced` / `ModelBased`. |
 | `simplify` | `true` | Run `simplify` on the result before returning. |
 | `timeout_ms` | `Some(5 000)` | Per-interpolation solver budget; `None` = unbounded (only for offline runs). |
 | `proof_based` | `false` | Reserved for proof-based fallback. |
@@ -186,17 +203,27 @@ max_projection_vars  = 50         # bail earlier on blowup
 | `enable_caching` | `true` | Proof-cache lookups across runs. |
 | `max_cache_size` | `10 000` | LRU bound on the proof cache. |
 | `enable_parallel` | `false` | Reserved — current solver-adapter contexts are not Send/Sync. |
-| `num_workers` | `cpus()` | Reserved. |
+| `num_workers` | `cpus().max(4)` | Reserved. Floored at 4, so a 2-core machine still records 4. |
 | `auto_tactics` | `true` | Use the solver's tactic auto-selection when constructing solvers. |
 | `memory_limit_mb` | `Some(4096)` | Process-wide memory ceiling — see [parameter-scope discipline](#parameter-scope-discipline) for why this is global, not per-solver. |
 
 ---
 
-## SmtBackendConfig — backend context tuning
+## Z3Config — Z3 context tuning
 
-**Owner**: `verum_smt::backend::SmtContextManager`.
+**Owner**: `verum_smt::z3_backend::Z3ContextManager`
+(the struct is `verum_smt::z3_backend::Z3Config`).
 
-**Where set**: `[verify.solver.smt-backend]`.
+**Where set**: `[verify.solver.z3]`.
+
+:::note Two structs share this name
+`Z3Config` is declared twice: the manifest-schema copy in
+`verum_smt::config` (8 fields) and the impl-side copy in
+`verum_smt::z3_backend` (10 — it adds `enable_interpolation` and
+`global_timeout_ms`). `SmtConfig::to_switcher_config` translates the
+first into the second. The table below is the impl-side one, because
+that is what the solver actually reads.
+:::
 
 | Field | Default | Effect | Wiring scope |
 |-------|---------|--------|--------------|
@@ -221,15 +248,16 @@ auto_tactics  = false   # remove heuristic non-determinism
 
 ---
 
-## SmtBackendConfig — adapter-level tuning
+## Cvc5Config — cvc5 adapter tuning
 
-**Owner**: `verum_smt::backend::SmtBackend`.
+**Owner**: `verum_smt::cvc5_backend::Cvc5Backend`
+(the struct is `verum_smt::cvc5_backend::Cvc5Config`).
 
-**Where set**: `[verify.solver.smt-backend]`.
+**Where set**: `[verify.solver.cvc5]`.
 
 | Field | Default | Adapter option | Effect |
 |-------|---------|-------------|--------|
-| `logic` | `ALL` | `:logic` | SMT-LIB logic name. |
+| `logic` | `ALL` | `:logic` | SMT-LIB logic name, from a CLOSED set — `ALL`, `QF_LIA`, `QF_LRA`, `QF_BV`, `QF_NIA`, `QF_NRA`, `QF_AX`, `QF_UFLIA`, `QF_AUFLIA`. An unrecognised name is rejected at config-translation time, not silently ignored. |
 | `timeout_ms` | `Some(30 000)` | `tlimit-per` | Per-query timeout. |
 | `incremental` | `true` | `incremental` | Push/pop support. |
 | `produce_models` | `true` | `produce-models` | SAT result + model. |
@@ -278,7 +306,7 @@ types, π-calculus processes, lazy data structures.
 | `max_depth` | `100` | Hard cap on recursive-destructor unfolding. |
 | `timeout_ms` | `30 000` | Per-query solver budget. |
 | `generate_counterexamples` | `true` | When `false`, leave the counterexample slot as `None` to save formatting work — useful when you only need the boolean answer. |
-| `infinite_strategy` | `BoundedUnfolding` | `Coinduction` / `UpToBisimulation` / `BoundedUnfolding`. |
+| `infinite_strategy` | `BoundedUnfolding` | `BoundedUnfolding` (unfold to `max_depth`, assume bisimilar beyond) / `CoinductiveHypothesis` (assume bisimilarity at recursive positions) / `GreatestFixpoint` / `Hybrid`. |
 
 ---
 
@@ -349,7 +377,7 @@ num_workers     = 1       # single-thread for full reproducibility
 
 ## OptimizerConfig — MaxSAT / Pareto
 
-**Owner**: `verum_smt::optimizer::SmtOptimizer`.
+**Owner**: `verum_smt::optimizer::Z3Optimizer`.
 
 **Used by**: optimization-modulo-theories (best-effort
 refinement, weighted-soft-constraint solving).
@@ -357,10 +385,10 @@ refinement, weighted-soft-constraint solving).
 | Field | Default | Effect |
 |-------|---------|--------|
 | `incremental` | `true` | Gates `push` / `pop` scope manipulation. When `false`, push/pop are no-ops (paired so the stack stays balanced). |
-| `max_solutions` | `Some(usize::MAX)` | Cap for Pareto-front enumeration. |
+| `max_solutions` | `Some(100)` | Cap for Pareto-front enumeration. Not unbounded — a front wider than 100 is truncated. |
 | `timeout_ms` | `Some(30 000)` | Per-query solver budget. |
 | `enable_cores` | `true` | Extract unsat cores for soft-constraint debugging. |
-| `method` | `Lexicographic` | `Lexicographic` / `Pareto` / `Box` / `WeightedSum`. |
+| `method` | `Lexicographic` | `Lexicographic` (prioritised) / `Pareto` (frontier) / `Independent` / `Box` (bounding box). |
 
 ---
 
