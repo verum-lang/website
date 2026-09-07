@@ -64,6 +64,24 @@ already-built `&Logger`.
 Runtime DI with ~5–30 ns overhead (task-local lookup).
 
 ```verum
+type UserId is (Int);
+type User is { id: UserId, name: Text };
+
+// Your own sink. `core.base.log` gives you the `Logger` PROTOCOL and
+// `LogLevel` — not a concrete logger, so this is yours to write.
+type ConsoleLogger is { min_level: LogLevel };
+
+implement ConsoleLogger {
+    fn info(&self, message: Text)  { print(f"[info] {message}"); }
+    fn error(&self, message: Text) { print(f"[error] {message}"); }
+}
+
+type InMemoryDb is { only: User };
+
+implement InMemoryDb {
+    fn query(&self, id: UserId) -> User { self.only }
+}
+
 public context Logger {
     fn info(message: Text);
     fn error(message: Text);
@@ -74,20 +92,40 @@ public context Database {
 }
 
 fn fetch_user(id: UserId) -> User using [Logger, Database] {
-    Logger.info(f"fetching {id}");
+    Logger.info("fetching user");
     Database.query(id)
 }
 
 fn main() {
-    let log = ConsoleLogger.new(LogLevel.Info);
-    let pg_config = PgConfig.new("localhost", 5432, "app", "", "app");
-    let db  = PgAdapter.connect(&pg_config)?;
+    let log = ConsoleLogger { min_level: LogLevel.Info };
+    let db  = InMemoryDb { only: User { id: UserId(42), name: "ada" } };
     provide Logger = log;
     provide Database = db in {
-        fetch_user(UserId(42));
+        let u = fetch_user(UserId(42));
+        print(f"user={u.name}");
     };
 }
 ```
+
+Run it and you get:
+
+```text
+[info] fetching user
+user=ada
+```
+
+:::caution `provide` does not check that the provider implements the context
+The dispatch above resolves `Logger.info` by METHOD NAME on whatever
+value was provided. Delete the `implement ConsoleLogger` block and the
+programme still compiles, still runs, still prints `user=ada` — and the
+log line silently disappears. There is no diagnostic.
+
+So a rename or a typo in a provider's method removes the call rather
+than failing the build. Measured 2026-09-07; tracked as T1016, which
+also covers the neighbouring case where `provide` is handed a record
+literal of the context itself and the compiler aborts with an internal
+error instead of a diagnostic.
+:::
 
 Three syntactic facts worth noting against the stdlib's own contexts
 in `core/context/standard.vr`:
@@ -475,7 +513,11 @@ provide_stmt    = 'provide' , ( provide_layer | provide_single | provide_multi )
 
 ## Worked example — wiring a web service
 
-A typical top-level entry point layers every context once:
+A typical top-level entry point layers every context once. This one is
+a SHAPE, not a programme you can paste: `ConsoleLogger`,
+`PrometheusMetrics`, `HttpServer`, `Request`/`Response` and
+`ok_response` are yours to supply — `core` provides `PgConfig`,
+`PgAdapter`, `SystemClock` and `LogLevel`, and nothing else here.
 
 ```verum
 fn main() {
