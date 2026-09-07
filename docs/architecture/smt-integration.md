@@ -277,7 +277,7 @@ inductive-invariant synthesis.
 | Field                    | Default      | Effect |
 |--------------------------|--------------|--------|
 | `algorithm`              | `MBI`        | `McMillan` / `Pudlak` / `Dual` / `Symmetric` / `MBI` / `PingPong` / `Pogo`. |
-| `strength`               | `Balanced`   | Bias toward stronger (McMillan) or weaker (Pudlak) interpolant. |
+| `strength`               | `Balanced`   | `Weakest` (Pudlák) / `Strongest` (McMillan) / `Balanced` / `ModelBased`. |
 | `simplify`               | `true`       | Run an interpolant simplifier on the result. |
 | `timeout_ms`             | `5 000`      | Per-query budget. |
 | `quantifier_elimination` | `true`       | When `false`, projection skips QE — McMillan's `A ⇒ I` half stays sound; the `I ∧ B ⇒ ⊥` half degrades in precision. |
@@ -318,7 +318,7 @@ Used by `BisimulationChecker` for behavioural equivalence.
 | `max_depth`                 |        `100` | Hard cap on recursive-destructor unfolding. |
 | `timeout_ms`                |     `30 000` | Per-query budget. |
 | `generate_counterexamples`  |       `true` | When `false`, leaves the counterexample slot empty to save formatting work. |
-| `infinite_strategy`         | `BoundedUnfolding` | One of `Coinduction` / `Up-to-bisimulation` / `BoundedUnfolding`. |
+| `infinite_strategy`         | `BoundedUnfolding` | One of `BoundedUnfolding` / `CoinductiveHypothesis` / `GreatestFixpoint` / `Hybrid`. |
 
 ### `SepLogicConfig` — separation logic
 
@@ -367,10 +367,10 @@ Used by `SmtOptimizer` for soft-constraint optimisation.
 | Field            | Default            | Effect |
 |------------------|--------------------|--------|
 | `incremental`    | `true`             | Gate `push` / `pop` scope manipulation. When `false`, push / pop are no-ops (paired so the stack stays balanced). |
-| `max_solutions`  | `usize::MAX`       | Cap for Pareto-front enumeration. |
+| `max_solutions`  | `Some(100)`        | Cap for Pareto-front enumeration — a bound, not unbounded. |
 | `timeout_ms`     | `30 000`           | Per-query budget. |
 | `enable_cores`   | `true`             | Extract unsat cores for soft-constraint debugging. |
-| `method`         | `Lexicographic`    | One of `Lexicographic` / `Pareto` / `Box` / `WeightedSum`. |
+| `method`         | `Lexicographic`    | One of `Lexicographic` / `Pareto` / `Independent` / `Box`. |
 
 ### `CacheConfig` — verification-result cache
 
