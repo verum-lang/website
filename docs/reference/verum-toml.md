@@ -227,10 +227,32 @@ integer = seconds).
 ### `[verify.solver]` — solver tuning
 
 Direct passthroughs to `SmtBackendConfig` and the
-intermediate verifier configs. Each field is **load-bearing**
-— see [Architecture → SMT integration → Configuration knobs](/docs/architecture/smt-integration#configuration-knobs)
+intermediate verifier configs — see
+[Architecture → SMT integration → Configuration knobs](/docs/architecture/smt-integration#configuration-knobs)
 for the full matrix and which solver-adapter parameter scope each
 setting reaches.
+
+:::warning Eight of these sub-tables are not read yet
+This block used to say every field is **load-bearing**. Measured
+2026-09-07: eight of the ten `[verify.solver.*]` sub-tables below —
+47 keys in total — are backed by a struct that derives only
+`#[derive(Debug, Clone)]`, with no `Deserialize` on any definition of
+that name anywhere in the tree, so no TOML reader can populate them.
+Setting one of these keys produces no warning, no error and no effect.
+
+    not read   bisimulation, interpolation, optimizer, parallel, qe,
+               sep_logic, unsat_core, static
+    wired      smt-backend  (Cvc5Config, verum_smt/src/config.rs,
+                             derives Serialize + Deserialize)
+    unverified cache        (CacheConfig has three definitions, one of
+                             them deserializable; which one this table
+                             reaches was not established)
+
+The defaults each struct carries in Rust are what actually runs, and
+they are what the values below document. The gap is the plumbing, not
+the intent — `separation_logic.rs` already warns when its config is
+non-default, expecting these to be settable. Tracked as T1233.
+:::
 
 ```toml
 [verify.solver]
