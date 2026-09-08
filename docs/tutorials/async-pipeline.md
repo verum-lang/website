@@ -195,9 +195,14 @@ pub async fn write_loop(
     mut rx: Receiver<ValidRecord>,
     path: &Path,
 ) -> Result<Int, Error> using [Logger] {
-    let file = OpenOptions.new()
-        .create(true).append(true)
-        .open_async(path).await?;
+    // `open_async` does not exist; the async entry point is
+    // `AsyncFile.open_with_options`. And the OpenOptions builders take
+    // `&mut self`, so they are called on a BOUND variable — chaining
+    // them off `new()` null-dereferences (measured 2026-09-08).
+    let mut opts = OpenOptions.new();
+    opts.create(true);
+    opts.append(true);
+    let file = AsyncFile.open_with_options(path, &opts).await?;
     let mut writer = BufWriter.new(file);
     let mut written = 0;
 

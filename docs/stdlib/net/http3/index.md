@@ -93,9 +93,11 @@ implement H3Handler for MyHandler {
 
 async fn serve() -> Result<(), H3ServerError> {
     let handler = MyHandler { /* ... */ };
-    let opts = ServerOptions.default()
-        .with_cert_pem(load_cert_pem())
-        .with_key_pem(load_key_pem());
+    // `ServerOptions` has no `default()` and no PEM builders. Its
+    // constructor takes a parsed chain and a signer; `with_alpn` and
+    // `with_idle_timeout` are the only builders (measured 2026-09-08).
+    let opts = ServerOptions.from_cert(cert_chain, signer)
+        .with_alpn(alpn_list);
     let server = H3Server.bind(&"0.0.0.0:443".parse()?, opts).await?;
     server.serve(handler).await
 }
