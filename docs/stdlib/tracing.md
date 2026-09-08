@@ -106,6 +106,30 @@ let tracer = get_tracer(&"edge.handler".into(), &"1.0".into());
 let _ = global_tracer_provider().shutdown(Duration.from_secs(5));
 ```
 
+:::danger The global provider comes back empty at Tier 0
+Measured 2026-09-08. The setup above builds correctly — a provider with
+one processor really has one — but the value does not survive the global
+slot:
+
+```verum
+set_global_tracer_provider(provider);   // before-store processors = 1
+let g = global_tracer_provider();       // after-load  processors = 0
+```
+
+`get_tracer(...)` then takes the interpreter down with an internal
+error, because `TracerProvider.tracer` reaches `self.processors.len()`
+on the emptied value.
+
+It is not a tracing defect: an eighteen-line programme with a
+`static SLOT: Mutex<Maybe<Q>>` and a two-field record loses both fields
+the same way, with no `Shared` involved (T1275). Every global registry
+in the library sits on the same shape.
+
+Until it lands, hold the provider as a VALUE and call
+`provider.tracer(&name, &version)` on it directly — that path is
+measured working, and it is the only difference between the two runs.
+:::
+
 Call `set_global_tracer_provider` once at startup. Afterwards
 `get_tracer(name, version)` resolves the same `(name, version)` pair
 to the same cached tracer. Notes on the global registry:
