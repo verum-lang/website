@@ -287,14 +287,14 @@ and the handler can surface a 429 instead of blocking.
 
 ## 8. Observability
 
-Per-connection stats:
-
-```verum
-let stats = server.stats();
-let active = stats.active_connections;
-let req_total = stats.requests_total;
-let qpack_hit_rate = stats.qpack_static_hit_ratio();
-```
+:::caution No per-connection stats on the server
+`H3Server` has no `stats()`, and there is no stats record anywhere under
+`core/net/h3` — measured: the string `Stats` does not occur in the
+module. `active_connections`, `requests_total` and
+`qpack_static_hit_ratio` were invented with it. What `H3Server` carries
+is `ServerOptions` (`from_cert`, `with_alpn`, `with_idle_timeout`) and
+the serve loop; counting is weft's registry, below.
+:::
 
 Prometheus scrape endpoint:
 

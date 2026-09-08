@@ -470,7 +470,10 @@ replaces `error` for a non-fatal diagnostic.
 pub meta fn sql(tokens: TokenStream) -> TokenStream
     using [AstAccess, CompileDiag]
 {
-    let text = match tokens.as_text_literal() {
+    // There is no `TokenStream.as_text_literal()`. The stream's members
+    // are `TokenTree`s; a single string literal is reached by walking
+    // one — `first()` -> `as_token()` -> the `Literal.String` variant.
+    let text = match text_literal_of(&tokens) {
         Maybe.Some(t) => t,
         Maybe.None => {
             CompileDiag.emit_error(
@@ -515,6 +518,25 @@ pub meta fn sql(tokens: TokenStream) -> TokenStream
     quote {
         Database.execute(${lift(parsed.to_canonical_sql())},
                          ${lift_params(parsed.bind_params)})
+    }
+}
+```
+
+The walk the first line uses, written out — `TokenStream` carries
+`first`, `last`, `trees`, `flatten`, `len`, `span`, `take`, `skip`,
+`split_at`, `map`, `filter`, and nothing that decodes a literal for you:
+
+```verum
+fn text_literal_of(ts: &TokenStream) -> Maybe<Text> {
+    match ts.first() {
+        Maybe.Some(tree) => match tree.as_token() {
+            Maybe.Some(tok) => match tok {
+                Token.Literal(Literal.String { value, .. }) => Maybe.Some(value.clone()),
+                _ => Maybe.None,
+            },
+            Maybe.None => Maybe.None,
+        },
+        Maybe.None => Maybe.None,
     }
 }
 ```

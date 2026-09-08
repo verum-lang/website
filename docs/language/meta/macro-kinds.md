@@ -209,7 +209,11 @@ pattern the compiler does not have built in.
 pub meta fn sql_query(tokens: TokenStream) -> TokenStream
     using [AstAccess, CompileDiag]
 {
-    let query_text = tokens.as_text_literal()?;
+    // `TokenStream` has no `as_text_literal`: its members are
+    // `TokenTree`s, and a string literal is reached by walking one —
+    // `first()` -> `as_token()` -> `Literal.String`. See
+    // [token-api](/docs/language/meta/token-api) for the walk written out.
+    let query_text = text_literal_of(&tokens)?;
     let parsed = match sql.parse(&query_text) {
         Result.Ok(p) => p,
         Result.Err(e) => {
