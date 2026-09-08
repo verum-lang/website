@@ -82,12 +82,11 @@ implement H3Handler for MyHandler {
     async fn handle(&mut self, req: H3Request) -> H3Response {
         match (req.method(), req.path().as_str()) {
             (H3Method.Get, "/health") =>
-                H3Response.status(200_u16)
-                    .with_header("content-type", "text/plain")
-                    .with_body(b"ok".to_list()),
+                // `ok` TAKES the body; there is no `with_body`.
+                H3Response.ok(Text.from("ok").as_bytes())
+                    .with_header("content-type", "text/plain"),
 
-            _ => H3Response.status(404_u16)
-                    .with_body(b"".to_list()),
+            _ => H3Response.status(404_u16),
         }
     }
 }
@@ -101,6 +100,23 @@ async fn serve() -> Result<(), H3ServerError> {
     server.serve(handler).await
 }
 ```
+
+:::note Corrected 2026-09-08
+
+`H3Response` has exactly three constructors and one builder method:
+
+```verum
+H3Response.ok(body: List<Byte>) -> H3Response     // 200, body included
+H3Response.status(code: UInt16) -> H3Response     // any code, EMPTY body
+resp.with_header(name: Text, value: Text) -> H3Response
+resp.to_field_list() -> List<QpackHeaderField>
+```
+
+`with_body`, `streaming` and `html` do not exist. A body goes in through
+`ok`; to give a non-200 response a body, update the record directly —
+`status`, `headers`, `body` and `trailers` are public fields.
+
+:::
 
 The `H3Handler` protocol is `async fn(H3Request) -> H3Response`; the
 server handles connection setup, stream multiplexing, and QPACK

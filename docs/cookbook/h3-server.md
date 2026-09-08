@@ -110,6 +110,25 @@ itself.
 
 ## Streaming responses
 
+:::warning Every builder below is one of the four that do not exist
+
+Same measurement as the warning under **Minimum viable
+server** above, re-checked 2026-09-08:
+`H3Response` has `ok(body)`, `status(code)`, `with_header(name, value)`
+and `to_field_list()`. The examples from here to the end of the page
+chain `.streaming(…)`, `.html(…)`, `.bytes(…)`, `.text(…)` and
+`.header(…)` — none of which is declared on `H3Response`.
+
+`.header` is the sharpest of them: it IS real, on `Request` and
+`Response` in `core/net/http.vr`, just not on this type. A name existing
+somewhere is not the same as existing here, which is why the page-level
+warning is repeated rather than assumed to carry this far down.
+
+These sections describe an interface the library does not have yet; read
+them as intent, not as instructions.
+
+:::
+
 For chunked bodies — server-sent events, large downloads — use the
 async writer form:
 
