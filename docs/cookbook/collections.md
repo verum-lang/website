@@ -175,10 +175,11 @@ let primes: List<Int> = (2..1000)
     .take(100)
     .collect();
 
-let by_domain: Map<Text, Int> = emails
-    .iter()
-    .map(|e| (e.domain(), 1))
-    .into_group_map()
+// Grouping is a method on the LIST, not an iterator adapter: there is
+// no `into_group_map`. `group_by` answers a `Map<K, List<T>>` directly,
+// so a count is `len()` over each group.
+let groups: Map<Text, List<Email>> = emails.group_by(|e| e.domain());
+let by_domain: Map<Text, Int> = groups
     .into_iter()
     .map(|(k, vs)| (k, vs.len()))
     .collect();
@@ -211,10 +212,17 @@ let counts = {w: words.iter().filter(|x| *x == w).count()
 ## Grouping
 
 ```verum
-let grouped: Map<Category, List<Item>> = items
-    .iter()
-    .into_group_map_by(|item| item.category.clone());
+// `List.group_by(&self, key_fn)` — on the list itself, and it already
+// answers the map. `into_group_map_by` does not exist.
+let grouped: Map<Category, List<Item>> =
+    items.group_by(|item| item.category.clone());
 ```
+
+`core.collections` carries two free `group_by` functions besides the
+method, and they differ in what they answer: the one in `map.vr` takes
+an ITERATOR and answers `Map<K, List<T>>`, the one in `list.vr` takes a
+`&List` and answers `List<(K, List<T>)>` — an association list, not a
+map. Pick by the return type you want.
 
 Or manually:
 

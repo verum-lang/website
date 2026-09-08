@@ -105,6 +105,9 @@ mount core.*;
 mount core.net.quic.api.{QuicServerOptions};
 mount core.net.h3.server.{H3Server, ServerOptions, H3ServerError};
 mount core.net.h3.request.{H3Request, H3Response};
+// DOES NOT COMPILE. Measured against `core/`: there is no `parse.vr`
+// and no `sign.vr` under `core.security.x509`, no `parse_cert_chain_pem`
+// and no `FileSigner` anywhere. See the note after this listing.
 mount core.security.x509.parse.{parse_cert_chain_pem};
 mount core.security.x509.sign.{FileSigner};
 
@@ -129,6 +132,34 @@ pub async fn main() -> Result<(), H3ServerError> {
     server.serve(handle).await
 }
 ```
+
+:::danger The TLS half of this tutorial cannot be written today
+Measured 2026-09-08 against `core/`, the same finding as
+[cookbook/quic-server](/docs/cookbook/quic-server):
+
+| written here | reality |
+|---|---|
+| `core.security.x509.parse.{parse_cert_chain_pem}` | no `parse.vr` module, no such function |
+| `core.security.x509.sign.{FileSigner}` | no `sign.vr` module, no such type |
+| `ServerOptions.from_cert(chain, Heap(signer))` | **exists** — `core/net/h3/server.vr:85` |
+
+PEM parsing does exist, under a different name:
+`Certificate.from_pem_chain(&Text) -> Result<List<Certificate>, LegacyTlsError>`
+(`core/security/x509/credential.vr:81`), with `TrustStore.from_pem_bundle`
+for a trust bundle.
+
+The signer has no substitute. `from_cert` wants a `Heap<dyn CertSigner>`;
+`CertSigner` is declared at
+`core/net/tls13/handshake/server_sm.vr:83` with two methods —
+
+    fn sign(&self, scheme: SignatureScheme, signed_input: &[Byte])
+        -> Result<List<Byte>, TlsError>;
+    fn scheme(&self) -> SignatureScheme;
+
+— and **nothing in `core/` implements it**. A reader who supplies their
+own implementation of those two methods can use everything else on this
+page; a reader expecting to load a key from a file cannot.
+:::
 
 :::danger These two mounts name modules that do not exist
 Measured 2026-09-03 against `core/`:

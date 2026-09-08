@@ -96,20 +96,40 @@ Composition is type-checked.
 
 ## 5. Typed command DSLs — `GitCmd`, `DockerCmd`
 
-```verum
-let log = GitCmd.log()
-    .since("1 week ago")
-    .author("alice")
-    .format("oneline")
-    .run()?;
+`GitCmd` and `DockerCmd` are SUM TYPES with record variants, not fluent
+builders: you name the subcommand and fill its fields. They also do not
+execute — `render()` produces the quoted command text, and `sh` runs it.
+There is no `.run()` on either type, and no `GitCmd.log()` /
+`DockerCmd.build(..)` constructor.
 
-let img = DockerCmd.build("./Dockerfile")
-    .tag("myapp:latest")
-    .build_arg("VERSION", "1.2.3")
-    .run()?;
+```verum
+mount core.shell.{GitCmd, GitLogFormat, DockerCmd, DockerImage, sh};
+
+let cmd = GitCmd.Log {
+    format:    GitLogFormat.Oneline,   // Oneline | Short | Medium | Full | Custom(Text)
+    max_count: Maybe.None,
+    author:    Maybe.Some("alice"),
+    since:     Maybe.Some("1 week ago"),
+    until:     Maybe.None,
+    path:      Maybe.None,
+};
+let log = sh(&cmd.render()).await.ok()?;
+
+let build = DockerCmd.Build {
+    context:    PathBuf.from("."),
+    tag:        DockerImage.parse("myapp:latest"),
+    file:       Maybe.Some(PathBuf.from("./Dockerfile")),
+    target:     Maybe.None,
+    no_cache:   false,
+    build_args: [("VERSION", "1.2.3")],   // a FIELD, not a `.build_arg` step
+};
+let img = sh(&build.render()).await.ok()?;
 ```
 
-The DSLs surface command-specific options as fluent methods.
+The value of the DSL is the RENDERING: every field goes through the
+host's quoting rules (`render_for(flav)` picks a different
+`ShellFlavour`), so a branch name or a tag containing a space or a quote
+cannot break out of its argument.
 Each method maps to a flag; misspelled flags do not exist as
 methods, so typos surface at compile time.
 

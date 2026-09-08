@@ -288,7 +288,7 @@ pub meta fn derive_url_like<T>() -> TokenStream
             fn to_url_query(&self) -> Text {
                 let mut $tmp = List<Text>.new();
                 $[for f in fields.iter() {
-                    $tmp.push(&f"{${lift(f.name.to_text())}}={self.${f.name}.url_encode()}");
+                    $tmp.push(&f"{${lift(f.name.to_text())}}={percent_encode(&self.${f.name}.to_text())}");
                 }]
                 $tmp.join(&"&")
             }
@@ -298,8 +298,8 @@ pub meta fn derive_url_like<T>() -> TokenStream
                 Result.Ok(Self {
                     $[for f in fields.iter() {
                         ${f.name}: map.get(${lift(f.name.to_text())})
-                            .ok_or(UrlError.missing(${lift(f.name.to_text())}))?
-                            .url_decode()?,
+                            .ok_or(UrlError.missing(${lift(f.name.to_text())}))
+                            .and_then(|v| percent_decode(v))?,
                     }]
                 })
             }
@@ -307,6 +307,12 @@ pub meta fn derive_url_like<T>() -> TokenStream
     }
 }
 ```
+
+`percent_encode` / `percent_decode` are FREE functions in
+`core.net.url`, not `Text` methods — there is no `url_encode` and no
+`url_decode`. `percent_decode` answers a `Result<Text, UrlError>`, which
+is why the decode arm goes through `and_then` rather than a second `?`
+on the map lookup.
 
 Usage:
 

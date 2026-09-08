@@ -59,11 +59,12 @@ let first_ten = primes.take(10).collect();     // -> List<Int>
 Stream comprehensions compose with stream-producing methods:
 
 ```verum
-let lines = file.byte_stream()
-               |> .utf8_chunks()
-               |> .lines();
-
-let errors = stream[l for l in lines if l.starts_with("ERROR")];
+// `|> .method(args)` is real syntax (grammar: `pipe_method_call`), but
+// `byte_stream` and `utf8_chunks` are not — a reader gets lines either
+// from the text or from a buffered reader, whose `lines()` comes from
+// the `BufRead` protocol.
+let text  = read_to_string(&path)?;
+let errors = stream[l for l in text.lines() if l.starts_with("ERROR")];
 ```
 
 See [`stdlib/async`](/docs/stdlib/async) for `Stream` combinators
@@ -92,10 +93,12 @@ Prefix `set` disambiguates from a block and a map literal. Produces a
 `Set<T>`.
 
 ```verum
+// `split_once` answers `Maybe<(Text, Text)>` — the halves either side of
+// the separator. There is no `Text.after_at`.
 let unique_domains = set{
-    email.after_at()
+    domain
     for email in addresses
-    if email.is_valid()
+    if let Maybe.Some((_, domain)) = email.split_once(&"@")
 };
 ```
 

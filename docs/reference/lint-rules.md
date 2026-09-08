@@ -261,9 +261,16 @@ A blocking call (`recv`, `await`, `join`) with no timeout. A wedged
 peer can hang the caller forever; specify a deadline.
 
 ```verum
-let v = chan.recv()?;                                    // fires
-let v = chan.recv_with_timeout(5.secs())?;            // silenced
+let v = rx.recv();                              // fires — blocks forever
+let v = timeout(5.secs(), rx.recv_fut()).await; // silenced
 ```
+
+There is no `recv_with_timeout`. A `Receiver` offers the synchronous
+`recv` / `try_recv` and the awaitable `recv_fut()`; the deadline comes
+from the generic `timeout(duration, future)` combinator in
+`core.async.timer`. (`send_timeout` does exist and is the asymmetric
+half — its own doc-comment names a `recv_timeout` that was never
+written.)
 
 ### `unsafe-ref-in-public` — *warn*
 
@@ -278,7 +285,10 @@ public fn raw_buffer(buf: &unsafe [Byte]) -> Int { /* ... */ }
 
 // silenced — wrap the unsafe interior behind a checked surface
 public fn raw_buffer(buf: &checked [Byte]) -> Int {
-    let bytes = unsafe { buf.as_unsafe() };
+    // The tier is part of the REFERENCE, not a cast method: `&unsafe x`,
+    // never `x.as_unsafe()` — which is declared nowhere and is not in
+    // the grammar either.
+    let n = unsafe { raw_len(&unsafe buf) };
     /* ... */
 }
 ```

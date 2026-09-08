@@ -89,6 +89,9 @@ protocol — for most production setups this is
 `core.security.x509.sign.FileSigner` or an HSM-backed variant.
 
 ```verum
+// DOES NOT COMPILE — kept as the shape the API wants, not as a recipe.
+// Both mounts name modules that do not exist, and the signer half has
+// no substitute at all. See the note directly below.
 mount core.security.x509.parse.{parse_cert_chain_pem};
 mount core.security.x509.sign.{FileSigner};
 

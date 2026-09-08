@@ -133,6 +133,9 @@ For chunked bodies — server-sent events, large downloads — use the
 async writer form:
 
 ```verum
+// INTENT, not instructions — `.header` and `.streaming` are not declared
+// on `H3Response`; see the warning above. What compiles today is
+// `H3Response.ok(body)` / `.status(code)` / `.with_header(n, v)`.
 server.serve(|req: H3Request| async move {
     if req.path() == f"/stream" {
         H3Response.ok()
@@ -158,6 +161,10 @@ The push_emitter manages the client's `MAX_PUSH_ID` budget + tracks
 outstanding promises:
 
 ```verum
+// INTENT, not instructions — the `req.try_push` / `req.emit_pushed`
+// pair below does not exist, and neither do `.header` / `.text` /
+// `.html` / `.bytes` on `H3Response`. The real push surface is named in
+// the comment inside.
 mount core.net.h3.push.{PushEmitter};
 
 server.serve(|mut req: H3Request| async move {
