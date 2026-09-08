@@ -72,14 +72,23 @@ For the common case, `core.random.secure` exposes ergonomic
 helpers built on top of the intrinsic:
 
 ```verum
-mount core.random.secure;
+mount core.random.secure.{fill_secure, fill_secure_array};
+mount core.collections.{List};
 
-let mut nonce: [Byte; 12] = [0; 12];
-rng.fill_secure_array(&mut nonce);   // const-N form, no bounds check
+let mut nonce: [Byte; 12] = [0 as Byte; 12];
+fill_secure_array(&mut nonce);       // const-N form
 
-let mut buf = List<Byte>.with_size(32);
-rng.fill_secure(&mut buf);           // dynamic-size form
+let mut buf: List<Byte> = List.from_elem(0 as Byte, 32);
+fill_secure(&mut buf);               // dynamic-size form
 ```
+
+Both are FREE FUNCTIONS, not methods: there is no `rng` receiver in
+`core.random.secure`, and the earlier `rng.fill_secure(&mut buf)` spelling
+on this page named a value the module never defines. `List` has no
+`with_size` either — `from_elem(value, n)` is the constructor that gives a
+list of length `n`, and length is what `fill_secure` fills (it reads
+`buf.len()`, so a `with_capacity` list of length zero would come back
+empty).
 
 Use the `_array` form when the buffer length is known at compile
 time (key, nonce, MAC tag); use `fill_secure` when it's dynamic.
