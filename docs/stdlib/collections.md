@@ -446,6 +446,21 @@ borrow into that block outlives its address as soon as an `insert`
 triggers a rehash — which is exactly what `&mut self` on the borrowing
 half prevents you from doing while a borrow is live.
 
+:::caution `values_mut` does not run at Tier 0
+Measured 2026-09-08:
+
+```verum
+for v in m.values_mut() { *v = *v * 10; }
+// Null pointer dereference: op=opcode 0x62 at MapValuesMut.next (pc=60)
+```
+
+Same shape as `Map.entry` and `Map.get_mut` (T1196): the receiver
+register of a `&mut`-yielding map iterator holds an Int-tagged value
+where a pointer is required. The owned-value accessors — `iter`, `keys`,
+`values`, `into_iter` — are unaffected; rebuild the map from `iter()`
+when you need to change every value.
+:::
+
 The practical consequence is that `K` and `V` must be copyable or
 cloneable to be iterated at all, and that
 
