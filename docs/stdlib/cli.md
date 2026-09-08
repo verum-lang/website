@@ -110,23 +110,54 @@ When you need full control — programmatic spec generation, dynamic
 subcommand registration, custom completion logic — drop down to the
 builder.  This is what `@command` expands to:
 
+The builder is `AppBuilder`, and it takes the name AND the one-line
+description together — there is no `.about(…)` step. A flag's
+value-or-switch nature is chosen by its CONSTRUCTOR (`FlagSpec.value` vs
+`FlagSpec.switch`), not by a `.takes_value()` builder, and every spec
+constructor takes its help text as the second argument.
+
 ```verum
-let app = App.new("wave")
-    .about("Greet a value, the Verum way.")
+mount core.cli.builder.{AppBuilder, FlagBuilder};
+mount core.cli.spec.{ArgSpec, FlagSpec, CommandSpec};
+mount core.cli.runtime.{App};
+
+let spec: CommandSpec = AppBuilder.new("wave", "Greet a value, the Verum way.")
     .version("0.1.0")
-    .arg(ArgSpec.required("name").help("Who to greet."))
-    .flag(FlagSpec.new("count")
+    .arg(ArgSpec.required("name", "Who to greet."))
+    .flag(FlagBuilder.value("count", "Repeat the greeting N times.")
         .short('n')
-        .takes_value()
-        .default(1)
-        .help("Repeat the greeting N times."))
-    .flag(FlagSpec.new("no-newline")
-        .help("Suppress trailing newline."))
+        .default("1")
+        .build())
+    .flag(FlagSpec.switch("no-newline", "Suppress trailing newline."))
     .build();
+
+let app = App.from_spec(spec);
 ```
 
-`App.new(...).build()` returns an `App<Args>` that can be invoked
-several ways:
+`AppBuilder.build()` returns a **`CommandSpec`** — the description of
+the command — and `App.from_spec` turns that into the runnable `App`.
+`App` is not generic: it is `{ spec, registry, style }`, and handlers
+are attached with `.register(name, handler)`.
+
+The per-argument builders are `ArgBuilder` and `FlagBuilder`; each ends
+in `.build()` and yields the corresponding spec. Use the `ArgSpec` /
+`FlagSpec` constructors directly when you need no extra steps:
+
+    ArgSpec.required(name, help)   ArgSpec.optional(name, help)
+    ArgSpec.variadic(name, help)
+    FlagSpec.switch(long, help)    FlagSpec.value(long, help)
+
+:::caution Does not run yet at Tier 0
+`CommandSpec.new` initialises its `settings` field with
+`Default.default()`, and that call dispatches by NAME across the whole
+program rather than by the field's declared type — it lands on
+`GitRevision.default` and panics. So `AppBuilder.new(…)` cannot return
+in the interpreter today. Tracked as T1272; the shapes above are read
+off the `implement` blocks and are what the API will be once the
+dispatch is fixed.
+:::
+
+An `App` can be invoked several ways:
 
 ```verum
 // Standard: parse argv from `env`, dispatch, and exit the process.

@@ -231,10 +231,10 @@ pub async fn handle_shorten(body: &[Byte]) -> Result<Response, Error>
     };
     Store.insert(link).await.map_err(|e| Error.new(&f"store: {e:?}"))?;
 
-    let body = json#"""{"code": "${code}"}""".to_bytes();
+    let body = json#"""{"code": "${code}"}""".into_bytes();
     Result.Ok(Response.new(StatusCode.created())
-        .with_headers(Headers.new_with(&"Content-Type", &"application/json"))
-        .with_body(body))
+        .header("Content-Type", "application/json")
+        .body(body))
 }
 
 /// Redirect handler for /s/:code
@@ -248,8 +248,8 @@ pub async fn handle_redirect(code_str: &Text) -> Result<Response, Error>
         Maybe.Some(link) => {
             Store.increment_hits(&code).await.ok();   // best-effort
             Result.Ok(Response.new(StatusCode.new(302))
-                .with_headers(Headers.new_with(&"Location", &link.target))
-                .with_body(List.new()))
+                .header("Location", link.target)
+                .body(List.new()))
         }
         Maybe.None => Result.Ok(Response.new(StatusCode.not_found())),
     }
@@ -258,20 +258,20 @@ pub async fn handle_redirect(code_str: &Text) -> Result<Response, Error>
 pub async fn handle_health() -> Response using [Store] {
     let count = Store.total_count().await.unwrap_or(0);
     Response.new(StatusCode.ok())
-        .with_body(f"""{{"count": {count}}}""".to_bytes())
+        .body(f"""{{"count": {count}}}""".into_bytes())
 }
 
 /// Route a request to the right handler.
 pub async fn route(req: Request) -> Response
     using [Store, Clock, Logger]
 {
-    match (req.method, req.uri.as_str()) {
-        (Method.Post, "/shorten") => match handle_shorten(&req.body()).await {
+    match (req.method, req.url) {
+        (Method.Post, "/shorten") => match handle_shorten(&req.body).await {
             Result.Ok(r) => r,
             Result.Err(e) => {
                 Logger.warn(&f"shorten failed: {e}");
                 Response.new(StatusCode.bad_request())
-                    .with_body(f"""{{"error": "{e}"}}""".to_bytes())
+                    .body(f"""{{"error": "{e}"}}""".into_bytes())
             }
         },
         (Method.Get, path) if path.starts_with("/s/") => {
@@ -307,7 +307,11 @@ async fn serve() using [Store, Clock, Logger] {
     nursery(on_error: wait_all) {
         loop {
             let (stream, peer) = listener.accept_async().await?;
-            let permit = sem.clone().acquire_owned().await;
+            // `Semaphore` has no `acquire_owned` and no async acquire:
+            // `acquire(&self)` blocks, and `acquire_guard(&self)` returns
+            // a `SemaphoreGuard` that releases when it drops. The guard
+            // is what you hold for the life of the connection.
+            let permit = sem.acquire_guard();
 
             spawn async move {
                 let _p = permit;                     // held for the connection
@@ -323,7 +327,7 @@ async fn serve_one(mut stream: TcpStream, peer: SocketAddr) -> Result<(), Error>
     using [Store, Clock, Logger]
 {
     let req = read_request(&mut stream).await?;
-    Logger.info(&f"{peer} {req.method:?} {req.uri}");
+    Logger.info(&f"{peer} {req.method:?} {req.url}");
     let resp = route(req).await;
     write_response(&mut stream, &resp).await?;
     Result.Ok(())
@@ -408,7 +412,7 @@ module tests {
 
         provide Store = store,
                 Logger = logger {
-            let body = json#"""{"target": "https://example.com"}""".to_bytes();
+            let body = json#"""{"target": "https://example.com"}""".into_bytes();
             let resp = handle_shorten(&body).await.unwrap();
             assert(resp.status.is_success());
 
@@ -418,7 +422,7 @@ module tests {
 
             let r = handle_redirect(&code_str.to_string()).await.unwrap();
             assert_eq(r.status.code(), 302);
-            let location = r.headers.get_first(&"Location").unwrap();
+            let location = r.headers.get(&"Location").unwrap();
             assert_eq(location.as_str(), "https://example.com");
         }
     }

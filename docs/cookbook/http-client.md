@@ -97,19 +97,38 @@ async fn create_user(name: &Text, email: &Text) -> Result<User, ApiError>
 
 ### Client configuration
 
+There is no `HttpClient.builder()`. `HttpClient` is the protocol quoted
+at the top of this page — one `send` method and nothing else — so
+timeouts, redirect limits, a user agent and a connection pool are knobs
+on **your** transport, not on a builder the library hands you. Give your
+implementation whatever configuration record it needs and `provide` it:
+
 ```verum
-let client = HttpClient.builder()
-    .timeout(10.secs())
-    .max_redirects(3)
-    .user_agent(&"my-tool/1.0")
-    .pool(PoolConfig {
+mount core.net.http.{Request, Response, HttpError};
+
+type ClientConfig is {
+    timeout_ms: Int,
+    max_redirects: Int,
+    user_agent: Text,
+    max_connections: Int,
+};
+
+type MyClient is { config: ClientConfig };
+
+implement HttpClient for MyClient {
+    async fn send(&self, request: Request) -> Result<Response, HttpError> {
+        // your transport, honouring self.config
+    }
+}
+
+let client = MyClient {
+    config: ClientConfig {
+        timeout_ms: 10_000,
+        max_redirects: 3,
+        user_agent: "my-tool/1.0",
         max_connections: 16,
-        idle_timeout_ms: 60_000,
-        read_timeout_ms: 10_000,
-        write_timeout_ms: 10_000,
-    })
-    .default_header(&"Accept", &"application/json")
-    .build();
+    },
+};
 
 provide Http = client in {
     do_work().await
@@ -124,7 +143,10 @@ let tls = TlsConfig.client()
     .with_min_version(TlsVersion.Tls12)
     .with_alpn(&[&"h2", &"http/1.1"]);
 
-let client = HttpClient.builder().tls(tls).build();
+// The TLS side is real and shipped; the client that consumes it is
+// yours. `TlsConnector.from_config(tls)` is what a transport wraps a
+// `TcpStream` with.
+let connector = TlsConnector.from_config(tls);
 ```
 
 ### Retries with exponential backoff

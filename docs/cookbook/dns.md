@@ -224,9 +224,14 @@ UDP with a TCP fallback.  The shape below is what a DoH transport would
 look like.
 :::
 
-For privacy-sensitive deployments, use a DoH transport:
+A DoH transport would look like the shape below. It is not callable:
+neither `DnsTransport` nor `with_transport` exists, and the sentence
+that used to stand under it — that DoH reuses the process's HTTPS pool
+for connection-level authentication — was a claim about a mechanism
+with no code behind it.
 
 ```verum
+// SHAPE ONLY — does not compile. Nothing here is declared.
 let resolver = Resolver.new()
     .with_transport(DnsTransport.Https {
         endpoint: url#"https://cloudflare-dns.com/dns-query",
@@ -234,8 +239,9 @@ let resolver = Resolver.new()
     });
 ```
 
-DoH reuses the process's HTTPS pool (see
-[`stdlib/net`](/docs/stdlib/net)) for connection-level authentication.
+What `Resolver` does offer is plain UDP with a TCP fallback:
+`.nameserver(&addr)`, `.nameserver_ip(ip)`, `.timeout_ms(ms)`,
+`.retries(n)`, `.search_domain(d)`, `.ndots(n)`, `.use_tcp(bool)`.
 
 ## Validation helpers
 
@@ -301,21 +307,39 @@ async fn resolve_many(hosts: &List<Text>, concurrency: Int)
 | `DnssecValidationFailed`| DNSSEC enabled and validation failed.         |
 | `Transport(e)`          | Underlying I/O error.                         |
 
-## Testing with a mock resolver
+## Testing
 
-`core.net` exposes a `MockResolver` for tests — no network I/O:
+:::caution Not shipped
+`MockResolver` does not exist — zero declarations in `core/` — and
+`Resolver` is not a context, so the `provide Resolver = mock in { … }`
+this section used to show could not have been written either. Both
+halves of the example named machinery with no code behind it.
+:::
+
+`Resolver` is a value, so a test points one at a nameserver it
+controls rather than substituting the type:
 
 ```verum
-let mock = MockResolver.new()
-    .with_a("example.com",      [Ipv4Addr.new(127, 0, 0, 1)])
-    .with_aaaa("example.com",   [Ipv6Addr.LOCAL_HOST])
-    .with_txt("_dmarc.example.com", ["v=DMARC1; p=reject"]);
+// A resolver aimed at a fixture nameserver on the loopback. `retries`
+// and `timeout_ms` keep a test from hanging when the fixture is down.
+let resolver = Resolver.new()
+    .nameserver_ip(Ipv4Addr.new(127, 0, 0, 1))
+    .timeout_ms(200)
+    .retries(0)
+    .use_tcp(false);
 
-provide Resolver = mock in {
-    let ips = lookup_host_async("example.com").await?;
-    // ...
+match resolver.lookup(&"example.com") {
+    Result.Ok(ips)  => assert(ips.len() > 0),
+    // Run against a loopback with nothing listening and the error is
+    // NOT `Timeout` — measured. Match the variant you actually expect
+    // rather than assuming the timeout is what a dead port produces.
+    Result.Err(err) => print(f"lookup failed: {err}"),
 }
 ```
+
+The free functions (`lookup_host`, `lookup_addr`, `resolve`) read the
+system configuration and cannot be pointed anywhere, so a test that
+must not touch the network uses a `Resolver` and its methods.
 
 ## See also
 

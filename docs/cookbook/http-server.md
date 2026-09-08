@@ -35,15 +35,17 @@ async fn handle(mut stream: TcpStream, peer: SocketAddr)
     using [Database, Logger]
 {
     let req = read_request(&mut stream).await?;
-    Logger.info(f"{peer} {req.method} {req.uri}");
+    Logger.info(f"{peer} {req.method} {req.path}");
     let resp = route(req).await.unwrap_or_else(error_response);
     write_response(&mut stream, &resp).await?;
     Result.Ok(())
 }
 
 fn error_response(e: Error) -> Response {
-    Response.new(StatusCode.internal_error())
-        .with_body(f"error: {e}".into_bytes())
+    // The 500 constructor is `internal_server_error`; the body builder
+    // is `.body(..)`, not `.with_body(..)`.
+    Response.new(StatusCode.internal_server_error())
+        .body(f"error: {e}".into_bytes())
 }
 ```
 
@@ -57,7 +59,7 @@ completes before `serve` returns. See
 async fn route(req: Request) -> Result<Response, Error>
     using [Database]
 {
-    match (req.method, req.uri.path()) {
+    match (req.method, req.path) {
         // Static routes. The response builders are FREE FUNCTIONS in
         // `core/net/weft/response_ext.vr`, not methods on `Response`.
         (Method.Get, "/health") =>
@@ -119,10 +121,9 @@ async fn handle_get_user(id: Int) -> Result<Response, Error>
                     "email": ${u.email}
                 }
             """.into_bytes();
-            Response.new(StatusCode.ok())
-                .with_header("content-type", "application/json")
-                .with_body(body)
-                .into_ok()
+            Result.Ok(Response.new(StatusCode.ok())
+                .header("content-type", "application/json")
+                .body(body))
         }
         Maybe.None => Result.Ok(Response.new(StatusCode.not_found())),
     }
@@ -139,8 +140,8 @@ position. See
 ### Query parameters
 
 ```verum
-let filter = req.uri.query_param("filter").unwrap_or("all");
-let limit: Int = req.uri.query_param("limit")
+let filter = req.query_param(&"filter").unwrap_or("all");
+let limit: Int = req.query_param(&"limit")
     .and_then(|s| s.parse_int())
     .unwrap_or(100);
 ```
@@ -148,17 +149,26 @@ let limit: Int = req.uri.query_param("limit")
 ### JSON body
 
 ```verum
+mount core.net.weft.handler.{WeftRequest};
 mount core.net.weft.response_ext.{resp_text, resp_json, resp_bad_request};
 mount core.encoding.json;
 
-async fn handle_create_user(req: Request) -> Result<Response, Error>
+async fn handle_create_user(req: WeftRequest) -> Result<Response, Error>
     using [Database]
 {
-    let body = req.read_body().await?;      // then check the length yourself
+    // A server request carries its body as a FIELD; there is no
+    // `read_body()` and no `read_body_limited(n)` — check the length
+    // yourself.
+    let body = req.body_bytes();
     if body.len() > 1024 * 64 {
         return Result.Ok(resp_bad_request());
     }
-    let payload: CreateUserRequest = json.parse(&body)?;
+    // `json.parse` takes TEXT; the bytes entry is `json.decode_bytes`.
+    // Both answer a `JsonValue` — there is no one-call typed decode on
+    // this path, the same way there is no one-call typed encode on the
+    // response side, so read the fields you need off the value.
+    let doc = json.decode_bytes(body)?;
+    let payload = CreateUserRequest.from_json(&doc)?;   // your helper
     let user = create_user(&payload)?;      // your helper, over Database.execute
     Result.Ok(resp_json(json.stringify(&user_to_json(&user))))
 }
@@ -186,8 +196,46 @@ Corrected 2026-09-06, each verified against `core/`:
 * `req.read_body_limited(n)` does not exist; read the body and check its
   length yourself.
 
+Four more, found 2026-09-08 — the note above named them and the code
+blocks kept using them, which is its own lesson: a correction that
+disclaims a name in prose and leaves it in the example teaches the
+example.
+
+* **`req.uri` does not exist.** A server handler receives a
+  `WeftRequest`, whose fields are `method`, `path`, `raw_query`,
+  `headers`, `body`, `path_params`, `peer_addr`. So `req.uri.path()` is
+  `req.path`, and `req.uri.query_param(..)` is `req.query_param(&..)` —
+  a method on the request itself.
+* **`req.read_body()` does not exist either.** The body is a field;
+  `req.body_bytes()` and `req.body_text()` read it.
+* **`StatusCode.internal_error()` is `internal_server_error()`.** The
+  named constructors are `ok`, `created`, `no_content`, `bad_request`,
+  `unauthorized`, `forbidden`, `not_found`, `internal_server_error`.
+* **`Response` builders are `.header(name, value)` and `.body(bytes)`**
+  — the `with_` prefix belongs to the free `resp_with_*` functions,
+  which take the response as their first argument.
+
 `StatusCode.ok()`, `Method.Get`, `json.parse` and `@derive(Deserialize)`
 DO exist and are unchanged.
+:::
+
+:::danger Setting a response header does not work at Tier 0 yet
+Measured 2026-09-08. Two independent defects sit under it:
+
+* `Response.header(name, value)` calls `Headers.insert`, and `Headers`
+  declares `set` / `append` — there is no `insert`. It panics with a
+  candidate list of maps and sets (T1273).
+* Every other route ends in `Headers.set`, which calls
+  `self.entries.retain(…)`, and **any** `&mut self` method that calls
+  `List.retain` on one of its fields dies at opcode 0x63 — a plain
+  twelve-line user record reproduces it (T1274). That takes out the free
+  builders too: `resp_with_header`, `resp_with_body_text` and
+  `resp_with_body_bytes` all set `content-length` through `set`.
+
+So the shapes below are the API and are what the pages will keep, but a
+handler that sets a header cannot run in the interpreter until those two
+land. `Headers.append` works today, and so does reading with
+`headers.get` / `get_all`.
 :::
 
 The refinement on `name` validates at deserialization time — bodies
@@ -289,8 +337,8 @@ async fn with_logging(req: Request, next: Next) -> Result<Response, Error>
     let elapsed = Clock.now() - start;
 
     match &resp {
-        Result.Ok(r)  => Logger.info(f"{req.method} {req.uri.path()} {r.status} {elapsed}"),
-        Result.Err(e) => Logger.error(f"{req.method} {req.uri.path()} error: {e}"),
+        Result.Ok(r)  => Logger.info(f"{req.method} {req.path} {r.status} {elapsed}"),
+        Result.Err(e) => Logger.error(f"{req.method} {req.path} error: {e}"),
     }
     resp
 }
@@ -379,7 +427,7 @@ async fn test_user_not_found() {
 | Concern                | What to do                                       |
 |------------------------|--------------------------------------------------|
 | **Backpressure**       | `Semaphore.new(max_connections)`.                |
-| **Read limits**        | `read_body_limited(max_bytes)` on every handler. |
+| **Read limits**        | `req.body_bytes().len()` checked in the handler — there is no `read_body_limited`. |
 | **Timeouts**           | `timeout(30.secs(), req.parse())` around IO.  |
 | **Graceful shutdown**  | SIGINT → stop accepting → drain nursery.         |
 | **TLS**                | `TlsAcceptor.from_config(TlsConfig.server()…)`.  |
