@@ -239,21 +239,30 @@ type Constraint is
 
 type Direction is Horizontal | Vertical;
 
-type Flex is { ... };
-type FlexDirection is Row | RowReverse | Column | ColumnReverse;
-type FlexItem is { grow: Float, shrink: Float, basis: Constraint };
+// `Flex` is an ENUM — how free space is distributed — not a builder.
+type Flex is Start | Center | End | SpaceBetween | SpaceAround;
 
-Flex.new(direction)
-    .constraints(&[Constraint.Fill, LayoutConstraint.Length(20), Constraint.Fill])
-    .margin(1)
-    .split(rect) -> List<Rect>
+// `TermLayout` is what splits a Rect. `Fill` carries a WEIGHT, `margin`
+// takes a `Margin` record, and `split` takes the Rect by value.
+TermLayout.horizontal() / TermLayout.vertical() -> TermLayout
+    .constraints(cs: List<LayoutConstraint>)
+    .margin(m: Margin)          // { top, right, bottom, left }
+    .flex(f: Flex) / .spacing(n)
+    .split(area: Rect) -> List<Rect>
+
+// A separate flexbox engine, for the CSS model:
+FlexLayout.row() / .column()
+    .wrap(..) .justify(..) .align_items(..) .align_content(..) .gap(..)
+    .compute(..)
 
 type GridLayout is { ... };
-type GridTrack is Fixed(Int) | Fraction(Float) | Auto;
-Grid.new()
-    .columns(&[GridTrack.Fixed(20), GridTrack.Fraction(1.0)])
-    .rows(&[GridTrack.Auto])
-    .split(rect) -> GridAreas
+type GridTrack is Fixed(Int) | Fr(Float) | MinMax(Int, Int) | Auto;
+
+// Tracks are CONSTRUCTOR arguments, not builders, and the result is a
+// list of rows of Rect — there is no `GridAreas` type.
+GridLayout.new(columns: List<GridTrack>, rows: List<GridTrack>) -> GridLayout
+    .column_gap(n) / .row_gap(n) / .gap(n)
+    .compute(&area: &Rect) -> List<List<Rect>>
 ```
 
 ---
@@ -522,9 +531,9 @@ incrementally. `Style.reset()` clears everything.
 
 ```verum
 let layout = if area.width > 120 {
-    Flex.new(Direction.Horizontal).constraints(&[...])
+    TermLayout.horizontal().constraints(cs)
 } else {
-    Flex.new(Direction.Vertical).constraints(&[...])
+    TermLayout.vertical().constraints(cs)
 };
 ```
 
