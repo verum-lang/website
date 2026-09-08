@@ -39,7 +39,7 @@ Styled multi-line text with `NoWrap`, `CharWrap`, or `WordWrap`.
 ```verum
 Paragraph.new()
     .text([Line.raw("First line"), Line.styled("Second", Style.new().bold())])
-    .wrap(Wrap.Word)
+    .wrap(Wrap.WordWrap)          // NoWrap | WordWrap | CharWrap
     .alignment(Alignment.Center)
 ```
 
@@ -57,12 +57,14 @@ SelectableList.new(&items)
 ```
 
 ### `Table`
-Structured rows with per-column `Constraint` widths.
+Structured rows with per-column `LayoutConstraint` widths. The widths are
+a CONSTRUCTOR argument — there is no `.widths(…)` builder — and the row
+type is `TableRow`.
 
 ```verum
-Table.new(rows)
-    .header(Row.new(["Name", "Value"]))
-    .widths(&[LayoutConstraint.Percentage(40), LayoutConstraint.Percentage(60)])
+Table.new(rows, [LayoutConstraint.Percentage(40),
+                 LayoutConstraint.Percentage(60)])
+    .header(TableRow.new(["Name", "Value"]))
     .highlight_spacing(HighlightSpacing.WhenSelected)
     .render(area, f.buffer, &mut state);
 ```
@@ -160,7 +162,9 @@ Notification.success("Saved!").title("IO").width(40).render(area, buf);
 Thin scroll indicator (vertical or horizontal).
 
 ```verum
-Scrollbar.new(ScrollbarOrientation.VerticalRight)
+// Orientation picks the CONSTRUCTOR; there is no `Scrollbar.new`, and
+// `ScrollbarOrientation` has two variants — Vertical and Horizontal.
+Scrollbar.vertical()
     .render(area, f.buffer, &mut state);
 ```
 
@@ -188,7 +192,7 @@ Canvas.new()
     .x_bounds(0.0, 100.0)
     .y_bounds(0.0, 100.0)
     .marker(Marker.Braille)
-    .paint(Heap(LineShape.new(0.0, 0.0, 100.0, 100.0, Color.Red)))
+    .paint(Heap.new(LineShape.new(0.0, 0.0, 100.0, 100.0, Color.Red)))
 ```
 
 ## Navigation
@@ -197,7 +201,7 @@ Canvas.new()
 Single-row tab bar with dividers.
 
 ```verum
-Tabs.new(["Overview", "Metrics", "Logs"]).selected(1).divider(" | ")
+Tabs.new(["Overview", "Metrics", "Logs"]).select(1).divider(" | ")
 ```
 
 ---

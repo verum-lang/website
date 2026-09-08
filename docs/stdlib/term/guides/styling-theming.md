@@ -40,7 +40,7 @@ the right base-16 index and are the usual starting point.
 ### Parsing hex
 
 ```verum
-Color.Rgb(Rgb.from_hex("#1e90ff").unwrap())       // explicit
+Color.TrueColor(Rgb.from_hex("#1e90ff").unwrap())       // explicit
 style.fg(hex("1e90ff"))                            // prelude shortcut
 ```
 
@@ -152,8 +152,8 @@ For your own theme:
 
 ```verum
 let corporate = Theme {
-    surface: Color.Rgb(Rgb.new(18, 18, 24)),
-    primary: Color.Rgb(Rgb.new(230, 230, 240)),
+    surface: Color.TrueColor(Rgb.new(18, 18, 24)),
+    primary: Color.TrueColor(Rgb.new(230, 230, 240)),
     accent:  hex("00b4d8"),
     ..Theme.dark()
 };

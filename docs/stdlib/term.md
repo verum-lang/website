@@ -16,9 +16,9 @@ layers are optional, so you can drop down to raw mode when you need
 to.
 
 ```
-Layer 6  App framework            App, Model, Update, View, Router, CommandPalette, prompts
+Layer 6  App framework            Model, run, Command, Subscription, prompts, OSC 133 zones
 Layer 5  Widget library           Block, Paragraph, List, Table, Chart, Tree, Menu, Dialog, Spinner
-Layer 4  Layout engine            Rect, Constraint, Flex, CSS Grid, Responsive
+Layer 4  Layout engine            Rect, LayoutConstraint, TermLayout, Flex, FlexLayout, GridLayout
 Layer 3  Rendering engine         Cell, Buffer, Frame, DiffRender, Viewport, Terminal
 Layer 2  Style & color            Color, Rgb, Hsl, Style, Theme, Modifier, ColorProfile
 Layer 1  Event system             Event, KeyEvent, MouseEvent, InputParser, EventStream
@@ -166,7 +166,7 @@ type Style is {
 
 Style.new()
     .fg(Color.Red)
-    .bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 }))
+    .bg(Color.TrueColor(Rgb.new(10, 10, 30)))
     .bold()
     .underlined()
     .not_italic()
@@ -225,17 +225,27 @@ t.hide_cursor()                      t.show_cursor()      t.set_cursor(col, row)
 ```verum
 type Rect is { x: Int, y: Int, width: Int, height: Int };
 rect.area() -> Int              rect.contains(x, y) -> Bool
-rect.inner(margin: Margin) -> Rect           rect.split_horizontal(widths: &[Int]) -> List<Rect>
+rect.left() / .right() / .top() / .bottom() -> Int
+rect.is_empty() -> Bool         rect.centered(width, height) -> Rect
+rect.intersection(&other) -> Rect               rect.union(&other) -> Rect
+rect.inner(margin: Margin) -> Rect
+// `split_horizontal` cuts at ONE position and returns the PAIR — it is
+// not the constraint solver. Splitting by constraints is `TermLayout`.
+rect.split_horizontal(at: Int) -> (Rect, Rect)
+rect.split_vertical(at: Int) -> (Rect, Rect)
 
-type Margin is { top: Int, bottom: Int, left: Int, right: Int };
+type Margin is { top: Int, right: Int, bottom: Int, left: Int };   // CSS order
+Margin.uniform(n) / .horizontal(n) / .vertical(n) / .symmetric(h, v)
 
-type Constraint is
-    | Fixed(Int)
-    | Percentage(UInt8)         // 0..=100
-    | Ratio(UInt16, UInt16)
+// The type is `LayoutConstraint`. (`Constraint` is a different type in
+// core.database.) There is no `Fixed` — exact size is `Length` — and
+// `Fill` carries a WEIGHT rather than standing alone.
+type LayoutConstraint is
+    | Length(Int)               // exact size in cells
     | Min(Int) | Max(Int)
-    | Length(Int)
-    | Fill;
+    | Percentage(Int)           // 0..=100
+    | Ratio(Int, Int)           // numerator, denominator
+    | Fill(Int);                // share of the remainder, weight > 0
 
 type Direction is Horizontal | Vertical;
 
@@ -297,95 +307,155 @@ Block.new()
 
 | | |
 |---|---|
-| `.title(&"  Title  ")` |  |
-| `.borders(Borders.All)` | All \| Top \| Left \| Right \| Bottom \| None |
-| `.border_type(BorderType.Round)` | Round \| Double \| Thick \| Thin \| Plain |
+| `.title("  Title  ")` |  |
+| `.title_alignment(Alignment.Center)` | Left \| Center \| Right |
+| `.borders(Borders.ALL)` | `Borders` is a BIT SET, not a sum type: the constants are `NONE`, `TOP`, `RIGHT`, `BOTTOM`, `LEFT`, `ALL`, combined with `.union(…)` |
+| `.border_type(BorderType.Rounded)` | None \| Plain \| Rounded \| Double \| Thick \| Custom { chars } |
 | `.border_style(Style.new().fg(Color.Cyan))` |  |
-| `.style(Style.new().bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 })))` |  |
-| `Paragraph.new(&"body text")` |  |
-| `.block(Block.new().borders(Borders.All))` |  |
+| `.padding(Margin.uniform(1))` |  |
+| `.style(Style.new().bg(Color.TrueColor(Rgb.new(10, 10, 30))))` |  |
+| `Paragraph.new()` | takes NO text argument — the text is a builder |
+| `.text([Line.raw("body"), Line.styled("hi", st)])` | `List<Line>` |
+| `.block(Block.new().borders(Borders.ALL))` |  |
 | `.alignment(Alignment.Left)` |  |
-| `.wrap(Wrap.Wrap)` | No \| Wrap \| Truncate |
+| `.wrap(Wrap.WordWrap)` | NoWrap \| WordWrap \| CharWrap |
+| `.scroll((0, 0))` | `(x, y)` offset |
 | `.style(Style.new().fg(Color.White))` |  |
-| `Line.new(&spans)` | a single styled line |
-| `Span.new(&"text").fg(Color.Red)` | an inline styled run |
+| `Line.from(spans)` | a single styled line — the constructor is `from`, and `Line.raw(text)` / `Line.styled(text, style)` build one directly |
+| `TextSpan.raw("text")` | an inline run; the styled form is `TextSpan.styled("text", Style.new().fg(Color.Red))` |
+
+The span type is `TextSpan`. `Span` resolves to something else entirely
+— `core.meta`'s macro-hygiene span — so a `Span.new(…)` written by
+analogy binds to the wrong type without a word of complaint (T1268).
 
 ### Interactive widgets
 
+Every line below was read off the `implement` block that declares it.
+Where the older page carried a plausible-looking form, the real one is
+named next to it — a builder that never existed reads exactly like one
+that does.
+
 ```verum
+// --- selectable list ------------------------------------------------
 type ListState is { selected: Maybe<Int>, offset: Int };
-SelectableList.new(&items)
+SelectableList.new(items)                 // items: List<Line>
     .block(Block.new())
     .highlight_style(Style.new().reversed())
-    .highlight_symbol(&">> ")
+    .highlight_symbol(">> ")
     .render(area, f.buffer, &mut state)
 
+// --- table ----------------------------------------------------------
 type TableState is { selected: Maybe<Int>, offset: Int };
-Table.new(&rows)
-    .header(Row.new(&[Cell.from("id"), Cell.from("name")]))
-    .widths(&[LayoutConstraint.Length(8), Constraint.Fill])
+// The column widths are a CONSTRUCTOR argument, not a `.widths(…)`
+// builder, and the row/cell types are `TableRow` / `TableCell`.
+// `TableRow.new` takes the cell TEXTS; `TableCell` is for styled cells.
+Table.new(rows, [LayoutConstraint.Length(8), LayoutConstraint.Fill(1)])
+    .header(TableRow.new(["id", "name"]))
+    .footer(TableRow.new(["", "2 rows"]))
     .column_spacing(1)
     .highlight_style(Style.new().bold())
+    .highlight_spacing(HighlightSpacing.WhenSelected)
 
-type TreeState is { selected: List<Int>, opened: Set<List<Int>> };
-Tree.new(&items)
+// --- tree -----------------------------------------------------------
+type TreeState is {
+    selected: Maybe<List<Int>>,   // path to the selected node
+    expanded: List<List<Int>>,    // paths of expanded nodes
+    offset: Int,
+};
+Tree.new(items)                           // items: List<TreeItem<T>>
     .render(area, f.buffer, &mut state)
 
-Menu.new(&items)
-    .orientation(Direction.Horizontal)
+// --- menu -----------------------------------------------------------
+// A menu is vertical; orientation is not a knob. Horizontal tabs are
+// `Tabs`.
+Menu.new([
+    MenuItem.new("New").shortcut("Ctrl+N"),
+    MenuItem.separator(),
+    MenuItem.new("Export").submenu([MenuItem.new("JSON")]),
+])
+    .highlight_style(Style.new().reversed())
+    .shortcut_style(Style.new().dim())
     .render(area, f.buffer, &mut state)
 
-type TextInputState is { buffer: Text, cursor: Int, selection: Maybe<(Int, Int)> };
+// --- text input -----------------------------------------------------
+// The state keeps `value` plus a cursor/anchor PAIR — a selection is
+// the span between them, not a `Maybe<(Int, Int)>` field.
+type TextInputState is {
+    value: Text, cursor: Int, anchor: Int, scroll_offset: Int,
+    undo: List<Snapshot>, redo: List<Snapshot>, history_cap: Int,
+};
 TextInput.new()
-    .placeholder(&"type…")
-    .password(false)
+    .placeholder("type…")
+    .mask('*')                            // password field: mask the glyph
     .render(area, f.buffer, &mut state)
 
+// --- gauge ----------------------------------------------------------
+// `.label` takes a `TextSpan`; the plain-text one is `.label_text`.
 TermGauge.new()
-    .ratio(0.72)                       // 0.0..=1.0
-    .label(&"72%")
+    .ratio(0.72)                          // 0.0..=1.0   (or .percent(72))
+    .label_text("72%")
     .gauge_style(Style.new().fg(Color.Green))
 
-Tabs.new(&titles)
+// --- tabs -----------------------------------------------------------
+Tabs.new(titles)                          // titles: List<Text>
     .select(current_index)
-    .divider(&"|")
+    .divider("|")
 
-type ScrollbarState is { content_length: Int, position: Int, viewport_content_length: Int };
-Scrollbar.new(direction: ScrollDirection)
-    .thumb_style(Style.new().fg(Color.DarkGray))
+// --- scrollbar ------------------------------------------------------
+type ScrollbarState is {
+    content_length: Int, position: Int, viewport_length: Int,
+};
+// Orientation picks the CONSTRUCTOR; there is no `Scrollbar.new`.
+Scrollbar.vertical()                      // or Scrollbar.horizontal()
+    .thumb_style(Style.new().fg(Color.DarkGrey))
+    .no_arrows()
     .render(area, f.buffer, &mut state)
 
+// --- canvas ---------------------------------------------------------
+// `paint` takes a SHAPE, not a closure, and the bounds are two Floats
+// rather than an array. The drawing primitives (`line`, `circle`,
+// `rect_outline`, `set_color`) live on `Painter`, which the shape's own
+// `draw` receives — the canvas never hands the caller a `ctx`.
 Canvas.new()
-    .x_bounds([0.0, 100.0])
-    .y_bounds([0.0, 100.0])
-    .paint(|ctx| {
-        // Colour is set on the painter, then the primitive is drawn:
-        // `line` takes four Floats and nothing else.
-        ctx.set_color(Color.Red);
-        ctx.line(0.0, 0.0, 50.0, 50.0);
-        ctx.print(25.0, 25.0, "hi");
-    })
+    .x_bounds(0.0, 100.0)
+    .y_bounds(0.0, 100.0)
+    .marker(Marker.Braille)
+    .paint(Heap.new(LineShape.new(0.0, 0.0, 50.0, 50.0, Color.Red)))
+    .paint(Heap.new(CircleShape.new(25.0, 25.0, 10.0, Color.Cyan)))
 
-Sparkline.new(&values)
+// --- sparkline / bar chart -------------------------------------------
+Sparkline.new(values)                     // values: List<Float>
+    .max(100.0)
     .style(Style.new().fg(Color.Green))
 
-BarChart.new(&bars)
+// A bar chart takes GROUPS of bars; the per-bar knobs are on `Bar`.
+BarChart.new([BarGroup.new([Bar.new(3.0).label("mon")])])
     .bar_width(3)
     .bar_gap(1)
-    .value_style(Style.new().bold())
 
-Dialog.new()
-    .title(&"Confirm")
-    .body(&"Delete this file?")
-    .buttons(&[DialogButton.new(&"Cancel"), DialogButton.new(&"Delete").primary()])
-    .render(area, f.buffer, &mut state)
+// --- dialog ---------------------------------------------------------
+// The body is a constructor argument. There is no `.primary()` on a
+// button: which button is highlighted is `DialogState`'s business, and
+// the two per-button knobs are `.style` and `.focused_style`.
+Dialog.new("Delete this file?")
+    .title("Confirm")
+    .buttons([DialogButton.new("Cancel"), DialogButton.new("Delete")])
+    .width_percent(40)
+    .render(area, f.buffer, &mut state)    // state: DialogState
 
-Spinner.new()
-    .frames(&SpinnerFrames.Dots)      // Dots | Line | Arc | …
+// --- spinner / notification ------------------------------------------
+// The frame set is a constructor argument, and the named sets are
+// FUNCTIONS: `SpinnerFrames.dots()`, or the shorthand `Spinner.dots()`.
+Spinner.dots()                            // = Spinner.new(SpinnerFrames.dots())
+    .label_text("working…")
     .style(Style.new().fg(Color.Yellow))
 
-Notification.new(NotificationLevel.Warning, &"disk nearly full")
-    .render(f, area)
+// A notification is built from its LEVEL: info / warning / error /
+// success. There is no `Notification.new`.
+Notification.warning("disk nearly full")
+    .title("storage")
+    .width(40)
+    .render(area, f.buffer)
 ```
 
 ---
@@ -474,43 +544,76 @@ async fn main() {
 
 ### Interactive prompts (non-TUI)
 
-Drop-in for simple scripts:
+Drop-in for simple scripts. `select` and `multi_select` answer with the
+chosen INDEX (or indices) into the options you passed — not with the
+option value, and they are not generic.
 
 ```verum
-confirm(&"Proceed?") -> IoResult<Bool>                               
-select<T: Display>(&"Pick", &items) -> IoResult<T>                  
-multi_select<T: Display>(&"Pick", &items) -> IoResult<List<T>>      
-input(&"Your name") -> IoResult<Text>                                  
-password(&"Password") -> IoResult<Text>                                
+mount core.term.app.{confirm, select, multi_select, input, password};
+
+confirm(message: Text)                        -> IoResult<Bool>
+select(message: Text, options: &List<Text>)   -> IoResult<Maybe<Int>>
+multi_select(message: Text, opts: &List<Text>) -> IoResult<List<Int>>
+input(message: Text)                          -> IoResult<Text>
+password(message: Text)                       -> IoResult<Text>
 ```
 
-### Router (multi-screen apps)
+`core.shell.interactive` carries a second family with the same names and
+no `IoResult` wrapper — `confirm(prompt: &Text) -> Bool`,
+`select<T: Clone>(prompt: &Text, options: &[(Text, T)]) -> T`,
+`input_default`, `input_validated`, `input_required`. Mount one or the
+other; the return shapes differ.
 
-```verum
-type Router<State, Msg> is { ... };
-router.route(&"/home", |s| HomeScreen.new(s))
-      .route(&"/settings", |s| SettingsScreen.new(s))
-      .navigate(&"/settings")
-```
+### Router and command palette — not shipped
 
-### Command palette
+:::caution Not shipped
+`Router`, `Screen` and `CommandPalette` do not exist. Measured: zero
+declarations anywhere under `core/`, and the only occurrence of either
+name in the whole tree is one comment listing Layer 6's intended
+contents. The page previously showed a `router.route(…).navigate(…)`
+builder and a `palette.register(…)` chain; neither name is callable.
 
-```verum
-type CommandPalette<Msg> is { ... };
-palette.register(&"Save", &"Ctrl+S", Msg.Save)
-       .register(&"Quit", &"Ctrl+Q", Msg.Quit)
-```
+The shipped Layer 6 surface is what
+`core/term/app/mod.vr` exports and nothing else:
+
+    Model, AppMessage, run, run_async          the Elm loop above
+    Command  + none/perform/task/batch/sequence/tick/quit
+    Subscription + none/interval/every/once/from_stream/batch
+    confirm, select, input, multi_select, password
+    SemanticZone, Politeness, write_semantic_zone
+
+A multi-screen app today is one `Model` whose state carries the current
+screen, with `handle_event` switching on it.
+:::
 
 ### Accessibility zones
 
+`write_semantic_zone` takes the escape WRITER and a zone — two
+arguments, not a frame and an area — and the zones are OSC 133 shell
+zones. There is no `Heading` and no `ListItem`; the nearest thing is
+`Region { role, label }`, which the declaration marks as a future
+extension.
+
 ```verum
-write_semantic_zone(f, &area, SemanticZone.Heading, &"Dashboard")
-write_semantic_zone(f, &area, SemanticZone.ListItem { level: 2 }, &text)
+type SemanticZone is
+    | Prompt                                  // OSC 133;A
+    | CommandInput                            // OSC 133;B
+    | CommandOutput                           // OSC 133;C
+    | CommandEnd { exit_code: Int }           // OSC 133;D
+    | Region { role: Text, label: Text }      // future extension
+    | Live { politeness: Politeness };        // future: live regions
+
+type Politeness is Off | Polite | Assertive;
+
+write_semantic_zone(writer: &mut dyn EscapeWriter, zone: SemanticZone)
+    -> IoResult<()>
+
+// The named shorthands, same file:
+mark_prompt_start(writer)     mark_command_input(writer)
 ```
 
-The rendering layer emits standards-compliant accessibility markers
-(OSC 133 semantic zones) that screen readers and terminal multiplexers
-can consume.
+The rendering layer emits standards-compliant OSC 133 markers that
+shells, terminal multiplexers and screen readers can consume.
 
 ---
 
