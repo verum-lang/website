@@ -37,6 +37,36 @@ spelling; an `E4xx` means it found everything and the types disagree.
 | `E8xx` | FFI | Foreign boundary and ABI |
 | `E9xx` | Internal | Compiler bugs — please report |
 
+## Four-digit codes are a different scheme
+
+A code with FOUR digits after the `E` does not follow the table above, and
+reading it as if it did sends you to the wrong phase: `E0101` is a
+**memory** error, not a parse error.
+
+    error<E0101>: use-after-free detected          ← memory, not E0xx parse
+    error<E0900>: denied lint: unstable intrinsic  ← lint, a category the
+                                                     three-digit table has no
+                                                     range for at all
+
+| Range | Category | Codes | Example |
+|-------|----------|-------|---------|
+| `E00xx` | Parse / Internal | 11 | `E0001` expected function body or semicolon |
+| `E01xx` | Memory | 3 | `E0101` use-after-free detected |
+| `E02xx` | Type | 5 | `E0203` `?` operand error type does not convert |
+| `E03xx` | Type / Context / Verification | 19 | `E0307` advanced protocol constraint unsatisfied |
+| `E04xx` | Module / Name / Parse / Type | 9 | `E0401` stdlib bootstrap could not resolve a module surface |
+| `E05xx` | Lint / Verification | 2 | `E0500` denied lint (general) |
+| `E06xx` | Type | 2 | `E0601` non-exhaustive patterns |
+| `E07xx` | Context / Internal | 3 | `E0700` VBC codegen received the wrong input form |
+| `E08xx` | Context / Internal | 4 | `E0800` VBC monomorphization received the wrong input form |
+| `E09xx` | Lint | 7 | `E0900` denied lint: unstable intrinsic |
+| `E10xx` | Lint | 6 | `E1000` denied lint: unused stage |
+
+Measured against the registry on 2026-09-08: 193 three-digit codes and 71
+four-digit ones. The sections below cover the three-digit families, which
+are the ones ordinary programs hit; for any code in either scheme,
+`verum explain <code>` prints its entry.
+
 ## Parse — `E0xx`
 
 | Code | Meaning | Emitted? |
