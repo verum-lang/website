@@ -48,7 +48,7 @@ implement Model for Counter {
                 .borders(Borders.All)
                 .border_style(Style.new().fg(Color.Cyan)))
             .alignment(Alignment.Centre)
-            .style(Style.new().fg(color).add_modifier(Modifier.Bold))
+            .style(Style.new().fg(color).bold())
             .render(f, area);
     }
 
@@ -142,7 +142,7 @@ implement Model for AppState {
     fn view(&self, f: &mut Frame) {
         SelectableList.new(&self.items)
             .block(Block.new().title(&"Files").borders(Borders.All))
-            .highlight_style(Style.new().modifier(Modifier.Reversed))
+            .highlight_style(Style.new().reversed())
             .highlight_symbol(&">> ")
             .render(f.area(), f.buffer, &mut self.list_state.clone());
     }

@@ -67,7 +67,7 @@ CROSSED_OUT     OVERLINED
 | the two spellings | |
 |---|---|
 | `Style.new().bold().italic().fg(Color.Yellow)` | the shorthand |
-| `Style.new().add_modifier(Modifier.BOLD.union(Modifier.UNDERLINED))` | the explicit form |
+| `Style.new().bold().underlined()` | there is no other form: `add_modifier` is a FIELD of `Style`, not a method |
 
 `add_modifier` specifies what to turn on, `sub_modifier` what to explicitly
 turn off when merging with ambient style — useful when temporarily

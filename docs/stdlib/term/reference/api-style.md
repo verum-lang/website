@@ -60,10 +60,10 @@ Style.new() -> Style
     .fg(c: Color) -> Self
     .bg(c: Color) -> Self
     .underline_color(c: Color) -> Self
-    .add_modifier(m: Modifier) -> Self
-    .remove_modifier(m: Modifier) -> Self
     .bold()       .italic()     .dim()
     .underlined() .reversed()   .crossed_out()
+    .not_bold()   .not_italic() .not_underlined()   // the sub_modifier set
+    .has_modifier(m: Modifier) -> Bool
     .patch(other: Style) -> Style             // merge; `other` wins
     .hyperlink(url: &Text) -> Self
 ```

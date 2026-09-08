@@ -128,7 +128,7 @@ Notes:
 mount term.style.{Color, Style};
 
 fn report_error(e: &Error) {
-    let red = Style.new().fg(Color.Red).add_modifier(Modifier.Bold);
+    let red = Style.new().fg(Color.Red).bold();
     eprint(&red.paint(&"error: "));
     eprintln(&e.to_string());
     for src in e.chain().skip(1) {

@@ -167,8 +167,9 @@ type Style is {
 Style.new()
     .fg(Color.Red)
     .bg(Color.Rgb(Rgb { r: 10, g: 10, b: 30 }))
-    .add_modifier(Modifier.Bold | Modifier.Underline)
-    .remove_modifier(Modifier.Italic)
+    .bold()
+    .underlined()
+    .not_italic()
 
 type Theme is { ... };
 Theme.dark() -> Theme                Theme.light() -> Theme
@@ -306,7 +307,7 @@ Block.new()
 type ListState is { selected: Maybe<Int>, offset: Int };
 SelectableList.new(&items)
     .block(Block.new())
-    .highlight_style(Style.new().modifier(Modifier.Reversed))
+    .highlight_style(Style.new().reversed())
     .highlight_symbol(&">> ")
     .render(area, f.buffer, &mut state)
 
@@ -315,7 +316,7 @@ Table.new(&rows)
     .header(Row.new(&[Cell.from("id"), Cell.from("name")]))
     .widths(&[LayoutConstraint.Length(8), Constraint.Fill])
     .column_spacing(1)
-    .highlight_style(Style.new().modifier(Modifier.Bold))
+    .highlight_style(Style.new().bold())
 
 type TreeState is { selected: List<Int>, opened: Set<List<Int>> };
 Tree.new(&items)
@@ -362,7 +363,7 @@ Sparkline.new(&values)
 BarChart.new(&bars)
     .bar_width(3)
     .bar_gap(1)
-    .value_style(Style.new().modifier(Modifier.Bold))
+    .value_style(Style.new().bold())
 
 Dialog.new()
     .title(&"Confirm")
@@ -514,7 +515,7 @@ animations without flicker.
 
 ### Style composition
 
-Styles are additive — `Style.new().fg(Red).add_modifier(Bold)` builds
+Styles are additive — `Style.new().fg(Color.Red).bold()` builds
 incrementally. `Style.reset()` clears everything.
 
 ### Responsive layout
