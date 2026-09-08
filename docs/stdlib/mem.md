@@ -10,8 +10,11 @@ import ModuleStatus, {
   TierBadge,
   TestCovBadge,
 } from '@site/src/components/StdlibBadge';
+import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.mem` — Memory management
+
+<StdlibStatus status="partial" />
 
 The implementation of CBGR (Capability-Based Generational References),
 the three-tier reference model, and the allocator stack. User code
