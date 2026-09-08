@@ -39,15 +39,20 @@ spelling; an `E4xx` means it found everything and the types disagree.
 
 ## Parse — `E0xx`
 
-| Code | Meaning |
-|------|---------|
-| `E001` | unexpected token |
-| `E002` | unterminated string literal |
-| `E003` | invalid escape sequence |
-| `E004` | missing closing delimiter |
-| `E005` | expected expression |
-| `E006` | invalid integer literal |
-| `E007` | invalid float literal |
+| Code | Meaning | Emitted? |
+|------|---------|----------|
+| `E001` | unexpected token | yes |
+| `E002` | unterminated string literal | yes |
+| `E003` | invalid escape sequence | yes |
+| `E004` | missing closing delimiter | yes |
+| `E005` | expected expression | yes |
+| `E006` | invalid integer literal | yes |
+| `E007` | invalid float literal | **no** |
+
+`E007` is a registry entry with no emit site: a malformed float is
+reported by the integer-literal code or by `E001` on the token that
+follows it. Cited here because the code exists and a reader searching for
+it should learn that, not wonder why it never appears.
 
 A parse error worth calling out separately, because it reads oddly the
 first time: putting a record literal directly in a `match` scrutinee makes
@@ -61,14 +66,20 @@ match s { ... }
 
 ## Name resolution — `E1xx`
 
-| Code | Meaning |
-|------|---------|
-| `E100` | undefined variable |
-| `E101` | undefined type |
-| `E102` | undefined function |
-| `E103` | field not found on type |
-| `E104` | duplicate definition |
-| `E105` | ambiguous name |
+| Code | Meaning | Emitted? |
+|------|---------|----------|
+| `E100` | undefined variable | yes |
+| `E101` | undefined type | yes |
+| `E102` | undefined function | yes |
+| `E103` | field not found on type | yes |
+| `E104` | duplicate definition | **no** |
+| `E105` | ambiguous name | yes |
+| `E106` | unresolved type placeholder | yes |
+
+`E104` has no emit site — a redeclaration is reported by the type codes.
+`E106` was missing from this table and does fire: it is the one you get
+when a type is *referenced but never defined*, as distinct from `E101`
+(undefined type at a use site).
 
 `E102` also covers calling a function with too few arguments — the message
 names the arity:
