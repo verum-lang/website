@@ -219,23 +219,29 @@ example.
 DO exist and are unchanged.
 :::
 
-:::danger Setting a response header does not work at Tier 0 yet
-Measured 2026-09-08. Two independent defects sit under it:
+:::danger The SECOND header on a response does not survive Tier 0
+Measured 2026-09-08, and the boundary is exact — the first one works:
 
-* `Response.header(name, value)` calls `Headers.insert`, and `Headers`
-  declares `set` / `append` — there is no `insert`. It panics with a
-  candidate list of maps and sets (T1273).
-* Every other route ends in `Headers.set`, which calls
-  `self.entries.retain(…)`, and **any** `&mut self` method that calls
-  `List.retain` on one of its fields dies at opcode 0x63 — a plain
-  twelve-line user record reproduces it (T1274). That takes out the free
-  builders too: `resp_with_header`, `resp_with_body_text` and
-  `resp_with_body_bytes` all set `content-length` through `set`.
+```verum
+Response.new(StatusCode.ok()).header("a", "1")              // fine
+Response.new(StatusCode.ok()).header("a", "1").header("b", "2")
+// Null pointer dereference: op=opcode 0x63 at Headers.set (pc=24)
+```
 
-So the shapes below are the API and are what the pages will keep, but a
-handler that sets a header cannot run in the interpreter until those two
-land. `Headers.append` works today, and so does reading with
-`headers.get` / `get_all`.
+`Headers.set` removes any existing entry with `self.entries.retain(…)`
+before pushing, and `List.retain` on a NON-EMPTY list dies at that
+opcode — a twelve-line user record with a `List` field reproduces it
+with no stdlib type involved (T1274). On an empty list the loop body
+never runs, which is why the first header lands.
+
+That takes the free builders with it: `resp_with_header`,
+`resp_with_body_text` and `resp_with_body_bytes` all reach `set`, and
+the body ones also write `content-length`, so they are a second write on
+their own. `Headers.append` (which only pushes) works, and so does
+reading with `headers.get` / `get_all`.
+
+`Response.header` itself is fixed: it used to call a `Headers.insert`
+that does not exist and panic with a candidate list of maps (T1273).
 :::
 
 The refinement on `name` validates at deserialization time — bodies
