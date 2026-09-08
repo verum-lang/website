@@ -47,12 +47,16 @@ across the SQLite / Postgres / MySQL backends — see
 ```verum
 mount core.database.mysql.{MysqlConfig, MysqlConnection, connect};
 
-let cfg = MysqlConfig.new()
-    .with_host("localhost".into())
-    .with_port(3306)
-    .with_user("alice".into())
-    .with_database("prod".into())
-    .with_password_from_env("MYSQL_PASSWORD".into())?;
+// `new` takes the five connection fields positionally.
+let cfg = MysqlConfig.new("localhost", 3306, "alice", "secret", "prod")
+    .with_connect_timeout_ms(5000);
+
+// `with_character_set` takes the NUMERIC collation id, not a name —
+// the default is 255 (utf8mb4_0900_ai_ci).
+let cfg = cfg.with_character_set(255);
+
+// Or, for a throwaway local instance:
+let cfg = MysqlConfig.local_dev();
 
 let mut conn = connect(&cfg)?;
 let result = conn.simple_query(&"SELECT 1".into())?;

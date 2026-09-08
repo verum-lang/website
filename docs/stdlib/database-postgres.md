@@ -47,12 +47,13 @@ across the SQLite / Postgres / MySQL backends — see
 ```verum
 mount core.database.postgres.{PgConfig, PgConnection, connect};
 
-let cfg = PgConfig.new()
-    .with_host("localhost".into())
-    .with_port(5432)
-    .with_user("alice".into())
-    .with_database("prod".into())
-    .with_password_from_env("PGPASSWORD".into())?;
+// `new` takes the five connection fields positionally.
+let cfg = PgConfig.new("localhost", 5432, "alice", "secret", "prod")
+    .with_application_name("reports")
+    .with_connect_timeout_ms(5000);
+
+// Or, for a throwaway local instance:
+let cfg = PgConfig.local_dev();
 
 let mut conn = connect(&cfg)?;
 let result = conn.simple_query(&"SELECT 1".into())?;
