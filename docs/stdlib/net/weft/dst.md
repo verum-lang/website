@@ -87,33 +87,49 @@ of random consumption is part of the deterministic schedule.
 ## `NetworkEvent` — chaos primitives
 
 ```verum
+// An event is what happens to ONE operation, not a rule with a
+// probability attached — the probabilities live in SimNetworkConfig and
+// the stream has already rolled them.
 public type NetworkEvent is
-    | LatencyMs(Int)
-    | PacketLoss(Float)
-    | Reorder(Float)
-    | Partition { side_a: List<Endpoint>, side_b: List<Endpoint> };
+    | NoEvent
+    | LatencyDelay(Duration)
+    | PacketLoss                      // drop this send or receive
+    | Reorder                         // swap with the next pending op
+    | LatencySpike(Duration)          // one-off long delay
+    | PeerPartition { until_ms: Int } // fully partition from the peer
+    | PeerReset;                      // force RST from peer
 ```
+
+`PacketLoss` and `Reorder` carry nothing: by the time an event exists
+the die has been cast for this operation. `PeerPartition` isolates the
+peer until a deadline rather than splitting a named endpoint set — the
+simulator models one connection, so there are no `side_a` / `side_b`
+lists.
 
 Network events are streamed into the simulator. The simulator
 applies them to available bytes in order, deterministically.
 
 ```verum
+// Per-mille integers, not Float rates: a deterministic simulator that
+// takes a seed must not compare floats to decide whether to drop.
 public type SimNetworkConfig is {
-    base_latency_us: Int,
-    jitter_us: Int,
-    loss_rate: Float,
-    reorder_rate: Float,
+    packet_loss_permille: Int,
+    mean_latency_us:      Int,
+    reorder_permille:     Int,
+    partition_permille:   Int,
 };
 
 implement SimNetworkConfig {
+    public fn default() -> SimNetworkConfig;    // quiet: 100 us, no loss
     public fn chaos() -> SimNetworkConfig {
         SimNetworkConfig {
-            base_latency_us: 5_000,
-            jitter_us: 2_000,
-            loss_rate: 0.05,
-            reorder_rate: 0.02,
+            packet_loss_permille: 5,      // 0.5%
+            mean_latency_us: 1_000,       // 1 ms
+            reorder_permille: 10,         // 1%
+            partition_permille: 1,        // 0.1%
         }
     }
+    public fn with_packet_loss_permille(self, permille: Int) -> SimNetworkConfig;
 }
 
 public type NetworkEventStream is { /* opaque */ };
@@ -153,15 +169,17 @@ chaos) plus the seed to drive the entire interleaving.
 ## `WeftSimulator` — the entry point
 
 ```verum
+// No `scheduler` field — determinism comes from the seeded clock and
+// rng, and there is no TaskSchedule to hand in.
 public type SimConfig is {
-    clock: TestClock,
-    rng: SeededRng,
-    scheduler: TaskSchedule,
+    clock:   TestClock,
+    rng:     SeededRng,
     network: SimNetworkConfig,
 };
 
 implement SimConfig {
-    public fn chaos_from_seed(seed: UInt64) -> SimConfig;
+    public fn from_seed(seed: UInt64) -> SimConfig;        // quiet network
+    public fn chaos_from_seed(seed: UInt64) -> SimConfig;  // chaos network
 }
 
 public type WeftSimulator is { /* opaque */ };

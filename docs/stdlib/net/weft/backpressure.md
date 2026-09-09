@@ -34,10 +34,13 @@ public stdlib.
 Bounds available requests at a fixed integer.
 
 ```verum
-public type ConcurrencyLimitLayer is { max: Int };
+// A live semaphore, not a stored bound: the layer holds the permits,
+// so the in-flight count is the semaphore's, with nothing to keep in
+// sync alongside it.
+public type ConcurrencyLimitLayer is { permits: Shared<Semaphore> };
 
 implement ConcurrencyLimitLayer {
-    public fn new(max: Int) -> ConcurrencyLimitLayer;
+    public fn new(max_in_flight: Int) -> ConcurrencyLimitLayer;
 }
 ```
 
@@ -55,15 +58,12 @@ limit (e.g. a database with a small connection pool).
 Token-bucket rate limiter.
 
 ```verum
-public type RateConfig is {
-    rps: Int,
-    burst: Int,
-};
-
-public type RateLimitLayer is { config: RateConfig };
+// There is no `RateConfig`. The two numbers are constructor arguments
+// and what the layer keeps is the running bucket.
+public type RateLimitLayer is { state: Shared<TokenBucket> };
 
 implement RateLimitLayer {
-    public fn new(config: RateConfig) -> RateLimitLayer;
+    public fn new(rate_per_sec: Int, burst: Int) -> RateLimitLayer;
 }
 ```
 
@@ -83,16 +83,21 @@ reject instead, wrap the inner with `LoadShedLayer`.
 Converts `Pending` from inner into immediate `Err(Overloaded)`.
 
 ```verum
-public type LoadShedLayer<S> is { inner: S };
+// Not generic, and it does not wrap the inner service — it is a plain
+// policy value the stack consults, carrying the Retry-After it will
+// advertise when it sheds.
+public type LoadShedLayer is { retry_after_seconds: Int };
 
-implement<S: Service<...>> LoadShedLayer<S> {
-    public fn new(inner: S) -> LoadShedLayer<S>;
+implement LoadShedLayer {
+    public fn default() -> LoadShedLayer;                    // 1 second
+    public fn with_retry_after(seconds: Int) -> LoadShedLayer;
 }
 ```
 
-The inner service's `poll_ready == Pending` translates to
-`call(req) -> Err(Overloaded)` immediately. The framework's response
-is 503 Service Unavailable with a `Retry-After` header.
+A `poll_ready == Pending` from the inner service translates to
+`call(req) -> Err(Overloaded)` immediately. The framework's response is
+503 Service Unavailable, with `retry_after_seconds` as the `Retry-After`
+header.
 
 Use case: edge servers preferring fast-fail over indefinite queuing.
 The client retries after the suggested delay, freeing the server
@@ -128,16 +133,17 @@ overload.
 Application-layer FQ-CoDel.
 
 ```verum
-public type CoDelConfig is {
-    target_ms: Int,                  // default 100 ms
-    interval_ms: Int,                // default 5_000 ms
-    min_concurrency: Int,            // floor
+// There is no `CoDelConfig` and no `min_concurrency` floor. The two
+// tunables sit on the layer beside the running state.
+public type CoDelLayer is {
+    target_ms:   Int,
+    interval_ms: Int,
+    state:       Shared<CoDelState>,
 };
 
-public type CoDelLayer is { config: CoDelConfig };
-
 implement CoDelLayer {
-    public fn new(config: CoDelConfig) -> CoDelLayer;
+    public fn new() -> CoDelLayer;      // target 5 ms, interval 100 ms
+    public fn with_target_interval(target_ms: Int, interval_ms: Int) -> CoDelLayer;
 }
 ```
 
@@ -214,10 +220,10 @@ A typical edge-server backpressure stack:
 
 ```verum
 let svc = ServiceBuilder.new(handler)
-    .layer(WfqLayer.new(tenant_weights))
-    .layer(CoDelLayer.new(CoDelConfig.default()))
-    .layer(AdaptiveConcurrencyLayer.vegas())
-    .layer(LoadShedLayer.new())                  // converts Pending to Err
+    .layer(WfqLayer.new())                       // or .with_quantum_us(n)
+    .layer(CoDelLayer.new())                     // 5 ms target, 100 ms interval
+    .layer(AdaptiveConcurrencyLayer.vegas(16, 4, 256))   // initial/min/max
+    .layer(LoadShedLayer.default())              // converts Pending to Err
     .build();
 ```
 
