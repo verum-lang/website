@@ -336,6 +336,7 @@ const sidebars: SidebarsConfig = {
   ],
   stdlib: [
     'stdlib/overview',
+    'stdlib/status-convention',
     {
       type: 'category',
       label: 'Core',
@@ -584,6 +585,12 @@ const sidebars: SidebarsConfig = {
         'stdlib/database-postgres',
         'stdlib/database-mysql',
         'stdlib/money',
+        'stdlib/storage',
+        'stdlib/cache',
+        'stdlib/search',
+        'stdlib/redis',
+        'stdlib/archive',
+        'stdlib/configuration',
       ],
     },
     {
@@ -597,6 +604,8 @@ const sidebars: SidebarsConfig = {
         'stdlib/logic',
         'stdlib/types',
         'stdlib/action',
+        'stdlib/architecture',
+        'stdlib/verify',
       ],
     },
     {
@@ -606,6 +615,8 @@ const sidebars: SidebarsConfig = {
       items: [
         'stdlib/shell',
         'stdlib/cli',
+        'stdlib/cog',
+        'stdlib/script',
       ],
     },
   ],
