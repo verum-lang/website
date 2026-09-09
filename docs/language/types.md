@@ -129,6 +129,57 @@ let zeros: [Int; 10] = [0; 10];                // repeated element
 let ys: &[Int]       = &xs[..];                // slice (length-carrying reference)
 ```
 
+`[T; N]` is a **fixed-size** type: `N` is part of it, so `xs.len()` is a
+compile-time constant and cannot change under a binding.
+
+A reference to an array **unsizes to a slice**. All four spellings below
+produce the same length-carrying reference, so a function that takes
+`&[T]` accepts an array directly:
+
+```verum
+fn total(v: &[Int]) -> Int {
+    let mut s: Int = 0;
+    let mut i: Int = 0;
+    while i < v.len() { s = s + v[i]; i = i + 1; }
+    s
+}
+
+let xs: [Int; 5] = [1, 2, 3, 4, 5];
+total(&xs);         // bare reference — unsizes
+total(&xs[..]);     // explicit whole-range subslice
+total(&xs[1..3]);   // a narrower window: length 2
+```
+
+Writing through `&mut [T]` writes through to the caller's array:
+
+```verum
+fn fill(v: &mut [Int]) {
+    let mut i: Int = 0;
+    while i < v.len() { v[i] = i * 10; i = i + 1; }
+}
+
+let mut ys: [Int; 4] = [0; 4];
+fill(&mut ys);
+// ys is now [0, 10, 20, 30]
+```
+
+### Byte buffers and FFI
+
+A `[Byte; N]` **with the annotation** is a packed buffer — `N`
+contiguous bytes, which is what a C `void*` expects. Without the
+annotation, `[0; N]` is a general `List` whose elements are 8-byte
+slots, and handing that to C corrupts it.
+
+```verum
+let mut buf: [Byte; 128] = [0; 128];   // packed, ABI-contiguous
+let ptr = buf.as_ptr();                 // addresses buf[0], not a header
+```
+
+`.as_ptr()` / `.as_mut_ptr()` answer the address of the first element,
+whether you call them on the array or on a subslice of it. Indexing
+arithmetic holds: the pointer of `&buf[1..]` is exactly one byte past
+the pointer of `&buf[..]`.
+
 ## Function types
 
 ```verum
