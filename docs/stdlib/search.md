@@ -48,32 +48,45 @@ sortable / searchable attributes are configured via `IndexConfig`.
 
 ```verum
 public type SearchQuery is {
-    query:        Text,                              // full-text query string
-    filter:       Maybe<SearchFilter>,               // optional filter expression
-    sort:         List<SortSpec>,                    // multi-field sort
-    facets:       List<Text>,                        // facet field names
-    limit:        Int,
-    offset:       Int,
-    highlight_pre_tag:  Text,                        // e.g. "<em>"
-    highlight_post_tag: Text,                        // e.g. "</em>"
+    q:         Text,                                 // full-text query string
+    filter:    Maybe<SearchFilter>,                  // optional filter expression
+    sort:      List<SortSpec>,                       // multi-field sort
+    facets:    List<Text>,                           // facet field names
+    limit:     Int { >= 1, <= 1000 },
+    offset:    Int { >= 0 },
+    fields:    List<Text>,                           // projection; empty = all
+    highlight: List<Text>,                           // fields to highlight
 };
 
+// Every comparison arm is a RECORD with named `field` / `value`, and
+// values are `JsonValue`, not a `Data` type.
 public type SearchFilter is
-      Eq(Text, Data)                                 // field = value
-    | Neq(Text, Data)
-    | Lt(Text, Data)
-    | Lte(Text, Data)
-    | Gt(Text, Data)
-    | Gte(Text, Data)
-    | In(Text, List<Data>)
-    | Exists(Text)
+    | Eq  { field: Text, value: JsonValue }
+    | Gt  { field: Text, value: JsonValue }
+    | Gte { field: Text, value: JsonValue }
+    | Lt  { field: Text, value: JsonValue }
+    | Lte { field: Text, value: JsonValue }
+    | In  { field: Text, values: List<JsonValue> }
     | And(List<SearchFilter>)
     | Or(List<SearchFilter>)
-    | Not(Box<SearchFilter>);
+    | Not(Heap<SearchFilter>)
+    | RawFilter(Text);                               // backend passthrough
 
 public type SortDirection is Asc | Desc;
 public type SortSpec is { field: Text, direction: SortDirection };
 ```
+
+There is no `Neq` and no `Exists` — negate with `Not(Heap(Eq{..}))` —
+and the escape hatch is `RawFilter(Text)`, which hands a backend its own
+query language verbatim. `Not` wraps a `Heap`, not a `Box`.
+
+Highlighting is a list of field names on the query, not a pair of
+markup tags: the backend chooses its own delimiters, and the marked-up
+copy comes back in `SearchHit.formatted`.
+
+`limit` and `offset` are refined (`1..=1000`, `>= 0`), so an
+out-of-range page is a type error rather than a backend rejection, and
+`search_query_match_all(limit, offset)` is the empty-query shorthand.
 
 The filter algebra is intentionally minimal — every backend can
 lower it to its native query language without lossy
@@ -89,23 +102,31 @@ unfollowable as written.)
 
 ```verum
 public type SearchHit is {
-    document:        Document,
-    score:           Maybe<Float>,                   // relevance score; None if backend doesn't expose
-    highlights:      Map<Text, List<Text>>,          // per-field highlighted snippets
+    id:        Text,                                 // primary key of the hit
+    document:  JsonValue,
+    score:     Maybe<Float>,                         // None if the backend has none
+    formatted: Maybe<JsonValue>,                     // the document with highlights
 };
 
+// An ordered list of (value, count), not a Map: a facet distribution
+// has an order the backend chose, and a Map would discard it.
 public type FacetDistribution is {
     field:  Text,
-    counts: Map<Text, Int>,                          // value → document count
+    values: List<(Text, Int)>,
 };
 
 public type SearchResults is {
-    hits:        List<SearchHit>,
-    total:       Int,                                // total matching count (across pages)
-    facet_distribution: List<FacetDistribution>,
-    query_time_ms: Int,
+    hits:                 List<SearchHit>,
+    estimated_total_hits: Int { >= 0 },              // ESTIMATED, not exact
+    offset:               Int { >= 0 },              // echoes the query
+    facets:               List<FacetDistribution>,
+    processing_ms:        Int { >= 0 },
 };
 ```
+
+`estimated_total_hits` is named for what it is. A search backend
+answering an approximate count is the normal case, and a field called
+`total` would invite a reader to paginate off it exactly.
 
 `score` is `Maybe<Float>` because not every backend exposes a
 relevance score (SQLite FTS5's rank is exposed; some adapters'
@@ -116,18 +137,24 @@ relevance MUST handle the `None` case explicitly.
 
 ```verum
 public type IndexConfig is {
-    name:                Text,
-    primary_key:         Maybe<Text>,
-    searchable_fields:   List<Text>,
-    filterable_fields:   List<Text>,
-    sortable_fields:     List<Text>,
-    distinct_field:      Maybe<Text>,
-    typo_tolerance:      Bool,
-    ranking_rules:       List<Text>,                 // engine-specific
-    stop_words:          List<Text>,
-    synonyms:            Map<Text, List<Text>>,
+    primary_key:           Text,                     // required, not Maybe
+    searchable_attributes: List<Text>,
+    filterable_attributes: List<Text>,
+    sortable_attributes:   List<Text>,
+    stop_words:            List<Text>,
+    synonyms:              List<(Text, List<Text>)>,
+    distinct_attribute:    Maybe<Text>,
+    ranking_rules:         List<Text>,               // engine-specific
 };
 ```
+
+The fields are `*_attributes`, not `*_fields`. There is no `name` — the
+index is named by whoever creates it, not by its config — and no
+`typo_tolerance` flag; typo behaviour rides in `ranking_rules`.
+`primary_key` is a plain `Text` because an index without one cannot be
+addressed. `synonyms` is an ordered list of pairs rather than a `Map`.
+`index_config_default(primary_key)` fills the ranking rules with
+words / typo / proximity / attribute and leaves the rest empty.
 
 Backend adapters validate the config against their capabilities at
 `create_index` time and surface `SearchError.SchemaConflict(...)`
@@ -136,23 +163,36 @@ for unsupported options — the variant the library actually declares.
 ## SearchIndex protocol
 
 ```verum
+public type Document is { id: Text, fields: JsonValue };
+
+// The protocol IS one index. No method takes an index name, and there
+// is no create/delete/list of indexes here — an implementation is
+// handed to you already bound to one.
 public type SearchIndex is protocol {
-    async fn create_index(&self, config: &IndexConfig) -> Result<(), SearchError>;
-    async fn delete_index(&self, name: &Text) -> Result<(), SearchError>;
-    async fn add_documents(&self, name: &Text, docs: &List<Document>)
-        -> Result<(), SearchError>;
-    async fn delete_documents(&self, name: &Text, ids: &List<Text>)
-        -> Result<(), SearchError>;
-    async fn get_document(&self, name: &Text, id: &Text)
-        -> Result<Maybe<Document>, SearchError>;
-    async fn search(&self, name: &Text, query: &SearchQuery)
+    async fn search(&self, query: &SearchQuery)
         -> Result<SearchResults, SearchError>;
-    async fn list_indexes(&self) -> Result<List<Text>, SearchError>;
+    async fn upsert_documents(&self, docs: &List<Document>)
+        -> Result<(), SearchError>;
+    async fn delete_document(&self, id: &Text) -> Result<(), SearchError>;
+    async fn delete_by_filter(&self, filter: &SearchFilter)
+        -> Result<Int, SearchError>;
+    async fn configure(&self, config: &IndexConfig) -> Result<(), SearchError>;
+    async fn health(&self) -> Result<(), SearchError>;
 };
 ```
 
-All ops are `async fn`. Errors surface via `Result<T, SearchError>`
-so callers can pattern-match on the failure mode.
+Every op is `async fn` and errors surface as `Result<T, SearchError>`,
+so callers pattern-match on the failure mode.
+
+Three shapes worth noting. Writing is `upsert_documents` — documents
+are matched on the primary key and replaced, so there is no separate
+add-versus-update. Deletion comes in two forms, one document by id or a
+whole filter's worth with `delete_by_filter`, which answers how many it
+removed. And there is no `get_document`: reading one document is a
+`search` with a filter on the primary key.
+
+`configure` applies an `IndexConfig` to the live index; each adapter
+documents the subset it supports, and silently ignores the rest.
 
 ## Error surface
 
