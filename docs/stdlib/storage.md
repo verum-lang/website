@@ -35,33 +35,44 @@ local-filesystem).
 
 ```verum
 public type ObjectMetadata is {
-    key:           Text,
-    size:          Int,
-    content_type:  Text,
-    etag:          Text,                  // strong validator
-    last_modified: Int,                   // Unix seconds
-    custom:        Map<Text, Text>,       // x-amz-meta-* / equivalent
-    storage_class: Maybe<Text>,           // STANDARD / GLACIER / etc.
+    key:            Text,
+    content_length: Int { >= 0 },         // bytes; refined, not a bare Int
+    content_type:   Text,                 // default application/octet-stream
+    etag:           Text,                 // hex-encoded strong validator
+    last_modified:  Rfc3339Time,          // a time type, not Unix seconds
+    user_metadata:  Map<Text, Text>,      // x-amz-meta-* / equivalent
 };
 ```
 
+There is no `storage_class`: `core.storage` does not model tiering.
+`content_length` carries a refinement — a negative length is not
+representable rather than merely unexpected — and `last_modified` is an
+`Rfc3339Time`, so a caller reads it as a time rather than parsing an
+integer.
+
 `etag` is the strong validator from the backend (typically MD5 for
-single-part uploads, opaque hash for multipart). Consumers
-needing optimistic concurrency check `etag` round-trip via
+single-part uploads, `MD5(MD5(part1) || …)` for multipart). Consumers
+needing optimistic concurrency round-trip it through
 `PutOptions.if_match_etag` / `GetOptions.if_none_match`.
 
 ## Error surface
 
 ```verum
 public type StorageError is
-      NotFound(Text)
-    | AlreadyExists(Text)
-    | PreconditionFailed(Text)           // etag mismatch on if-match
-    | Forbidden(Text)
+    | NotFound(Text)
+    | AccessDenied(Text)
     | Network(Text)
     | InvalidKey(Text)
+    | TooLarge { size: Int, limit: Int }
+    | Conflict(Text)                     // includes a failed if-match
+    | ChecksumMismatch { expected: Text, computed: Text }
     | Backend(Text);
 ```
+
+`Conflict` covers what an HTTP backend would answer 409 or 412 to —
+there is no separate `AlreadyExists` or `PreconditionFailed` arm — and
+the two payload-bearing arms carry the numbers a caller needs to report
+without a second round trip. `Display` renders every arm.
 
 ## Options
 
@@ -69,41 +80,56 @@ public type StorageError is
 
 ```verum
 public type PutOptions is {
-    content_type:    Text,
-    custom:          Map<Text, Text>,    // x-amz-meta-* / equivalent
-    storage_class:   Maybe<Text>,        // STANDARD / GLACIER / ...
-    if_match:        Maybe<Text>,        // 412 on mismatch (optimistic CAS)
-    if_none_match:   Maybe<Text>,        // 412 on match (create-only)
+    content_type:  Text,
+    user_metadata: Map<Text, Text>,      // x-amz-meta-* / equivalent
+    if_none_match: Bool,                 // a FLAG: "create only"
+    if_match_etag: Maybe<Text>,          // conflict on mismatch
 };
 ```
+
+The two conditionals are deliberately asymmetric. `if_none_match` is a
+`Bool`, not a `Maybe<Text>` — the only useful form of it is
+"create-only", which S3 spells `*`. `if_match_etag` carries the etag
+because there the caller has a specific version in mind.
+
+`put_options_default()` gives `application/octet-stream`, an empty
+metadata map, and neither conditional set.
 
 ### GetOptions
 
 ```verum
 public type GetOptions is {
-    range:           Maybe<(Int, Int)>,  // (start, end) — inclusive
-    if_none_match:   Maybe<Text>,
-    if_modified_since: Maybe<Int>,
+    range:         Maybe<(Int, Int)>,    // RFC 7233 (start, end_inclusive)
+    if_none_match: Maybe<Text>,
 };
 ```
+
+There is no `if_modified_since` — conditional reads go through the etag
+alone. `get_options_default()` sets neither field.
 
 ### ListOptions
 
 ```verum
 public type ListOptions is {
-    prefix:          Text,
-    delimiter:       Text,                // "/" for hierarchy
-    max_keys:        Int,
-    continuation:    Maybe<Text>,         // for pagination
+    prefix:             Maybe<Text>,
+    delimiter:          Maybe<Text>,      // "/" for hierarchy
+    continuation_token: Maybe<Text>,      // opaque, from the previous page
+    max_keys:           Int { >= 1, <= 1000 },
 };
 
 public type ListPage is {
-    keys:            List<Text>,
-    common_prefixes: List<Text>,          // delimiter-based "directories"
-    next_continuation: Maybe<Text>,       // None on last page
-    is_truncated:    Bool,
+    objects:         List<ObjectMetadata>,   // metadata, not bare keys
+    common_prefixes: List<Text>,             // delimiter-based "directories"
+    next_token:      Maybe<Text>,            // None when the listing is done
 };
 ```
+
+Two differences worth pausing on. A page returns full
+`ObjectMetadata`, not a `List<Text>` of keys, so a listing already
+carries sizes and etags. And there is no `is_truncated` flag: the end of
+a listing is `next_token == Maybe.None`, one fact instead of two that
+can disagree. `max_keys` is refined to 1..=1000, so an out-of-range page
+size is a type error rather than a backend rejection.
 
 Pagination is continuation-based; the loop pattern is
 
@@ -122,17 +148,25 @@ loop {
 
 ```verum
 public type PresignMethod is
-      PresignGet
-    | PresignPut
-    | PresignDelete;
+    | Get
+    | Put
+    | Head
+    | Delete;
 
 public type PresignOptions is {
-    method:        PresignMethod,
-    expires_in:    Int,                   // seconds
-    content_type:  Maybe<Text>,           // signed-in if Some
-    custom_headers: Map<Text, Text>,      // additional signed headers
+    method:          PresignMethod,
+    expires_seconds: Int { >= 1, <= 604800 },   // 1 second .. 7 days
+    extra_query:     Map<Text, Text>,           // response-* overrides
 };
 ```
+
+The variants are unprefixed — `PresignMethod.Get`, not `PresignGet` —
+and `Head` exists alongside the other three. The validity window is
+refined to S3's 7-day ceiling, so an over-long expiry is refused at the
+type level. Overrides ride in `extra_query` (a signed `Content-Type` for
+a PUT, a `response-Content-Disposition` for a GET) rather than in a
+separate header map. `presign_options_get(expires_seconds)` is the
+shorthand.
 
 Presigned URLs are time-limited authorisation handles a service
 can hand to third-parties (e.g. browser direct-uploads). The
@@ -143,22 +177,25 @@ signed headers — alterations invalidate the signature.
 
 ```verum
 public type ObjectStore is protocol {
-    async fn put(&self, key: &Text, data: &[Byte], options: &Options)
+    async fn put(&self, key: &Text, data: &List<Byte>, options: &PutOptions)
         -> Result<ObjectMetadata, StorageError>;
-    async fn get(&self, key: &Text, options: &Options)
+    async fn get(&self, key: &Text, options: &GetOptions)
         -> Result<(ObjectMetadata, List<Byte>), StorageError>;
     async fn head(&self, key: &Text)
         -> Result<ObjectMetadata, StorageError>;
     async fn delete(&self, key: &Text)
         -> Result<(), StorageError>;
-    async fn list(&self, options: &Options)
+    async fn list(&self, options: &ListOptions)
         -> Result<ListPage, StorageError>;
-    fn presign(&self, key: &Text, options: &Options)
+    fn presign(&self, key: &Text, options: &PresignOptions)
         -> Result<Text, StorageError>;
     async fn head_bucket(&self)
         -> Result<(), StorageError>;
 };
 ```
+
+Each method takes its own options type; there is no shared `Options`.
+`put` takes a `&List<Byte>`, not a slice.
 
 `delete` is idempotent — succeeds even when the object does not
 exist (matching S3 + GCS semantics). `head_bucket` is the readiness
@@ -168,12 +205,21 @@ first real request.
 `presign` is the only non-async method — URL generation is purely
 local (SHA-256 + HMAC + base64), no network round-trip.
 
-## Multipart uploads
+:::caution Multipart is not shipped
+There is no `multipart_create`, `multipart_part` or
+`multipart_complete` — not on `S3Client`, not anywhere in `core/`. An
+earlier version of this page named all three.
 
-For very large objects (≥ 5 MiB on S3), `put` buffers the entire
-payload into one request. Concrete adapters expose multipart
-helpers (`s3::multipart_create` / `multipart_part` / `multipart_complete`)
-for streaming upload of arbitrarily large objects.
+`put` buffers the whole payload into one request, so today the largest
+object `core.storage` can write is the largest one a single request will
+carry (5 GiB on S3). Streaming upload of arbitrarily large objects needs
+the multipart API to exist first.
+:::
+
+The S3 adapter's surface is `s3_config(...)`, `s3_client(config, http)`,
+and the `ObjectStore` implementation on `S3Client<C: HttpClient>` —
+`core.storage.s3.signing` additionally exposes `sign_request` and
+`presign` for callers signing their own requests.
 
 ## Status
 
