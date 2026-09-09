@@ -149,8 +149,12 @@ built on async.
 
 Twenty-five of those rows were added on 2026-09-09. Every one of them
 already had a page; the table simply did not name it, so half the
-library was reachable only by guessing a URL. `core/target` is the one
-top-level module with no page yet.
+library was reachable only by guessing a URL.
+
+The table is now complete: `core/` holds fifty-one modules and all
+fifty-one are listed. (`core/target` is a build-artefact directory —
+`build`, `debug`, `release`, `audit-reports` — with no `.vr` file in it,
+so it is not a module and does not belong here.)
 
 ## Semantic-honest types — the cheat sheet
 
