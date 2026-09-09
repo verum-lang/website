@@ -151,8 +151,9 @@ let (done_rx, result) = rt.block_on_with_fake_clock(
 );
 ```
 
-`ManualRuntime` never schedules real timers; `sleep(d)` returns instantly
-with the simulated clock advanced by `d`.
+Such a `ManualRuntime` WOULD never schedule real timers, and `sleep(d)`
+WOULD return instantly with the simulated clock advanced by `d`. The
+tense matters: nothing in `core/` does this today.
 
 ## What to test, what to skip
 
@@ -168,7 +169,12 @@ Don't test:
 
 * The runtime's event loop itself (trust the framework).
 * Exact escape-sequence byte output (the diff algorithm may change).
-* Timing-dependent behaviour with real clocks — use `ManualRuntime`.
+* Timing-dependent behaviour with real clocks. There is no fake clock
+  to reach for — `ManualRuntime` is the shape sketched above, not a
+  type you can name — so assert on the `Command` your `update`
+  RETURNS (`Command.Async`, `Command.Tick`) and leave the waiting to
+  the runtime. That check is pure, and it is the one that catches a
+  wrong transition; a test that actually sleeps catches nothing extra.
 
 ## CI snapshots
 
