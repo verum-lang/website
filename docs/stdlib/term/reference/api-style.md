@@ -131,19 +131,42 @@ fallbacks on otherwise-truecolor inputs.
 
 ## Text builder DSL
 
+The span type is **`TextSpan`** (`core/term/widget/paragraph.vr`). A bare
+`Span` is a different type entirely — `core.meta`'s macro-hygiene span —
+and writing it here is not a shorthand.
+
 ```verum
 mount core.term.style.text_builder.*;
 
-bold(t: Text) -> Span
-italic(t: Text) -> Span
-dim(t: Text) -> Span
-underlined(t: Text) -> Span
-reversed(t: Text) -> Span
+bold(t: Text) -> TextSpan
+italic(t: Text) -> TextSpan
+dim(t: Text) -> TextSpan
+underlined(t: Text) -> TextSpan
+crossed_out(t: Text) -> TextSpan
+reversed(t: Text) -> TextSpan
 
-red(t: Text) -> Span    green(t: Text) -> Span    blue(t: Text) -> Span
-yellow(t: Text) -> Span cyan(t: Text) -> Span     magenta(t: Text) -> Span
-white(t: Text) -> Span
+fg(t: Text, c: Color) -> TextSpan       bg(t: Text, c: Color) -> TextSpan
+red(t: Text) -> TextSpan    green(t: Text) -> TextSpan    blue(t: Text) -> TextSpan
+yellow(t: Text) -> TextSpan cyan(t: Text) -> TextSpan     magenta(t: Text) -> TextSpan
+white(t: Text) -> TextSpan  grey(t: Text) -> TextSpan
 ```
+
+:::danger This layer does not run at Tier 0
+Measured 2026-09-09. Two defects sit on top of each other:
+
+* the module imported the span type under the name `Span`, which
+  `core/term/widget/paragraph.vr` does not export, so every helper was
+  typed as returning `core.meta`'s `MetaSpan` — `bold("hi").content` did
+  not exist (T1268);
+* correcting that import and re-baking makes the file type-check and
+  then panic, because `TextSpan.styled(text, style)` called ACROSS a
+  module boundary inside the bake is dispatched as a three-argument
+  method on its first argument (T1277). The identical call from a user
+  file, and from `paragraph.vr`'s own `Line.styled`, both work.
+
+Until both land, build spans directly: `TextSpan.raw(text)` and
+`TextSpan.styled(text, Style.new().bold())` are measured working.
+:::
 
 ## Color utilities
 

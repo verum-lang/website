@@ -163,17 +163,25 @@ let corporate = Theme {
 
 For inline styled runs, skip `Line.styled(...)` boilerplate:
 
+The constructor is `Line.from(spans)` — there is no `Line.new` — and
+the span type is `TextSpan`, not `Span`.
+
 ```verum
 mount core.term.style.text_builder.*;
+mount core.term.widget.paragraph.{Line, TextSpan};
 
-let line = Line.new([
+let line = Line.from([
     bold("Status: "),
     green("online"),
-    Span.raw(" ("),
+    TextSpan.raw(" ("),
     italic("3 peers"),
-    Span.raw(")"),
+    TextSpan.raw(")"),
 ]);
 ```
+
+The `bold` / `green` / `italic` helpers do not run at Tier 0 today — see
+the note under [Text builder DSL](/docs/stdlib/term/reference/api-style)
+(T1268, T1277). `TextSpan.raw` and `TextSpan.styled` do.
 
 ## Hyperlinks
 
