@@ -99,6 +99,30 @@ let latency = registry.histogram(HistogramConfig {
 
 ## Recording
 
+:::danger Blocked at Tier 0 — the handles cannot be resolved
+`handle.with(…)` and `handle.unlabeled()` both panic in the interpreter.
+Measured 2026-09-09:
+
+```text
+reg.counter(cfg).unlabeled()
+  Panic: field access out of bounds: field index 5 (offset 40+8 = 48)
+  exceeds object data size 24 type_id=520 type='Shared'
+  backtrace=[MetricFamily.resolve_counter <- CounterHandle.unlabeled]
+  — declared fields (3): [ptr, generation, epoch]
+```
+
+A method called on a `Shared<T>` receiver reads `T`'s field offsets off
+the `Shared` wrapper. `MetricFamily.entries` is field 5, past the
+wrapper's three, so it is caught — but a target field at index 1 or 2
+is NOT: it answers with the wrapper's `generation` or `epoch` and
+returns cleanly. That is the reason nothing on this page has execution
+evidence.
+
+The defect is in reference dispatch, not in `core.metrics`: an
+eighteen-line program with a two-field record reproduces it. Tracked as
+a P0.
+:::
+
 `family.with(&[&label_value_1, &label_value_2, …])` returns a
 `Shared<Counter>` / `Shared<Gauge>` / `Shared<Histogram>` bound to that
 label tuple. Repeated calls with identical values hit the same
