@@ -84,11 +84,11 @@ caused by direct file syscalls without any context provider).
 ### 2.3 Direct file write — capability + property, no context
 
 ```verum
-fn dump_to_disk(data: &Bytes) -> Result<(), Error> {
-    let fd = sys.io.open("/tmp/dump", OpenFlag.WriteOnly | OpenFlag.Create);
-    sys.io.write_all(fd, data)?;
-    sys.io.close(fd);
-    Ok(())
+mount core.io.file.write_bytes;
+mount core.io.protocols.IoResult;
+
+fn dump_to_disk(data: &[Byte]) -> IoResult<()> {
+    write_bytes(&"/tmp/dump", data)
 }
 ```
 
@@ -96,11 +96,12 @@ fn dump_to_disk(data: &Bytes) -> Result<(), Error> {
   `Capability.Write(ResourceTag.File("/tmp/dump"))`.
 - **Property:** `{IO, Fallible}` — the body performs file I/O
   that may fail.
-- **Context:** none — uses raw syscalls, no DI.
+- **Context:** none — `write_bytes` is a free function in
+  `core.io.file`, not a capability drawn from a provider.
 
 Capabilities and properties move together here, but contexts do
-not. The function calls into a stateless syscall layer; the
-runtime context is empty.
+not. The function reaches the file through a stateless layer that
+ends in a syscall; the runtime context is empty.
 
 ### 2.4 The full triple — gRPC outbound + DI + property
 

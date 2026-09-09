@@ -297,15 +297,21 @@ they're the only alternatives.
 WHAT IS NOT CHECKED, and it is deliberate rather than missing:
 
 ```verum
-match c {                    // Colour is Red | Green | Blue
-    Colour.Red   if n > 0 => 1,
-    Colour.Green          => 2,
-}                            // accepted — an arm carries a guard
+type Shade is Red | Green | Blue;
 
-match n {                    // n: Int
-    0 => 1,
-    1 => 2,
-}                            // accepted — Int has no finite constructor set
+fn pick(c: Shade, n: Int) -> Int {
+    match c {
+        Shade.Red   if n > 0 => 1,
+        Shade.Green          => 2,
+    }                        // accepted — an arm carries a guard,
+}                            // and Shade.Blue is not covered at all
+
+fn small(n: Int) -> Int {
+    match n {
+        0 => 1,
+        1 => 2,
+    }                        // accepted — Int has no finite
+}                            // constructor set to be exhaustive over
 ```
 
 A guard makes the analysis imprecise (the checker cannot decide whether
