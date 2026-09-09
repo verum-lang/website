@@ -17,7 +17,64 @@ Patterns appear in `match` arms, `let` bindings, function parameters,
 | `_` | anything, no binding |
 | `..` | rest (in tuples / arrays / records) |
 | `mut x` | binds and marks as mutable |
-| `ref x` | binds a reference instead of moving |
+| `ref x` | binds a reference instead of moving — **but see the note below for record variants** |
+
+:::danger `ref mut` into a RECORD variant loses the write, silently
+Measured 2026-09-09 on the interpreter. Three forms in one program, one
+run:
+
+```verum
+type Tup is One(Int) | Two;
+type Sum is Pair { x: Int, y: Int } | Nil;
+type Rec is { a: Int };
+
+let mut t = Tup.One(1);
+match t { Tup.One(ref mut v) => { *v = *v + 2; }, _ => {} }   // tuple=3   works
+
+let mut r = Rec { a: 1 };
+r.a = r.a + 2;                                                // struct=3  works
+
+let mut s = Sum.Pair { x: 1, y: 0 };
+match s { Sum.Pair { x: ref mut xv, .. } => { *xv = *xv + 2; }, _ => {} }
+                                                              // sum=1     LOST
+```
+
+A `ref mut` binding into a TUPLE variant writes through. The same
+binding into a RECORD variant does not, and nothing says so: the
+programme exits 0 and the field keeps its old value. The near-identical
+form standing next to it is what makes this dangerous — the difference
+between the two is not visible from the call site, the type, or the
+diagnostic.
+
+The other spellings do not rescue it. Assigning to a plain binding
+(`x = x + n`) is also lost silently; adding a dereference without `ref`
+(`*x = *x + n`) is refused with `error<E409>: Cannot dereference
+non-reference type`. Three of the four forms a reader will try either
+lie or refuse.
+
+**What works today** is rebuilding the variant — and the borrow matters,
+so both spellings below are the ones that were actually run:
+
+```verum
+// Match BY VALUE. `match &s { … s = … }` does NOT compile:
+// error<E310>: cannot borrow `s` as mutable because it is already
+// borrowed as immutable.
+match s {
+    Sum.Pair { x, y } => { s = Sum.Pair { x: x + 2, y: y }; },
+    _ => {},
+}
+
+// Or compute first and assign after, which keeps the `&`:
+let next = match &s {
+    Sum.Pair { x, y } => Sum.Pair { x: x + 2, y: y },
+    _ => Sum.Nil,
+};
+s = next;
+```
+
+Tracked as T1334. Until it is fixed, treat a record variant as
+immutable-through-patterns and rebuild it.
+:::
 
 ## Tuples and arrays
 
