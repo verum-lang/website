@@ -77,39 +77,50 @@ so a new module inherits the vocabulary its siblings already use.
 
 ## Canonical primitives (`types.vr`)
 
+Every variant below is read off `core/architecture/types.vr`. A
+capability names WHAT the cog may do to a tagged resource, not an
+abstract property — the earlier vocabulary on this page (`Identity`,
+`Composition`, `Encapsulation`, …) named none of the nine that exist.
+
 ```verum
 public type Capability is
-      Identity
-    | Composition
-    | Encapsulation
-    | Invariance
-    | Persistence
-    | Refinement
-    | Replication
-    | Reduction
-    | Stratification
-    | Custom(Text);          // user-defined; registered in capability_ontology
+    | Read(ResourceTag)
+    | Write(ResourceTag)
+    | Exec(ExecTarget)
+    | Escalate(PrivilegeRealm)
+    | Spawn(TaskLifetime)
+    | TimeBound(ExpirationPolicy)
+    | Persist(PersistenceMedium)
+    | Network(NetProtocol, NetDirection)
+    | CustomCapability(Text);   // registered in capability_ontology.vr
 
 public type Foundation is
-      ZfcStandard
-    | ZfcOneInacc
-    | ZfcTwoInacc
-    | UnivalentZfc           // ZFC + Univalence axiom
-    | HottCubical
-    | DependentMltt
-    | CubicalAgda;
+    | ZfcTwoInacc               // the default in @arch_module
+    | Hott
+    | Cubical
+    | Cic
+    | Mltt
+    | Eff
+    | CustomFoundation(Text, Text);
 
 public type MsfsStratum is
-      LMeta
-    | LFnd                   // foundational layer (most modules live here)
-    | LBuild
-    | LApp;
+    | LFnd                      // foundational — most modules live here
+    | LCls
+    | LClsTop
+    | LAbs;
 
+// Nine lifecycle stages, and most carry a justification Text. There is
+// no `Sketch`, `Lemma` or `Deprecated`.
 public type Lifecycle is
-      Sketch(Text)            // unverified
-    | Lemma(Text)              // partial proof
-    | Theorem(Text)            // fully verified at level claimed
-    | Deprecated { from: Text, replacement: Maybe<Text> };
+    | Hypothesis(ConfidenceLevel)
+    | Plan(Text)
+    | Postulate(Text)
+    | Definition
+    | Conditional(List<Text>)
+    | Theorem(Text)
+    | Interpretation(Text)
+    | Retracted(Text, Maybe<Text>)
+    | Obsolete(Text, Maybe<Text>);
 ```
 
 The `@arch_module(...)` attribute on a module declares its
@@ -163,18 +174,32 @@ counterfactual is computed against a temporary overlay and
 discarded.
 
 ```verum
+// Ten metrics, each a COUNT or an ordinal over one dimension — not the
+// five aggregate names this page used to list.
 public type ArchMetric is
-      CapabilityFootprint
-    | BoundaryDepth
-    | CompositionFanIn
-    | LifecycleCoverage
-    | CveClosureSize;
+    | ExposedCapabilityCount
+    | RequiredCapabilityCount
+    | ReadCapabilityCount
+    | WriteCapabilityCount
+    | NetworkCapabilityCount
+    | BoundaryInvariantCount
+    | CompositionDegree
+    | LinearResourceCount
+    | StratumOrdinal
+    | CveCompleteness;
 
+// The report names the two DECISIONS it compares and carries per-metric
+// and per-invariant results; there is no baseline/counterfactual map
+// pair and no `is_safe`.
 public type CounterfactualReport is {
-    baseline:        Map<ArchMetric, MetricValue>,
-    counterfactual:  Map<ArchMetric, MetricValue>,
-    invariant_deltas: List<(InvariantId, InvariantStatus)>,
-    is_safe:          Bool,
+    schema_version:          Int,
+    pair_name:               Text,
+    base_decision:           Text,
+    alt_decision:            Text,
+    metric_comparisons:      List<MetricComparison>,
+    invariant_evaluations:   List<InvariantEvaluation>,
+    overall_stable:          Bool,
+    diverging_metric_count:  Int,
 };
 ```
 
