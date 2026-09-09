@@ -231,7 +231,7 @@ async fn get_user(PathParam(id): PathParam<UserId>)
     }
 }
 
-fn main() using [Config] {
+async fn main() using [Config] {
     // `layer` belongs to `ServiceBuilder`, not to `Router`: the router is
     // the innermost service and the builder wraps it. See
     // `core/net/weft/service.vr` and the example in `timeout.vr`.

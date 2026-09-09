@@ -157,6 +157,10 @@ the section above is the part you can write today.
 :::
 
 ```verum
+// does not compile — see the caution above. `merge3`, `map_stream` and
+// `.take` are not declared for this `Stream`, and copattern bodies do
+// not yet infer. This is the shape of the definition, not a snippet to
+// paste.
 cofix fn hamming() -> Stream<Int> {
     .head => 1,
     .tail => merge3(
