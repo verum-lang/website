@@ -20,9 +20,10 @@ transactions, sorted-set leaderboards, distributed locks.
 Lower layers (`protocol.vr`, `client.vr`) handle RESP framing +
 connection pool + cluster redirects.  Upper layers (`commands.vr`,
 `pubsub.vr`, `stream.vr`, `transaction.vr`, `script.vr`) provide
-typed surfaces.  Every command goes through `client::exec` (or
-`exec_bytes` for binary-safe), which acquires a pool slot, writes
-the framed RESP, reads one reply, releases the slot.
+typed surfaces.  Every command goes through `client.exec` (or
+`exec_bytes` for binary-safe, `exec_pipeline` for a batch), which
+acquires a pool slot, writes the framed RESP, reads one reply, releases
+the slot.
 
 **Composes against** lower stdlib subsystems:
 
@@ -50,39 +51,68 @@ to the canonical subsystem.
 ## RESP protocol model
 
 ```verum
+// RESP3, not RESP2: sixteen arms, and nullity is its own variant
+// rather than a `Maybe` inside the payload.
 public type RespValue is
-    | SimpleStr(Text)        // "+OK"
-    | Error(Text)             // "-ERR msg"
-    | Int(Int)                 // ":42"
-    | BulkStr(Maybe<List<Byte>>)  // "$N\r\n..." or null bulk
-    | Array(Maybe<List<RespValue>>); // "*N\r\n..." or null array
+    | SimpleString(Text)                  // "+OK"
+    | Error_(Text)                        // "-ERR msg"  (trailing _)
+    | Integer(Int)                        // ":42"
+    | BulkString(List<Byte>)              // "$N\r\n..."
+    | NullBulk                            // "$-1"
+    | NullArray                           // "*-1"
+    | Array(List<RespValue>)              // "*N\r\n..."
+    | Boolean(Bool)                       // "#t" / "#f"
+    | Double(Float)                       // ","
+    | BigNumber(Text)                     // "("
+    | BulkError { code: Text, message: Text }
+    | VerbatimString { format: Text, content: Text }
+    | MapValue(List<(RespValue, RespValue)>)
+    | SetValue(List<RespValue>)
+    | Push(List<RespValue>)               // out-of-band, pub/sub
+    | Nil_;
 
 public type RespError is
-      InvalidFrame(Text)
     | UnexpectedEof
-    | IntegerOverflow
-    | InvalidUtf8;
+    | InvalidPrefix(Byte)                 // carries the offending byte
+    | InvalidUtf8(Text)
+    | InvalidInteger(Text)
+    | InvalidBulkLength(Int)
+    | InvalidArrayLength(Int)
+    | TooDeep  { depth: Int, limit: Int }
+    | TooLarge { size: Int, limit: Int };
 ```
 
-The decoder is binary-safe — `BulkStr(Some(bytes))` preserves
-non-UTF8 payloads byte-for-byte. UTF-8 conversion happens at the
-upper-layer command boundary.
+Two names carry a trailing underscore — `Error_` and `Nil_` — because
+the bare forms collide with the prelude.
+
+Nullity is a variant, not a `Maybe` in the payload: `NullBulk` and
+`NullArray` are distinct from an empty `BulkString` or `Array`, which is
+a distinction Redis makes and `Maybe<List<Byte>>` would flatten.
+
+Every parse error names what it saw. `InvalidPrefix` carries the byte,
+`TooDeep` and `TooLarge` carry both the value and the limit — so a
+caller reports the failure without re-reading the frame. There is no
+`InvalidFrame` catch-all and no `IntegerOverflow`.
+
+The decoder is binary-safe: `BulkString` holds `List<Byte>` and
+preserves non-UTF8 payloads byte-for-byte. UTF-8 conversion happens at
+the upper-layer command boundary.
 
 ## RedisClient
 
 ```verum
 public type RedisConfig is {
-    host:                 Text,
-    port:                 Int,
-    pool_size:            Int,
-    connect_timeout_ms:   Int,
-    read_timeout_ms:      Int,
-    write_timeout_ms:     Int,
-    cluster_aware:        Bool,
-    follow_moved:         Bool,
-    follow_asking:        Bool,
-    follow_redirect_max:  Int,
-    // ...
+    address:            Text,               // "host:port", one field
+    username:           Maybe<Text>,
+    password:           Maybe<Text>,
+    db:                 Int { >= 0, <= 15 },
+    pool_size:          Int { >= 1, <= 1024 },
+    command_timeout_ms: Int { >= 1 },       // one timeout, not read+write
+    connect_timeout_ms: Int { >= 1 },
+    tls:                Bool,
+    cluster_mode:       Bool,
+    max_redirects:      Int { >= 1, <= 32 },
+    client_name:        Maybe<Text>,
 };
 
 public fn connect(config: &RedisConfig) -> Result<RedisClient, RedisError>;
@@ -90,10 +120,20 @@ public fn connect_url(url: &Text) -> Result<RedisClient, RedisError>;
 public fn redis_config_default() -> RedisConfig;
 ```
 
-Cluster awareness is opt-in via `cluster_aware`. When enabled the
-client transparently follows `MOVED` and `ASK` redirects (bounded
-by `follow_redirect_max` to prevent loops on misconfigured
-clusters).
+`host` + `port` is one `address` field, and the read/write timeout pair
+is one `command_timeout_ms` — a Redis command is a round trip, so
+splitting the two invites a configuration that cannot be honoured.
+Authentication (`username` / `password` / `db` / `client_name`) and
+`tls` are config, not connection-string trivia.
+
+Cluster awareness is opt-in via `cluster_mode`. When enabled the client
+transparently follows `MOVED` and `ASK` redirects; there are no separate
+`follow_moved` / `follow_asking` switches, and the loop guard is
+`max_redirects`, refined to `1..=32` so a misconfiguration cannot ask
+for an unbounded chase.
+
+Defaults from `redis_config_default()`: `127.0.0.1:6379`, db 0, pool 16,
+both timeouts 5000 ms, no TLS, no cluster, 6 redirects.
 
 ## Command execution surface
 
@@ -134,7 +174,16 @@ without blocking the executor.
 ## Pub/Sub
 
 ```verum
-public type PubSubMessage is { channel: Text, payload: List<Byte> };
+// A sum, not a record: the stream carries subscribe/unsubscribe
+// acknowledgements alongside the payloads, and a consumer must match
+// on which it got.
+public type PubSubMessage is
+    | Message  { channel: Text, payload: List<Byte> }
+    | PMessage { pattern: Text, channel: Text, payload: List<Byte> }
+    | Subscribed    { channel: Text, total_subscriptions: Int }
+    | Unsubscribed  { channel: Text, total_subscriptions: Int }
+    | PSubscribed   { pattern: Text, total_subscriptions: Int }
+    | PUnsubscribed { pattern: Text, total_subscriptions: Int };
 
 pub fn publish(client, channel, payload) -> Result<Int, RedisError>;
 ```
@@ -145,18 +194,21 @@ the connection stay in subscribe-mode until UNSUBSCRIBE).
 
 ## Transactions
 
-`MULTI` / `EXEC` via `transaction::run_simple`. For optimistic
+`MULTI` / `EXEC` via `transaction.run_simple`, re-exported from
+`core.redis` under the name **`transaction_run`** — that alias is what a
+`mount core.redis.{...}` sees. It answers a `TxResult`. For optimistic
 concurrency (WATCH-based CAS), drop to raw `exec` and orchestrate
-manually — typed wrapper TBD.
+manually — no typed wrapper exists.
 
 ## Scripting (Lua)
 
 ```verum
-pub fn script_load(client, source) -> Result<Text, RedisError>;
-pub fn eval(client, source, keys, args) -> Result<RespValue, RedisError>;
-pub fn evalsha(client, sha1, keys, args) -> Result<RespValue, RedisError>;
-pub fn script_exists(client, sha1s) -> Result<List<Bool>, RedisError>;
-pub fn script_flush(client) -> Result<(), RedisError>;
+// All five are `async`.
+pub async fn script_load(client, source) -> Result<Text, RedisError>;
+pub async fn eval(client, source, keys, args) -> Result<RespValue, RedisError>;
+pub async fn evalsha(client, sha1, keys, args) -> Result<RespValue, RedisError>;
+pub async fn script_exists(client, sha: &Text) -> Result<Bool, RedisError>;
+pub async fn script_flush(client) -> Result<(), RedisError>;
 ```
 
 Standard SCRIPT LOAD / EVALSHA round-trip; the script SHA is
