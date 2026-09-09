@@ -930,11 +930,13 @@ until this note goes away.
 
 ```verum
 type SpawnConfig is { ... };                // builder
+// The no-recovery arm is `NoRecovery`, not `None`, and `Fallback`
+// carries an Int rather than a closure.
 type RecoveryStrategy is
-    | None
+    | NoRecovery
     | Retry(RetryConfig)
     | CircuitBreaker(CircuitBreakerConfig)
-    | Fallback(fn() -> T)
+    | Fallback(Int)
     | Supervised;
 type RestartPolicy is Permanent | Transient | Temporary;
 type IsolationLevel is Shared | SendOnly | Full;
@@ -943,7 +945,7 @@ type Priority is Low | Normal | High | Critical;
 let cfg = SpawnConfig.new()
     .with_priority(Priority.High)
     .with_isolation(IsolationLevel.Full)
-    .with_recovery(RecoveryStrategy.Retry(RetryConfig.exponential(3, 100.millis())))
+    .with_recovery(RecoveryStrategy.Retry(RetryConfig.default()))
     .with_timeout_ms(5000)
     .with_name("worker-42");
 
@@ -954,22 +956,28 @@ let handle = spawn_with(cfg, task());
 
 ## Retry and circuit breaker
 
+Every field name here was wrong, and so were both constructors:
+`RetryConfig` has FOUR fields and a single `default()`.
+
 ```verum
 type RetryConfig is {
-    max_attempts: Int,
-    initial_backoff_ms: Int,
-    max_backoff_ms: Int,
-    backoff_factor: Float,
-    jitter: Bool,
+    max_retries: Int,        // not `max_attempts`
+    initial_delay_ms: Int,   // not `initial_backoff_ms`
+    max_delay_ms: Int,       // not `max_backoff_ms`
+    backoff_factor: Int,     // an Int multiplier, not a Float
 };
+
+RetryConfig.default()        // 3 attempts, 100 ms initial, 2x, 5 s cap
 ```
 
-| | |
-|---|---|
-| `RetryConfig.fixed(attempts, delay_ms)` | |
-| `RetryConfig.exponential(attempts, initial_ms)` | |
-| `execute_with_retry(\|\| call_api(), max_attempts = 3, backoff_ms = 100)` | |
-| `execute_with_retry_config(\|\| call_api(), config)` | |
+There is no `RetryConfig.fixed` and no `RetryConfig.exponential`; build
+the record directly when the default does not suit. The two free
+functions take positional arguments — the language has no named ones:
+
+```verum
+execute_with_retry(f, max_attempts: Int, backoff_ms: Int) -> Result<T, Text>
+execute_with_retry_config(f, config: RetryConfig)          -> Result<T, Text>
+```
 
 
 ### Circuit breaker
