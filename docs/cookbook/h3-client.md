@@ -24,8 +24,10 @@ pub async fn main() -> Result<(), H3ClientError> {
     let mut client = H3Client.connect(&f"https://example.com", opts).await?;
 
     let resp = client.get(&f"/").await?;
-    print(f"status={resp.status()} body_len={resp.body().len()}");
-    Ok(())
+    // `status`, `headers`, `body` and `trailers` are FIELDS of
+    // `H3Response` (core/net/h3/request.vr:82), not accessor methods.
+    print(f"status={resp.status} body_len={resp.body.len()}");
+    Result.Ok(())
 }
 ```
 
@@ -68,13 +70,15 @@ Defaults (from `ClientOptions.default`):
 ## POST with body
 
 ```verum
-mount core.net.h3.request.{H3Method};
-
+// `post(path, content_type, body)` — the content type is a plain
+// `&Text` and the body a `List<Byte>`. There is no
+// `core.text.content_type` module and no `APPLICATION_JSON` constant
+// anywhere in `core/`; write the media type out.
 let resp = client.post(&f"/api/v1/upload",
-                       &core.text.content_type.APPLICATION_JSON,
-                       body_bytes.as_slice()).await?;
-if resp.status() != 200_u16 {
-    return Err(H3ClientError.H3Layer(H3Error.StreamError));
+                       &f"application/json",
+                       body_bytes).await?;
+if resp.status != 200_u16 {
+    return Result.Err(H3ClientError.H3Layer(H3Error.StreamError));
 }
 ```
 
@@ -83,12 +87,15 @@ if resp.status() != 200_u16 {
 For full control over headers, use `H3Request.new` + `client.send`:
 
 ```verum
-mount core.net.h3.request.{H3Request, H3Method};
+mount core.net.h3.request.{H3Request};
 
-let req = H3Request.new(H3Method.Post, &f"example.com", &f"/api/v2")
-    .header(&f"content-type",   &f"application/json")
-    .header(&f"authorization", &f"Bearer ...")
-    .body(body_bytes);
+// The builders are `H3Request.get(authority, path)` and
+// `H3Request.post(authority, path, body)` — there is no
+// `H3Request.new`, no `.header(...)` (it is `.with_header`), and no
+// `.body(...)`: the body is an argument to `post`.
+let req = H3Request.post(client.authority(), Text.from("/api/v2"), body_bytes)
+    .with_header(Text.from("content-type"),  Text.from("application/json"))
+    .with_header(Text.from("authorization"), Text.from("Bearer ..."));
 
 let resp = client.send(&req).await?;
 ```
@@ -100,26 +107,39 @@ each.
 
 ## Response handling
 
-`H3Response` fields:
+`H3Response` is a record (`core/net/h3/request.vr:82`) and these are
+FIELDS, read without parentheses:
 
-- `status()` — `UInt16` HTTP status code.
-- `headers()` — `&List<HeaderField>` in emission order.
-- `body()` — fully-buffered `List<Byte>` of the response body.
-- `trailers()` — trailing header section if the server emitted one.
+- `status` — `UInt16` HTTP status code.
+- `headers` — `List<QpackHeaderField>` in emission order.
+- `body` — fully-buffered `List<Byte>` of the response body.
+- `trailers` — trailing header section, empty if the server sent none.
+
+The only methods on it are the two constructors `H3Response.ok(body)` /
+`H3Response.status(code)`, the chaining `with_header(name, value)`, and
+`to_field_list()`.
 
 ## 0-RTT resumption
 
 For repeat connections to the same origin:
 
-```verum
-// First connection — save the resumption ticket.
-let (mut client, ticket) = H3Client.connect(&f"https://example.com", opts).await?;
-let resp = client.get(&f"/").await?;
-save_ticket(&ticket);
+:::caution The ticket half is not an H3 API
+`connect` returns `Result<H3Client, H3ClientError>` — a client, not a
+`(client, ticket)` pair — and there is no `save_ticket` / `load_ticket`
+in `core/`. The session `connect_resumed` wants is a
+`core.net.tls13.handshake.ClientSession`, produced and carried by the
+TLS layer, and the early data is a `&[Byte]` you pass separately. The
+signature is
+`connect_resumed(url: &Text, opts: ClientOptions, session: ClientSession, early_data: &[Byte])`
+(`core/net/h3/client.vr:266`). How a `ClientSession` is obtained and
+persisted between processes is the TLS stack's story, not this page's,
+and it is not written down anywhere yet.
+:::
 
-// Later process — resume with 0-RTT early data.
-let ticket = load_ticket()?;
-let mut client = H3Client.connect_resumed(&f"https://example.com", opts, &ticket).await?;
+```verum
+// SHAPE ONLY for the resumption half — see the caution above.
+let mut client = H3Client.connect_resumed(
+    &f"https://example.com", opts, session, early_data).await?;
 let resp = client.get(&f"/dashboard").await?;     // rides in 0-RTT
 ```
 

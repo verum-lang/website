@@ -58,9 +58,12 @@ async fn fetch_example() -> Result<(), H3ClientError> {
 
     let mut client = H3Client.connect(&"https://example.test/", opts).await?;
 
-    // The request is BUILT by `H3Request` and SENT by the client; the
-    // client has no `.get(path)` of its own.
-    let req = H3Request.get(client.authority(), Text.from("/api/users/42"));
+    // Two ways in. `client.get(path)` / `client.post(path, ct, body)`
+    // are the short forms; `H3Request.get(authority, path)` plus
+    // `client.send(&req)` is the long one, and it is what you need as
+    // soon as a request carries its own headers.
+    let req = H3Request.get(client.authority(), Text.from("/api/users/42"))
+        .with_header(Text.from("accept"), Text.from("application/json"));
     let response = client.send(&req).await?;
 
     // `status`, `headers`, `body` and `trailers` are FIELDS of
@@ -81,7 +84,10 @@ decoder) before returning. By the time `client.send(&req)` is called,
 the connection is in 1-RTT and HEADERS frames can be issued
 immediately. `H3Request.get(authority, path)` and
 `H3Request.post(authority, path, body)` are the two request builders,
-and `.with_header(name, value)` chains onto either.
+and `.with_header(name, value)` chains onto either. The client also
+carries `get` / `post` / `send` / `connect_resumed` directly — they are
+declared `pub` rather than `public`, which `grammar/verum.ebnf:497`
+admits as the same visibility.
 
 ## Server flow
 
