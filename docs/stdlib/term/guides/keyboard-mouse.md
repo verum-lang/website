@@ -23,9 +23,9 @@ check `caps.has_kitty_keyboard` first.
 ```verum
 match event {
     Event.Key(ke) => match ke.code {
-        KeyCode.Char('q') if ke.modifiers.empty() => quit(),
+        KeyCode.Char('q') if ke.modifiers.is_empty() => quit(),
         KeyCode.Char('s') if ke.modifiers.contains(Modifiers.CTRL) => save(),
-        KeyCode.F(5) => refresh(),
+        KeyCode.Fn(5) => refresh(),        // the variant is `Fn`, not `F`
         KeyCode.Escape | KeyCode.Char('q') => quit(),
         _ => {}
     },
