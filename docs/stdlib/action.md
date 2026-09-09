@@ -37,14 +37,18 @@ operational verbs an articulation can be activated through:
 
 ```verum
 public type Primitive is
-    | Math       // articulate a mathematical claim
-    | Compute    // perform a computation
-    | Observe    // record an observation
-    | Prove      // construct a proof
-    | Decide     // make a decision (algorithmic)
-    | Translate  // map between presentations
-    | Construct; // build a witness
+    EpsilonMath        // articulate a mathematical claim
+  | EpsilonCompute     // perform a computation
+  | EpsilonObserve     // record an observation
+  | EpsilonProve       // construct a proof
+  | EpsilonDecide      // make a decision (algorithmic)
+  | EpsilonTranslate   // map between presentations
+  | EpsilonConstruct   // build a witness
+  | EpsilonClassify;   // place a thing in a taxonomy
 ```
+
+Every variant carries the `Epsilon` prefix, and there are EIGHT —
+`EpsilonClassify` is easy to miss when writing an exhaustive `match`.
 
 Every action in the system lifts to *exactly one* primitive. The
 audit gate `verum audit --epsilon` enumerates every
@@ -54,30 +58,33 @@ DC-side counterpart of `--framework-axioms`.
 ## 2. The four core types
 
 ```verum
+// An enactment is a NAMED SEQUENCE of primitives with an activation
+// rank and the articulation it discharges — not a single primitive plus
+// a certificate.
 public type Enactment is {
-    primitive: Primitive,
-    target:    Articulation,
-    cert:      Maybe<Text>,         // optional verification certificate
-    gauge:     GaugeCanonical,      // canonicalisation witness
-}
+    name:            Text,
+    steps:           List<Primitive>,
+    activation_rank: Int,
+    articulation:    Articulation,
+};
 
+// The third field is `lineage`, not `payload`.
 public type Articulation is {
     framework: Text,                // e.g. "lurie_htt"
     citation:  Text,                // e.g. "HTT 6.2.2.7"
-    payload:   Text,                // the articulation's content
-}
+    lineage:   Text,
+};
 
+// Eight effects named after the MONAD each denotes.
 public type EffectKind is
-    | PureMath
-    | Computation
-    | RuntimeIo
-    | UserPrompted
-    | NondetSampling;
-
-public type GaugeCanonical is {
-    equiv_class: Text,              // canonical-form identifier
-    rep:         Maybe<Text>,       // representative if requested
-}
+    PureEffect
+  | ReaderEffect
+  | WriterEffect
+  | ProbabilityEffect
+  | ListEffect
+  | StateEffect
+  | ExceptionEffect
+  | IoEffect;
 ```
 
 `Enactment` ties an `Articulation` (what is being claimed) to a
@@ -124,9 +131,11 @@ public type Locus is protocol { ... };
 public type Design is protocol { ... };
 public type Dessein is protocol {};
 
+// Two loci and the corecursion sites a productivity check walks.
 public type LazyDesign is {
-    initial:   Locus,
-    schedule:  fn(Locus) -> Design,
+    source_locus: Text,
+    target_locus: Text,
+    corec_calls:  List<CorecursiveCall>,
 };
 ```
 
@@ -149,12 +158,16 @@ enactments that target the same articulation may use different
 primitives or different cert payloads — they are equivalent if
 their gauge-canonical forms agree:
 
-```verum
-public fn gauge_canonical(e: Enactment) -> GaugeCanonical;
+There is no `GaugeCanonical` type: the canonical form of an enactment
+is another `Enactment`, and equivalence is decided by comparing the two
+canonicalised values.
 
-public fn gauge_equivalent(a: Enactment, b: Enactment) -> Bool {
-    gauge_canonical(a).equiv_class == gauge_canonical(b).equiv_class
-}
+```verum
+public fn canonicalise(e: Enactment) -> Enactment;
+public fn gauge_equivalent(a: Enactment, b: Enactment) -> Bool;
+public fn is_canonical(e: Enactment) -> Bool;
+public fn canonical_size(e: Enactment) -> Int;
+public fn canonicalise_idempotent(e: Enactment) -> Bool;
 ```
 
 The audit gate `verum audit --round-trip` walks every theorem's
