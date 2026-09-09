@@ -72,6 +72,34 @@ let next = match &s {
 s = next;
 ```
 
+Inside a method the `&`-form DOES work on `self`, and that asymmetry is
+worth knowing before you copy code between the two places:
+
+```verum
+implement Holder {
+    public fn bump(&mut self, n: Int) {
+        match &self.s {                                   // works: C sum=3
+            Sum.Pair { x, y } => { self.s = Sum.Pair { x: x + n, y: y }; },
+            _ => {},
+        }
+    }
+}
+```
+
+The same shape on a LOCAL holder is refused:
+
+```verum
+let mut h = Holder { s: Sum.Pair { x: 1, y: 0 } };
+match &h.s {                                              // error<E310>
+    Sum.Pair { x, y } => { h.s = Sum.Pair { x: x + 2, y: y }; },
+    _ => {},
+}
+```
+
+Both were run. So a snippet lifted out of a method into a `fn main` stops
+compiling, and one lifted the other way starts — with no change to the
+pattern itself.
+
 Tracked as T1334. Until it is fixed, treat a record variant as
 immutable-through-patterns and rebuild it.
 :::
