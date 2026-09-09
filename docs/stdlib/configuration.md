@@ -51,15 +51,24 @@ every registered format with the same call-site shape.
 ## ConfigValue — the categorical hub
 
 ```verum
+// Every variant is `Config`-prefixed, and there are fourteen: the four
+// TOML date/time shapes are distinct arms, and bytes, durations and a
+// tagged wrapper are part of the model.
 public type ConfigValue is
-      Null
-    | Bool(Bool)
-    | Integer(Int)
-    | Float(Float)
-    | TextValue(Text)
-    | Array(List<ConfigValue>)
-    | Table(Map<Text, ConfigValue>)
-    | DateTime(DateTime);
+      ConfigNull
+    | ConfigBool(Bool)
+    | ConfigInt(Int)
+    | ConfigFloat(Float)
+    | ConfigString(Text)
+    | ConfigBytes(List<Byte>)
+    | ConfigOffsetDateTime(Rfc3339Time)
+    | ConfigLocalDateTime(Rfc3339Time)
+    | ConfigLocalDate(Rfc3339Time)
+    | ConfigLocalTime(Rfc3339Time)
+    | ConfigDuration(Duration)
+    | ConfigArray(List<ConfigValue>)
+    | ConfigTable(Map<Text, ConfigValue>)
+    | ConfigTagged(Text, Heap<ConfigValue>);
 ```
 
 Every supported format (TOML, YAML, JSON, INI, env, …) parses

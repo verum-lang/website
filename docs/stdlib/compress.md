@@ -129,7 +129,7 @@ public type CompressError is
     | InvalidLevel { algo: Algorithm, level: Int }   // level out of range
     | DictionaryMismatch                         // zstd dict ID/hash mismatch
     | OutputTooLarge { limit: Int }              // zip-bomb defence
-    | IoError(Text);                             // I/O propagation from inner reader/writer
+    | IoFailure(Text);                           // I/O propagation from inner reader/writer
 ```
 
 All variants are purely data; no I/O happens inside the error path
