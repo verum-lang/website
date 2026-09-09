@@ -7,6 +7,19 @@ status: undocumented
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
+:::caution You have probably arrived here from a search engine
+There are two pages for this module and this is the one nothing links
+to: no page links here and it is not in the sidebar, so the site's own
+navigation never leads to it. The page the site uses is
+**[`stdlib/theory-interop`](/docs/stdlib/theory-interop)** (hyphen), and
+it is twice as long.
+
+What is written here and NOT there — module layout, the architecture
+stack, the quick start, the status table and the foundational alignment
+— has not been folded in yet, which is why this file is still present
+rather than deleted. Read both until it is.
+:::
+
 # `core.theory_interop` — Theory interoperation layer
 
 <StdlibStatus status="undocumented" />
