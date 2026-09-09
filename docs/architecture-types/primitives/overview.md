@@ -14,8 +14,9 @@ variants, records, attributes, protocols. The primitives listed
 below are the canonical vocabulary.
 
 The first eight (per-cog primitives) describe a single cog's
-architectural intent. The ninth (Corpus) covers cross-cog
-properties that no single cog can attest to alone.
+architectural intent. The ninth (CVE) is how a cog attests to its own
+Constructive / Verifiable / Executable discharge. The tenth (Corpus)
+covers cross-cog properties that no single cog can attest to alone.
 
 This page is a tour. Each primitive has its own deep-dive document
 linked from the table; readers new to ATS-V should read this page

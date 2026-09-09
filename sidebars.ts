@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
       link: {type: 'doc', id: 'architecture-types/index'},
       items: [
         'architecture-types/index',
+        'architecture-types/ats-v2-direction',
         {
           type: 'category',
           label: 'CVE — universal correctness frame',
@@ -49,7 +50,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Eight architectural primitives',
+          label: 'Ten architectural primitives',
           link: {type: 'doc', id: 'architecture-types/primitives/overview'},
           items: [
             'architecture-types/primitives/overview',
@@ -61,6 +62,8 @@ const sidebars: SidebarsConfig = {
             'architecture-types/primitives/tier',
             'architecture-types/primitives/stratum',
             'architecture-types/primitives/shape',
+            'architecture-types/primitives/cve',
+            'architecture-types/primitives/corpus',
           ],
         },
         {
@@ -262,6 +265,7 @@ const sidebars: SidebarsConfig = {
   language: [
     'language/overview',
     'language/syntax',
+    'language/language-laws',
     'language/tagged-literals',
     {
       type: 'category',
