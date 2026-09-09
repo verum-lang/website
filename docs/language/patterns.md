@@ -46,11 +46,26 @@ form standing next to it is what makes this dangerous — the difference
 between the two is not visible from the call site, the type, or the
 diagnostic.
 
-The other spellings do not rescue it. Assigning to a plain binding
-(`x = x + n`) is also lost silently; adding a dereference without `ref`
-(`*x = *x + n`) is refused with `error<E409>: Cannot dereference
-non-reference type`. Three of the four forms a reader will try either
-lie or refuse.
+The other spellings do not rescue it, and **which** way each one fails
+depends on how the value was matched. Every row below was run on
+2026-09-09, one probe per row, `Int` fields, correct answer `3`:
+
+| What you write | Matched as | Result |
+|----------------|-----------|--------|
+| `x = x + n` | `match s` (by value) | refused — `cannot assign to immutable variable: x` |
+| `x = x + n` | `match &mut s` (local) | refused — same message |
+| `x = x + n` | `match &mut self.field` | **compiles, prints `1` — the write is lost** |
+| `*x = *x + n` | `match s` (by value) | **compiles, prints `1` — the write is lost** |
+| `{ x: ref mut xv }`, `*xv = *xv + n` | `match s` (by value) | **compiles, prints `1` — the write is lost** |
+
+So a reader gets a refusal or a silent loss depending on a detail of the
+`match` header, and the two forms that lose are the two that look most
+like the ones that work. The refusal is not a type error either — it
+arrives from code generation (`VBC codegen error (user bodies)`), which
+is why it has no error code to look up.
+
+Only the record-variant case behaves this way: the same `ref mut` write
+into a TUPLE variant (`Tup.One(ref mut v)`) writes through correctly.
 
 **What works today** is rebuilding the variant — and the borrow matters,
 so both spellings below are the ones that were actually run:
