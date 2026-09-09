@@ -191,75 +191,119 @@ public type ChildId      is (UInt64);
 public type SupervisionStrategy is
     | OneForOne          // restart only the failing child
     | OneForAll          // restart every child on any failure
-    | RestForOne         // restart the failing child and its successors
-    | SimpleOneForOne;   // all children share a spec; restart the failed one
+    | RestForOne;        // restart the failing child and its successors
 
-public type RestartStrategy is
+// NOT `RestartStrategy` — that name belongs to a different type in
+// `runtime.env`. The supervisor's is prefixed.
+public type SupervisorRestartStrategy is
     | Permanent          // always restart
     | Transient          // restart on abnormal exit only
     | Temporary;         // never restart
 
 public type FailureReason is
+    | NormalExit
+    | ErrorExit(Text)
     | Panic(Text)
-    | Exception(Text)
-    | Exit(Int)
-    | Killed
-    | Other(Text);
+    | Timeout
+    | Cancelled
+    | Manual             // operator-initiated restart
+    | SupervisorShutdown;
 
 public type ChildStatus is
-    | Starting | Running | Restarting | Stopping | Stopped | Failed(FailureReason);
+    | Running | Starting | Restarting | Terminated | Failed | Stopped;
 
+// A tracker, not a pair of settings: the counters are atomic and live
+// in the type, so a supervisor reads the window without a lock.
 public type RestartIntensity is {
-    max_restarts: Int,        // max restarts allowed…
-    period_ms:    Int,        // …within this window
+    max_restarts:    UInt16,
+    window_ms:       UInt64,
+    restart_count:   AtomicU16,
+    window_start_ms: AtomicU64,
+    last_restart_ms: AtomicU64,
 };
 
+// No `start` factory, no `modules` list, no `ty`, no `significant` —
+// a child is named and scheduled, and the work is handed to
+// `SupervisorHandle.supervise` rather than stored in the spec.
 public type ChildSpec is {
-    id:                  Text,
-    start:               Heap<fn() -> TaskHandle>,    // async factory
-    restart:             RestartStrategy,
-    shutdown:            ShutdownStrategy,
-    ty:                  ChildType,                   // Worker | Supervisor
-    significant:         Bool,                        // escalate if it dies?
-    modules:             List<Text>,                  // for hot-code reload
+    name:                Text,
+    restart:             SupervisorRestartStrategy,
+    shutdown_timeout_ms: UInt32,
+    max_restarts:        UInt16,
+    restart_window_secs: UInt32,
+    priority:            UInt8,        // higher starts earlier, stops later
 };
 
 public type ShutdownStrategy is
-    | BrutalKill                          // SIGKILL equivalent
-    | Timeout(Duration)                   // graceful, then force
-    | Infinity;                           // wait forever
+    | Graceful { timeout_ms: UInt32 }   // cancel, wait, then force
+    | Brutal   { timeout_ms: UInt32 }   // force after a minimal timeout
+    | Infinite;                         // wait forever
 ```
+
+`ChildSpec.new(name)` gives Transient / 5000 ms / 10 restarts per 60 s /
+priority 100; `ChildSpec.permanent(name)` differs only in the restart
+strategy. `ShutdownStrategy.graceful()` is 5000 ms and
+`ShutdownStrategy.brutal()` is 100 ms.
 
 ### Creating a supervisor
 
 ```verum
+// The window lives here as two plain numbers; `RestartIntensity` is the
+// runtime tracker the supervisor builds from them. There is no
+// `AutoShutdownStrategy`, and the name is a `Text`, not a `Maybe<Text>`.
 public type SupervisorConfig is {
-    strategy:            SupervisionStrategy,
-    intensity:           RestartIntensity,
-    auto_shutdown:       AutoShutdownStrategy,
-    name:                Maybe<Text>,
-    escalation:          EscalationPolicy,
+    strategy:                  SupervisionStrategy,
+    max_restarts:              UInt16,
+    restart_window_secs:       UInt32,
+    escalation:                EscalationPolicy,
+    shutdown:                  ShutdownStrategy,
+    enable_circuit_breaker:    Bool,
+    circuit_breaker_threshold: UInt16,
+    name:                      Text,
 };
 
-public type SupervisorHandle is { /* private */ };
+implement SupervisorConfig {
+    public fn one_for_one(name: Text) -> Self;      // and the other two
+}
 
 implement SupervisorHandle {
-    public async fn start(cfg: SupervisorConfig, children: List<ChildSpec>)
-        -> Result<SupervisorHandle, SupervisorError>;
-    public async fn start_child(&self, spec: ChildSpec)
-        -> Result<ChildId, SupervisorError>;
-    public async fn terminate_child(&self, id: ChildId)
+    public fn new(config: SupervisorConfig) -> Self;
+    public fn root(config: SupervisorConfig) -> Self;
+    public fn id(&self) -> SupervisorId;
+    public fn name(&self) -> Text;
+    public fn status(&self) -> SupervisorStatus;
+    public fn set_parent(&self, parent: SupervisorHandle);
+
+    public async fn supervise<F, T>(...) -> Result<ChildId, SupervisorError>;
+    public async fn restart(&self, child_id: ChildId)
         -> Result<(), SupervisorError>;
-    public async fn restart_child(&self, id: ChildId)
-        -> Result<ChildId, SupervisorError>;
-    public async fn which_children(&self)
-        -> List<(ChildId, ChildStatus)>;
-    public async fn count_children(&self)
-        -> SupervisorStatus;
-    public async fn shutdown(&self, strategy: ShutdownStrategy)
+    public async fn terminate(&self, child_id: ChildId)
         -> Result<(), SupervisorError>;
+    public async fn shutdown(&self) -> Result<(), SupervisorError>;
 }
+
+public type SupervisorStatus is {
+    id: SupervisorId, name: Text, strategy: SupervisionStrategy,
+    child_count: Int, running_count: Int,
+    total_restarts: UInt64, last_restart_ns: UInt64, is_running: Bool,
+};
+
+public type SupervisorError is
+    | TooManyRestarts { count: Int, window_secs: UInt32 }
+    | ChildNotFound(ChildId)
+    | ShuttingDown
+    | SpawnFailed(Text)
+    | ChannelClosed
+    | InvalidSpec(Text)
+    | NoParentSupervisor
+    | Other(Text);
 ```
+
+`shutdown()` takes no argument — the strategy comes from the config the
+supervisor was built with. There is no `start`, `start_child`,
+`which_children` or `count_children`: a supervisor is constructed with
+`new`/`root`, work is attached with `supervise`, and the census is
+`status()`.
 
 ### Built-in shortcuts
 
@@ -280,16 +324,29 @@ parent supervisor according to `EscalationPolicy`:
 
 ```verum
 public type EscalationPolicy is
-    | ShutdownSelf           // supervisor dies; parent decides what to do
-    | NotifyParent           // send a message; parent decides
-    | CustomHandler(fn(EscalationReason) -> EscalationAction);
+    | RestartSubtree         // restart every child of this supervisor
+    | EscalateToParent       // the @default arm
+    | Terminate              // stop the whole tree
+    | LogAndIgnore;          // for non-critical children
 
 public type EscalationReason is
-    | IntensityExceeded { restarts: Int, window_ms: Int }
-    | SignificantChildDied(ChildId)
-    | ChildStartupFailed(ChildId, FailureReason)
-    | ManualEscalation(Text);
+    | RestartLimitExceeded {
+          child_id: ChildId, child_name: Text,
+          max_restarts: UInt16, window_secs: UInt32,
+          last_failure: FailureReason,
+      }
+    | SubSupervisorEscalation {
+          supervisor_id: SupervisorId, reason: Heap<EscalationReason>,
+      }
+    | InternalFault { error: Text }
+    | AllStrategiesExhausted;
 ```
+
+There is no `CustomHandler` arm and no `EscalationAction` type — the
+policy is a closed set of four, and `EscalationReason.description()`
+renders any of them for a log line. `SubSupervisorEscalation` nests
+through `Heap<EscalationReason>`, which is how a deep tree reports the
+original cause upward.
 
 ## Recovery — `runtime.recovery`
 
@@ -300,69 +357,84 @@ same types).
 ### Retry
 
 ```verum
-public type BackoffStrategy is
-    | Fixed(Duration)
-    | Linear { base: Duration, step: Duration, max: Duration }
-    | Exponential { base: Duration, max: Duration, factor: Int }
-    | Fibonacci   { base: Duration, max: Duration };
+Every name in this module carries a `Recovery` prefix — `BackoffStrategy`
+and `RetryPolicy` unprefixed are not declared. Delays are milliseconds,
+not `Duration`, and there is no Fibonacci arm.
+
+```verum
+public type RecoveryBackoffStrategy is
+    | Fixed       { delay_ms: UInt64 }
+    | Linear      { base_ms: UInt64, increment_ms: UInt64, max_ms: UInt64 }
+    | Exponential { base_ms: UInt64, max_ms: UInt64, multiplier: Int }
+    | None;                                       // immediate retry
+
+implement RecoveryBackoffStrategy {
+    fn calculate_delay_ms(&self, attempt: Int) -> UInt64;
+    fn exponential(base_ms: UInt64, max_ms: UInt64) -> Self;   // multiplier 2
+}
+
+// A sum type, not a function type.
+public type RetryPredicate is
+    | AllErrors
+    | TransientOnly                    // timeouts, connection reset
+    | Custom(fn(&Text) -> Bool);
 
 public type JitterConfig is
     | None
-    | Full(Float)            // 0..1 — fraction of full jitter
-    | Equal(Float);          // equal jitter (AWS model)
+    | Proportional(UInt8)              // percentage 0-100 of the delay
+    | Fixed(UInt64)                    // plus or minus this many ms
+    | Full;                            // 0 .. delay
 
-public type RetryPredicate is fn(&Error) -> Bool;
+implement JitterConfig {
+    fn apply(&self, delay_ms: UInt64) -> UInt64;
+}
 
-public type RetryPolicy is {
+// The config and the policy are two types: the policy carries the
+// running state.
+public type RuntimeRetryConfig is {
     max_attempts: Int,
-    backoff:      BackoffStrategy,
+    backoff:      RecoveryBackoffStrategy,
     jitter:       JitterConfig,
-    retry_if:     RetryPredicate,         // default: retry any error
+    retry_on:     RetryPredicate,
 };
 
-public async fn execute_with_retry<F, T, E>(
-    policy: RetryPolicy,
-    f: F,
-) -> Result<T, E>
-    where F: fn() -> (some Fut: Future<Output = Result<T, E>>);
+public type RecoveryRetryPolicy is {
+    config:          RuntimeRetryConfig,
+    current_attempt: Int,               // 1-indexed
+    total_retries:   Int,
+    last_error:      Maybe<Text>,
+};
 ```
 
 ### Circuit breaker
 
 ```verum
-public type CircuitState is
+```verum
+// Three bare variants — the deadline and the trial count are state on
+// the breaker, not payload on the state.
+public type RecoveryCircuitState is
     | Closed                 // normal
-    | Open    { until: Instant }
-    | HalfOpen { trials:   Int };
+    | Open                   // rejecting
+    | HalfOpen;              // testing recovery
 
-public type CircuitBreakerConfig is {
-    failure_threshold:   Int,
-    required_successes:  Int,
-    timeout:             Duration,
-    error_is_failure:    ErrorPredicate,
+public type RecoveryCircuitBreakerConfig is {
+    failure_threshold:  UInt16,
+    required_successes: UInt16,
+    timeout_ms:         UInt32,        // Open -> HalfOpen after this
+    error_predicate:    ErrorPredicate,
 };
 
-public type CircuitBreaker is { /* private, atomic state */ };
-
-implement CircuitBreaker {
-    public fn new(config: CircuitBreakerConfig) -> Self;
-    public fn state(&self) -> CircuitState;
-    public fn stats(&self) -> CircuitBreakerStats;
-}
-
-public async fn execute_with_circuit_breaker<F, T, E>(
-    breaker: &CircuitBreaker,
-    f: F,
-) -> Result<T, CircuitBreakerError<E>>
-    where F: fn() -> (some Fut: Future<Output = Result<T, E>>);
+public type RecoveryCircuitBreaker is { /* atomic state */ };
+public type CircuitBreakerStats is { /* counters */ };
+public type CircuitBreakerError<E> is { /* wraps the inner error */ };
 ```
 
 ### The inline variants
 
-The θ+'s `RecoveryContext` stores `InlineCircuitBreaker` (64 bytes)
-and `InlineRetryPolicy` (32 bytes) inline, to avoid heap allocation
-on the hot path. The boxed types (`CircuitBreaker`, `RetryPolicy`)
-above are for long-lived, shared state across tasks.
+`InlineCircuitBreaker` and `InlineRetryPolicy` are stored by value to
+avoid a heap allocation on the hot path; `RecoveryCircuitBreaker` and
+`RecoveryRetryPolicy` above are for long-lived state shared across
+tasks. `RuntimeRecoveryStrategy` selects between them.
 
 ## Threads — `runtime.thread`
 
@@ -371,36 +443,55 @@ OS-level threads. Available only on profiles that have threading
 `embedded`.
 
 ```verum
-public type ThreadId     is { /* opaque */ };
-public type JoinHandle<T> is { /* opaque */ };
-public type Thread       is ();
+public type ThreadId is { /* opaque */ };
+public type Thread   is ();
+
+// `ThreadJoinHandle`, not `JoinHandle` — the bare name is not declared
+// here.
+public type ThreadJoinHandle<T> is { /* opaque */ };
 
 public type ThreadBuilder is { /* fluent */ };
 
 implement ThreadBuilder {
-    public fn new() -> Self;
-    public fn name(self, s: Text) -> Self;
-    public fn stack_size(self, bytes: Int) -> Self;
-    public fn spawn<F, T>(self, f: F) -> Result<JoinHandle<T>, ThreadError>
-        where F: fn() -> T + Send + 'static, T: Send + 'static;
+    public fn new() -> ThreadBuilder;
+    public fn name(self, name: Text) -> ThreadBuilder;
+    public fn stack_size(self, size: Int) -> ThreadBuilder;
+    public fn spawn<T: Send>(self, f: fn() -> T)
+        -> Result<ThreadJoinHandle<T>, ThreadError>;
 }
 
+implement Thread {
+    public fn spawn<T: Send>(f: fn() -> T) -> ThreadJoinHandle<T>;
+    public fn builder() -> ThreadBuilder;
+    public fn current_id() -> ThreadId;
+    public fn yield_now();
+    public fn sleep(duration: Duration);
+    public fn sleep_ms(ms: Int);
+    public fn available_parallelism() -> Int;
+    public fn park();
+    public fn unpark(thread_id: ThreadId);
+}
+
+// Four variants. There is no StackTooSmall, OutOfMemory, NameTooLong or
+// ProfileUnsupported, and SpawnFailed carries no payload.
 public type ThreadError is
-    | StackTooSmall | OutOfMemory | NameTooLong
-    | ProfileUnsupported | SpawnFailed(Text);
+    | SpawnFailed | JoinFailed | Panicked | InvalidName;
 
-public type StackFrame is {
-    function: Text,
-    file:     Text,
-    line:     Int,
-    address:  UInt64,
+// `ThreadStackFrame`, and every resolvable field is a `Maybe` because
+// symbolication is deferred and may fail.
+public type ThreadStackFrame is {
+    ip:     UInt64,
+    symbol: Maybe<Text>,
+    file:   Maybe<Text>,
+    line:   Maybe<Int>,
+    column: Maybe<Int>,
 };
 
-public type StackTrace is {
-    frames: List<StackFrame>,
-    thread: ThreadId,
-};
+public type StackTrace is { frames: List<ThreadStackFrame> };
 ```
+
+`StackTrace` records no thread id — `StackTrace.capture()` walks the
+calling thread's own frames, up to 64 of them.
 
 ## Thread pool — `runtime.pool`
 
