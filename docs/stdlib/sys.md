@@ -354,13 +354,29 @@ type CompletionOp is
     | Close { fd: FileDesc };
 
 type CompletionResult is {
-    submission_id: SubmissionId,
-    result: Int,                    // negative = errno
-    flags: Int,
+    user_data: UInt64,              // the caller's own token, echoed back
+    result: Int32,                  // negative = errno
+    flags: UInt32,
 };
 
-fn create_io_engine(config: IoEngineConfig) -> Result<Heap<IOEngine>, IoError>;
+implement CompletionResult {
+    pure fn success(user_data: UInt64, bytes: BytesTransferred) -> CompletionResult;
+    pure fn error(user_data: UInt64, errno: ErrnoCode) -> CompletionResult;
+    pure fn is_success(&self) -> Bool;
+    pure fn is_error(&self) -> Bool;
+}
+
+type BytesTransferred is UInt32;
+type ErrnoCode is Int32 { > 0 };    // refined: an errno is never <= 0
+
+fn create_io_engine(sq_entries: UInt32) -> Result<some E: IOEngine, EngineIoError>;
 ```
+
+There is no `SubmissionId` and no `IoEngineConfig`: a submission carries
+an opaque `user_data: UInt64` that the completion echoes back, and the
+engine is created from a queue depth. `IOEngine` is a protocol, so
+`create_io_engine` returns an opaque `some E: IOEngine` rather than a
+`Heap`.
 
 Platform picks:
 
@@ -427,7 +443,7 @@ public type LockRegion is {
 
 public type LockError is
     | Conflict(owner_pid: Maybe<Int>)
-    | IoError(err: OSError);
+    | IoFailure(err: OSError);
 ```
 
 The 5-state SQLite locking protocol (SHARED / RESERVED / PENDING /
@@ -473,18 +489,33 @@ fn init_thread() -> Result<(), InitError>;
 fn cleanup_thread();
 
 type InitError is
+    | TlsFailed { reason: Text }
+    | ContextFailed { reason: Text }
+    | AllocatorFailed { reason: Text }
+    | PanicHandlerFailed { reason: Text }
     | AlreadyInitialized
-    | InvalidConfig(Text)
-    | PlatformError(OSError);
+    | NotInitialized
+    ;
 
-type PanicInfo is {
-    message: Text,
-    location: SourceLocation,
-    thread_id: Int,
+implement InitError { fn message(&self) -> Text; }
+
+// `SysInitPanicInfo`, and it carries the location as three plain
+// fields rather than a `SourceLocation`. There is no thread id.
+type SysInitPanicInfo is {
+    public message: Text,
+    public file:    Text,
+    public line:    Int,
+    public column:  Int,
 };
-fn panic_impl(info: &PanicInfo) -> !;
-fn set_panic_handler(h: fn(&PanicInfo) -> !);
+
+fn panic_impl(message: Text, file: Text, line: Int, column: Int) -> !;
+unsafe fn set_panic_handler(handler: fn(&SysInitPanicInfo));
 ```
+
+The error arms name the subsystem that failed to come up, each with a
+`reason` — there is no `InvalidConfig` or `PlatformError`. The handler
+passed to `set_panic_handler` returns `()`, not `!`; `panic_impl` is
+the diverging one.
 
 ---
 
@@ -939,18 +970,39 @@ unlocks coverage in many downstream modules at once.
 ### MMIO — memory-mapped I/O
 
 ```verum
-type AccessMode is Volatile | Sync | Relaxed;
+// The mode says what the hardware permits, not how the access is
+// ordered — every MMIO access is volatile by construction.
+type AccessMode is
+    ReadOnly | WriteOnly | ReadWrite | ReadWriteOnce
+    | WriteOneToClear | WriteOneToSet;
 
-type Register<T, const ADDR: UInt64> is { mode: AccessMode };
-type MemoryRegion is { base: *mut Byte, length: Int, cacheable: Bool };
+// `MmioRegister`, parameterised by the mode rather than storing it,
+// and built from an address at compile time.
+type MmioRegister<T: Copy, MODE> is { addr: *volatile mut T };
 
-fn volatile_load<T>(addr: UInt64) -> T;
-fn volatile_store<T>(addr: UInt64, value: T);
-fn barrier(order: MemoryOrdering);
-fn dmb();                                        // data memory barrier (arm64)
-fn dsb();                                        // data sync barrier
-fn isb();                                        // instruction sync barrier
+implement<T: Copy, MODE> MmioRegister<T, MODE> {
+    @const fn at(addr: USize) -> MmioRegister<T, MODE>;
+}
+
+type MemoryRegion is { start: USize, size: USize, flags: MemoryFlags };
+type MemoryFlags  is (UInt32);          // READ | WRITE | EXEC | DMA
+
+implement MemoryRegion { fn contains(&self, addr: USize) -> Bool; }
+
+// From core.intrinsics.lowlevel.mmio, re-exported here.
+fn volatile_load<T>(ptr: *volatile T) -> T;
+fn volatile_store<T>(ptr: *volatile mut T, value: T);
+fn volatile_load_acquire<T>(ptr: *volatile T) -> T;
+fn volatile_store_release<T>(ptr: *volatile mut T, value: T);
+
+fn dmb();                                        // data memory barrier
+fn compiler_barrier();                           // reorder fence only
 ```
+
+There is no `Register`, no `barrier(order)`, no `dsb` and no `isb`, and
+`MemoryOrdering` is not a type in this module — acquire/release
+ordering is chosen by picking the `_acquire` / `_release` accessor. The
+volatile intrinsics take a `*volatile` pointer, not a bare address.
 
 ### Interrupts
 
@@ -979,7 +1031,7 @@ public type LockKind is Shared | Exclusive;     // no Unlock variant — unlock 
 public type LockRegion is { start: Int, length: Int };  // length == -1 ⇒ to EOF
 public type LockError is
       Conflict(owner_pid: Maybe<Int>)           // EAGAIN / EWOULDBLOCK
-    | IoError(OSError);
+    | IoFailure(OSError);
 
 public type affine LockHandle is { /* ... */ }; // RAII; must be consumed
 ```
