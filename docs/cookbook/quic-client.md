@@ -124,16 +124,38 @@ state is cleaned up automatically (structured-concurrency rule —
 
 ## Observability
 
-The client records every transport-level event into `core.net.quic.stats`:
+:::caution The counters exist; nothing fills them for you
+`QuicStats` (`core/net/quic/stats.vr:43`, 22 counters) and
+`EndpointStats` are declared and re-exported, and
+`core.net.quic.stats_prometheus` renders either of them. What does NOT
+exist is a producer: `QuicClient` carries `connect`,
+`open_bidi_stream`, `open_uni_stream`, `send_datagram`, `close`,
+`authority` and `peer_addr` — no `stats()` — and nothing anywhere in
+`core/net/quic/` constructs, stores or returns a `QuicStats`. This page
+used to show `client.stats().snapshot()`, which is two methods neither
+type has. Tracked as T1326.
+:::
+
+The counters are a form you fill in and render yourself:
 
 ```verum
-let s = client.stats().snapshot();
-print(f"rtt={s.smoothed_rtt_ms}ms, loss={s.packets_lost}, cwnd={s.cwnd}B");
+mount core.net.quic.stats.{QuicStats};
+mount core.net.quic.stats_prometheus.{render_connection};
+
+let mut s = QuicStats.new();
+s.packets_lost            = 3_u64;
+s.rtt_smoothed_us         = 12500_u64;   // MICROseconds — not `_ms`
+s.congestion_window_bytes = 14720_u64;
+
+let text = render_connection(&s, &Text.from("conn-1"));
 ```
 
-Prometheus exporter is available via
-`core.net.quic.stats_prometheus.expose` — expose per-connection
-metrics or aggregate them at the listener level.
+The field names matter and the earlier version of this page got two of
+three wrong: it is `rtt_smoothed_us` (microseconds), not
+`smoothed_rtt_ms`, and `congestion_window_bytes`, not `cwnd`.
+`packets_lost` was correct. The exporter functions are
+`render_connection(&QuicStats, &Text)` and
+`render_endpoint(&EndpointStats)` — there is no `expose`.
 
 ## See also
 
