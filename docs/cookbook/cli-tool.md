@@ -124,12 +124,22 @@ Notes:
 
 ### Coloured error output
 
+:::caution `Style` does not render itself
+`Style` describes an attribute set for the terminal RENDERER
+(`core.term.render.buffer.set_style` paints it into a cell buffer). It
+has no `paint`, no `to_ansi`, and nothing that turns a `Style` plus a
+`Text` into an escape-wrapped string — checked against its 25 methods.
+
+Writing colour straight to a stream means emitting the escape yourself,
+which is what `core/cli/help.vr` does.
+:::
+
 ```verum
-mount term.style.{Color, Style};
+const RED_BOLD: Text = "\x1b[1;31m";
+const RESET:    Text = "\x1b[0m";
 
 fn report_error(e: &Error) {
-    let red = Style.new().fg(Color.Red).bold();
-    eprint(&red.paint(&"error: "));
+    eprint(&f"{RED_BOLD}error: {RESET}");
     eprintln(&e.to_string());
     for src in e.chain().skip(1) {
         eprintln(&f"  caused by: {src}");

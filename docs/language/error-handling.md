@@ -118,18 +118,33 @@ Policies:
 For flaky downstream dependencies:
 
 ```verum
-let breaker = CircuitBreaker.new(CircuitBreakerConfig {
-    failure_threshold: 5,
-    cooldown:          30.seconds,
+let mut breaker = CircuitBreaker.new(CircuitBreakerConfig {
+    failure_threshold:   5,
+    reset_timeout_ms:    30_000,
+    half_open_max_calls: 1,
 });
 
+// The breaker does not WRAP the call — there is no `breaker.call(f)`.
+// It answers whether a call is allowed and is told how the call went.
 async fn call_remote() -> Result<Data, Error> {
-    breaker.call(|| remote_api.fetch()).await
+    if !breaker.is_call_allowed() {
+        return Result.Err(Error.CircuitOpen);
+    }
+    match remote_api.fetch().await {
+        Result.Ok(d)  => { breaker.record_success(); Result.Ok(d) }
+        Result.Err(e) => { breaker.record_failure(); Result.Err(e) }
+    }
 }
 ```
 
-After 5 consecutive failures the breaker opens for 30 s, short-circuiting
-calls with `Err(CircuitOpen)` instead of retrying.
+`CircuitBreaker.with_defaults()` is the same thing with the values above.
+After `failure_threshold` consecutive failures the breaker opens;
+`is_call_allowed` answers `false` until `reset_timeout_ms` has passed,
+then admits `half_open_max_calls` probes before closing again.
+
+Keeping the decision and the reporting separate is deliberate: the
+breaker never owns the future, so it works the same for an async call, a
+blocking one, or a batch you count yourself.
 
 ## Retries
 
@@ -185,12 +200,10 @@ type NonEmpty<T> is List<T> { self.len() > 0 };
 async fn push_all(events: NonEmpty<Event>) -> Result<(), Error>
     using [Http, Logger]
 {
-    let breaker = CircuitBreaker.new(CircuitBreakerConfig {
-        failure_threshold: 3, cooldown: 10.seconds,
+    let mut breaker = CircuitBreaker.new(CircuitBreakerConfig {
+        failure_threshold: 3, reset_timeout_ms: 10_000,
+        half_open_max_calls: 1,
     });
-    let retry = RetryConfig {
-        attempts: 4, backoff: Backoff.Exponential(200.ms),
-    };
 
     for ev in events.iter() {
         // Retry is a FREE function taking a config, not a method on a
@@ -198,10 +211,15 @@ async fn push_all(events: NonEmpty<Event>) -> Result<(), Error>
         // `core.async.spawn_with`. It returns after `max_retries`, so
         // EXHAUSTION IS THE `Err` — there is no `retry.exhausted()`
         // predicate to ask, and the retrying happens inside.
+        if !breaker.is_call_allowed() {
+            return Result.Err(Error.CircuitOpen);
+        }
         let outcome = execute_with_retry_config(
-            || breaker.call(|| post_event(ev)),
+            || post_event(ev),
             RetryConfig.default(),
         );
+        if outcome.is_ok() { breaker.record_success(); }
+        else               { breaker.record_failure(); }
 
         match outcome {
             Result.Ok(_)                  => Logger.info(&f"sent {ev.id}"),

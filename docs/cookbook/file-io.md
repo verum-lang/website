@@ -87,8 +87,8 @@ fn write_atomic(path: &Path, contents: &[Byte]) -> IoResult<()>
     {
         let mut w = BufWriter.new(File.create(&tmp)?);
         w.write_all(contents)?;
-        w.flush()?;
-        w.sync_data()?;                                 // fsync the data
+        w.flush()?;                                     // buffer -> File
+        w.get_ref().sync_data()?;                       // File -> disk
     }
     fs.rename(&tmp, path)?;                            // atomic
     Result.Ok(())

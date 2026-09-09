@@ -244,9 +244,9 @@ pub meta fn sql_interpolation(parts: List<InterpPart>, span: Span)
 
     for part in parts.iter() {
         match part {
-            InterpPart.Literal(s) => sql_text.append(&s),
+            InterpPart.Literal(s) => sql_text.push_str(&s),
             InterpPart.Interpolated(expr) => {
-                sql_text.append(&f" ?{bind_exprs.len()+1} ");
+                sql_text.push_str(&f" ?{bind_exprs.len()+1} ");
                 bind_exprs.push(expr.clone());
             }
         }

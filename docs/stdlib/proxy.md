@@ -63,8 +63,8 @@ let pool = UpstreamPool.new();
 ### Acquire / release
 
 ```verum
-let lease: ConnectionLease = pool.acquire(&api).await?;
-lease.stream().write_all(&request).await?;
+let mut lease: ConnectionLease = pool.acquire(&api).await?;
+lease.stream_mut().write_all(&request).await?;   // &mut TcpStream
 // drop(lease) returns the connection to the pool iff still healthy.
 ```
 
