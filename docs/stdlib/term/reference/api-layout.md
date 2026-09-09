@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: API reference — layout
-description: Rect, Constraint, Flex, Grid, Responsive.
+description: Rect, LayoutConstraint, TermLayout, Flex, FlexLayout, GridLayout, Responsive.
 ---
 
 # API reference — layout
@@ -15,11 +15,20 @@ page](../concepts/layout-system.md) for guided usage.
 public type Rect is { x: Int, y: Int, width: Int, height: Int };
 
 Rect.new(x, y, w, h) -> Rect
+    fn area(&self)   -> Int           // width * height
+    fn left(&self)   -> Int           fn top(&self)    -> Int
     fn right(&self)  -> Int           // x + width
     fn bottom(&self) -> Int           // y + height
-    fn inner(&self, m: Margin) -> Rect
     fn is_empty(&self) -> Bool
     fn contains(&self, x: Int, y: Int) -> Bool
+    fn inner(&self, m: Margin) -> Rect
+    fn intersection(&self, other: &Rect) -> Rect
+    fn union(&self, other: &Rect) -> Rect
+    fn centered(&self, width: Int, height: Int) -> Rect
+    fn clamp_position(&self, x: Int, y: Int) -> (Int, Int)
+    // Both split at ONE position and answer the PAIR:
+    fn split_horizontal(&self, at: Int) -> (Rect, Rect)
+    fn split_vertical(&self, at: Int)   -> (Rect, Rect)
 ```
 
 ## `Margin`
@@ -27,15 +36,25 @@ Rect.new(x, y, w, h) -> Rect
 ```verum
 public type Margin is { top: Int, right: Int, bottom: Int, left: Int };
 
-Margin.new(v: Int, h: Int) -> Margin             // vertical, horizontal
-Margin.all(n: Int) -> Margin
-Margin.custom(top, right, bottom, left) -> Margin
+// There is no `Margin.new`, `.all` or `.custom`. Four constructors,
+// and `symmetric` takes HORIZONTAL first.
+Margin.uniform(n: Int) -> Margin
+Margin.horizontal(n: Int) -> Margin
+Margin.vertical(n: Int) -> Margin
+Margin.symmetric(h: Int, v: Int) -> Margin
+Margin.ZERO                                      // the const
+    fn total_horizontal(&self) -> Int
+    fn total_vertical(&self) -> Int
 ```
 
-## `Constraint`
+## `LayoutConstraint`
+
+The type is `LayoutConstraint` — this page used `Constraint` in the
+heading and `LayoutConstraint` in every signature below it. (`Constraint`
+is a different type, in `core.database`.)
 
 ```verum
-public type Constraint is
+public type LayoutConstraint is
     | Length(Int)
     | Min(Int)
     | Max(Int)
@@ -142,18 +161,31 @@ GridLayout.new(columns: List<GridTrack>, rows: List<GridTrack>)
 mount core.term.layout.shortcuts.*;
 
 fn header_body_footer(area: Rect, header_h: Int, footer_h: Int) -> (Rect, Rect, Rect);
-fn sidebar_main(area: Rect, sidebar_w: Int) -> (Rect, Rect);
-fn centered(area: Rect, w: Int, h: Int) -> Rect;
+fn sidebar_main(area: Rect, sidebar_width: Int) -> (Rect, Rect);
+fn centered(area: Rect, width: Int, height: Int) -> Rect;
 fn equal_columns(area: Rect, n: Int) -> List<Rect>;
 fn equal_rows(area: Rect, n: Int) -> List<Rect>;
+fn percentage_split(area: Rect, percentages: &List<Int>) -> List<Rect>;
+fn percentage_rows(area: Rect, percentages: &List<Int>) -> List<Rect>;
 ```
 
 ## Responsive
 
+`Breakpoint` is a RECORD carrying its own threshold and name, not a
+four-variant sum. The four standard ones are module CONSTANTS, so a
+project can define its own beside them.
+
 ```verum
-public type Breakpoint is Mobile | Tablet | Desktop | Wide;
+public type Breakpoint is { min_width: Int, name: Text };
+
+public const MOBILE:  Breakpoint = Breakpoint { min_width:   0, name: "mobile"  };
+public const TABLET:  Breakpoint = Breakpoint { min_width:  80, name: "tablet"  };
+public const DESKTOP: Breakpoint = Breakpoint { min_width: 120, name: "desktop" };
+public const WIDE:    Breakpoint = Breakpoint { min_width: 160, name: "wide"    };
 
 public fn current_breakpoint(width: Int) -> Breakpoint;
 ```
 
-Thresholds: `Mobile < 80 ≤ Tablet < 120 ≤ Desktop < 180 ≤ Wide`.
+Thresholds: `mobile < 80 ≤ tablet < 120 ≤ desktop < 160 ≤ wide` — the
+last boundary is 160, and `current_breakpoint` compares against
+`min_width` from the widest down.
