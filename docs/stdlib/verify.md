@@ -52,19 +52,51 @@ narrow, ergonomic API on top so user code can:
 ## Verification levels
 
 ```verum
+// Twelve levels on one ordinal ladder, not four. There is no `Off`:
+// `Runtime` (ν = 0) is the floor, and it still checks — dynamically.
 public type VerificationLevel is
-      Off                       // no verification; ignore @verify attributes
-    | Refinement                // refinement-type checks (predicates on Int / Float / etc.)
-    | Termination              // refinement + termination proofs
-    | Proof;                    // full SMT + kernel-replay proof obligations
+    | Runtime          // ν = 0     — dynamic check
+    | Static           // ν = 1     — dataflow / CBGR / const fold
+    | Fast             // ν = 2     — bounded single-solver SMT
+    | Formal           // ν = ω     — full SMT portfolio
+    | Proof            // ν = ω+1   — tactic proof + kernel re-check
+    | Thorough         // ν = ω·2   — formal + invariant obligations
+    | Reliable         // ν = ω·2+1 — thorough + cross-solver agreement
+    | Certified        // ν = ω·2+2 — reliable + certificate export
+    | CoherentStatic   // ν = ω·2+3 — α-cert + symbolic ε-claim
+    | CoherentRuntime  // ν = ω·2+4 — α-cert + runtime ε-monitor
+    | Coherent         // ν = ω·2+5 — α/ε bidirectional check
+    | Synthesize;      // ν ≤ ω·3+1 — inverse search across 𝔐
 ```
 
-The level is set at the manifest layer (`[verification].level = "proof"`)
-and observable from user code via `current_level()`. Libraries that
-should behave differently at proof level vs runtime level branch on
-this; for example, a library may emit dynamic checks at `Refinement`
-level and elide them at `Proof` level (the proof obligation has
-discharged the run-time check).
+`Refinement` and `Termination` are not levels — refinement checking
+happens from `Static` upward, and termination obligations arrive with
+`Thorough`.
+
+The level is set at the manifest layer (`[verification].level = "proof"`).
+There is no `current_level()` to read it back from user code; what
+`core.verify.level` offers instead is a set of predicates over a level
+value a library is HANDED:
+
+```verum
+public fn parse_level(annotation: Text) -> Maybe<VerificationLevel>;
+public fn to_annotation(level: VerificationLevel) -> Text;
+public fn requires_smt(level: VerificationLevel) -> Bool;
+public fn allows_runtime_fallback(level: VerificationLevel) -> Bool;
+public fn emits_certificate(level: VerificationLevel) -> Bool;
+public fn requires_coherence_checker(level: VerificationLevel) -> Bool;
+public fn is_stricter_than(a: VerificationLevel, b: VerificationLevel) -> Bool;
+public fn nu_omega_coeff(level: VerificationLevel) -> Int;   // the ordinal,
+public fn nu_finite_offset(level: VerificationLevel) -> Int; // as ω·c + k
+public fn nu_render(level: VerificationLevel) -> Text;
+```
+
+A library that wants to emit dynamic checks below `Proof` and elide
+them at or above it asks `allows_runtime_fallback(level)` or
+`is_stricter_than(level, VerificationLevel.Proof)`, rather than
+comparing level values by hand — the ladder is ordinal, and `Coherent`
+sits above `Certified` above `Reliable`, which a naive comparison would
+get wrong.
 
 ## Type-level witnesses
 
@@ -100,22 +132,35 @@ trusted kernel without retraversing the SMT solver.
 ## Verification attempt API
 
 ```verum
-public type VerificationOutcome<T> is
-      Verified(T)                                          // proof succeeded
-    | Timeout { elapsed_ms: Int, partial: Maybe<Text> }    // SMT timeout
-    | Unknown(Text)                                        // SMT couldn't decide
-    | Failed { counterexample: Maybe<Counterexample> };    // refuted with model
+// What the PROVER found:
+type ProofAttempt is
+    | Proven
+    | Failed(Text)
+    | Unattempted;
 
-public fn attempt_verify<T, P: Predicate<T>>(
-    value:       T,
-    strategy:    VerifyStrategy,
-    deadline_ms: Int,
-) -> VerificationOutcome<Verified<T, P>>;
+// What the COMPILER should do about it. Not generic, and not a report
+// of the proof — it is the decision.
+type VerificationOutcome is
+    | ElideCheck                    // proved; drop the run-time check
+    | EmitRuntimeCheck              // not proved; keep the check
+    | FallbackWithWarning(Text)     // not proved; keep it, and say so
+    | HardFail(Text);               // not proved, and the level forbids that
+
+fn evaluate_attempt(level: VerificationLevel, attempt: ProofAttempt)
+    -> VerificationOutcome;
+
+fn requires_runtime_check(outcome: VerificationOutcome) -> Bool;
+fn is_hard_failure(outcome: VerificationOutcome) -> Bool;
+fn is_warning(outcome: VerificationOutcome) -> Bool;
 ```
 
-Useful for library code that wants to verify-or-fallback rather
-than fail compilation: try the proof under a strategy; on
-`Timeout` or `Unknown`, fall back to runtime checks.
+There is no `attempt_verify`, `VerifyStrategy` or `Counterexample`, and
+no timeout or deadline in this API. The split is the point: a
+`ProofAttempt` says what the prover found, and `evaluate_attempt` turns
+that plus the active level into the compiler's decision. The same
+`Failed` attempt is a warning at a lax level and a `HardFail` at a
+strict one, which is exactly what library code wanting
+verify-or-fall-back needs to branch on.
 
 ## Coherence
 

@@ -569,7 +569,14 @@ off the source:
 ```verum
 type Module is protocol { ... };
 type Trainable is protocol { ... };
-type Parameter<T> is { value: T, grad: Maybe<T> };
+// Not generic, and it carries the autograd flag: a Parameter IS a
+// float tensor plus its gradient plus whether one is wanted.
+type Parameter is {
+    data: DynTensor<Float>,
+    grad: Maybe<DynTensor<Float>>,
+    requires_grad: Bool,
+};
+Parameter.new(shape: &[USize]) -> Parameter        // zeros, requires_grad
 
 // Layers
 Linear.new(in_dim, out_dim) -> Linear

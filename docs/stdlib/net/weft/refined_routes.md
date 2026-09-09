@@ -35,15 +35,23 @@ Source: `core/net/weft/refined_routes.vr`.
 
 ```verum
 public type PathRefinement<T> is {
-    name: Text,
-    parse: fn(Text) -> Maybe<T>,
+    name:     Text,
+    check:    fn(&T) -> Bool,
+    expected: Text,          // human-readable, for the diagnostic
 };
+
+implement<T> PathRefinement<T> {
+    public fn new(name: Text, expected: Text, check: fn(&T) -> Bool)
+        -> PathRefinement<T>;
+}
 ```
 
-A `PathRefinement` is a typed parser plus a name (used in error
-diagnostics). The parser returns `None` if the input fails the
-refinement; the framework converts `None` into a 422 Unprocessable
-Entity response.
+A `PathRefinement` is a PREDICATE over an already-parsed value, not a
+parser: `check(&T) -> Bool` runs after the path segment has been
+converted to `T`. That separation is what lets one refinement apply to
+any type that parses, and it is why the type carries an `expected`
+string — the check cannot explain itself, so the message is supplied
+alongside. A `false` becomes a 422 Unprocessable Entity.
 
 ## Built-in factories
 

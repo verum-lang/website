@@ -79,8 +79,14 @@ ADT:
 ```verum
 public type PriorityUpdate is {
     target: PriorityUpdateTarget,   // Request(stream_id) | Push(push_id)
-    priority_field: List<Byte>,
+    field_value: List<Byte>,        // the raw Priority field-value
 };
+
+implement PriorityUpdate {
+    public fn priority(&self) -> Result<H3Priority, PriorityParseError>;
+    public fn with_priority(target: PriorityUpdateTarget, p: &H3Priority)
+        -> PriorityUpdate;
+}
 
 public const PRIORITY_UPDATE_REQUEST: UInt64 = 0xF0700;
 public const PRIORITY_UPDATE_PUSH:    UInt64 = 0xF0701;

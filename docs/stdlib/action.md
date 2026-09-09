@@ -179,24 +179,32 @@ membership.
 Two further data types surface the DC-side *audit* surface:
 
 ```verum
+// Both are scoped to ONE epsilon, and both count rather than collect.
 public type ConsistencyReport is {
-    enactments_total:   Int,
-    primitive_counts:   List<(Primitive, Int)>,
-    framework_counts:   List<(Text, Int)>,
-    gauge_violations:   List<Text>,
-}
+    epsilon:          Text,
+    declared_count:   Int,
+    consistent_count: Int,
+    divergent_count:  Int,
+};
 
 public type CoherenceMonitor is {
-    alpha_certs:   List<Text>,
-    epsilon_certs: List<Text>,
-    verdicts:      List<CoherenceVerdict>,
-}
+    epsilon:        Primitive,
+    representative: Maybe<Enactment>,   // the first consistent enactment
+    consistent:     Int,
+    divergent:      Int,
+};
+
+public fn gauge_consistency(epsilon: Primitive, observed: List<Enactment>)
+    -> ConsistencyReport;
+public fn monitor_new(epsilon: Primitive) -> CoherenceMonitor;
 ```
 
-`ConsistencyReport` is the structured output of
-`verum audit --epsilon`. `CoherenceMonitor` is the runtime
-companion for `@verify(coherent_runtime)` — it records α-cert and
-ε-cert pairs at runtime and reports per-pair verdicts.
+Neither type aggregates across primitives: a report is about a single
+ε, named in its own `epsilon` field, and the counts are `Int`s rather
+than lists of per-primitive or per-framework tallies. There is no
+`gauge_violations` list — a divergence increments `divergent_count`,
+and the enactment kept is the `representative`, the first consistent one
+against which the rest were judged.
 
 ## 7. Cross-references
 

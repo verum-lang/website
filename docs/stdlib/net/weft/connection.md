@@ -82,10 +82,11 @@ Behaviour:
 public type ConnError is
     | ClientClosed
     | Cancelled
-    | Io(Text)
+    | IoFailed(IoError)                    // the typed error, not Text
     | Parse(ParseError)
     | TooLarge
     | UnsupportedTransferEncoding(Text)
+    | ReadTimeout                          // slowloris guard
     | HandlerError(WeftError);
 ```
 

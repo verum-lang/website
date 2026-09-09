@@ -174,11 +174,13 @@ now". Prevents burst-driven queueing at bottleneck.
 
 ```verum
 public type Pacer is {
-    tokens:        UInt64,
-    last_refill:   Instant,
-    bytes_per_sec: UInt64,
-    max_burst:     UInt64,
+    rate_bps:    UInt64,
+    tokens:      UInt64,
+    capacity:    UInt64,        // the burst ceiling, and the initial tokens
+    last_refill: Instant,
 };
+
+Pacer.new(capacity_bytes: UInt64) -> Pacer      // starts full, rate 0
 
 public type PacerDecision is Send | NotYet(Duration);
 

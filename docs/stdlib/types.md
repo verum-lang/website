@@ -196,9 +196,13 @@ preserves useful refinement feedback.
 public type UsageCount is { runtime: Int{>= 0} };
 public type TrackedBinding is { name: Text, declared: Quantity };
 
+// Note the capitalisation — OverUse / UnderUse — and that only OverUse
+// carries the observed count: an under-use is "fewer than declared",
+// and the declaration is the whole story.
 public type QttViolation is
-    | Underuse { binding: Text, declared: Quantity, observed: UsageCount }
-    | Overuse  { binding: Text, declared: Quantity, observed: UsageCount };
+    | OverUse  { binding: Text, observed: Int, declared: Quantity }
+    | UnderUse { binding: Text, declared: Quantity }
+    | ErasedUsedAtRuntime { binding: Text };
 
 public fn check_binding(
     name: Text,
@@ -207,11 +211,21 @@ public fn check_binding(
 ) -> Maybe<QttViolation>;
 ```
 
-`check_binding` is the atomic per-binding query the compiler runs
-over each function body — `Some(Underuse …)` fires when `declared
-= One` and `observed != 1`; `Some(Overuse …)` fires when `declared
-= AtMost { n }` and `observed > n`; `None` means the binding
-satisfies its declared quantity.
+`check_binding` is the atomic per-binding query the compiler runs over
+each function body. It normalises the declared quantity first, then:
+
+| declared | observed | verdict |
+|---|---|---|
+| `Zero` | `> 0` | `ErasedUsedAtRuntime` — an erased binding reached run time |
+| `One` | `0` | `UnderUse` |
+| `One` | `> 1` | `OverUse` |
+| `AtMost { n }` | `> n` | `OverUse` |
+| `Many` | anything | `None` |
+
+`One` with `observed != 1` is therefore two DIFFERENT violations, not
+one: zero uses under-use it and two over-use it, and only the over-use
+arm carries the count — an under-use has nothing to report beyond the
+declaration.
 
 ### Typical consumers
 

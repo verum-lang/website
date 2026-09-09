@@ -15,13 +15,18 @@ is a distinct type, and illegal transitions don't compile.
 The client machine progresses through these six states:
 
 ```verum
+// Every arm carries an `Sm` suffix — the bare names are the state
+// STRUCTS, and the sum's arms must not collide with them.
 public type ClientSm is
-    | Start(Start)
-    | WaitServerHello(WaitServerHello)
-    | WaitEncryptedExtensions(WaitEncryptedExtensions)
-    | WaitCertCr(WaitCertOrCr)
-    | WaitFinished(WaitFinished)
-    | Connected(Connected);
+      StartSm { config: Tls13ClientConfig }
+    | WaitServerHelloSm(WaitServerHello)
+    | WaitEncryptedExtensionsSm(WaitEncryptedExtensions)
+    | WaitCertOrCrSm(WaitCertOrCr)
+    | WaitCertSm(WaitCert)
+    | WaitCertVerifySm(WaitCertVerify)
+    | WaitFinishedSm(WaitFinished)
+    | ConnectedSm(Connected)
+    | ClosedSm;
 ```
 
 Each `recv_*` method returns the *next* state value. The compiler

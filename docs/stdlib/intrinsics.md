@@ -1155,9 +1155,16 @@ inb(port) / outb(port, val) / inw / outw / inl / outl
 ### `lowlevel/aarch64.vr` (aarch64 only)
 
 ```verum
-type Aarch64CpuFeatures is { has_neon, has_sve, sve2 : Bool,
-                             sve_width: Int, has_dotprod, fp16, bf16, i8mm,
-                             sha256, sha512, aes, crc32, lse, rdm : Bool };
+// Every capability field carries the `has_` prefix, including the ones
+// abbreviated here before; `sve_width` is the sole UInt32.
+type Aarch64CpuFeatures is {
+    has_neon: Bool,
+    has_sve: Bool, has_sve2: Bool, sve_width: UInt32,
+    has_dotprod: Bool, has_fp16: Bool, has_bf16: Bool, has_i8mm: Bool,
+    has_sha256: Bool, has_sha512: Bool, has_aes: Bool, has_crc32: Bool,
+    has_lse: Bool, has_rdm: Bool,
+};
+type CpuFeatures is Aarch64CpuFeatures;      // the portable alias
 cpu_features() -> Aarch64CpuFeatures
 
 // NEON float

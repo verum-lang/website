@@ -32,11 +32,10 @@ Server-side tracker for push budget + outstanding / cancelled pushes:
 
 ```verum
 public type PushEmitter is {
-    next_push_id:        UInt64,
-    max_push_id:          UInt64,       // raised by client MAX_PUSH_ID frame
-    goaway_cap:          Maybe<UInt64>, // cap from inbound GOAWAY
-    cancelled:           Set<UInt64>,
-    outstanding:         Set<UInt64>,
+    limit_inclusive:    UInt64,       // MAX_PUSH_ID, INCLUSIVE
+    next_push_id:       UInt64,
+    cancelled:          List<UInt64>,
+    client_goneaway_at: Maybe<UInt64>,
 };
 ```
 
@@ -54,14 +53,23 @@ implement PushEmitter {
 }
 
 public type PushError is
-    | NoBudget                  // next_push_id >= max_push_id
-    | CappedByGoaway             // peer said "no more pushes above cap"
-    | AlreadyCancelled;
+    | BudgetExhausted { requested: UInt64, limit: UInt64 }
+    | AlreadyCancelled(UInt64)
+    | ClientGoneAway;
 ```
 
 Rules:
 
-- `allocate` fails with `NoBudget` when `next_push_id >= max_push_id`.
+- The budget is `limit_inclusive`, so `allocate` fails with
+  `BudgetExhausted { requested, limit }` when `next_push_id >
+  limit_inclusive` — the id EQUAL to the limit is still usable, which is
+  the off-by-one RFC 9114 puts in the frame's name.
+- The error arms carry their subject: `BudgetExhausted` reports both
+  numbers and `AlreadyCancelled` names the id, so a caller logs the
+  failure without re-reading the emitter.
+- There is no `outstanding` set. The emitter tracks the next id, the
+  cancelled ids and the GOAWAY watermark; a completed push leaves no
+  entry behind.
 - Client `MAX_PUSH_ID(n)` MUST be non-decreasing; emitter clamps
   incoming updates to their max.
 - Client `CANCEL_PUSH(id)` moves `id` to `cancelled`; any subsequent

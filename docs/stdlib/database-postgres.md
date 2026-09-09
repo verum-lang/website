@@ -283,7 +283,7 @@ V0 i64-coefficient range.
 
 ```verum
 public type PgTsVector  is { lexemes: List<PgTsLexeme> };
-public type PgTsLexeme  is { word: Text, positions: List<PgTsPosition> };
+public type PgTsLexeme  is { text: ArenaSlice, positions: List<PgTsPosition> };
 public type PgTsPosition is { position: Int, weight: Int };
 
 public fn decode_tsvector(slice: &ArenaSlice) -> Result<PgTsVector, DbError>;

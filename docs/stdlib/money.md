@@ -53,9 +53,11 @@ public type Money is {
 };
 
 public type MoneyError is
-    | CurrencyMismatch(Text, Text)   // (lhs.code, rhs.code)
-    | DivisionByZero
-    | InvalidSplit;
+    | CurrencyMismatch { left: Text, right: Text }
+    | ScaleMismatch    { expected: Int, actual: Int }
+    | DivByZero
+    | InvalidSplit     { reason: Text }
+    | Underlying       { source: BigDecimalError };
 ```
 
 ### Arithmetic
@@ -64,7 +66,7 @@ public type MoneyError is
 
 `*` by scalar (`BigDecimal`): always succeeds, currency preserved.
 
-`/` by scalar: returns `Err(DivisionByZero)` for zero divisor.
+`/` by scalar: returns `Err(DivByZero)` for zero divisor.
 
 `split(money, n)`: distribute `money` into `n` parts so the sum is exactly `money` (last part absorbs the rounding remainder). Pre-empts the classical "split $1 three ways → $0.33 × 3 = $0.99" cent loss.
 
