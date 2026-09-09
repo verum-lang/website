@@ -40,35 +40,46 @@ themselves live in `crates/verum_cli/`.
 
 ## Manifest
 
+The identity table is `[cog]`, not `[package]`, and dependencies are a
+MAP from name to spec rather than a list carrying its own name. There is
+no `build`, `publish` or `workspace` field.
+
 ```verum
 public type CogManifest is {
-    package:        PackageInfo,
-    dependencies:   List<Dependency>,
-    dev_dependencies: List<Dependency>,
-    build:          BuildConfig,
-    publish:        Maybe<PublishConfig>,
-    workspace:      Maybe<WorkspaceConfig>,
-    features:       Map<Text, List<Text>>,
+    cog:                CogIdentity,               // the `[cog]` table
+    language:           LanguageConfig,            // `[language]`
+    dependencies:       Map<Text, DependencySpec>, // `[dependencies]`
+    dev_dependencies:   Map<Text, DependencySpec>,
+    build_dependencies: Map<Text, DependencySpec>,
+    features:           Map<Text, List<Text>>,
+    default_features:   List<Text>,
+    meta:               ConfigValue,               // free-form `[meta]`
 };
 
-public type PackageInfo is {
-    name:        Text,
-    version:     Semver,
-    authors:     List<Text>,
-    license:     Text,
-    description: Text,
-    repository:  Maybe<Text>,
-    homepage:    Maybe<Text>,
-    keywords:    List<Text>,
-    categories:  List<Text>,
-    edition:     Text,
+public type CogIdentity is {
+    name:          CogName,
+    version:       SemVer,
+    authors:       List<Text>,
+    description:   Maybe<Text>,
+    license:       Maybe<Text>,      // SPDX expression
+    repository:    Maybe<Text>,
+    homepage:      Maybe<Text>,
+    documentation: Maybe<Text>,
+    keywords:      List<Text>,
+    categories:    List<Text>,
+    edition:       Text,             // e.g. "2025"
 };
 
-public type Dependency is {
-    name:       Text,
-    spec:       VersionSpec,    // SemverConstraint | GitSpec | PathSpec
-    features:   List<Text>,
-    optional:   Bool,
+public type LanguageConfig is { profile: LanguageProfile };
+
+// The name is the MAP KEY, so the spec does not repeat it, and the
+// version constraint is optional because a path/git/workspace source
+// carries its version implicitly.
+public type DependencySpec is {
+    constraint:       Maybe<SemVerConstraint>,
+    source:           DependencySource,
+    features:         List<Text>,
+    optional:         Bool,
     default_features: Bool,
 };
 ```
@@ -80,26 +91,42 @@ parse time (missing required fields surface as
 ## Archive format (`.vbca`)
 
 ```verum
+The archive holds the module INDEX and the payloads separately —
+`modules[i]` describes what `module_data[i]` contains — and it carries
+its own content hash. There is no `metadata` or `envelope` field on it.
+
+```verum
 public type CogArchive is {
-    header:   CogHeader,
-    modules:  List<ArchivedModule>,
-    metadata: Maybe<CoreMetadata>,
-    envelope: Maybe<SignatureEnvelope>,
+    header:      ArchiveHeader,
+    modules:     List<ModuleEntry>,
+    module_data: List<List<Byte>>,   // module_data[i].len() == modules[i].data_size
+    sha256:      Text { len == 64 }, // hex SHA-256 of the whole archive
 };
 
-public type CogHeader is {
-    magic:        [Byte; 4],            // "VBCA"
-    version:      Int,                   // archive format version
-    flag_bits:    Int,
-    module_count: Int,
+public type ArchiveHeader is {
+    magic:         [Byte; 4],                     // "VBCA"
+    version_major: Int { >= 0, <= 65535 },
+    version_minor: Int { >= 0, <= 65535 },        // major AND minor
+    flags:         Int { >= 0, <= 4294967295 },
+    module_count:  Int { >= 0 },
+    index_offset:  Int { >= 0 },
+    index_size:    Int { >= 0 },
+};
+
+public type ModuleEntry is {
+    name:         Text,              // e.g. "core.collections.list"
+    data_offset:  Int { >= 0 },
+    data_size:    Int { >= 0 },
+    content_hash: Int,               // 64-bit, for cache invalidation
+    dependencies: List<Int>,         // indices into `modules[]`
 };
 ```
 
-The `.vbca` is the canonical distribution unit — a zstd-compressed
-container of pre-compiled VBC modules. Consumers read the header
-first (small, allows fast magic check), then enumerate modules,
-then optionally consume the metadata side-channel (for type-checker
-hand-off) and signature envelope (for trust verification).
+The `.vbca` is the canonical distribution unit — a container of
+pre-compiled VBC modules. Consumers read the header first (small, allows
+a fast magic check), then the index at `index_offset`, then the payloads
+they need. The refinements on the header fields are part of the type:
+a version above 65535 or a negative offset is not representable.
 
 ## Ed25519 signing
 
@@ -143,10 +170,12 @@ public type ResolvedGraph is {
     edges:    List<(Text, Text, VersionSpec)>,  // dependency edges
 };
 
+// Two arms, not three: the resolver reports one explanation chain for
+// any unsatisfiable graph — conflict, missing package and cycle all
+// arrive as `NoSolution` — and passes provider failures through.
 public type ResolveError is
-      VersionConflict { package: Text, conflict_explanation: Text }
-    | UnresolvedDependency { package: Text, requested_by: Text }
-    | CycleDetected(List<Text>);
+    | NoSolution { explanation: List<Text> }
+    | Provider(ProviderError);
 
 public fn resolve(
     root_manifest: &CogManifest,
