@@ -72,26 +72,6 @@ fn counter_renders_expected_frame() {
 `Buffer` also carries `from_rect`, `get`, `set_string`, `set_style`,
 `fill`, `merge` and `reset`.
 
-:::danger The render half does not run at Tier 0 yet
-Measured 2026-09-08: `Buffer.new` fills every cell with a `Style` that
-holds one of its five fields, so any widget whose `render` touches a
-cell style — `Block` does, through `Buffer.set_style` — panics inside
-`Style.patch` before drawing. Five lines reproduce it:
-
-```verum
-let buf = Buffer.new(2, 1);
-print(f"{buf.get(0, 0).style.has_bg()}");
-// Panic: field access out of bounds: field index 1 (offset 8+8 = 16)
-//   exceeds object data size 8 … at Style.has_bg
-```
-
-Tracked as T1271. The seam described above is the right one and the
-assertions are the right shape; they cannot be executed until the cell
-style is whole. Building widgets and asserting on what the builders
-stored DOES work today, and is what `vcs/specs/core/term/widget_builders_run.vr`
-exercises.
-:::
-
 :::caution No snapshot helper
 `snapshot_assert` and `core.test.snapshot` do not exist — there is no
 `core/test/` directory. Compare against literals as above, or write the
