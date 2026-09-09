@@ -120,6 +120,37 @@ built on async.
 | [`context`](/docs/stdlib/context) | scope, providers, context layers |
 | [`security`](/docs/stdlib/security) | security labels, regions |
 | [`database`](/docs/stdlib/database) | SQLite ("loom" — pure-Verum reimpl), Postgres, MySQL adapters; affine `Transaction`, online backup, hooks, typed pragmas, BLOB I/O, `LISTEN/NOTIFY`, COPY |
+| [`action`](/docs/stdlib/action) | AC/OC duality — articulations, enactments, ε-primitives, monads, ludics |
+| [`architecture`](/docs/stdlib/architecture) | ATS-V architectural type system — canonical types, anti-patterns, MTAC |
+| [`archive`](/docs/stdlib/archive) | tar / zip / ar / cpio under one packaging functor; composes with `compress` |
+| [`cache`](/docs/stdlib/cache) | `CacheBackend` protocol + adapters (Redis today) |
+| [`cli`](/docs/stdlib/cli) | typed argument protocols, `AppBuilder`, combinator parser, sysexits codes |
+| [`cog`](/docs/stdlib/cog) | manifest parsing, `.vbca` reading, Ed25519 signing, dependency resolution |
+| [`compress`](/docs/stdlib/compress) | one `Codec` over gzip / deflate / zlib / brotli / zstd / lz4 |
+| [`concurrency`](/docs/stdlib/concurrency) | π-calculus processes and session types |
+| [`configuration`](/docs/stdlib/configuration) | parse / validate / convert / merge across TOML, YAML, JSON, INI, env |
+| [`control`](/docs/stdlib/control) | delimited continuations — `shift` / `reset` |
+| [`encoding`](/docs/stdlib/encoding) | JSON, CBOR, MessagePack, Base64, hex, PEM, JCS, varint, DER |
+| [`eval`](/docs/stdlib/eval) | call-by-push-value term algebra |
+| [`logic`](/docs/stdlib/logic) | modal (Kripke) and linear logic — the metatheory behind session types |
+| [`mesh`](/docs/stdlib/mesh) | service mesh — Envoy xDS, Kubernetes Gateway API |
+| [`metrics`](/docs/stdlib/metrics) | lock-free counters / gauges / histograms, Prometheus text format |
+| [`money`](/docs/stdlib/money) | ISO 4217 minor units, currency-correct arithmetic, fair split |
+| [`protobuf`](/docs/stdlib/protobuf) | the canonical Protocol Buffers wire format, streaming reader |
+| [`redis`](/docs/stdlib/redis) | RESP3 client, commands, pub/sub, streams, transactions, scripting |
+| [`script`](/docs/stdlib/script) | a host programme compiles and runs Verum scripts in-process |
+| [`search`](/docs/stdlib/search) | `SearchIndex` protocol + adapters (MeiliSearch today) |
+| [`shell`](/docs/stdlib/shell) | `sh#"…"` literals, typed pipelines, Git / Docker command DSLs |
+| [`storage`](/docs/stdlib/storage) | `ObjectStore` protocol + adapters (S3-compatible today) |
+| [`tracing`](/docs/stdlib/tracing) | spans, samplers, processors, exporters, W3C Trace Context |
+| [`types`](/docs/stdlib/types) | polymorphic kinds, QTT, 2LTT — the vocabulary the verifier builds on |
+| [`verify`](/docs/stdlib/verify) | verification as a first-class API for user code |
+
+
+Twenty-five of those rows were added on 2026-09-09. Every one of them
+already had a page; the table simply did not name it, so half the
+library was reachable only by guessing a URL. `core/target` is the one
+top-level module with no page yet.
 
 ## Semantic-honest types — the cheat sheet
 
