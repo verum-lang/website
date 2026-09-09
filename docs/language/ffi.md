@@ -24,6 +24,27 @@ extern "C" {
 Declares C functions available to Verum. These declarations do not
 generate code — they describe the foreign symbol's signature.
 
+:::caution Variadic declarations parse; variadic **calls** do not yet
+
+The `...` marker is accepted, and a call that passes only the fixed
+arguments works — `snprintf(buf, 32, fmt)` returns and writes normally.
+A call that passes anything *after* the fixed part is rejected at the
+call site:
+
+```
+error: wrong number of arguments for snprintf: expected 3, found 4
+```
+
+So `printf(fmt, x)` will not compile today. Until that is lifted, reach
+a variadic C function through a fixed-arity shim in C, or through a
+non-variadic sibling where the library offers one — `vsnprintf` takes a
+`va_list` rather than `...`, and most `*_v` variants exist for exactly
+this reason. Note that `open` and `openat` are **not** such siblings:
+both are variadic in C, and their mode argument travels with the
+variadic part.
+
+:::
+
 ## Calling convention
 
 ```verum
