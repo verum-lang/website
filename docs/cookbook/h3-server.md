@@ -11,6 +11,20 @@ dispatches incoming request streams to user-supplied handlers.
 
 ## Minimum viable server
 
+:::caution `serve` is the HANDLER's method, not the server's
+`H3Server` declares `bind`, `run` and `run_with` (`core/net/h3/server.vr:188,
+205, 223`) — no `serve`. The name exists one type over: `H3Handler` is a
+protocol whose single method is `async fn serve(&self, req: H3Request) ->
+H3Response`, which is why `server.serve(...)` reads correctly and is not.
+
+The two forms differ in more than the name. `run<F>` is bounded
+`where F: fn(H3Request) -> H3Response` — SYNCHRONOUS — so an `async move`
+closure does not satisfy it as written; `run_with(Heap<dyn H3Handler>)`
+is the asynchronous form, and the protocol's own method is the `async
+fn serve` above. The blocks below use the closure spelling for
+readability; an async body needs `run_with` and a handler object.
+:::
+
 ```verum
 using [Nursery]
 
@@ -25,9 +39,13 @@ pub async fn main() -> Result<(), core.net.h3.server.H3ServerError> {
     let opts = ServerOptions.from_cert(cert_chain, signer);
 
     let server = H3Server.bind(&f"[::]:443", opts).await?;
-    print(f"HTTPS listening on {server.local_addr()}");
+    // `local_addr` is a FIELD of `H3Server` (server.vr:138), not an
+    // accessor — no parentheses. `QuicServer` next door DOES have a
+    // `local_addr()` method, which is why the parenthesised form
+    // reads correctly and is not.
+    print(f"HTTPS listening on {server.local_addr}");
 
-    server.serve(|req: H3Request| async move {
+    server.run(|req: H3Request| async move {
         match req.path().as_str() {
             "/health" =>
                 H3Response.ok(f"ok".as_bytes().to_list()),
@@ -69,7 +87,7 @@ chain — is the intended API, and a mechanical substitution would make
 them compile while teaching a design that is not settled.
 :::
 
-`H3Server.serve(handler)` spawns one task per accepted stream into
+`H3Server.run(handler)` spawns one task per accepted stream into
 the caller's nursery. The handler receives `H3Request`, returns
 `H3Response`; the server serialises the response through QPACK + the
 H3 frame layer.
@@ -87,7 +105,7 @@ let router = Router.new()
     .post(f"/users",    handle_user_post)
     .fallback(handle_404);
 
-server.serve(|req| router.dispatch(req)).await?;
+server.run(|req| router.dispatch(req)).await?;
 ```
 
 :::caution No middleware layer, and no CORS or rate-limit module
@@ -136,7 +154,7 @@ async writer form:
 // INTENT, not instructions — `.header` and `.streaming` are not declared
 // on `H3Response`; see the warning above. What compiles today is
 // `H3Response.ok(body)` / `.status(code)` / `.with_header(n, v)`.
-server.serve(|req: H3Request| async move {
+server.run(|req: H3Request| async move {
     if req.path() == f"/stream" {
         // NOT SHIPPED. `H3Response` has four methods — `ok`, `status`,
         // `with_header`, `to_field_list` — and no `.streaming(…)`. A
@@ -172,7 +190,7 @@ outstanding promises:
 // the comment inside.
 mount core.net.h3.push.{PushEmitter};
 
-server.serve(|mut req: H3Request| async move {
+server.run(|mut req: H3Request| async move {
     if req.path() == f"/" {
         // Promise a related asset the client is likely to fetch.
         // `req.try_push` / `req.emit_pushed` do not exist. Server push
@@ -202,7 +220,7 @@ returns `None` and the server proceeds without pushing.
 
 ```verum
 nursery.spawn(async {
-    server.serve(handler).await.unwrap();
+    server.run(handler).await.unwrap();
 });
 
 // Later — graceful shutdown.
