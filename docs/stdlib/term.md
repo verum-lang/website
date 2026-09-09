@@ -176,33 +176,52 @@ AsyncEventStream.new(...)   AsyncEventStream.stdin()   astream.next()
 ## Layer 2 — style & colour
 
 ```verum
+// The 16 ANSI colours are named base/Dark, not base/Light — `DarkRed`
+// is the dim half of `Red`, and there is no `Light*` family at all.
 type Color is
-    | Reset | Black | Red | Green | Yellow | Blue | Magenta | Cyan | White
-    | DarkGray | LightRed | LightGreen | LightYellow | LightBlue | LightMagenta | LightCyan | LightWhite
-    | Indexed(UInt8)
-    | Rgb(Rgb)
-    | Hsl(Hsl);
+    | Reset
+    | Black   | DarkGrey
+    | Red     | DarkRed
+    | Green   | DarkGreen
+    | Yellow  | DarkYellow
+    | Blue    | DarkBlue
+    | Magenta | DarkMagenta
+    | Cyan    | DarkCyan
+    | White   | Grey
+    | Ansi256(Int)                  // not `Indexed`, and Int not UInt8
+    | TrueColor(Rgb)                // not `Rgb(Rgb)`
+    | FromHsl(Hsl);                 // not `Hsl(Hsl)`
 
 type Rgb is { r: UInt8, g: UInt8, b: UInt8 };
 type Hsl is { h: Float, s: Float, l: Float };
 
-Color.from_hex(&"#ff8c00") -> Result<Color, ColorError>
+// Parsing lives on Rgb and answers Maybe, not Result — there is no
+// `Color.from_hex` and no `ColorError`.
+Rgb.from_hex(hex: &Text) -> Maybe<Rgb>          // "#RRGGBB" or "RRGGBB"
+hex(h: Text) -> Color                            // core.term.style.color_utils
 Rgb.to_hsl() -> Hsl              Hsl.to_rgb() -> Rgb
-adapt_color(desired: Color, profile: ColorProfile) -> Color
+Rgb.to_lab() -> Lab              adapt_color(color: Color, profile: ColorProfile) -> Color
 
-type ColorProfile is Mono | Ansi16 | Ansi256 | TrueColor;
-detect_color_profile() -> ColorProfile            
+type ColorProfile is NoColor | Base16 | Ansi256 | TrueColor;
+// A profile is passed IN to `adapt_color`; nothing in core.term detects
+// one for you — there is no `detect_color_profile`.
+darken(color: Rgb, amount: Float) -> Rgb    lighten(color: Rgb, amount: Float) -> Rgb
+lerp_color(a: Rgb, b: Rgb, t: Float) -> Rgb gradient(start: Rgb, end: Rgb, steps: Int) -> List<Rgb>
 
 type Modifier is bitflags {
     Bold, Dim, Italic, Underline, SlowBlink, RapidBlink,
     Reversed, Hidden, CrossedOut,
 };
 
+// TWO modifier fields, not one. `Style` is patchable: `add_modifier`
+// is what a patch turns ON and `sub_modifier` what it turns OFF, so
+// `.not_italic()` is representable rather than a hole in the API.
 type Style is {
     fg: Maybe<Color>,
     bg: Maybe<Color>,
-    modifier: Modifier,
     underline_color: Maybe<Color>,
+    add_modifier: Modifier,
+    sub_modifier: Modifier,
 };
 
 Style.new()
@@ -546,7 +565,9 @@ type Subscription<Msg> is { ... };
 sub_none()        interval(period, || msg)      every(period, |at| msg)
 once(delay, || msg)   sub_from_stream(stream)   sub_batch(subs)
 
-type AppMessage is Exit | Resize(ResizeEvent) | ...;
+// The runtime's envelope around the user's own Msg. A model only ever
+// observes `Msg`; `AppMessage<Msg>` is what the loop passes around.
+type AppMessage<Msg> is User(Msg) | TermEvent(Event) | Tick(Instant) | Quit;
 
 fn run<M: Model>(initial: M) -> IoResult<()>    
 ```

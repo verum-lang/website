@@ -27,20 +27,30 @@ uses another.
 ```verum
 public type Color is
     | Reset
-    | Base16(Int)       // 16 ANSI, 0..15
-    | Ansi256(Int)      // 256, 0..255
-    | Rgb(Rgb)          // TrueColor
-    | Hsl(Hsl)          // parsed to Rgb at render
-    | Lab(Lab);         // for perceptual work
+    | Black   | DarkGrey
+    | Red     | DarkRed
+    | Green   | DarkGreen
+    | Yellow  | DarkYellow
+    | Blue    | DarkBlue
+    | Magenta | DarkMagenta
+    | Cyan    | DarkCyan
+    | White   | Grey
+    | Ansi256(Int)              // 0..255
+    | TrueColor(Rgb)
+    | FromHsl(Hsl);             // converted to Rgb at render
 ```
 
-Convenience constants (`Color.Red`, `Color.DarkRed`, `Color.Cyan`, …) pick
-the right base-16 index and are the usual starting point.
+The sixteen ANSI colours are **variants**, not a `Base16(Int)` index —
+`Color.DarkRed` is a constructor, not a constant standing for an index.
+There is no `Lab` arm either: `Lab` is a separate type reached through
+`Rgb.to_lab()` for perceptual work, never a colour a terminal is asked
+to render.
 
 ### Parsing hex
 
 ```verum
-Color.TrueColor(Rgb.from_hex("#1e90ff").unwrap())       // explicit
+// from_hex answers Maybe<Rgb>, so unwrap or match — it is not a Result.
+Color.TrueColor(Rgb.from_hex(&"#1e90ff").unwrap())     // explicit
 style.fg(hex("1e90ff"))                            // prelude shortcut
 ```
 
@@ -110,18 +120,29 @@ into Base16 is not available today.
 A `Theme` assigns colors to semantic roles:
 
 ```verum
+// Every role is a full `Style`, not a `Color`: a role carries
+// foreground, background, underline colour and modifiers together, so a
+// theme can say "muted text is dim grey italic" in one field.
 public type Theme is {
-    surface: Color,         // window background
-    surface_alt: Color,     // alternate rows, stripes
-    primary: Color,         // main text
-    muted: Color,           // secondary text
-    accent: Color,          // highlights, focus
-    success: Color,
-    warning: Color,
-    error: Color,
-    border: Color,
+    // Surfaces
+    surface: Style, surface_dim: Style, on_surface: Style,
+    // Interactive
+    primary: Style, on_primary: Style, secondary: Style, on_secondary: Style,
+    // Semantic
+    error: Style, warning: Style, success: Style, info: Style,
+    // Borders
+    border: Style, border_focused: Style, divider: Style,
+    // Text emphasis
+    text: Style, text_dim: Style, text_muted: Style, text_highlight: Style,
+    // Selection
+    selection: Style, cursor: Style,
 };
 ```
+
+There is no `surface_alt`, `muted` or `accent`. The nearest names are
+`surface_dim`, `text_muted` and `primary`, and the `on_*` roles say what
+to draw ON a coloured background — a pairing the three-name palette
+could not express.
 
 Two built-ins: `Theme.dark()` and `Theme.light()`. A typical app flips
 between them:

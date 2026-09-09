@@ -14,12 +14,24 @@ themes](../guides/styling-theming.md).
 ```verum
 public type Color is
     | Reset
-    | Base16(Int)              // 0..15 (standard ANSI)
-    | Ansi256(Int)             // 0..255
-    | Rgb(Rgb)                 // TrueColor
-    | Hsl(Hsl)                 // converted to Rgb at render
-    | Lab(Lab);                // CIELAB; used for perceptual computations
+    | Black   | DarkGrey
+    | Red     | DarkRed
+    | Green   | DarkGreen
+    | Yellow  | DarkYellow
+    | Blue    | DarkBlue
+    | Magenta | DarkMagenta
+    | Cyan    | DarkCyan
+    | White   | Grey
+    | Ansi256(Int)              // 0..255
+    | TrueColor(Rgb)
+    | FromHsl(Hsl);             // converted to Rgb at render
 ```
+
+The sixteen ANSI colours are **variants**, not a `Base16(Int)` index —
+`Color.DarkRed` is a constructor, not a constant standing for an index.
+There is no `Lab` arm either: `Lab` is a separate type reached through
+`Rgb.to_lab()` for perceptual work, never a colour a terminal is asked
+to render.
 
 | | |
 |---|---|
@@ -36,7 +48,7 @@ public type Color is
 
 ```verum
 Rgb.new(r: UInt8, g: UInt8, b: UInt8) -> Rgb
-Rgb.from_hex(s: &Text) -> Result<Rgb, Text>      // "#RRGGBB" or "RRGGBB"
+Rgb.from_hex(hex: &Text) -> Maybe<Rgb>          // "#RRGGBB" or "RRGGBB"
 
 Hsl.new(h: Float, s: Float, l: Float) -> Hsl    // h in [0,360], s/l in [0,1]
 Hsl.to_rgb(&self) -> Rgb
@@ -98,18 +110,29 @@ public type Modifier is { bits: UInt16 };
 ## `Theme`
 
 ```verum
+// Every role is a full `Style`, not a `Color`: a role carries
+// foreground, background, underline colour and modifiers together, so a
+// theme can say "muted text is dim grey italic" in one field.
 public type Theme is {
-    surface:     Color,
-    surface_alt: Color,
-    primary:     Color,
-    muted:       Color,
-    accent:      Color,
-    success:     Color,
-    warning:     Color,
-    error:       Color,
-    border:      Color,
+    // Surfaces
+    surface: Style, surface_dim: Style, on_surface: Style,
+    // Interactive
+    primary: Style, on_primary: Style, secondary: Style, on_secondary: Style,
+    // Semantic
+    error: Style, warning: Style, success: Style, info: Style,
+    // Borders
+    border: Style, border_focused: Style, divider: Style,
+    // Text emphasis
+    text: Style, text_dim: Style, text_muted: Style, text_highlight: Style,
+    // Selection
+    selection: Style, cursor: Style,
 };
 ```
+
+There is no `surface_alt`, `muted` or `accent`. The nearest names are
+`surface_dim`, `text_muted` and `primary`, and the `on_*` roles say what
+to draw ON a coloured background — a pairing the three-name palette
+could not express.
 
 | | |
 |---|---|
