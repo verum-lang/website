@@ -304,10 +304,20 @@ The same architectural patterns extend to the other backends:
 | Typed Pragma | ✓ `pragma_*` | (no equiv) | (no equiv) |
 | BLOB I/O | ✓ `blob_*` | (large objects — pending) | (server BLOB) |
 
-### `DbError` — SQLSTATE-style tagged sum
+### `SqliteApiDbError` — SQLSTATE-style tagged sum
+
+Two different error types live under this module and the difference
+matters at a `match`. This one is loom's, in
+`core.database.sqlite.native.l7_api`, and it is named
+**`SqliteApiDbError`**. The CROSS-ADAPTER `DbError`
+(`core/database/common/error.vr`) is a different sum entirely —
+`ConnectionFailed`, `QueryFailed`, `DecodeFailed`, `EncodeFailed`,
+`TimedOut`, `Cancelled`, `RefinementViolated`, `PoolFailure`,
+`AuthFailed`, `Adapter` — and it is what a Postgres or MySQL adapter
+raises.
 
 ```verum
-public type DbError is
+public type SqliteApiDbError is
       DbOk
     | DbGeneric(Text)
     | DbBusy                       // lock contention; retry
@@ -331,7 +341,8 @@ public type DbError is
     | DbUnsupported(Text);         // SQL feature not yet implemented
 ```
 
-The mapping from L6 errors to `DbError` is done in `db_error_from_conn` —
+The mapping from L6 errors to `SqliteApiDbError` is done in
+`db_error_from_conn` —
 L6's `ConnectionError.NotWritable` becomes `DbReadonly`, `NotAdmin`
 becomes `DbAuthDenied`, and so on. Lower-level VDBE execution errors
 wrap under `DbStmtError`.
