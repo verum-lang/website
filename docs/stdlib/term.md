@@ -591,7 +591,7 @@ implement Model for Counter {
 
     fn view(&self, f: &mut Frame) {
         let area = f.area();
-        Paragraph.new(&f"Count: {self.count}")
+        Paragraph.new().text([Line.raw(&f"Count: {self.count}")])
             .block(Block.new().title(&" counter ").borders(Borders.All))
             .render(f, area);
     }

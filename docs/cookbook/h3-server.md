@@ -30,9 +30,9 @@ pub async fn main() -> Result<(), core.net.h3.server.H3ServerError> {
     server.serve(|req: H3Request| async move {
         match req.path().as_str() {
             "/health" =>
-                H3Response.ok().text(f"ok"),
+                H3Response.ok(f"ok".as_bytes().to_list()),
             "/metrics" =>
-                H3Response.ok().bytes(prometheus_expose()),
+                H3Response.ok(prometheus_expose()),
             _ =>
                 H3Response.status(404_u16),
         }
@@ -138,8 +138,13 @@ async writer form:
 // `H3Response.ok(body)` / `.status(code)` / `.with_header(n, v)`.
 server.serve(|req: H3Request| async move {
     if req.path() == f"/stream" {
+        // NOT SHIPPED. `H3Response` has four methods — `ok`, `status`,
+        // `with_header`, `to_field_list` — and no `.streaming(…)`. A
+        // response body is a `List<Byte>` handed to `ok` up front, so
+        // there is no writer to hand a closure. The block below is the
+        // shape a streaming surface WOULD take; it does not compile.
         H3Response.ok()
-            .header(&f"content-type", &f"text/event-stream")
+            .with_header(f"content-type", f"text/event-stream")
             .streaming(|mut writer| async move {
                 let mut i: Int = 0;
                 while i < 100 {
@@ -178,14 +183,14 @@ server.serve(|mut req: H3Request| async move {
         // in ENCODED, so you build the field list first.
         if let Some(push_id) = req.try_push(&f"/style.css").await {
             req.emit_pushed(push_id,
-                H3Response.ok()
-                    .header(&f"content-type", &f"text/css")
-                    .text(f"body { font-family: sans-serif; }")).await?;
+                H3Response.ok(f"body {{ font-family: sans-serif; }}"
+                                  .as_bytes().to_list())
+                    .with_header(f"content-type", f"text/css")).await?;
         }
-        H3Response.ok().html(&load_index_html())
+        H3Response.ok(load_index_html().as_bytes().to_list())
     } else {
         // Serve directly.
-        H3Response.ok().bytes(fs.read("/var/www" + req.path()).await?)
+        H3Response.ok(fs.read("/var/www" + req.path()).await?)
     }
 }).await?;
 ```

@@ -18,17 +18,20 @@ atomic reference counting. `Weak<T>` breaks cycles.
 let config: Shared<Config> = Shared.new(load_config());
 let copy1 = config.clone();        // bumps strong count to 2
 let copy2 = config.clone();        // 3
-Shared.strong_count(&config);     // -> 3
+config.strong_count();            // -> 3
 ```
 
 All clones point to the same heap allocation. The allocation is
 freed when the last `Shared<Config>` is dropped.
 
-### `Shared.get_mut` — safe interior mutation
+### `get_mut` — safe interior mutation
 
 ```verum
-let mut s: Shared<i32> = Shared.new(42);
-*Shared.get_mut(&mut s).unwrap() += 1;    // Some(&mut) when strong_count == 1
+// The counts and the accessors are METHODS on the value, not
+// associated functions taking a reference — there is no
+// `Shared.get_mut(&mut s)`.
+let mut s: Shared<Int> = Shared.new(42);
+*s.get_mut().unwrap() += 1;               // Some(&mut) when strong_count == 1
 ```
 
 Returns `Some(&mut T)` only when no other `Shared` clone exists.
@@ -65,8 +68,8 @@ implement Node {
 
     fn add_child(parent: &Shared<Node>, child: Shared<Node>) {
         // Give child a weak pointer back to parent.
-        let mut child_inner = Shared.get_mut(&mut child.clone()).unwrap();
-        child_inner.parent = Maybe.Some(Shared.downgrade(parent));
+        let mut child_inner = child.clone().get_mut().unwrap();
+        child_inner.parent = Maybe.Some(parent.downgrade());
         // Parent owns child.
         parent.children.push(child);
     }
@@ -77,7 +80,7 @@ implement Node {
 }
 ```
 
-- `Shared.downgrade(&s) -> Weak<T>` — creates a non-owning handle.
+- `s.downgrade() -> Weak<T>` — creates a non-owning handle.
 - `Weak<T>.upgrade() -> Maybe<Shared<T>>` — returns `Some` if the
   target is still live; `None` if the last `Shared` was dropped.
 - `Weak` doesn't keep the allocation alive; cycles involving only
@@ -95,8 +98,8 @@ implement Node {
 ### Count inspection
 
 ```verum
-Shared.strong_count(&s)      // current number of Shared clones
-Shared.weak_count(&s)        // current number of Weak clones
+s.strong_count()      // current number of Shared clones
+s.weak_count()        // current number of Weak clones
 ```
 
 ### Thread-safety

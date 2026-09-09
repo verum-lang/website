@@ -212,7 +212,10 @@ fn main() {
 
     let mut rng = Rng.new(42);
     let mut model = MNISTNet.new();
-    let mut optimiser = AdamW.new(model.parameters(), LR, (0.9, 0.999), 0.0001);
+    // AdamW takes only the learning rate and the weight decay; the
+    // betas are fixed at 0.9 / 0.999 and the parameters are handed to
+    // `step`, not to the constructor.
+    let mut optimiser = AdamW.new(LR, 0.0001);
 
     let num_batches = train_images.shape().dim(0) / BATCH_SIZE;
 

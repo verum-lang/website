@@ -191,12 +191,11 @@ spawns one task per accepted stream into the implicit nursery.
 async fn handle(req: H3Request) -> H3Response {
     match (req.method(), req.path().as_str()) {
         (H3Method.Get, "/healthz") =>
-            H3Response.ok().text(f"ok"),
+            H3Response.ok(f"ok".as_bytes().to_list()),
 
         (H3Method.Get, "/metrics") =>
-            H3Response.ok()
-                .header(&f"content-type", &f"text/plain; version=0.0.4")
-                .bytes(prometheus_expose()),
+            H3Response.ok(prometheus_expose())
+                .with_header(f"content-type", f"text/plain; version=0.0.4"),
 
         (H3Method.Post, "/subscribe") =>
             handle_subscribe(req).await,
@@ -256,9 +255,12 @@ async fn handle_subscribe(mut req: H3Request) -> H3Response {
         Err(_) => return H3Response.status(400_u16),
     };
 
+    // NOT SHIPPED — see the caution above. `H3Response` carries no
+    // `.streaming(…)`: a body is a `List<Byte>` passed to `ok` up
+    // front. This block is the shape such a surface would take.
     H3Response.ok()
-        .header(&f"content-type", &f"text/event-stream")
-        .header(&f"cache-control", &f"no-cache")
+        .with_header(f"content-type", f"text/event-stream")
+        .with_header(f"cache-control", f"no-cache")
         .streaming(|mut writer| async move {
             let bus = subscribe(&topic).await;
             while let Some(event) = bus.next().await {

@@ -881,9 +881,10 @@ the inline `- 32` offset is repeated at six sites inside
 ### `Shared<T>` and `Weak<T>`
 
 ```verum
-Shared.new(value)       Shared.clone(&s)   s.downgrade() -> Weak<T>
+// `new` is the only associated function here; the rest are METHODS.
+Shared.new(value)       s.clone()          s.downgrade() -> Weak<T>
 weak.upgrade() -> Maybe<Shared<T>>
-Shared.strong_count(&s) / weak_count
+s.strong_count() / s.weak_count()
 ```
 
 `Weak<T>` carries identity-based **`Eq`** and **`Hash`** — two

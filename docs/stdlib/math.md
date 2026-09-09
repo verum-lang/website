@@ -579,9 +579,10 @@ type Parameter is {
 Parameter.new(shape: &[USize]) -> Parameter        // zeros, requires_grad
 
 // Layers
-Linear.new(in_dim, out_dim) -> Linear
+Linear.new(in_features, out_features, use_bias: Bool) -> Linear
 Embedding.new(vocab, dim) -> Embedding
-Conv2d.new(in_ch, out_ch, kernel_size, stride, padding)
+Conv2d.new(in_channels, out_channels, kernel_size: (USize, USize))
+// no stride / padding parameters — both are fixed
 LayerNorm.new(shape)       RMSNorm.new(shape)        BatchNorm.new(features)
 
 // Activations
@@ -592,14 +593,16 @@ Dropout.new(p)
 
 // Attention
 MultiHeadAttention.new(embed_dim, num_heads, dropout)
-FeedForward.new(embed_dim, hidden_dim, dropout)
+FeedForward.new(dim, hidden_dim, dropout_p, activation: Activation)
 TransformerBlock.new(embed_dim, num_heads, hidden_dim, dropout)
 RoPE.new(dim, max_positions)
 
 // Optimisers
 type Optimizer is protocol { fn step(&mut self, grads: &Params); }
-SGD.new(params, lr, momentum, weight_decay)
-AdamW.new(params, lr, betas, weight_decay)
+// The optimisers do NOT take the parameter list; they are handed it
+// per step. SGD.simple(lr) fills momentum and weight_decay with 0.
+SGD.new(lr, momentum, weight_decay)
+AdamW.new(lr, weight_decay)          // betas fixed at 0.9 / 0.999, eps 1e-8
 
 // Schedulers — `LRScheduler` is a protocol (`get_lr(step) -> Float`),
 // so you construct a concrete one, not a factory method on the protocol.
@@ -648,7 +651,7 @@ RdmaContext                                    // remote direct memory access:
 
 ```verum
 type Tokenizer is protocol { fn encode(text) -> List<Int>; fn decode(ids) -> Text; }
-type KVCache is { ... };                       PagedKVCache.new(num_pages, page_size)
+type KVCache is { ... };                       PagedKVCache.new(num_blocks, block_size, num_heads, head_dim)
 type SpeculativeDecoder is { ... };
 type ContinuousBatcher is { ... };
 
@@ -685,7 +688,7 @@ VectorStore is protocol { ... };
 HNSWIndex.new(dim, m, ef_construction)
 TextChunker.new(chunk_size, overlap)
 BM25Index.new()
-HybridRetriever.new(vector_store, bm25, weight)
+HybridRetriever.new(dense_store, sparse_index)   // dense_weight defaults to 0.5
 RAGPipeline.new(retriever, llm, prompt_template)
 ```
 

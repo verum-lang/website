@@ -42,7 +42,8 @@ implement Model for Counter {
         let area = f.area();
         let color = if self.count >= 0 { Color.Green } else { Color.Red };
 
-        Paragraph.new(&f"Count: {self.count}")
+        // `new()` takes no text — `text(List<Line>)` is the builder step.
+        Paragraph.new().text([Line.raw(&f"Count: {self.count}")])
             .block(Block.new()
                 .title(&" counter ")
                 .borders(Borders.All)
@@ -223,7 +224,7 @@ let theme = Theme.auto_detect(Maybe.Some(Rgb.new(12, 12, 16)));
 // secondary, on_secondary, error, warning, success, info, border,
 // border_focused, divider, text, text_dim, text_muted,
 // text_highlight, selection, cursor. An unknown name yields Style.new().
-Paragraph.new(text)
+Paragraph.new().text(lines)
     .style(theme.role(&"text"))
     .render(f, area);
 

@@ -57,7 +57,7 @@ let api = Upstream.new("https".into(), "api.example.com".into(), 443)
     .with_weight(10)
     .with_name("api-primary".into());
 
-let pool = UpstreamPool.new();
+let pool = UpstreamPool.new(HttpPoolConfig.new());   // takes the pool config
 ```
 
 ### Acquire / release
@@ -158,12 +158,11 @@ mount core.net.proxy.retry.{RetryLayer, RetryBudget};
 mount core.time.duration.{Duration};
 
 let budget = RetryBudget.new(/* ceiling retries/sec */ 100);
-let retry = RetryLayer.new(
-    /* max_attempts   */ 3,
-    /* backoff_base_ms */ 25,
-    /* backoff_max_ms  */ 1000,
-    Some(budget.clone()),
-);
+// `new` takes ONLY the attempt cap; backoff and budget are builder
+// steps, not constructor arguments.
+let retry = RetryLayer.new(3)
+    .with_backoff(25, 1000)
+    .with_budget(budget.clone());
 ```
 
 Exponential backoff: the *i*-th retry waits `2^i × backoff_base_ms`,
