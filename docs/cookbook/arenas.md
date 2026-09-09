@@ -76,10 +76,7 @@ four `Allocator` implementors are `GlobalAllocator`, `TieredAllocator`,
 `SimpleAllocator` and `MemStackAllocator`.
 
 ```verum
-// NOTE the module path: `core.mem` re-exports a `StackAllocator` that
-// core declares nowhere (T1296), so the bump allocator is reached
-// through its own module.
-mount core.mem.allocator.MemStackAllocator;
+mount core.mem.MemStackAllocator;
 
 fn parse(source: &Text) -> Result<Ast, ParseError> {
     let mut bump = MemStackAllocator.init(1 << 20)?;      // 1 MiB
