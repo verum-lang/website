@@ -31,15 +31,76 @@ If you are building a theorem-prover on top of Verum or
 integrating external automated reasoners, read on.
 :::
 
-| File | What's in it |
-|---|---|
-| `core.vr` | `TheoryRegistry`, `LoadedTheory`, `TranslationResult`, `CoherenceResult`, `AuditResult`, core operations |
-| `protocol.vr` | JSON-RPC 2.0 wire protocol (`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `TheoryInteropServer`, `serve_request`) |
-| `mod.vr` | re-exports |
+## Module layout
 
-Foundations come from the [`math`](/docs/stdlib/math) sub-modules
-`epistemic`, `infinity_topos`, `kan_extension`, `quantum_logic`,
-`giry`, `cohesive`, `day_convolution`.
+Line counts measured 2026-09-09.
+
+| File | Lines | What's in it |
+|---|---:|---|
+| `core.vr` | 700 | `TheoryRegistry`, `LoadedTheory`, `TranslationResult`, `CoherenceResult`, `AuditResult` — loading (Yoneda), translation (Kan), coherence (descent), audit |
+| `protocol.vr` | 614 | JSON-RPC 2.0 wire protocol — `JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `TheoryInteropServer`, `serve_request` |
+| `coord.vr` | 467 | theory-coordinate system + canonical identifier resolution across registries |
+| `congruence_closure.vr` | 420 | decision procedure for theory-internal congruence over function symbols |
+| `mod.vr` | 139 | re-exports + module header |
+| `bridges/owl2_to_htt.vr` | 559 | OWL2 description logic → HoTT |
+| `bridges/htt_to_owl2.vr` | 244 | HoTT → OWL2 (partial — the ∞-groupoid-free fragment) |
+| `bridges/oc_dc_bridge.vr` | 174 | open/closed-world ↔ description-logic bridge |
+| `bridges/mod.vr` | 174 | bridge registry + dispatch |
+
+3 491 lines in total.
+
+## Architecture stack
+
+`core.theory_interop` is the **application layer** of a much larger
+mathematical stack under [`math`](/docs/stdlib/math). A caller gets a
+one-liner API; the category theory stays out of the call site.
+
+The split is deliberate. `core/math/` is the canonical home of the
+mathematical primitives and is reusable from anywhere; this module is
+the narrow user-facing surface for theory interoperation. Other things
+built on `core/math/` — verification, kernel-soundness meta-theorems,
+separation logic — do not pay the import cost of a JSON-RPC server or a
+bridge registry.
+
+```
+Theory-interop application layer (this module)
+ ├── core.vr      — load_theory, translate, check_coherence, audit
+ └── protocol.vr  — JSON-RPC server (theory/list, claim/translate, …)
+        │
+        ▼
+Mathematical foundation (core/math/)
+ ├── epistemic.vr       — EpistemicStatus, Theory, EpistemicTopology
+ ├── infinity_topos.vr  — ∞-topos, descent, coherence violations
+ ├── kan_extension.vr   — Lan/Ran, comma categories, obstruction
+ ├── quantum_logic.vr   — quantum epistemic states, density matrices
+ ├── giry.vr            — Giry monad, LLM oracle
+ ├── cohesive.vr        — cohesive modalities (Π ⊣ Disc ⊣ Γ ⊣ coDisc)
+ ├── day_convolution.vr — Day ⊗, cognitive extension
+ └── hott.vr            — cubical HoTT, path types, equivalences
+```
+
+## Quick start
+
+```verum
+mount core.theory_interop.*;
+
+let mut reg = new_registry();
+let a = load_theory(&mut reg, first_theory);
+let b = load_theory(&mut reg, second_theory);
+
+// Translate with a partial mapping
+let result = translate(&a, &b, &partial_map);
+print(f"Translation quality: {result.quality}");
+
+// Check coherence across translations
+let coherence = check_coherence(&reg, &pairs);
+match coherence {
+    CoherenceResult.Coherent { global_quality } =>
+        print(f"Coherent! Quality: {global_quality}"),
+    CoherenceResult.Obstruction { violations, severity } =>
+        print(f"Incoherent: {violations.len()} violations, severity {severity}"),
+}
+```
 
 ---
 
@@ -451,6 +512,16 @@ the standard Nelson-Oppen-style E-graph plus quotient
 representatives.
 
 ---
+
+## Status
+
+| File | Status | Notes |
+|---|---|---|
+| `core.vr` | **stable** | full load / translate / check_coherence / audit |
+| `protocol.vr` | **stable** | nine JSON-RPC methods |
+| `congruence_closure.vr` | **stable** | union-find + congruence rule + saturation |
+| `coord.vr` | **stable** | full registry + resolver |
+| `bridges/` | mixed | `owl2_to_htt` and `oc_dc_bridge` stable; `htt_to_owl2` partial — only the ∞-groupoid-free fragment, since translating an ∞-groupoid needs OWL2 extended with type-theoretic primitives |
 
 ## See also
 
