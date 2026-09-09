@@ -182,10 +182,13 @@ theme.role(&"primary")               theme.role(&"text_dim")
 ## Layer 3 — rendering
 
 ```verum
-type Cell is {
-    ch: Char,
+// The cell type is `RenderCell`, and it stores the grapheme as TEXT —
+// a cluster can be several code points, so a `Char` would not hold one.
+// `skip` marks the trailing cell of a wide cluster.
+type RenderCell is {
+    grapheme: Text,
     style: Style,
-    symbol: Maybe<Text>,           // for multi-char grapheme clusters
+    skip: Bool,
 };
 
 type Buffer is { ... };
@@ -202,7 +205,8 @@ b.in_bounds(x: Int, y: Int) -> Bool
 b.set_string(x: Int, y: Int, text: &Text, style: Style) -> Int
 b.set_style(area: Rect, style: Style)
 b.fill(ch: &Text, style: Style)     // the WHOLE buffer, not a region
-b.reset()                            b.merge(&other)     b.to_lines()
+b.reset()                            b.to_lines() -> List<Text>
+b.merge(&other: &Buffer, area: Rect)  // the area is not optional
 
 type Frame is { ... };              // conceptually a Buffer + metadata
 f.size()   f.width()   f.height()   f.render_widget(...)   f.set_cursor(...)
@@ -210,12 +214,18 @@ f.size()   f.width()   f.height()   f.render_widget(...)   f.set_cursor(...)
 // `Viewport` is a SUM, not a scrollable object:
 type Viewport is Fullscreen | Inline { height: Int } | Fixed { area: Rect };
 
+// `Terminal.new` takes NOTHING — it opens the process's own terminal.
+// Cursor and clearing are NOT on it: `set_cursor` is a `Frame` method,
+// and hiding/showing/clearing/flushing live on the raw backend
+// (`EscapeWriter.clear(mode)`, `set_cursor_visible`, `flush`), reachable
+// through `backend_mut()`.
 type Terminal is { ... };
-Terminal.new(backend: Backend) -> IoResult<Terminal>   
-t.draw(|f: &mut Frame| { widget.render(f, &area) })      // diff-based render
-t.clear()                            t.size() -> IoResult<TerminalSize>
-t.flush() -> IoResult<()>
-t.hide_cursor()                      t.show_cursor()      t.set_cursor(col, row)
+Terminal.new() -> IoResult<Terminal>
+t.init() -> IoResult<()>             t.restore() -> IoResult<()>
+t.draw(|f: &mut Frame| { … })        // diff-based render
+t.size() -> IoResult<TerminalSize>
+t.color_profile() -> ColorProfile    t.capabilities() -> &TermCapabilities
+t.backend_mut() -> &mut PosixTerminal
 ```
 
 ---
