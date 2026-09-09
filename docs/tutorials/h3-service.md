@@ -98,6 +98,34 @@ system did.
 
 ## 4. Server scaffold
 
+:::danger The TLS half of this tutorial cannot be written today
+Measured 2026-09-08 against `core/`, the same finding as
+[cookbook/quic-server](/docs/cookbook/quic-server):
+
+| written here | reality |
+|---|---|
+| `core.security.x509.parse.{parse_cert_chain_pem}` | no `parse.vr` module, no such function |
+| `core.security.x509.sign.{FileSigner}` | no `sign.vr` module, no such type |
+| `ServerOptions.from_cert(chain, Heap(signer))` | **exists** — `core/net/h3/server.vr:85` |
+
+PEM parsing does exist, under a different name:
+`Certificate.from_pem_chain(&Text) -> Result<List<Certificate>, LegacyTlsError>`
+(`core/security/x509/credential.vr:81`), with `TrustStore.from_pem_bundle`
+for a trust bundle.
+
+The signer has no substitute. `from_cert` wants a `Heap<dyn CertSigner>`;
+`CertSigner` is declared at
+`core/net/tls13/handshake/server_sm.vr:83` with two methods —
+
+    fn sign(&self, scheme: SignatureScheme, signed_input: &[Byte])
+        -> Result<List<Byte>, TlsError>;
+    fn scheme(&self) -> SignatureScheme;
+
+— and **nothing in `core/` implements it**. A reader who supplies their
+own implementation of those two methods can use everything else on this
+page; a reader expecting to load a key from a file cannot.
+:::
+
 ```verum
 using [Nursery]
 
@@ -132,55 +160,6 @@ pub async fn main() -> Result<(), H3ServerError> {
     server.serve(handle).await
 }
 ```
-
-:::danger The TLS half of this tutorial cannot be written today
-Measured 2026-09-08 against `core/`, the same finding as
-[cookbook/quic-server](/docs/cookbook/quic-server):
-
-| written here | reality |
-|---|---|
-| `core.security.x509.parse.{parse_cert_chain_pem}` | no `parse.vr` module, no such function |
-| `core.security.x509.sign.{FileSigner}` | no `sign.vr` module, no such type |
-| `ServerOptions.from_cert(chain, Heap(signer))` | **exists** — `core/net/h3/server.vr:85` |
-
-PEM parsing does exist, under a different name:
-`Certificate.from_pem_chain(&Text) -> Result<List<Certificate>, LegacyTlsError>`
-(`core/security/x509/credential.vr:81`), with `TrustStore.from_pem_bundle`
-for a trust bundle.
-
-The signer has no substitute. `from_cert` wants a `Heap<dyn CertSigner>`;
-`CertSigner` is declared at
-`core/net/tls13/handshake/server_sm.vr:83` with two methods —
-
-    fn sign(&self, scheme: SignatureScheme, signed_input: &[Byte])
-        -> Result<List<Byte>, TlsError>;
-    fn scheme(&self) -> SignatureScheme;
-
-— and **nothing in `core/` implements it**. A reader who supplies their
-own implementation of those two methods can use everything else on this
-page; a reader expecting to load a key from a file cannot.
-:::
-
-:::danger These two mounts name modules that do not exist
-Measured 2026-09-03 against `core/`:
-
-| written here | reality |
-|---|---|
-| `core.security.x509.parse.{parse_cert_chain_pem}` | no `parse.vr` module, and no `parse_cert_chain_pem` anywhere |
-| `core.security.x509.sign.{FileSigner}` | no `sign.vr` module, and no `FileSigner` anywhere |
-| `ServerOptions.from_cert(chain, Heap(signer))` | **exists** — `core/net/h3/server.vr:85` |
-
-The PEM parsing that does exist is `Certificate.from_pem_chain(&Text)
--> Result<List<Certificate>, LegacyTlsError>` in
-`core/security/x509/credential.vr`, and a trust bundle is
-`TrustStore.from_pem_bundle`.
-
-The signer half has no substitute: `from_cert` wants a
-`Heap<dyn CertSigner>`, `CertSigner` is declared at
-`core/net/tls13/handshake/server_sm.vr:83`, and **nothing in `core/`
-implements it**. So this walkthrough cannot be written today — not with
-different spellings, not at all — until a concrete signer lands.
-:::
 
 `H3Server.bind` opens the UDP socket, `H3Server.serve(handler)`
 spawns one task per accepted stream into the implicit nursery.
@@ -239,6 +218,18 @@ them compile while teaching a design that is not settled.
 
 ## 6. Streaming subscribe
 
+:::caution Not shipped — `H3Response` has no `.streaming(...)`
+Measured against `core/`, the same finding as the warning in §5:
+`H3Response` carries four methods — `ok(body)`, `status(code)`,
+`with_header(name, value)` and `to_field_list()`. A body is a
+`List<Byte>` handed to `ok` up front, so there is no writer to hand a
+closure to, and no cancellation to translate `STOP_SENDING` into.
+
+The block below is the shape such a surface WOULD take. It is here
+because the design question — where the writer comes from and who owns
+it — is the interesting part of the tutorial; it does not compile.
+:::
+
 A successful `/subscribe` upgrades the stream to a long-lived
 event source. The server emits `data: {...}\n\n` chunks until the
 client closes its half:
@@ -272,10 +263,10 @@ async fn handle_subscribe(mut req: H3Request) -> H3Response {
 }
 ```
 
-The `streaming` callback runs to completion or until the peer
-resets the stream. `core.net.h3.server` automatically translates
-QUIC `STOP_SENDING` from the client into a cancellation that
-unwinds this `async fn` cleanly.
+Such a `streaming` callback WOULD run to completion or until the peer
+reset the stream, and `core.net.h3.server` WOULD translate the client's
+QUIC `STOP_SENDING` into a cancellation that unwound this `async fn`
+cleanly. Neither happens today; the tense is deliberate.
 
 ## 7. Backpressure
 
