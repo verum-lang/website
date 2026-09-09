@@ -233,11 +233,22 @@ literal or refactor the logic into a helper and write multiple `@test`s.
 verum test --coverage
 ```
 
-Compiles each test binary with LLVM source-based coverage, writes
-`*.profraw` files under `target/coverage/`, and prints the
-`llvm-cov` invocation you'd use for a summary or HTML report. The
-generated `default.profdata` works with every LLVM tool — `llvm-cov
-report`, `llvm-cov show`, and any IDE that consumes profdata.
+Instruments each test binary with a per-function entry counter and
+reports how many functions were instrumented.
+
+:::caution Export is not implemented yet
+Measured 2026-09-09. `--coverage` really does change the generated
+code — the binary carries a counter array that is incremented on every
+function entry — but nothing writes it out. There is no `*.profraw`, no
+`default.profdata`, and no directory created; the counters live in the
+running process and go away with it, so there is nothing for `llvm-cov`
+to read.
+
+This page previously described LLVM source-based coverage and a
+`default.profdata` that "works with every LLVM tool". That was never
+what the compiler emitted — the instrumentation is a bespoke counter
+array, not `-instrument-coverage`. Tracked as T1341.
+:::
 
 ## Benchmarking
 
