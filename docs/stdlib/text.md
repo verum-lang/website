@@ -133,10 +133,29 @@ s.chars()         -> Chars         // Iterator<Char>
 s.bytes()         -> ByteIter      // Iterator<Byte>
 s.char_indices()  -> CharIndices   // Iterator<(Int, Char)>
 s.lines()         -> Lines         // Iterator<Text> (split on '\n')
-s.matches(pat)    -> TextMatches       // Iterator<Text>
-s.match_indices(pat) -> TextMatchIndices  // Iterator<(Int, Text)>
+s.matches(pat)    -> TextMatches       // Iterator<Text>       — see below
+s.match_indices(pat) -> TextMatchIndices  // Iterator<(Int, Text)> — see below
 s.to_chars()     -> List<Char>     // collect-to-list shortcut, MATERIALISED
 ```
+
+:::danger `matches` and `match_indices` answer EMPTY at Tier 0
+Measured 2026-09-09, and it is a wrong answer rather than a crash:
+
+```verum
+let hay = "abcabcabc";
+hay.find(&"bc")                    // Some(1)
+hay.contains(&"bc")                // true
+for _ in hay.matches(&"bc") { … }  // runs zero times
+```
+
+Driving the iterator by hand shows the first `next()` already answering
+`Maybe.None`, while the two steps its body performs — `slice` then
+`find` — both succeed when written at the call site in the same
+programme. So a caller counting occurrences gets zero and carries on.
+Tracked as T1279.
+
+Use `find` in a loop, advancing past each hit, until it lands.
+:::
 
 `lines`, `matches` and `match_indices` yield OWNED `Text`, not `&Text` —
 `Lines.next` returns `Maybe<Text>`. Each line is a fresh allocation, so
