@@ -119,22 +119,35 @@ type Event is
     | Paste(Text)
     | FocusGained | FocusLost;
 
+// Three fields, not four — there is no `state`.
 type KeyEvent is {
     code: KeyCode,
     modifiers: Modifiers,
     kind: KeyEventKind,
-    state: KeyEventState,
 };
+
+// The function-key variant is `Fn`, not `F`; the escape key is
+// `Escape`, not `Esc`; and there is no `Media(MediaKey)`. `Space` and
+// `KeypadBegin` are real and were missing.
 type KeyCode is
     | Char(Char)
-    | Backspace | Enter | Left | Right | Up | Down
+    | Fn(Int)                            // F1–F35
+    | Backspace | Enter | Tab | BackTab
+    | Escape | Space | Delete | Insert
+    | Left | Right | Up | Down
     | Home | End | PageUp | PageDown
-    | Tab | BackTab | Delete | Insert | Esc
-    | F(Int)
-    | Null | CapsLock | ScrollLock | NumLock | PrintScreen | Pause | Menu
-    | Media(MediaKey);
-type KeyEventKind is Press | Repeat | Release;
-type Modifiers is bitflags { Shift, Control, Alt, Super, Hyper, Meta };
+    | CapsLock | NumLock | ScrollLock
+    | PrintScreen | Pause | Menu
+    | KeypadBegin                        // keypad 5 with numlock off
+    | Null;                              // Ctrl+Space or a NUL byte
+
+type KeyEventKind is Press | Release | Repeat;
+
+// `Modifiers` is a RECORD of bits with UPPERCASE constants — there is
+// no `bitflags` construct in the language.
+type Modifiers is { bits: UInt8 };
+// Modifiers.SHIFT / .CTRL / .ALT / .SUPER / .HYPER / .META
+// m.contains(flag) -> Bool     m.is_empty() -> Bool
 type MouseEvent is { kind: MouseEventKind, column: Int, row: Int, modifiers: Modifiers };
 type MouseEventKind is
     | Down(MouseButton) | Up(MouseButton) | Drag(MouseButton)

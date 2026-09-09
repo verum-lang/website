@@ -53,17 +53,21 @@ implement KeyEvent {
 ```verum
 public type KeyCode is
     | Char(Char)
+    | Fn(Int)               // F1..F35 — the variant is `Fn`, not `F`
     | Backspace | Enter  | Tab  | BackTab
-    | Delete    | Insert | Esc
-    | Up   | Down | Left | Right
+    | Escape                // not `Esc`
+    | Space | Delete | Insert
+    | Left | Right | Up | Down
     | Home | End  | PageUp | PageDown
-    | Space
-    | F(Int)                // F1..F35
-    | Media(MediaKey)
-    | Modifier(ModifierKey)
-    | CapsLock | ScrollLock | NumLock
-    | PrintScreen | Pause  | Menu;
+    | CapsLock | NumLock | ScrollLock
+    | PrintScreen | Pause  | Menu
+    | KeypadBegin           // keypad 5 with numlock off
+    | Null;                 // Ctrl+Space or a NUL byte
 ```
+
+There is no `Media(MediaKey)` and no `Modifier(ModifierKey)` — the
+media and modifier keys the Kitty protocol reports are not modelled
+here. `KeypadBegin` and `Null` are real and were missing.
 
 ## `Modifiers`
 
@@ -71,9 +75,11 @@ public type KeyCode is
 public type Modifiers is { bits: UInt8 };
 
 implement Modifiers {
-    fn contains(&self, m: Modifiers) -> Bool;
-    fn union(&self, m: Modifiers)    -> Modifiers;
-    fn empty(&self) -> Bool;
+    fn contains(&self, flag: Modifiers) -> Bool;
+    fn union(self, other: Modifiers)      -> Modifiers;
+    fn difference(self, other: Modifiers) -> Modifiers;
+    fn is_empty(&self) -> Bool;           // `is_empty`, not `empty`
+    fn to_text(&self) -> Text;
 }
 ```
 
