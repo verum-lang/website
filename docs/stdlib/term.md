@@ -30,15 +30,43 @@ Layer 0  Raw terminal I/O         RawTerminal, TerminalMode, TermiosState, Escap
 ## Layer 0 — raw terminal
 
 ```verum
-type TerminalMode is Raw | Cooked | CBreak;
-type TerminalSize is { cols: Int, rows: Int };
+// `TerminalMode` is a RECORD holding what a restore needs — it is not a
+// Raw / Cooked / CBreak enumeration.
+type TerminalMode is {
+    original: TermiosState,
+    fd: FileDesc,
+    is_raw: Bool,
+    is_alternate: Bool,
+};
+
+// The width field is `columns`, and the size carries the pixel
+// dimensions a terminal may report alongside the cell grid.
+type TerminalSize is {
+    columns: Int,
+    rows: Int,
+    pixel_width: Maybe<Int>,
+    pixel_height: Maybe<Int>,
+};
+
 type TermiosState is { ... };                     // saved state for restore
-type CursorShape is Block | Line | Underline | BlinkingBlock | BlinkingLine | BlinkingUnderline;
+
+// Each shape is a BLINKING/STEADY pair — there is no bare `Block`,
+// `Line` or `Underline`, and the third pair is `Bar`, not `Line`.
+type CursorShape is
+    | BlinkingBlock     | SteadyBlock
+    | BlinkingUnderline | SteadyUnderline
+    | BlinkingBar       | SteadyBar;
 
 type RawTerminal is { ... };
 type EscapeWriter is { ... };
 
-type ClearMode is Entire | AfterCursor | BeforeCursor | Line | LineAfter | LineBefore;
+type ClearMode is
+    | All            // entire screen          (CSI 2 J)
+    | Purge          // screen + scrollback    (CSI 3 J)
+    | AfterCursor    // cursor → end of screen (CSI 0 J)
+    | BeforeCursor   // start → cursor         (CSI 1 J)
+    | CurrentLine    // the line               (CSI 2 K)
+    | UntilNewLine;  // cursor → end of line   (CSI 0 K)
 
 type TermCapabilities is { ... };
 
@@ -112,7 +140,7 @@ type MouseEventKind is
     | Down(MouseButton) | Up(MouseButton) | Drag(MouseButton)
     | Moved | ScrollDown | ScrollUp | ScrollLeft | ScrollRight;
 type MouseButton is Left | Right | Middle;
-type ResizeEvent is { cols: Int, rows: Int };
+type ResizeEvent is { columns: Int, rows: Int };   // `columns`, not `cols`
 
 type InputParser is { ... };                      // ANSI FSM
 InputParser.new() -> InputParser

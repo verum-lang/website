@@ -15,37 +15,61 @@ detection) but not its Elm loop, this is your level.
 ```verum
 public type RawTerminal is protocol extends Read + Write { ... };
 
-public type TerminalMode is Raw | Cooked | CBreak;
+// A RECORD holding what a restore needs, not a Raw / Cooked / CBreak
+// enumeration.
+public type TerminalMode is {
+    original: TermiosState,
+    fd: FileDesc,
+    is_raw: Bool,
+    is_alternate: Bool,
+};
 
-public type TerminalSize is { cols: Int, rows: Int };
+// The width field is `columns`, and the pixel dimensions are part of it.
+public type TerminalSize is {
+    columns: Int,
+    rows: Int,
+    pixel_width: Maybe<Int>,
+    pixel_height: Maybe<Int>,
+};
 
+// Each shape is a BLINKING/STEADY pair; the third pair is `Bar`.
 public type CursorShape is
-    | Block         | Line          | Underline
-    | BlinkingBlock | BlinkingLine  | BlinkingUnderline;
+    | BlinkingBlock     | SteadyBlock
+    | BlinkingUnderline | SteadyUnderline
+    | BlinkingBar       | SteadyBar;
 
 public type ClearMode is
-    | Entire  | AfterCursor  | BeforeCursor
-    | Line    | LineAfter    | LineBefore;
+    | All          | Purge
+    | AfterCursor  | BeforeCursor
+    | CurrentLine  | UntilNewLine;
 
+// ONE setter per mode, taking a Bool — there is no enable_/disable_
+// pair for mouse capture, bracketed paste or focus events.
 implement RawTerminal {
     fn enable_raw_mode(&mut self) -> IoResult<()>
     fn disable_raw_mode(&mut self) -> IoResult<()>
-    fn enable_mouse_capture(&mut self) -> IoResult<()>
-    fn disable_mouse_capture(&mut self) -> IoResult<()>
-    fn enable_bracketed_paste(&mut self) -> IoResult<()>
-    fn disable_bracketed_paste(&mut self) -> IoResult<()>
-    fn enable_focus_events(&mut self) -> IoResult<()>
-    fn disable_focus_events(&mut self) -> IoResult<()>
     fn enter_alternate_screen(&mut self) -> IoResult<()>
     fn leave_alternate_screen(&mut self) -> IoResult<()>
-    fn show_cursor(&mut self, visible: Bool) -> IoResult<()>
-    fn set_cursor_shape(&mut self, shape: CursorShape) -> IoResult<()>
-    fn move_cursor(&mut self, x: Int, y: Int) -> IoResult<()>
-    fn clear(&mut self, mode: ClearMode) -> IoResult<()>
     fn size(&self) -> IoResult<TerminalSize>
+    fn is_tty(&self) -> Bool
+    fn set_mouse_capture(&mut self, enable: Bool) -> IoResult<()>
+    fn set_focus_events(&mut self, enable: Bool) -> IoResult<()>
+    fn set_bracketed_paste(&mut self, enable: Bool) -> IoResult<()>
+    fn set_cursor_shape(&mut self, shape: CursorShape) -> IoResult<()>
+    fn set_cursor_visible(&mut self, visible: Bool) -> IoResult<()>
+}
+
+// Cursor movement, clearing and synchronised update are on the OTHER
+// protocol — `EscapeWriter` (`core/term/raw/escape.vr:44`, extends
+// Write) — not on `RawTerminal`.
+implement EscapeWriter {
+    fn write_csi(&mut self, params: &[Int], final_byte: Byte) -> IoResult<()>
+    fn write_osc(&mut self, code: Int, data: &Text) -> IoResult<()>
+    fn write_dcs(&mut self, data: &Text) -> IoResult<()>
+    fn move_to(&mut self, col: Int, row: Int) -> IoResult<()>
+    fn clear(&mut self, mode: ClearMode) -> IoResult<()>
     fn begin_sync(&mut self) -> IoResult<()>
     fn end_sync(&mut self) -> IoResult<()>
-    fn flush(&mut self) -> IoResult<()>
 }
 ```
 
