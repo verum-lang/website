@@ -42,33 +42,46 @@ per direction, exactly as the RFC prescribes.
 ## Client flow
 
 ```verum
-mount core.net.h3.client.{H3Client, ClientOptions};
+mount core.net.h3.client.{H3Client, ClientOptions, H3ClientError};
+mount core.net.h3.request.{H3Request};
 mount core.time.duration.{Duration};
 
 async fn fetch_example() -> Result<(), H3ClientError> {
-    let opts = ClientOptions.default()
-        .with_alpn(b"h3")
-        .with_idle_timeout(Duration.from_secs(30))
-        .with_max_field_section_size(64 * 1024);
+    // `ClientOptions` is a record with two constructors — `default()`
+    // and `with_system_trust()` — and NO builder methods. The knobs are
+    // set by record update.
+    let opts = ClientOptions {
+        idle_timeout: Duration.from_secs(30),
+        max_field_section_size: 65536_u64,
+        ..ClientOptions.default()
+    };
 
     let mut client = H3Client.connect(&"https://example.test/", opts).await?;
-    let response = client.get(&"/api/users/42").await?;
 
+    // The request is BUILT by `H3Request` and SENT by the client; the
+    // client has no `.get(path)` of its own.
+    let req = H3Request.get(client.authority(), Text.from("/api/users/42"));
+    let response = client.send(&req).await?;
+
+    // `status`, `headers`, `body` and `trailers` are FIELDS of
+    // `H3Response`, not accessor methods.
     let status: UInt16 = response.status;
-    for header in response.headers().iter() {
+    for header in response.headers.iter() {
         let _ = (header.name, header.value);
     }
-    let body: List<Byte> = response.body();
+    let body: List<Byte> = response.body;
     let _ = (status, body);
-    Ok(())
+    Result.Ok(())
 }
 ```
 
 `H3Client.connect` performs QUIC connect + TLS 1.3 handshake + ALPN
 negotiation + H3 unistream setup (control, qpack encoder, qpack
-decoder) before returning. By the time `.get(...)` / `.post(...)` is
-called, the connection is in 1-RTT and HEADERS frames can be issued
-immediately.
+decoder) before returning. By the time `client.send(&req)` is called,
+the connection is in 1-RTT and HEADERS frames can be issued
+immediately. `H3Request.get(authority, path)` and
+`H3Request.post(authority, path, body)` are the two request builders,
+and `.with_header(name, value)` chains onto either.
 
 ## Server flow
 
