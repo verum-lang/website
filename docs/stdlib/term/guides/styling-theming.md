@@ -200,9 +200,12 @@ let line = Line.from([
 ]);
 ```
 
-The `bold` / `green` / `italic` helpers do not run at Tier 0 today — see
+The `bold` / `green` / `italic` helpers run at Tier 0. They did not until
+2026-09-09, when two defects underneath them landed — a wrong span import
+(T1268) and a fabricated `Style.DEFAULT` inside the bake (T1277) — and
 the note under [Text builder DSL](/docs/stdlib/term/reference/api-style)
-(T1268, T1277). `TextSpan.raw` and `TextSpan.styled` do.
+carries the measurement that closed them, on the styles the helpers
+produce rather than on whether they stopped erroring.
 
 ## Hyperlinks
 

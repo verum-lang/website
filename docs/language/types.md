@@ -18,13 +18,37 @@ follows the `is` determines what kind of type you get.
 | `UInt8..UInt128` | sized unsigned |
 | `ISize`, `USize` | platform-pointer-sized |
 | `Float` / `Float64` | canonical 64-bit IEEE 754 |
-| `Float32` | 32-bit IEEE 754 |
+| `Float32` | 32-bit IEEE 754 — **as declared; see the note below** |
 | `Char` | Unicode scalar value (4 bytes, U+0000..U+10FFFF) |
 | `Text` | UTF-8 string (heap-backed, in `core.text`) |
 | `Byte` | alias for `UInt8` |
 | `()` | unit (0 bytes) |
 | `!` / `Never` | never (uninhabited bottom) |
 | `unknown` | top |
+
+:::warning `Float32` does not narrow at Tier 0
+Measured 2026-09-09 on the interpreter. A `Float32` carries the **f64**
+bit pattern and dispatches to `Float`'s methods:
+
+```verum
+let a: Float32 = 1.0;
+print(f"{a.to_bits()}");        // 4607182418800017408 = 0x3FF0000000000000
+                                // the f64 encoding; f32's is 1065353216
+
+let y: Float32 = 16777217.0;    // 2^24+1, not representable in f32
+print(f"{y}");                  // 16777217 — a real f32 prints 16777216
+
+let small: Float32 = 1e-40;     // subnormal as an f32
+print(f"{small.is_normal()}");  // true — the answer for a DOUBLE
+```
+
+The annotation is checked and carried through the type system; what is
+missing is the runtime width. Every `Float32` method whose answer
+differs by width — `to_bits`, `from_bits`, `is_normal`, `is_subnormal`,
+and every rounding boundary — answers for 64 bits. Methods that agree at
+both widths (`is_finite`, `is_nan`) are correct, which is why this stayed
+invisible. Tracked as T1322.
+:::
 
 ## Records (product types)
 

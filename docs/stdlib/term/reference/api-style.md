@@ -174,21 +174,33 @@ yellow(t: Text) -> TextSpan cyan(t: Text) -> TextSpan     magenta(t: Text) -> Te
 white(t: Text) -> TextSpan  grey(t: Text) -> TextSpan
 ```
 
-:::danger This layer does not run at Tier 0
-Measured 2026-09-09. Two defects sit on top of each other:
+:::note This layer runs at Tier 0 — the two defects below are fixed
+It did not, and the history is worth keeping because the second half was
+invisible from here. Two defects sat on top of each other:
 
 * the module imported the span type under the name `Span`, which
   `core/term/widget/paragraph.vr` does not export, so every helper was
-  typed as returning `core.meta`'s `MetaSpan` — `bold("hi").content` did
-  not exist (T1268);
-* correcting that import and re-baking makes the file type-check and
-  then panic, because `TextSpan.styled(text, style)` called ACROSS a
-  module boundary inside the bake is dispatched as a three-argument
-  method on its first argument (T1277). The identical call from a user
-  file, and from `paragraph.vr`'s own `Line.styled`, both work.
+  typed as returning `core.meta`'s `MetaSpan` and `bold("hi").content`
+  did not exist — fixed 2026-09-09 (T1268);
+* correcting that import surfaced a second failure inside the bake,
+  which the associated-constant pre-registration then removed
+  (T1277) — `Style.DEFAULT`, which every one of these helpers reads,
+  was being replaced by a fabricated value rather than resolved.
 
-Until both land, build spans directly: `TextSpan.raw(text)` and
-`TextSpan.styled(text, Style.new().bold())` are measured working.
+**Re-measured 2026-09-09 after both landed**, and on the values rather
+than on "it stopped erroring" — three helpers, three different right
+answers:
+
+```text
+bold("x")            add_modifier.bits=1  has_fg=false
+green("x")           add_modifier.bits=0  has_fg=true
+TextSpan.raw("x")    add_modifier.bits=0  has_fg=false
+Modifier.BOLD.bits=1
+```
+
+A helper that resolved and did nothing would give all three the same
+style. `bold` sets exactly `Modifier.BOLD` and no colour, `green` sets a
+colour and no modifier, `raw` sets neither.
 :::
 
 ## Color utilities
