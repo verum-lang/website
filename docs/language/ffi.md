@@ -24,24 +24,43 @@ extern "C" {
 Declares C functions available to Verum. These declarations do not
 generate code — they describe the foreign symbol's signature.
 
-:::caution Variadic declarations parse; variadic **calls** do not yet
+:::caution A `Text` is not a C string
 
-The `...` marker is accepted, and a call that passes only the fixed
-arguments works — `snprintf(buf, 32, fmt)` returns and writes normally.
-A call that passes anything *after* the fixed part is rejected at the
-call site:
+A variadic call works — `snprintf(buf, 32, fmt, 42)` returns 2 and
+writes `42` at both tiers — but the format argument above is a C
+`const char *`, and `Text.as_ptr()` does not give you one. `Text` is
+length-prefixed with no terminator, so the callee reads past the end
+until it finds a zero byte somewhere in the heap.
+
+It fails by luck, which is why it is easy to miss. In one session three
+formats worked and one did not, and the only difference was the byte
+that happened to follow them:
 
 ```
-error: wrong number of arguments for snprintf: expected 3, found 4
+"%ld"      worked        "%d"       worked
+"%ld-x"    worked        "abcde"    worked
+"%ld-%ld"  garbage
 ```
 
-So `printf(fmt, x)` will not compile today. Until that is lifted, reach
-a variadic C function through a fixed-arity shim in C, or through a
-non-variadic sibling where the library offers one — `vsnprintf` takes a
-`va_list` rather than `...`, and most `*_v` variants exist for exactly
-this reason. Note that `open` and `openat` are **not** such siblings:
-both are variadic in C, and their mode argument travels with the
-variadic part.
+Two of those are five characters long, so length is not the axis. Build
+the C string yourself with an explicit `0` byte, or pass a byte slice
+together with its length where the callee accepts one. Tracked as T1317.
+
+:::
+
+:::note Widths in the variadic tail
+
+The tail's arguments have no declared types, so they travel at Verum's
+own widths: `Int` as 64-bit, `Float` as 64-bit. That matches what
+`%ld`, `%lld`, `%f` and `%p` read. It does **not** match `%d`, which
+reads 32 bits — and the truncation is silent:
+
+```
+%d   with 4294967338   prints 42
+%ld  with 4294967338   prints 4294967338
+```
+
+Use the 64-bit specifier, or narrow the value yourself before the call.
 
 :::
 
