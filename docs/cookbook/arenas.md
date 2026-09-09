@@ -6,8 +6,11 @@ description: Bulk-allocate, bulk-free. Bypass per-object CBGR for request-scoped
 # Arenas
 
 An arena is a block of memory that allocates O(1), never frees
-individual items, and bulk-frees every object at once when the arena
-drops.
+individual items, and invalidates every object at once on one call.
+
+`GenerationalArena` does **not** implement `Drop`: the buffer is released
+by an explicit `destroy()`, and `reset()` keeps the buffer while bumping
+the generation. Neither happens by going out of scope.
 
 **When to reach for an arena:**
 
@@ -18,80 +21,124 @@ drops.
 
 ---
 
-## `GenerationalArena<T>`
+## `GenerationalArena`
+
+:::caution It is a byte arena, not a slotmap
+`GenerationalArena` is **not generic**, and there is no `ArenaHandle<T>`,
+`insert`, `get`, `get_mut` or `remove` — an earlier version of this page
+described all of them. What ships is a bump allocator over a byte
+buffer: it hands back an **address** (`Int`), and a single shared
+generation counter invalidates every outstanding reference at once.
+:::
 
 ```verum
-mount core.mem.GenerationalArena;
+mount core.mem.{GenerationalArena, ArenaConfig};
 
-fn parse_file(source: &Text) -> Result<Ast, ParseError> {
-    let arena = GenerationalArena<Node>.new(capacity: 4096);
-    let tree = parse_into(source, &arena)?;
-    let stats = compute_statistics(&tree);
-    Result.Ok(Ast { stats, /* owned, independent of arena */ })
-}
-// Arena drops here — every Node allocated inside is freed in O(1).
+let mut arena = GenerationalArena.new(4096);       // capacity in BYTES
+
+let addr = arena.alloc(64);                        // 0 when it cannot fit
+let aligned = arena.alloc_aligned(64, 32);         // no auto-growth on this path
+
+arena.used()        // bytes handed out         arena.capacity()
+arena.remaining()   // capacity - used          arena.alloc_count()
+arena.generation()  // the stamp for a ThinRef into this arena
+arena.contains_ptr(addr)                           // is this address ours?
 ```
 
-The arena returns **handles**, not references. Handles carry a
-generation; bulk-free on arena drop bumps the generation, so any
-stray handle is invalidated atomically.
+`alloc` grows the buffer when the config allows it; `alloc_aligned` does
+not, because growing moves the base address and the new base need not
+satisfy the alignment the caller asked for. Size an arena that needs
+alignment up front:
 
 ```verum
-type ArenaHandle<T> is { idx: Int, generation: UInt32 };
+let mut arena = GenerationalArena.with_config(ArenaConfig.fixed(1 << 20));
+```
 
-let arena = GenerationalArena<Node>.new(capacity: 1024);
-let h: ArenaHandle<Node> = arena.insert(Node.Leaf { value: 42 });
-let n: Maybe<&Node> = arena.get(h);                 // Some if still valid
-let n: Maybe<&mut Node> = arena.get_mut(h);
-let removed: Maybe<Node> = arena.remove(h);         // None if already removed
+The generation is what makes a stale pointer *detectable* rather than
+dangling. `arena.generation()` is the value to stamp into a `ThinRef`
+built over arena memory, so that after a `reset()` the CBGR check on
+that reference fails with `UseAfterFreeError` instead of reading
+recycled bytes.
+
+```verum
+arena.reset();      // O(1): bumps the generation, rewinds `used` to 0
+                    // the buffer itself is kept and reused
+arena.destroy();    // returns the buffer to the allocator
 ```
 
 ---
 
 ## Context-scoped allocation
 
-Set the arena as the active allocator for a scope:
+`GenerationalArena` does **not** implement `Allocator`, so it cannot be
+`provide`d. The bump allocator that does is `MemStackAllocator` — the
+four `Allocator` implementors are `GlobalAllocator`, `TieredAllocator`,
+`SimpleAllocator` and `MemStackAllocator`.
 
 ```verum
-fn parse<'a>() -> Ast {
-    let arena = GenerationalArena<Byte>.new(1 << 20);     // 1 MiB
-    provide Allocator = arena in {
-        parse_body()                                          // uses arena for all Heap.new
-    }
-}                                                             // drops here; arena freed
+mount core.mem.MemStackAllocator;
+
+fn parse(source: &Text) -> Result<Ast, ParseError> {
+    let mut bump = MemStackAllocator.init(1 << 20)?;      // 1 MiB
+    let ast = provide Allocator = bump in {
+        parse_body(source)             // every Heap.new inside bumps
+    };
+    bump.reset();                      // O(1) rewind for the next parse
+    Result.Ok(ast)
+}
 ```
 
 Inside the `provide` block, every `Heap.new(...)` allocation routes
-through the arena. Outside the block, normal CBGR allocation resumes.
+through the bump allocator. Outside the block, normal CBGR allocation
+resumes. `bump.used()` and `bump.peak()` report how much of the
+reservation the batch actually needed.
 
 ---
 
-## Region-based — not shipped
+## Nested scopes — `snapshot` / `restore`
 
 :::caution `new_region` does not exist
 There is no `core.security.new_region` and no `Region<'_, T>`. The
-closure-scoped form this section described was never implemented; the
-arena the library actually ships is the `GenerationalArena` above, and
-its scope is explicit rather than lexical:
+closure-scoped form this section described was never implemented.
+:::
+
+The arena's scope is explicit rather than lexical, and nesting comes
+from a saved bump position:
 
 ```verum
+type ArenaSnapshot is { used: Int, alloc_count: Int, generation: Int };
+
 let mut arena = GenerationalArena.new(64 * 1024);
 let mark = arena.snapshot();
 
 let root = parse_into_arena(source, &mut arena);
-let stats = compute_statistics(&root);
+let stats = compute_statistics(root);
 
 arena.restore(mark);      // everything allocated since `mark` is gone
 ```
 
-`snapshot`/`restore` give the same nesting a scoped region would, and
-`reset()` empties the whole arena and bumps its generation — which is
-what makes a stale handle detectable rather than dangling.
+`restore` returns `Bool`, and it returns **false** when the snapshot is
+stale — that is, when a `reset()` intervened and bumped the generation.
+Check it rather than discarding it: a false there means the rollback did
+not happen and the bump pointer is wherever `reset` left it.
+
+:::warning `restore` is weaker than `reset`
+`restore` rolls the bump pointer back **without** bumping the
+generation. References into the rolled-back span therefore become
+address-invalid but stay generation-**valid**: the CBGR check passes and
+reads bytes the arena has since handed to someone else. `reset()` is the
+one that makes stale references detectable. Use `restore` only where you
+can see that nothing kept a reference across the mark.
 :::
 
 ---
 
 ## Pattern — parser with arena
+
+Because the arena deals in bytes and addresses, a typed tree over it is
+built the way any index-based tree is: nodes live in a `List`, and the
+arena backs the batch lifetime rather than the individual nodes. The
+node identity a parser passes around is an index, not an arena handle.
 
 ```verum
 type NodeId is (Int);
@@ -102,15 +149,17 @@ type Node is
     | Mul { lhs: NodeId, rhs: NodeId };
 
 type ParseCtx is {
-    arena: GenerationalArena<Node>,
+    nodes: List<Node>,
 };
 
 implement ParseCtx {
     fn alloc(&mut self, n: Node) -> NodeId {
-        NodeId(self.arena.insert(n).idx)
+        let id = NodeId(self.nodes.len());
+        self.nodes.push(n);
+        id
     }
     fn get(&self, id: NodeId) -> &Node {
-        self.arena.get(ArenaHandle { idx: id.0, generation: ... }).unwrap()
+        &self.nodes[id.0]
     }
 }
 
@@ -126,41 +175,41 @@ fn parse_expr(ctx: &mut ParseCtx, tokens: &mut List<Token>) -> Result<NodeId, Pa
 }
 ```
 
-Compared with `Heap<Node>` per node:
-- **1 allocation** up front, instead of N.
-- **Cache locality**: neighbours in the arena are neighbours in memory.
-- **O(1) teardown**: drop the arena, done.
-- **Handles are `Copy`**: you pass around `NodeId`s without lifetimes.
+Wrapping that parse in `provide Allocator = bump` is what makes the
+allocation profile arena-shaped: one reservation up front instead of one
+CBGR allocation per `List` growth, and an O(1) rewind at the end.
+`NodeId` stays `Copy`, so the tree carries no lifetimes either way.
 
 ---
 
 ## Performance
 
-On an M3 Max:
+This page used to carry a table — `Heap<Node>` per node at 145 ms /
+88 MB against `GenerationalArena` at 82 ms / 42 MB on an M3 Max, and
+before that a `new_region` row too. Every row measured an API that does
+not exist, so all of them are removed rather than corrected. No
+replacement figure is quoted here until someone runs the comparison on
+the arena that ships.
 
-| Strategy | Parse 10 MB JSON | Peak RSS |
-|---|---|---|
-| `Heap<Node>` per node | 145 ms | 88 MB |
-| `GenerationalArena` | 82 ms | 42 MB |
-
-The table used to carry a third row, `new_region` at 78 ms / 40 MB.
-Nothing could have produced those numbers: the API does not exist. They
-are removed rather than corrected.
-
-Your mileage varies with node size and access pattern — an arena
-beats per-object heap allocation when the objects are small and the
-lifetime is well-scoped.
+The shape of the argument survives the numbers: an arena beats
+per-object heap allocation when the objects are small and the lifetime
+is well-scoped, because it trades N allocations and N CBGR stamps for
+one reservation and one generation bump.
 
 ---
 
 ## Pitfalls
 
-- **Do not store arena handles past the arena's scope.** They are
-  invalidated on drop; dereferencing an expired handle fails the
-  CBGR generation check at runtime.
+- **Do not hold an address past a `reset()` or `destroy()`.** A
+  reference stamped with the old generation fails the CBGR check on the
+  next deref — that is the arena working, not a bug to route around.
+- **`alloc` answers `0` on failure**, it does not return a `Result`.
+  Check it. `alloc_aligned` additionally refuses rather than growing.
+- **`restore` answers `false`** when a `reset()` has invalidated the
+  snapshot. Do not discard that Bool.
 - **Arenas are not thread-safe by default.** Use
-  `Shared<Mutex<GenerationalArena<T>>>` if multiple tasks allocate
-  into the same arena.
+  `Shared<Mutex<GenerationalArena>>` if multiple tasks allocate into the
+  same arena.
 - **Don't use an arena for data that outlives the batch.** Results
   that escape must be copied out to ordinary `Heap`/`Shared` storage
   before the arena ends.
@@ -169,7 +218,9 @@ lifetime is well-scoped.
 
 ## See also
 
-- **[mem → arena](/docs/stdlib/mem#generationalarenat)**
-- **[mem → capabilities](/docs/stdlib/mem#capabilities)** — capability
-  bits on handles.
+- **[mem → arena](/docs/stdlib/mem#generationalarena)**
+- **[mem → the allocator protocol](/docs/stdlib/mem#allocator-protocol)** —
+  what `provide Allocator` actually requires.
+- **[mem → capabilities](/docs/stdlib/mem#capabilities)** — the
+  capability bits stamped alongside the generation.
 - **[Performance](/docs/guides/performance)** — when to use arenas.

@@ -63,7 +63,7 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 | `diagnostics.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/diagnostics/` — read-only observer surface |
 | `cap_audit.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit/` — capability transition events |
 | `cap_audit_ring.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
-| `mem_raw.vr` (re-exported) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy`/`memmove`/`memset`/`memcmp`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
+| `mem_raw.vr` (in `core.intrinsics.runtime`) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy_addr`/`memmove_addr`/`memset_addr`/`memcmp_addr`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
 | `mod.vr` (module root) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/mod/` — 4 files + audit. Module-root surface: `UseAfterFreeError` (5-field record + 3 ctors + message + Debug + Display + Eq) + `RevocationError` (4-variant sum + 4 ctors + message + Debug + Display + Eq) + `CbgrTier` (4-variant sum) + `get/set_execution_tier` global accessor. Unit, property, integration and regression suites cover module-root types + the umbrella re-export contract (every submodule symbol resolves via `mount core.mem.{Name}`). **All pins closed** — the §3.1 field-shift trio un-gated in earlier waves and the §3.4 umbrella `has_capability` collision un-@ignore'd 2026-07-05 (public-mount re-export traversal resolves the binding authoritatively): **87/87/0**. |
 
 The dedicated-suite-pending modules are tracked in
@@ -117,7 +117,7 @@ can say without measuring each claim.
 | `diagnostics.vr` | Read-only `MemHeaderView` observer surface; `live_allocations` |
 | `cap_audit.vr` | `CapEvent` capability-transition event type |
 | `cap_audit_ring.vr` | Lock-free SPMC ring buffer for `CapEvent`; `record_revoke` / `record_attenuate` / `record_ref_*` / `record_gen_bump` |
-| `mem_raw.vr` (re-exported via `core.intrinsics.runtime.mem_raw.*`) | `memcpy`, `memmove`, `memset`, `memcmp`, `strlen`, `strcmp` |
+| `mem_raw.vr` (in `core.intrinsics.runtime`, not `core.mem`) | `memcpy_addr`, `memmove_addr`, `memset_addr`, `memcmp_addr`, `strlen`, `strcmp` — all address-taking |
 
 ---
 
@@ -126,26 +126,33 @@ can say without measuring each claim.
 ### `ThinRef<T>` — 16 bytes
 
 ```verum
-type ThinRef<T> is {
-    ptr: *const T,
+@repr(C, size(16), align(8))
+public type ThinRef<T> is {
+    ptr: &unsafe T,
     generation: UInt32,
-    epoch_caps: UInt32,       // high 16 bits: epoch; low 16: capability flags
+    epoch_and_caps: UInt32,   // bits 0-15: epoch; bits 16-31: capability flags
 };
 ```
 
-Used for `&T` when `T: Sized`. The `generation` and `epoch_caps` are
+Used for `&T` when `T: Sized`. The `generation` and `epoch_and_caps` are
 fixed at reference creation; the CBGR check compares them against the
 allocation's `AllocationHeader` on every deref.
+
+The packed halves are **epoch low, capabilities high** — `pack_epoch_caps`
+(`capability.vr`) is `((caps as UInt32) << 16) | (epoch as UInt32)`. Read
+them with `unpack_epoch` / `unpack_caps`, or with the `.epoch()` /
+`.capabilities()` accessors on the reference, rather than shifting by hand.
 
 ### `FatRef<T>` — 32 bytes
 
 ```verum
-type FatRef<T> is {
-    ptr: *const T,
+@repr(C, size(32), align(8))
+public type FatRef<T> is {
+    ptr: &unsafe Byte,        // erased to Byte; the element type stays in `T`
     generation: UInt32,
-    epoch_caps: UInt32,       // epoch in high 16 bits, capabilities in low 16
-    metadata: UInt64,         // slice length, dyn-protocol vtable pointer, etc.
-    offset:   UInt32,         // non-zero for interior references
+    epoch_and_caps: UInt32,   // bits 0-15: epoch; bits 16-31: capabilities
+    metadata: Int,            // slice length, dyn-protocol vtable pointer, etc.
+    offset_from_base: UInt32, // non-zero for interior references
     reserved: UInt32,         // padding + room for future fields
 };
 ```
@@ -156,15 +163,23 @@ and for interior references that need an offset into a larger allocation.
 ### `AllocationHeader` — 32 bytes, cache-aligned
 
 ```verum
-type AllocationHeader is {
-    generation: UInt32,       // incremented on free
-    epoch:      UInt32,       // wraparound-safety
-    flags:      UInt32,       // drop impl, pinned, capabilities
-    layout_size: UInt32,      // for realloc / sanity
-    _padding:   UInt64,       // align to 32 bytes
-    layout:     Layout,       // size, align
+@repr(C, align(32))
+public type AllocationHeader is {
+    size:           UInt32,   // offset  0 — payload bytes, header excluded
+    alignment:      UInt16,   // offset  4 — requested align (validated <= 4096)
+    base_offset:    UInt16,   // offset  6 — header address - malloc base
+    generation:     UInt32,   // offset  8 — atomic; bumped on free (HOT)
+    epoch_and_caps: UInt32,   // offset 12 — atomic; epoch low, caps high
+    type_id:        UInt32,   // offset 16
+    flags:          UInt32,   // offset 20
+    ref_count:      UInt32,   // offset 24 — atomic; an allocation starts at 1
+    total:          UInt32,   // offset 28 — front slack + header + payload
 };
 ```
+
+Exactly 32 bytes, 32-byte aligned, and the field order IS the byte order —
+`ALLOCATION_HEADER_EPOCH_OFFSET` (12) and `_CAPABILITIES_OFFSET` (14) index
+into `epoch_and_caps` directly on a little-endian target.
 
 Prepended to every CBGR-tracked allocation. The header lives in the
 same cache line as (or adjacent to) the object, so the CBGR check is
@@ -178,7 +193,7 @@ fn deref<T>(r: ThinRef<T>) -> &T {
     if hdr.generation != r.generation {
         handle_use_after_free(&r, &hdr);
     }
-    if (r.epoch_caps >> 16) != hdr.epoch {
+    if unpack_epoch(r.epoch_and_caps) != unpack_epoch(hdr.epoch_and_caps) {
         handle_epoch_mismatch(&r, &hdr);
     }
     unsafe { &*r.ptr }
@@ -191,6 +206,12 @@ Measured: **1.2–1.7 ns** on the `production_targets` bench
 ---
 
 ## `Heap<T>` — unique owned allocation
+
+`Heap<T>` and `Shared<T>` are declared in `core.base.memory`, not in
+`core.mem` — mount them from `core.base` (`mount core.base.{Heap, Shared};`).
+They are documented here because their layout is the CBGR triple
+(`ptr`, `generation`, `epoch`) and every operation on them goes through
+`core.mem`'s allocator.
 
 ```verum
 Heap.new(value) -> Heap<T>                      // panics on OOM
@@ -212,29 +233,52 @@ h.capabilities() -> UInt16
 h.is_valid() -> Bool
 h.is_allocated() / h.is_freed() -> Bool
 h.header_generation() / h.header_epoch() / h.header_size()
+h.current_epoch() -> UInt16        // the header's epoch, not the reference's
 ```
 
 ### Implements
 
 `Deref`, `DerefMut`, `Drop`, `Clone` (deep-copy if `T: Clone`),
-`Debug`, `Eq`, `Ord`, `Hash`, `Default` (if `T: Default`).
+`Debug`, `Display` (both if `T` is), `Eq`, `Ord`, `Hash`,
+`Default` (if `T: Default`).
 
 ---
 
 ## `Shared<T>` — atomically ref-counted
 
+The counts and the unwrap are **methods on the value**, not associated
+functions taking a reference — there is no `Shared.strong_count(&s)`.
+
 ```verum
 Shared.new(value) -> Shared<T>
+Shared.try_new(value) -> Result<Shared<T>, AllocError>
+Shared.new_default() -> Shared<T>               // T: Default
+
 s.clone() -> Shared<T>              // bumps refcount
-s.downgrade() -> Weak<T>            // does not bump strong count
-Shared.strong_count(&s) -> Int
-Shared.weak_count(&s) -> Int
-Shared.try_unwrap(s) -> Result<T, Shared<T>>   // succeeds if strong_count == 1
-Shared.get_mut(&mut s) -> Maybe<&mut T>         // Some if unique
+s.downgrade() -> Weak<T>            // does not bump the strong count
+s.strong_count() -> Int
+s.weak_count() -> Int
+s.is_unique() -> Bool               // strong == 1; says NOTHING about weak
+s.get_mut() -> Maybe<&mut T>        // Some when strong == 1 AND weak == 0
+s.make_unique() -> &mut T           // clone-on-write; T: Clone
+s.try_unwrap() -> Result<T, Shared<T>>          // Ok when unique
+s.ptr_eq(&other) -> Bool            // same allocation, not same value
+s.borrow() -> &T                    s.borrow_mut() -> &mut T
+s.generation() -> UInt32            s.epoch() -> UInt16
 ```
 
-`Weak<T>.upgrade() -> Maybe<Shared<T>>` — returns `Some` if the target
-is still live. Used to break reference cycles.
+The two conditions are not the same one: after a single `downgrade()`,
+`is_unique()` is still `true` while `get_mut()` answers `None`. Measured
+2026-09-09 — `weak=0->1` with `unique=true` in the same line.
+
+`Weak<T>` carries the same triple and does not keep the value alive:
+
+```verum
+Weak.from(&shared) -> Weak<T>
+w.upgrade() -> Maybe<Shared<T>>     // Some while the target is live
+w.is_alive() -> Bool
+w.strong_count() -> Int             w.weak_count() -> Int
+```
 
 ---
 
@@ -242,12 +286,29 @@ is still live. Used to break reference cycles.
 
 ```verum
 type Allocator is protocol {
-    fn alloc(&self, layout: Layout) -> Result<*mut Byte, AllocError>;
-    fn dealloc(&self, ptr: *mut Byte, layout: Layout);
-    fn realloc(&self, ptr: *mut Byte, old: Layout, new: Layout)
-        -> Result<*mut Byte, AllocError>;
-}
+    fn alloc(&self, size: Int, align: Int)
+        -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>;
+    fn alloc_zeroed(&self, size: Int, align: Int)
+        -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>;
+    fn dealloc(&self, ptr: &unsafe Byte) -> Result<(), AllocError>;
+    fn realloc(&self, ptr: &unsafe Byte, old_size: Int, new_size: Int,
+               align: Int)
+        -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>;
+};
 ```
+
+Two things about that signature are load-bearing:
+
+* the protocol takes **`size` and `align` separately**, not a `Layout` —
+  `Layout` is a helper type used by container code, not part of this
+  protocol;
+* `alloc` returns a **triple** `(ptr, generation, capabilities)`, not a
+  bare pointer. Those are exactly the three fields a `ThinRef` needs, so
+  a caller builds a reference from the allocator's own answer instead of
+  reading the header back.
+
+`GlobalAllocator` is the default implementation; it forwards to
+`cbgr_alloc` and friends below.
 
 ### `Layout`
 
@@ -300,28 +361,48 @@ Implements `Display` (routes via `.message()`), `Debug`, and `Eq`
 ### Default allocator — `cbgr_alloc`
 
 ```verum
-unsafe fn cbgr_alloc(layout: Layout) -> *mut Byte
-unsafe fn cbgr_alloc_zeroed(layout: Layout) -> *mut Byte
-unsafe fn cbgr_dealloc(ptr: *mut Byte, layout: Layout)
-unsafe fn cbgr_realloc(ptr: *mut Byte, old: Layout, new: Layout) -> *mut Byte
+fn cbgr_alloc(size: Int, align: Int)
+    -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>
+fn cbgr_alloc_zeroed(size: Int, align: Int)
+    -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>
+fn cbgr_dealloc(ptr: &unsafe Byte) -> Result<(), AllocError>
+fn cbgr_realloc(ptr: &unsafe Byte, old_size: Int, new_size: Int, align: Int)
+    -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>
 ```
+
+`cbgr_dealloc` takes only the pointer — the size it needs is in the
+header it is about to invalidate, so there is no "free with the same
+layout you allocated with" obligation to get wrong.
 
 ### Context-scoped allocator
 
 ```verum
-set_context_allocator(alloc: &dyn Allocator)
-ctx_alloc(layout: Layout) -> Result<*mut Byte, AllocError>       using [Allocator]
-ctx_dealloc(ptr, layout)                                          using [Allocator]
+get_allocator() -> &dyn Allocator          // context slot 1, else GlobalAllocator
+set_context_allocator(allocator: &dyn Allocator)
+
+ctx_alloc(size: Int, align: Int)
+    -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>
+ctx_alloc_zeroed(size: Int, align: Int)
+    -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>
+ctx_dealloc(ptr: &unsafe Byte) -> Result<(), AllocError>
+ctx_realloc(ptr: &unsafe Byte, old_size: Int, new_size: Int, align: Int)
+    -> Result<(&unsafe Byte, UInt32, UInt16), AllocError>
 ```
 
-Using an arena or slab allocator for a task tree:
+Each `ctx_*` is a one-line forward to `get_allocator()`, which reads
+`CONTEXT_SLOT_ALLOCATOR` and falls back to `GlobalAllocator`.
+
+Using a bump allocator for a task tree — `MemStackAllocator` is the
+`Allocator` implementor for that shape (`GenerationalArena` is a handle
+table, not an `Allocator`; the four implementors are `GlobalAllocator`,
+`TieredAllocator`, `SimpleAllocator` and `MemStackAllocator`):
 
 ```verum
-let arena = GenerationalArena.new(capacity: 1 << 20);
+let mut arena = MemStackAllocator.init(1 << 20)?;
 provide Allocator = arena in {
     build_parse_tree(source).await
 };
-// Dropping the scope drops all arena memory in O(1).
+arena.reset();      // O(1) — rewinds the bump offset for the next tree
 ```
 
 ---
@@ -329,10 +410,14 @@ provide Allocator = arena in {
 ## Alignment
 
 ```verum
-fn align_up(x: Int, align: Int) -> Int
-fn align_down(x: Int, align: Int) -> Int
-fn is_aligned(x: Int, align: Int) -> Bool
+fn align_up(value: Int, align: Int) -> Int      // core.mem.allocator
+fn align_down(value: Int, align: Int) -> Int    // core.mem.allocator
+fn aligned_size(size: Int, align: Int) -> Int   // core.mem.size_class
 ```
+
+There is no `is_aligned(value, align)` — test it as
+`align_down(value, align) == value`. The pointer-level predicates live in
+`core.intrinsics.memory` (`ptr_is_aligned`, `ptr_is_aligned_to`).
 
 ---
 
@@ -383,56 +468,143 @@ const MAX_THREADS:                Int = 256;    // global cap
 
 ## Epoch manager
 
-```verum
-type EpochManager is { ... };
+One global manager, reached through the `GLOBAL_EPOCH` static rather
+than through a `global()` constructor:
 
-EpochManager.global() -> &EpochManager
-mgr.current() -> UInt32
-mgr.advance()                         // bump epoch (typically timer-driven)
-mgr.register_thread()
-mgr.retire(callback: fn())
+```verum
+static mut GLOBAL_EPOCH: EpochManager;
+
+implement EpochManager {
+    fn current_epoch(&self) -> UInt64;
+    fn increment_epoch(&mut self) -> UInt64;
+    fn wraparound_count(&self) -> Int;
+    fn register_callback(&mut self, callback: EpochCallback) -> Int;
+    fn unregister_callback(&mut self, id: Int) -> Bool;
+    fn register_revocation_callback(&mut self, cb: RevocationCallback) -> Int;
+    fn unregister_revocation_callback(&mut self, id: Int) -> Bool;
+}
+
+// Module-level wrappers over the same static — prefer these.
+fn current_epoch() -> UInt64
+fn wraparound_count() -> Int
+fn register_epoch_callback(callback: EpochCallback) -> Int
+fn unregister_epoch_callback(id: Int) -> Bool
+fn register_revocation_callback(callback: RevocationCallback) -> Int
+fn unregister_revocation_callback(id: Int) -> Bool
+
+type EpochCallback is fn(UInt64);
+type RevocationCallback is fn(&unsafe Byte, UInt32, UInt32, UInt16);
 ```
 
-Epochs are the safety net for 32-bit generation wraparound: each
-thread carries an epoch that advances periodically (~1 kHz), and a
-reference with a stale epoch fails the check even if the generation
-field collided.
+Epochs are the safety net for 32-bit generation wraparound: a reference
+with a stale epoch fails the check even if the generation field
+collided. Two details a reader has to get right:
+
+* the counter is **`UInt64`**, but only its low 16 bits reach a
+  reference — that is the `EPOCH_MAX: UInt16 = 0xFFFF` half of
+  `epoch_and_caps`;
+* it advances when something calls `increment_epoch()`, not on a timer.
+  `DEFAULT_SYNC_INTERVAL = 1000` is a count of **checks** between
+  reloads in the per-thread `EpochCache`, not milliseconds.
+
+```verum
+type EpochCache is { cached_epoch: UInt64, checks_since_sync: Int,
+                     sync_interval: Int };
+
+fn get_thread_epoch_cache() -> &mut EpochCache
+fn cached_epoch() -> UInt64
+fn invalidate_epoch_cache()
+```
 
 ---
 
 ## Capabilities
 
 ```verum
-type Capability is UInt16;           // bitflags
+// The raw bitflags, one per capability.
+const CAP_READ:      UInt16 = 1 << 0;
+const CAP_WRITE:     UInt16 = 1 << 1;
+const CAP_EXECUTE:   UInt16 = 1 << 2;
+const CAP_DELEGATE:  UInt16 = 1 << 3;
+const CAP_REVOKE:    UInt16 = 1 << 4;
+const CAP_BORROWED:  UInt16 = 1 << 5;
+const CAP_MUTABLE:   UInt16 = 1 << 6;
+const CAP_NO_ESCAPE: UInt16 = 1 << 7;
+const CAP_ALL:       UInt16 = 0x00FF;   // bits 8..15 are unassigned
 
-const CAP_READ:   UInt16 = 0x0001;
-const CAP_WRITE:  UInt16 = 0x0002;
-const CAP_ADMIN:  UInt16 = 0x0004;
-const CAP_DELEGATE: UInt16 = 0x0008;
-const CAP_REVOKE:   UInt16 = 0x0010;
-// Application-defined: bits 5..15
+// Named combinations, defined in terms of the bits above.
+const CAP_READ_ONLY:     UInt16 = CAP_READ;
+const CAP_READ_WRITE:    UInt16 = CAP_READ | CAP_WRITE;
+const CAP_OWNED:         UInt16 = CAP_READ | CAP_WRITE | CAP_DELEGATE
+                                | CAP_REVOKE | CAP_MUTABLE;
+const CAP_BORROW_SHARED: UInt16 = CAP_READ | CAP_BORROWED;
+const CAP_BORROW_MUT:    UInt16 = CAP_READ | CAP_WRITE | CAP_BORROWED
+                                | CAP_MUTABLE;
+const CAP_EXECUTABLE:    UInt16 = CAP_READ | CAP_EXECUTE;
+
+// And the type-safe wrapper over the same eight bits.
+type Capability is
+    | Read | Write | Execute | Delegate
+    | Revoke | Borrowed | Mutable | NoEscape
+    ;
+
+implement Capability {
+    fn to_bit(&self) -> UInt16;
+}
 ```
 
-Embedded in the low 16 bits of the `epoch_caps` field of references.
+Embedded in the **high** 16 bits of the `epoch_and_caps` field of
+references — `unpack_caps` is `(epoch_and_caps >> 16) as UInt16`.
 `Database with [Read]` compiles to a reference with only `CAP_READ`
 set; attempts to call a write method hit a compile-time check against
 the method's required capability set.
 
 ---
 
-## `GenerationalArena<T>`
+## `GenerationalArena`
+
+A **bump arena over bytes**, not a slotmap: it is not generic, it hands
+back offsets rather than typed handles, and there is no `ArenaHandle`,
+`insert`, `get` or `remove`. Nothing is freed individually — `reset()`
+bumps one shared generation and invalidates every outstanding reference
+into the arena at once.
 
 ```verum
-type GenerationalArena<T> is { ... };
+type GenerationalArena is {
+    buffer: Int, capacity: Int, used: Int,
+    generation: Int, alloc_count: Int, reset_count: Int,
+    config: ArenaConfig,
+};
 
-GenerationalArena.new(capacity) -> GenerationalArena<T>
-a.insert(value) -> ArenaHandle<T>
-a.get(handle) -> Maybe<&T>
-a.get_mut(handle) -> Maybe<&mut T>
-a.remove(handle) -> Maybe<T>
-a.clear()                     // O(1) mass invalidation via epoch bump
-a.len() / a.is_empty() / a.capacity()
+GenerationalArena.new(capacity: Int) -> GenerationalArena
+GenerationalArena.with_config(config: ArenaConfig) -> GenerationalArena
+
+a.alloc(size: Int) -> Int                        // address; 0 on failure
+a.alloc_aligned(size: Int, alignment: Int) -> Int
+a.reset()                     // O(1) mass invalidation via a generation bump
+a.destroy()
+
+a.generation() -> Int         a.used() -> Int        a.capacity() -> Int
+a.remaining() -> Int          a.alloc_count() -> Int a.reset_count() -> Int
+a.is_destroyed() -> Bool      a.contains_ptr(ptr: Int) -> Bool
+
+// Save and roll back a bump position within one generation.
+type ArenaSnapshot is { used: Int, alloc_count: Int, generation: Int };
+a.snapshot() -> ArenaSnapshot
+a.restore(snap: ArenaSnapshot) -> Bool     // false if reset() intervened
 ```
+
+`restore` rolls the bump pointer back **without** bumping the
+generation, so references into the rolled-back span become
+address-invalid but stay generation-valid — the CBGR check passes and
+reads bytes the arena has since re-handed out. `reset()` is the one that
+makes a stale reference detectable. `GenerationalArena` also has no
+`Drop` impl: the buffer goes back on an explicit `destroy()`, never by
+going out of scope.
+
+`GenerationalArena` does **not** implement `Allocator` — to make one the
+ambient allocator for a scope, use `MemStackAllocator` (see
+[the context-scoped allocator](#context-scoped-allocator)).
 
 Arenas are the idiomatic choice for:
 - AST trees (parser lifetimes)
@@ -596,7 +768,8 @@ Implements `Display` (routes via `.message()`), `Debug`, and `Eq`
 
 ```verum
 const DIRECT_LOOKUP_SIZE:        Int    = 129;   // wsize 0..128 (lock-free fast path)
-const PAGE_HEADER_SIZE:          Int    = 128;   // cache-line aligned
+const PAGE_HEADER_SIZE:          Int    = 128;   // declared in size_class.vr,
+                                                 // where blocks_per_page uses it
 
 const PAGE_FLAG_IN_FULL_QUEUE:   UInt16 = 0x0001;
 const PAGE_FLAG_HAS_ALIGNED:     UInt16 = 0x0002;
@@ -683,20 +856,23 @@ type CapEventKind is
 
 ```verum
 type CapEvent is {
-    seq:                UInt64,     // ring-assigned commit sequence; 0 = un-committed
-    kind:               CapEventKind,
-    target_ptr:         UInt64,     // address of the affected allocation
-    generation_before:  UInt32,
-    generation_after:   UInt32,
+    kind:                CapEventKind,
+    seq:                 UInt64,    // ring-assigned on commit; 0 = un-committed
+    ptr_id:              UInt64,    // CBGR user-pointer address, as a stable id
+    generation_before:   UInt32,
+    generation_after:    UInt32,    // equal when the event does not bump it
     capabilities_before: UInt16,
-    capabilities_after:  UInt16,
-    epoch_at_event:     UInt32,
+    capabilities_after:  UInt16,    // equal when the event does not touch caps
+    timestamp_ns:        UInt64,    // monotonic clock; 0 when unsupported
 };
 ```
 
+The last field is a **timestamp**, not an epoch — the ring records when a
+transition happened, and the epoch is not part of the event.
+
 | | |
 |---|---|
-| `CapEvent.new(kind, target_ptr, gen_before, gen_after, caps_before, caps_after, epoch) -> CapEvent` | returns seq=0 |
+| `CapEvent.new(kind, ptr_id, gen_before, gen_after, caps_before, caps_after, timestamp_ns) -> CapEvent` | returns seq=0 |
 | `event.bumped_generation() -> Bool` | true for Revoke + GenBump |
 
 
@@ -717,12 +893,23 @@ disable()
 count() -> UInt64                                // total commits since enable
 recent(n: Int) -> List<CapEvent>                 // bounded by min(n, ring fill)
 
-record_revoke(target_ptr: UInt64, gen_before, gen_after, caps_before, caps_after, epoch)
-record_attenuate(target_ptr, gen_before, gen_after, caps_before, caps_after, epoch)
-record_ref_incr(target_ptr, ..., epoch)
-record_ref_decr(target_ptr, ..., epoch)
-record_gen_bump(target_ptr, ..., epoch)
-record_epoch_advance(target_ptr, ..., epoch)
+// Each writer takes only the fields its own kind can change, and each
+// returns the commit sequence (0 when the ring is disabled).
+record_revoke(ptr_id: UInt64, gen_before: UInt32, gen_after: UInt32,
+              caps: UInt16, timestamp_ns: UInt64) -> UInt64
+record_attenuate(ptr_id: UInt64, generation: UInt32,
+                 caps_before: UInt16, caps_after: UInt16,
+                 timestamp_ns: UInt64) -> UInt64
+record_ref_incr(ptr_id: UInt64, generation: UInt32, caps: UInt16,
+                timestamp_ns: UInt64) -> UInt64
+record_ref_decr(ptr_id: UInt64, generation: UInt32, caps: UInt16,
+                timestamp_ns: UInt64) -> UInt64
+record_gen_bump(ptr_id: UInt64, gen_before: UInt32, gen_after: UInt32,
+                caps: UInt16, timestamp_ns: UInt64) -> UInt64
+record_epoch_advance(epoch_before: UInt16, epoch_after: UInt16,
+                     timestamp_ns: UInt64) -> UInt64   // global; ptr_id = 0
+
+commit(event: CapEvent) -> UInt64                // the writers' shared tail
 ```
 
 When the ring is disabled, every `record_*` writer is a short-circuit
@@ -741,37 +928,41 @@ and future debugger integrations.
 
 ```verum
 type MemHeaderView is {
-    generation: UInt32,
-    epoch:      UInt32,
-    caps:       UInt16,
-    size:       UInt32,
-    align:      UInt32,
-    type_id:    UInt32,
-    flags:      UInt32,
-    ref_count:  UInt32,
+    generation:   UInt32,
+    epoch:        UInt16,   // low 16 bits of the header's epoch_and_caps
+    capabilities: UInt16,   // high 16 bits of the same word
+    size:         UInt32,
+    alignment:    UInt32,
+    type_id:      UInt32,
+    flags:        UInt32,
+    ref_count:    UInt32,
 };
 
-MemHeaderView.from_header(h: &AllocationHeader) -> MemHeaderView
+MemHeaderView.from_header(header: &AllocationHeader) -> MemHeaderView
 ```
 
 ### `CallFrame` — stack-trace entry
 
 ```verum
 type CallFrame is {
-    function:            Text,
-    file:                Text,
-    line:                UInt32,
-    column:              UInt32,
-    instruction_pointer: UInt64,
+    function:            Text,   // empty when symbolication failed
+    file:                Text,   // empty when the source map missed
+    line:                Int,    // 1-indexed; 0 = unknown
+    column:              Int,    // 1-indexed; 0 = unknown
+    instruction_pointer: UInt64, // 0 is the "no frame" sentinel
 };
+
+implement CallFrame {
+    fn from_ip(ip: UInt64) -> CallFrame;   // unsymbolicated frame
+}
 ```
 
 ### Functions
 
 ```verum
 live_allocations() -> List<MemHeaderView>
-live_allocation_count() -> UInt64
-current_call_stack(skip: UInt32) -> List<CallFrame>
+live_allocation_count() -> Int
+current_call_stack(skip: Int) -> List<CallFrame>
 ```
 
 The producer-side wiring (writing `MemHeaderView` snapshots from the
@@ -783,16 +974,32 @@ debugger — those are tested separately.
 
 ## Raw memory operations
 
+There are two families, and they are not interchangeable.
+
+`core.intrinsics.memory` — reference-taking, lowered to the LLVM
+intrinsic of the same name:
+
 ```verum
-unsafe fn memcpy(dst: *mut Byte, src: *const Byte, n: Int)
-unsafe fn memmove(dst: *mut Byte, src: *const Byte, n: Int)   // overlap-safe
-unsafe fn memset(dst: *mut Byte, byte: Byte, n: Int)
-unsafe fn memcmp(a: *const Byte, b: *const Byte, n: Int) -> Int
-unsafe fn strlen(ptr: *const Byte) -> Int                      // NUL-terminated
-unsafe fn strcmp(a: *const Byte, b: *const Byte) -> Int
+fn memcpy(dst: &mut Byte, src: &Byte, count: USize)
+fn memmove(dst: &mut Byte, src: &Byte, count: USize)   // overlap-safe
+fn memset(dst: &mut Byte, val: Byte, count: USize)
+fn memcmp(a: &Byte, b: &Byte, count: USize) -> Int
 ```
 
-These bypass CBGR. Use only in allocator implementations, FFI
+`core.intrinsics.runtime.mem_raw` — **address**-taking, with an
+interpreter fallback written in Verum, for code that holds a raw
+address rather than a reference:
+
+```verum
+fn memcpy_addr(dst: Int, src: Int, n: Int) -> Int
+fn memmove_addr(dst: Int, src: Int, n: Int) -> Int      // overlap-safe
+fn memset_addr(dst: Int, value: Int, n: Int) -> Int
+fn memcmp_addr(a: Int, b: Int, n: Int) -> Int
+fn strlen(s: Int) -> Int                                // NUL-terminated
+fn strcmp(a: Int, b: Int) -> Int
+```
+
+Both bypass CBGR. Use only in allocator implementations, FFI
 boundaries, or when you can prove safety by other means.
 
 ---
@@ -804,29 +1011,24 @@ const GEN_INITIAL:     UInt32 = 1;
 const GEN_MAX:         UInt32 = 0xFFFF_FFFE;
 const GEN_UNALLOCATED: UInt32 = 0;
 
-const EPOCH_INITIAL:   UInt32 = 1;
-const EPOCH_INTERVAL_MS: Int = 1;             // advance 1000×/s
+const EPOCH_MAX:       UInt16 = 0xFFFF;       // core.mem.epoch
+const DEFAULT_SYNC_INTERVAL: Int = 1000;      // epoch-cache resync period
 
-const SSO_CAPACITY:    Int = 23;              // Text inline capacity
-const PAGE_SIZE:       Int = 4096;            // architecture-dependent
+const SSO_CAPACITY:    Int = 23;              // core.text — inline capacity
+const PAGE_SIZE:       Int = 65536;           // core.mem.allocator — 64 KiB,
+                                              // i.e. 16 OS pages of 4 KiB
 ```
+
+`PAGE_SIZE` here is the **allocator's** page, not the OS page; the 4096-byte
+one is `core.sys.common.PAGE_SIZE` (a `USize`).
 
 ---
 
 ## Errors
 
-```verum
-type UseAfterFreeError is {
-    ptr: *const Byte,
-    gen_expected: UInt32,
-    gen_actual:   UInt32,
-    epoch_expected: UInt32,
-    epoch_actual:   UInt32,
-};
-
-type RevocationError is { ptr: *const Byte, revoker: Text };
-type AllocError      is OutOfMemory | InvalidLayout | Refused;
-```
+The three error types are declared once each, above: `UseAfterFreeError`
+and `RevocationError` under [CBGR error types](#cbgr-error-types),
+`AllocError` under [the allocator protocol](#allocerror).
 
 On a CBGR violation, the runtime:
 1. Constructs a `UseAfterFreeError` with full diagnostic context.
@@ -837,15 +1039,31 @@ On a CBGR violation, the runtime:
 
 ## CBGR execution tiers
 
-```verum
-type ExecutionMode is Interpreter | Aot;
+`core.mem`'s own selector is `CbgrTier` — four variants, not two, and
+there is no `ExecutionMode` or `current_mode()`:
 
-fn current_mode() -> ExecutionMode
-fn is_interpreted() -> Bool
+```verum
+type CbgrTier is
+    | Interpreter    // full validation
+    | BaselineJit
+    | OptimizingJit
+    | Aot            // minimal validation
+    ;
+
+fn get_execution_tier() -> CbgrTier
+fn set_execution_tier(tier: CbgrTier)
 ```
 
-Execution mode affects how the CBGR check is produced, not whether
-it runs:
+The runtime probes live in `core.intrinsics.runtime.tier`:
+
+```verum
+fn is_interpreted() -> Bool    // true only under the VBC interpreter
+fn get_tier() -> UInt8         // 0 = VBC, 1 = JIT baseline,
+                               // 2 = JIT optimized, 3 = AOT
+```
+
+Under AOT both are compile-time constants. The tier affects how the CBGR
+check is produced, not whether it runs:
 
 - **Interpreter**: software check every deref, via the VBC
   `Deref` / `DerefMut` opcodes — the safe-by-default path, because
@@ -857,8 +1075,11 @@ it runs:
   direct load (0 ns); tier-2 `&unsafe T` references compile to a
   direct load with no check.
 
-There is no JIT tier in between; a Verum program runs either in
-the interpreter or as AOT-compiled native code.
+There is no JIT tier in between; a Verum program runs either in the
+interpreter or as AOT-compiled native code. `CbgrTier.BaselineJit`,
+`CbgrTier.OptimizingJit` and the `1` / `2` of `get_tier` are reserved
+names that nothing selects or returns today — treat a non-zero tier as
+"compiled", not as "JIT-compiled".
 
 ---
 
