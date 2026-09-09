@@ -46,10 +46,10 @@ Block.new() -> Block
 ```verum
 Paragraph.new() -> Paragraph
     .text(lines: List<Line>) -> Self
-    .wrap(w: Wrap) -> Self           // NoWrap | Char | Word
+    .wrap(w: Wrap) -> Self           // NoWrap | WordWrap | CharWrap
     .alignment(a: Alignment) -> Self
     .block(b: Block) -> Self
-    .scroll(offset: Int) -> Self
+    .scroll(offset: (Int, Int)) -> Self   // (x, y), not a single Int
 ```
 
 ## `SelectableList`
@@ -75,14 +75,29 @@ ListState.with_selected(idx: Int) -> ListState
 
 ## `Table`
 
+The column widths are a CONSTRUCTOR argument — there is no
+`.widths(…)` builder — and the row type is `TableRow`, whose `new` takes
+the cell TEXTS. `TableCell` is the styled-cell type.
+
 ```verum
-Table.new(rows: List<Row>) -> Self
-    .header(row: Row) -> Self
-    .widths(cs: &List<Constraint>) -> Self
+Table.new(rows: List<TableRow>, widths: List<LayoutConstraint>) -> Self
+    .header(row: TableRow) -> Self
+    .footer(row: TableRow) -> Self
     .block(b: Block) -> Self
+    .style(s: Style) -> Self
     .highlight_style(s: Style) -> Self
+    .highlight_symbol(sym: Text) -> Self
     .highlight_spacing(sp: HighlightSpacing) -> Self
     .column_spacing(n: Int) -> Self
+
+TableRow.new(cells: List<Text>) -> TableRow
+    .styled(cells: List<Text>, style: Style) -> TableRow   // constructor
+    .height(h: Int) -> Self
+    .style(s: Style) -> Self
+    .bottom_margin(m: Int) -> Self
+
+TableCell.raw(text: Text) / .styled(text: Text, style: Style)
+         / .from_line(line: Line)
 ```
 
 ## `TextInput`
@@ -240,9 +255,28 @@ SplitState.fixed(n: Int)   -> SplitState
 
 ## Other widgets
 
-The following widgets are documented inline in the [widget
-catalogue](../widgets/overview.md); their API surface follows the same
-`Builder` / `StatefulWidget` conventions:
+The following are documented inline in the [widget
+catalogue](../widgets/overview.md). They implement `Widget` or
+`StatefulWidget`, but their CONSTRUCTORS do not follow one convention,
+and assuming a `.new()` on each is where this page used to send readers
+wrong:
 
-`Gauge`, `Tabs`, `Scrollbar`, `Canvas`, `Sparkline`, `BarChart`, `Tree`,
-`Menu`, `Dialog`, `Spinner`, `Notification`.
+```verum
+TermGauge.new()                       // then .ratio(f) or .percent(n)
+Tabs.new(titles: List<Text>)
+Scrollbar.vertical() / .horizontal()  // orientation picks the ctor;
+                                      // there is no Scrollbar.new
+Canvas.new()                          // .x_bounds(min, max) takes TWO
+                                      // Floats; .paint takes a Shape
+Sparkline.new(data: List<Float>) / .empty()
+BarChart.new(groups: List<BarGroup>) / .empty()
+Tree.new(items: List<TreeItem<T>>)
+Menu.new(items: List<MenuItem>)
+Dialog.new(body: Text)                // the body is a ctor argument
+DialogButton.new(label) / .styled(label, style, focused_style)
+Spinner.new(frames: SpinnerFrames)    // or the shorthands
+Spinner.dots() / .line() / .moon() / .earth() / .arrows() / .blocks()
+Notification.info(msg) / .warning(msg) / .error(msg) / .success(msg)
+                                      // built from the LEVEL; there is
+                                      // no Notification.new
+```
