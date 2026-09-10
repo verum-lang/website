@@ -479,9 +479,22 @@ sandbox automatically.
 
 `@version_stamp`, `@project_git_revision` and `@project_build_time_ms`
 are implemented in the compiler's builtin registry, but no `@`-spelling
-reaches them: written as shown they warn `E0410` and evaluate to `Unit`
-(the measured output is in the note at the top of this page). Treat the
-code blocks below as the intended surface. Measured 2026-09-10.
+reaches them: written as shown they warn `E0410` and evaluate to `Unit`.
+The measured output is in the note at the top of this page; the two
+halves of WHY are one grep each, re-measured 2026-09-10:
+
+```
+grep -rn '"version_stamp"\|"project_git_revision"\|"project_build_time_ms"' crates/ --include='*.rs'
+# three hits, all in verum_compiler/src/meta/builtins/project_info.rs
+#   — the implementations exist
+
+grep -c 'version_stamp\|project_git_revision\|project_build_time_ms' crates/verum_fast_parser/src/expr.rs
+# 0 — and KNOWN_META_FUNCTIONS in that file is the list the PARSER
+#     consults, so no `@`-spelling can reach the three implementations
+```
+
+Two registries, and a name in one but not the other is exactly this
+failure. Treat the code blocks below as the intended surface.
 
 :::
 

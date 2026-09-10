@@ -159,8 +159,29 @@ decided by different rules for different halves of the type: the id by
 the last claim, the field layout by the first registration. A module
 could receive its own constructor emitting another module's field count.
 
-The stdlib carries 132 colliding type names across 280 declarations
-today, so this is the common case rather than a corner. A collision
+The stdlib carries **134 colliding type names across 285 definitions**
+(re-measured 2026-09-10; it read 132 across 280 four days earlier, which
+is the drift you should expect from a number like this):
+
+```
+python3 -c "
+import re,pathlib,collections
+D=re.compile(r'^\s*(?:public\s+)?type\s+(?:(?:affine|linear|unique|shared)\s+)*([A-Z]\w*)\s*(?:<[^>]*>)?\s+is\b',re.M)
+n=collections.Counter(m.group(1) for f in pathlib.Path('core').rglob('*.vr') for m in D.finditer(f.read_text(errors='replace')))
+d={k:v for k,v in n.items() if v>1}
+print(len(d),'names,',sum(d.values()),'definitions')
+"
+```
+
+Three things in that pattern are load-bearing, and each was a wrong
+number before it went in. `type affine SqliteTxScope` puts a MODIFIER
+between the keyword and the name, so a pattern that takes the next word
+counts `affine` 41 times. Requiring `is` excludes `type Item;` — an
+associated type inside a protocol, not a definition — which otherwise
+tops the list at 326. And scoping to a capitalised initial keeps
+lowercase modifiers out entirely.
+
+So this is the common case rather than a corner. A collision
 whose two declarations share no field name fails loudly at the emission
 site — `FIELD-GUESS-HARD-1` refuses to guess an offset. A collision that
 shares a field name is the silent subset, because the name *is* present
