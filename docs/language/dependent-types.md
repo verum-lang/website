@@ -47,8 +47,8 @@ public type Wrapped is { v: Int };
 public fn wrap(x: Int) -> Wrapped { Wrapped { v: x } }
 
 fn main() { let x: Int = wrap(7); }
-//                       ^ error<E400>: Type mismatch: expected 'Int',
-//                                      found 'Wrapped'
+// error<E400>: Type mismatch: expected 'Int', found 'Wrapped'
+//   — this block is a counter-example; the refusal IS the point.
 ```
 
 The refusal goes missing specifically for a type declared through
