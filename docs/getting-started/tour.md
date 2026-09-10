@@ -214,18 +214,24 @@ error<E400>: Type mismatch: expected '@builtin_path', found 'Unit'
 
 `core/math/hott.vr` declares the type AND its constructor through
 compile-time meta-functions — `type I is @builtin_interval;`, `type
-HottPath<A>(a: A, b: A) is @builtin_path;`, `fn refl<A>(x: A) { @builtin_refl(x) }`
-— and those names have no implementation in the compiler, so each one
-warns `E0410` and evaluates to `Unit`.
+HottPath<A>(a: A, b: A) is @builtin_path;`, `fn refl<A>(x: A) { @builtin_refl(x) }`.
 
-**Which half works.** The sentence above this box is accurate: the
-verification layer does reason about these types —
-`verum_smt.cubical_tactic` exists and the proof search calls into it. It
-is the EXECUTION layer that has no primitives. Σ-types, Π-types, `Vec`
-and `replicate` in the same block are unaffected and run.
+**The gap is in the type checker, not in the runtime.** Code generation
+already binds `@builtin_refl` / `@builtin_transport` / `@builtin_sym` /
+`@builtin_trans` and eight more to `CubicalExtended` VBC sub-ops, and the
+interpreter implements twelve of them (`PathRefl`, `PathApp`,
+`Transport`, `Hcomp`, the interval operations…). What no layer knows is
+their TYPE: inference has no arm for these names, so each one becomes
+`Unit`, and `Unit` will not unify with the declared `HottPath` — the
+pipeline stops before code generation is ever reached. The verification
+side is present too: `verum_smt.cubical_tactic` exists and the proof
+search calls into it.
 
-Measured 2026-09-10. This box stops being true as soon as any
-`@builtin_*` cubical primitive is implemented.
+Σ-types, Π-types, `Vec` and `replicate` in the same block are unaffected
+and run.
+
+Measured 2026-09-10. This box stops being true as soon as the inference
+match learns these names.
 
 :::
 
