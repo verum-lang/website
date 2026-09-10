@@ -490,8 +490,24 @@ public type ThreadStackFrame is {
 public type StackTrace is { frames: List<ThreadStackFrame> };
 ```
 
-`StackTrace` records no thread id — `StackTrace.capture()` walks the
-calling thread's own frames, up to 64 of them.
+`StackTrace` records no thread id — `StackTrace.capture()` is written to
+walk the calling thread's own frames, up to 64 of them.
+
+:::caution `capture()` does not walk anything yet
+
+Measured 2026-09-10. The walk starts from `@frame_address(0)`, and type
+inference has no arm for that name: it types as `Unit`, so the frame
+pointer the loop tests and advances is not a pointer. The function
+compiles and returns a `StackTrace`; what it cannot do is fill one.
+
+The gap is the same shape as the cubical `@builtin_*` family described
+on **[verification/cubical-hott](/docs/verification/cubical-hott)** — a
+name the compiler parses, does not type, and therefore silently reduces
+to `Unit`. Nothing about `StackTrace`'s own shape is affected: the
+record, its fields and `ThreadStackFrame` are all real.
+
+This box stops being true when inference learns `@frame_address`.
+:::
 
 ## Thread pool — `runtime.pool`
 
