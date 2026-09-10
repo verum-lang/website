@@ -16,7 +16,8 @@ public type Rect is { x: Int, y: Int, width: Int, height: Int };
 
 Rect.new(x, y, w, h) -> Rect
     fn area(&self)   -> Int           // width * height
-    fn left(&self)   -> Int           fn top(&self)    -> Int
+    fn left(&self)   -> Int           // x
+    fn top(&self)    -> Int           // y
     fn right(&self)  -> Int           // x + width
     fn bottom(&self) -> Int           // y + height
     fn is_empty(&self) -> Bool
