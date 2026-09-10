@@ -103,7 +103,7 @@ match s { ... }
 | `E102` | wrong number of arguments to a function or method | yes |
 | `E103` | field not found on type | yes |
 | `E104` | duplicate definition | **no** |
-| `E105` | ambiguous name | yes |
+| `E105` | ambiguous method call — the name could refer to several protocols | yes |
 | `E106` | unresolved type placeholder | yes |
 
 `E104` has no emit site — a redeclaration is reported by the type codes.
