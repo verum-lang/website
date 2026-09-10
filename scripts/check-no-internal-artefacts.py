@@ -93,8 +93,22 @@ CLASSES = {
         # + 6 integration + 2 regression tests" — past a green gate. A
         # suite-size number drifts on every commit whichever noun it
         # is attached to.
+        #
+        # The FOURTH, found 2026-09-10: `docs/language/dependent-types.md`
+        # said "1 506 / 1 507 conformance checks pass". A ratio, like the
+        # second spelling, but the second one insists the word after it be
+        # `green` or `passing` — this one puts a NOUN there and the verb
+        # two words later. Same claim, same drift, and the gate had been
+        # green over it since the page was written.
+        #
+        # So the ratio alternative no longer names the noun. It is
+        # anchored on the RATIO, which is what keeps `all 6 tests passed`
+        # (a tutorial's own expected output, legal and pinned below)
+        # out: that sentence has no ratio in it.
         r"\b\d[\d\s,]*\s+(?:lib tests|full suite)|\b\d+\s*/\s*\d+\s+(?:green|passing)"
         r"|\b\d+\s+(?:unit|property|integration|regression)\s+tests?\b"
+        r"|\b\d[\d\s,]*\s*/\s*\d[\d\s,]*\s+\w+(?:\s+\w+)?"
+        r"\s+(?:pass(?:es|ed|ing)?|green|fail(?:s|ed|ing)?)\b"
     ),
     # NARROWER THAN THE RULE'S WORDING, AND DELIBERATELY SO.
     #
@@ -117,6 +131,34 @@ CLASSES = {
     # exception added, and the exception is what weakens it.
     "source LOC count": re.compile(r"\d[\d\s,]*\s*(?:K|k)?\s*lines of (?:Rust|code)"),
 }
+
+# THE RULE PERMITS THESE, and a pattern narrow enough to miss them would
+# also miss real ones written the same way — so they are a ROSTER, keyed
+# on (page, matched text), each carrying its reason.  `check_exempt_roster`
+# below fails when an entry stops appearing, so a page that drops one
+# cannot leave a silent permission behind.
+EXEMPT: dict[tuple[str, str], str] = {
+    ("roadmap.md", "1506 / 1507 checks pass"):
+        "the sentences around it RETRACT the number and explain why it was "
+        "removed — quoting a withdrawn claim is the page obeying the rule, "
+        "not breaking it",
+    ("architecture-types/audit-protocol.md", "14 / 14 gates green"):
+        "inside a fenced block showing the audit tool's own output; the "
+        "same legal class as a tutorial's expected output, which the "
+        "self-test already pins",
+}
+
+
+def check_exempt_roster(docs: Path) -> list[str]:
+    """Every exemption must still have something to exempt."""
+    stale = []
+    for (rel, text), _reason in EXEMPT.items():
+        f = docs / rel
+        if not f.is_file() or text not in f.read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            stale.append(f"{rel}: {text!r}")
+    return stale
 
 HASH_CANDIDATE = re.compile(r"`([0-9a-f]{7,40})`")
 
@@ -253,6 +295,10 @@ SELFTEST = [
      "run what the page told them to build; removing it breaks the page"),
     ("test count", "60/60 green under --interp", "1.5/2 of the way",
      "not a pass count"),
+    ("test count", "1 506 / 1 507 conformance checks pass",
+     "a 16 / 9 aspect ratio",
+     "a ratio with no pass verb after it — the alternative is anchored "
+     "on ratio-plus-verdict, not on any two numbers with a slash"),
     ("source LOC count", "5 000 lines of Rust", "a 50 K-LOC project",
      "a performance characteristic, which CLAUDE.md keeps under its own "
      "heading: budgets describing user-facing behaviour stay"),
@@ -358,6 +404,8 @@ def main(argv: list[str]) -> int:
             i = idx + 1
             for name, rx in CLASSES.items():
                 for m in rx.finditer(line):
+                    if (rel, m.group(0)) in EXEMPT:
+                        continue
                     found[name] += 1
                     rows.append((rel, i, name, m.group(0)))
             for m in CRATE_CITATION.finditer(line):
@@ -396,6 +444,17 @@ def main(argv: list[str]) -> int:
 
     if report:
         return 0
+
+    stale = check_exempt_roster(DOCS)
+    if stale:
+        print(f"check-no-internal-artefacts: {len(stale)} exemption(s) name text "
+              "the page no longer carries:")
+        for s in stale:
+            print(f"    {s}")
+        print("  Delete the row from EXEMPT — an exemption with nothing to")
+        print("  exempt is a standing permission nobody can see being used.")
+        return 1
+
     if total:
         print(f"check-no-internal-artefacts: {total} internal artefact(s) in public docs.")
         print("Baseline is ZERO. See CLAUDE.md for what to write instead.")
@@ -407,7 +466,8 @@ def main(argv: list[str]) -> int:
     # this printed a clean zero. The number was right; what a reader
     # took from it was not, and the repair belongs in the OUTPUT rather
     # than in the pattern, because the form is not one the rule bans.
-    print("check-no-internal-artefacts: OK (baseline 0)")
+    print(f"check-no-internal-artefacts: OK (baseline 0, {len(EXEMPT)} "
+          "exemption(s), roster exact)")
     print("  checked: commit hashes (resolved against the verum repo),")
     print("           tracker numbers, FV identifiers, test counts, LOC counts.")
     print("  NOT checked: anything the five banned classes in CLAUDE.md do")
