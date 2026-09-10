@@ -206,8 +206,8 @@ public type JsonExtractorConfig is {
 
 implement JsonExtractorConfig {
     public fn default() -> JsonExtractorConfig { ... }
-    public fn with_max_body_bytes(self, n: Int) -> JsonExtractorConfig { ... }
-    public fn relaxed_content_type(self) -> JsonExtractorConfig { ... }
+    public fn with_max_body_bytes(mut self, n: Int) -> JsonExtractorConfig { ... }
+    public fn relaxed_content_type(mut self) -> JsonExtractorConfig { ... }
 }
 ```
 

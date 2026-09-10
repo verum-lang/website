@@ -130,8 +130,8 @@ implement Database {
     public fn begin_tx(&mut self)           -> Result<SqliteTransaction, SqliteApiDbError>;
     public fn begin_tx_immediate(&mut self) -> Result<SqliteTransaction, SqliteApiDbError>;
     public fn begin_tx_exclusive(&mut self) -> Result<SqliteTransaction, SqliteApiDbError>;
-    public fn commit_tx(&mut self, tx: Transaction)   -> Result<(), SqliteApiDbError>;
-    public fn rollback_tx(&mut self, tx: Transaction) -> Result<(), SqliteApiDbError>;
+    public fn commit_tx(&mut self, tx: SqliteTransaction)   -> Result<(), SqliteApiDbError>;
+    public fn rollback_tx(&mut self, tx: SqliteTransaction) -> Result<(), SqliteApiDbError>;
     public fn with_transaction<R>(
         &mut self,
         body: fn(&mut Database) -> Result<R, DbError>,
@@ -355,7 +355,7 @@ talk to this surface uniformly.
 ```verum
 public type VfsProtocol is protocol {
     fn open(&self, path: &Text, flags: OpenFlags) -> Result<SqliteFile, VfsError>;
-    fn delete(&self, path: &Text) -> Result<(), VfsError>;
+    fn delete(&self, path: &Text, sync_dir: Bool) -> Result<(), VfsError>;
     fn access(&self, path: &Text, kind: AccessKind) -> Result<Bool, VfsError>;
     fn full_pathname(&self, path: &Text) -> Result<Text, VfsError>;
     fn randomness(&self, buf: &mut [Byte]) -> Result<(), VfsError>;

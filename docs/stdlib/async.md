@@ -260,7 +260,7 @@ type FutureExt is protocol extends Future {
         where F: fn(Self.Output) -> U;
     fn and_then<U, F, Fut2>(self, f: F) -> AndThenFuture<Self, F, Fut2>
         where F: fn(Self.Output) -> Fut2, Fut2: Future<Output = U>;
-    fn block(self) -> Self.Output;              // block current thread
+    fn block(mut self) -> Self.Output;              // block current thread
 }
 ```
 

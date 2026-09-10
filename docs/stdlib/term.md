@@ -364,8 +364,7 @@ type StatefulWidget is protocol {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self.State);
 }
 type Styled is protocol {
-    fn style(&self) -> &Style;
-    fn with_style(self, style: Style) -> Self;
+    fn style(self, style: Style) -> Self;
 }
 ```
 

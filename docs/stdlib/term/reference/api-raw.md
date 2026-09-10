@@ -92,7 +92,7 @@ public type EscapeWriter is protocol {
     fn write_all(&mut self, data: &[Byte]) -> IoResult<()>;
     fn write_csi(&mut self, params: &[Int], final_byte: Byte) -> IoResult<()>;
     fn write_osc(&mut self, code: Int, payload: &Text) -> IoResult<()>;
-    fn write_dcs(&mut self, body: &[Byte]) -> IoResult<()>;
+    fn write_dcs(&mut self, data: &Text) -> IoResult<()>;
     fn write_ss3(&mut self, code: Byte) -> IoResult<()>;
     fn flush(&mut self) -> IoResult<()>;
 

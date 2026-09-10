@@ -168,8 +168,8 @@ implement RuntimeBuilder {
     public fn new() -> Self;
     public fn worker_threads(self, n: Int) -> Self;
     public fn thread_stack_size(self, bytes: Int) -> Self;
-    public fn enable_io(self, on: Bool) -> Self;
-    public fn enable_time(self, on: Bool) -> Self;
+    public fn enable_io(mut self) -> RuntimeBuilder;
+    public fn enable_time(mut self) -> RuntimeBuilder;
     public fn thread_name(self, prefix: Text) -> Self;
     public fn max_blocking_threads(self, n: Int) -> Self;
     public fn build(self) -> AsyncRuntime;
