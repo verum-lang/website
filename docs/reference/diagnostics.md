@@ -130,6 +130,7 @@ followed (`pre_release` vs `prerelease`, `peer_addr` vs `peer`).
 | `E201` | circular import | yes |
 | `E202` | visibility error — the named item is not visible from this module | yes |
 | `E203` | module not found | **no** — see below |
+| `E204` | circular constant dependency | yes |
 
 :::warning Three of these four never fire
 Measured 2026-09-04: only `E201` has an emit site. `E200`, `E202` and
@@ -161,6 +162,14 @@ intent, not of a check.
 | `E312` | lifetime error |
 | `E313` | cannot move a value while it is borrowed |
 | `E314` | borrow conflict |
+| `E302` | affine value used in a loop |
+| `E303` | linear value not consumed exactly once |
+| `E304` | affine value used more than once |
+| `E305` | use of an uninitialized or partially initialized value |
+| `E306` | capability violation |
+| `E320` | stack allocation exceeds the safe limit |
+| `E321` | unbounded recursion detected |
+| `E370` | positivity violation in a recursive type |
 
 See [CBGR](../language/cbgr.md) for the three-tier reference model these
 diagnostics enforce.
@@ -181,6 +190,21 @@ own wording, because the second meaning is usually the one you will meet:
 | `E406` | type inference failure |
 | `E407` | recursive type without indirection |
 | `E408` | dependent value-argument arity mismatch |
+| `E412` | value is not a function |
+| `E413` | const generic parameter mismatch |
+| `E414` | ambiguous type: not inferable without more context |
+| `E415` | name is not a type |
+| `E416` | `?` used outside a function |
+| `E417` | cycle among type definitions |
+| `E418` | existential type escapes its scope |
+| `E419` | existential bound not satisfied |
+| `E420` | kind mismatch |
+| `E421` | type constructor arity mismatch |
+| `E422` | associated type cannot be resolved |
+| `E423` | ambiguous associated type |
+| `E424` | negative bound violated |
+| `E425` | specialization overlap |
+| `E426` | higher-kinded bound not satisfied |
 
 A code with three meanings cannot be looked up the way this page is
 meant to be used — you read the message, not the number. The overload
@@ -252,6 +276,8 @@ is an `E400`, not an `E407`.
 | `E502` | a meta function uses runtime contexts, which are not available at compile time |
 | `E503` | a pure function has side effects |
 | `E504` | `.await` used outside an async context |
+| `E505` | corecursive function is non-productive |
+| `E506` | meta argument violates its refinement |
 
 `E501` **is** a rejection of your program, and this paragraph used to say
 the opposite — that the solver had run out of budget. That was the
@@ -291,6 +317,17 @@ worth knowing if you are relying on that gate to catch this class.
 | `E600` | context not provided | yes |
 | `E601` | context conflict | **no** |
 | `E602` | context cycle | **no** |
+| `E603` | context mismatch | yes |
+| `E604` | context not allowed here | yes |
+| `E605` | undefined context | yes |
+| `E606` | context has no such method | yes |
+| `E607` | invalid sub-context | yes |
+| `E608` | excluded context used | yes |
+| `E609` | transitive negative-context violation | yes |
+| `E610` | non-context protocol in a `using` clause | yes |
+| `E611` | direct negative-context violation | yes |
+| `E612` | context alias conflict | yes |
+| `E613` | context used but not declared in the function signature | yes |
 
 `E600` means a function declared `using [Database]` was called from a scope
 with no `provide` for it. See [Context system](../language/context-system.md).
@@ -318,6 +355,9 @@ than live.
 | `E800` | unsafe FFI violation | no |
 | `E801` | ABI mismatch | no |
 | `E802` | null pointer dereference in FFI | no |
+| `E803` | invalid type for an inline-assembly const operand | yes |
+| `E804` | inline-assembly output operand is not an lvalue | yes |
+| `E808` | duplicate `provide` for one context | yes |
 | `E900` | internal compiler error | no |
 | `E901` | compiler assertion failed | no |
 | `E902` | unexpected compiler state | no |

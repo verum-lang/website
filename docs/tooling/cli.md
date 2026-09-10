@@ -578,11 +578,16 @@ verum smt-stats [--json] [--reset]     # last-session routing telemetry
 Some codes carry a worked example with causes and fixes; the rest show
 their one-line meaning and category.
 
-One caveat worth knowing: a handful of codes are printed by the compiler
-with a meaning the registry does not share — `E801` is printed for an
-undeclared context and registered as an FFI ABI mismatch, so `explain`
-answers about the second. If an explanation does not match the error
-you saw, trust the error.
+This page used to carry a caveat here: that `E801` was printed for an
+undeclared context while the registry assigned it to an FFI ABI
+mismatch, so `explain` answered about the wrong thing. **That is fixed.**
+The missing-context diagnostic emits `E613`, which the registry
+describes as "context used but not declared in the function signature",
+and `crates/verum_types/src/lib.rs` records the history at the emit site.
+
+Re-measured 2026-09-11 across the whole registry: no documented code now
+describes something the compiler never prints. If an explanation still
+does not match the error you saw, trust the error and report it.
 
 ## Crash reports
 
