@@ -48,6 +48,17 @@ is 24 bytes; `cap == 0` indicates a static / immutable string literal.
 | [`builder.vr`](#textbuilder) | `TextBuilder` — incremental string construction | **complete** |
 | [`numeric/`](#numeric-text-representations) | `Decimal`, `BigInt`, `BigDecimal`, `Rational`, `Modular` | **partial** |
 
+Status vocabulary — the same one `core-tests/` uses. Note that the rows above carry no link to a conformance folder, so unlike the other stdlib pages nothing here can be checked against the suite's own record:
+
+| Status | Meaning |
+|---|---|
+| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. A **stable** module graduates to **complete** when those land — the two are not synonyms. |
+| **stable** | Every public method is conformance-tested. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
+| **partial** | Subset of the public API is conformance-tested and stable. The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
+| **regression-only** | Module is gated by upstream stdlib / language-level defects. Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
+| **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
+| **unverified** | The conformance suite has not been run against this module, so nothing on its row is a measurement. Distinct from **undocumented**: the module IS routed into `core-tests/`, but no result has been recorded since the liveness check that began demanding one. |
+
 `Text` implements: `Clone`, `Drop`, `Eq`, `Ord`, `Hash`, `Default`,
 `Length`, `Debug`, `Display`, `AsRef<[Byte]>`, `Add`, `Add<&Text>`,
 `AddAssign<Text>`, `AddAssign<&Text>`, `From<&str>`, `From<Char>`,

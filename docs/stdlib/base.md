@@ -50,14 +50,16 @@ for the discovery contract).
 
 | Status | Meaning |
 |---|---|
+| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. A **stable** module graduates to **complete** when those land — the two are not synonyms. |
 | **stable** | Every public method is conformance-tested under `--interp` and `--aot`. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Safe to depend on in production. |
 | **partial** | Subset of the public API is conformance-tested and stable. The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
 | **regression-only** | Module is gated by upstream stdlib / language-level defects (function-id remap, archive-driven default-method dispatch, CBGR generation tracking on returned `&Text`, …). Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
 | **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
+| **unverified** | The conformance suite has not been run against this module, so nothing on this row is a measurement. Distinct from **undocumented**: the module IS routed into `core-tests/`, but no result has been recorded since the liveness check that began demanding one. |
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `maybe.vr`           | **stable** | [core-tests/base/maybe](https://github.com/verum-lang/verum/tree/main/core-tests/base/maybe) — unit, property and integration suites all green under the interpreter. `Maybe<T>` implements `Deref`, and a bare `None` resolves against the expected type rather than against whichever parent was registered first. |
+| `maybe.vr`           | **partial** | [core-tests/base/maybe](https://github.com/verum-lang/verum/tree/main/core-tests/base/maybe) — unit, property and integration suites all green under the interpreter. `Maybe<T>` implements `Deref`, and a bare `None` resolves against the expected type rather than against whichever parent was registered first. |
 | `result.vr`          | **partial** | [core-tests/base/result](https://github.com/verum-lang/verum/tree/main/core-tests/base/result) — unit, property, integration, try-block and try-protocol suites all green under the interpreter.  |
 | `ordering.vr`        | **partial** | [core-tests/base/ordering](https://github.com/verum-lang/verum/tree/main/core-tests/base/ordering) — the dispatcher inlines `Int.cmp`, `Float.cmp` (NaN compares Equal), `Bool.cmp` (false &lt; true) and `Text.cmp`. Comparisons through a reference — `xs[0].cmp(&xs[1])`, `a.cmp(&record.f)` — go through the same path as comparisons on values. `f"{x}"` routes through a user-defined `implement Display for T` when one exists. |
 | `ops.vr`             | **partial** | [core-tests/base/ops](https://github.com/verum-lang/verum/tree/main/core-tests/base/ops) — unit, property, integration and regression suites green under the interpreter, covering the whole `ControlFlow<B, C>` / `Try` / `FromResidual` / `Never` / `Drop` surface.  |

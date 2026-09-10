@@ -41,10 +41,12 @@ the truth-table over the module's public API exercised by
 
 | Status | Meaning |
 |---|---|
-| **complete** | Every public method conformance-tested under interp + AOT; algebraic laws pinned. |
+| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. A **stable** module graduates to **complete** when those land — the two are not synonyms. |
+| **stable** | Every public method is conformance-tested. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
 | **partial** | Subset conformance-tested + stable; remainder gated by upstream defects, documented per-module. |
 | **regression-only** | Tests gate on language-level defects; few/no public-API tests pass yet. |
 | **undocumented** | Snapshot from source; no runtime conformance pin yet. |
+| **unverified** | The conformance suite has not been run against this module, so nothing on this row is a measurement. Distinct from **undocumented**: the module IS routed into `core-tests/`, but no result has been recorded since the liveness check that began demanding one. |
 
 | Module | Status | Conformance suite |
 |---|---|---|
