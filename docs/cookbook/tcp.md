@@ -178,6 +178,9 @@ races `accept` against the signal:
 
 ```verum
 mount core.signal.{ctrl_c};
+//         ^ NOT DECLARED. `core/signal/mod.vr` shows `ctrl_c()` in its
+//           own doc comment and declares no such function; this block
+//           will not compile until it does.
 
 async fn echo_server_graceful(addr: &Text) -> IoResult<()>
     using [Logger]

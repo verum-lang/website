@@ -177,7 +177,8 @@ print(f"size={md.len()}");   // size=1      <- wrong, rc=0, no diagnostic
 Mount the type and the same line is correct:
 
 ```verum
-mount core.io.fs.{metadata, Path, Metadata};
+mount core.io.fs.{metadata, Metadata};
+mount core.io.path.{Path};
 print(f"size={md.len()}");   // size=10
 ```
 

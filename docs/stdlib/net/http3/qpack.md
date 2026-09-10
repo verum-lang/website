@@ -21,7 +21,7 @@ creating head-of-line blocking.
 | `qpack.integer` | Prefixed-integer codec (§4.1.1) |
 | `qpack.huffman` | Huffman encoder / decoder (RFC 7541 Appendix B) |
 | `qpack.encoder` | Field-section emitter |
-| `qpack.decoder` | Field-section parser + `HeaderField` |
+| `qpack.decoder` | Field-section parser + `QpackHeaderField` |
 | `qpack.instructions` | Encoder + decoder stream opcodes |
 | `qpack.session` | Wrapper tying encoder/decoder to their streams |
 
@@ -219,11 +219,11 @@ and [`rfc9204_qpack_huffman`](#references).
 Symmetric client + server consumption:
 
 ```verum
-mount core.net.h3.qpack.{HeaderField, encode_field_section, decode_field_section};
+mount core.net.h3.qpack.{QpackHeaderField, encode_field_section, decode_field_section};
 
-let headers: List<HeaderField> = [
-    HeaderField { name: f":status",      value: f"200" },
-    HeaderField { name: f"content-type", value: f"application/json" },
+let headers: List<QpackHeaderField> = [
+    QpackHeaderField { name: f":status",      value: f"200" },
+    QpackHeaderField { name: f"content-type", value: f"application/json" },
 ];
 let wire: List<Byte> = encode_field_section(&headers);
 // … send as a HEADERS frame payload …

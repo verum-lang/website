@@ -251,7 +251,7 @@ stateDiagram-v2
 ```
 
 ```verum
-mount core.net.http2.{StreamFsm, StreamEvent, StreamState};
+mount core.net.http2.stream.{StreamFsm, StreamEvent, StreamState};
 
 let mut fsm = StreamFsm.new(3);  // client streams are odd
 fsm.step(&StreamEvent.SendHeaders { end_stream: false })?;  // Idle → Open

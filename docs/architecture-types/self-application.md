@@ -38,7 +38,8 @@ own `@arch_module(...)` annotation:
 )
 module core.architecture.types;
 
-mount core.prelude.{Bool, Int, Maybe, List, Text};
+// `Bool`, `Int`, `Maybe`, `List` and `Text` are built in — there is
+// no `core.prelude` to mount them from, and no mount is needed.
 
 // =====================================================================
 // The eight architectural primitives — declared here, checked by ATS-V

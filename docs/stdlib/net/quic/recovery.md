@@ -99,7 +99,8 @@ re-arms. On any ACK receipt, `pto_count = 0`.
 API:
 
 ```verum
-mount core.net.quic.recovery.loss_detection.{LossDetection, SentPacketInfo};
+mount core.net.quic.recovery.loss_detection.{LossDetection};
+mount core.net.quic.recovery.pn_space.{SentPacketInfo};
 
 let mut ld = LossDetection.new();
 ld.on_packet_sent(PnSpace.Application, pn, SentPacketInfo { ... });

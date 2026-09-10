@@ -336,7 +336,7 @@ rng.shuffle(&mut xs)
 ```
 
 ```verum
-mount core.random.{Rng};
+mount core.random.deterministic.{Rng};
 mount core.collections.{List};
 
 fn main() {

@@ -252,6 +252,9 @@ true once `core.math.hott.refl` reports its declared return type.
 
 ```verum
 mount core.math.frameworks.lurie_htt.{ Site, sheafification_is_infinity_topos };
+//                                            ^ NOT DECLARED anywhere in
+//                                              core/. `Site` is real; the
+//                                              axiom name is not.
 
 /// A theorem that invokes Lurie HTT 6.2.2.7 as a trusted postulate.
 /// The dependency surfaces automatically in `verum audit --framework-axioms`.

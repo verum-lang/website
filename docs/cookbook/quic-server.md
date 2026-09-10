@@ -138,6 +138,10 @@ protocol — for most production setups this is
 // Both mounts name modules that do not exist, and the signer half has
 // no substitute at all. See the note directly below.
 mount core.security.x509.parse.{parse_cert_chain_pem};
+//    ^ NEITHER MODULE EXISTS — there is no `parse.vr` and no `sign.vr`
+//      under core/security/x509/, and neither name is declared anywhere.
+//      The table below says so too; this marker is here because a reader
+//      copies the block, not the table.
 mount core.security.x509.sign.{FileSigner};
 
 let chain = parse_cert_chain_pem(&fs.read_text("/etc/letsencrypt/live/example.com/fullchain.pem").await?)?;
