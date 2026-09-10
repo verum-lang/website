@@ -148,9 +148,21 @@ currently behaves. Two things are missing, both measured 2026-09-04:
   warning above — so `hamming()` does not typecheck;
 * `merge3` and `map_stream` are declared nowhere in `core/`, and
   `.take(10)` is not available here: the `Stream<T>` protocol on this
-  page declares `.head` and `.tail` and nothing else. (`core.async.
-  stream` does have a `take`, on a different, asynchronous `Stream` —
-  which is why the call reads as though it should work.)
+  page declares `.head` and `.tail` and nothing else. Re-measured
+  2026-09-10:
+
+  ```
+  grep -rlE '\b(merge3|map_stream)\b' core/ --include='*.vr' | wc -l   # 0
+  grep -n 'fn take' core/async/stream.vr                              # :211, :216
+  ```
+
+  The word boundaries earn their place: without them the first command
+  answers **1**, on `fn test_map_stream()` in `core/async/stream.vr` —
+  a test whose name merely contains the string.
+
+  The second command is the reason the call reads as though it should
+  work: `core.async.stream` does have a `take`, on a different,
+  asynchronous `Stream`.
 
 Read it as the shape of the definition. The `.head`/`.tail` walk in
 the section above is the part you can write today.
