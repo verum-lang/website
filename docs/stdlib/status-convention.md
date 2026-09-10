@@ -34,11 +34,23 @@ submodules — if any submodule is `regression-only`, the aggregate is at
 most `partial`.
 
 :::caution The aggregate rule cannot be evaluated today
-Measured 2026-09-03, comparing all 46 status-bearing pages against the
-589 rows of `core-tests/INVENTORY.md`:
+Measured 2026-09-03, re-measured 2026-09-10, comparing the
+status-bearing pages against the 589 rows of `core-tests/INVENTORY.md`:
 
-**247 of those rows carry `unverified`, a sixth token this table does
-not define.** It was introduced by the liveness gate to mark a row
+```
+grep -c unverified core-tests/INVENTORY.md      # 250
+```
+
+Three of those 250 are the legend and the prose around it; **247 are
+row statuses**, which the repository's own gate prints if you would
+rather not subtract by hand:
+
+```
+python3 scripts/ci/check_doc_status_matches_inventory.py
+```
+
+**So 247 of the 589 rows carry `unverified`, a sixth token this table
+does not define.** It was introduced by the liveness gate to mark a row
 whose status had never actually been asserted — the ABSENCE of a
 conformance level rather than one of the five. Taking it as "weakest"
 propagates it into every aggregate: 32 of the 46 pages would become

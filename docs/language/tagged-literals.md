@@ -24,23 +24,48 @@ that half works, and it is the half that matters for catching a `Uri`
 used where an `Int` was wanted.
 
 :::warning The content is not validated
-Measured 2026-09-03: clearly-invalid content is accepted by **every**
-tag, with a control confirming the well-formed spelling is accepted too.
+Clearly-invalid content is accepted by **every** tag. Re-measured
+2026-09-10; the whole probe is three files, and it travels with the
+claim so you can re-run it:
 
-| written | result |
-|---|---|
-| `url#"ht!tp:// not a url ??"` | accepted |
-| `ip#"999.999.999.999"` | accepted |
-| `d#"not-a-date"` | accepted |
-| `ver#"not-a-version"` | accepted |
-| `rx#"[unclosed"` | accepted |
-| `sql#"!!! not sql @@@"` | accepted |
-| `json#"{ this is not json ,,, }"` | accepted |
+```verum
+// bad.vr — every literal below is nonsense for its tag
+fn main() {
+    let a = url#"ht!tp:// not a url ??";
+    let b = ip#"999.999.999.999";
+    let c = d#"not-a-date";
+    let e = ver#"not-a-version";
+    let f = rx#"[unclosed";
+    let g = sql#"!!! not sql @@@";
+    print("done");
+}
+```
 
-The only rejection seen came from the lexer's bracket balance
-(`invalid json literal: unbalanced braces`), which is a delimiter check,
-not the tag's grammar. So a malformed literal is not a compile error
-today; plan for the failure where you consume the value.
+`verum check bad.vr` exits **0** with no diagnostic. Replacing every
+literal with a well-formed one exits 0 as well, which on its own would
+prove nothing — a checker that ignored the file would also say 0 twice.
+So the probe carries a third file that MUST fail:
+
+```verum
+// mustfail.vr — the control
+fn main() {
+    let a = url#"https://example.com/path";
+    let n: Int = a;   // error<E400>: Type mismatch: expected 'Int', found 'Uri'
+    print("done");
+}
+```
+
+```
+verum check mustfail.vr
+error<E400>: Type mismatch: expected 'Int', found 'Uri'
+# exit 101
+```
+
+That control does two jobs. It shows the checker really reads this file,
+and it shows the tag DOES give the literal a type — `Uri`, not `Text`.
+The type is assigned; only the content goes unexamined. So a malformed
+literal is not a compile error today; plan for the failure where you
+consume the value.
 :::
 
 ## Why tagged literals?

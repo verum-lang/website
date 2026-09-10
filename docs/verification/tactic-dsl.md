@@ -435,11 +435,17 @@ Tactic tests run at stage 1 (meta execution) via `verum test
 Five patterns to avoid when authoring tactics.
 
 :::caution No linter flags these today
-Measured 2026-09-03: nothing in `verum_smt` or `verum_verification`
-inspects a tactic tree for these shapes, and `W501` is in no error-code
-registry — the only place that string occurs is a doc comment in
-`crates/verum_verification/src/level.rs`, where it names the
-soft-fail-fallback warning, a different diagnostic entirely. Read the
+Measured 2026-09-03, re-measured 2026-09-10: nothing in `verum_smt` or
+`verum_verification` inspects a tactic tree for these shapes, and `W501`
+is in no error-code registry. Every occurrence of that string in the
+compiler is a doc comment in one file, and it names the
+soft-fail-fallback warning — a different diagnostic entirely:
+
+```
+grep -rn W501 crates/ --include='*.rs'
+# verum_verification/src/level.rs:181, :264, :305 — all three are ///
+```
+ Read the
 list as authorship guidance, not as something the compiler will catch
 for you.
 :::

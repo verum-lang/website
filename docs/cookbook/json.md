@@ -257,10 +257,27 @@ before it is written.
 :::caution The error surface here was wrong
 This section described a `DataError` sum with `MissingField` and
 `RefinementViolation` arms, and a `json.parse<T>` taking a type
-parameter. None of those exist — measured against
-`core/encoding/json.vr` and `core/base/data.vr`. Two DIFFERENT error
-types were being conflated, which is worth stating because the
-distinction is the useful part.
+parameter. Two DIFFERENT error types were being conflated, and the
+distinction is the useful part — one command shows both, re-measured
+2026-09-10:
+
+```
+grep -n 'type DataError' -A 6 core/base/data.vr
+grep -n 'type JsonError' -A 6 core/encoding/json.vr
+```
+
+`DataError` is real, and it belongs to the data-access layer: its arms
+are `TypeMismatch`, `KeyNotFound`, `IndexOutOfBounds`, `ParseError` and
+`InvalidCast`. Neither `MissingField` nor `RefinementViolation` is among
+them, and neither occurs anywhere in either file:
+
+```
+grep -cE 'MissingField|RefinementViolation' \
+    core/encoding/json.vr core/base/data.vr      # 0 and 0
+```
+
+The parser's own error is `JsonError`, a RECORD, with the sum living one
+level down in `JsonErrorKind`.
 :::
 
 `json.parse(source: &Text) -> Result<JsonValue, JsonError>` — it takes no
