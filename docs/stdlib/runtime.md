@@ -172,7 +172,7 @@ implement RuntimeBuilder {
     public fn enable_time(self, on: Bool) -> Self;
     public fn thread_name(self, prefix: Text) -> Self;
     public fn max_blocking_threads(self, n: Int) -> Self;
-    public fn build(self) -> Result<Runtime, BuildError>;
+    public fn build(self) -> AsyncRuntime;
 }
 ```
 

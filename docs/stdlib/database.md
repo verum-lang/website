@@ -87,7 +87,7 @@ mount core.database.sqlite.native.l7_api.{Database, DbError,
     open_memory_db, open_readwrite};
 mount core.database.sqlite.native.l6_session.{ConnectionMode};
 
-fn example() -> Result<(), DbError> {
+fn example() -> Result<(), SqliteApiDbError> {
     // Three capability levels — read-only / read-write / admin (DDL).
     let mut db: Database = open_readwrite()?;
 
@@ -121,17 +121,17 @@ statement reaches the VDBE, so no partial effect can leak.
 public type Database is { conn: Connection };
 
 implement Database {
-    public fn prepare(&self, sql: &Text) -> Result<PreparedStatement, DbError>;
-    public fn execute(&mut self, sql: &Text) -> Result<(), DbError>;
-    public fn query_first_row(&mut self, sql: &Text) -> Result<List<Register>, DbError>;
-    public fn query_all(&mut self, sql: &Text) -> Result<List<List<Register>>, DbError>;
+    public fn prepare(&self, sql: &Text) -> Result<PreparedStatement, SqliteApiDbError>;
+    public fn execute(&mut self, sql: &Text) -> Result<(), SqliteApiDbError>;
+    public fn query_first_row(&mut self, sql: &Text) -> Result<List<Register>, SqliteApiDbError>;
+    public fn query_all(&mut self, sql: &Text) -> Result<List<List<Register>>, SqliteApiDbError>;
 
     // Affine transaction handle — see Transaction section below.
-    public fn begin_tx(&mut self)           -> Result<Transaction, DbError>;
-    public fn begin_tx_immediate(&mut self) -> Result<Transaction, DbError>;
-    public fn begin_tx_exclusive(&mut self) -> Result<Transaction, DbError>;
-    public fn commit_tx(&mut self, tx: Transaction)   -> Result<(), DbError>;
-    public fn rollback_tx(&mut self, tx: Transaction) -> Result<(), DbError>;
+    public fn begin_tx(&mut self)           -> Result<SqliteTransaction, SqliteApiDbError>;
+    public fn begin_tx_immediate(&mut self) -> Result<SqliteTransaction, SqliteApiDbError>;
+    public fn begin_tx_exclusive(&mut self) -> Result<SqliteTransaction, SqliteApiDbError>;
+    public fn commit_tx(&mut self, tx: Transaction)   -> Result<(), SqliteApiDbError>;
+    public fn rollback_tx(&mut self, tx: Transaction) -> Result<(), SqliteApiDbError>;
     public fn with_transaction<R>(
         &mut self,
         body: fn(&mut Database) -> Result<R, DbError>,
@@ -360,7 +360,7 @@ public type VfsProtocol is protocol {
     fn full_pathname(&self, path: &Text) -> Result<Text, VfsError>;
     fn randomness(&self, buf: &mut [Byte]) -> Result<(), VfsError>;
     fn sleep(&self, micros: Int) -> Result<(), VfsError>;
-    fn current_time(&self) -> Result<Timestamp, VfsError>;
+    fn current_time(&self) -> Timestamp;
 };
 ```
 

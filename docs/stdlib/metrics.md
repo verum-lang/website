@@ -171,10 +171,10 @@ public type MetricFamily is { /* name, help, kind, label_names, entries */ };
 
 implement Registry {
     public fn new() -> Registry;
-    public fn counter(&self, cfg: CounterConfig) -> Shared<MetricFamily>;
-    public fn up_down_counter(&self, cfg: UpDownCounterConfig) -> Shared<MetricFamily>;
-    public fn gauge(&self, cfg: GaugeConfig) -> Shared<MetricFamily>;
-    public fn histogram(&self, cfg: HistogramConfig) -> Shared<MetricFamily>;
+    public fn counter(&self, cfg: CounterConfig) -> CounterHandle;
+    public fn up_down_counter(&self, cfg: UpDownCounterConfig) -> UpDownCounterHandle;
+    public fn gauge(&self, cfg: GaugeConfig) -> GaugeHandle;
+    public fn histogram(&self, cfg: HistogramConfig) -> HistogramHandle;
 
     public fn families(&self) -> List<Shared<MetricFamily>>;  // snapshot for export
 }

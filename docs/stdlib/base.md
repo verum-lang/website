@@ -461,7 +461,7 @@ type ErrorSource is protocol extends Describable {
 }
 type ErrorProtocol is protocol extends ErrorSource {
     fn message(&self) -> Text;
-    fn backtrace(&self) -> Maybe<&Backtrace>;
+    fn backtrace(&self) -> Maybe<Backtrace>;
 }
 type FromStr  is protocol { fn from_str(s: &Text) -> Result<Self, ParseError>; }
 type ToString is protocol { fn to_string(&self) -> Text; }
@@ -1232,7 +1232,7 @@ type Backtrace  is { frames: List<StackFrame> };
 ```verum
 type ErrorProtocol is protocol extends ErrorSource {
     fn message(&self) -> Text;
-    fn backtrace(&self) -> Maybe<&Backtrace>;
+    fn backtrace(&self) -> Maybe<Backtrace>;
 }
 ```
 

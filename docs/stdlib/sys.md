@@ -338,9 +338,14 @@ public const STDERR_FD: ValidFd = Fd(2) as ValidFd;
 
 ```verum
 type IOEngine is protocol {
-    fn submit(&self, op: CompletionOp) -> Result<SubmissionId, IoError>;
-    fn poll(&self, timeout: Maybe<Duration>) -> List<CompletionResult>;
-    fn shutdown(&self);
+    fn submit(&mut self, ops: &[(CompletionOp, UInt64)])
+        -> Result<Int{>= 0}, EngineIoError>;
+    fn submit_one(&mut self, op: CompletionOp, user_data: UInt64)
+        -> Result<(), EngineIoError>;          // default impl over `submit`
+    fn poll(&mut self, results: &mut [CompletionResult])
+        -> Result<Int{>= 0}, EngineIoError>;   // default impl over `wait`
+    fn wake(&self) -> Result<(), EngineIoError>;
+    fn flush(&mut self) -> Result<(), EngineIoError>;
 }
 
 type CompletionOp is

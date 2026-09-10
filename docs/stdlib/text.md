@@ -563,10 +563,10 @@ Where formatting writes to.
 
 ```verum
 public type Write is protocol {
-    fn write(&mut self, bytes: &[Byte]) -> Result<Int, WriteError>;
-    fn write_str(&mut self, s: &Text)   -> Result<(), WriteError>;       // default impl
-    fn write_char(&mut self, c: Char)   -> Result<(), WriteError>;       // default impl
-    fn flush(&mut self)                 -> Result<(), WriteError>;
+    fn write(&mut self, bytes: &[Byte]) -> IoResult<Int>;
+    fn write_str(&mut self, s: &Text)   -> IoResult<()>;       // default impl
+    fn write_char(&mut self, c: Char)   -> IoResult<()>;       // default impl
+    fn flush(&mut self)                 -> IoResult<()>;
 };
 ```
 

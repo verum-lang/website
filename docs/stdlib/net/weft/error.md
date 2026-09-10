@@ -200,7 +200,7 @@ A future enhancement adds `Error` as a first-class protocol:
 public type Error is protocol {
     fn message(&self) -> Text;
     fn source(&self) -> Maybe<&dyn Error>;
-    fn backtrace(&self) -> Maybe<&Backtrace>;
+    fn backtrace(&self) -> Maybe<Backtrace>;
     fn category(&self) -> ErrorCategory;
 }
 ```
