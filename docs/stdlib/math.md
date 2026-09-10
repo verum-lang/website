@@ -177,12 +177,32 @@ precision, not a wrong callee: `exp`, `expm1` and `log` land around nine
 significant digits, which is this stack's pure-Verum implementation
 rather than the platform's libm.
 
-**One thing to know before trusting a tight tolerance.** `asin(0.5)`
-answers 0.523596119295823 against a true 0.5235987755982988, and
-`acos(0.5)` answers 1.0472002074990736 against 1.0471975511965976 —
-both wrong from the sixth decimal. That is a numerical accuracy question
-and is not the defect described above; it is stated here because a
-reader arriving from the old warning deserves to know what remains.
+**What the retraction does NOT sweep away, and one of it is worse than
+the warning it replaces.**
+
+`atan` is wrong near **x = 1**, and `atan2` inherits it. The error grows
+toward the boundary from both sides and flips sign across it, so the
+function steps by about 0.07 where the true one moves by 0.001:
+
+```
+        atan(x) returns       true value            error
+0.5     0.4636492764474673    0.46364760900080615   +1.67e-6
+0.999   0.8199361855720553    0.784897913314115     +3.50e-2
+1.0     0.8209331798389601    0.7853981633974483    +3.55e-2
+1.001   0.7508591481926385    0.7858979134807815    -3.50e-2
+2.0     1.1071470503474292    1.1071487177940906    -1.67e-6
+```
+
+`atan2(1.0, 1.0)` returns that same 0.8209… instead of π/4. Two
+argument-reduction branches disagree; this is not rounding. Check any
+angle you compute near 45°.
+
+Smaller, and possibly one root with the above: `asin(0.5)` answers
+0.523596119295823 against 0.5235987755982988 and `acos(0.5)`
+1.0472002074990736 against 1.0471975511965976 — both off from the sixth
+decimal, both by the same 2.66e-6, while `asin(0.1)` and `asin(0.9)` are
+accurate to 1e-16 and 1e-10. The loss is worst in the middle of the
+range rather than uniform.
 :::
 
 ### `math.constants`
