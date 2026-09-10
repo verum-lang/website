@@ -261,17 +261,17 @@ with full diagnostic payloads.
 
 | File | Status |
 |---|---|
-| `mod.vr` / `types.vr` | **stable** — canonical primitives + re-exports |
-| `anti_patterns.vr` | **stable** — full 32-pattern roster |
-| `mtac.vr` | **stable** — full MTAC primitives + helpers |
-| `counterfactual.vr` | **stable** — full report surface |
-| `adjunction.vr` | **stable** — analyzer + refactoring chain |
-| `yoneda.vr` | **stable** — checker + observer roster |
-| `composition.vr` | **stable** — ⊗ + associativity pin |
-| `corpus.vr` | **stable** — 4 baseline invariants |
-| `phase.vr` | **stable** — orchestrator surface |
-| `parse.vr` | **stable** — parser error + roster pin |
-| `capability_ontology.vr` | **stable** — Custom-capability registry |
+| `mod.vr` / `types.vr` | **undocumented** — canonical primitives + re-exports — no conformance suite yet |
+| `anti_patterns.vr` | **unverified** — full 32-pattern roster — [core-tests/architecture/anti_patterns](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/anti_patterns) |
+| `mtac.vr` | **unverified** — full MTAC primitives + helpers — [core-tests/architecture/mtac](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/mtac) |
+| `counterfactual.vr` | **unverified** — full report surface — [core-tests/architecture/counterfactual](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/counterfactual) |
+| `adjunction.vr` | **unverified** — analyzer + refactoring chain — [core-tests/architecture/adjunction](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/adjunction) |
+| `yoneda.vr` | **unverified** — checker + observer roster — [core-tests/architecture/yoneda](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/yoneda) |
+| `composition.vr` | **regression-only** — ⊗ + associativity pin — [core-tests/architecture/composition](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/composition) |
+| `corpus.vr` | **regression-only** — 4 baseline invariants — [core-tests/architecture/corpus](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/corpus) |
+| `phase.vr` | **regression-only** — orchestrator surface — [core-tests/architecture/phase](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/phase) |
+| `parse.vr` | **regression-only** — parser error + roster pin — [core-tests/architecture/parse](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/parse) |
+| `capability_ontology.vr` | **unverified** — Custom-capability registry — [core-tests/architecture/capability_ontology](https://github.com/verum-lang/verum/tree/main/core-tests/architecture/capability_ontology) |
 
 ## Cross-side alignment
 

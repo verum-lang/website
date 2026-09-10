@@ -199,17 +199,17 @@ deployment time without re-running the SMT solver.
 
 | File | Status | Notes |
 |---|---|---|
-| `mod.vr` | **stable** | re-exports |
-| `level.vr` | **stable** | level-aware predicates |
-| `attempt.vr` | **partial** | `attempt_verify` stable; retry helpers TBD |
-| `certificate.vr` | **stable** | full save/load + content-addressing |
-| `coherence.vr` | **stable** | overlap + orphan check |
-| `kernel_v0/` | **stable** | minimal proof-checker (read-only API to user side) |
-| `kernel_soundness/` | **stable** | meta-theorem registry (all soundness proofs registered) |
-| `codegen_soundness/` | **stable** | meta-theorem registry |
-| `separation_soundness/` | **stable** | meta-theorem registry |
-| `kernel_self_soundness/` | **stable** | self-soundness proofs |
-| `proof_term_examples/` | **stable** | canonical corpus |
+| `mod.vr` | **undocumented** | re-exports — no conformance suite yet |
+| `level.vr` | **regression-only** | level-aware predicates — [core-tests/verify/level](https://github.com/verum-lang/verum/tree/main/core-tests/verify/level) |
+| `attempt.vr` | **undocumented** | `attempt_verify` stable; retry helpers TBD — no conformance suite yet |
+| `certificate.vr` | **undocumented** | full save/load + content-addressing — no conformance suite yet |
+| `coherence.vr` | **unverified** | overlap + orphan check — [core-tests/verify/coherence](https://github.com/verum-lang/verum/tree/main/core-tests/verify/coherence) |
+| `kernel_v0/` | **unverified** | minimal proof-checker (read-only API to user side) — [core-tests/verify/kernel_v0](https://github.com/verum-lang/verum/tree/main/core-tests/verify/kernel_v0) |
+| `kernel_soundness/` | **unverified** | meta-theorem registry (all soundness proofs registered) — [core-tests/verify/kernel_soundness](https://github.com/verum-lang/verum/tree/main/core-tests/verify/kernel_soundness) |
+| `codegen_soundness/` | **undocumented** | meta-theorem registry — no conformance suite yet |
+| `separation_soundness/` | **undocumented** | meta-theorem registry — no conformance suite yet |
+| `kernel_self_soundness/` | **undocumented** | self-soundness proofs — no conformance suite yet |
+| `proof_term_examples/` | **undocumented** | canonical corpus — no conformance suite yet |
 
 ## Compiler-side reference
 

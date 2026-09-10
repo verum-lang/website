@@ -225,9 +225,9 @@ and the `ObjectStore` implementation on `S3Client<C: HttpClient>` —
 
 | File | Status | Notes |
 |---|---|---|
-| `mod.vr` | **stable** | re-exports only |
-| `types.vr` | **stable** | full protocol + options model |
-| `s3/` | **partial** | sigv4 + GET / PUT / HEAD / DELETE / LIST + presign; multipart streaming on `Stream<Bytes>` source TBD |
+| `mod.vr` | **undocumented** | re-exports only — no conformance suite yet |
+| `types.vr` | **regression-only** | full protocol + options model — [core-tests/storage/types](https://github.com/verum-lang/verum/tree/main/core-tests/storage/types) |
+| `s3/` | **unverified** | sigv4 + GET / PUT / HEAD / DELETE / LIST + presign; multipart streaming on `Stream<Bytes>` source TBD — [core-tests/storage/s3](https://github.com/verum-lang/verum/tree/main/core-tests/storage/s3) |
 
 ## Adapter contract for new backends
 

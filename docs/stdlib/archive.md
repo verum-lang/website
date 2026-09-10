@@ -170,8 +170,8 @@ bidirectional adapters `tar_entry_to_universal(&TarEntry)` and
 
 | File | Status | Notes |
 |---|---|---|
-| `mod.vr` | **stable** | universal entry model + Archive protocol + dispatch |
-| `tar.vr` | **partial** | USTAR + PAX header read/write fully implemented; xattr / sparse-file PAX extensions deferred |
+| `mod.vr` | **undocumented** | universal entry model + Archive protocol + dispatch — no conformance suite yet |
+| `tar.vr` | **regression-only** | USTAR + PAX header read/write fully implemented; xattr / sparse-file PAX extensions deferred — [core-tests/archive/tar](https://github.com/verum-lang/verum/tree/main/core-tests/archive/tar) |
 
 `zip.vr`, `ar.vr`, `cpio.vr` adapters are tracked as future work.
 The `Archive` protocol's `UnsupportedAlgorithm` error variant

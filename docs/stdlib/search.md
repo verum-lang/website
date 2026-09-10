@@ -218,9 +218,9 @@ arm naming any of the four will not compile.
 
 | File | Status | Notes |
 |---|---|---|
-| `mod.vr` | **stable** | re-exports only |
-| `types.vr` | **stable** | full protocol + model |
-| `meilisearch/` | **partial** | MeiliSearch v1 REST adapter; basic CRUD + search; per-field facet config + custom-ranking-rules TBD |
+| `mod.vr` | **undocumented** | re-exports only — no conformance suite yet |
+| `types.vr` | **unverified** | full protocol + model — [core-tests/search/types](https://github.com/verum-lang/verum/tree/main/core-tests/search/types) |
+| `meilisearch/` | **undocumented** | MeiliSearch v1 REST adapter; basic CRUD + search; per-field facet config + custom-ranking-rules TBD — no conformance suite yet |
 
 ## Adapter contract for new backends
 

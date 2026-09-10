@@ -183,12 +183,12 @@ env map.
 
 | File | Status |
 |---|---|
-| `mod.vr` | **stable** — full load/save surface |
-| `value.vr` | **stable** — 8-variant ADT |
-| `format.vr` | **stable** — protocol + registry |
-| `convert.vr` | **stable** — ConfigValue ↔ T (incl. refinement preservation) |
-| `error.vr` | **stable** — full taxonomy |
-| `toml.vr` | **stable** — parse/serialise round-trip |
+| `mod.vr` | **undocumented** — full load/save surface — no conformance suite yet |
+| `value.vr` | **unverified** — 8-variant ADT — [core-tests/configuration/value](https://github.com/verum-lang/verum/tree/main/core-tests/configuration/value) |
+| `format.vr` | **undocumented** — protocol + registry — no conformance suite yet |
+| `convert.vr` | **unverified** — ConfigValue ↔ T (incl. refinement preservation) — [core-tests/configuration/convert](https://github.com/verum-lang/verum/tree/main/core-tests/configuration/convert) |
+| `error.vr` | **regression-only** — full taxonomy — [core-tests/configuration/error](https://github.com/verum-lang/verum/tree/main/core-tests/configuration/error) |
+| `toml.vr` | **undocumented** — parse/serialise round-trip — no conformance suite yet |
 
 YAML / JSON / INI / env-var adapters are tracked as future work.
 The `Format` protocol's open-registry design means landing a new

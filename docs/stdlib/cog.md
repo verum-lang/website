@@ -196,11 +196,11 @@ without re-querying the registry.
 
 | File | Status |
 |---|---|
-| `mod.vr` | **stable** — re-exports |
-| `manifest.vr` | **stable** — full schema |
-| `archive.vr` | **stable** — read/write round-trip |
-| `sign.vr` | **stable** — Ed25519 sign + verify |
-| `resolve.vr` | **partial** — pubgrub core complete; feature-unification + dev-only-edge tracking TBD |
+| `mod.vr` | **undocumented** — re-exports — no conformance suite yet |
+| `manifest.vr` | **regression-only** — full schema — [core-tests/cog/manifest](https://github.com/verum-lang/verum/tree/main/core-tests/cog/manifest) |
+| `archive.vr` | **unverified** — read/write round-trip — [core-tests/cog/archive](https://github.com/verum-lang/verum/tree/main/core-tests/cog/archive) |
+| `sign.vr` | **unverified** — Ed25519 sign + verify — [core-tests/cog/sign](https://github.com/verum-lang/verum/tree/main/core-tests/cog/sign) |
+| `resolve.vr` | **unverified** — pubgrub core complete; feature-unification + dev-only-edge tracking TBD — [core-tests/cog/resolve](https://github.com/verum-lang/verum/tree/main/core-tests/cog/resolve) |
 
 ## Architectural alignment
 

@@ -97,9 +97,9 @@ the failure mode.
 
 | File | Status | Notes |
 |---|---|---|
-| `mod.vr` | **stable** | re-exports only |
-| `types.vr` | **stable** | protocol + value/error model |
-| `adapters/redis.vr` | **partial** | builds on `core.redis`; depends on that module's stability |
+| `mod.vr` | **undocumented** | re-exports only — no conformance suite yet |
+| `types.vr` | **regression-only** | protocol + value/error model — [core-tests/cache/types](https://github.com/verum-lang/verum/tree/main/core-tests/cache/types) |
+| `adapters/redis.vr` | **undocumented** | builds on `core.redis`; depends on that module's stability — no conformance suite yet |
 
 ## Adapter contract for new backends
 

@@ -517,10 +517,10 @@ representatives.
 
 | File | Status | Notes |
 |---|---|---|
-| `core.vr` | **stable** | full load / translate / check_coherence / audit |
-| `protocol.vr` | **stable** | nine JSON-RPC methods |
-| `congruence_closure.vr` | **stable** | union-find + congruence rule + saturation |
-| `coord.vr` | **stable** | full registry + resolver |
+| `core.vr` | **undocumented** | full load / translate / check_coherence / audit — no conformance suite yet |
+| `protocol.vr` | **undocumented** | nine JSON-RPC methods — no conformance suite yet |
+| `congruence_closure.vr` | **undocumented** | union-find + congruence rule + saturation — no conformance suite yet |
+| `coord.vr` | **unverified** | full registry + resolver — [core-tests/theory_interop/coord](https://github.com/verum-lang/verum/tree/main/core-tests/theory_interop/coord) |
 | `bridges/` | mixed | `owl2_to_htt` and `oc_dc_bridge` stable; `htt_to_owl2` partial — only the ∞-groupoid-free fragment, since translating an ∞-groupoid needs OWL2 extended with type-theoretic primitives |
 
 ## See also

@@ -219,13 +219,13 @@ optimised fast path.
 
 | File | Status |
 |---|---|
-| `protocol.vr` | **stable** — RESP2 + RESP3 framing complete |
-| `client.vr` | **stable** — connection pool + cluster redirects |
-| `commands.vr` | **partial** — common commands wrapped; long tail TBD |
-| `pubsub.vr` | **stable** — publish + subscriber loops |
-| `transaction.vr` | **partial** — MULTI/EXEC wrapped; WATCH-based CAS TBD |
-| `stream.vr` | **stable** — full XADD/XREAD/XREADGROUP/XACK surface |
-| `script.vr` | **stable** — full SCRIPT LOAD/EVAL/EVALSHA surface |
+| `protocol.vr` | **regression-only** — RESP2 + RESP3 framing complete — [core-tests/redis/protocol](https://github.com/verum-lang/verum/tree/main/core-tests/redis/protocol) |
+| `client.vr` | **undocumented** — connection pool + cluster redirects — no conformance suite yet |
+| `commands.vr` | **undocumented** — common commands wrapped; long tail TBD — no conformance suite yet |
+| `pubsub.vr` | **unverified** — publish + subscriber loops — [core-tests/redis/pubsub](https://github.com/verum-lang/verum/tree/main/core-tests/redis/pubsub) |
+| `transaction.vr` | **unverified** — MULTI/EXEC wrapped; WATCH-based CAS TBD — [core-tests/redis/transaction](https://github.com/verum-lang/verum/tree/main/core-tests/redis/transaction) |
+| `stream.vr` | **unverified** — full XADD/XREAD/XREADGROUP/XACK surface — [core-tests/redis/stream](https://github.com/verum-lang/verum/tree/main/core-tests/redis/stream) |
+| `script.vr` | **undocumented** — full SCRIPT LOAD/EVAL/EVALSHA surface — no conformance suite yet |
 
 ## Integration with `core.cache`
 
