@@ -66,6 +66,44 @@ is_nan / is_infinite / is_finite / is_normal / is_subnormal
 copysign(x, y)          signbit(x) -> Bool
 ```
 
+### `math.ieee754_deterministic`
+
+:::caution Declared and publicly mountable — every call traps
+
+`core.math.ieee754_deterministic` is re-exported from `core/math/mod.vr`,
+so `mount core.math.ieee754_deterministic.{sqrt}` resolves and compiles.
+Every one of its twenty-one functions then panics on its first call.
+Measured 2026-09-11:
+
+```verum
+mount core.math.ieee754_deterministic.{sqrt};
+
+fn main() { print(f"sqrt={sqrt(4.0)}"); }
+```
+
+```
+Panic: @intrinsic("verum.libm_deterministic.sqrt") is not implemented
+in this build (called from sqrt); it has no registry entry
+```
+
+The module declares 42 `verum.libm_deterministic.*` intrinsic keys and
+the runtime implements none of them:
+
+```
+grep -c '@intrinsic' core/math/ieee754_deterministic.vr          # 42
+grep -rl 'verum.libm_deterministic' crates/ --include='*.rs'     # nothing
+```
+
+(`grep -rl`, not `-rc`: the counting form prints one `path:0` line for
+each of the 2442 files it looked at, which buries the answer it gives.)
+
+**Use `math.libm` instead**, above — it is pure Verum and it runs. This
+module exists for a future bit-exact cross-platform mode; the note stops
+being true the moment a `verum.libm_deterministic.*` key gets a runtime
+implementation.
+
+:::
+
 ### `math.integers`
 
 ```verum
@@ -112,45 +150,39 @@ independently verified.
 
 ## Layer 1 — Scalar math
 
-:::warning Known defect affecting this layer (as of 2026-07-28)
-A stdlib build-time bug currently causes `sin`, `cos`, `exp`, `log`,
-and `sqrt` in `core.math.elementary` to resolve to a **same-named
-function declared in a different `core/math/*.vr` file** instead of
-their own implementation — several submodules in this stack declare
-functions with the same bare names (e.g. a Tensor-typed `exp`
-elsewhere in `core.math`). Effects vary: some calls crash with a
-runtime type error, at least one (`sin`) has been observed *silently*
-returning a value of the wrong type entirely rather than failing
-loudly. This is a name-resolution defect in the compiler's stdlib
-build, not a numerical one, and it is not fixed yet.
+:::note The name-resolution defect this layer carried is gone — re-measured 2026-09-11
 
-**It propagates.** Anything that calls one of those five names
-internally inherits the failure — often only for part of its input
-range, where an implementation switches to a Taylor-series fast path
-for small inputs that happens to avoid the broken call, while its
-general-case path does not.
+Between 2026-07-28 and this measurement, this page warned that `sin`,
+`cos`, `exp`, `log` and `sqrt` in `core.math.elementary` resolved to a
+same-named function in a different `core/math/*.vr` file — that some
+calls crashed with a runtime type error and `sin` had been seen
+returning a value of the wrong type silently. **It does not reproduce.**
 
-- **Always broken:** `sin`, `cos`, `exp`, `log`, `sqrt`, `exp2`,
-  `log2`, `log10`, `acoth`.
-- **Broken for typical (not all) inputs** — the general-case path
-  calls one of the five above; a small-input fast path does not:
-  `pow` (non-integer exponents), `hypot`, `log1p`, `expm1`, `asin`,
-  `acos`, and effectively all of `math.hyperbolic`'s general case
-  (`sinh`, `cosh`, `tanh`, `sech`, `csch`, `coth`, `asinh`, `acosh`,
-  `atanh`, `asech`, `acsch`, `gudermannian`, `inverse_gudermannian`)
-  and most of `math.special` (`gamma`, `lgamma`, `digamma`, `beta`,
-  `lbeta`, `erf`, `erfc`, `erfinv`).
-- **Confirmed unaffected:** `tan` and `sincos` — both were numerically
-  **wrong** until 2026-07-28 (see the [changelog](/docs/changelog))
-  and are now fixed and unaffected by the defect above — plus `atan`,
-  `atan2`, `cbrt`, `powi`, the rounding functions
-  (`floor`/`ceil`/`round`/`rint`/`trunc`/`fract`),
-  `min`/`max`/`clamp`/`abs`/`signum`, `fma`, and the interpolation
-  helpers (`lerp`, `inverse_lerp`, `remap`, `smoothstep`,
-  `smootherstep`).
+Fourteen functions from that warning's two "broken" lists were run
+against a compiler built 2026-09-11, on inputs whose answers are
+distinctive rather than on zero — deliberately, because `sin(0) = 0` and
+`cos(0) = 1` are exactly what a wrongly-typed default would also print:
 
-Don't trust a result from the "typical inputs" group without checking
-it independently until this is fixed.
+```
+sin(1)      0.8414709848078965      cos(1)     0.5403023058681397
+exp(1)      2.71828182442294        log(e)     0.9999999998112601
+sqrt(2)     1.4142135623730951      exp2(3)    8
+log2(8)     2.9999999999999996      log10(1e3) 3
+pow(2,0.5)  1.4142135623730951      hypot(3,4) 5
+log1p(1)    0.6931471805599453      expm1(1)   1.7182818244229399
+```
+
+Every one is the right number. The remaining departures are ordinary
+precision, not a wrong callee: `exp`, `expm1` and `log` land around nine
+significant digits, which is this stack's pure-Verum implementation
+rather than the platform's libm.
+
+**One thing to know before trusting a tight tolerance.** `asin(0.5)`
+answers 0.523596119295823 against a true 0.5235987755982988, and
+`acos(0.5)` answers 1.0472002074990736 against 1.0471975511965976 —
+both wrong from the sixth decimal. That is a numerical accuracy question
+and is not the defect described above; it is stated here because a
+reader arriving from the old warning deserves to know what remains.
 :::
 
 ### `math.constants`
