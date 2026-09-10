@@ -393,9 +393,18 @@ Block.new()
 | `Line.from(spans)` | a single styled line — the constructor is `from`, and `Line.raw(text)` / `Line.styled(text, style)` build one directly |
 | `TextSpan.raw("text")` | an inline run; the styled form is `TextSpan.styled("text", Style.new().fg(Color.Red))` |
 
-The span type is `TextSpan`. `Span` resolves to something else entirely
-— `core.meta`'s macro-hygiene span — so a `Span.new(…)` written by
-analogy binds to the wrong type without a word of complaint.
+The span type is `TextSpan`. Bare `Span` is not it, and not one other
+thing but two — re-measured 2026-09-11:
+
+```
+grep -rnE '^ *public type (Span|TextSpan)\b' core/ --include='*.vr'
+# core/term/widget/paragraph.vr   TextSpan   <- the one you want
+# core/meta/span.vr               Span = MetaSpan   (macro hygiene)
+# core/tracing/data.vr            Span              (a tracing span)
+```
+
+So `Span.new(…)` written by analogy binds to whichever of the other two
+your mounts bring in, without a word of complaint.
 
 ### Interactive widgets
 
