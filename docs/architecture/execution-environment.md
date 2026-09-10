@@ -140,6 +140,32 @@ public fn get<T>(&self) -> Maybe<&T> {
 }
 ```
 
+:::caution The slot fast path does not compile
+
+That block is `core/runtime/env.vr:368` verbatim, and the file does not
+type-check. `verum check core/runtime/env.vr` reports, at that line:
+
+```
+warning<E0410>: unknown meta-function `@const_slot_for`;
+                @ prefix is reserved for compile-time constructs
+error<E400>: Type mismatch: expected 'T', found 'Unit'
+```
+
+`@const_slot_for` is in none of the compiler's meta-function rosters, so
+it becomes `Unit`, and `slot < CONTEXT_SLOT_COUNT` compares a `Unit`.
+The stdlib bake is lenient, so `env.vr` ships with this body stubbed
+rather than failing the build — which is why nothing else reports it.
+
+**What that means for the two figures above.** ~2 ns and ~20 ns describe
+a design. The slot branch cannot be taken as written, so no measurement
+of it exists to quote; treat both numbers as targets, not results. The
+rest of this page — the field layout, the fork snapshot, the middleware
+chain — is not affected.
+
+Measured 2026-09-10.
+
+:::
+
 ### Fork: panic-isolated snapshot
 
 When a task forks, the child's `parent_snapshot` field points at the
