@@ -170,13 +170,12 @@ mount probe_cog.util.math.{PrivateThing};   // error<E401>  exit 1
 PUBLIC name is enough to open every other name in that module:
 
 ```verum
+// src/main.vr of a cog whose src/util/math.vr declares all three
 mount probe_cog.util.math.{public_fn};
 
-fn main() {
-    print(f"{public_fn()}");             // 1  — as intended
-    print(f"{internal_fn()}");           // 3  — never mounted, still runs
-    print(f"{PrivateThing { v: 5 }.v}"); // 5  — a non-public type
-}
+    public_fn()             // 1  — as intended
+    internal_fn()           // 3  — never mounted, still runs
+    PrivateThing { v: 5 }   // 5  — a non-public type, constructed
 ```
 
 Two controls say it is the mount that opens them rather than ambient
