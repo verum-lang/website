@@ -476,7 +476,7 @@ context Tracer {
 }
 ```
 
-### `Clock` — testable time (2 methods)
+### `Clock` — testable time (3 methods)
 
 ```verum
 context Clock {
