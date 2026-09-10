@@ -1171,11 +1171,11 @@ d.to_string()           d.to_number()
 
 ```verum
 type DataError is
-    | TypeMismatch
-    | KeyNotFound(Text)
-    | IndexOutOfBounds(Int)
-    | ParseError(Text)
-    | InvalidCast;
+    | TypeMismatch { expected: Text, actual: Text }
+    | KeyNotFound { key: Text }
+    | IndexOutOfBounds { index: Int, length: Int }
+    | ParseError { message: Text }
+    | InvalidCast { from: Text, to: Text };
 ```
 
 For typed schemas, prefer dedicated record types with `@derive(Serialize,

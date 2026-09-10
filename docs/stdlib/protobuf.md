@@ -185,10 +185,11 @@ the source buffer rather than allocating a fresh `List<Byte>`.
 public type ProtobufError is
     | UnexpectedEof
     | VarintOverflow
-    | InvalidWireType { bits: Byte }
+    | InvalidWireType(UInt8)
     | InvalidLength { declared: Int, available: Int }
     | InvalidUtf8
-    | InvalidFieldNumber(UInt32)
+    | InvalidFieldNumber(UInt64)
+    | LengthTooLarge { declared: Int, limit: Int }
     | UnsupportedGroup;
 
 public type DecodeResult<T> is Result<T, ProtobufError>;

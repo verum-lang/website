@@ -89,7 +89,7 @@ diff renderer does not emit a stray half-glyph.
 public type Viewport is
     | Fullscreen                       // take over the whole terminal
     | Inline { height: Int }           // last `height` rows, scrollback above
-    | Fixed(Rect);                     // explicit rect, for embedding
+    | Fixed { area: Rect };            // explicit rect, for embedding
 ```
 
 `Fullscreen` enters the alternate screen; `Inline` does not. An inline TUI

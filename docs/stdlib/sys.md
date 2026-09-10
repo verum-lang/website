@@ -349,14 +349,21 @@ type IOEngine is protocol {
 }
 
 type CompletionOp is
-    | Read  { fd: FileDesc, buf: *mut Byte, len: Int, offset: Int }
-    | Write { fd: FileDesc, buf: *const Byte, len: Int, offset: Int }
-    | Accept { fd: FileDesc, addr: *mut Byte, addrlen: *mut Int }
-    | Connect { fd: FileDesc, addr: *const Byte, addrlen: Int }
-    | Send { fd: FileDesc, buf: *const Byte, len: Int, flags: Int }
-    | Recv { fd: FileDesc, buf: *mut Byte, len: Int, flags: Int }
-    | Timeout { duration: Duration }
-    | Close { fd: FileDesc };
+    | Read  { fd: ValidFd, buf: &mut [Byte], offset: Int64{>= 0} }
+    | Write { fd: ValidFd, buf: &[Byte], offset: Int64{>= 0} }
+    | ReadV { fd: ValidFd, iovecs: &[IOVec] }
+    | WriteV { fd: ValidFd, iovecs: &[IOVec] }
+    | Accept { fd: ValidFd, addr: &mut RawSocketAddr }
+    | Connect { fd: ValidFd, addr: &RawSocketAddr }
+    | Recv { fd: ValidFd, buf: &mut [Byte], flags: Int32 }
+    | Send { fd: ValidFd, buf: &[Byte], flags: Int32 }
+    | RecvMsg { fd: ValidFd, msg: &mut MsgHdr, flags: Int32 }
+    | SendMsg { fd: ValidFd, msg: &MsgHdr, flags: Int32 }
+    | Close { fd: Fd }              // Fd, not ValidFd — may be closed already
+    | Timeout { ts: &TimeSpec }
+    | Cancel { user_data: UInt64 }
+    | Fsync { fd: ValidFd, datasync: Bool }
+    | Poll { fd: ValidFd, events: UInt32 };
 
 type CompletionResult is {
     user_data: UInt64,              // the caller's own token, echoed back

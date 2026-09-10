@@ -295,7 +295,7 @@ timeout(fut, duration)         -> Result<T, TimeoutError>
 type TaskId is { id: Int };
 type Task<T>  is { ... };
 type JoinHandle<T> is { ... };
-type JoinError is Cancelled | Panicked(PanicInfo);
+type JoinError is Cancelled | Panicked;
 
 spawn(future) -> JoinHandle<T>                   // shorthand
 spawn_blocking(f) -> JoinHandle<T>               // on thread pool
@@ -596,10 +596,10 @@ public type NurseryErrorBehavior is CancelAll | WaitAll | FailFast;
 public type NurseryError is
     | Single(Heap<Error>)                    // single-task failure
     | Multiple(List<Heap<Error>>)            // WaitAll collected multiple failures
-    | Timeout
+    | Timeout { pending_count: Int, completed_count: Int }
     | Cancelled
-    | Panic(PanicInfo)
-    | TaskLimitExceeded(Int);
+    | Panic(Text)
+    | TaskLimitExceeded { limit: Int, attempted: Int };
 
 // Builder
 implement NurseryOptions {
