@@ -6,6 +6,44 @@ description: Unified SecretStore protocol with AWS Secrets Manager, GCP Secret M
 
 # `core.security.secrets` — secret stores
 
+:::caution The secret-store clients have no backend in this build
+
+`VaultClient`, the AWS Secrets Manager client and the GCP Secret Manager
+client are declared surfaces: **every** method body on all three is a
+single runtime intrinsic that this build does not implement.
+`core/security/secrets/vault.vr` is the clearest case — `connect`,
+`kv_read`, `kv_write`, `kv_delete`, `kv_list`, `transit_encrypt`,
+`transit_decrypt`, `renew_token` and `close` are nine methods and nine
+`@intrinsic("verum.vault.…")` calls, and all nine keys sit in the
+frozen unimplemented set.
+
+A call therefore stops before any network I/O, with a panic naming the
+key — the same shape measured on sibling families:
+
+```
+-> Panic: @intrinsic("verum.pq.ml_kem_keygen") is not implemented in
+   this build (called from ml_kem_keygen); it has no registry entry,
+   so there is no value to return
+```
+
+Stated precisely, because the difference matters: the panic text above
+was produced by running a sibling module. The Vault, AWS and GCP calls
+were **read**, not run — they are `async` and need a runtime to reach.
+What is measured is that every one of their bodies is an unimplemented
+intrinsic.
+
+**What works today:** the configuration and reference types —
+`VaultConfig`, `VaultAuth`, `SecretReference` and the rotation/caching
+policy shapes — are ordinary Verum. Wiring and policy code can be
+written and reviewed now.
+
+This note stops being true the moment a `verum.vault.*`,
+`verum.aws.secretsmanager_*` or `verum.gcp.secretmanager_*` intrinsic is
+implemented.
+
+:::
+
+
 ## Why a secrets module?
 
 Every real-world application has secrets: database passwords, API

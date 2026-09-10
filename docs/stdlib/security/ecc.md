@@ -6,6 +6,45 @@ description: Ed25519 signatures, X25519 ECDH, NIST P-256, ECVRF (RFC 9381), BLS1
 
 # `core.security.ecc` — elliptic-curve cryptography
 
+:::caution The curve backends are not in this build
+
+Every operation on this page reaches a runtime intrinsic that this build
+does not implement, and a call stops at the first one. Measured by
+running the page's own X25519 flow:
+
+```
+X25519.generate_secret_key()
+  -> Panic: @intrinsic("verum.rng.fill_secure") is not implemented in
+     this build (called from fill_random)
+
+X25519.secret_key_from_bytes(&raw)   ok
+X25519.public_key(&sk)
+  -> Panic: @intrinsic("verum.x25519.scalar_mult") is not implemented in
+     this build (called from scalar_mult)
+```
+
+Two separate gaps, and worth telling apart: the secure random source is
+missing, so every `generate_*` fails before any curve arithmetic; and the
+curve arithmetic itself is missing, so a key built from bytes gets no
+further than its public half. The same holds for `ed25519`, `p256`,
+`vrf` and `bls12_381`.
+
+**What works today:** the types, sizes and byte-level constructors —
+`secret_key_from_bytes` returns a clamped scalar as documented, and
+`X25519Error` already names `BackendNotReady` for exactly this
+situation. So the shapes are usable for wiring and testing; the maths is
+a declared surface waiting for a backend.
+
+The constant-time claim below describes the intended implementation, not
+something you can exercise in this build.
+
+This note stops being true the moment a `verum.x25519.*` /
+`verum.ed25519.*` / `verum.p256.*` / `verum.crypto.bls12_381_*` /
+`verum.vrf.*` intrinsic is implemented — at which point the examples run
+and this block should go.
+
+:::
+
 Five primitives ship under one umbrella. All operations are
 constant-time on every CPU; secret-data-dependent branches and
 secret-indexed memory accesses are absent throughout the layer.

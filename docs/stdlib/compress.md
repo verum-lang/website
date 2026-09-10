@@ -10,6 +10,33 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus status="regression-only" />
 
+:::caution The codecs do not compress anything yet
+
+Every `encode` / `decode` on this page reaches a runtime intrinsic that
+this build does not implement. Running the Gzip example below, verbatim,
+produces:
+
+```
+Panic: @intrinsic("verum.compress.gzip_encode") is not implemented in
+       this build (called from Gzip.encode); it has no registry entry,
+       so there is no value to return
+```
+
+The same is true of `Deflate`, `Zlib`, `Brotli`, `Zstd` and `Lz4`. The
+call compiles, the compiler warns while building the standard library,
+and the program stops at the first byte you try to compress.
+
+**What on this page does work:** the `Algorithm` enum and its token
+helpers are ordinary Verum and behave as documented —
+`Algorithm.Gzip.content_encoding()` returns `"gzip"`. So the negotiation
+half is usable today; the compression half is a declared surface waiting
+for a backend.
+
+This note stops being true the moment a `verum.compress.*` intrinsic is
+implemented — at which point the example runs and this block should go.
+
+:::
+
 A single `Codec` protocol with six concrete implementations. Used by
 every Verum layer that touches external byte streams:
 

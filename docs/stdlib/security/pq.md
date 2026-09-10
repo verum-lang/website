@@ -6,6 +6,36 @@ description: NIST FIPS 203 (ML-KEM / Kyber), FIPS 204 (ML-DSA / Dilithium), FIPS
 
 # `core.security.pq` — post-quantum cryptography
 
+:::caution The PQ backends are not in this build
+
+Every ML-KEM and ML-DSA operation on this page reaches a runtime
+intrinsic that this build does not implement. Measured by running the
+page's own spelling:
+
+```
+ml_kem_keygen(MlKemVariant.MlKem768)
+  -> Panic: @intrinsic("verum.pq.ml_kem_keygen") is not implemented in
+     this build (called from ml_kem_keygen); it has no registry entry,
+     so there is no value to return
+```
+
+`ml_kem_encapsulate` / `ml_kem_decapsulate` and the whole `ml_dsa_*`
+family behave the same way. The hybrid described below pairs X25519 with
+ML-KEM, and X25519 is in the same state — see
+[`ecc`](/docs/stdlib/security/ecc).
+
+**What works today:** the variant enums, key and ciphertext types, and
+their size constants are ordinary Verum and match FIPS 203 / 204 as
+documented. So parameter selection and wire-format work can be written
+and reviewed now; the algorithms are a declared surface waiting for a
+backend.
+
+This note stops being true the moment a `verum.pq.*` intrinsic is
+implemented — at which point the examples run and this block should go.
+
+:::
+
+
 ## Why post-quantum now?
 
 Classical public-key cryptography (RSA, ECDH, ECDSA) is secured by

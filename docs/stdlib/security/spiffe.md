@@ -6,6 +6,30 @@ description: SPIFFE workload identity — X.509-SVID, JWT-SVID, trust bundles, a
 
 # `core.security.spiffe` — workload identity
 
+:::caution The Workload API client has no backend in this build
+
+`core.security.spiffe.workload_api` reaches the SPIFFE Workload API
+through runtime intrinsics that this build does not implement —
+`connect`, `fetch_jwt_svid`, `fetch_x509_svid` and their siblings are
+each a single `@intrinsic("verum.spiffe.…")` call, and those keys sit in
+the frozen unimplemented set. A call stops there, with a panic naming
+the key, before any socket is opened.
+
+Read rather than run: the client is `async` and needs a runtime, so what
+is measured here is the shape of every method body, not a transcript.
+The panic form is the one measured on sibling families — see
+[`pq`](/docs/stdlib/security/pq).
+
+**What works today:** the SPIFFE ID and trust-domain types, their
+parsing and validation rules, and the SVID shapes are ordinary Verum and
+behave as documented.
+
+This note stops being true the moment a `verum.spiffe.*` intrinsic is
+implemented.
+
+:::
+
+
 ## What is SPIFFE and why does it matter?
 
 The **Secure Production Identity Framework For Everyone** (SPIFFE)
