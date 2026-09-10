@@ -320,9 +320,11 @@ Drop-in plugins follow the `verum-<name>` binary convention:
 arguments.  This is how `verum bench`, `verum playbook`, and the
 Aletheia CLI integrate without modifying the main `verum` binary.
 
-`core.cli.plugin.discover()` enumerates installed plugins and
-their declared subcommand surface (via the JSON-schema export
-above).
+`core.cli.plugin` models plugins rather than finding them:
+`PluginManifest.new(name, version)`, and a `PluginRegistry` you
+`install` into, ask `count` of, and `attach_to` a `CommandSpec`.
+Enumerating what is actually on `PATH` is not part of it — there is no
+`discover()`, and the registry is populated by the caller.
 
 ## 10. See also
 

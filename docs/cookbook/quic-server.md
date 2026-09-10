@@ -222,8 +222,11 @@ key-phase generation:
 accepted.stats().snapshot().pretty();
 ```
 
-Prometheus exporter at `/metrics` via
-`core.net.quic.stats_prometheus.listener_exporter(&server)`.
+Prometheus rendering lives in `core.net.quic.stats_prometheus`, which
+exports `render_connection(&QuicStats, &Text)` and
+`render_endpoint(&EndpointStats)` — both return the exposition text.
+Serving it at `/metrics` is yours to wire; there is no
+`listener_exporter`, and no exporter that takes a server.
 
 ## See also
 
