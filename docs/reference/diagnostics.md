@@ -103,7 +103,7 @@ match s { ... }
 | `E102` | wrong number of arguments to a function or method | yes |
 | `E103` | field not found on type | yes |
 | `E104` | duplicate definition | **no** |
-| `E105` | ambiguous method call — the name could refer to several protocols | yes |
+| `E105` | ambiguous name — it could refer to several protocols, or be imported from more than one module | yes |
 | `E106` | unresolved type placeholder | yes |
 
 `E104` has no emit site — a redeclaration is reported by the type codes.
@@ -128,7 +128,7 @@ followed (`pre_release` vs `prerelease`, `peer_addr` vs `peer`).
 |------|---------|----------|
 | `E200` | import not found | **no** — see below |
 | `E201` | circular import | yes |
-| `E202` | private item imported | **no** |
+| `E202` | visibility error — the named item is not visible from this module | yes |
 | `E203` | module not found | **no** — see below |
 
 :::warning Three of these four never fire
@@ -262,8 +262,8 @@ budget. Narrowing a refinement or splitting a lemma usually resolves it. See
 | Code | Meaning |
 |------|---------|
 | `E600` | context not provided |
-| `E601` | visibility error — the name is not visible from this module |
-| `E602` | ambiguous name — imported from more than one module |
+| `E601` | context conflict | 
+| `E602` | context cycle | 
 
 `E600` means a function declared `using [Database]` was called from a scope
 with no `provide` for it. See [Context system](../language/context-system.md).
