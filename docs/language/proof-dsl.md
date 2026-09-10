@@ -18,6 +18,31 @@ This page documents the syntax and semantics of `theorem`, `lemma`,
 chooses a backend, see
 **[verification/smt-routing](/docs/verification/smt-routing)**.
 
+:::caution A `tactic` body is parsed but not checked
+
+Measured 2026-09-10. Name resolution and type checking do not enter a
+`tactic` body. The same two lines are refused inside `fn` and accepted
+inside `tactic`:
+
+```
+tactic probe(goal: Prop) {
+    let x: Int = deliberately_unbound_probe(7);   // accepted, rc=0
+    let best: Int = "not an int";                 // accepted, rc=0
+}
+
+fn probe() -> Int {
+    let best: Int = "not an int";                 // error<E400>, rc=101
+}
+```
+
+Only syntactic damage is caught — the parser does enter the body. So a
+clean `verum check` over a file containing a tactic says nothing about
+what the tactic's body refers to or whether its types line up. Read the
+bodies on this page as illustrations of the shape, and expect no
+compiler help while writing your own.
+
+:::
+
 ## Five declaration forms
 
 ### `theorem` — the canonical form
