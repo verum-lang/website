@@ -78,8 +78,9 @@ async fn admin_handler(
 
 ```verum
 public type TrustBundleProvider is protocol {
-    async fn current_bundle(&self) -> Result<TrustBundle, AuthError>;
-    fn rotation_signal(&self) -> RotationChannel;
+    fn x509_bundle(&self) -> Maybe<X509Bundle>;
+    fn jwt_bundle(&self) -> Maybe<JwtBundle>;
+    fn reload(&self) -> Result<(), Text>;
 }
 ```
 

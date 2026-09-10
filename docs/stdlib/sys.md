@@ -344,8 +344,12 @@ type IOEngine is protocol {
         -> Result<(), EngineIoError>;          // default impl over `submit`
     fn poll(&mut self, results: &mut [CompletionResult])
         -> Result<Int{>= 0}, EngineIoError>;   // default impl over `wait`
+    fn wait(&mut self, results: &mut [CompletionResult],
+            min_complete: UInt32, timeout: Maybe<EngineDuration>)
+        -> Result<Int{>= 0}, EngineIoError>;
     fn wake(&self) -> Result<(), EngineIoError>;
     fn flush(&mut self) -> Result<(), EngineIoError>;
+    fn shutdown(&mut self) -> Result<(), EngineIoError>;
 }
 
 type CompletionOp is

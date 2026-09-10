@@ -127,6 +127,7 @@ public type CongestionCtrl is protocol {
     fn window(&self) -> UInt32;          // bytes-available budget
     fn should_pace(&self) -> Bool;
     fn pacing_rate(&self) -> UInt64;     // bytes/sec
+    fn bytes_in_flight(&self) -> UInt32;
 };
 ```
 

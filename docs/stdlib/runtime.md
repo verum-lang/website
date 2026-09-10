@@ -123,12 +123,12 @@ public type ExecutionTier is
 
 ```verum
 public type RuntimeConfig is protocol {
-    fn worker_threads(&self) -> Int;
-    fn max_blocking_threads(&self) -> Int;
-    fn thread_stack_size(&self) -> Int;
-    fn enable_io(&self) -> Bool;
-    fn enable_time(&self) -> Bool;
-    fn cbgr_tier(&self) -> ExecutionTier;
+    type Allocator; type Executor; type IoDriver;
+    fn init() -> Result<Self, RuntimeInitError>;
+    fn shutdown(&mut self);
+    fn allocator_ref(&self) -> &Self.Allocator;
+    fn executor_handle(&self) -> &Self.Executor;
+    fn io_driver_ref(&self) -> &Self.IoDriver;
 };
 ```
 

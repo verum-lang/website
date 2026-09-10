@@ -358,9 +358,10 @@ public type VfsProtocol is protocol {
     fn delete(&self, path: &Text, sync_dir: Bool) -> Result<(), VfsError>;
     fn access(&self, path: &Text, kind: AccessKind) -> Result<Bool, VfsError>;
     fn full_pathname(&self, path: &Text) -> Result<Text, VfsError>;
-    fn randomness(&self, buf: &mut [Byte]) -> Result<(), VfsError>;
-    fn sleep(&self, micros: Int) -> Result<(), VfsError>;
+    fn random_bytes(&self, len: Int) -> Result<List<Byte>, VfsError>;
     fn current_time(&self) -> Timestamp;
+    fn get_last_error(&self) -> Maybe<VfsError>;
+    fn sleep_us(&self, micros: Int);
 };
 ```
 

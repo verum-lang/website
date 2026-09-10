@@ -598,7 +598,12 @@ TransformerBlock.new(embed_dim, num_heads, hidden_dim, dropout)
 RoPE.new(dim, max_positions)
 
 // Optimisers
-type Optimizer is protocol { fn step(&mut self, grads: &Params); }
+type Optimizer is protocol {
+    fn step(&mut self, grads: &Params);
+    fn zero_grad(&mut self, params: &mut List<&mut Parameter>);
+    fn lr(&self) -> Float;
+    fn set_lr(&mut self, lr: Float);
+}
 // The optimisers do NOT take the parameter list; they are handed it
 // per step. SGD.simple(lr) fills momentum and weight_decay with 0.
 SGD.new(lr, momentum, weight_decay)
@@ -664,7 +669,10 @@ sample_top_p(logits, p) / sample_temperature(logits, t) / sample_greedy(logits)
 
 type ChatMessage is { role: AgentRole, content: MessageContent };
 type FunctionSchema is { name: Text, parameters: JsonSchema };
-type ExecutableTool is protocol { fn call(args) -> Data; }
+type ExecutableTool is protocol {
+    fn schema(&self) -> FunctionSchema;
+    fn execute(&self, arguments: Text) -> Result<Value, Error>;
+}
 
 QuantizedLinear.new(in_dim, out_dim, bits: Int)    // INT4/INT8
 ```
