@@ -180,7 +180,7 @@ and with the fixture rewritten to three bytes, both answer `size=3`,
 so the number follows the file rather than the shape of the record.
 
 The regression is pinned by
-`vcs/specs/L2-standard/stdlib/io/metadata_len_without_naming_the_type.vr`,
+`vcs/specs/L2-standard/stdlib/io/metadata/metadata_len_without_naming_the_type.vr`,
 which asserts both spellings against a ten-byte file. Ten is chosen
 deliberately: a one-byte fixture would make the correct answer and the
 old wrong one identical, and the spec would pass in both worlds.
