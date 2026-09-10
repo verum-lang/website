@@ -5,6 +5,48 @@ description: Issue HTTP/3 requests with `core.net.h3.client.H3Client` on top of 
 
 # HTTP/3 client
 
+:::caution `using [Nursery]` does not compile
+
+Every listing on this page opens with `using [Nursery]`, and that line
+does not work today. Measured:
+
+```
+error<E605>: undefined context: Nursery
+```
+
+`Nursery` is declared as a **type** — `public type Nursery is { … }` in
+`core/async/nursery.vr` — and `using [...]` takes a **context**, which
+the grammar spells `public context Name { … }`. `core/context/` declares
+five of those (`Random`, `Logger`, `Database`, `Auth`, `Config`);
+`Nursery` is not among them.
+
+Mounting the type is not the fix. It quiets the checker and leaves the
+program wrong: with `mount core.async.nursery.{Nursery};` added, the
+listing type-checks, and running it warns
+
+```
+WARN Context 'Nursery' in function 'main' has no matching context
+     declaration
+```
+
+before hanging. The loud `E605` is the honest answer, so the listings
+are left as they are until structured concurrency has a real context to
+name.
+
+Below the `using` line the QUIC surface has its own gap: `QuicConnection`
+is backed entirely by `@intrinsic("verum.quic.…")`, and all seventeen of
+those keys sit in the frozen unimplemented set, so a dial would stop
+there with a panic naming the key — the form measured on sibling
+families, for example
+[`pq`](/docs/stdlib/security/pq). Read rather than run here: the
+`using` line stops the listing before the dial is reached.
+
+This note stops being true when `Nursery` becomes a context, or when the
+listings stop claiming one.
+
+:::
+
+
 `core.net.h3.client.H3Client` wraps QUIC + TLS 1.3 + QPACK into an
 ergonomic request/response surface. Its `connect` drives the same
 pipeline as [`core.net.quic.api.QuicClient`](/docs/cookbook/quic-client),

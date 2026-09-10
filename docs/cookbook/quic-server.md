@@ -5,6 +5,48 @@ description: Bind a QUIC listener with `core.net.quic.api.QuicServer`, accept co
 
 # QUIC server
 
+:::caution `using [Nursery]` does not compile
+
+Every listing on this page opens with `using [Nursery]`, and that line
+does not work today. Measured:
+
+```
+error<E605>: undefined context: Nursery
+```
+
+`Nursery` is declared as a **type** — `public type Nursery is { … }` in
+`core/async/nursery.vr` — and `using [...]` takes a **context**, which
+the grammar spells `public context Name { … }`. `core/context/` declares
+five of those (`Random`, `Logger`, `Database`, `Auth`, `Config`);
+`Nursery` is not among them.
+
+Mounting the type is not the fix. It quiets the checker and leaves the
+program wrong: with `mount core.async.nursery.{Nursery};` added, the
+listing type-checks, and running it warns
+
+```
+WARN Context 'Nursery' in function 'main' has no matching context
+     declaration
+```
+
+before hanging. The loud `E605` is the honest answer, so the listings
+are left as they are until structured concurrency has a real context to
+name.
+
+Below the `using` line the QUIC surface has its own gap: `QuicConnection`
+is backed entirely by `@intrinsic("verum.quic.…")`, and all seventeen of
+those keys sit in the frozen unimplemented set, so a dial would stop
+there with a panic naming the key — the form measured on sibling
+families, for example
+[`pq`](/docs/stdlib/security/pq). Read rather than run here: the
+`using` line stops the listing before the dial is reached.
+
+This note stops being true when `Nursery` becomes a context, or when the
+listings stop claiming one.
+
+:::
+
+
 Warp's high-level QUIC server lives at `core.net.quic.api.QuicServer`.
 It wraps the TLS 1.3 server-side handshake, per-connection state
 machine, and UDP packet dispatch behind an async `accept` loop.
@@ -20,6 +62,9 @@ mount core.net.quic.api.{QuicServer, QuicServerOptions, QuicAccepted};
 pub async fn main() -> Result<(), core.net.quic.api.QuicServerError> {
     let cert_chain: List<List<Byte>> = load_cert_chain_der();
     let signer = load_private_key_signer();
+    // ^ YOURS TO WRITE. Neither helper exists in `core/` — there is no
+    //   certificate loader in the standard library yet. Read the DER
+    //   bytes with `core.io.file` and build the signer from them.
 
     let opts = QuicServerOptions.from_cert(cert_chain, signer)
         .with_alpn([b"h3".to_list(), b"echo-v1".to_list()]);

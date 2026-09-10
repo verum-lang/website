@@ -5,6 +5,48 @@ description: Serve HTTP/3 requests with `core.net.h3.server.H3Server` on top of 
 
 # HTTP/3 server
 
+:::caution `using [Nursery]` does not compile
+
+Every listing on this page opens with `using [Nursery]`, and that line
+does not work today. Measured:
+
+```
+error<E605>: undefined context: Nursery
+```
+
+`Nursery` is declared as a **type** — `public type Nursery is { … }` in
+`core/async/nursery.vr` — and `using [...]` takes a **context**, which
+the grammar spells `public context Name { … }`. `core/context/` declares
+five of those (`Random`, `Logger`, `Database`, `Auth`, `Config`);
+`Nursery` is not among them.
+
+Mounting the type is not the fix. It quiets the checker and leaves the
+program wrong: with `mount core.async.nursery.{Nursery};` added, the
+listing type-checks, and running it warns
+
+```
+WARN Context 'Nursery' in function 'main' has no matching context
+     declaration
+```
+
+before hanging. The loud `E605` is the honest answer, so the listings
+are left as they are until structured concurrency has a real context to
+name.
+
+Below the `using` line the QUIC surface has its own gap: `QuicConnection`
+is backed entirely by `@intrinsic("verum.quic.…")`, and all seventeen of
+those keys sit in the frozen unimplemented set, so a dial would stop
+there with a panic naming the key — the form measured on sibling
+families, for example
+[`pq`](/docs/stdlib/security/pq). Read rather than run here: the
+`using` line stops the listing before the dial is reached.
+
+This note stops being true when `Nursery` becomes a context, or when the
+listings stop claiming one.
+
+:::
+
+
 `core.net.h3.server.H3Server` is the request handler above the QUIC
 transport. Each accepted QUIC connection runs an `H3Connection` that
 dispatches incoming request streams to user-supplied handlers.
@@ -35,6 +77,9 @@ mount core.net.h3.request.{H3Request, H3Response};
 pub async fn main() -> Result<(), core.net.h3.server.H3ServerError> {
     let cert_chain = load_der_chain("/etc/ssl/certs/server.pem");
     let signer     = load_signer("/etc/ssl/private/server.key");
+    // ^ YOURS TO WRITE. Neither helper exists in `core/`; the standard
+    //   library ships no certificate loader. Read the file with
+    //   `core.io.file` and build the signer from the bytes.
 
     let opts = ServerOptions.from_cert(cert_chain, signer);
 
