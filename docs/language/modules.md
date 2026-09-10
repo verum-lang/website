@@ -85,10 +85,38 @@ meant. Every public `core` symbol already resolves bare (above), so the
 glob adds no reach — and it makes the compiler enumerate a surface it
 would otherwise never look at.
 
-Measured on one three-line program, identical but for the mount line: with
-no mount, and with a precise `mount core.collections.list.{List};`, it
-compiles in a couple of seconds. Under `mount core.*;` the same program
-takes minutes — and prints the same answer.
+Re-measured 2026-09-10 on one three-line program, identical but for the
+mount line:
+
+```verum
+// none.vr — and the same body under each mount below
+fn main() {
+    let xs = [1, 2, 3];
+    print(f"n={xs.len()}");
+}
+```
+
+```
+verum run none.vr                                 # n=3   exit 0    6s
+verum run glob.vr     # mount core.*;             #       exit 124  killed at 400s
+```
+
+Exit 124 is `timeout` cutting it off, not the program finishing: the
+glob build had not produced an answer after six and a half minutes,
+against six seconds for the identical program. The page used to say
+"minutes", which was true and understated.
+
+**The cost is in building, not in checking.** `verum check` answers in
+about a second for all three spellings — no mount, the precise
+`mount core.collections.list.{List};`, and the glob — so a type-check
+will not warn you about this. It surfaces when you run or build.
+
+**And it buys nothing.** The same file without any mount at all
+type-checks `let m: Map<Text, Int> = Map.new();`, because every public
+`core` symbol already resolves bare (above). The glob is not being
+ignored — `mount core.nosuchmodule.*;` is refused with
+`error<E402>: module not found` — it is doing real work that changes no
+answer.
 
 Mount the module or the item you mean. If you want the import list to
 document what a file uses, the precise form is also the only form that
