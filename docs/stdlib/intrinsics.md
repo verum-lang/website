@@ -329,7 +329,7 @@ functions dispatch via a `MathExtended` opcode (~2 ns).
 
 Suite: `core-tests/intrinsics/float/`
 (unit + property + integration + regression + `audit.md`).
-**Interp 85/85 GREEN (7 `@ignore`); AOT 70/85.**
+**Green under the interpreter (a few `@ignore`d pins); the AOT path has a tail of failures.**
 
 **Fixes landed:**
 
@@ -408,7 +408,7 @@ consume; the `MemoryOrder` ADT is the typed surface over them.
 
 Suite: `core-tests/intrinsics/atomic/`
 (unit + property + integration + regression + `audit.md`).
-**Interp 30/30 GREEN; AOT 16/30.**
+**Green under the interpreter; roughly half the suite fails under AOT.**
 
 A single-threaded conformance test pins each operation's **value semantics**
 (read-modify-write result + returned previous value) over a live atomic cell,
@@ -578,7 +578,7 @@ little-endian target; `to_be`/`from_be` byte-swap.
 
 Suite: `core-tests/intrinsics/conversion/`
 (unit + property + integration + regression + `audit.md`).
-**Interp 60/60 GREEN, 0 `@ignore`; AOT 52/60.**
+**Green under the interpreter with no `@ignore`d pins; a small tail fails under AOT.**
 
 **Wiring fixes landed (data-only — the codegen/interp/LLVM implementations
 already existed but were unreachable from the intrinsic surface):**
@@ -639,7 +639,7 @@ random_u64() -> UInt64
 
 ### Conformance status — control ✅ value surface (both tiers)
 
-**36/36 GREEN on BOTH interp and AOT** (1 `@ignore`), via
+**Green on both the interpreter and AOT** (one `@ignore`d pin), via
 `core-tests/intrinsics/control/` (`verum test`).
 
 The **branch-hint** intrinsics are semantically transparent — they steer the

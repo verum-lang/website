@@ -87,6 +87,11 @@ CLASSES = {
         r"|[Tt]asks?\s*#[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+|#[A-Z]{4,}(?:-[A-Z0-9]+)+"
     ),
     "FV identifier": re.compile(r"\b(?:Pre-|post-)?FV-\d+\b"),
+    # Wiki-link syntax from the sessions' own note files.  It renders as
+    # literal brackets on the site and names a file no reader can open.
+    # Three of them sat in `docs/stdlib/base.md`, all pointing at the same
+    # private note.
+    "private note link": re.compile(r"\[\[[a-z0-9_]{3,}\]\]"),
     "test count": re.compile(
         # The first two spellings were here; the third was not, and
         # `docs/stdlib/sys.md` carried five of it — "8 unit + 6 property
@@ -105,10 +110,17 @@ CLASSES = {
         # anchored on the RATIO, which is what keeps `all 6 tests passed`
         # (a tutorial's own expected output, legal and pinned below)
         # out: that sentence has no ratio in it.
-        r"\b\d[\d\s,]*\s+(?:lib tests|full suite)|\b\d+\s*/\s*\d+\s+(?:green|passing)"
+        r"\b\d[\d\s,]*\s+(?:lib tests|full suite)"
         r"|\b\d+\s+(?:unit|property|integration|regression)\s+tests?\b"
-        r"|\b\d[\d\s,]*\s*/\s*\d[\d\s,]*\s+\w+(?:\s+\w+)?"
-        r"\s+(?i:pass(?:es|ed|ing)?|green|fail(?:s|ed|ing)?)\b"
+        # ONE ratio alternative now, and the words between the ratio and
+        # the verdict are OPTIONAL.  They were mandatory — `\w+(?:\s+\w+)?`
+        # with no `?` on the first — so `85/85 GREEN` matched neither this
+        # nor the older `\d+/\d+\s+(?:green|passing)` it was meant to
+        # subsume, that one being case-sensitive.  Six pages carried the
+        # uppercase form.  A parenthetical may sit in the gap too
+        # (`56/56 (\x60test_slice_*\x60 filter) green`).
+        r"|\b\d[\d\s,]*\s*/\s*\d[\d\s,]*\s*(?:\([^)]{0,40}\)\s*)?"
+        r"(?:\w+\s+){0,2}(?i:pass(?:es|ed|ing)?|green|fail(?:s|ed|ing)?)\b"
         # A ratio wearing a percentage is a pass RATE whatever noun
         # follows it, and often no noun does: `docs/stdlib/text.md`
         # carried a whole "Tests pass" COLUMN of them — `23 / 23 (100%)`,
@@ -160,6 +172,10 @@ EXEMPT: dict[tuple[str, str], str] = {
 }
 
 
+# Classes whose finding inside a fenced block is content, not a claim.
+FENCE_EXEMPT = {"test count", "private note link"}
+
+
 def check_exempt_roster(docs: Path) -> list[str]:
     """Every exemption must still have something to exempt."""
     stale = []
@@ -172,6 +188,16 @@ def check_exempt_roster(docs: Path) -> list[str]:
     return stale
 
 HASH_CANDIDATE = re.compile(r"`([0-9a-f]{7,40})`")
+# The backticks were doing more filtering than anybody intended.  Measured
+# 2026-09-10: `docs/stdlib/collections.md` carried four hashes written
+# `(commit 0360a343e)` — no backticks, so never a candidate, so never
+# resolved, so never reported, on a gate whose whole point is that class.
+# Bare candidates are cheap to add because RESOLUTION is the filter, not
+# the shape: 35 distinct bare hex words in the corpus, of which the ones
+# that are not hashes (`1714478400`, `4294967295`, a hex alphabet in a
+# code sample) simply fail `git cat-file`.  Nine characters minimum, so
+# `deadbeef` and friends stay out by length as well as by HEX_NAMES.
+BARE_HASH_CANDIDATE = re.compile(r"(?<![`\w/.-])\b([0-9a-f]{9,40})\b(?![`\w./-])")
 
 # A SIXTH CLASS, AND IT IS NOT "DOES IT LOOK INTERNAL" BUT "DOES IT
 # RESOLVE". Proposed by verum-6c after measuring 49 `verum_x::y::Z`
@@ -301,11 +327,20 @@ SELFTEST = [
      "an assembly immediate in a code block"),
     ("FV identifier", "landed in FV-12", "IPv4-2 addressing",
      "not the FV- prefix"),
+    ("private note link", "same root as [[btree_pattern_match_ref]]",
+     "an index range `xs[[0]]` is not this",
+     "the inner brackets must hold a bare snake_case word"),
     ("test count", "1 341 lib tests pass", "all 6 tests passed",
      "a tutorial's own expected OUTPUT — the reader sees this when they "
      "run what the page told them to build; removing it breaks the page"),
     ("test count", "60/60 green under --interp", "1.5/2 of the way",
      "not a pass count"),
+    ("test count", "85/85 GREEN", "a 16 / 9 aspect ratio",
+     "the words between ratio and verdict are OPTIONAL; making them "
+     "mandatory hid every `N/N GREEN` in the corpus"),
+    ("test count", "56/56 (`test_slice_*` filter) green", "3 / 4 (see below)",
+     "a parenthetical may sit in the gap, but it does not substitute "
+     "for the verdict word"),
     ("test count", "23 / 23 (100%)", "a 16 / 9 aspect ratio",
      "a ratio wearing a percentage is a pass rate; a bare ratio is not"),
     ("test count", "49 / 52 regression GREEN", "25 / 30 GREENHOUSE gases",
@@ -427,14 +462,27 @@ def main(argv: list[str]) -> int:
                 fenced = not fenced
                 continue
             for name, rx in CLASSES.items():
-                # A ratio inside a fenced block is a tool's OUTPUT being
-                # shown, not a claim the page is making — `verum analyze
-                # --escape` prints tier-promotion ratios, the audit bundle
-                # prints `14 / 14 gates green`, and a tutorial prints what
-                # the reader will see. Removing those breaks the page.
-                # Scoped to this ONE class: a commit hash or a tracker
+                # Inside a fenced block the text is CONTENT BEING SHOWN,
+                # not a claim the page makes, and for these two classes
+                # that flips the verdict:
+                #
+                #   test count        `verum analyze --escape` prints
+                #                     tier-promotion ratios; the audit
+                #                     bundle prints `14 / 14 gates green`;
+                #                     a tutorial prints what the reader
+                #                     will see. Removing them breaks the
+                #                     page.
+                #   private note link `[[language]]` and `[[cog]]` are
+                #                     TOML array-of-tables headers. Three
+                #                     of this class's first six findings
+                #                     were that, in helix and Verum.lock
+                #                     samples — a FALSE POSITIVE, which is
+                #                     the expensive direction: it asks an
+                #                     author to break working config.
+                #
+                # NOT extended past these two. A commit hash or a tracker
                 # number inside a fence is still a leak.
-                if fenced and name == "test count":
+                if fenced and name in FENCE_EXEMPT:
                     continue
                 for m in rx.finditer(line):
                     if (rel, m.group(0)) in EXEMPT:
@@ -450,16 +498,21 @@ def main(argv: list[str]) -> int:
                 ):
                     found["no such crate in the tree"] += 1
                     rows.append((rel, i, "no such crate in the tree", crate))
-            for m in HASH_CANDIDATE.finditer(line):
-                tok = m.group(1)
-                if tok in HEX_NAMES:
-                    continue
-                if not have_repo:
-                    unverified += 1
-                    continue
-                if resolves_as_object(tok, repo):
-                    found["commit hash"] += 1
-                    rows.append((rel, i, "commit hash", tok))
+            seen_hash = set()
+            for rx in (HASH_CANDIDATE, BARE_HASH_CANDIDATE):
+                for m in rx.finditer(line):
+                    tok = m.group(1)
+                    if tok in HEX_NAMES or tok in seen_hash:
+                        continue
+                    seen_hash.add(tok)
+                    if (rel, tok) in EXEMPT:
+                        continue
+                    if not have_repo:
+                        unverified += 1
+                        continue
+                    if resolves_as_object(tok, repo):
+                        found["commit hash"] += 1
+                        rows.append((rel, i, "commit hash", tok))
 
     if report:
         for rel, i, name, tok in rows:
