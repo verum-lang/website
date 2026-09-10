@@ -100,7 +100,7 @@ The comma form is implemented; the union form is not. `Resource with
 `unclosed delimiter ']'` — the parser reads one identifier per
 capability slot and stops at the `|`. The alternation is in the grammar
 (`capability_or_expr`), so this is a gap in the parser, not a decision
-against the feature; it is tracked as A78 in the tech-debt register.
+against the feature.
 Write the requirement as a comma list, or as two overloads, until it
 lands.
 

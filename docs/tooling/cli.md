@@ -581,8 +581,8 @@ their one-line meaning and category.
 One caveat worth knowing: a handful of codes are printed by the compiler
 with a meaning the registry does not share — `E801` is printed for an
 undeclared context and registered as an FFI ABI mismatch, so `explain`
-answers about the second. Being tracked; if an explanation does not
-match the error you saw, trust the error.
+answers about the second. If an explanation does not match the error
+you saw, trust the error.
 
 ## Crash reports
 

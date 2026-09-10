@@ -112,8 +112,7 @@ type UniqueIds is List<Id>
 `self[i]` inside a quantifier body is rejected — `unexpected operator
 '=='` — while `self[0] == 1` in a refinement without a quantifier, and
 `xs[i]` for a parameter inside one, both parse. `(self)[i]` and
-`self.get(i)` are the two spellings that work today; A84 in the debt
-register carries the isolation. And the binder list has to stay on one
+`self.get(i)` are the two spellings that work today. And the binder list has to stay on one
 line: `forall i in …,` with `j in …` on the next is refused.
 
 :::

@@ -284,8 +284,8 @@ compile and by your machine.
 on that value goes through AOT method dispatch, which currently loses
 the base type and aborts — `verum test` runs at `tier=aot` by default,
 so the test would fail there while passing under the interpreter.
-Binding through the base type avoids it. Tracked as A79; `.len()` and
-`.is_empty()` on the same value are unaffected, which is why the first
+Binding through the base type avoids it. `.len()` and `.is_empty()` on
+the same value are unaffected, which is why the first
 test needs no annotation.
 
 :::

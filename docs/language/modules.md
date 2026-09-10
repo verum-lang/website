@@ -134,7 +134,7 @@ of them ran.
 
 Write the modifiers — they are how the intent is recorded, and they are
 what the check will read when it exists — but do not rely on them to
-keep a caller out. Tracked.
+keep a caller out.
 
 :::
 
