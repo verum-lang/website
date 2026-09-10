@@ -98,7 +98,15 @@ reverse-proxy kit (see below).
 
 :::note `Response.ok(...)` was not a thing — and nothing in the library was using it either
 
-Measured 2026-09-04: `Response.ok` does not exist anywhere in `core/`.
+Measured 2026-09-04, re-measured 2026-09-10: `Response.ok` does not
+exist anywhere in `core/`, and neither does any construction of the type
+at all:
+
+```
+grep -rl 'Response\.ok' core/ --include='*.vr' | wc -l      # 0
+grep -rl 'Response\.new(' core/ --include='*.vr' | wc -l    # 0
+```
+
 `core/net/http.vr` declares `Response` as a builder — `new(status)`,
 `.status()`, `.body(List<Byte>)`, `.header()` — and
 `Response.new(StatusCode.ok())` compiles.

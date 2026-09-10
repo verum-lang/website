@@ -163,10 +163,17 @@ The PEM parsing that does exist is `Certificate.from_pem_chain(&Text)
 `core/security/x509/credential.vr`, and a trust bundle is
 `TrustStore.from_pem_bundle`.
 
-The signer half has no substitute: `from_cert` wants a
-`Heap<dyn CertSigner>`, `CertSigner` is declared at
-`core/net/tls13/handshake/server_sm.vr:83`, and **nothing in `core/`
-implements it**. So this walkthrough cannot be written today — not with
+The signer half has no substitute. `from_cert` wants a
+`Heap<dyn CertSigner>`, and the protocol is declared once with no
+implementation anywhere — one command shows both halves, re-measured
+2026-09-10:
+
+```
+grep -rn 'type CertSigner' core/ --include='*.vr'
+# core/net/tls13/handshake/server_sm.vr — the protocol
+grep -rl 'implement CertSigner' core/ --include='*.vr' | wc -l    # 0
+```
+ So this walkthrough cannot be written today — not with
 different spellings, not at all — until a concrete signer lands.
 :::
 

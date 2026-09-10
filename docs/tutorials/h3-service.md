@@ -260,16 +260,48 @@ them compile while teaching a design that is not settled.
 
 ## 6. Streaming subscribe
 
-:::caution Not shipped — `H3Response` has no `.streaming(...)`
-Measured against `core/`, the same finding as the warning in §5:
-`H3Response` carries four methods — `ok(body)`, `status(code)`,
-`with_header(name, value)` and `to_field_list()`. A body is a
-`List<Byte>` handed to `ok` up front, so there is no writer to hand a
-closure to, and no cancellation to translate `STOP_SENDING` into.
+:::caution `H3Response` has no `.streaming(...)` — but the pieces exist
+`H3Response` carries four public methods and none of them is
+`streaming`. Re-measured 2026-09-10:
 
-The block below is the shape such a surface WOULD take. It is here
-because the design question — where the writer comes from and who owns
-it — is the interesting part of the tutorial; it does not compile.
+```
+awk '/implement H3Response/,/^}/' core/net/h3/request.vr | grep 'public fn'
+# ok, status, with_header, to_field_list — four, and that is all
+```
+
+The `awk` range matters: a plain `grep 'public fn' core/net/h3/request.vr`
+answers **12**, because the file also declares `H3Request`. And
+`format_status`, just below the block, is a free function rather than a
+fifth method.
+
+An earlier wording of this box drew the wrong conclusion from that
+count: it said there is no writer to hand a closure to and no
+cancellation to translate `STOP_SENDING` into. Both are wrong, and both
+live one module over:
+
+```
+grep -nE '^(public )?(type|implement)' core/net/h3/streaming.vr
+# ten lines: five public types — H3DataSink, H3StreamWriter (a
+# protocol), H3StreamingResponse, BytesWriter, CallbackWriter — three
+# inherent `implement` blocks, and TWO `implement H3StreamWriter for …`
+```
+
+`CallbackWriter<F>` is precisely a writer built from a closure — its
+bound is `F: fn() -> Maybe<List<Byte>> + Send` — and `H3DataSink` carries
+`signal_cancellation()` and `is_cancelled()`, whose doc comments name
+`STOP_SENDING` as what sets them. The module holds no `@intrinsic`, so
+it is ordinary Verum rather than a stub wall, and
+`vcs/specs/L2-standard/net/h3/streaming_response.vr` pins its surface.
+
+What is actually missing is the ROUTE. `H3Server`'s handler protocol is
+`async fn serve(&self, req: H3Request) -> H3Response`, so a streaming
+response has nowhere to go through this server; the weft HTTP/3 layer is
+where `H3StreamingResponse` is plumbed today. Note also that the
+conformance spec is `@test: typecheck-pass` — it fixes the shape, not
+the behaviour.
+
+The block below is the shape a `.streaming(...)` method WOULD take. It
+does not compile.
 :::
 
 A successful `/subscribe` upgrades the stream to a long-lived
@@ -324,8 +356,12 @@ and the handler can surface a 429 instead of blocking.
 
 :::caution No per-connection stats on the server
 `H3Server` has no `stats()`, and there is no stats record anywhere under
-`core/net/h3` — measured: the string `Stats` does not occur in the
-module. `active_connections`, `requests_total` and
+`core/net/h3` — re-measured 2026-09-10:
+
+```
+grep -rl Stats core/net/h3/ --include='*.vr' | wc -l    # 0
+```
+ `active_connections`, `requests_total` and
 `qpack_static_hit_ratio` were invented with it. What `H3Server` carries
 is `ServerOptions` (`from_cert`, `with_alpn`, `with_idle_timeout`) and
 the serve loop; counting is weft's registry, below.

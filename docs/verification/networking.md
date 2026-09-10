@@ -56,9 +56,18 @@ public type AckRanges is List<AckRange>
 
 An earlier revision of this page wrote `@forall … => …` and a warning
 here recorded that it does not parse — `error<E018>: expected identifier
-or keyword after @`, and `@forall` appears nowhere in
-`grammar/verum.ebnf`, `core/`, or the conformance suite. That much was
-right.
+or keyword after @`. That much was right, and the spelling is not the
+language's:
+
+```
+grep -rn '@forall' grammar/ core/ vcs/
+# one hit, and it is a COMMENT in the very spec cited below, saying the
+# quantified form "needs @forall over a List" — a wish, not a production
+```
+
+The single hit is worth reading rather than counting. A fingerprint of
+presence proves nothing on its own; here the word occurs precisely
+because a comment asks for it.
 
 What the warning got wrong is the conclusion. The un-prefixed form IS
 syntax: re-measured 2026-09-05, `forall i in 0..n. p` parses in a

@@ -23,12 +23,30 @@ SHIPPED, all in `core/meta/token.vr` unless noted: `TokenStream`,
 (`quote.vr`); `TypeKind`, `FieldInfo`, `VariantInfo`, `GenericParam`,
 `ProtocolInfo`, `FunctionInfo` (`reflection.vr`).
 
-WHAT IS NOT, anywhere in `core/`: `Ident`, `Punct`, `Group`,
-`HygieneMark`, `Hygiene`, `AstAccess`, and every `*Ast` type —
-`FnAst`, `TypeAst`, `ImplAst`, `ExprAst`, `StmtAst`, `PatternAst`,
-`ProtocolAst`, `ContextAst`, `AttributeAst`, `BlockAst` — along with
-`TypeInfo`, `CompileDiag`, `Quotable` and `Param`. Sections that rest
-on them carry their own marker below.
+WHAT IS NOT: `Ident`, `Punct`, `Group`, `HygieneMark`, `Hygiene`,
+`AstAccess`, and every `*Ast` type — `FnAst`, `TypeAst`, `ImplAst`,
+`ExprAst`, `StmtAst`, `PatternAst`, `ProtocolAst`, `ContextAst`,
+`AttributeAst`, `BlockAst` — along with `TypeInfo`, `CompileDiag`,
+`Quotable` and `Param`. Re-measured 2026-09-10:
+
+```
+grep -rlE '^ *public type (Ident|Punct|Group|HygieneMark|Hygiene|AstAccess|[A-Za-z]+Ast|TypeInfo|CompileDiag|Quotable|Param)\b' core/meta/ --include='*.vr' | wc -l
+# 0
+```
+
+That pattern is one long line on purpose. Breaking it with a backslash
+INSIDE the single quotes puts a literal newline into the alternation and
+silently kills the branch that follows it — measured: the broken form
+cannot find `AstAccess`, while every other name still matches, so the
+answer stays 0 and looks like a measurement.
+
+The scope is `core/meta/`, deliberately. Two of those names DO occur
+elsewhere in the library and mean something unrelated —
+`core/database/sqlite/native/l5_sql/lexer.vr` has a `Punct` for SQL
+punctuation, `core/math/algebra.vr` a `Group` protocol for algebra.
+Neither is a meta-programming type, and searching the whole tree for
+these names finds them and misleads. Sections that rest on the absent
+names carry their own marker below.
 
 The shipped half is corrected against the source in this pass: the
 token tree is `| Leaf(Token) | Grouped(TokenGroup)`, not four variants;
