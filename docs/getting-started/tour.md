@@ -220,6 +220,10 @@ public type MyPath<A>(a: A, b: A) is @builtin_path;
 public fn myrefl<A>(x: A) -> MyPath<A>(x, x) { @builtin_refl(x) }
 ```
 
+(That compiles with `warning<E0410>: unknown meta-function` on each
+`@builtin_*` — the parser's roster of known meta-functions has not been
+told about them — and runs anyway.)
+
 What fails is the archived `core.math.hott.refl`, whose recorded return
 type comes back as `Unit`: ask for it directly with `let x: Int =
 refl(7);` and the answer is `expected 'Int', found 'Unit'`. The rest of
