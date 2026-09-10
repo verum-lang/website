@@ -496,17 +496,33 @@ walk the calling thread's own frames, up to 64 of them.
 :::caution `capture()` does not walk anything yet
 
 Measured 2026-09-10. The walk starts from `@frame_address(0)`, and type
-inference has no arm for that name: it types as `Unit`, so the frame
-pointer the loop tests and advances is not a pointer. The function
-compiles and returns a `StackTrace`; what it cannot do is fill one.
+inference has no arm for that name, so it types as `Unit` — the frame
+pointer the loop tests and advances is not a pointer.
+
+The evidence is in the shipped bytecode rather than in a compiler run,
+because a single-file `verum check` over `core/` and the stdlib bake do
+not agree and the bake is what ships:
+
+```
+strings runtime.vbca | grep -c capture         38
+strings runtime.vbca | grep -c frame_address    0
+```
+
+The function is there. The intrinsic its walk depends on is not, under
+any name, anywhere in the archive.
 
 The gap is the same shape as the cubical `@builtin_*` family described
 on **[verification/cubical-hott](/docs/verification/cubical-hott)** — a
-name the compiler parses, does not type, and therefore silently reduces
-to `Unit`. Nothing about `StackTrace`'s own shape is affected: the
-record, its fields and `ThreadStackFrame` are all real.
+name the compiler parses and does not type. It differs in one way worth
+knowing: there the failure is silent, here it is a visible `E400` that
+does not mention `@frame_address`, so a reader sees `found 'Unit'` and
+has nowhere to look for where the `Unit` came from.
 
-This box stops being true when inference learns `@frame_address`.
+Nothing about `StackTrace`'s own shape is affected: the record, its
+fields and `ThreadStackFrame` are all real.
+
+This box stops being true when `frame_address` appears in the archive
+alongside `capture`.
 :::
 
 ## Thread pool — `runtime.pool`
