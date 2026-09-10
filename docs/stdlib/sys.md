@@ -59,10 +59,25 @@ gets re-measured more often.
 
 Two things measured more recently, both of which that table predates:
 
-* **There is no Windows file layer.** Not a partial one — see
-  [the file I/O page](./io.md), which names the count of wrappers that
-  exist. Anything on this page describing Windows file behaviour
-  describes an intention.
+* **There is no Windows file layer.** Not a partial one. The two modules
+  that would carry it mount, on Windows, a total of two functions —
+  re-measured 2026-09-10, and the whole finding fits on a screen:
+
+  ```
+  for f in core/io/file.vr core/io/fs.vr; do
+      awk '/@cfg\(target_os = "windows"\)/{p=1} p{print} p&&/};/{exit}' "$f"
+  done
+  ```
+
+  (The loop is not decoration. Handing both files to one `awk` prints
+  only the first: `exit` ends the program, not the file.)
+
+  `file.vr` brings in `safe_close` and ten constants; `fs.vr` brings in
+  `GetFileAttributesW` and nothing else. Run the same command with
+  `"linux"` and the two files answer with ten and eighteen functions —
+  `open`, `read`, `write`, `lseek`, `fstat`, `mkdir`, `unlink`, `rename`
+  and the rest. Anything on this page describing Windows file behaviour
+  describes an intention. See also [the file I/O page](./io.md).
 * Several `core.sys` surfaces are reachable only through the
   interpreter; the ahead-of-time path for programmes that mount a
   standard-library submodule is a separate question this page does not
