@@ -408,19 +408,37 @@ m.get_mut(&k)         // Maybe.None      <- WRONG
 m.get_key_value(&k)   // Maybe.None      <- WRONG
 ```
 
-`entry` traps only when the map is EMPTY. On a map holding anything it
-is fine, whether or not the key you ask for is present:
+`entry` traps under two conditions, and neither is the obvious one. It
+is **not** about the key being present, and **not** about the map being
+empty — an earlier revision of this page said the latter, which fitted
+four probes and failed the fifth:
 
 ```verum
-Map.new(); m.entry("a")                     // traps
-m.insert("a", 1); m.entry("a")              // ok — key present
-m.insert("a", 1); m.entry("zz")             // ok — key absent, map is not
-m.insert("q", 9); m.remove("q"); m.entry(k) // traps again — len is 0
+Map.new();                       m.entry("a")   // traps
+m.insert("a",1);                 m.entry("a")   // ok  — key present
+m.insert("a",1);                 m.entry("zz")  // ok  — key absent
+m.insert("a",1); m.remove("zz"); m.entry("qq")  // ok  — removed a MISSING key
+m.insert("a",1); m.remove("a");  m.entry("zz")  // traps
+m.insert("a",1); m.insert("b",2);
+                 m.remove("a");  m.entry("b")   // traps — and len is 1
 ```
 
-The last line is the useful one: it is `len() == 0` that decides, not
-whether an insert has ever run. The backing storage is not built until
-the map holds something, and `entry` reads it regardless.
+The two triggers are a **fresh map**, where `entry` has to allocate the
+table itself, and a **tombstone** anywhere in the table. A `remove` that
+finds nothing leaves no tombstone and is harmless; a `remove` that
+deletes something breaks `entry` for every key afterwards.
+
+The map itself is fine, which is worth knowing before you go looking for
+corruption. On exactly the map that makes `entry` trap:
+
+```verum
+m.len()               // 1
+m.contains_key(&"b")  // true
+m.get("b")            // Maybe.Some(2)
+m.get("a")            // Maybe.None
+```
+
+Every other accessor reads that table correctly.
 
 Use `get` + `insert` where you would reach for `get_mut` or the entry
 API; see
