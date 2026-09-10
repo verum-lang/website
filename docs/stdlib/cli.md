@@ -158,7 +158,7 @@ in `.build()` and yields the corresponding spec. Use the `ArgSpec` /
 `Default.default()`, and that call dispatches by NAME across the whole
 program rather than by the field's declared type — it lands on
 `GitRevision.default` and panics. So `AppBuilder.new(…)` cannot return
-in the interpreter today. Tracked as T1272; the shapes above are read
+in the interpreter today. The shapes above are read
 off the `implement` blocks and are what the API will be once the
 dispatch is fixed.
 :::
@@ -339,7 +339,5 @@ Enumerating what is actually on `PATH` is not part of it — there is no
   the hood.
 - [`core.term`](./term.md) — terminal styling, the basis for
   `core.cli.help`'s rendering.
-- [`internal/specs/cli-framework.md`](https://github.com/verum-lang/verum/blob/main/internal/specs/cli-framework.md)
-  — the full design spec (Phase 0 → Phase 7).
 - [Cookbook: building a CLI tool](../cookbook/cli-tool.md) — a
   complete worked example.

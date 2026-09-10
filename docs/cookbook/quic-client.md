@@ -175,7 +175,7 @@ exist is a producer: `QuicClient` carries `connect`,
 `authority` and `peer_addr` — no `stats()` — and nothing anywhere in
 `core/net/quic/` constructs, stores or returns a `QuicStats`. This page
 used to show `client.stats().snapshot()`, which is two methods neither
-type has. Tracked as T1326.
+type has.
 :::
 
 The counters are a form you fill in and render yourself:

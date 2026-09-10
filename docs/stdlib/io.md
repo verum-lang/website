@@ -786,9 +786,9 @@ therefore **Linux and macOS**. Path parsing — `Path`, `PathBuf`,
 everywhere, which is why the Windows spellings above are real. Opening a
 file is not.
 
-Tracked as T1211 in the task pool. It is stated here rather than left to
-be inferred from a gaps table, because a reader who ships to Windows on
-the strength of #io-9's "0.5 day" estimate will find out at runtime.
+It is stated here rather than left to be inferred from the gaps table,
+because a reader who ships to Windows on the strength of #io-9's
+"0.5 day" estimate will find out at runtime.
 
 :::
 

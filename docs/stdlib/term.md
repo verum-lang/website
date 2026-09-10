@@ -395,7 +395,7 @@ Block.new()
 
 The span type is `TextSpan`. `Span` resolves to something else entirely
 — `core.meta`'s macro-hygiene span — so a `Span.new(…)` written by
-analogy binds to the wrong type without a word of complaint (T1268).
+analogy binds to the wrong type without a word of complaint.
 
 ### Interactive widgets
 

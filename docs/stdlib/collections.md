@@ -462,7 +462,7 @@ for v in m.values_mut() { *v = *v * 10; }
 // Null pointer dereference: op=opcode 0x62 at MapValuesMut.next (pc=60)
 ```
 
-Same shape as `Map.entry` and `Map.get_mut` (T1196): the receiver
+Same shape as `Map.entry` and `Map.get_mut`: the receiver
 register of a `&mut`-yielding map iterator holds an Int-tagged value
 where a pointer is required. The owned-value accessors — `iter`, `keys`,
 `values`, `into_iter` — are unaffected; rebuild the map from `iter()`

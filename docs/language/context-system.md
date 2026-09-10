@@ -121,10 +121,9 @@ programme still compiles, still runs, still prints `user=ada` — and the
 log line silently disappears. There is no diagnostic.
 
 So a rename or a typo in a provider's method removes the call rather
-than failing the build. Measured 2026-09-07; tracked as T1016, which
-also covers the neighbouring case where `provide` is handed a record
-literal of the context itself and the compiler aborts with an internal
-error instead of a diagnostic.
+than failing the build. Measured 2026-09-07. A neighbouring case has
+the same root: `provide` handed a record literal of the context itself
+aborts the compiler with an internal error instead of a diagnostic.
 :::
 
 Three syntactic facts worth noting against the stdlib's own contexts

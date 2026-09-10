@@ -237,17 +237,35 @@ Instruments each test binary with a per-function entry counter and
 reports how many functions were instrumented.
 
 :::caution Export is not implemented yet
-Measured 2026-09-09. `--coverage` really does change the generated
-code — the binary carries a counter array that is incremented on every
-function entry — but nothing writes it out. There is no `*.profraw`, no
-`default.profdata`, and no directory created; the counters live in the
-running process and go away with it, so there is nothing for `llvm-cov`
-to read.
+`--coverage` really does change the generated code — the binary carries
+a counter array that is incremented on every function entry — but
+nothing writes it out. Re-measured 2026-09-10, and both halves are one
+grep each. The instrumentation is real:
+
+```
+grep -rn __verum_coverage_counters crates/ --include='*.rs'
+# verum_codegen/src/llvm/vbc_lowering.rs:1037   the array is created
+# verum_codegen/src/llvm/vbc_lowering.rs:3152   and incremented
+# verum_codegen/tests/llvm_codegen_tests.rs:897 a test pins it in the IR
+```
+
+The export is not:
+
+```
+grep -rn 'profraw\|profdata\|instrprof' crates/ --include='*.rs'
+# two hits, both inside ONE comment in verum_cli that says these do
+# not exist — there is no machinery, only the note recording its absence
+```
+
+That second output is worth reading carefully: the words are present
+*because* a comment states they are missing. A fingerprint of ABSENCE is
+proof; a fingerprint of PRESENCE is not. The counters live in the running
+process and go away with it, so there is nothing for `llvm-cov` to read.
 
 This page previously described LLVM source-based coverage and a
 `default.profdata` that "works with every LLVM tool". That was never
 what the compiler emitted — the instrumentation is a bespoke counter
-array, not `-instrument-coverage`. Tracked as T1341.
+array, not `-instrument-coverage`.
 :::
 
 ## Benchmarking

@@ -122,7 +122,7 @@ on the emptied value.
 
 It is not a tracing defect: an eighteen-line programme with a
 `static SLOT: Mutex<Maybe<Q>>` and a two-field record loses both fields
-the same way, with no `Shared` involved (T1275). Every global registry
+the same way, with no `Shared` involved. Every global registry
 in the library sits on the same shape.
 
 Until it lands, hold the provider as a VALUE and call

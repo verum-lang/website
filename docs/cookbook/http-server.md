@@ -231,7 +231,7 @@ Response.new(StatusCode.ok()).header("a", "1").header("b", "2")
 `Headers.set` removes any existing entry with `self.entries.retain(…)`
 before pushing, and `List.retain` on a NON-EMPTY list dies at that
 opcode — a twelve-line user record with a `List` field reproduces it
-with no stdlib type involved (T1274). On an empty list the loop body
+with no stdlib type involved. On an empty list the loop body
 never runs, which is why the first header lands.
 
 That takes the free builders with it: `resp_with_header`,
@@ -241,7 +241,7 @@ their own. `Headers.append` (which only pushes) works, and so does
 reading with `headers.get` / `get_all`.
 
 `Response.header` itself is fixed: it used to call a `Headers.insert`
-that does not exist and panic with a candidate list of maps (T1273).
+that does not exist and panic with a candidate list of maps.
 :::
 
 The refinement on `name` validates at deserialization time — bodies

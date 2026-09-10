@@ -163,7 +163,6 @@ Driving the iterator by hand shows the first `next()` already answering
 `Maybe.None`, while the two steps its body performs — `slice` then
 `find` — both succeed when written at the call site in the same
 programme. So a caller counting occurrences gets zero and carries on.
-Tracked as T1279.
 
 Use `find` in a loop, advancing past each hit, until it lands.
 :::

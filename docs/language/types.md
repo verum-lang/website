@@ -47,7 +47,7 @@ missing is the runtime width. Every `Float32` method whose answer
 differs by width — `to_bits`, `from_bits`, `is_normal`, `is_subnormal`,
 and every rounding boundary — answers for 64 bits. Methods that agree at
 both widths (`is_finite`, `is_nan`) are correct, which is why this stayed
-invisible. Tracked as T1322.
+invisible.
 :::
 
 ## Records (product types)

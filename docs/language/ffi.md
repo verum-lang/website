@@ -44,7 +44,7 @@ that happened to follow them:
 
 Two of those are five characters long, so length is not the axis. Build
 the C string yourself with an explicit `0` byte, or pass a byte slice
-together with its length where the callee accepts one. Tracked as T1317.
+together with its length where the callee accepts one.
 
 :::
 

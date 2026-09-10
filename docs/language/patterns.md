@@ -115,7 +115,7 @@ Both were run. So a snippet lifted out of a method into a `fn main` stops
 compiling, and one lifted the other way starts — with no change to the
 pattern itself.
 
-Tracked as T1334. Until it is fixed, treat a record variant as
+Until this is fixed, treat a record variant as
 immutable-through-patterns and rebuild it.
 :::
 

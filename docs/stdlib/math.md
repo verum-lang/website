@@ -550,7 +550,7 @@ off the source:
   sized spellings, so this is a missing implementation rather than a
   carrier defect. The underlying cause the page used to describe (a
   protocol impl is carried by its target type's descriptor, and built-in
-  scalars have none) was repaired under T1068.
+  scalars have none) has since been repaired.
 
 * `@derive(Differentiable)` on a user record does **not** generate an
   implementation. The compiler says so rather than pretending:

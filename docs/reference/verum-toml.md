@@ -244,7 +244,7 @@ That is deliberate, and it is the point of the section's history. Until
 dropped `[verify.solver]` and every table under it in silence — forty-
 seven documented keys, no warning, no error, no effect. A fix that
 stayed quiet about typos would have moved that silence one level down
-instead of closing it. Tracked as T1233.
+instead of closing it.
 
 Two consequences worth knowing:
 
@@ -421,7 +421,7 @@ manifest elsewhere says.
 An earlier revision of this page claimed every field in the chain had
 been audited for "set but never read". That audit measured the arrows
 below the first one and not the first one itself, which was the arrow
-that did not exist (T1233).
+that did not exist.
 
 ## `[workspace]`
 

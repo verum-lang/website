@@ -181,10 +181,10 @@ invisible from here. Two defects sat on top of each other:
 * the module imported the span type under the name `Span`, which
   `core/term/widget/paragraph.vr` does not export, so every helper was
   typed as returning `core.meta`'s `MetaSpan` and `bold("hi").content`
-  did not exist — fixed 2026-09-09 (T1268);
+  did not exist — fixed 2026-09-09;
 * correcting that import surfaced a second failure inside the bake,
   which the associated-constant pre-registration then removed
-  (T1277) — `Style.DEFAULT`, which every one of these helpers reads,
+  — `Style.DEFAULT`, which every one of these helpers reads,
   was being replaced by a fabricated value rather than resolved.
 
 **Re-measured 2026-09-09 after both landed**, and on the values rather

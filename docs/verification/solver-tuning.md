@@ -40,7 +40,7 @@ Before that date they described an intent. `[verify]` deserialized into
 a `VerifyConfig` with no `solver` field, no `#[serde(flatten)]` and no
 catch-all, so serde dropped `[verify.solver]` and every sub-table under
 it in silence — the values below were accurate about what ran and
-unreachable from a manifest (T1233).
+unreachable from a manifest.
 
 They now deserialize, with `deny_unknown_fields`: a misspelled key or
 table fails the parse and names the offender instead of vanishing. A
