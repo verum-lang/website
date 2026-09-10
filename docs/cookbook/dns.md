@@ -195,7 +195,7 @@ not the record alone.
 
 :::danger There is no cache
 
-`core/net/dns.vr` contains the string "cache" **zero** times. Every
+`grep -ci cache core/net/dns.vr` → **0**, re-measured 2026-09-10. Every
 query goes to a nameserver.
 
 This section previously documented `cache_clear()`,
@@ -215,10 +215,16 @@ field is the value a cache would key its expiry on.
 ## DNS-over-HTTPS (DoH)
 
 :::caution Not shipped
-`DnsTransport` and `with_transport` do not exist — measured, not guessed:
-zero occurrences in the tree, and `core/net/dns.vr` contains no DoH,
-`dns-query` or HTTPS reference at all.  `Resolver` is real
-(`core/net/dns.vr:1145`); its builder is `nameserver`, `nameserver_ip`,
+`DnsTransport` and `with_transport` do not exist, and the file has no
+HTTPS side at all — measured 2026-09-10:
+
+```
+grep -rlE 'DnsTransport|with_transport' core/ --include='*.vr' | wc -l  # 0
+grep -cEi 'doh|dns-query|https' core/net/dns.vr                         # 0
+```
+
+`Resolver` is real (`grep -n 'type Resolver' core/net/dns.vr`); its
+builder is `nameserver`, `nameserver_ip`,
 `timeout_ms`, `retries`, `search_domain`, `ndots` and `use_tcp` — plain
 UDP with a TCP fallback.  The shape below is what a DoH transport would
 look like.

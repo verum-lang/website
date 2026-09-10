@@ -103,11 +103,19 @@ silently expire mid-session.
 ## `SpiffeClientTransport` — outgoing mTLS
 
 :::caution Not shipped
-`SpiffeClientTransport` does not exist — measured, not guessed: zero
-occurrences in the tree.  Neither does a constructor for `HttpClient`,
-which `core/net/http.vr:722` declares as a PROTOCOL and leaves for you to
-implement; the one `implement HttpClient for SimpleHttpClient` in the tree
-is inside a `///` comment.
+`SpiffeClientTransport` does not exist — measured, not guessed, and
+2026-09-10 still `grep -rl SpiffeClientTransport core/ | wc -l` → 0.
+Neither does a constructor for `HttpClient`, which is a PROTOCOL left for
+you to implement. One command shows both halves of that:
+
+```
+grep -nE 'type HttpClient|implement HttpClient' core/net/http.vr
+# 722:/// implement HttpClient for SimpleHttpClient {   <- a doc comment
+# 728:public type HttpClient is protocol {
+```
+
+The only `implement` in the file is inside `///`, so it compiles to
+nothing.
 
 What `core/net/weft/spiffe.vr` ships is the INBOUND side: `Principal`,
 `TrustBundleProvider`, `AuthMode`, `SpiffeAuthLayer`, `SpiffeAuthHandler`

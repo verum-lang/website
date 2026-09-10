@@ -638,14 +638,32 @@ other; the return shapes differ.
 ### Router and command palette — not shipped
 
 :::caution Not shipped
-`Router`, `Screen` and `CommandPalette` do not exist. Measured: zero
-declarations anywhere under `core/`, and the only occurrence of either
-name in the whole tree is one comment listing Layer 6's intended
-contents. The page previously showed a `router.route(…).navigate(…)`
-builder and a `palette.register(…)` chain; neither name is callable.
+`Router`, `Screen` and `CommandPalette` are not part of the terminal
+framework. Measured 2026-09-10:
 
-The shipped Layer 6 surface is what
-`core/term/app/mod.vr` exports and nothing else:
+```
+grep -rlE '^ *(public )?type (App|Router|Screen|CommandPalette)\b' \
+    core/term/ --include='*.vr' | wc -l          # 0
+```
+
+The `\b` is load-bearing: without it the pattern also matches
+`public type AppMessage`, which IS shipped, and the command would
+contradict the box it is evidence for.
+
+```
+```
+
+Scope matters here, and an earlier wording of this box got it wrong by
+claiming zero declarations under `core/` at large. Two of the four names
+ARE declared elsewhere and mean something else — `core/net/weft/router.vr`
+has a `Router` that routes HTTP, `core/cli/runtime.vr` an `App` that is a
+command-line program. Under `core/term/` there is neither. The page once
+showed a `router.route(…).navigate(…)` builder and a `palette.register(…)`
+chain; neither name is callable.
+
+The shipped Layer 6 surface is the five re-exports of
+`core/term/app/mod.vr` — `grep '^public mount' core/term/app/mod.vr` —
+and nothing else:
 
     Model, AppMessage, run, run_async          the Elm loop above
     Command  + none/perform/task/batch/sequence/tick/quit

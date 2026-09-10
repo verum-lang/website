@@ -84,7 +84,14 @@ file yourself; nothing in the library does the write-then-diff dance.
 None of this section exists. `VirtualTerminal`, `ManualRuntime`,
 `type_keys`, `expect_row`, `run_one_frame` and
 `block_on_with_fake_clock` are absent from `core/` — measured, not
-guessed: each name has zero occurrences in the tree. The shape below is
+guessed, and 2026-09-10 the six together still match no file:
+
+```
+grep -rlE 'VirtualTerminal|ManualRuntime|type_keys|expect_row|\
+run_one_frame|block_on_with_fake_clock' core/ --include='*.vr' | wc -l   # 0
+```
+
+The shape below is
 what such a harness would look like; today, layers 1 and 2 are the
 whole story, and they cover more than they look like they do because
 `update` is pure and `view` renders into a `Buffer` you own.

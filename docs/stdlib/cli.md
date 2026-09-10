@@ -42,10 +42,16 @@ runtime.
 ## 2. Declarative API — `@command` derive (Phase 1)
 
 :::caution Not shipped
-The derive does not run yet — measured, not guessed.  `core/cli/derive.vr`
-declares its own status as *"Phase 1 — semantic-only, scaffolding for the
-meta1 macro pass"* and says outright: *"Until the macro pass lands,
-hand-written code uses `cli.builder`."*  Copying the block below and
+The derive does not run yet — measured, not guessed. The library says so
+itself, and says it in a place you can read without leaving the shell:
+
+```
+grep -nE 'Status: Phase 1|macro pass lands' core/cli/derive.vr
+#  7:// Status: Phase 1 — semantic-only, scaffolding for the meta1 macro pass
+# 18:// Until the macro pass lands, hand-written code uses `cli.builder` to
+```
+
+Copying the block below and
 running it today gives `error: No main function found in VBC module`,
 because the entry point Verum recognises is `fn main()` or
 `fn main(args: List<Text>)` — a typed `fn main(args: Args) -> ExitCode`
