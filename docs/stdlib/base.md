@@ -1352,7 +1352,7 @@ For corecursive function bodies. Most users will not import this
 directly; it backs the `cofix` modifier's productivity check.
 
 ```verum
-type CorecursiveCall is { callee: Text, guard_depth: Int };
+type CorecursiveCall is { callee: Text, guard_depth: Int{>= 0} };
 type ProductivityResult is Productive | NonProductive { unguarded: List<Text> };
 
 corec_call(callee, depth)                check_productivity(calls)

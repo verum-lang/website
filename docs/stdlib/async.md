@@ -292,7 +292,7 @@ timeout(fut, duration)         -> Result<T, TimeoutError>
 ## Tasks
 
 ```verum
-type TaskId is { id: UInt64 };
+type TaskId is { id: Int };
 type Task<T>  is { ... };
 type JoinHandle<T> is { ... };
 type JoinError is Cancelled | Panicked(PanicInfo);

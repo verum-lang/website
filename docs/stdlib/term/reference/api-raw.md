@@ -106,7 +106,7 @@ public type EscapeWriter is protocol {
 
 ```verum
 public type TermCapabilities is {
-    color_profile: ColorProfile,
+    color_profile: ColorSupportLevel,
     unicode_support: UnicodeSupport,
     mouse_protocol: MouseProtocol,
     has_alternate_screen: Bool,

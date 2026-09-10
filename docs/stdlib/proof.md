@@ -73,7 +73,7 @@ type BundleMetadata is {
 type BundleCert is { hash: GoalHash, cert: ProofCertificate };
 
 type ProofBundle is {
-    certificates: List<BundleCert>,
+    certificates: Map<Text, ProofCertificate>,
     metadata: BundleMetadata,
 };
 

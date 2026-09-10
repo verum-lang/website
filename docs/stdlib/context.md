@@ -567,8 +567,8 @@ context system:
 
 ```verum
 type CapabilityContext is {
-    slots: [*mut Byte; 256],                   // O(1) slot array for well-known contexts
-    dynamic_ctx: List<DynamicFrame>,          // provide/using runtime contexts
+    slots: ContextSlots,                   // O(1) slot array for well-known contexts
+    dynamic_ctx: &Map<TypeId, &dyn Any>,          // provide/using runtime contexts
     middleware: List<Heap<dyn ContextMiddleware>>,
 };
 ```

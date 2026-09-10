@@ -152,7 +152,7 @@ yet wrapped or a non-standard reply shape.
 ## Streams (event queue)
 
 ```verum
-public type StreamEntry is { id: Text, fields: List<(Text, Text)> };
+public type StreamEntry is { id: Text, fields: List<(Text, List<Byte>)> };
 ```
 
 | function | parameters | returns |

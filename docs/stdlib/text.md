@@ -496,7 +496,7 @@ Implements `Debug`.
 and `CharRange` (built from `char_range(start, end)`).
 
 ```verum
-type AnyChar is { chars: List<Char> };
+type AnyChar is { chars: &[Char] };
 type CharRange is { start: Char, end: Char };
 
 public fn char_any_of(chars: &[Char]) -> AnyChar;

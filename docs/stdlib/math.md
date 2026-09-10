@@ -662,8 +662,8 @@ MemoryStore.new(vector_store)
 flash_attention(q, k, v, scale) / paged_attention(...)
 sample_top_p(logits, p) / sample_temperature(logits, t) / sample_greedy(logits)
 
-type ChatMessage is { role: Text, content: Text };
-type FunctionSchema is { name: Text, parameters: Data };
+type ChatMessage is { role: AgentRole, content: MessageContent };
+type FunctionSchema is { name: Text, parameters: JsonSchema };
 type ExecutableTool is protocol { fn call(args) -> Data; }
 
 QuantizedLinear.new(in_dim, out_dim, bits: Int)    // INT4/INT8

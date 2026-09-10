@@ -75,7 +75,7 @@ Two things measured more recently, both of which that table predates:
 ```verum
 type OSError is { code: Int, message: Text };
 type FileDesc is (Int);                // type-safe file descriptor wrapper
-type IOVec is { base: *mut Byte, len: Int };
+type IOVec is { base: &unsafe Byte, len: Int };
 type PageSize is Int;
 
 type MemProt is bitflags {

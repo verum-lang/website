@@ -39,7 +39,7 @@ proof-heavy user code that wants to reason about these systems.
 ```verum
 public type World       is { id: Text };
 public type Edge        is { from: World, to: World };
-public type KripkeFrame is { worlds: List<World>, edges: List<Edge> };
+public type KripkeFrame is { worlds: List<World>, edges: List<KripkeEdge> };
 
 // Smart constructors
 public fn world(id: Text) -> World;

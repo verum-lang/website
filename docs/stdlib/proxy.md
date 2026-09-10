@@ -101,7 +101,7 @@ public type LoadBalancer is
 
 public type UpstreamEntry is {
     upstream: Upstream,
-    health: HealthStatus,
+    health: ProxyHealthStatus,
     in_flight: Shared<AtomicInt>,
 };
 ```
