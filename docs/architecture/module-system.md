@@ -139,6 +139,35 @@ dedupe correctly. Its rule:
   > importing scope — rename one or scope one behind a non-public
   > re-export
 
+:::caution What this rule does not cover
+
+Read the last clause literally: *both sides resolve to the same name in
+the **importing scope***. The conflict is raised when an importer would
+be ambiguous — not when two modules merely declare the same name.
+
+Measured 2026-09-10 on a three-module stdlib where two modules each
+declare `public type S` and a third uses the bare name without mounting
+either: the bake emits **zero** conflicting-export diagnostics and
+completes. Nothing at the declaration layer objects.
+
+What happens instead is one layer down, in the type table, and it is
+silent. That table keys identity on the pair *(simple name, kind)* — its
+own consistency check states that two entries with the same name and
+kind must share one id — so two same-named records are not a conflict
+there but one type registered twice. Which declaration survives has been
+decided by different rules for different halves of the type: the id by
+the last claim, the field layout by the first registration. A module
+could receive its own constructor emitting another module's field count.
+
+The stdlib carries 132 colliding type names across 280 declarations
+today, so this is the common case rather than a corner. A collision
+whose two declarations share no field name fails loudly at the emission
+site — `FIELD-GUESS-HARD-1` refuses to guess an offset. A collision that
+shares a field name is the silent subset, because the name *is* present
+in the surviving layout, at the wrong index.
+
+:::
+
 ## Privacy at AST-walk fallback
 
 `find_type_declaration_in_module` used to walk the module AST by
