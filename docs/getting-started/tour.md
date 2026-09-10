@@ -198,6 +198,37 @@ a value), and Path types (`HottPath<T>(x, y)` — the type of paths from
 language. The kernel's HoTT layer (`Transp`, `HComp`, `Glue`) is
 wired to its reduction rules in `verum_smt.cubical_tactic`.
 
+:::caution The Path-type half does not compile yet
+
+The `HottPath` / `refl` / `I` block above is the intended surface, not a
+working example. Copied verbatim into a file and run, it stops at the
+type checker:
+
+```
+error<E400>: Type mismatch: expected '@builtin_path', found 'Unit'
+  --> main.vr:8:5
+ 7 │ fn same_value<T>(x: T) -> HottPath<T>(x, x) {
+ 8 │     refl(x)
+   │     ^^^^^^^
+```
+
+`core/math/hott.vr` declares the type AND its constructor through
+compile-time meta-functions — `type I is @builtin_interval;`, `type
+HottPath<A>(a: A, b: A) is @builtin_path;`, `fn refl<A>(x: A) { @builtin_refl(x) }`
+— and those names have no implementation in the compiler, so each one
+warns `E0410` and evaluates to `Unit`.
+
+**Which half works.** The sentence above this box is accurate: the
+verification layer does reason about these types —
+`verum_smt.cubical_tactic` exists and the proof search calls into it. It
+is the EXECUTION layer that has no primitives. Σ-types, Π-types, `Vec`
+and `replicate` in the same block are unaffected and run.
+
+Measured 2026-09-10. This box stops being true as soon as any
+`@builtin_*` cubical primitive is implemented.
+
+:::
+
 ## 10. Framework axioms
 
 ```verum
