@@ -153,8 +153,22 @@ error<E400>: Type mismatch: expected 'T', found 'Unit'
 
 `@const_slot_for` is in none of the compiler's meta-function rosters, so
 it becomes `Unit`, and `slot < CONTEXT_SLOT_COUNT` compares a `Unit`.
-The stdlib bake is lenient, so `env.vr` ships with this body stubbed
-rather than failing the build — which is why nothing else reports it.
+
+What ships is not a stub. The archive names every body the bake gave
+up on, and there are exactly two, neither from this file:
+
+```
+strings runtime.vbca | grep "compiled to panic-stub"
+  [lenient] compose_geometric …
+  [lenient] id_geometric …
+
+strings runtime.vbca | grep -c const_slot_for      0
+strings runtime.vbca | grep -c CapabilityContext  15
+```
+
+The type is there; the meta-function the fast path turns on is not,
+under any name. Absence in the archive is the evidence — presence would
+not be, because the archive stores the text of its own stubs too.
 
 **The slot array itself is reachable** — what is missing is only the
 automatic type-to-slot mapping. `get_slot<T>(&self, slot: Int)` and
