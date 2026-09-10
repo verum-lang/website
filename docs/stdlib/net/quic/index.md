@@ -289,16 +289,28 @@ contracts, and KAT file references:
 - [Recovery (RFC 9002)](/docs/stdlib/net/quic/recovery) — loss detection, RTT estimator,
   PTO back-off, NewReno / CUBIC / BBR.
 
-## Status (2026-04-29)
+## Status
 
 All modules in the map have shipped implementations, and the L2 suite
 does not pass over all of them.
 
-**The pass rates this section carried are removed rather than
-refreshed.** They were measured against a 2026-04-29 baseline and have
-not been re-run since; a fraction carried forward past the suite it was
-taken on reads as current and is not. What the numbers were used to say
-is in the paragraph below and does not depend on them.
+**The pass rates this section used to carry are removed rather than
+refreshed.** They were measured against a 2026-04-29 baseline and never
+re-run; a fraction carried forward past the suite it was taken on reads
+as current and is not. What the numbers were used to say is in the
+paragraphs below and does not depend on them.
+
+The living answer is the conformance inventory, which is re-run rather
+than transcribed. As of 2026-09-10 it holds 32 QUIC rows: three
+`stable` (`connection_id`, `error`, `version`), one `partial` (`frame`),
+one `regression-only` (the `net/quic` root) and **27 `unverified`** —
+a token meaning nothing was ever asserted, which is a different thing
+from a module that fails. Ask it yourself rather than trusting this
+paragraph's age:
+
+```
+grep -E '^\| `net/quic' core-tests/INVENTORY.md
+```
 
 The conformance gap is **not** in protocol implementation. The
 modules pass standalone type-check; the failures cluster into four
@@ -329,8 +341,21 @@ language-layer issues that affect cross-cog symbol resolution:
    per-T monomorphisation pattern here still fails, it is a different
    defect and needs its own probe.
 
-Verification obligations V1–V10 from the QUIC spec are all
-discharged via the SMT layer (the `v*_theorem.vr` test files in the L2 suite).
+Verification obligations V1–V10 each have a theorem file in the L2
+suite, discharged via the SMT layer. They are not all under `net/quic`,
+which is worth knowing before you go looking — re-measured 2026-09-10:
+
+```
+find vcs -name 'v*_theorem*.vr' | sort
+# net/quic     v3 v4 v5 v6 v7 v9   — six
+# net/tls13    v1 v2 v8            — the handshake obligations
+# security/x509 v10                — chain validation
+```
+
+Every one carries `@test: verify-pass @expect: pass`. Read that as what
+the file DECLARES rather than as a run: `@expect` is the corpus's
+statement of intent, and whether the suite is green today is the
+question the paragraphs above answer.
 CUBIC and BBR match RFC 9438 and draft-ietf-ccwg-bbr reference traces.
 `SimNetwork` provides deterministic replay for integration tests;
 `core.net.quic.transport.batch_io` exposes `recvmmsg` and `sendmmsg`
