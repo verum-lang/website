@@ -312,7 +312,18 @@ meta fn debug_if_possible<T>(x: T) {
 builtin registry, but no `@`-spelling reaches them: written as shown they
 warn `E0410` and evaluate to `Unit`. The behaviour described in this
 section is the design; treat the code blocks as the intended surface, not
-as working examples. Measured 2026-09-10.
+as working examples.
+
+Both halves of that are one command each, so this box can be checked
+rather than believed:
+
+```
+grep -c '"embed"'  crates/verum_compiler/src/meta/builtins/build_assets.rs
+grep -rc '"@embed"' crates/ --include='*.rs'     # 0 — the sigil form
+```
+
+The first finds the registration; the second finds nothing. Re-measured
+2026-09-10.
 
 :::
 

@@ -1575,9 +1575,13 @@ verum disasm --show-tokens    # does not exist — see note below
 ```
 
 :::warning None of these four commands exists
-Measured 2026-09-03: `verum grammar` and `verum disasm` both answer
-`error: unrecognized subcommand`, and neither name appears in
-`verum --help`.
+Re-measured 2026-09-10, and the commands are the address:
+
+```
+verum grammar   ->  error: unrecognized subcommand 'grammar'
+verum disasm    ->  error: unrecognized subcommand 'disasm'
+verum --help    ->  neither name appears
+```
 
 To check a file against the grammar today, use `verum check FILE` — it
 parses and type-checks, and a syntax error is reported with the
