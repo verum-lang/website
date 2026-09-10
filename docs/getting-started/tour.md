@@ -220,6 +220,15 @@ public type MyPath<A>(a: A, b: A) is @builtin_path;
 public fn myrefl<A>(x: A) -> MyPath<A>(x, x) { @builtin_refl(x) }
 ```
 
+Take that as a way to *see the opcodes work*, not as a working path
+type: `let x: Int = myrefl(7);` is accepted too, and runs — printing
+`nil`, not `7`. (A normal type refuses the same line: `let x: Int =
+wrap(7);` over a `Wrapped` record is `expected 'Int', found 'Wrapped'`.)
+Inference
+has no arm for these names, so the declared return type is never
+checked against the body — which is the same missing piece the mounted
+version fails on, only failing quietly instead of loudly.
+
 (That compiles with `warning<E0410>: unknown meta-function` on each
 `@builtin_*` — the parser's roster of known meta-functions has not been
 told about them — and runs anyway.)
@@ -236,7 +245,6 @@ and run.
 
 Measured 2026-09-10 on the stdlib shipped that day. This box stops being
 true once `core.math.hott.refl` reports its declared return type.
-match learns these names.
 
 :::
 
