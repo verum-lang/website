@@ -599,7 +599,7 @@ RoPE.new(dim, max_positions)
 
 // Optimisers
 type Optimizer is protocol {
-    fn step(&mut self, grads: &Params);
+    fn step(&mut self, params: &mut List<&mut Parameter>);
     fn zero_grad(&mut self, params: &mut List<&mut Parameter>);
     fn lr(&self) -> Float;
     fn set_lr(&mut self, lr: Float);
