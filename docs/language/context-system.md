@@ -117,13 +117,29 @@ user=ada
 :::caution `provide` does not check that the provider implements the context
 The dispatch above resolves `Logger.info` by METHOD NAME on whatever
 value was provided. Delete the `implement ConsoleLogger` block and the
-programme still compiles, still runs, still prints `user=ada` — and the
-log line silently disappears. There is no diagnostic.
+programme still compiles, still runs, and still prints `user=ada` — the
+log line simply disappears, with no diagnostic.
 
-So a rename or a typo in a provider's method removes the call rather
-than failing the build. Measured 2026-09-07. A neighbouring case has
-the same root: `provide` handed a record literal of the context itself
-aborts the compiler with an internal error instead of a diagnostic.
+Measured 2026-09-07, re-measured 2026-09-10 against a compiler built
+that day. The probe is the block above and the block above minus five
+lines:
+
+```
+sed '/^implement ConsoleLogger {/,/^}$/d' with_impl.vr > without_impl.vr
+
+verum run with_impl.vr        # [info] fetching user
+                              # user=ada          exit 0
+verum run without_impl.vr     # user=ada          exit 0
+```
+
+Both exit 0. The only difference a reader sees is a line of output that
+is not there, which is why this is a caution rather than a footnote: a
+rename or a typo in a provider's method removes the call instead of
+failing the build.
+
+A neighbouring case has the same root — `provide` handed a record
+literal of the context itself aborts the compiler with an internal error
+instead of a diagnostic.
 :::
 
 Three syntactic facts worth noting against the stdlib's own contexts

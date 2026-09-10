@@ -124,17 +124,46 @@ protected     fn type_relative()    { ... }   // see below
   a non-`pub` module is still reachable by its full path, and the
   compiler enforces the **minimum** visibility along that path.
 
-:::caution The compiler does not enforce these scopes yet
+:::caution The explicit mount is checked; the bare name is not
 
-The table above is the design, and the modifiers parse and are carried.
-Access control is not applied: measured on a fresh cog on 2026-08-31, a
-second module mounted and called a modifier-less `fn`, an `internal fn`,
-and a non-public type's constructor from `probe_cog.util.math`, and all
-of them ran.
+Re-measured 2026-09-10 on a fresh cog, and the answer changed since this
+box last said "access control is not applied". Half of it now is.
 
-Write the modifiers — they are how the intent is recorded, and they are
-what the check will read when it exists — but do not rely on them to
-keep a caller out.
+**Mounting a non-public name is refused**, which it was not before:
+
+```
+mount probe_cog.util.math.{public_fn};      // public=1     exit 0
+mount probe_cog.util.math.{bare_fn};        // error<E401>  exit 1
+mount probe_cog.util.math.{internal_fn};    // error<E401>  exit 1
+mount probe_cog.util.math.{PrivateThing};   // error<E401>  exit 1
+```
+
+**Calling it by bare name is not.** One legitimate mount of the module's
+PUBLIC name is enough to open every other name in that module:
+
+```verum
+mount probe_cog.util.math.{public_fn};
+
+fn main() {
+    print(f"{public_fn()}");             // 1  — as intended
+    print(f"{internal_fn()}");           // 3  — never mounted, still runs
+    print(f"{PrivateThing { v: 5 }.v}"); // 5  — a non-public type
+}
+```
+
+Two controls say it is the mount that opens them rather than ambient
+visibility: with no mount from that module at all, and with a mount from
+a *different* module, both names give `error<E100>: unbound variable`.
+
+The compiler announces the mechanism itself on the successful run —
+`[mount-fallback] explicit mount … did not resolve to its named path;
+binding bare '…' owned by a first-wins declarer`. The fallback binds by
+name rather than by module path, and the visibility check lives on the
+path route.
+
+So: write the modifiers, and read them as documentation of intent. They
+now keep a caller from *importing* a private name. They do not yet keep
+one from calling it.
 
 :::
 
