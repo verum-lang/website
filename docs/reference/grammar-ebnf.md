@@ -976,8 +976,15 @@ ffi_item = ffi_function_decl
          | ffi_ownership_spec ;
 
 ffi_function_decl = '@extern' , '(' , string_lit , [ ',' , calling_convention_attr ] , ')' ,
-                    'fn' , identifier , [ generics ] , '(' , param_list , ')' ,
+                    'fn' , identifier , [ generics ] , '(' , ffi_param_list , ')' ,
                     [ '->' , type_expr ] , ';' ;
+
+(* A FOREIGN declaration may end in `...`, mirroring the C prototype it
+   describes — `int open(const char *path, int oflag, ...)`. Only a
+   foreign one: a Verum function body has no way to read the tail, and a
+   call that passes one is refused. *)
+ffi_param_list    = [ param , { ',' , param } , [ ',' , '...' ] , [ ',' ] ]
+                  | '...' ;
 
 extern_block      = 'extern' , [ string_lit ] , '{' , { extern_fn_decl } , '}' ;
 
