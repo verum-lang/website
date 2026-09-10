@@ -157,6 +157,36 @@ for entry in fs.walk_dir(path)? {
 
 ## File metadata
 
+:::danger `md.len()` needs `Metadata` in scope
+
+With only `mount core.io.fs;` — the mount this page opens with —
+`md.len()` does **not** reach `Metadata.len`. The receiver's type is not
+resolvable at the call site, so the call compiles to the builtin
+container-length opcode instead, and returns a small wrong number with
+no error at all.
+
+Measured 2026-09-10 against the shipped compiler, on a file of ten
+bytes:
+
+```verum
+mount core.io.fs;
+… fs.metadata(&fs.Path.from_str(&p)) …
+print(f"size={md.len()}");   // size=1      <- wrong, rc=0, no diagnostic
+```
+
+Mount the type and the same line is correct:
+
+```verum
+mount core.io.fs.{metadata, Path, Metadata};
+print(f"size={md.len()}");   // size=10
+```
+
+The data was never wrong — `md.raw.size` reads 10 either way. Only the
+call is. Tracked as T1370; until it is fixed, name `Metadata` in the
+mount whenever you call a method on it.
+
+:::
+
 ```verum
 let md = fs.metadata(path)?;
 // `modified_secs` / `accessed_secs` / `created_secs` answer seconds as
