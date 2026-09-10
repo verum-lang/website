@@ -157,9 +157,9 @@ intent, not of a check.
 | Code | Meaning |
 |------|---------|
 | `E310` | borrow conflict; also use after move, an invalid index, and a `&checked` reference that may escape |
-| `E311` | double move |
+| `E311` | field already borrowed — cannot borrow while a field of it is |
 | `E312` | lifetime error |
-| `E313` | dangling reference |
+| `E313` | cannot move a value while it is borrowed |
 | `E314` | borrow conflict |
 
 See [CBGR](../language/cbgr.md) for the three-tier reference model these
@@ -248,9 +248,9 @@ is an `E400`, not an `E407`.
 | Code | Meaning |
 |------|---------|
 | `E500` | contract violated |
-| `E501` | SMT solver timeout |
-| `E502` | refinement predicate false |
-| `E503` | precondition not satisfied |
+| `E501` | invalid refinement predicate; also: a meta function declared pure has side effects |
+| `E502` | a meta function uses runtime contexts, which are not available at compile time |
+| `E503` | a pure function has side effects |
 | `E504` | postcondition not established |
 
 `E501` is not a rejection of your program — it says the solver ran out of
@@ -262,8 +262,8 @@ budget. Narrowing a refinement or splitting a lemma usually resolves it. See
 | Code | Meaning |
 |------|---------|
 | `E600` | context not provided |
-| `E601` | context conflict |
-| `E602` | context cycle |
+| `E601` | visibility error — the name is not visible from this module |
+| `E602` | ambiguous name — imported from more than one module |
 
 `E600` means a function declared `using [Database]` was called from a scope
 with no `provide` for it. See [Context system](../language/context-system.md).
