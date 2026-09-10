@@ -71,12 +71,12 @@ are the ones ordinary programs hit; for any code in either scheme,
 
 | Code | Meaning | Emitted? |
 |------|---------|----------|
-| `E001` | unexpected token | yes |
-| `E002` | unterminated string literal | yes |
-| `E003` | invalid escape sequence | yes |
-| `E004` | missing closing delimiter | yes |
-| `E005` | expected expression | yes |
-| `E006` | invalid integer literal | yes |
+| `E001` | unterminated character literal | yes |
+| `E002` | invalid escape sequence | yes |
+| `E003` | invalid number literal | yes |
+| `E004` | empty character literal | yes |
+| `E005` | invalid interpolation syntax | yes |
+| `E006` | unknown token/character | yes |
 | `E007` | invalid float literal | **no** |
 
 `E007` is a registry entry with no emit site: a malformed float is
@@ -99,8 +99,8 @@ match s { ... }
 | Code | Meaning | Emitted? |
 |------|---------|----------|
 | `E100` | undefined variable | yes |
-| `E101` | undefined type | yes |
-| `E102` | undefined function | yes |
+| `E101` | type not found — no declaration of that name is in scope | yes |
+| `E102` | wrong number of arguments to a function or method | yes |
 | `E103` | field not found on type | yes |
 | `E104` | duplicate definition | **no** |
 | `E105` | ambiguous name | yes |
@@ -156,7 +156,7 @@ intent, not of a check.
 
 | Code | Meaning |
 |------|---------|
-| `E310` | use after move |
+| `E310` | borrow conflict; also use after move, an invalid index, and a `&checked` reference that may escape |
 | `E311` | double move |
 | `E312` | lifetime error |
 | `E313` | dangling reference |

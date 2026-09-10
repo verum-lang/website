@@ -353,12 +353,12 @@ These names cannot be shadowed.
 
 | Code | Meaning |
 |------|---------|
-| W001 | `PreludeShadowing` — a `mount` hides a prelude item |
+| W001 | `PreludeShadowing` — a local declaration shadows a prelude item of the same name |
 | W002 | `UnusedImport` — the import brings nothing into use |
-| W003 | `GlobImportShadowing` — a glob import silently overrode an explicit one |
+| W003 | `GlobImportShadowing` — the same name arrives from two glob mounts |
 | W004 | `DeprecatedItem` — the imported item is `@deprecated` |
-| W005 | `SelfShadowing` — a re-export shadows an item with the same name |
-| W006 | `ModuleNameCollision` — two modules resolve to the same canonical path |
+| W005 | `SelfShadowing` — a definition shadows one of the same name in an outer scope |
+| W006 | `ModuleNameCollision` — one module name is declared both by a file and inline |
 
 Each code is individually suppressible with `@allow(W0NN)` on the
 offending module or item.
