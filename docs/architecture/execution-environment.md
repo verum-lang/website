@@ -128,11 +128,7 @@ to a hashmap at **~20 ns** only when the slot is not pre-assigned.
 
 ```verum
 public fn get<T>(&self) -> Maybe<&T> {
-    let slot = @const_slot_for<T>();          // compile-time constant
-    if slot < CONTEXT_SLOT_COUNT {             // fast path, ~2 ns
-        return self.slots.get<T>(slot);
-    }
-    let type_id = TypeId.of<T>();              // slow path, ~20 ns
+    let type_id = TypeId.of<T>();              // ~20 ns
     self.dynamic_ctx
         .get(&type_id)
         .map(|any| any.downcast_ref<T>())
@@ -140,51 +136,35 @@ public fn get<T>(&self) -> Maybe<&T> {
 }
 ```
 
-:::caution The slot fast path does not compile
+:::caution The slot fast path is not written yet
 
-That block is `core/runtime/env.vr:368` verbatim, and the file does not
-type-check. `verum check core/runtime/env.vr` reports, at that line:
-
-```
-warning<E0410>: unknown meta-function `@const_slot_for`;
-                @ prefix is reserved for compile-time constructs
-error<E400>: Type mismatch: expected 'T', found 'Unit'
-```
-
-`@const_slot_for` is in none of the compiler's meta-function rosters, so
-it becomes `Unit`, and `slot < CONTEXT_SLOT_COUNT` compares a `Unit`.
-
-What ships is not a stub. The archive names every body the bake gave
-up on, and there are exactly two, neither from this file:
+`get<T>` above has no fast path, and the ~2 ns figure quoted before it
+describes a route the library does not take. The reason is in the
+function's own doc comment, which the compiler repository keeps as the
+record of why it was removed: the fast path read
 
 ```
-strings runtime.vbca | grep "compiled to panic-stub"
-  [lenient] compose_geometric …
-  [lenient] id_geometric …
-
-strings runtime.vbca | grep -c const_slot_for      0
-strings runtime.vbca | grep -c CapabilityContext  15
+let slot = @const_slot_for<T>();
+if slot < CONTEXT_SLOT_COUNT { return self.slots.get<T>(slot); }
 ```
 
-The type is there; the meta-function the fast path turns on is not,
-under any name. Absence in the archive is the evidence — presence would
-not be, because the archive stores the text of its own stubs too.
+and `@const_slot_for` is in none of the compiler's meta-function
+rosters, so it types as `Unit` and the comparison compared a `Unit`.
 
-**The slot array itself is reachable** — what is missing is only the
-automatic type-to-slot mapping. `get_slot<T>(&self, slot: Int)` and
-`set_slot<T>(&mut self, slot: Int, value: &T)` take the index from the
-caller and type-check; `core/runtime/ctx_bridge.vr` bounds-checks against
-`CONTEXT_SLOT_COUNT` on the same array. So the fast path exists for code
-willing to name its own slot, and `get<T>()` resolves dynamically until
-`@const_slot_for` does.
+The address for this, which anyone can run:
 
-**What that means for the two figures above.** ~2 ns and ~20 ns describe
-a design. Nobody has measured either against this code, so treat both as
-targets rather than results. The rest of this page — the field layout,
-the fork snapshot, the middleware chain — is not affected.
+```
+grep -c "@const_slot_for" core/runtime/env.vr        3
+grep -c "let slot = @const_slot_for" core/runtime/env.vr   1   ← inside `///`
+strings runtime.vbca | grep -c const_slot_for        0
+```
 
-Measured 2026-09-10.
+Three mentions, every one of them in a doc comment, and nothing in the
+shipped archive. The slot array and `CONTEXT_SLOT_COUNT` are left in
+place for the day the meta-function exists.
 
+**Everything else on this page is unaffected** — the dynamic path is
+what runs, and it works.
 :::
 
 ### Fork: panic-isolated snapshot
