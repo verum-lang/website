@@ -156,11 +156,18 @@ it becomes `Unit`, and `slot < CONTEXT_SLOT_COUNT` compares a `Unit`.
 The stdlib bake is lenient, so `env.vr` ships with this body stubbed
 rather than failing the build — which is why nothing else reports it.
 
+**The slot array itself is reachable** — what is missing is only the
+automatic type-to-slot mapping. `get_slot<T>(&self, slot: Int)` and
+`set_slot<T>(&mut self, slot: Int, value: &T)` take the index from the
+caller and type-check; `core/runtime/ctx_bridge.vr` bounds-checks against
+`CONTEXT_SLOT_COUNT` on the same array. So the fast path exists for code
+willing to name its own slot, and `get<T>()` resolves dynamically until
+`@const_slot_for` does.
+
 **What that means for the two figures above.** ~2 ns and ~20 ns describe
-a design. The slot branch cannot be taken as written, so no measurement
-of it exists to quote; treat both numbers as targets, not results. The
-rest of this page — the field layout, the fork snapshot, the middleware
-chain — is not affected.
+a design. Nobody has measured either against this code, so treat both as
+targets rather than results. The rest of this page — the field layout,
+the fork snapshot, the middleware chain — is not affected.
 
 Measured 2026-09-10.
 
