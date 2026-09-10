@@ -257,6 +257,14 @@ See `verum_smt/src/cubical_tactic.rs` for the routing.
   syntactic, otherwise asks the user.
 - **Performance**: cubical reduction can be expensive at compile time
   for heavily quotient-typed code. Caching mitigates.
+- **The shipped stdlib surface reports `Unit`.** The declarations above
+  work when you write them out yourself — a local `type MyPath<A>(a, b)
+  is @builtin_path;` with its `@builtin_refl` constructor compiles and
+  runs. Calling the ARCHIVED ones does not: `mount core.math.hott.{refl};
+  let x: Int = refl(7);` answers `expected 'Int', found 'Unit'`, so the
+  archive did not keep `refl`'s declared return type. Everything else in
+  this page — the axiom, the normaliser, the sub-ops — is present and
+  checked. Measured 2026-09-10.
 
 ## When to use
 
