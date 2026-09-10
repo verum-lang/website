@@ -259,14 +259,22 @@ budget. Narrowing a refinement or splitting a lemma usually resolves it. See
 
 ## Context — `E6xx`
 
-| Code | Meaning |
-|------|---------|
-| `E600` | context not provided |
-| `E601` | context conflict | 
-| `E602` | context cycle | 
+| Code | Meaning | Emitted? |
+|------|---------|----------|
+| `E600` | context not provided | yes |
+| `E601` | context conflict | **no** |
+| `E602` | context cycle | **no** |
 
 `E600` means a function declared `using [Database]` was called from a scope
 with no `provide` for it. See [Context system](../language/context-system.md).
+
+`E601` and `E602` are reserved rather than live. Both used to be emitted —
+but for conditions belonging to other categories: `E601` reported a
+visibility violation and `E602` an ambiguous name, neither of which is a
+context error. They now report under the codes that already meant them,
+[`E202`](#module--e2xx) and [`E105`](#name-resolution--e1xx), so the range
+contract this page opens with — `E1xx` a name, `E6xx` the context system —
+holds for them too. Nothing emits `E601` or `E602` today.
 
 ## Async — `E7xx`, FFI — `E8xx`, Internal — `E9xx`
 
