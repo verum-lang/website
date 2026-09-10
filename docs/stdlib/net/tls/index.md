@@ -286,7 +286,11 @@ Full handshake path (1-RTT + 0-RTT) + resumption + HRR ships.
 Server-side post-handshake auth is wired; anti-replay ships as two
 independent strategies (bloom-filter + monotonic clock).
 
-L2 conformance: **43 / 76 (56.6 %)** at the 2026-04-29 baseline.
+L2 conformance does not pass over the whole module. The fraction
+this line carried is removed rather than refreshed — it was taken on a
+2026-04-29 baseline and has not been re-run, and a stale rate reads
+as a current one.
+
 The gap is **not** in TLS protocol code: the implementation modules
 all type-check standalone, the V1 / V2 / V8 theorems still discharge
 through the SMT layer, and the RFC 8448 reference vectors (`rfc8448_simple_1rtt`,

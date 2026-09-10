@@ -108,7 +108,16 @@ CLASSES = {
         r"\b\d[\d\s,]*\s+(?:lib tests|full suite)|\b\d+\s*/\s*\d+\s+(?:green|passing)"
         r"|\b\d+\s+(?:unit|property|integration|regression)\s+tests?\b"
         r"|\b\d[\d\s,]*\s*/\s*\d[\d\s,]*\s+\w+(?:\s+\w+)?"
-        r"\s+(?:pass(?:es|ed|ing)?|green|fail(?:s|ed|ing)?)\b"
+        r"\s+(?i:pass(?:es|ed|ing)?|green|fail(?:s|ed|ing)?)\b"
+        # A ratio wearing a percentage is a pass RATE whatever noun
+        # follows it, and often no noun does: `docs/stdlib/text.md`
+        # carried a whole "Tests pass" COLUMN of them — `23 / 23 (100%)`,
+        # `27 / 45 (60%)` — plus `49 / 52 regression GREEN`, which the
+        # case-sensitive spelling above walked straight past.  Found
+        # 2026-09-10 while chasing the rows that carry a status with no
+        # conformance link; the two populations overlap because the same
+        # table does both.
+        r"|\b\d[\d\s,]*\s*/\s*\d[\d\s,]*\**\s*\(\d{1,3}(?:\.\d+)?\s*%\)"
     ),
     # NARROWER THAN THE RULE'S WORDING, AND DELIBERATELY SO.
     #
@@ -142,10 +151,12 @@ EXEMPT: dict[tuple[str, str], str] = {
         "the sentences around it RETRACT the number and explain why it was "
         "removed — quoting a withdrawn claim is the page obeying the rule, "
         "not breaking it",
-    ("architecture-types/audit-protocol.md", "14 / 14 gates green"):
-        "inside a fenced block showing the audit tool's own output; the "
-        "same legal class as a tutorial's expected output, which the "
-        "self-test already pins",
+    ("changelog.md", "27 / 30 (90 %)"):
+        "a changelog entry is a DATED record of one release; the pair of "
+        "numbers either side of the arrow IS the entry, and a number that "
+        "describes a past release does not drift",
+    ("changelog.md", "29 / 30 (96.7 %)"):
+        "the other half of the same entry",
 }
 
 
@@ -295,6 +306,15 @@ SELFTEST = [
      "run what the page told them to build; removing it breaks the page"),
     ("test count", "60/60 green under --interp", "1.5/2 of the way",
      "not a pass count"),
+    ("test count", "23 / 23 (100%)", "a 16 / 9 aspect ratio",
+     "a ratio wearing a percentage is a pass rate; a bare ratio is not"),
+    ("test count", "49 / 52 regression GREEN", "25 / 30 GREENHOUSE gases",
+     "case is ignored on the verdict word, but it still has to BE the "
+     "word: `GREENHOUSE` fails the trailing boundary. Note the slack this "
+     "alternative carries — up to two words may sit between the ratio and "
+     "the verdict, which is what lets `1 506 / 1 507 conformance checks "
+     "pass` match, and it means `N / M <two words> green` is read as a "
+     "test count wherever it appears"),
     ("test count", "1 506 / 1 507 conformance checks pass",
      "a 16 / 9 aspect ratio",
      "a ratio with no pass verb after it — the alternative is anchored "
@@ -400,9 +420,22 @@ def main(argv: list[str]) -> int:
     for f in sorted(DOCS.rglob("*.md")):
         rel = str(f.relative_to(DOCS))
         lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+        fenced = False
         for idx, line in enumerate(lines):
             i = idx + 1
+            if line.lstrip().startswith("```"):
+                fenced = not fenced
+                continue
             for name, rx in CLASSES.items():
+                # A ratio inside a fenced block is a tool's OUTPUT being
+                # shown, not a claim the page is making — `verum analyze
+                # --escape` prints tier-promotion ratios, the audit bundle
+                # prints `14 / 14 gates green`, and a tutorial prints what
+                # the reader will see. Removing those breaks the page.
+                # Scoped to this ONE class: a commit hash or a tracker
+                # number inside a fence is still a leak.
+                if fenced and name == "test count":
+                    continue
                 for m in rx.finditer(line):
                     if (rel, m.group(0)) in EXEMPT:
                         continue

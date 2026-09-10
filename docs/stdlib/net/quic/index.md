@@ -291,15 +291,14 @@ contracts, and KAT file references:
 
 ## Status (2026-04-29)
 
-All modules in the map have shipped implementations. Live conformance
-numbers from the L2 test suite:
+All modules in the map have shipped implementations, and the L2 suite
+does not pass over all of them.
 
-| Layer | Pass / Total |
-|-------|------|
-| `core.net.quic` (byte-exact + surface + theorems) | 78 / 130 (60.0 %) |
-| `core.net.tls13` (TLS 1.3 handshake) | 43 / 76 (56.6 %) |
-| `core.net.h3` (HTTP/3 + QPACK) | included in the 16 / 46 row below |
-| Other (`http2`, `http3`, `proxy`, `websocket`, `tls`, `shutdown`, `tcp`, `unix`) | 16 / 46 (34.8 %) |
+**The pass rates this section carried are removed rather than
+refreshed.** They were measured against a 2026-04-29 baseline and have
+not been re-run since; a fraction carried forward past the suite it was
+taken on reads as current and is not. What the numbers were used to say
+is in the paragraph below and does not depend on them.
 
 The conformance gap is **not** in protocol implementation. The
 modules pass standalone type-check; the failures cluster into four
