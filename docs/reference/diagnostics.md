@@ -251,11 +251,38 @@ is an `E400`, not an `E407`.
 | `E501` | invalid refinement predicate; also: a meta function declared pure has side effects |
 | `E502` | a meta function uses runtime contexts, which are not available at compile time |
 | `E503` | a pure function has side effects |
-| `E504` | postcondition not established |
+| `E504` | `.await` used outside an async context |
 
-`E501` is not a rejection of your program — it says the solver ran out of
-budget. Narrowing a refinement or splitting a lemma usually resolves it. See
+`E501` **is** a rejection of your program, and this paragraph used to say
+the opposite — that the solver had run out of budget. That was the
+registry's wording, not the compiler's. Re-measured 2026-09-10; the code
+has exactly two emit sites and neither mentions a timeout:
+
+```
+grep -rn 'invalid refinement predicate' crates/verum_types/src/lib.rs
+grep -rn 'must be pure but has side effects' crates/verum_types/src/lib.rs
+```
+
+Grepping for the code itself is the obvious command and the wrong one:
+`.code("E501")` and the message it carries sit on different lines, so a
+line-oriented search shows you the code without the text or the text
+without the code. The two messages above are what the emit sites build.
+
+So read it as "the predicate itself is not a valid refinement", or as a
+purity violation in a meta function. See
 [Refinement types](../language/refinement-types.md).
+
+`E504` was corrected in the same pass and for the same reason. The
+registry calls it "postcondition not established"; its single producer
+in the type checker reports
+
+> `` `.await` can only be used inside an async context (async fn, async
+> block, or async closure) ``
+
+which is what a reader will actually see. That one is invisible to the
+site's error-code gate, because the message is assembled as
+`format!("E504: {}", message)` with the text supplied from elsewhere —
+worth knowing if you are relying on that gate to catch this class.
 
 ## Context — `E6xx`
 
