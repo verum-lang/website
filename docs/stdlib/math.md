@@ -78,7 +78,7 @@ Measured 2026-09-11:
 ```verum
 mount core.math.ieee754_deterministic.{sqrt};
 
-fn main() { print(f"sqrt={sqrt(4.0)}"); }
+fn main() { print(f"sqrt={sqrt(4.0)}"); }   // panics — that IS the point
 ```
 
 ```
