@@ -9,11 +9,43 @@ Verum's type system includes a **cubical** fragment — path types,
 higher-inductive types, and computational univalence. This allows
 equational reasoning that plain SMT cannot express.
 
-:::note Status
-Production. The cubical normaliser implements 8 reduction rules
-including computational univalence. See
-**[architecture → overview](/docs/architecture/overview)** for the
-feature inventory and **[roadmap](/docs/roadmap)** for what's next.
+:::caution What on this page runs, measured 2026-09-10
+
+The machinery below the surface is real: each `@builtin_*` binds to a
+`CubicalExtended` VBC sub-op, the interpreter implements twelve of
+them, LLVM lowers them, and `verum_smt.cubical_tactic` reasons about
+the types. What is missing sits above all of that — type inference has
+no arm for these names.
+
+**Mounting the shipped library fails.** `core.math.hott` is what
+declares the signatures shown on this page, and a file that brings
+them in stops at the type checker:
+
+```
+mount core.math.hott.{ HottPath, refl };
+fn same_value<T>(x: T) -> HottPath<T>(x, x) { refl(x) }
+
+error<E400>: Type mismatch: expected '@builtin_path', found 'Unit'
+```
+
+**Declaring them yourself compiles and runs — and checks nothing.**
+The same shape written into your own file is accepted, executes, and
+also accepts `let x: Int = myrefl(7);` — which prints `x=nil`. The
+checker has no trouble with the shape in general: an ordinary record in
+that position is refused with `error<E400>: Type mismatch: expected
+'Int', found 'Wrapped'`. The refusal goes missing specifically for a
+type declared through `@builtin_path`. The compiler's only remark is a
+warning:
+
+```
+warning<E0410>: unknown meta-function `@builtin_refl`; @ prefix is
+reserved for compile-time constructs
+```
+
+So the reduction rules, univalence and the tactic surface described
+below are implemented — but the path types in front of them are not
+yet enforced. This box stops being true when the two examples above
+swap places: the mount succeeding, and the `Int` binding refused.
 :::
 
 ## Why cubical

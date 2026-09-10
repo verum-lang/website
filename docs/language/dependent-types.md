@@ -9,9 +9,59 @@ Verum supports full dependent types — types that depend on values.
 Practical applications include length-indexed arrays, proof-carrying
 APIs, and cubical higher-inductive types.
 
-:::note Status
-Dependent type support is **production**. Cubical and HoTT features
-are implemented and tested — 1 506 / 1 507 conformance checks pass.
+:::caution The path-type section is the intended surface, not a working one
+
+Measured 2026-09-10. Σ-types, Π-types and the length-indexed examples
+on this page work. The **path / HoTT** block further down has two
+problems a reader meets immediately.
+
+**Bringing in the shipped library stops at the type checker.**
+`core/math/hott.vr` calls the type `HottPath`, not `Path`:
+
+```
+mount core.math.hott.{ HottPath, refl };
+fn same_value<T>(x: T) -> HottPath<T>(x, x) { refl(x) }
+
+error<E400>: Type mismatch: expected '@builtin_path', found 'Unit'
+```
+
+**Writing the declarations out yourself compiles and runs — and checks
+nothing.** The `@builtin_*` calls do reach real `CubicalExtended`
+bytecode, so a program built this way produces a value. The type it
+produces, though, unifies with anything:
+
+```verum
+public type MyPath<A>(a: A, b: A) is @builtin_path;
+public fn myrefl<A>(x: A) -> MyPath<A>(x, x) { @builtin_refl(x) }
+
+fn main() { let x: Int = myrefl(7); }
+```
+
+That file checks clean, runs, and prints `x=nil` — a path type accepted
+where an `Int` was demanded, and delivering nothing. It is not that the
+checker cannot see this shape; an ordinary type in the same position is
+refused:
+
+```verum
+public type Wrapped is { v: Int };
+public fn wrap(x: Int) -> Wrapped { Wrapped { v: x } }
+
+fn main() { let x: Int = wrap(7); }
+//                       ^ error<E400>: Type mismatch: expected 'Int',
+//                                      found 'Wrapped'
+```
+
+The refusal goes missing specifically for a type declared through
+`@builtin_path`. The compiler does say something, as a warning rather
+than an error:
+
+```
+warning<E0410>: unknown meta-function `@builtin_refl`; @ prefix is
+reserved for compile-time constructs
+```
+
+Until that warning becomes a type, the guarantee this page describes is
+not one you are getting. Read the section as design intent.
 :::
 
 ## Sigma types (dependent pairs)
@@ -156,11 +206,17 @@ fn transport<A, B>(p: Path<Type>(A, B), x: A) -> B {
 }
 ```
 
-These are the exact signatures the stdlib ships in
-`core/math/hott.vr` — the `@builtin_*` intrinsics on the RHS are
-bound to the `CubicalExtended` VBC opcode family by the compiler,
-and their return types are carried by the surrounding signature
-through the generic opaque-intrinsic typing rule.
+The stdlib ships these in `core/math/hott.vr` under the name
+`HottPath` — spelled `Path` here for readability, so copy the names
+from the library rather than from this block. The `@builtin_*`
+intrinsics on the right-hand side really are bound to the
+`CubicalExtended` VBC opcode family by the compiler, one arm apiece in
+`verum_vbc::codegen::expressions::compile_call`.
+
+What is *not* yet in place is their TYPE. Type inference has no arm
+for these names, so the surrounding signature is accepted without ever
+being checked against the body — see the box at the top of this page
+for what that costs you.
 
 ## Interval type
 
