@@ -356,7 +356,6 @@ same types).
 
 ### Retry
 
-```verum
 Every name in this module carries a `Recovery` prefix — `BackoffStrategy`
 and `RetryPolicy` unprefixed are not declared. Delays are milliseconds,
 not `Duration`, and there is no Fibonacci arm.
@@ -408,7 +407,6 @@ public type RecoveryRetryPolicy is {
 
 ### Circuit breaker
 
-```verum
 ```verum
 // Three bare variants — the deadline and the trial count are state on
 // the breaker, not payload on the state.

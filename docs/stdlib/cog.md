@@ -90,7 +90,6 @@ parse time (missing required fields surface as
 
 ## Archive format (`.vbca`)
 
-```verum
 The archive holds the module INDEX and the payloads separately —
 `modules[i]` describes what `module_data[i]` contains — and it carries
 its own content hash. There is no `metadata` or `envelope` field on it.

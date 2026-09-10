@@ -244,7 +244,6 @@ with a literal `0` argument, was checked with `verum verify` and
 Whether caller-side obligations like `input != 0` above are actually
 enforced at the call site is unconfirmed on the current binary; don't
 rely on this page's specific claim until that's resolved.
-```
 
 ## Limitations
 

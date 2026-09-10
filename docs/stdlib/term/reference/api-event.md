@@ -89,7 +89,6 @@ implement Modifiers {
 | `Modifiers.SHIFT` | `Modifiers.CTRL` | |
 | `Modifiers.ALT` | `Modifiers.SUPER` | |
 | `Modifiers.HYPER` | `Modifiers.META` | |
-```
 
 ## `MouseEvent`
 

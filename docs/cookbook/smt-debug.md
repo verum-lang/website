@@ -42,9 +42,8 @@ There's no source line or caret — the counter-example is a flat list
 of bindings under `Counterexample:`, and it's the *weakest* violating
 input the solver found by checking the function symbolically, not
 necessarily a value tied to any specific call site. For a `push`-style
-obligation you'd read the same shape with `self`'s fields and the
-pushed value in place of `result`/`x`:
-```
+obligation you'd read the same shape, with `self`'s fields and the
+pushed value in place of `result`/`x`.
 
 Often the counter-example reveals an edge case you hadn't
 considered (overflow, empty collection, NaN).
