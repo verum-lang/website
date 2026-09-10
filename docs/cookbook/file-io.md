@@ -157,34 +157,36 @@ for entry in fs.walk_dir(path)? {
 
 ## File metadata
 
-:::danger `md.len()` needs `Metadata` in scope
+:::note `md.len()` used to need `Metadata` in scope — it no longer does
+
+This is fixed, and the note stays because the workaround it describes
+was on this page and readers may still be carrying it.
 
 With only `mount core.io.fs;` — the mount this page opens with —
-`md.len()` does **not** reach `Metadata.len`. The receiver's type is not
-resolvable at the call site, so the call compiles to the builtin
-container-length opcode instead, and returns a small wrong number with
-no error at all.
+`md.len()` did not reach `Metadata.len`. The receiver's type was not
+resolvable at the call site, so the call compiled to the builtin
+container-length opcode: it answered **1**, the number of fields on
+`Metadata` (`{ raw: FsMetadataRaw }`), with no error at all.
 
-Measured 2026-09-10 against the shipped compiler, on a file of ten
-bytes:
+Re-measured 2026-09-10 on a rebuilt compiler, both spellings, on the
+same file:
 
-```verum
-mount core.io.fs;
-… fs.metadata(&fs.Path.from_str(&p)) …
-print(f"size={md.len()}");   // size=1      <- wrong, rc=0, no diagnostic
+```
+verum run bare.vr     # mount core.io.fs;                    -> size=10
+verum run named.vr    # mount core.io.fs.{metadata, Metadata} -> size=10
 ```
 
-Mount the type and the same line is correct:
+and with the fixture rewritten to three bytes, both answer `size=3`,
+so the number follows the file rather than the shape of the record.
 
-```verum
-mount core.io.fs.{metadata, Metadata};
-mount core.io.path.{Path};
-print(f"size={md.len()}");   // size=10
-```
+The regression is pinned by
+`vcs/specs/L2-standard/stdlib/io/metadata_len_without_naming_the_type.vr`,
+which asserts both spellings against a ten-byte file. Ten is chosen
+deliberately: a one-byte fixture would make the correct answer and the
+old wrong one identical, and the spec would pass in both worlds.
 
-The data was never wrong — `md.raw.size` reads 10 either way. Only the
-call is. Tracked as T1370; until it is fixed, name `Metadata` in the
-mount whenever you call a method on it.
+You may still prefer to name the type in the mount — it documents what
+the file uses — but nothing depends on it any more.
 
 :::
 

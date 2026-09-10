@@ -378,19 +378,52 @@ m.extend(iter)                         // iter yields (K, V)
 
 :::warning
 
-**Known limitation, measured 2026-09-07:** four of the methods listed on
-this page compile and then fail at runtime with a null pointer
-dereference. The signatures are correct — they are what `core/` declares
-— but the interpreter carries its own `Map` representation, and these
-are the bodies that read the entries array directly instead of being
-served by the runtime.
+**Known limitation, re-measured 2026-09-10 on a compiler built that day.**
+The signatures on this page are correct — they are what `core/` declares
+— but two of them answer wrongly and one traps.
 
-| Runs | Fails today |
-|------|-------------|
-| `get`, `remove`, `contains_key`, `retain`, `iter` | `get_mut`, `get_key_value`, `remove_entry`, `entry` (and every `MapEntry` / `OccupiedEntry` method reached through it) |
+| Behaviour | Methods |
+|---|---|
+| correct | `get`, `remove`, `contains_key`, `retain`, `iter` |
+| answers a wrong `Maybe.None`, silently | `get_mut`, `get_key_value` |
+| traps, but **only on an empty map** | `entry` (and every `MapEntry` / `OccupiedEntry` method reached through it) |
 
-Each row was run, not inferred. Use `get` + `insert` where you would
-reach for `get_mut` or the entry API; see
+Two of those changed since the previous measurement and are worth
+stating precisely.
+
+`get_mut` and `get_key_value` no longer crash. They now return
+`Maybe.None` for a key the same map will happily hand you by other
+means — which is worse in kind, because a crash stops the program and a
+`None` flows on as a plausible answer. The control is short enough to
+paste:
+
+```verum
+let mut m: Map<Text, Int> = Map.new();
+let k = "a";
+m.insert(k, 1);
+m.get(k)              // Maybe.Some(1)   <- correct
+m.contains_key(&k)    // true            <- correct
+m.len()               // 1               <- correct
+m.get_mut(&k)         // Maybe.None      <- WRONG
+m.get_key_value(&k)   // Maybe.None      <- WRONG
+```
+
+`entry` traps only when the map is EMPTY. On a map holding anything it
+is fine, whether or not the key you ask for is present:
+
+```verum
+Map.new(); m.entry("a")                     // traps
+m.insert("a", 1); m.entry("a")              // ok — key present
+m.insert("a", 1); m.entry("zz")             // ok — key absent, map is not
+m.insert("q", 9); m.remove("q"); m.entry(k) // traps again — len is 0
+```
+
+The last line is the useful one: it is `len() == 0` that decides, not
+whether an insert has ever run. The backing storage is not built until
+the map holds something, and `entry` reads it regardless.
+
+Use `get` + `insert` where you would reach for `get_mut` or the entry
+API; see
 [the cookbook](../cookbook/collections.md#the-entry-api) for a worked
 replacement.
 
@@ -1235,23 +1268,46 @@ regressions. Run with `verum test --interp --filter test_uf_` and
 
 ## Open defects in collections
 
-Tracked across the conformance suite under
-`core-tests/collections/<module>/regression_test.vr`. Each entry below
-links to the regression-pinned reproducer.
+Re-measured 2026-09-10 on a compiler built that day. **Five of the six
+entries this table used to carry are fixed**, so the table is now the
+short one, and what closed is listed under it rather than deleted —
+a reader who worked around one of these deserves to learn it can stop.
 
-| # | Defect | Surface | Status |
-|---|---|---|---|
-| 1 | `Map.get(K) -> V` returns zero-value on miss instead of `Maybe<V>` | `core/collections/map.vr:457`; ~666 call sites | tracked, fix is a cross-cutting migration |
-| 2 | `Map.contains_key(&K)` silently returns false (type mismatch) | `core/collections/map.vr:614`; reachable from `union_find.vr:183` | tracked |
-| 3 | `Map.get_optional` / `Map.get_key_value` lenient-skipped at runtime | `core/collections/map.vr:504, 579` | tracked, requires compiler-side investigation |
-| 4 | `Text.from_utf8_unchecked` heap-allocated Text has zero-length `as_bytes()` despite correct `len` field | `core/text/text.vr:439`; surfaces in every `Map<Text, V>` populated via `Text.from(...)` | tracked, requires interpreter-side `RefSliceRaw` fix |
-| 5 | `Text.eq(&self, &Text)` method dispatch returns false for byte-identical literal Texts | `core/text/text.vr:3370`; method-resolution lands on the wrong impl | tracked |
-| 6 | `core.sys.common.random_bytes` intrinsic missing from VBC dispatch table | reachable from `core/collections/reservoir.vr:148`; gates `Reservoir.offer` replacement phase, plus any `core.base.random.*` use site (`Bloom`, `HyperLogLog` HMAC keys) | tracked |
+| Defect | Where it shows | Evidence |
+|---|---|---|
+| `Map.get_mut(&K)` and `Map.get_key_value(&K)` answer `Maybe.None` for a key the same map reports through `get` and `contains_key` | any `&mut`-yielding or pair-yielding lookup | the control block under [Map](#mapk-v--hash-map) above — same map, same key, four calls, two right and two wrong |
+| `Map.entry(K)` traps when the map is EMPTY | `entry` and everything reached through it; `len() == 0` is the discriminator, not whether the key is present | the four-line probe under [Map](#mapk-v--hash-map) above |
 
-These defects are **not** specific to the `UnionFind` types — they are
-foundational stdlib / language-level gaps that cascade into every
-module that touches `Map<Text, V>` or `Map<&K, V>`. Closing any of them
-unlocks coverage in multiple downstream modules at once.
+### Closed since the previous revision
+
+Each was re-run rather than assumed, and each answer below came from a
+program, not from reading the source:
+
+* **`Map.get` on a miss** now yields `Maybe.None`. It used to hand back a
+  zero-valued `V`, which is the failure a reader cannot see.
+* **`Map.contains_key`** answers `true` for a present key and `false` for
+  an absent one.
+* **`Text` equality** on byte-identical literals is `true`, and `false`
+  on different ones.
+* **`Text.from_utf8_unchecked`** builds a Text whose `as_bytes().len()`
+  matches its `len()` — two bytes in, two bytes out.
+* **`Reservoir.offer`** runs. It no longer depends on the
+  `core.sys.common.random_bytes` marshalling chain: `core/collections/reservoir.vr`
+  calls the `random_u64` intrinsic directly, and its own comment records
+  why.
+
+The addresses in the deleted table were line numbers into `core/`, and
+by the time they were checked **every one of them was wrong**. The
+smallest drift was one line, the largest four hundred and thirty; one
+pointed past the end of its file, which had shrunk below the cited
+line; and one named a `Map.get_optional` that `core/` does not declare
+at all.
+
+That spread is the argument, not the size of it. A citation off by one
+still reads as correct to anyone who opens the file, and a citation off
+by four hundred reads as a mistake in the reader's checkout. Neither
+tells you the claim went stale. So the two rows above point at runnable
+blocks on this page instead of at line numbers.
 
 ## Architectural snapshot 2026-05-23
 

@@ -260,7 +260,7 @@ them compile while teaching a design that is not settled.
 
 ## 6. Streaming subscribe
 
-:::caution `H3Response` has no `.streaming(...)` — but the pieces exist
+:::caution `H3Response.streaming(...)` does not exist — but the pieces do
 `H3Response` carries four public methods and none of them is
 `streaming`. Re-measured 2026-09-10:
 
