@@ -29,6 +29,48 @@ meta_function_name = 'const' | 'error' | 'warning' | 'stringify' | 'concat' | 'c
                    | 'is_struct' | 'is_enum' | 'is_tuple' | 'implements' ;
 ```
 
+:::warning What a name outside that production does today
+
+The production above is the set the parser recognises. A name outside it
+— including several documented further down this page — does **not** stop
+the build. The parser emits `warning<E0410>: unknown meta-function`, and
+the expression then takes the type `Unit`, so the failure surfaces later
+as a type mismatch, or not at all where `Unit` happens to fit.
+
+Measured 2026-09-10 against the shipped compiler:
+
+```verum
+const REV: Text = @project_git_revision();
+// warning<E0410>: unknown meta-function `@project_git_revision`
+// error<E400>: Type mismatch: expected 'Text', found 'Unit'
+```
+
+That example is the loud half. The quiet half has no second line at all
+— when the expression is used as a *statement*, `Unit` is exactly what
+the position wants, so nothing is mismatched and nothing is reported
+beyond the warning:
+
+```verum
+// From the standard library, until 2026-09-10. `Thread.yield_now`'s
+// Linux branch was written as an open-coded syscall:
+@cfg(target_arch = "x86_64")  { @syscall(24); }
+@cfg(target_arch = "aarch64") { @syscall(124); }
+// warning<E0410>: unknown meta-function `@syscall`
+// …and nothing else. Both branches compiled to nothing, so a spin loop
+// calling yield_now never gave way to the scheduler — no crash, no
+// wrong value, no diagnostic anyone reads.
+```
+
+The difference is only the position. A name that produces `Unit` in a
+value position is caught by the next type check; the same name in
+statement position is not caught by anything.
+
+
+Sections marked **Not yet callable** below are in this state: the builtin
+is implemented in the compiler, but no spelling reaches it yet.
+
+:::
+
 ## Evaluation and diagnostics
 
 ### `@const(expr)`
@@ -264,6 +306,16 @@ meta fn debug_if_possible<T>(x: T) {
 
 ## Build-asset embedding
 
+:::caution Not yet callable
+
+`@embed`, `@embed_glob` and `@codegen` are implemented in the compiler's
+builtin registry, but no `@`-spelling reaches them: written as shown they
+warn `E0410` and evaluate to `Unit`. The behaviour described in this
+section is the design; treat the code blocks as the intended surface, not
+as working examples. Measured 2026-09-10.
+
+:::
+
 Compile-time file loading is sandboxed behind the `BuildAssets`
 context. All paths are restricted to the project root and
 configured asset directories — absolute paths and `..`
@@ -411,6 +463,16 @@ sandbox automatically.
   literal source-relative paths.
 
 ## Version stamping
+
+:::caution Not yet callable
+
+`@version_stamp`, `@project_git_revision` and `@project_build_time_ms`
+are implemented in the compiler's builtin registry, but no `@`-spelling
+reaches them: written as shown they warn `E0410` and evaluate to `Unit`
+(the measured output is in the note at the top of this page). Treat the
+code blocks below as the intended surface. Measured 2026-09-10.
+
+:::
 
 Compile-time injection of (cog version, git revision, build time)
 without forcing the build to drag in network or environment-
