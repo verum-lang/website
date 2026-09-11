@@ -503,6 +503,20 @@ tactic oracle(goal: Prop, confidence: Float = 0.9) {
 }
 ```
 
+:::warning `@llm_oracle` is not a meta-function the compiler knows
+
+Measured 2026-09-11. The name is declared nowhere in the compiler, so the call
+in the block above draws
+
+    warning<E0410>: unknown meta-function `@llm_oracle`
+
+and the expression takes the type `Unit`, which will not unify with
+`Giry<Prop>` — so the example stops at the type check. The standard library
+calls it too, in `core/math/tactics.vr`, behind a `@cfg(feature =
+"llm_oracle")` gate that is off by default. Read the block as the intended
+shape of an oracle tactic; the parameter-kind table below is unaffected.
+:::
+
 | Parameter kind | Meaning                                                     |
 |----------------|-------------------------------------------------------------|
 | `Expr`         | Any expression — bound as-is, substituted into the body     |
