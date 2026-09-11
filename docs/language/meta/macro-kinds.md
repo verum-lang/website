@@ -245,6 +245,8 @@ let m = @matrix[
 
 ```
 
+`@matrix` here stands for any such DSL rather than for a macro that ships: no name of that shape is registered, so writing it draws `warning<E0410>: unknown meta-function` and the expression types as `Unit`. The brackets are what the block is about.
+
 A brace-delimited invocation is parsed as an EXPRESSION, not as a raw
 token tree, so a DSL whose content is not Verum — HTML, say — does not
 get through today. `quote { <div> }` does, because `quote` takes a token

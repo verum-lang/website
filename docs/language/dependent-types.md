@@ -206,6 +206,8 @@ fn transport<A, B>(p: Path<Type>(A, B), x: A) -> B {
 }
 ```
 
+`@builtin_sym` and `@builtin_transport` draw `warning<E0410>: unknown meta-function` exactly as `@builtin_refl` does above; the block is the intended shape, not a working one.
+
 The stdlib ships these in `core/math/hott.vr` under the name
 `HottPath` — spelled `Path` here for readability, so copy the names
 from the library rather than from this block. The `@builtin_*`

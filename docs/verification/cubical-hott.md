@@ -92,6 +92,8 @@ public fn trans<A>(a: A, b: A, c: A, p: HottPath<A>(a, b), q: HottPath<A>(b, c))
 }
 ```
 
+Every `@builtin_*` in that block draws `warning<E0410>: unknown meta-function` — the same warning the box above quotes for `@builtin_refl`, and for the same reason. The codegen arms exist; the name never reaches them.
+
 ## The interval `I`
 
 ```verum
