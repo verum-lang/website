@@ -715,7 +715,7 @@ verum lint --threads 4                   # worker count (0 = sequential)
 `-D`, `-W`, `-A`, `-F` from `verum build` continue to work as
 single-rule overrides.
 
-### `--max-warnings N` budget
+### `--max-warnings N` budget — `verum lint` {#--max-warnings-n-budget}
 
 Fails the run when more than N warnings are emitted (after every
 filter — severity_map, per-file overrides, `--severity`, baseline,

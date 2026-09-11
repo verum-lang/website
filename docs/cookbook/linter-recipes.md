@@ -29,7 +29,7 @@ recognise — rule code in brackets, file path with `--> `,
 caret-underlined source line, help suggestion. Set `NO_COLOR=1`
 in CI logs.
 
-## Adopting strict mode incrementally with a baseline
+## Adopting strict mode incrementally with a baseline — `verum lint` {#adopting-strict-mode-incrementally-with-a-baseline}
 
 Turning on a stricter lint preset on a corpus that has 200 existing
 warnings is the classic *"good idea, never happens"* problem.

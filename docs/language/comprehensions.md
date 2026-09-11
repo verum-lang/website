@@ -111,9 +111,34 @@ let unique_domains = set{
 
 `let Maybe.Some((_, domain)) = email.split_once(&"@")` parses — a `let`
 clause takes a pattern — but a row whose pattern does NOT match is still
-produced rather than dropped. Measured on the three addresses above, two of
-which carry an `@`: the guarded form answers 2, the `let`-only form answers 3.
-Filter with an `if` clause; bind with a `let` one.
+produced rather than dropped. Filter with an `if` clause; bind with a
+`let` one.
+
+```verum
+fn main() {
+    let addresses = ["a@x.test", "b@y.test", "no-at-sign"];
+
+    // `let` only — the row with no `@` is kept.
+    let unfiltered = set{
+        domain
+        for email in addresses
+        let Maybe.Some((_, domain)) = email.split_once(&"@")
+    };
+
+    // `if` first, then bind — the row with no `@` is dropped.
+    let filtered = set{
+        pair.1
+        for email in addresses
+        if email.split_once(&"@") is Maybe.Some(_)
+        let pair = email.split_once(&"@").unwrap()
+    };
+
+    print(unfiltered.len());   // 3
+    print(filtered.len());     // 2
+}
+```
+
+Measured 2026-09-11 with `verum run`: `3` then `2`.
 :::
 
 ## Generators — `gen{expr for ... }`

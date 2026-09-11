@@ -525,7 +525,7 @@ corpus.  Eliminates the duplicate-source problem (paper.tex +
 verum-corpus): the corpus IS the paper draft.  Full guide in
 **[Tooling → Auto-paper generator](/docs/tooling/auto-paper)**.
 
-## Profiling
+## Profiling — `verum profile` {#profiling}
 
 ```bash
 verum profile [FILE] [--compilation] [--memory] [--cpu] [--cache] [--all] \

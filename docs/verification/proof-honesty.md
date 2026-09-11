@@ -15,7 +15,7 @@ This is the central tool for tracking the "🟡 axiom-placeholder ⟶ ✅
 verified theorem" promotion progress on machine-verification corpora
 such as the [verum-msfs-corpus](https://github.com/verum-lang/verum-msfs-corpus).
 
-## Companion audits (V2 / V3 trusted-boundary surfaces)
+## Companion audits (V2 / V3 trusted-boundary surfaces) — `verum audit` {#companion-audits-v2--v3-trusted-boundary-surfaces}
 
 Several audit surfaces work alongside `--proof-honesty`:
 

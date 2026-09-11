@@ -304,7 +304,7 @@ target families:
 public fn blake3(input: List<Byte>) -> [Byte; 32] { ... }
 ```
 
-## 5. CLI workflow
+## 5. CLI workflow — `verum extract` {#5-cli-workflow}
 
 ```text
 verum extract [<file.vr>] [--output <dir>]

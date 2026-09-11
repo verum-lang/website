@@ -99,7 +99,7 @@ verum test --include-ignored         # run @ignore'd entries too
 verum test --ignored                 # run ONLY @ignore'd entries
 ```
 
-## Output formats
+## Output formats — `verum test` {#output-formats}
 
 One flag switches presentation; the runner collects results and emits
 the chosen serialisation. Formats ship in two groups:
