@@ -147,7 +147,7 @@ verum proof-repl tree \
 
 Non-zero exit on any kernel rejection.
 
-## Validation contract
+## Validation contract — `verum proof-repl batch` {#validation-contract}
 
 | Rule | Error |
 |---|---|

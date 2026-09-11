@@ -186,6 +186,10 @@ Decision : skip   (cache hit)
 
 ## Validation contract
 
+<!-- Deliberately not attributed to one command: the rules below
+     span several subcommands of this family, so the CLI-flag gate
+     cannot read them as one command's option table. -->
+
 | Rule | Error |
 |---|---|
 | `--format` not `plain`/`json` | `--format must be 'plain' or 'json'` |

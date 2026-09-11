@@ -103,7 +103,7 @@ $ verum proof-repair --kind refine-depth \
 }
 ```
 
-## Validation contract
+## Validation contract — `verum proof-repair` {#validation-contract}
 
 | Rule | Error message |
 |---|---|

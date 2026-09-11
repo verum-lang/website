@@ -235,6 +235,10 @@ or the registry rejects the manifest at publish time.
 
 ## Validation contract
 
+<!-- Deliberately not attributed to one command: the rules below
+     span several subcommands of this family, so the CLI-flag gate
+     cannot read them as one command's option table. -->
+
 | Rule | Error |
 |---|---|
 | `--manifest` not valid JSON | `manifest must be valid CogManifest JSON` |

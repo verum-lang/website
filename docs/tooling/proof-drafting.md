@@ -112,7 +112,7 @@ Zero-score suggestions are filtered: lemmas whose signatures don't
 share any structural elements with the goal are dropped (no
 `apply unrelated_lemma;` clutter).
 
-## Validation contract
+## Validation contract — `verum proof-draft` {#validation-contract}
 
 The handler validates inputs up front and surfaces actionable
 errors:

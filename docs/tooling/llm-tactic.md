@@ -149,7 +149,7 @@ Successful rounds emit `LlmInvoked` + `KernelAccepted`.  Rejected
 rounds emit `LlmInvoked` + `KernelRejected`.  Adapter failures emit
 just `ProtocolError`.
 
-## Validation contract
+## Validation contract — `verum llm-tactic propose` {#validation-contract}
 
 | Rule | Error |
 |---|---|

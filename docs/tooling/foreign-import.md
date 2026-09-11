@@ -186,7 +186,7 @@ extends until the next `proof` / `by` / `apply` keyword (where the
 proof body begins).  `(* ... *)` block comments are stripped before
 extraction.
 
-## Validation contract
+## Validation contract — `verum foreign-import` {#validation-contract}
 
 | Rule | Error |
 |---|---|
