@@ -69,7 +69,7 @@ signatures — the compiler binds each `@builtin_*` to a
 `CubicalExtended` VBC sub-op via the
 `@builtin_refl` / `@builtin_transport` / `@builtin_sym` /
 `@builtin_trans` arms in
-`verum_vbc::codegen::expressions::compile_call`.
+`verum_vbc::codegen::expressions::try_compile_builtin`.
 
 ```verum
 // Path in type A from a to b. Conceptually a function from the
@@ -92,7 +92,7 @@ public fn trans<A>(a: A, b: A, c: A, p: HottPath<A>(a, b), q: HottPath<A>(b, c))
 }
 ```
 
-Every `@builtin_*` in that block draws `warning<E0410>: unknown meta-function` — the same warning the box above quotes for `@builtin_refl`, and for the same reason. The codegen arms exist; the name never reaches them.
+Both of those reach their codegen arms and emit the `CubicalExtended` sub-op the arm names. That was not true before 2026-09-11: the arms are written to accept two spellings (`"@builtin_sym" | "sym"`), but the `@`-prefixed string was produced only by a compilation route that never consulted this table, so every one of them compiled to `nil` while drawing `warning<E0410>: unknown meta-function`. Both halves are fixed — the warning was itself wrong (the type checker accepts the whole `builtin_` namespace by design) and the call now arrives.
 
 ## The interval `I`
 

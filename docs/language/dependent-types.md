@@ -52,16 +52,24 @@ fn main() { let x: Int = wrap(7); }
 ```
 
 The refusal goes missing specifically for a type declared through
-`@builtin_path`. The compiler does say something, as a warning rather
-than an error:
+`@builtin_path`, and the reason is in the type checker rather than in
+codegen. `@builtin_*` is an open namespace whose meaning lives at the
+stdlib declaration site, so inference gives any name under it a *fresh
+type variable* — which unifies with `Int`, with `Wrapped`, with anything
+the surrounding signature happens to declare.
 
-```
-warning<E0410>: unknown meta-function `@builtin_refl`; @ prefix is
-reserved for compile-time constructs
-```
+The `warning<E0410>: unknown meta-function` that used to accompany these
+calls is gone as of 2026-09-11, and it was never the right diagnostic:
+the parser lacked the prefix rule the type checker and the attribute
+validator both carry, so it reported names the compiler deliberately
+accepts. What replaced it speaks only when nothing implements a name, and
+it speaks from codegen, where that is knowable.
 
-Until that warning becomes a type, the guarantee this page describes is
-not one you are getting. Read the section as design intent.
+So the VALUES are real now — `@builtin_refl(x)` reaches its
+`CubicalExtended` arm rather than compiling to `nil`. The TYPE is still
+the fresh variable above, which is why the example below type-checks
+where it should not. Read the guarantee, not the acceptance, as design
+intent.
 :::
 
 ## Sigma types (dependent pairs)
@@ -213,12 +221,17 @@ The stdlib ships these in `core/math/hott.vr` under the name
 from the library rather than from this block. The `@builtin_*`
 intrinsics on the right-hand side really are bound to the
 `CubicalExtended` VBC opcode family by the compiler, one arm apiece in
-`verum_vbc::codegen::expressions::compile_call`.
+`verum_vbc::codegen::expressions::try_compile_builtin`.
 
-What is *not* yet in place is their TYPE. Type inference has no arm
-for these names, so the surrounding signature is accepted without ever
-being checked against the body — see the box at the top of this page
-for what that costs you.
+What is *not* yet in place is their TYPE — and the reason is more
+specific than "no arm". Inference has a dedicated arm for the whole
+`builtin_` prefix, and what that arm returns is a *fresh type variable*:
+the name's real type lives at the stdlib declaration site, not in a table
+inside the compiler, so bidirectional checking is meant to unify the
+variable against the type the surrounding signature declares. A fresh
+variable unifies with anything, which is exactly why the signature is
+accepted without the body ever contradicting it — see the box at the top
+of this page for what that costs you.
 
 ## Interval type
 
