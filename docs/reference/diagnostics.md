@@ -62,10 +62,39 @@ reading it as if it did sends you to the wrong phase: `E0101` is a
 | `E09xx` | Lint | 7 | `E0900` denied lint: unstable intrinsic |
 | `E10xx` | Lint | 6 | `E1000` denied lint: unused stage |
 
-Measured against the registry on 2026-09-08: 193 three-digit codes and 71
-four-digit ones. The sections below cover the three-digit families, which
-are the ones ordinary programs hit; for any code in either scheme,
-`verum explain <code>` prints its entry.
+## The parse family is hexadecimal
+
+Forty-eight codes carry a LETTER where you expect a digit — `E0A0` through
+`E0E2`. They are not typos. The parse family is numbered in HEXADECIMAL, and
+has been all along: `E010` is parse error 16, not 10, and `E0E2` is parse
+error 226. Below `E0A0` every code is spelled with digits alone, so nothing
+on the page gives the base away — which is why the family reads as decimal
+right up until it does not.
+
+Every one of the 48 is a parse error, so the `E0xx` row of the first table is
+still the right place to look.
+
+    error<E0E2>: Parse error: 'assert!' is Rust macro syntax, not valid in Verum
+      help: did you mean `assert(...) (without !)`?
+
+| Range | Count | First | Last |
+|-------|-------|-------|------|
+| `E0Axx` | 13 | `E0A0` throw without expression | `E0AC` invalid yield |
+| `E0Bxx` | 16 | `E0B0` generic type args unclosed angle | `E0BF` invalid unary op |
+| `E0Cxx` | 10 | `E0C0` tagged literal missing string | `E0C9` invalid let pattern |
+| `E0Dxx` | 6 | `E0D0` trailing separator | `E0D5` empty shape params |
+| `E0Exx` | 3 | `E0E0` rust keyword used | `E0E2` rust macro syntax |
+
+The `E0Exx` range is the Rust-migration range, and it is exactly three codes
+wide — a Rust keyword (`E0E0`), a Rust type name (`E0E1`), a `name!(...)`
+macro call (`E0E2`). They are the only three codes in the whole registry whose
+description mentions Rust at all.
+
+Measured against the registry on 2026-09-11: 361 codes in all — 202
+three-digit, 111 four-digit, 48 hexadecimal. The sections below cover the
+three-digit families, which are the ones ordinary programs hit; for any code
+in any of the three schemes, `verum explain <code>` prints its entry, and for
+`E0E2` it prints the whole Rust-to-Verum mapping table.
 
 ## Parse — `E0xx`
 
