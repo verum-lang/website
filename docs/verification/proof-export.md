@@ -231,7 +231,7 @@ and Metamath for smallest-TCB archival.
 
 ---
 
-## 5. CLI
+## 5. CLI — `verum export` {#5-cli}
 
 ```bash
 verum export-proofs target/proofs/ --to lean --output target/lean/export.lean
@@ -241,6 +241,17 @@ verum export-proofs target/proofs/ --to metamath --output target/mm/export.mm
 ```
 
 Additional flags:
+
+:::caution These five flags are not accepted
+Measured 2026-09-11 against both `verum export` and its alias
+`verum export-proofs`: each of `--selective`, `--include-framework`,
+`--bundle`, `--verify-after` and `--on-mismatch` exits with
+`error: unexpected argument`. The table describes an intended
+surface, not the shipped one.
+
+What both commands do accept: `--to {lean,coq,dedukti,metamath}`,
+`--output PATH`, and `--with-provenance`.
+:::
 
 | Flag                    | Effect                                                      |
 |-------------------------|-------------------------------------------------------------|
@@ -314,10 +325,11 @@ Three scenarios where export is the right answer:
    Metamath. Emit the proof once, deposit the archive, hand the
    reviewer the smallest-kernel target.
 3. **Supply-chain audit**: a library claims its invariants are
-   proved. Run `verum export-proofs --verify-after --to lean`
-   on every release; publish the re-check log. Consumers see
-   "Verum + Lean both accept this proof" — a concrete
-   cross-validation.
+   proved. Run `verum export-proofs --to lean` on every release
+   and re-check the emitted files with Lean itself; publish the
+   log. Consumers see "Verum + Lean both accept this proof" — a
+   concrete cross-validation. (The re-check is a separate step:
+   `--verify-after` is not accepted, see the note in §5.)
 
 Verification in Verum is a means, not an end. Export is how
 you put the result to use outside Verum.

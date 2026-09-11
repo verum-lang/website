@@ -323,8 +323,9 @@ ergonomics are not bolt-on libraries — they are built into
   for refinements used by `@property`.
 - **Shrinks are greedy, not optimal.** For very large input trees the
   greedy walk can terminate at a local minimum that's still two shrinks
-  away from the truly minimal case. Raise `--max-shrinks` if you
-  suspect this — the default of 100 is enough for most failures.
+  away from the truly minimal case. The shrink budget is fixed at 100
+  and is enough for most failures; the `--max-shrinks` flag that would
+  raise it is not accepted by `verum test` (measured 2026-09-11).
 
 ## Related
 

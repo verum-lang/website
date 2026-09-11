@@ -887,9 +887,19 @@ Flags: `--verbose`.
 ## Language-feature overrides
 
 All commands that compile or check code (`build`, `run`, `check`,
-`test`, `bench`, `verify`, `fmt`, `lint`, `doc`, `repl`, `dap`,
-`lsp`, `config show`, `config validate`) accept the same set of
+`test`, `bench`, `fmt`, `lint`, `doc`, `repl`, `dap`, `lsp`,
+`config show`, `config validate`) accept the same set of
 language-feature overrides:
+
+:::caution `verum verify` is not one of them
+Measured 2026-09-11: `verum verify` accepts none of the fourteen —
+`verum verify --tier interpret file.vr` exits with `error: unexpected
+argument '--tier' found`. It carries its own axis instead (`--mode`,
+`--solver`, `--timeout`, `--budget`); see
+[Verification → CLI workflow](../verification/cli-workflow.md). The
+other twelve commands listed above were each re-checked against
+`--help` on the same day and do accept all fourteen.
+:::
 
 **High-level flags:**
 

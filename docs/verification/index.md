@@ -366,7 +366,10 @@ incrementally. The grammar recognises 22 built-in tactic forms
 `calc`, `using`, `apply`, `rewrite`.
 
 **Escape hatches**: `admit` (assume goal, marked in certificate),
-`sorry` (assume goal, fails `--strict-admits`).
+`sorry` (assume goal). A `--strict-admits` flag that would fail the
+build on either is described in places but is not accepted by the
+shipped CLI (measured 2026-09-11); `verum audit --framework-axioms`
+is the enumeration that does run today.
 
 The tactic DSL is itself verifiable — tactics written with `@tactic
 meta fn` are stage-1 meta-programs that quote goal structure and

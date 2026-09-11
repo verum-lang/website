@@ -200,9 +200,13 @@ verum build --release --pgo optimize     # NOT IMPLEMENTED — see note below
 
 :::warning `--pgo` does not exist
 Measured 2026-09-07: `verum build --help` lists no `--pgo`. The
-optimisation levers the command does carry are `--profile`, `--lto`,
-`--opt-level` and the `--emit-*` family; profile-guided optimisation is
-not among them, in either direction of the two-pass flow shown above.
+optimisation levers the command does carry are `--release`,
+`--profile`, `--lto` and the `--emit-*` family; profile-guided
+optimisation is not among them, in either direction of the two-pass
+flow shown above. Re-measured 2026-09-11: `--opt-level`, which this
+note used to list beside them, is not accepted either — `verum build
+--opt-level 3` exits with `error: unexpected argument '--opt-level'
+found`.
 :::
 
 Two-pass build. Typical gain: 10–20% on branch-heavy code.

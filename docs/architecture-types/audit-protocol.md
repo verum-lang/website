@@ -77,7 +77,7 @@ The fourth function is what distinguishes audit from perennial
 critique. Without an explicit terminating function, the first
 three run idle.
 
-## 1. The catalog of audit gates
+## 1. The catalog of audit gates — `verum audit` {#1-the-catalog-of-audit-gates}
 
 `verum audit` exposes the gates as flags. Each flag runs exactly
 one gate; combinations are explicit. As of the current revision

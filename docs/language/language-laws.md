@@ -15,9 +15,50 @@ changed by a law — a law only rejects programs whose meaning would be
 silently surprising.
 
 Laws roll out in three stages: **warn** (the default — violations
-compile with a diagnostic), **strict** (`--language-laws=strict` or
-`VERUM_LANGUAGE_LAWS=strict` — violations are errors), and eventually
-strict-by-default with a documented legacy escape hatch.
+compile with a diagnostic), **strict** (`VERUM_LANGUAGE_LAWS=strict` —
+violations are errors), and eventually strict-by-default with a
+documented legacy escape hatch. `VERUM_LANGUAGE_LAWS=legacy` silences
+them entirely.
+
+:::caution The mode is an environment variable only
+There is no `--language-laws` flag. `verum check --language-laws=strict`
+exits with `error: unexpected argument '--language-laws' found`; the
+variable is read once per process, so set it on the command:
+
+```bash
+VERUM_LANGUAGE_LAWS=strict verum check my_file.vr
+```
+:::
+
+**Warn means the program still compiles, and the questionable
+resolution still happens.** That is the point of the stage, and it is
+worth seeing before reading the laws below. This file declares nothing
+and mentions a constructor that belongs to a stdlib type it never
+mounts:
+
+```verum
+fn main() {
+    let x = AdjointReversible;
+    print("built");
+}
+```
+
+```
+$ verum check probe.vr
+warning<E430>: bare constructor 'AdjointReversible' resolves outside
+               this file's mount horizon to 'Reversibility'
+
+$ VERUM_LANGUAGE_LAWS=strict verum check probe.vr
+error<E100>: unbound variable: AdjointReversible
+error: compilation failed with 1 error
+```
+
+Note what strict mode does and does not do (measured 2026-09-11): it
+withdraws the out-of-horizon resolution, so the name has nothing left
+to bind to and the refusal arrives as an ordinary **unbound variable**.
+It does not arrive as `E430`, and it carries none of the law's
+"qualify it or mount it" help. Reach for the warning text when you need
+to know *why* a name went unbound under strict.
 
 ## Law 1 — Constructor visibility horizon
 
@@ -47,10 +88,15 @@ fn also_ok() -> core.database.sqlite.native.hooks_api.op.UpdateOp {
     UpdateOp.UoInsert           // qualified: always legal
 }
 
-fn rejected() -> SomeOtherEnum {
+fn flagged() -> SomeOtherEnum {
     StrayCase                   // E430: bare constructor outside its
                                 // type's mount horizon — write
-                                // `SomeOtherEnum.StrayCase` or mount it
+                                // `SomeOtherEnum.StrayCase` or mount it.
+                                // A WARNING at the default stage: this
+                                // function compiles, and `StrayCase`
+                                // binds to whatever owner resolution
+                                // picked. An error only under
+                                // `VERUM_LANGUAGE_LAWS=strict`.
 }
 ```
 

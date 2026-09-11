@@ -201,7 +201,7 @@ for pre-commit / CI / migration recipes.
 Verification modes map to strategies documented in **[Verification →
 gradual verification](/docs/verification/gradual-verification)**.
 
-### Audit subcommands
+### Audit subcommands — `verum audit` {#audit-subcommands}
 
 `verum audit` is the project-wide trust-boundary tool. As of the
 current revision it exposes **~48 gates** organised in eight bands
@@ -307,7 +307,7 @@ audit gate maps onto a verdict.
 
 | Flag | Dispatcher | Routes |
 |------|------------|--------|
-| `--count-o-dispatch` | `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → SMT Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
+| `--count-o-dispatch` | **Not accepted (measured 2026-09-11)** — `verum audit` rejects it; the dispatcher below runs, the flag that would select it does not. `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → SMT Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
 
 #### Aggregator (1 gate)
 
@@ -321,7 +321,7 @@ and `audit-reports/*.json` archival. Each subcommand may be passed
 solo (e.g. `verum audit --framework-axioms`) or via `--bundle` to
 run all of them.
 
-### Verification profiling & budgets
+### Verification profiling & budgets — `verum verify` {#verification-profiling--budgets}
 
 | Flag | Purpose |
 |------|---------|

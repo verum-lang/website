@@ -47,9 +47,9 @@ verum check [FILE] [OPTIONS]
 
 | Flag            | Default | Effect                                                     |
 |-----------------|---------|-------------------------------------------------------------|
-| `--strict`      | off     | Also invoke SMT for refinement obligations. Fast strategy. |
+| `--strict`      | —       | **Not accepted (measured 2026-09-11).** `verum check` rejects it. |
 | `--verbose`     | off     | Print per-module timing and cache hits.                    |
-| `--no-stdlib`   | off     | Skip stdlib compilation (for compiler debugging).          |
+| `--no-stdlib`   | —       | **Not accepted (measured 2026-09-11).** `verum check` rejects it. |
 
 ### Exit codes
 
@@ -86,6 +86,18 @@ project root.
 
 ### Strategy flags (layer 2: `VerifyStrategy`)
 
+:::caution `--strategy` is not accepted
+Measured 2026-09-11: `verum verify --strategy fast file.vr` exits with
+`error: unexpected argument '--strategy' found`. The whole table below
+describes a layer the shipped CLI does not expose — it is kept because
+the strategy names are the ones the verification engine uses
+internally, not because you can select one from the command line.
+
+What `verum verify` does accept for this axis today is `--mode`
+(`runtime` / `static` / `proof` / `cubical` / `dependent`), `--solver`,
+`--timeout` and `--budget`.
+:::
+
 | Flag                          | Maps to                | Timeout | Extras                              |
 |-------------------------------|------------------------|---------|-------------------------------------|
 | `--strategy fast`             | `Fast`                 | 3 s     | Static encoding only.               |
@@ -110,7 +122,7 @@ project root.
 |--------------------------|---------------------------------------------------------------|
 | `--timeout 60`           | Per-obligation timeout (seconds). Overrides strategy default. |
 | `--budget 5m`            | Total time budget for the entire `verify` run.                |
-| `--budget-policy {fail,skip}` | What happens when budget exhausts.                       |
+| `--budget-policy {fail,skip}` | **Not accepted (measured 2026-09-11).** `--budget` is accepted; the policy switch is not. |
 
 ### Counterexamples
 
@@ -118,15 +130,15 @@ See also [Counterexamples](./counterexamples.md).
 
 | Flag                               | Meaning                                                     |
 |------------------------------------|-------------------------------------------------------------|
-| `--counterexample {none,minimal,standard,full,json}` | Per-failure counterexample verbosity.    |
-| `--minimize-timeout 30`            | Delta-debugging budget per counterexample.                  |
+| `--counterexample {none,minimal,standard,full,json}` | **Not accepted (measured 2026-09-11).** Per-failure counterexample verbosity. |
+| `--minimize-timeout 30`            | **Not accepted (measured 2026-09-11).** Delta-debugging budget per counterexample. |
 
 ### Profiling
 
 | Flag                  | Meaning                                                                        |
 |-----------------------|--------------------------------------------------------------------------------|
 | `--profile`           | Emit per-function time to stderr.                                              |
-| `--show-costs`        | Emit theory-taxonomy cost per obligation.                                      |
+| `--show-cost`         | Emit theory-taxonomy cost per obligation. (Singular — `--show-costs` is rejected.) |
 | `--profile-obligation` | Per-obligation breakdown table (slowest 10 obligations, time-ms + share-%). Implies `--profile`. |
 
 ### Export
@@ -345,9 +357,9 @@ typed AST and CBGR reachability graph.
 | `--escape`        | on      | CBGR tier-promotion escape analysis.                       |
 | `--context`       | on      | Context-system usage (missing `using [...]`, unused ctx).  |
 | `--refinement`    | on      | Refinement coverage ("which functions have refinements, which don't"). |
-| `--lifetime`      | on      | Lifetime-graph acyclicity.                                 |
+| `--lifetime`      | —       | **Not accepted (measured 2026-09-11).** `verum analyze` rejects it. |
 | `--all`           | off     | Enable every sub-analysis.                                 |
-| `--json`          | off     | JSON output.                                               |
+| `--json`          | —       | **Not accepted (measured 2026-09-11).** `verum analyze` rejects it. |
 
 `analyze` is complementary to `verify`. `verify` proves what you
 wrote; `analyze` reports what you could write to get better
@@ -369,8 +381,8 @@ went.
 |------------|----------------------------------------------------|
 | `--json`   | JSON output.                                       |
 | `--reset`  | Clear the cache.                                   |
-| `--top N`  | Top N slowest obligations.                         |
-| `--by-theory` | Group by theory taxonomy.                       |
+| `--top N`  | **Not accepted (measured 2026-09-11).** `verum smt-stats` rejects it. |
+| `--by-theory` | **Not accepted (measured 2026-09-11).** `verum smt-stats` rejects it. |
 
 Sample output:
 
@@ -429,11 +441,11 @@ verum audit [OPTIONS]
 | Flag                        | Effect                                                    |
 |-----------------------------|-----------------------------------------------------------|
 | `--framework-axioms`        | List all `@framework`-tagged axioms reachable from public API. |
-| `--admits`                  | List all `admit` / `sorry` uses.                           |
+| `--admits`                  | **Not accepted (measured 2026-09-11).** `verum audit` rejects it. |
 | `--kernel-rules`            | List the 38 kernel inference rules (for audit). The TCB fragment (Var/Univ/Pi/Lam/App/Sigma/Pair/Fst/Snd) is the structural sub-roster; cubical, refinement, quotient, inductive, SMT/axiom, and Diakrisis rules layer on top. See the kernel's proof-tree rules, `KernelRule`. |
-| `--cone MODULE`             | Restrict to the transitive dependency cone of a module.    |
+| `--cone MODULE`             | **Not accepted (measured 2026-09-11).** Restrict to a module's transitive dependency cone. |
 | `--format {plain,json}`     | Output format.                                            |
-| `--since GIT_REF`           | Diff mode: show framework deps added since a git ref.     |
+| `--since GIT_REF`           | **Not accepted (measured 2026-09-11).** Diff mode against a git ref. |
 
 Example:
 
@@ -490,19 +502,25 @@ flaky) from exit 3 (budget exhausted, retry with more budget).
 
 ### 10.2 JSON schema stability
 
-`--json` output has a schema version (`"schema_version": 1`).
+`--format json` output has a schema version (`"schema_version": 1`). `verum audit` takes `--format {plain,json}`; a bare `--json` is rejected.
 The schema is stable; inspect the emitted structure by
-running `verum verify --json` on a small project. A
+running `verum audit --format json` on a small project —
+`verum verify` has no `--json` of its own. A
 consolidated reference lives under `docs/architecture/`
 alongside the other tooling schemas.
 
 ### 10.3 LSP
 
-The [LSP server](../tooling/lsp.md) runs `verify --mode static
---strategy fast --counterexample=minimal --json` behind the
-scenes for in-editor diagnostics. Users can tune the LSP
-verification mode in editor settings without touching
-`verum.toml`.
+The [LSP server](../tooling/lsp.md) drives verification behind the
+scenes for in-editor diagnostics. `verum verify` carries a `--lsp-mode`
+flag for exactly that caller. Users can tune the LSP verification mode
+in editor settings without touching `verum.toml`.
+
+:::caution An earlier version of this page named the LSP's invocation as
+`verify --mode static --strategy fast --counterexample=minimal --json`.
+Three of those four flags do not exist on the shipped `verum verify`
+(measured 2026-09-11); only `--mode` does.
+:::
 
 ---
 
@@ -510,14 +528,19 @@ verification mode in editor settings without touching
 
 | Symptom                                      | First thing to try                                    |
 |----------------------------------------------|--------------------------------------------------------|
-| "Solver timeout"                             | `--strategy thorough` or `--timeout 120`               |
-| "Solver returned unknown"                    | `--solver portfolio` (race solver adapters)                  |
-| "Counterexample not minimal"                 | `--minimize-timeout 60`                                |
-| "Verification is slow"                       | `verum smt-stats` → pick the theory bucket that dominates |
+Every flag in this table was run against the shipped CLI on
+2026-09-11 and is accepted.
+
+| Symptom                                      | First thing to try                                    |
+|----------------------------------------------|--------------------------------------------------------|
+| "Solver timeout"                             | `--timeout 120`, or raise the whole-run `--budget`     |
+| "Solver returned unknown"                    | `--solver portfolio` (race solver adapters)            |
+| "Counterexample not minimal"                 | No flag tunes this; `--interactive` to inspect it by hand |
+| "Verification is slow"                       | `--profile-obligation` for the slowest ten, then `verum smt-stats` |
 | "Proof works locally, fails in CI"           | `verum smt-info` both sides; check solver version drift |
-| "Failure diagnostic is cryptic"              | `--counterexample=full --interactive`                  |
-| "Framework-axiom count rising"               | `verum audit --framework-axioms --since HEAD~50`       |
-| "Certificates absent after `--mode proof`"   | Ensure `target/proofs/` exists; confirm `--strategy certified` |
+| "Failure diagnostic is cryptic"              | `--interactive` (or `--interactive-tactic`)            |
+| "Framework-axiom count rising"               | `verum audit --framework-axioms`                       |
+| "Certificates absent after `--mode proof`"   | Ensure `target/proofs/` exists                         |
 
 ---
 
