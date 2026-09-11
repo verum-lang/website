@@ -1585,8 +1585,10 @@ verum disasm --show-tokens    # does not exist — see note below
 Re-measured 2026-09-10, and the commands are the address:
 
 ```
-verum grammar   ->  error: unrecognized subcommand 'grammar'
-verum disasm    ->  error: unrecognized subcommand 'disasm'
+$ verum grammar          # does not exist
+error: unrecognized subcommand 'grammar'
+$ verum disasm           # does not exist
+error: unrecognized subcommand 'disasm'
 verum --help    ->  neither name appears
 ```
 
