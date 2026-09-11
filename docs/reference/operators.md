@@ -162,15 +162,38 @@ Every binary arithmetic/bitwise operator has a `*Assign` counterpart.
 ## The `is` operator
 
 ```verum
-if value is Maybe.Some(x)    { ... }                 // pattern test
+if value is Maybe.Some(x)    { ... }                 // pattern test, binds x
 while result is Pending()    { poll(); }             // loop condition
 if x is not None             { use(x); }             // negation
-let flag = value is Int;                             // type-test pattern
 ```
 
 `is` has the same precedence as `==`/`<`/`>` (level 11). It's a
 pattern **test**; bindings introduced by the pattern scope outside
 the test expression where accessible.
+
+:::warning No guard, and the type test does not test
+
+Two things a reader arriving from Rust will try, and what each does today.
+
+**A guard after the pattern is a parse error.** There is no `is P if cond`;
+`matches!(x, P if cond)` becomes a `match` with a guarded arm.
+
+    if v is Some2(n) if n > 0 { ... }
+    error<E018>: Parse error: unexpected keyword `if`, expected `{`
+
+**The type test `x is Int` is a PATTERN, not an expression, and it never
+matches.** `let flag = value is Int;` is refused outright — "Pattern 'Int' is
+not a defined constant". Inside a `match` it compiles, and the type is really
+resolved (a name that does not exist gives `error<E101>: type not found`), but
+the arm is not taken:
+
+    let v: Int = 7;
+    match v { x is Int => "Int", _ => "other" }     // "other"
+
+A `match` whose only arm is a type test is also accepted as exhaustive, so the
+failure is quiet from both sides. Use a variant pattern, or `match` on a value
+whose type distinguishes the cases, until this is fixed.
+:::
 
 See [language/patterns](/docs/language/patterns) and
 [language/active-patterns](/docs/language/active-patterns).
