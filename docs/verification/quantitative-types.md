@@ -150,10 +150,41 @@ public fn protocol_step(
 
 ---
 
-## 4. Today's enforcement
+## 4. Enforcement: what happens today, and what is intended
 
-Today the discipline is **advisory at the binder level and
-enforced at the surface level**:
+:::warning What the compiler does with `@quantity` today
+
+Measured 2026-09-11 against the shipped compiler. `@quantity` is not in the
+parser's attribute table, so every use of it — legal or not — is answered the
+same way and the check finishes:
+
+```verum
+fn consume(@quantity(1) handle: Int) -> Int { handle }
+// warning<W0400>: unknown attribute `@quantity`
+// …and the program runs, printing 3 for consume(3).
+```
+
+- **Placement is not checked.** `@quantity(1)` on a *function* — an illegal
+  placement by this page's own rules — draws the same warning, and nothing
+  else.
+- **The argument is not checked.** `@quantity(zzz_not_a_quantity)` is accepted
+  identically; no diagnostic names the spelling.
+- **The bare forms do not parse.** `@1` gives
+  `error<E013>: invalid attribute: missing attribute name after @`.
+- **None of the three use-count diagnostics fires.** A `@quantity(1)`
+  parameter used twice, one used never, and a `@quantity(0)` parameter read at
+  runtime each produce the W0400 warning and nothing more. That is consistent
+  with the staging described below — stated here so a reader does not test it
+  and conclude their annotation was accepted.
+
+The type-system side is real and separate: `verum_types` carries a `Quantity`
+and a QTT usage walk, and inference does read the attribute. What is missing
+is the front-end registration that would make `@quantity` a checked surface.
+Everything below describes the intended discipline.
+:::
+
+The intended discipline is **advisory at the binder level and enforced at the
+surface level**:
 
 - The full grammar from §3 — bare `@0` / `@1` / `@ω`, the
   `@quantity(...)` long form, and every legal-vs-illegal placement —
