@@ -171,9 +171,7 @@ if x is not None             { use(x); }             // negation
 pattern **test**; bindings introduced by the pattern scope outside
 the test expression where accessible.
 
-:::warning No guard, and the type test does not test
-
-Two things a reader arriving from Rust will try, and what each does today.
+:::note `is` takes no guard, and the type test is a pattern
 
 **A guard after the pattern is a parse error.** There is no `is P if cond`;
 `matches!(x, P if cond)` becomes a `match` with a guarded arm.
@@ -181,18 +179,20 @@ Two things a reader arriving from Rust will try, and what each does today.
     if v is Some2(n) if n > 0 { ... }
     error<E018>: Parse error: unexpected keyword `if`, expected `{`
 
-**The type test `x is Int` is a PATTERN, not an expression, and it never
-matches.** `let flag = value is Int;` is refused outright — "Pattern 'Int' is
-not a defined constant". Inside a `match` it compiles, and the type is really
-resolved (a name that does not exist gives `error<E101>: type not found`), but
-the arm is not taken:
+**The type test is a PATTERN, not an expression.** `let flag = value is Int;`
+is refused — "Pattern 'Int' is not a defined constant" — because the grammar
+puts `x is Type` under patterns. In pattern position it works:
 
     let v: Int = 7;
-    match v { x is Int => "Int", _ => "other" }     // "other"
+    match v { x is Int => "Int", _ => "other" }     // "Int"
 
-A `match` whose only arm is a type test is also accepted as exhaustive, so the
-failure is quiet from both sides. Use a variant pattern, or `match` on a value
-whose type distinguishes the cases, until this is fixed.
+Until 2026-09-11 that answered `"other"`, and so did every other type test:
+the compiler turned the type's name into a string-table index and compared it
+against a VARIANT TAG, so the test was false for anything that was not a
+variant carrying that accidental number. It now compares the value's runtime
+type — a primitive answers from its NaN-box, a heap value from its object
+header. Interpreter only for the moment; an AOT build refuses `x is Type`
+rather than lowering it to a different question.
 :::
 
 See [language/patterns](/docs/language/patterns) and
