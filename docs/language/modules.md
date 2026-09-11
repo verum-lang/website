@@ -173,9 +173,11 @@ PUBLIC name is enough to open every other name in that module:
 // src/main.vr of a cog whose src/util/math.vr declares all three
 mount probe_cog.util.math.{public_fn};
 
-    public_fn()             // 1  — as intended
-    internal_fn()           // 3  — never mounted, still runs
-    PrivateThing { v: 5 }   // 5  — a non-public type, constructed
+fn main() {
+    public_fn();             // 1  — as intended
+    internal_fn();           // 3  — never mounted, still runs
+    PrivateThing { v: 5 };   // 5  — a non-public type, constructed
+}
 ```
 
 Two controls say it is the mount that opens them rather than ambient

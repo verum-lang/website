@@ -511,9 +511,9 @@ collided. Two details a reader has to get right:
 type EpochCache is { cached_epoch: UInt64, checks_since_sync: Int,
                      sync_interval: Int };
 
-fn get_thread_epoch_cache() -> &mut EpochCache
-fn cached_epoch() -> UInt64
-fn invalidate_epoch_cache()
+fn get_thread_epoch_cache() -> &mut EpochCache;
+fn cached_epoch() -> UInt64;
+fn invalidate_epoch_cache();
 ```
 
 ---
@@ -1050,8 +1050,8 @@ type CbgrTier is
     | Aot            // minimal validation
     ;
 
-fn get_execution_tier() -> CbgrTier
-fn set_execution_tier(tier: CbgrTier)
+fn get_execution_tier() -> CbgrTier;
+fn set_execution_tier(tier: CbgrTier);
 ```
 
 The runtime probes live in `core.intrinsics.runtime.tier`:

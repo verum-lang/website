@@ -702,8 +702,13 @@ type SemanticZone is
     | Live { politeness: Politeness };        // future: live regions
 
 type Politeness is Off | Polite | Assertive;
+```
 
-write_semantic_zone(writer: &mut dyn EscapeWriter, zone: SemanticZone)
+The surface — `core/term/app/accessibility.vr` spells the receiver
+`&mut (dyn EscapeWriter)`:
+
+```text
+write_semantic_zone(writer: &mut (dyn EscapeWriter), zone: SemanticZone)
     -> IoResult<()>
 
 // The named shorthands, same file:

@@ -66,7 +66,11 @@ public type Style is {
     add_modifier: Modifier,
     sub_modifier: Modifier,
 };
+```
 
+The surface:
+
+```text
 Style.DEFAULT                                 // all None / empty
 Style.new() -> Style
     .fg(c: Color) -> Self

@@ -185,7 +185,11 @@ public type PubSubMessage is
     | PSubscribed   { pattern: Text, total_subscriptions: Int }
     | PUnsubscribed { pattern: Text, total_subscriptions: Int };
 
-pub fn publish(client, channel, payload) -> Result<Int, RedisError>;
+pub async fn publish(
+    client:  &RedisClient,
+    channel: &Text,
+    payload: &[Byte],
+) -> Result<Int, RedisError>;
 ```
 
 Subscription consumes from `RedisClient` via a dedicated connection

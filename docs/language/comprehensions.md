@@ -95,12 +95,26 @@ Prefix `set` disambiguates from a block and a map literal. Produces a
 ```verum
 // `split_once` answers `Maybe<(Text, Text)>` — the halves either side of
 // the separator. There is no `Text.after_at`.
+//
+// A clause is `if <expression>`, `let <pattern> = <expression>`, or another
+// `for` (grammar: `comprehension_clause`). There is no `if let`: the guard
+// and the binding are two clauses, in that order.
 let unique_domains = set{
-    domain
+    pair.1
     for email in addresses
-    if let Maybe.Some((_, domain)) = email.split_once(&"@")
+    if email.split_once(&"@") is Maybe.Some(_)
+    let pair = email.split_once(&"@").unwrap()
 };
 ```
+
+:::caution A `let` clause does not filter
+
+`let Maybe.Some((_, domain)) = email.split_once(&"@")` parses — a `let`
+clause takes a pattern — but a row whose pattern does NOT match is still
+produced rather than dropped. Measured on the three addresses above, two of
+which carry an `@`: the guarded form answers 2, the `let`-only form answers 3.
+Filter with an `if` clause; bind with a `let` one.
+:::
 
 ## Generators — `gen{expr for ... }`
 

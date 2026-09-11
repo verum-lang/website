@@ -182,13 +182,15 @@ public type Pacer is {
     last_refill: Instant,
 };
 
-Pacer.new(capacity_bytes: UInt64) -> Pacer      // starts full, rate 0
-
 public type PacerDecision is Send | NotYet(Duration);
+```
 
-// `check(bytes_requested, now)` — note the argument ORDER: bytes
-// first, then the instant. There is no `next_send`.
-let decision = pacer.check(next_packet_size, now);
+The surface, and the argument ORDER — bytes first, then the instant.
+There is no `next_send`:
+
+```text
+Pacer.new(capacity_bytes: UInt64) -> Pacer      // starts full, rate 0
+pacer.check(bytes_requested: UInt64, now: Instant) -> PacerDecision
 ```
 
 See [`pacer_surface`](#references) and

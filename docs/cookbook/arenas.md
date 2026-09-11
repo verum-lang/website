@@ -80,11 +80,14 @@ mount core.mem.MemStackAllocator;
 
 fn parse(source: &Text) -> Result<Ast, ParseError> {
     let mut bump = MemStackAllocator.init(1 << 20)?;      // 1 MiB
-    let ast = provide Allocator = bump in {
-        parse_body(source)             // every Heap.new inside bumps
-    };
+    // `provide` is a STATEMENT, not an expression: the block has no value,
+    // so the result leaves through a binding declared outside it.
+    let mut ast: Maybe<Ast> = Maybe.None;
+    provide Allocator = bump in {
+        ast = Maybe.Some(parse_body(source));   // every Heap.new inside bumps
+    }
     bump.reset();                      // O(1) rewind for the next parse
-    Result.Ok(ast)
+    Result.Ok(ast.unwrap())
 }
 ```
 
