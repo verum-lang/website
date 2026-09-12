@@ -285,6 +285,16 @@ rely on this page's specific claim until that's resolved.
   refusal, and reading only that column is how the regression looked
   like progress.
 
+  Two smaller gaps closed with it, both found by varying the VALUE
+  rather than the predicate. A negative or parenthesised value used to
+  lose the verdict entirely — `Int{[it][0] >= 10}` warned at `5` and
+  said nothing at `-5` or at `(5)`, because the check asked whether the
+  expression was a literal and `-5` is a negation OF one. And a
+  predicate that is a bare NAME rather than a call —
+  `Int{is_positive}`, or the `where` spelling `Int where is_positive` —
+  was refused at a satisfying value for the same reason the call form
+  was. Both now warn `W0500` at every value.
+
   The warning names the predicate and says what to do:
 
   > refinement `{… >= 10}` was NOT verified against a value known
