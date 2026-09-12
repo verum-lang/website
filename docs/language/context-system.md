@@ -15,12 +15,31 @@ Verum offers two complementary DI mechanisms.
 
 :::info Which contexts already exist
 A context must be **declared** before `using [...]` will accept it —
-`error<E605>: undefined context` otherwise. The stdlib declares ten:
+`error<E605>: undefined context` otherwise.
 
-`Logger`, `Database`, `Auth`, `Config`, `Cache`, `Metrics`, `Tracer`,
-`Clock`, `FileSystem` (all in `core/context/standard.vr`) and `Random`
+The ten you will reach for in ordinary code are `Logger`, `Database`,
+`Auth`, `Config`, `Cache`, `Metrics`, `Tracer`, `Clock`, `FileSystem`
+(all in `core/context/standard.vr`) and `Random`
 (`core/context/random.vr`). See
 [stdlib → context](/docs/stdlib/context#the-10-standard-contexts).
+
+**They are not the only ten, and this box said they were until
+2026-09-12.** The census is one command:
+
+```bash
+grep -rcE '^ *(public |pub )?context +[A-Za-z_]' core/ --include='*.vr' \
+  | grep -v ':0'
+```
+
+Thirty-three, in eight files. Besides the ten above: fourteen
+compile-time contexts in `core/meta/contexts.vr` — `TypeInfo`,
+`AstAccess`, `CompileDiag`, `Hygiene`, `StageInfo`, `MacroState`,
+`MetaRuntime`, `MetaBench`, `BuildAssets`, `CodeSearch`, `DepGraph`,
+`ProjectInfo`, `Schema`, `SourceMap` — three for autodiff
+(`AutodiffContext`, `GradientTape`, `GradientAccumulation`), three for
+distributed work (`ClusterContext`, `RdmaContext`, `Supervision`), plus
+`PrecisionMode`, `ComputeDevice` and `Benchmark`. Declare your own only
+after checking that list.
 
 Every other name you meet in these pages — `IO`, `Http`, `Store`,
 `Network` and friends — is a context **the example declares for
