@@ -234,6 +234,45 @@ own wording, because the second meaning is usually the one you will meet:
 | `E424` | negative bound violated |
 | `E425` | specialization overlap |
 | `E426` | higher-kinded bound not satisfied |
+| `E429` | a refutable pattern in a position that must always match |
+
+### `E429` — the pattern has to match
+
+Three positions bind exactly once against exactly one value, so a pattern
+used there must match every time: a function parameter (matched against
+whatever the caller passes), a plain `let`, and a comprehension's `let`
+clause (bound once per row).
+
+```verum
+let n = 5;
+let 7 = n;                       // E429: a literal matches one value of many
+let 1..=9 = n;                   // E429: a range, same objection
+let 1 | 2 = n;                   // E429: an or-pattern, an alternative can fail
+
+set{ y for x in xs let 7 = x }   // E429: the clause binds once per row
+```
+
+The refutable case has its own form — `let … else { … }` — and a
+comprehension filters with an `if` clause BEFORE it binds:
+
+```verum
+let Maybe.Some(x) = v else { return; };            // fine
+
+set{ pair.1
+     for email in addresses
+     if email.split_once(&"@") is Maybe.Some(_)    // filter first
+     let pair = email.split_once(&"@").unwrap() }  // then bind
+```
+
+:::caution A variant pattern is not yet caught
+`let Maybe.Some(x) = v;` without an `else` is still accepted, and binds
+an unchecked payload — reading a field of `x` then dereferences null.
+Deciding refutability for a variant needs the resolved type, and the
+check that raises E429 works on the pattern's syntax: a single-variant
+newtype destructured by name (`let UserId(n) = id;`) always matches and
+must stay legal. Until that half lands, write `let … else` whenever the
+type has more than one variant.
+:::
 
 A code with three meanings cannot be looked up the way this page is
 meant to be used — you read the message, not the number. The overload
