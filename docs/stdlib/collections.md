@@ -274,6 +274,37 @@ xs.windows(n)             // List<List<T>>    MATERIALISED
 xs.enumerate()            // List<(Int, T)>   MATERIALISED
 ```
 
+:::caution Some of these return heap addresses instead of elements
+Measured 2026-09-12 at Tier 0 on `[1, 2, 3, 4]`, and the split is not
+where you would guess:
+
+| Answers correctly | Answers with pointers or worse |
+|---|---|
+| `chunks(2)`, `windows(2)` | `chunks_exact(2)`, `rchunks(2)` |
+| `take(2)`, `skip(2)`, `filter`, `find` | `tail()`, `intersperse(0)`, `unique()` |
+| `product()`, `is_sorted()`, `xs[i]` | `reduce(+)`, `take_while`, `split_first()` |
+
+```text
+xs.intersperse(0)   ->  [39989593984, 0, 39989593992, 0, 39989594000]
+xs.split_first()    ->  Some(mysql)
+xs.take_while(|x| *x < 3)  ->  []
+```
+
+`split_first` is reading an unrelated string out of the heap. The
+lengths and the separators are right throughout, which is what makes
+this survivable in a smoke test: only the ELEMENTS are wrong.
+
+**Why the split falls where it does.** `List`'s declared record and its
+runtime layout disagree — the runtime keeps `len` at slot 0, and a
+stdlib body indexing off the record's pointer field resolves an `Int` as
+a pointer. Methods that answer correctly do so because the interpreter
+INTERCEPTS them with a native implementation, so their bodies never run.
+There are 41 such intercepts against 96 methods that touch the pointer.
+
+Until that is fixed, prefer the intercepted spellings above, and check
+any list-returning method you rely on by printing it once.
+:::
+
 Two things in that list are easy to read past, and both change what the
 code does rather than how it looks.
 
