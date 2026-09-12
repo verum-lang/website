@@ -297,7 +297,9 @@ the same rename in both places.
 | `complete` | ✅ | All public APIs covered by unit tests; algebraic laws pinned by property tests; cross-stdlib integration verified; audit findings landed or routed. The module's contract is fully exercised end-to-end on both the interpreter (Tier 0) and AOT (Tier 1) paths. |
 | `partial` | ⚠️ | A subset of the API surface is covered. The reasons for partial coverage are cited in the module's `audit.md`. Typically: the module sits on top of an upstream defect class (e.g. Iterator.next dispatch) that gates entire feature areas. |
 | `regression-only` | ⛔ | The module is **gated** by upstream defects. Few or no public-API tests pass yet — only `@ignore`d regression pins exist (plus a small set of PASS-GUARDs for the bits that work). When the upstream defect closes, removing the `@ignore` on the regression test should turn the suite green automatically. |
-| `unaudited` | ❔ | No `core-tests/<module>/` folder exists yet. The module surface is undocumented in conformance terms. New modules start here; aim to graduate to `regression-only` (write the tests, even if they all `@ignore`) before merging. |
+| `stable` | ✅ | Every public method is conformance-tested. |
+| `unverified` | ❔ | A `core-tests/<module>/` folder exists and no status has been asserted for it yet. |
+| `undocumented` | ❔ | No `core-tests/<module>/` folder exists. New modules start here; aim to graduate. |
 
 ### Frontmatter
 
@@ -336,7 +338,12 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 Props:
 
-- **`status`** — one of `complete | partial | regression-only | unaudited`.
+- **`status`** — one of `complete | stable | partial | regression-only |
+  unverified | undocumented`. Re-checked 2026-09-12 against the gate that
+  compares these against the conformance inventory: that is its whole
+  vocabulary, and `unaudited` — which this page used to list and define —
+  is in neither the gate nor the inventory. A token outside the set is not
+  reported as wrong; it is not read as a status at all.
 - **`detail`** *(optional)* — string mirroring the
   `status_detail` frontmatter; rendered in the badge body.
 - **`defects`** *(optional)* — list of `{area, summary}` rows shown in
