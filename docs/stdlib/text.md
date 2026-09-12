@@ -41,7 +41,7 @@ is 24 bytes; `cap == 0` indicates a static / immutable string literal.
 |---|---|---|
 | [`text.vr`](#text) | `Text` + 100+ method API surface | **partial** — [core-tests/text/text](https://github.com/verum-lang/verum/tree/main/core-tests/text/text) |
 | [`char.vr`](#char) | `Char` + classification, conversion, `CharPattern`, `GeneralCategory` | **partial** — [core-tests/text/char](https://github.com/verum-lang/verum/tree/main/core-tests/text/char) |
-| [`format.vr`](#formatting--write) | `Formatter`, `FormatSpec`, `Alignment`, `Sign`, `DebugStruct`/`Tuple`/`List`/`Map`, `Write`, `print`/`println`/`eprint`/`eprintln`, `dbg`, `format_display`, `format_debug` | **partial** — [core-tests/text/format](https://github.com/verum-lang/verum/tree/main/core-tests/text/format) |
+| [`format.vr`](#formatting--write) | `Formatter`, `FormatSpec`, `Alignment`, `Sign`, `DebugStruct`/`Tuple`/`List`/`Map`, `Write`, `print`/`println`/`eprint`/`eprintln`, `dbg`, `format_display`, `format_debug` | **stable** — [core-tests/text/format](https://github.com/verum-lang/verum/tree/main/core-tests/text/format) |
 | [`regex.vr`](#regex) | `Regex`, `RegexError` — 7 operations on the pure-Verum engine (`regex_engine.vr`), tier-agnostic | **stable** — [core-tests/text/regex](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex) |
 | [`tagged_literals.vr`](#tagged-literals) | `validate_json` / `validate_sql` / `validate_uri` runtime validators | **stable** — [core-tests/text/tagged_literals](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals) |
 | [`case_fold.vr`](#case-folded-comparison) | `fold_char_ascii` / `fold_byte_ascii` / `fold_text_ascii` / `compare_ascii_nocase` / `equal_ascii_nocase` (SQLite NOCASE) | **stable** — [core-tests/text/case_fold](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold) |
@@ -976,17 +976,17 @@ own `audit.md` cataloguing open defects + drift surfaces.
 
 | Submodule | Status | What gates it | Audit |
 |---|---|---|---|
-| `text/text` | **regression-only** | §Y remains open at Tier 1. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md) |
-| `text/char` | **regression-only** | Two minor `@ignore` pins — the §B residual and the §D probe. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
-| `text/case_fold` | **regression-only** | Green outside the upstream `Text.eq` cascade. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
+| `text/text` | **partial** | §Y remains open at Tier 1. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md) |
+| `text/char` | **partial** | Two minor `@ignore` pins — the §B residual and the §D probe. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
+| `text/case_fold` | **stable** | Green outside the upstream `Text.eq` cascade. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
 | `text/builder` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/builder/audit.md) |
 | `text/format` | **stable** | The §H workaround landed 2026-05-27; the codegen fix is `@ignore`d for follow-up. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
 | `text/regex` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex/audit.md) |
 | `text/tagged_literals` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals/audit.md) |
 | `text/numeric/decimal` | **partial** | §A `Int.neg` dispatch, then the §B / §C cascade. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
 | `text/numeric/bigint` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigint/audit.md) |
-| `text/numeric/bigdecimal` | **partial** | Constructors and sign guards hold; add / mul cascade from the bigint close. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigdecimal/audit.md) |
-| `text/numeric/rational` | **partial** | Cascading from the bigint close. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/rational/audit.md) |
+| `text/numeric/bigdecimal` | **stable** | Constructors and sign guards hold; add / mul cascade from the bigint close. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/bigdecimal/audit.md) |
+| `text/numeric/rational` | **stable** | Cascading from the bigint close. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/rational/audit.md) |
 | `text/numeric/modular` | **stable** | Outside the §A transitive block. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/modular/audit.md) |
 
 ### Highest-leverage open defects
