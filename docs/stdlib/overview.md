@@ -40,10 +40,20 @@ dependency on everything `core/mod.vr` re-exports. That set gained
 because the language itself inserts the name — `f"{x:?}"` desugars to a
 bare `format_debug` call, so it has to resolve everywhere.
 
-So the layering itself is intact and the measurement is not. The
-distinction matters if you are reading this to decide where to put a
-module: the rings below are the law, and the four edges above are an
-artefact of counting, tracked separately.
+So the layering itself is intact and the measurement was not.
+
+**Re-measured 2026-09-12 and the four edges are gone** — the gate now
+reads `[ok] ring law holds: 2559 modules, 6433 inter-module edges, 0
+violations`. Not because the counting changed, but because the four
+modules did: `base.env`, `sys.fs_watch`, `sys.process_native` and
+`sys.process_ops` each replaced their root mount with selective ones —
+between seven and eleven apiece — so there is no longer a root mount to
+read as a dependency on everything the prelude re-exports.
+
+The distinction is still worth keeping if you are deciding where to put
+a module: the rings below are the law, and a root mount is counted as a
+dependency on the whole re-export set, which is a real cost even when
+the layering is fine.
 
 ```
 Ring 5.5  integration-client  the CLIENT halves: sigstore, tuf, oidc,
