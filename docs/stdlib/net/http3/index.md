@@ -93,6 +93,7 @@ admits as the same visibility.
 
 ```verum
 mount core.net.h3.server.{H3Server, ServerOptions, H3Handler};
+mount core.net.addr.{SocketAddr};
 mount core.net.h3.request.{H3Request, H3Response, H3Method};
 
 type MyHandler is { /* app state */ };
@@ -117,7 +118,11 @@ async fn serve() -> Result<(), H3ServerError> {
     // `with_idle_timeout` are the only builders (measured 2026-09-08).
     let opts = ServerOptions.from_cert(cert_chain, signer)
         .with_alpn(alpn_list);
-    let server = H3Server.bind(&"0.0.0.0:443".parse()?, opts).await?;
+    // `SocketAddr.from_text`, not `"…".parse()`: `Text` has no `parse`
+    // method, and the call binds an unrelated free function taking
+    // `&Text` — it type-checks and panics at run time.
+    let addr = SocketAddr.from_text(&"0.0.0.0:443")?;
+    let server = H3Server.bind(&addr, opts).await?;
     server.serve(handler).await
 }
 ```

@@ -46,7 +46,7 @@ fn parse_email(raw: &Text) -> Result<Email, ValidationError> {
 }
 
 fn parse_age(raw: &Text) -> Result<Age, ValidationError> {
-    let n: Int = raw.parse()
+    let n: Int = raw.parse_int()
         .map_err(|_| ValidationError.NotANumber(raw.to_string()))?;
     if n < 0 || n > 150 {
         Result.Err(ValidationError.AgeOutOfRange(n))

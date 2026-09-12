@@ -156,7 +156,7 @@ fn parse_u32(s: Text) throws(ParseError) -> Int
     ensures result >= 0
     ensures result <= U32_MAX
 {
-    let n: Int64 = s.parse()?;
+    let n: Int64 = s.parse_int()?;
     if n < 0 || n > U32_MAX {
         throw ParseError.OutOfRange;
     }
