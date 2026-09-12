@@ -117,11 +117,26 @@ implement Clone for Shape {
 
 ### The shipped derive catalogue
 
-The initial-release core ships six built-in derives — `Clone`,
-`Debug`, `Default`, `PartialEq`, `Serialize`, `Deserialize` — with
-additional derives (`Display`, `Error`, `Builder`, …) available as
-standard-library derives. See [Derives catalogue](./derives) for
-the full list with exact generated-code semantics.
+The compiler registers **nine** built-in derives — `Debug`, `Clone`,
+`Copy`, `Eq`, `PartialEq`, `Hash`, `Default`, `Ord`, `PartialOrd`.
+Re-measured 2026-09-12; this paragraph named six and two of those,
+`Serialize` and `Deserialize`, are not among them. See
+[Derives catalogue](./derives) for the generated-code semantics.
+
+:::warning There are no library derives yet
+`Serialize`, `Deserialize`, `Display`, `Error` and `Builder` are not
+provided anywhere — not by the compiler and not by the standard
+library, which declares no derive macros at all:
+
+```bash
+grep -rc '@proc_macro_derive' core/ --include='*.vr' | grep -v ':0'   # nothing
+```
+
+Applying one is not silent — the compiler answers
+`warning<W0507>: @derive(Name) on Type was not applied` — but it is a
+warning, so the type simply does not get the behaviour. `core/` itself
+carries one such line.
+:::
 
 ### User-defined derives
 

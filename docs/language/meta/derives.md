@@ -54,20 +54,32 @@ what diagnostics are emitted when the derive cannot proceed.
 | `Debug`         | `Debug.fmt_debug` — the `{:?}` formatter               |
 | `Default`       | `Default.default()` using per-field defaults           |
 | `PartialEq`     | `Eq.eq` — field-by-field equality                      |
-| `Serialize`     | `Serialize` via the generic serialiser pipeline        |
-| `Deserialize`   | `Deserialize` via the generic parser pipeline          |
+| `Copy`          | marks the type as trivially copyable                   |
+| `Eq`            | `Eq.eq` — field-by-field equality                      |
+| `Hash`          | `Hash.hash` — field-by-field hashing                   |
+| `Ord`           | `Ord.cmp` — lexicographic by declaration order         |
+| `PartialOrd`    | `PartialOrd.partial_cmp`                               |
 
-## Additional library derives
+Re-measured 2026-09-12 against the compiler's own registration list;
+`Copy`, `Eq`, `Hash`, `Ord` and `PartialOrd` were missing from this
+table, and `Serialize` / `Deserialize` were in it and are not built in.
 
-| Derive          | What it generates                                      |
-|-----------------|--------------------------------------------------------|
-| `Display`       | `Display.fmt` with a configurable template             |
-| `Error`         | `Error` delegating to `Display` for the message        |
-| `Builder`       | Fluent `.with_*(...).build()` constructor              |
+## Derives that are named but do not exist
 
-These are ordinary user-space derives built on the same
-`@proc_macro_derive(Name)` machinery; they ship in the standard
-library but are not part of the compiler-provided core.
+:::warning `Serialize`, `Deserialize`, `Display`, `Error`, `Builder`
+None of them is provided — not by the compiler, and not by the standard
+library, which declares no derive macros at all:
+
+```bash
+grep -rc '@proc_macro_derive' core/ --include='*.vr' | grep -v ':0'   # nothing
+```
+
+The machinery for user-space derives is the intended route for these,
+and the page below describes what they would generate. Applying one
+today answers `warning<W0507>: @derive(Name) on Type was not applied`
+and the type does not get the behaviour. `core/cog/sign.vr` carries one
+such line.
+:::
 
 ## Shared rules
 
