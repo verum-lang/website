@@ -262,7 +262,7 @@ correction.
 
 ## AST node types
 
-:::caution The AST NODE types below are a design; the CONTEXTS are not
+:::caution The `*Ast` types below do not exist; the contexts they are used through do
 Every `*Ast` type below — `FnAst`, `TypeAst`, `ImplAst`, `ExprAst`,
 `StmtAst`, `PatternAst`, `ProtocolAst`, `ContextAst`, `AttributeAst`,
 `BlockAst` — occurs nowhere in `core/`, and neither do `Quotable` or
