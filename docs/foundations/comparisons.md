@@ -91,10 +91,34 @@ state, thread locals, and `once_cell` globals. See
 `Database` — a function that needs only read-access can't perform
 writes, proven at the type level. No Rust equivalent.
 
-**40+ tagged literals built-in.** `sql#"..."`, `json#"..."`,
-`rx#"..."`, `url#"..."`, `d#"2026-04-17"`, compile-time validated.
-Rust's closest equivalents are external macros and
-`proc-macro`-driven validation, per crate.
+**Tagged literals built into the language, not bolted on.**
+`sql#"..."`, `json#"..."`, `rx#"..."`, `url#"..."`, `d#"2026-04-17"`
+are lexed and typed by the compiler itself; Rust's closest equivalents
+are external macros and `proc-macro`-driven validation, per crate.
+
+:::warning Most of them do not produce a usable value yet
+
+Measured 2026-09-12: the compiler recognises 71 tag spellings mapping to
+48 distinct types, and **16 of those types exist in `core/` — 32 do
+not**. `d#"2026-04-17"` types as `DateTime`, which `core/time/` does not
+declare, so nothing can be called on it; `sql#"..."` types as
+`SqlQuery`, likewise absent. Even for the sixteen that do exist, the
+literal stores a plain string at run time, so a method call dispatches
+against a `Text` — with measured consequences on
+[cookbook/regex](/docs/cookbook/regex).
+
+Three of the five forms named in this paragraph are in that group.
+Check any one of them the same way — the answer is the whole test:
+
+```bash
+grep -rnE '^ *(public |pub )?type +DateTime\b' core/ --include='*.vr'
+grep -rnE '^ *(public |pub )?type +Url\b'      core/ --include='*.vr'
+```
+
+The first prints nothing and the second prints a declaration. The count
+above is real and the lexing is real; the typed value at the end of it
+mostly is not.
+:::
 
 ### When Rust is the right call
 
