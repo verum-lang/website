@@ -5,10 +5,47 @@ description: Compile-time-checked regex — match, captures, replace, iterate, f
 
 # Regex
 
-All regex in Verum lives behind the `rx#` tagged literal, which
-validates the pattern at **compile time**. Invalid regex is a
-compile error, not a runtime exception. The engine is RE2-class —
-linear time, no catastrophic backtracking.
+:::danger `rx#"..."` does not work today — use `Regex.new`
+
+Measured 2026-09-12, with the two spellings of the same pattern in one
+program:
+
+```verum
+Regex.new("abc")?.find("xabcy")     // Some(abc)   correct
+rx#"abc".find("xabcy")              // None        WRONG, and silent
+rx#"abc".is_match("xabcy")          // crashes: null pointer dereference
+```
+
+The literal type-checks as a `Regex` and is a plain `Text` at run time,
+so `.find` resolves to `Text.find` and searches the PATTERN for the
+SUBJECT. The giveaway is that swapping the two makes it "work":
+`rx#"xabcy".find("abc")` answers `Some(1)`, byte-identical to
+`"xabcy".find("abc")` on an ordinary string.
+
+**It is silent on the common call.** A pattern tested against input that
+should NOT match returns the right answer for the wrong reason; the
+failure only appears on input that should match.
+
+Until it is fixed, build regexes through the constructor, which returns
+a `Result`:
+
+```verum
+mount core.text.regex.{Regex};
+
+match Regex.new("^[^@\s]+@[^@\s]+\.[^@\s]+$") {
+    Result.Ok(rx)  => { if rx.is_match(input) { print("valid"); } }
+    Result.Err(e)  => { print("bad pattern"); }
+}
+```
+
+Every `rx#` block on this page is written in the intended syntax and is
+kept as such; read them as the shape the API wants, and reach for
+`Regex.new` in code you run.
+:::
+
+All regex in Verum is meant to live behind the `rx#` tagged literal,
+which validates the pattern at **compile time**. Invalid regex is a
+compile error, not a runtime exception.
 
 For the full lexical grammar of `rx#"..."`, see
 [language/tagged-literals](/docs/language/tagged-literals#pattern-matching).
@@ -18,7 +55,7 @@ For the full lexical grammar of `rx#"..."`, see
 ```verum
 let email = rx#"^[^@\s]+@[^@\s]+\.[^@\s]+$";
 
-if email.matches(&input) {
+if email.is_match(input) {
     print("valid");
 }
 ```
@@ -27,9 +64,9 @@ if email.matches(&input) {
 (equivalent to anchored match). For a partial match use `is_match`.
 
 ```verum
-rx#"error".is_match(&line)          // true if the line contains "error"
-rx#"^error".matches(&line)          // only if the line starts with "error"
-rx#"error$".matches(&line)          // only if the line ends with "error"
+rx#"error".is_match(line)           // true if the line contains "error"
+rx#"^error".is_match(line)          // only if the line starts with "error"
+rx#"error$".is_match(line)          // only if the line ends with "error"
 ```
 
 ## Find — first match
@@ -67,14 +104,23 @@ Numbered groups:
 
 ## Named captures
 
+:::danger Not accepted by the parser — use positional groups
+
+Measured 2026-09-12: both `(?P<name>...)` and `(?<name>...)` are
+rejected at compile time, while `([0-9]{4})` is accepted. The engine
+declares positional capture groups only, with group 0 as the whole
+match.
+
 ```verum
+// intended, and rejected today
 let pat = rx#"(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})";
-let caps = pat.captures(&s).unwrap();
-let year = caps.name("year").unwrap().as_str();
+
+// accepted
+let pat = rx#"(\d{4})-(\d{2})-(\d{2})";
 ```
 
-Named groups (`(?<name>...)`) make the code robust to group
-reordering. Mix with numbered access: `caps.get(1)` still works.
+`captures` returns the groups in order, so read them by position.
+:::
 
 ## Iterate all matches
 
@@ -161,89 +207,157 @@ let first_three: List<Text> = sep.splitn(&text, 3).collect();
 
 ## As a type predicate
 
-Regex literals compose naturally with refinement types:
+This is the shape the design intends, and it is written here as such:
 
 ```verum
 type Email  is Text { self.matches(rx#"^[^@\s]+@[^@\s]+\.[^@\s]+$") };
 type UUIDv4 is Text { self.matches(rx#"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$") };
-type Slug   is Text { self.matches(rx#"^[a-z0-9]+(?:-[a-z0-9]+)*$") };
+type Slug   is Text { self.matches(rx#"^[a-z0-9]+(-[a-z0-9]+)*$") };
 type Phone  is Text { self.matches(rx#"^\+?\d[\d\s-]{7,}$") };
 ```
 
-The regex itself is validated at compile time; the refinement is
-checked whenever a `Text` is promoted to `Email`, `UUIDv4`, etc.
+:::warning None of that is enforced today, and this page used to say it was
+
+Measured 2026-09-12, three separate reasons, any one of which is enough:
+
+* `Text.matches(&self, pattern: &Text) -> TextMatches` takes a **`Text`**
+  and returns an **iterator**, not a `Bool`. It is not a predicate, and
+  it does not take a regex.
+* `rx#"..."` is a `Text` at run time (see the box at the top), so the
+  argument is not a regex either.
+* A refinement predicate that CALLS a function is not decided by the
+  solver — it compiles with a `W0500` saying the constraint is not
+  enforced. That warning is the honest signal; the type still admits
+  every value.
+
+The `Slug` line above also lost its `(?:`: non-capturing groups are
+rejected by the engine's parser. An ordinary `(` group does the same job
+here and is accepted.
+
+Check the first reason for yourself — the declaration says what it
+takes and what it returns:
+
+```bash
+grep -n 'public fn matches' core/text/text.vr
+```
+
+Validate in code until this lands — construct the regex with
+`Regex.new` and check its `is_match` at the boundary where the value
+enters your program.
+:::
 
 ## Flags
 
-Inline regex flags at the start of the pattern:
+:::danger The engine accepts no inline flags at all
+
+Every one of these is REJECTED by the pattern parser — measured
+2026-09-12 through `Regex.new`, with an unflagged pattern as the control:
+
+| written | verdict |
+|---|---|
+| `(?i)hello` | rejected at compile |
+| `(?m)^start` | rejected at compile |
+| `(?s).` | rejected at compile |
+| `(?x)…` | rejected at compile |
+| `(?-u)\d+` | rejected at compile |
+| `hello` (control) | matches |
+
+Run it yourself — the control in the last row is what separates "the
+flag is unsupported" from "the harness is broken":
 
 ```verum
-let ci     = rx#"(?i)hello";         // case-insensitive
-let multi  = rx#"(?m)^start";         // multiline: ^/$ match line boundaries
-let dotall = rx#"(?s).";              // dot matches newline
-let x      = rx#"(?x)                 // extended — ignore whitespace + comments
-                 \d{4} -              # year
-                 \d{2} -              # month
-                 \d{2}";              # day
-let bytes  = rx#"(?-u)\d+";           // byte-only (faster, no Unicode tables)
+mount core.text.regex.{Regex};
+
+fn probe(pat: Text, subj: Text) {
+    match Regex.new(pat) {
+        Result.Ok(r)  => { print(f"{pat} -> {r.is_match(subj)}"); }
+        Result.Err(_) => { print(f"{pat} -> rejected at compile"); }
+    }
+}
+
+fn main() {
+    probe("(?i)hello", "HELLO");
+    probe("hello", "hello");       // the control
+}
 ```
 
-Combine flags:
+Non-capturing groups `(?:…)` are rejected too; a plain `(…)` group is
+accepted and does the same work when you do not need the capture.
 
-```verum
-rx#"(?im)^error.*$"        // case-insensitive, multiline
-```
+What the engine does support, from its own declaration: literals and
+escaped literals, character classes with ranges and negation, the
+greedy quantifiers `*` `+` `?` `{m}` `{m,}` `{m,n}` over any atom
+including groups, alternation `|` at top level and inside groups,
+the anchors `^` and `$`, and positional capture groups. `\d` `\w` `\s`
+and their negations are **ASCII**, and `.` matches any byte except a
+newline.
+
+For case-insensitivity, lower-case the subject before matching, or
+spell the alternatives into the class: `[Hh]ello`.
+:::
 
 ## Unicode support
 
-By default, Verum regex is **Unicode-aware**:
+:::danger There is none — the engine is byte-oriented and its classes are ASCII
 
-- `\w` matches any Unicode letter/digit/underscore.
-- `\d` matches any Unicode decimal digit.
-- `\p{L}` matches any Unicode letter; `\p{Nd}` any decimal digit,
-  `\p{Greek}` any Greek script, etc.
-- `\P{...}` negates a Unicode category.
-- Equivalences like `ß` matching `ss` are **not** auto-enabled;
-  use `\b(?i)ß|ss\b` explicitly.
-
-Disable Unicode with `(?-u)` for byte-level matches (e.g. parsing
-binary protocols).
+This section used to say the opposite. Measured 2026-09-12:
 
 ```verum
-let greek_word = rx#"\p{Greek}+";
-let decimal = rx#"\p{Nd}+";
-let emoji = rx#"\p{Emoji}";
-let non_ascii = rx#"\P{ASCII}";
+Regex.new("\\w+")?.is_match("привет")   // false
+Regex.new("\\w+")?.is_match("abc")      // true   — the control
+Regex.new("\\p{L}+")                    // rejected at compile
 ```
+
+`\d` `\w` `\s` and their negations are ASCII; `.` matches any byte
+except a newline. Every `\p{...}` / `\P{...}` form is rejected by the
+parser, as is `(?-u)` — there is no Unicode mode to turn off.
+
+Match non-ASCII text by spelling the bytes or the characters you want
+into a class, or by narrowing the input before it reaches the regex.
+:::
 
 ## Non-capturing groups
 
-Use `(?:...)` when you need grouping without capturing:
+:::danger `(?:...)` is rejected by the parser
+
+Measured 2026-09-12: `(?:abc)+` is refused at compile time while
+`(abc)+` is accepted. Where you do not need the capture, use an
+ordinary group and ignore it — the alternation and the quantifier
+behave the same.
 
 ```verum
-// Capturing: 3 groups
-let words = rx#"(word1)|(word2)|(word3)";
-
-// Non-capturing: 0 groups, same semantics
+// intended, and rejected today
 let words = rx#"(?:word1|word2|word3)";
-```
 
-Non-capturing is slightly faster and avoids cluttering the capture
-list.
+// accepted
+let words = rx#"(word1|word2|word3)";
+```
+:::
 
 ## Lookaround
 
-Verum's regex engine supports **zero-width** lookaround:
+:::danger No lookaround is accepted, and the linearity claim was wrong too
 
-```verum
-rx#"\bfoo(?=\s)"          // foo followed by whitespace (not captured)
-rx#"(?<=\$)\d+"           // digits preceded by $ (not captured)
-rx#"foo(?!\d)"            // foo not followed by a digit
-rx#"(?<!-)\b\w+"          // word not preceded by a hyphen
+Measured 2026-09-12: `(?=...)`, `(?!...)`, `(?<=...)` and `(?<!...)` are
+all rejected at compile time.
+
+This section also said lookaround "keeps the engine linear (RE2-class) —
+no catastrophic backtracking is possible". The engine's own declaration
+says the opposite: it is a backtracking matcher whose worst case is
+exponential, like every backtracker. Treat any pattern you run over
+untrusted input accordingly.
+
+Both halves are one command each:
+
+```bash
+# the parser's verdict — run the probe from the Flags box with "foo(?=bar)"
+# the engine's own words about its complexity:
+grep -n 'backtrack' core/text/regex_engine.vr
 ```
 
-Lookaround keeps the engine linear (RE2-class) — no catastrophic
-backtracking is possible.
+Express the surrounding context as part of the match and trim it
+afterwards, or split the decision into two matches.
+:::
 
 ## Substitution in a builder
 
@@ -266,19 +380,25 @@ context-sensitive rewrites.
 
 ## Performance notes
 
-- **Compiled once**: each `rx#"..."` is a compile-time constant — no
-  runtime compilation cost.
-- **Linear-time by default**: RE2-class engine. No backtracking, no
-  catastrophic matches.
-- **Unicode-aware**: opt into byte-only with `(?-u)` for speed.
-- **Precompile once**: bind the regex to a `const` or a `static` if
-  used in hot code:
-  ```verum
-  static EMAIL: Regex = rx#"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-  ```
+Re-measured 2026-09-12 against the engine's own declaration and against
+`core/text/regex.vr`. Three of the five claims this section used to
+carry were wrong, and all three were wrong in the direction that would
+cost a reader.
+
+- **Compilation is per call, not once.** Every method passes the raw
+  pattern to the engine, which re-parses it. Binding the regex to a
+  `const` or a `static` stores the pattern, not a compiled program —
+  the section used to recommend that as a speed-up and it buys nothing.
+- **It is a BACKTRACKER, not RE2.** The engine declares "worst-case
+  exponential like every backtracker"; the conformance corpus and
+  ordinary validation patterns are linear-ish, which is not a
+  guarantee. **Do not run a pattern from an untrusted source, and be
+  careful with nested quantifiers over untrusted input.**
+- **ASCII, not Unicode.** See the Unicode section above.
 - **Prefer literal matches**: if you just need "contains" or "starts
-  with", `Text.contains` / `Text.starts_with` is 10× faster than
-  `rx#"...".is_match(...)`.
+  with", reach for `Text.contains` / `Text.starts_with`. That advice
+  stands; the "10× faster" figure that used to sit beside it is
+  withdrawn, because nothing in the repository measures it.
 
 ## Pitfalls
 
