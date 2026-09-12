@@ -21,6 +21,24 @@ implementation, and the reason AOT emits no LLVM vector intrinsics.
 Measured consequences are listed under [`Vec<T, N>`](#vect-n) below, and
 they include silently wrong numbers, so read them before using this
 module for anything.
+
+Run this and compare — it takes a second and settles it for your build:
+
+```verum
+mount core.simd.{Vec4f};
+
+fn main() {
+    let src: [Float32; 4] = [10.0, 20.0, 30.0, 40.0];
+    let v = Vec4f.from_array(src);
+    print(f"reduce_add -> {v.reduce_add()}");   // 100.0 if it vectorises
+    let w = Vec4f.from_array(src);
+    let s = v + w;
+    print(f"v+w        -> {s.to_array()}");     // [20,40,60,80] if it does
+}
+```
+
+Today the first line prints `[10.0, 20.0, 30.0, 40.0]` and the second a
+different number on every run.
 :::
 
 | File | What's in it |
