@@ -227,9 +227,15 @@ quarantined:
   today. Function-level parallelism in Phases 6/7 is available, but
   a true multi-worker phase coordinator is on the near-term
   roadmap.
-- **Stdlib lazy loading**: the full stdlib is parsed on every build
-  start; disk-cache materialises results but in-memory reloading is
-  still O(stdlib-size). Lazy module loading is under development.
+- **Stdlib loading**: re-measured 2026-09-12 — the stdlib is **not**
+  parsed on every build start, and this entry used to say it was. The
+  bake embeds it as a binary blob with sidecars, and the pipeline's
+  default for a normal build defers decoding that blob until something
+  actually reads it. A run served from the VBC script cache bypasses the
+  frontend and never decodes it at all. What remains true is the shape
+  once it *is* decoded: the in-memory metadata is whole-stdlib sized,
+  not per-module, so the first read pays for everything whether the
+  program touches one module or forty.
 
 ## See also
 
