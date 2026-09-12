@@ -178,10 +178,65 @@ tautology and *prove vacuously*. The law converts that silent
 divergence into `E432`, which prints the actual parse next to both
 bracketed readings.
 
+## Law 3 — Irrefutable binding
+
+Three positions bind exactly once against exactly one value, so a
+pattern used in any of them must match every time: a **function
+parameter** (matched against whatever the caller passes), a plain
+**`let`**, and a **comprehension's `let` clause** (bound once per row).
+
+```verum
+let n = 5;
+let 7 = n;                       // E429: a literal matches one value of many
+let 1..=9 = n;                   // E429: a range, same objection
+let 1 | 2 = n;                   // E429: an alternative can fail
+
+set{ y for x in xs let 7 = x }   // E429: the clause binds once per row
+```
+
+The refutable case has its own production — `let … else { … }` — and a
+comprehension filters with an `if` clause *before* it binds:
+
+```verum
+let Maybe.Some(x) = v else { return; };
+
+set{ pair.1
+     for email in addresses
+     if email.split_once(&"@") is Maybe.Some(_)
+     let pair = email.split_once(&"@").unwrap() }
+```
+
+### Why
+
+A pattern that does not match binds nothing, and nothing says so. The
+parameter case was measured first: `fn handle(Event.Keypress(code):
+Event)` called with `Event.Click(999)` returned a raw variant handle
+from a function declared to return `Int` — not a panic, not the payload,
+a wrong value of the wrong type. The comprehension case is worse,
+because its lowering is an unconditional bind with no match test: the
+binding holds an unchecked payload slot and the first field read on it
+dereferences null.
+
+Unlike Laws 1 and 2 this one is not staged — E429 is an error in all
+three positions, with no warn mode, because there is no reading under
+which the program was meant to work.
+
+:::caution The variant half is not enforced yet
+`let Maybe.Some(x) = v;` without an `else` is still accepted and still
+binds an unchecked payload. Deciding refutability for a variant needs
+the resolved type — `let UserId(n) = id;` on a single-variant newtype
+always matches and must stay legal — while the check that raises E429
+reads the pattern's syntax. Measured 2026-09-12: the tree carries no
+qualified `let Type.Variant(…)` without an `else` at all, and the four
+places that destructure one already use `let … else`. Write it that way
+whenever the type has more than one variant.
+:::
+
 ## Interaction with verification
 
-Both laws exist first for the proof surface. A vacuous `ensures` is
+Laws 1 and 2 exist first for the proof surface. A vacuous `ensures` is
 worse than a failing one; a constructor bound to the wrong owner
 makes an obligation about the wrong type. Under
 `@verify(thorough)` and the deterministic profile, the strict mode of
-these laws is implied.
+these laws is implied. Law 3 needs no staging — a binding that did not
+happen cannot carry a proof obligation about its own value.
