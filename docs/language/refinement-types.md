@@ -251,21 +251,37 @@ rely on this page's specific claim until that's resolved.
   rejected.** The compiler accepts the predicate, warns that the
   constraint is unenforced, and continues — which is gradual
   verification working as designed, but it is not the same thing as a
-  rejection, and this page previously said "rejected". Measured on the
-  current binary, with a field initialised to `1`:
+  rejection, and this page previously said "rejected". Re-measured
+  2026-09-12 on the current binary. Each row was run at BOTH polarities —
+  once with a field value that satisfies the predicate and once with one
+  that violates it — because a diagnostic on the violating case alone
+  cannot tell a decision from a blanket refusal.
 
-  | predicate | result |
-  |---|---|
-  | `Int{it >= 10}` | `error<E500>` — decided, violated |
-  | `Int{(it, 0).0 >= 10}` | `error<E500>` — decided through the projection |
-  | `Int{twice(it) >= 10}` | `warning<W0500>` — solver returned unknown |
-  | `Int{it \|> twice >= 10}` | `warning<W0500>` |
-  | `Int{f"{it}" == "zz"}` | `warning<W0500>` |
-  | `Int{[it][0] >= 10}` | `warning<W0500>` |
+  | predicate | violated | satisfied |
+  |---|---|---|
+  | `Int{it >= 10}` | `error<E500>` | clean |
+  | `Int{it * 2 >= 10}` | `error<E500>` | clean |
+  | `Int{(it, 0).0 >= 10}` | `error<E500>` | clean |
+  | `Int{f"{it}" == "…"}` | `error<E500>` | clean |
+  | `Int{[it][0] >= 10}` | `warning<W0500>` | `warning<W0500>` |
+  | `Int{twice(it) >= 10}` | `error<E500>` | **`error<E500>`** |
+
+  Read the last row carefully: a predicate that CALLS a function is
+  refused whether or not it holds. `twice(20) >= 10` is `40 >= 10`, and
+  the compiler still reports `refinement constraint failed`. That is a
+  false rejection of a correct program, and the message names the wrong
+  cause — nothing was violated. It applies to recursive calls too:
+  `fact(5) >= 10` is `120 >= 10` and is refused identically.
+
+  **Until that is fixed, do not put a call in a refinement predicate.**
+  Inline the arithmetic (`it * 2 >= 10` decides correctly at both
+  polarities), or check the call's result in code. The pipe spelling of
+  the same call, `it |> twice >= 10`, warns with `W0500` rather than
+  refusing — unenforced, but it compiles.
 
   The warning names the predicate and says what to do:
 
-  > refinement `{twice(…) >= 10}` was NOT verified against a value known
+  > refinement `{… >= 10}` was NOT verified against a value known
   > at compile time (SMT solver returned unknown), so the constraint is
   > not enforced here — express the predicate in terms the solver decides
   > (comparisons, arithmetic, `&&`/`||`/`!`), or check it explicitly in

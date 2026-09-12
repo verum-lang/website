@@ -1291,10 +1291,36 @@ entries this table used to carry are fixed**, so the table is now the
 short one, and what closed is listed under it rather than deleted —
 a reader who worked around one of these deserves to learn it can stop.
 
+Re-measured again on 2026-09-12, and **both entries had to be rewritten**
+— one described the wrong symptom, the other named a discriminator that a
+two-line control refutes. Thirty of `Map`'s methods were called on the
+same populated map, one program per method; twenty answered and ten
+trapped, in two families.
+
 | Defect | Where it shows | Evidence |
 |---|---|---|
-| `Map.get_mut(&K)` and `Map.get_key_value(&K)` answer `Maybe.None` for a key the same map reports through `get` and `contains_key` | any `&mut`-yielding or pair-yielding lookup | the control block under [Map](#mapk-v--hash-map) above — same map, same key, four calls, two right and two wrong |
-| `Map.entry(K)` traps when the map is EMPTY | `entry` and everything reached through it; `len() == 0` is the discriminator, not whether the key is present | the four-line probe under [Map](#mapk-v--hash-map) above |
+| Ten `Map` methods trap on a map that `get`, `insert`, `len` and `contains_key` all handle correctly: `entry`, `get_mut`, `get_key_value`, `get_or_default`, `remove_entry`, `into_keys`, `into_values`, `invert`, `keys_list`, `values_list` | any of those ten, on any map | one program per method against the same two-key map — twenty answered, these ten did not |
+| The first eight trap with one shared message about a field the object does not have; `keys_list` and `values_list` trap elsewhere, inside the map's own iterator | the split matters: it is two defects, not ten | the two messages differ in wording and in where they name the failure |
+
+`entry` does **not** trap only on an empty map. A previous revision of
+this page said `len() == 0` was the discriminator; calling `entry` on a
+map holding one key traps identically, so the discriminator is the
+method, not the map.
+
+The twenty that answer cover the ordinary path — `new`, `insert`, `get`,
+`get_or`, `remove`, `contains_key`, `contains_value`, `len`, `is_empty`,
+`clear`, `capacity`, `reserve`, `shrink_to_fit`, `retain`, `try_insert`,
+`with_capacity`, `pop_entry`, `to_entries`, and walking `keys()`,
+`values()` or `iter()` in a `for` loop. Iteration in a `for` loop works;
+it is collecting the same iterator into a `List` through `keys_list` /
+`values_list` that does not.
+
+### Working around the ten
+
+`to_entries()` answers, so a pair-yielding lookup is a filter over it.
+A `for` loop over `keys()` or `values()` replaces `keys_list()` and
+`values_list()`. For `entry`-shaped code, `get` followed by `insert`
+does the same work in two calls.
 
 ### Closed since the previous revision
 

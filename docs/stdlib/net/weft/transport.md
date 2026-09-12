@@ -31,7 +31,7 @@ public type WeftTransport is protocol {
 
     /// Write — may be partial; the connection pipeline retries
     /// until `buf` is fully drained.
-    async fn write_async(&mut self, buf: &List<Int>) -> Result<Int, IoError>;
+    async fn write_async(&mut self, buf: &List<Byte>) -> Result<Int, IoError>;
 
     /// Half-close write direction. No-op permitted for transports
     /// without a meaningful shutdown (vsock loopback, in-memory mocks).
@@ -65,7 +65,7 @@ implement WeftTransport for TcpStream {
         TcpStream.read_cancellable(self, buf, token).await
     }
 
-    async fn write_async(&mut self, buf: &List<Int>) -> Result<Int, IoError> {
+    async fn write_async(&mut self, buf: &List<Byte>) -> Result<Int, IoError> {
         TcpStream.write_async(self, buf).await
     }
 

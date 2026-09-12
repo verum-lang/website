@@ -776,9 +776,12 @@ Windows file layer at all**, and the number is easy to check:
 wrappers in total, of which exactly one — `safe_close` — is a file
 operation. `open`, `read`, `write`, `lseek`, `fstat`, `fsync`,
 `ftruncate` and `dup` have no wrapper to call, and neither `core/io/file.vr`
-nor `core/io/fs.vr` can bind them: their `@cfg(target_os = "windows")`
-mount blocks bind `safe_close`, `Stat` and the flag constants, and
-nothing else.
+nor `core/io/fs.vr` can bind them. `file.vr`'s
+`@cfg(target_os = "windows")` mount block binds `safe_close`, `Stat` and
+the flag constants, and nothing else. `fs.vr`'s binds one name,
+`GetFileAttributesW` — a raw extern declaration with no body — and then
+never calls it, so the whole Windows filesystem surface is one mount of
+one function that nothing reaches.
 
 Everything on this page describing files, directories and paths is
 therefore **Linux and macOS**. Path parsing — `Path`, `PathBuf`,

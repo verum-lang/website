@@ -565,7 +565,11 @@ none()            perform(|| msg)        task(future)
 batch(cmds)       sequence(cmds)         tick(delay, || msg)
 quit()
 
-type Subscription<Msg> is { ... };
+type Subscription<Msg> is None | Interval(Duration, fn() -> Msg)
+                   | Every(Duration, fn(Instant) -> Msg)
+                   | Once(Duration, fn() -> Msg)
+                   | StreamSub(Heap<dyn Stream<Item = Msg>>)
+                   | Batch(List<Subscription<Msg>>);
 // Also free functions. Re-exported from `core.term.app` under aliases
 // where the name would collide with the Command builder of the same
 // name: `none` -> `sub_none`, `batch` -> `sub_batch`,

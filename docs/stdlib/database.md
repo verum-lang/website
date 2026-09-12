@@ -590,10 +590,28 @@ Two CI guardrails enforce the most load-bearing invariants:
 ## Known limitations
 
 * **Multi-page pager round-trip** — `memdb_pager_roundtrip.vr` is
-  declared `@test: typecheck-pass` rather than `run-*` because the
-  VBC interpreter's `List<Byte>.push` grow path is quadratic, which
-  makes a 4 × 4 KiB round-trip exceed the 30 s test timeout.
-  Single-page round-trip (`page_roundtrip.vr`) runs in ~7 s.
+  declared `@test: typecheck-pass` rather than `run-*`: the multi-page
+  round-trip does not finish. **The reason this entry used to give was
+  re-measured on 2026-09-12 and is wrong.** It said the interpreter's
+  `List<Byte>.push` grow path is quadratic. It is not:
+
+  ```bash
+  # 512,000 pushes, then the same loop with the push removed
+  verum run push_512k.vr      # single-digit seconds
+  verum run empty_loop_512k.vr
+  ```
+
+  Half a million pushes complete in seconds; a quadratic grow path would
+  spend on the order of 10¹¹ operations on them. The round-trip in
+  question moves 4 × 4 KiB — sixteen thousand bytes, one thirty-first of
+  that loop — so `push` cannot be what stops it.
+
+  What does is not yet identified, and saying so is more useful than
+  naming the wrong cause: type-checking the file takes under a second,
+  and the run then produces no output at all within three minutes — not
+  even the first `print` of `main`. That points somewhere between
+  bytecode generation and the first pager call, not at a slow loop.
+  Single-page round-trip (`page_roundtrip.vr`) does complete.
 
 * **`PosixVfs`** — production-ready: real-DB paths route through
   `safe_open_raw` to bypass a Tier-0 interpreter recursion in

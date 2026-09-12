@@ -227,9 +227,18 @@ binds an unchecked payload. Deciding refutability for a variant needs
 the resolved type — `let UserId(n) = id;` on a single-variant newtype
 always matches and must stay legal — while the check that raises E429
 reads the pattern's syntax. Measured 2026-09-12: the tree carries no
-qualified `let Type.Variant(…)` without an `else` at all, and the four
-places that destructure one already use `let … else`. Write it that way
-whenever the type has more than one variant.
+qualified `let Type.Variant(…)` without an `else` at all, and the five
+places that destructure one already use `let … else`. The census is one
+line, and the number it prints is the one that matters:
+
+```bash
+grep -rnE '^\s*let\s+[A-Z][A-Za-z0-9_]*\.[A-Z][A-Za-z0-9_]*\(' \
+     --include='*.vr' core vcs core-tests tests \
+  | tee /dev/stderr | grep -vc else
+```
+
+Five lines to stderr, and `0` — none of them without an `else`. Write it
+that way whenever the type has more than one variant.
 :::
 
 ## Interaction with verification

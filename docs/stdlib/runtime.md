@@ -424,7 +424,9 @@ public type RecoveryCircuitBreakerConfig is {
 
 public type RecoveryCircuitBreaker is { /* atomic state */ };
 public type CircuitBreakerStats is { /* counters */ };
-public type CircuitBreakerError<E> is { /* wraps the inner error */ };
+public type CircuitBreakerError<E> is
+    | Open                     // the breaker rejected the call; no inner error
+    | Failed(E);               // the call ran and failed, carrying E
 ```
 
 ### The inline variants

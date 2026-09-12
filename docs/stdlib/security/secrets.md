@@ -194,9 +194,9 @@ public type VaultConfig is {
 
 implement VaultConfig {
     pub fn new(address: Text, auth: VaultAuth) -> VaultConfig;
-    pub fn with_namespace(self, ns: Text) -> VaultConfig;
-    pub fn with_kv_mount(self, mount_path: Text) -> VaultConfig;
-    pub fn with_tls_skip_verify(self, skip: Bool) -> VaultConfig;
+    pub fn with_namespace(mut self, ns: Text) -> VaultConfig;
+    pub fn with_kv_mount(mut self, mount_path: Text) -> VaultConfig;
+    pub fn with_tls_skip_verify(mut self, skip: Bool) -> VaultConfig;
 }
 ```
 
@@ -289,7 +289,7 @@ public type AwsCredentials is {
 
 implement AwsCredentials {
     pub fn new(access_key_id: Text, secret_access_key: Text) -> AwsCredentials;
-    pub fn with_session_token(self, t: Text) -> AwsCredentials;
+    pub fn with_session_token(mut self, t: Text) -> AwsCredentials;
 }
 
 public type AwsCredentialProvider is
