@@ -136,15 +136,24 @@ cpio at v0.1).
 For ergonomic entry construction:
 
 ```verum
+mount core.archive.{
+    ArchiveEntry,
+    entry_for_file, entry_for_directory, entry_for_symlink,
+};
+
 let entry_file: ArchiveEntry =
-    archive.entry_for_file(path, content, mode, mtime);
+    entry_for_file(path, content, mode, mtime);
 
 let entry_dir: ArchiveEntry =
-    archive.entry_for_directory(path, mode, mtime);
+    entry_for_directory(path, mode, mtime);
 
 let entry_symlink: ArchiveEntry =
-    archive.entry_for_symlink(path, target, mtime);
+    entry_for_symlink(path, target, mtime);
 ```
+
+They are free functions, so this is how they are called once mounted;
+the `archive.` prefix only appears when you reach them through the
+module path instead.
 
 These set the right `kind` variant and zero-fill content for
 non-RegularFile entries.
