@@ -20,8 +20,8 @@ sum types are real, errors are values but better).
 | `[]T`, slice | `List<T>` — dynamic; `&[T]` borrowed slice |
 | `[N]T`, array | `[T; N]` |
 | `map[K]V` | `Map<K, V>` |
-| `chan T` (buffered) | `let (tx, rx) = channel<T>(capacity: N)` |
-| `chan T` (unbuffered) | `let (tx, rx) = channel<T>(capacity: 0)` |
+| `chan T` (buffered) | `let (tx, rx) = bounded<T>(N)` |
+| `chan T` (unbuffered) | closest is `bounded<T>(1)` — capacity must be positive |
 | `go f()` | `spawn f()` |
 | `select { case ... }` | `select { arm.await => ... }` (keyword expression) |
 | `sync.Mutex`, `sync.RWMutex` | `Mutex<T>`, `RwLock<T>` |
@@ -145,17 +145,31 @@ val := <-ch
 ```
 
 ```verum
-let (tx, mut rx) = channel<Int>(capacity: 10);
-spawn async move { tx.send(42).await.unwrap(); };
-let val = rx.recv().await.unwrap();
+let (tx, mut rx) = bounded<Int>(10);
+spawn { tx.send(42).unwrap(); };
+let val = rx.recv().unwrap();
 ```
 
-Verum channels are async-native — `send` / `recv` suspend the task
-instead of blocking the thread. Channel types:
+Unlike Go, the blocking and the suspending form are DIFFERENT METHODS —
+nothing is implicitly async. `send` / `recv` block the thread the way a
+Go channel operation blocks a goroutine; `send_async(v).await` and
+`recv_fut().await` are the forms that yield to the executor instead:
 
-- `Channel<T>` (MPSC) — `channel<T>(capacity: N)`.
-- `BroadcastChannel<T>` — every receiver sees every message.
-- `OneShot<T>` — single send, single receive.
+```verum
+spawn async move { tx.send_async(42).await.unwrap(); };
+let val = rx.recv_fut().await.unwrap();
+```
+
+The constructors:
+
+- MPSC — `bounded<T>(N)` bounded, `channel<T>()` unbounded. Both hand
+  back `(Sender<T>, Receiver<T>)`; `bounded_channel` and
+  `unbounded_channel` are aliases.
+- Fan-out — `broadcast_channel<T>(N)` gives
+  `(BroadcastSender<T>, BroadcastReceiver<T>)`; `tx.subscribe()` hands
+  out further receivers.
+- Single-use — `oneshot<T>()` gives
+  `(OneshotSender<T>, OneshotReceiver<T>)`.
 
 ### `select`
 
@@ -169,8 +183,8 @@ case <-time.After(5 * time.Second): timeout()
 
 ```verum
 select {
-    v = rx1.recv().await => handle(v),
-    v = rx2.recv().await => handle(v),
+    v = rx1.recv_fut().await => handle(v),
+    v = rx2.recv_fut().await => handle(v),
     _ = sleep(5.secs()).await => timeout(),
 }
 ```

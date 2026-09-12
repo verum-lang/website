@@ -134,8 +134,8 @@ Arms can carry attributes and guards:
 
 ```verum
 select biased {
-    @cold ev = high_priority_queue.recv().await if !paused => handle(ev),
-    ev      = normal_queue.recv().await                    => handle(ev),
+    @cold ev = high_priority_queue.recv_fut().await if !paused => handle(ev),
+    ev      = normal_queue.recv_fut().await                    => handle(ev),
     _       = shutdown.await                               => return,
     else    => sleep(10.millis()).await,       // no future ready, no await blocked
 }
@@ -301,17 +301,26 @@ let (a, b)    = try_join(fetch(u1), fetch(u2)).await?;
 ## Channels
 
 ```verum
-let (tx, rx) = channel<Event>(capacity: 64);
+let (tx, rx) = bounded<Event>(64);
 
 spawn produce(tx);
 consume(rx).await
 ```
 
-Channel types:
-- `Channel<T>` (MPSC) — multiple producers, single consumer.
-- `BroadcastChannel<T>` — multiple producers, multiple consumers (every
-  receiver sees every message).
-- `OneShot<T>` — single send, single receive.
+Channel kinds, by the constructor that builds them:
+- `bounded<T>(n)` / `channel<T>()` — MPSC: many producers, ONE consumer.
+  The pair is `(Sender<T>, Receiver<T>)`; `Sender` is cloneable,
+  `Receiver` deliberately is not.
+- `broadcast_channel<T>(n)` — many producers, many consumers (every
+  receiver sees every message). The pair is
+  `(BroadcastSender<T>, BroadcastReceiver<T>)`, and `tx.subscribe()`
+  hands out further receivers.
+- `oneshot<T>()` — single send, single receive:
+  `(OneshotSender<T>, OneshotReceiver<T>)`.
+
+`Channel<T>` itself is the plain bounded ring underneath — construct it
+with `Channel.new(capacity)` when you want one object rather than a
+sender/receiver pair.
 
 Channels are `Send`-safe when `T: Send`.
 
@@ -407,16 +416,16 @@ See **[Cookbook → nursery](/docs/cookbook/nursery)** for more.
 ### Producer / consumer with backpressure
 
 ```verum
-let (tx, mut rx) = channel<Event>(capacity: 128);
+let (tx, mut rx) = bounded<Event>(128);
 
 nursery {
     spawn async move {
         while let Maybe.Some(ev) = fetch_next().await {
-            tx.send(ev).await.unwrap();          // suspends if full
+            tx.send_async(ev).await.unwrap();    // suspends if full
         }
     };
     spawn async move {
-        while let Maybe.Some(ev) = rx.recv().await {
+        while let Maybe.Some(ev) = rx.recv_fut().await {
             process(ev).await;
         }
     };

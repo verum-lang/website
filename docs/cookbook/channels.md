@@ -8,53 +8,67 @@ description: Message-passing between tasks — bounded, unbounded, broadcast, on
 A channel is a typed message queue between tasks. Verum ships four
 flavours:
 
-| Channel            | Senders | Receivers | Guarantees                                |
-|--------------------|---------|-----------|-------------------------------------------|
-| `channel<T>`       | many    | one       | FIFO, bounded, backpressure.              |
-| `unbounded_channel<T>` | many | one       | FIFO, no backpressure — cap by convention. |
-| `broadcast<T>`     | many    | many      | Every receiver gets every message; lag drops oldest. |
-| `oneshot<T>`       | one     | one       | Single value; either delivered or dropped. |
+| Constructor                 | Senders | Receivers | Guarantees                                |
+|-----------------------------|---------|-----------|-------------------------------------------|
+| `bounded<T>(n)`             | many    | one       | FIFO, bounded at `n`, backpressure.       |
+| `channel<T>()`              | many    | one       | FIFO, unbounded — no backpressure.        |
+| `broadcast_channel<T>(n)`   | many    | many      | Every receiver gets every message; lag drops oldest. |
+| `oneshot<T>()`              | one     | one       | Single value; either delivered or dropped. |
+
+`bounded_channel<T>(n)` and `unbounded_channel<T>()` are aliases of the
+first two rows — the same pair of functions under the names a reader
+coming from another language expects. Every one of them takes its
+capacity POSITIONALLY: a call argument in Verum is an expression, never
+`name: value`.
 
 ## MPSC — the workhorse
 
 ```verum
-let (tx, mut rx) = channel<Event>(capacity: 100);
+let (tx, mut rx) = bounded<Event>(100);
 
-// Producer:
-spawn async move {
-    for i in 0..10 {
-        tx.send(Event.Tick(i)).await.unwrap();  // suspends if full
-    }
-};
+// Producer — the blocking form, from an ordinary function:
+for i in 0..10 {
+    tx.send(Event.Tick(i)).unwrap();     // blocks while full
+}
 
-// Consumer:
+// Consumer — the async form, from an async function:
 async fn consume(mut rx: Receiver<Event>) {
-    while let Maybe.Some(e) = rx.recv().await {
+    while let Maybe.Some(e) = rx.recv_fut().await {
         handle(e);
     }
 }
 ```
 
-Semantics:
+Each direction has a blocking form and a suspending one, and they are
+DIFFERENT METHODS — nothing is implicitly async:
 
-- **`send`** suspends when the channel is full.
-- **`recv`** suspends when the channel is empty.
-- **`try_send`** returns `Err(TrySendError.Full(value))` rather than
-  suspending.
-- **`try_recv`** returns `Err(TryRecvError.Empty)` rather than
-  suspending.
-- **Dropping every sender** causes pending `recv` calls to return
-  `Maybe.None`.
-- **Dropping the receiver** causes pending `send` calls to return
-  `Err(SendError.Closed(value))`.
+| Want                        | Sender                  | Receiver           |
+|-----------------------------|-------------------------|--------------------|
+| block the thread            | `send(v)`               | `recv()`           |
+| suspend the task            | `send_async(v).await`   | `recv_fut().await` |
+| never wait                  | `try_send(v)`           | `try_recv()`       |
+| block with a deadline       | `send_timeout(v, d)`    | —                  |
+
+- **`send`** returns `Result<(), SendError<T>>`; on a bounded channel
+  that is full it parks on a futex until a receiver pops.
+- **`send_async`** returns a `SendFut<T>` whose output is that same
+  `Result` — on full it yields `Pending` and registers the waker.
+- **`try_send`** returns `Result.Err(TrySendError.Full(value))` rather
+  than waiting, handing the value back so nothing is lost.
+- **`recv`** returns `Maybe<T>`; **`try_recv`** returns
+  `Result<T, TryRecvError>` and answers `TryRecvError.Empty`
+  immediately.
+- **Closing the channel** makes pending `recv` calls return
+  `Maybe.None` and `send` return `Result.Err(SendError(value))` — the
+  error carries the value back.
 
 ### Bounded vs unbounded
 
 Use bounded wherever a producer can outpace a consumer:
 
 ```verum
-let (tx, rx) = channel<Event>(capacity: 100);       // bounded
-let (tx, rx) = unbounded_channel<Event>();          // unbounded
+let (tx, rx) = bounded<Event>(100);                 // bounded
+let (tx, rx) = channel<Event>();                    // unbounded
 ```
 
 Unbounded is only appropriate when queue depth is small by
@@ -68,22 +82,23 @@ right load.
 queue.
 
 ```verum
-let (tx, mut rx) = channel<Event>(capacity: 100);
+let (tx, mut rx) = bounded<Event>(100);
 
 for worker_id in 0..N {
     let tx = tx.clone();
     spawn async move {
         let events = produce(worker_id).await;
         for ev in events {
-            tx.send(ev).await.unwrap();
+            tx.send_async(ev).await.unwrap();
         }
     };
 }
 drop(tx);      // drop the original so N clones == all senders gone when done
 ```
 
-Dropping every sender signals "no more data"; the consumer's
-`rx.recv().await` returns `Maybe.None`.
+`Sender<T>` implements `Drop` and `clone` bumps the same counter, so
+dropping the last sender is what signals "no more data": the
+consumer's `recv` answers `Maybe.None` once the queue is drained.
 
 ## One-shot — single-use reply channel
 
@@ -103,30 +118,37 @@ A `oneshot` channel is cheaper than an `MPSC` of capacity 1.
 ## Broadcast — fan-out
 
 ```verum
-let (tx, rx_template) = broadcast_channel<ConfigChange>(capacity: 64);
+let (tx, rx_first) = broadcast_channel<ConfigChange>(64);
 
-// Each subscriber sees every message sent from subscription forward.
+// `subscribe()` lives on the SENDER, and hands out one more receiver.
+// The pair's own receiver is already subscribed.
+let rx_audit = tx.subscribe();
+
 spawn async move {
-    let mut rx = rx_template.subscribe();
+    let mut rx = rx_first;
     while let Result.Ok(change) = rx.recv().await {
         apply_config(change);
     }
 };
 
 spawn async move {
-    let mut rx = rx_template.subscribe();
+    let mut rx = rx_audit;
     while let Result.Ok(change) = rx.recv().await {
         audit(change);
     }
 };
 
-// Publish to all subscribers:
-tx.send(ConfigChange.Reload).await.unwrap();
+// Publish to all subscribers. `send` here is NOT a future: it returns
+// `Result<Int, BroadcastSendError<T>>`, and the `Int` is how many
+// receivers the message reached.
+let reached = tx.send(ConfigChange.Reload).unwrap();
 ```
 
 Subscribers that fall more than `capacity` messages behind receive
-`Result.Err(RecvError.Lagged(n))` and then resume from the newest
-message. Strategies for handling lag:
+`Result.Err(BroadcastRecvError.Lagged(n))` — a different error type
+from the MPSC side, with just two variants, `Closed` and `Lagged(Int)`
+— and then resume from the oldest message still held. Strategies for
+handling lag:
 
 - **Tolerate**: read it, skip, keep going.
 - **Bail**: break the loop — upstream expected you to keep up.
@@ -141,11 +163,11 @@ async fn merge(mut a: Receiver<Msg>, mut b: Receiver<Msg>)
 {
     loop {
         select {
-            m = a.recv().await => match m {
+            m = a.recv_fut().await => match m {
                 Maybe.Some(msg) => handle_a(msg),
                 Maybe.None      => break,
             },
-            m = b.recv().await => match m {
+            m = b.recv_fut().await => match m {
                 Maybe.Some(msg) => handle_b(msg),
                 Maybe.None      => break,
             },
@@ -162,48 +184,64 @@ See [language/async-concurrency](/docs/language/async-concurrency#select).
 
 ## Backpressure pattern — bounded work queue
 
+An MPSC channel has **one** receiver — `Receiver<T>` is not cloneable,
+and the declaration says so in place. A worker POOL therefore gets one
+channel each, and the feeder round-robins; the backpressure is the same,
+because a full worker queue suspends the feeder just as a shared one
+would.
+
 ```verum
 async fn process<T>(items: List<T>,
                     workers: Int,
-                    mut f: fn(T) -> Future<Output=()>)
+                    f: fn(T) -> Future<Output = ()>)
 {
-    let (tx, rx) = channel<T>(capacity: workers * 2);
+    let mut senders: List<Sender<T>> = List.new();
 
     nursery {
-        // Workers
+        // One bounded queue per worker.
         for _ in 0..workers {
-            let rx = rx.clone();
+            let (tx, mut rx) = bounded<T>(2);
+            senders.push(tx);
             spawn async move {
-                while let Maybe.Some(item) = rx.recv().await {
+                while let Maybe.Some(item) = rx.recv_fut().await {
                     f(item).await;
                 }
             };
         }
-        // Feeder
+
+        // Feeder — suspends on whichever worker is behind.
+        let mut i = 0;
         for item in items {
-            tx.send(item).await.unwrap();       // suspends when workers are behind
+            senders[i % workers].send_async(item).await.unwrap();
+            i = i + 1;
         }
-        drop(tx);                               // close channel → workers exit
+
+        // Last sender gone → every worker's loop ends.
+        senders.clear();
     }
 }
 ```
 
-The channel's capacity caps available work. The feeder's `tx.send`
-suspends when workers are slow, producing natural backpressure.
+Each queue's capacity caps the work outstanding at that worker, and
+`send_async` suspends when the chosen worker is slow — natural
+backpressure. Using one SHARED queue instead would need a receiver that
+several tasks can read, which this channel deliberately does not
+provide; see the `select` recipe above for the shape that merges
+several channels into one consumer.
 
 ## Pub/sub — broadcast with topic filters
 
 ```verum
-type TopicMsg = {
+type TopicMsg is {
     topic: Text,
-    body:  Bytes,
+    body:  List<Byte>,
 };
 
-let (tx, rx_t) = broadcast_channel<TopicMsg>(capacity: 1024);
+let (tx, _rx) = broadcast_channel<TopicMsg>(1024);
 
-// Subscriber with filter:
+// Subscriber with filter — one receiver per subscriber, from the sender:
+let mut rx = tx.subscribe();
 spawn async move {
-    let mut rx = rx_t.subscribe();
     while let Result.Ok(msg) = rx.recv().await {
         if msg.topic.starts_with("alerts.") {
             handle_alert(msg);
@@ -218,25 +256,27 @@ Verum's broadcast is for light fan-out within a process.
 ## Channel of channels — request/reply
 
 ```verum
-type Request = {
-    body:  Bytes,
-    reply: oneshot.Sender<Response>,
+type Request is {
+    body:  List<Byte>,
+    reply: OneshotSender<Response>,
 };
 
-let (tx, mut rx) = channel<Request>(capacity: 100);
+let (tx, mut rx) = bounded<Request>(100);
 
 // Worker:
 spawn async move {
-    while let Maybe.Some(req) = rx.recv().await {
+    while let Maybe.Some(req) = rx.recv_fut().await {
         let resp = process(req.body).await;
-        let _ = req.reply.send(resp);          // send() returns the channel status
+        // `OneshotSender.send` consumes the sender and hands the value
+        // back in `Result.Err` if nobody is listening any more.
+        let _ = req.reply.send(resp);
     }
 };
 
 // Caller:
-async fn call(tx: &Sender<Request>, body: Bytes) -> Response {
+async fn call(tx: &Sender<Request>, body: List<Byte>) -> Response {
     let (reply_tx, reply_rx) = oneshot<Response>();
-    tx.send(Request { body, reply: reply_tx }).await.unwrap();
+    tx.send_async(Request { body, reply: reply_tx }).await.unwrap();
     reply_rx.await.unwrap()
 }
 ```
@@ -249,18 +289,24 @@ scales to large available parallelism.
 ### Dropping every sender without draining the receiver
 
 ```verum
-let (tx, mut rx) = channel<T>(capacity: 10);
+let (tx, mut rx) = bounded<T>(10);
 drop(tx);
-// rx.recv().await returns Maybe.None immediately — not an error, just EOF
+// rx.recv() answers Maybe.None once drained — not an error, just EOF
 ```
 
-This is correct behaviour — it's how consumers detect "done".
+This is correct behaviour — it's how consumers detect "done". Note the
+order: the backlog is not discarded, so a consumer still reads
+everything already queued before it sees `Maybe.None`. `rx.close()` is
+the other end of the same switch, for when the CONSUMER is the one that
+is finished.
 
-### Holding the receiver while awaiting an unbounded consumer
+### Holding the receiver while doing slow work per message
 
-A single `rx.recv()` blocks the consumer task. If that task is doing
-slow work *per message*, producers pile up. Move the slow work into
-a separate nursery-supervised task so `rx.recv()` stays responsive.
+`recv()` blocks the whole thread and `recv_fut().await` parks the task;
+either way the consumer is not reading while it works. If that work is
+slow *per message*, producers pile up against the capacity. Move it
+into a separate nursery-supervised task so the receive loop stays
+responsive.
 
 ### Channels are not for shared mutable state
 
@@ -272,9 +318,10 @@ not aliasing.
 ### Broadcast with a slow consumer
 
 A broadcast channel's slowest subscriber caps the whole channel's
-memory usage (up to `capacity`). Slow consumers get a `Lagged` error
-and must reset. If you can't tolerate drops, give each consumer its
-own MPSC channel.
+memory usage (up to `capacity`). Slow consumers get
+`BroadcastRecvError.Lagged(n)` — `n` is how many messages they missed —
+and resume from the oldest message still held. If you can't tolerate
+drops, give each consumer its own MPSC channel.
 
 ### Forgotten `drop(tx)` in workers
 
