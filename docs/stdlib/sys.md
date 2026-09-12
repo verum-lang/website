@@ -447,12 +447,45 @@ public type FsEvent is {
 public type FsWatcher is { inner: FsWatcherImpl };
 
 implement FsWatcher {
+    /// Open a fresh watcher. `Err` where the native backend is
+    /// unavailable or could not be initialised.
     public fn new() -> Result<FsWatcher, Text>;
-    // .watch(path) — add a target to the watcher
-    // .recv()      — block for the next FsEvent
-    // .recv_with_timeout(d) — bounded wait
+
+    /// Add a path to the watch set. The same path may be added more
+    /// than once; events fire once per registration.
+    public fn add(&mut self, path: &Text) -> Result<(), Text>;
+
+    /// Remove a previously-added watch. Removing a path that was never
+    /// added is `Ok`.
+    public fn remove(&mut self, path: &Text) -> Result<(), Text>;
+
+    /// Wait for the next event(s). An EMPTY LIST means the timeout
+    /// elapsed, not an error. Timeout in milliseconds; `-1` blocks
+    /// forever.
+    public fn wait(&mut self, timeout_ms: Int) -> Result<List<FsEvent>, Text>;
 }
 ```
+
+There is no `.watch()`, no `.recv()` and no `.recv_with_timeout()` — the
+watch set is managed with `add`/`remove` and events are drained by
+`wait`, which returns a LIST because one kernel wake-up can carry
+several. A bounded wait is `wait(ms)`; a blocking one is `wait(-1)`.
+
+:::caution Does not run yet on Tier 0
+`FsWatcher.new()` panics under the interpreter before any filesystem
+activity is involved:
+
+```text
+Panic: [lenient] stage-5 qualified cross-module fn stub never resolved
+```
+
+The types are fine — `FsEventKind` and `FsEvent` construct, match and
+round-trip — and so is the rest of the `sys` layer around it, which is
+what makes the failure easy to miss: reading and writing files through
+`io.file` works in the same programme. The signature above is what
+`core/` declares, and it is what an AOT build compiles against; treat
+the runtime behaviour as unverified until this box goes away.
+:::
 
 ---
 
@@ -746,7 +779,7 @@ VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
 | `process_native.vr`| **partial** | [core-tests/sys/process_native](https://github.com/verum-lang/verum/tree/main/core-tests/sys/process_native) — Unit, property, integration and regression suites. SpawnResult record construction + every-field projection identity across 8 capture configurations (2^3 Bool triples); -1 fd sentinel disjointness from valid fds; fork(2) pid trichotomy via custom ForkOutcome ADT; SpawnResult × List<SpawnResult> fleet iteration + Result<SpawnResult, Text> error funnel + 4-variant CaptureMode dispatch + Maybe<SpawnResult> lift. Live syscall surface (native_spawn / native_kill / native_fd_write_all / native_fd_read_chunk) + Windows path deferred. |
 | `context_ops.vr`   | **partial** | [core-tests/sys/context_ops](https://github.com/verum-lang/verum/tree/main/core-tests/sys/context_ops) — TLS_SLOT_COUNT=256 + tls_set/get round-trip + context_provide/get/end DI scope + defer_depth tracking pinned end-to-end. Two fixes landed together: (a) replaced stale `mount super.raw.*` with canonical `mount core.intrinsics.runtime.os.{__ctx_*_raw, __defer_*_raw}`; (b) wired interpreter `__ctx_get_raw` / `__ctx_provide_raw` / `__ctx_end_raw` / `__defer_*_raw` to the real `state.context_stack` + new `state.defer_stack` (pre-fix every TLS/DI/defer raw intrinsic returned constant 0/nil; the interpreter's existing ContextStack opcode-level wiring at 0xB0/0xB1/0xB2 was correct but the raw-function dispatch arm was completely inert). `defer_execute` callback invocation deferred to Tier-1 (interpreter can't synthesise indirect `fn(Int)->Int` dispatch). |
 | `signal.vr`        | **partial** | [core-tests/sys/signal](https://github.com/verum-lang/verum/tree/main/core-tests/sys/signal) — **Not usable yet.** The signal implementation in the library drifts on two counts: variant tags shift across configuration-gated match arms, and the atomic load and store intrinsics are not registered for the flag type. This is a library defect, not a gap in coverage. |
-| `fs_watch.vr`      | **partial** | [core-tests/sys/fs_watch](https://github.com/verum-lang/verum/tree/main/core-tests/sys/fs_watch) — FsEventKind 5-variant (Created/Modified/Deleted/Renamed/AttribChanged) + Clone impl + FsEvent record round-trip pinned. Integration suite adds exhaustive 5-variant dispatch + `is_content_mutation` predicate (Created/Modified/Deleted vs Renamed/AttribChanged) + `events.iter().filter(content_mutation).count()` reduction over List<FsEvent> + variant pattern round-trip identity. FsWatcher.new() / .watch() / event-stream surface deferred (needs per-platform fixture). |
+| `fs_watch.vr`      | **partial** | [core-tests/sys/fs_watch](https://github.com/verum-lang/verum/tree/main/core-tests/sys/fs_watch) — FsEventKind 5-variant (Created/Modified/Deleted/Renamed/AttribChanged) + Clone impl + FsEvent record round-trip pinned. Integration suite adds exhaustive 5-variant dispatch + `is_content_mutation` predicate (Created/Modified/Deleted vs Renamed/AttribChanged) + `events.iter().filter(content_mutation).count()` reduction over List<FsEvent> + variant pattern round-trip identity. FsWatcher.new() / add / remove / wait are NOT covered, and the reason is not a missing fixture: `FsWatcher.new()` panics under the interpreter with an unresolved cross-module stub before any filesystem activity is reached. Measured; see the caution box above. |
 | `io_engine.vr`     | **partial** | [core-tests/sys/io_engine](https://github.com/verum-lang/verum/tree/main/core-tests/sys/io_engine) — EngineDuration ring algebra (from/as scaling, saturating add/sub, identity laws) + Fd partition (valid ↔ raw >= 0) + Fd.INVALID = -1 + TimeSpec record pinned end-to-end. Integration suite adds saturating_add at MAX clamp + EngineDuration ↔ TimeSpec round-trip across compound sub-second values + Fd × Maybe open(2) funnel + EngineDuration max-via-fold pattern over List + TimeSpec lift through Maybe pattern-match. IOEngine protocol round-trip + CompletionOp 18-variant + Port/BoundPort refinement validation + RawSocketAddr V4/V6 deferred. |
 | `init.vr`          | **partial** | [core-tests/sys/init](https://github.com/verum-lang/verum/tree/main/core-tests/sys/init) — InitError 6-variant (TlsFailed/ContextFailed/AllocatorFailed/PanicHandlerFailed/AlreadyInitialized/NotInitialized) + Eq laws (reflexivity / symmetry / payload-aware) + .message contents pinned. `verum_init` / `verum_shutdown` / `panic_impl` deferred (bootstrap-time + termination-time; out of scope for in-process tests). |
 | `durability.vr`    | **partial** | [core-tests/sys/durability](https://github.com/verum-lang/verum/tree/main/core-tests/sys/durability) — Intent-named re-exports (`full_fsync` / `data_only_fsync` / `sync_directory` / `pread` / `pwrite`) resolve via the `public mount core.sys.common.X` chain. Error-funnel (`Result<(), OSError>` on invalid fd) pinned across full_fsync + data_only_fsync with the invalid-fd sweep. Happy-path round-trip + pread/pwrite/sync_directory CBGR-byte-slice deferred. |
