@@ -158,8 +158,41 @@ xpath#"..."    → XPathExpr
 jpath#"..."    → JsonPathExpr    // JSONPath
 ```
 
-Regex literals are validated and compiled at compile time. Their
-public API is [`text/regex`](/docs/stdlib/text).
+Regex literals are validated at compile time. They are **not** compiled
+into a regex — see the danger box on
+[cookbook/regex](/docs/cookbook/regex), which measures what `rx#"..."`
+actually does today. Their public API is
+[`text/regex`](/docs/stdlib/text).
+
+:::danger Ten of the eighteen forms on this page name a type that does not exist
+
+Census 2026-09-12 across every type declared in `core/`, with comments
+stripped so a name inside one cannot be mistaken for a declaration:
+
+```bash
+grep -rnE '^ *(public |pub )?type +DateTime\b' core/ --include='*.vr'   # nothing
+```
+
+Absent: `csv` → `CsvData`, `cypher` → `CypherQuery`, **`d`/`date` →
+`DateTime`**, `email` → `Email`, `gql` → `GraphQLQuery`, `mime` →
+`MimeType`, `sparql` → `SparqlQuery`, `sql` → `SqlQuery`, `urn` →
+`Urn`, `xpath` → `XPathExpr`.
+
+Present and usable as types: `Regex`, `GlobPattern`, `JsonPath`,
+`JsonValue`, `PathBuf`, `Url`, `Uuid`, `Duration` — but the literal
+stores a plain string at run time for every tag, so a method call on one
+dispatches against a `Text`. The regex page has the measured
+consequence, including a call that silently answers the wrong question
+and one that crashes.
+
+The two halves of the compiler also disagree about `url#`: one table
+says `Url`, another says `Uri`, and `Uri` is declared nowhere — the
+checker will report a missing method "for type `Uri`" on a type that
+does not exist.
+
+Treat this page as the intended surface. For anything you run today,
+construct through the type's own constructor.
+:::
 
 ### Identifiers
 
