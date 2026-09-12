@@ -1057,6 +1057,26 @@ The Bloom / HLL / Count-Min trio — bounded-memory answers to
 keyed hashing with per-filter CSPRNG-sourced keys; adversarial
 inputs cannot skew past the theoretical error bound.
 
+:::caution None of the three constructs at Tier 0
+Measured 2026-09-12. `BloomFilter.new(...)`, `HyperLogLog.new(12)` and
+`CountMinSketch.with_target(...)` each stop at the constructor:
+
+```text
+Panic: [xmod-unresolved] cross-module call to '...fill_secure...'
+never resolved: the callee's body is absent from the assembled module
+```
+
+It is the CSPRNG key described in the paragraph above: all three seed
+themselves from `random.secure.fill_secure`, and that call does not
+resolve from inside the standard library. The same function called
+directly from your own programme works — `fill_secure(&mut buf)` fills a
+four-byte `List<Byte>`, 4 of 4 non-zero — so the randomness is fine and
+the wiring is not. Nothing you can pass to these constructors avoids it.
+
+Everything below describes the intended surface, and the error-variant
+coverage the conformance table cites is real; the live path is not.
+:::
+
 ### `BloomFilter`
 
 ```verum

@@ -69,6 +69,33 @@ For the full map and architectural context, start at the
 - `merkle` — RFC 6962 CT-style Merkle tree; inclusion proofs with
   odd-leaf promotion (CVE-2012-2459-safe)
 
+:::caution Everything that needs fresh randomness stops at Tier 0
+Measured 2026-09-12. Three of the modules above cannot produce a value
+under the interpreter, and they fail at the point where they ask for
+random bytes:
+
+```text
+Pbkdf2Sha256Hasher.with_defaults().hash(pw)  →  [xmod-unresolved]
+otp.generate_secret(20)                      →  [xmod-unresolved]
+token.generate_bytes(16)                     →  [xmod-unresolved]
+
+Panic: [xmod-unresolved] cross-module call to '...fill_secure...'
+never resolved: the callee's body is absent from the assembled module
+```
+
+`random.secure.fill_secure` itself is fine — called directly from your
+own programme it fills a buffer correctly, 4 of 4 bytes non-zero. What
+does not resolve is the call from one standard-library module to
+another, so a salt, an OTP secret and a session token all fail to be
+generated rather than being generated badly. The same panic stops QUIC
+address tokens and stateless-reset keys.
+
+**Read this as "cannot run", not "runs weakly".** Nothing here produces
+a low-entropy value; the call aborts. `rsa_oaep.mgf1_sha1`, which needs
+no fresh randomness, works — so the failure tracks the randomness
+dependency exactly.
+:::
+
 ### Identity, secrets, policy
 
 - [`spiffe`](/docs/stdlib/security/spiffe) — workload identity
