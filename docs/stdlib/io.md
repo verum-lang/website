@@ -372,6 +372,20 @@ r.raw_fd() -> Int
 
 ### Idiomatic line processing (post-#io-1)
 
+> **Open defect — this pattern crashes under AOT.** Measured 2026-09-12
+> on `docs/by-example/19-file-io`: the interpreter prints every line and
+> the AOT binary writes and reads the file correctly, then faults inside
+> `BufReader.read_until` on the first iteration. The fault address IS
+> the data — a file beginning `line one…` faults at `0x6c` (`'l'`), one
+> beginning `Zebra…` at `0x5a` (`'Z'`), same instruction both times — so
+> the loop dereferences the element VALUE where it expects a reference.
+> The cause is one layer down: `read_until` walks
+> `available.iter().enumerate()`, and a generic iterator adaptor erases
+> which reference convention its inner producer used. Tracked as A106 in
+> the tech-debt register. Until it closes, line-oriented reading is
+> interpreter-only; `read_to_string` and `write` are unaffected at both
+> tiers.
+
 ```verum
 fn process_lines(path: &Path) -> IoResult<Int> {
     let f = File.open(path.as_str())?;

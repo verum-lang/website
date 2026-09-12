@@ -29,6 +29,15 @@ fn count_errors(path: &Path) -> IoResult<Int>
 }
 ```
 
+> **Open defect — this loop crashes under AOT** (A106). Measured
+> 2026-09-12: the interpreter prints every line; the AOT binary reads
+> the file correctly and then faults inside `BufReader.read_until` on
+> the first iteration, dereferencing the element VALUE where it expects
+> a reference. Line-oriented reading is interpreter-only until that
+> closes. `read_to_string` below is unaffected at both tiers, and so is
+> `Text.lines()` on an already-read string — the defect is in the
+> BufReader iteration, not in line splitting.
+
 `BufReader.new(file)` wraps the file in an 8 KiB buffer by default;
 for sequential workloads where you know the file is large, preallocate:
 
