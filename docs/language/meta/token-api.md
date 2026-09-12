@@ -272,7 +272,7 @@ built towards.
 **The contexts they are used through DO exist**, and this box said
 otherwise until 2026-09-12. `core/meta/contexts.vr` declares fourteen
 contexts, among them `TypeInfo` with 37 methods, `AstAccess` with 30,
-`StageInfo` with 24, `CompileDiag` with 10 and `Hygiene` with 9. What is
+`StageInfo` with 24, `CompileDiag` with 10 and `Hygiene` with 6. What is
 missing is the AST vocabulary they would hand you, not the contexts
 themselves.
 

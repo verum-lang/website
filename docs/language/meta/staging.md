@@ -234,9 +234,12 @@ tools:
    spliced into. Call them from a meta fn body and emit the result with
    `CompileDiag.emit_note(...)` to sanity-check where you are. Both are
    real — `StageInfo` is a `context`, declared alongside `TypeInfo`,
-   `AstAccess`, `Hygiene` and `CompileDiag`, and it carries eleven
-   methods including `max_stage()`, `quote_depth()` and
-   `is_valid_transition(from, to)`. *(This entry named them `current()`
+   `AstAccess`, `Hygiene` and `CompileDiag`, and it carries
+   twenty-four methods — among them `max_stage()`, `quote_depth()`,
+   `is_valid_transition(from, to)`, `stage_unique_ident(base)`,
+   `generation_chain()` and the four stage limits
+   (`stage_iteration_limit`, `stage_recursion_limit`,
+   `stage_memory_limit`, `stage_timeout_ms`). *(This entry named them `current()`
    and `target()` until 2026-09-12; neither shorter name exists.)*
 
 3. **Stage-mismatch diagnostics** name the stage you are in, the stage
