@@ -138,8 +138,12 @@ quote {
 }
 ```
 
-- `${expr}` splices a value (`Ident`, `Literal`, `TokenStream`,
-  anything `Quotable`).
+- `${expr}` splices a value (`Literal`, `TokenStream`, `Token`,
+  `TokenTree` — `core/meta/token.vr` has the vocabulary). The `Ident`
+  and `Quotable` names this line used to give are not declared anywhere
+  in `core/`; see the box on
+  [quote and hygiene](./quote-and-hygiene#quoting-non-identifier-values) for the census
+  and for what to reach for instead.
 - `$var` is the shorthand for `${var}` when `var` is an identifier.
 - `$[for x in xs { ... }]` iterates.
 - `$(stage N){ expr }` evaluates at a specific stage.
