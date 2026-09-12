@@ -244,10 +244,17 @@ grep each. The instrumentation is real:
 
 ```
 grep -rn __verum_coverage_counters crates/ --include='*.rs'
-# verum_codegen/src/llvm/vbc_lowering.rs:1037   the array is created
-# verum_codegen/src/llvm/vbc_lowering.rs:3152   and incremented
-# verum_codegen/tests/llvm_codegen_tests.rs:897 a test pins it in the IR
+# four hits, and the line numbers deliberately are not written down here:
+#   verum_codegen/src/llvm/vbc_lowering.rs   twice — the array is created,
+#                                            and it is incremented
+#   verum_codegen/tests/llvm_codegen_tests.rs  a test pins it in the IR
+#   verum_cli/src/commands/test.rs             names it in a comment
 ```
+
+(This block used to cite lines. Re-measured 2026-09-12, the increment
+site had moved by thirty-seven lines and a fourth hit had appeared —
+which is the normal fate of a line number in prose, and the reason the
+grep is the citation.)
 
 The export is not:
 
