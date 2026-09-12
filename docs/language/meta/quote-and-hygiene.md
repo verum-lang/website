@@ -146,6 +146,27 @@ place double-dollar appears. See the
 
 ## Quoting non-identifier values
 
+:::warning `Quotable` and `Ident` do not exist; the vocabulary is `Token*`
+Measured 2026-09-12 across every `type`, `context` and `protocol`
+declared in `core/` — the keyword matters, and asking only about `type`
+is how an earlier census on a sibling page got its answer wrong:
+
+```bash
+grep -rnE '^ *(public |pub )?(type|context|protocol) +(Quotable|Ident)\b' \
+     core/ --include='*.vr'                                        # nothing
+```
+
+What `core/meta/` does declare for this job: `TokenStream`, `Token`,
+`TokenKind`, `TokenTree`, `TokenGroup`, `Delimiter`, `Spacing`,
+`Keyword` and `Literal` in `token.vr`, and `QuoteBuilder`,
+`GroupBuilder` and `QuotePart` in `quote.vr`. `Span` is real too, as an
+alias in `meta/span.vr` — note that `core/tracing` declares an unrelated
+type of the same name, so mount the one you mean.
+
+Read the protocol and the conversion table below as the shape the quote
+layer is being built towards.
+:::
+
 The `Quotable` protocol defines how a value turns into tokens. The
 standard implementations cover the common cases:
 
