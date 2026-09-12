@@ -264,20 +264,26 @@ rely on this page's specific claim until that's resolved.
   | `Int{(it, 0).0 >= 10}` | `error<E500>` | clean |
   | `Int{f"{it}" == "…"}` | `error<E500>` | clean |
   | `Int{[it][0] >= 10}` | `warning<W0500>` | `warning<W0500>` |
-  | `Int{twice(it) >= 10}` | `error<E500>` | **`error<E500>`** |
+  | `Int{twice(it) >= 10}` | `warning<W0500>` | `warning<W0500>` |
 
-  Read the last row carefully: a predicate that CALLS a function is
-  refused whether or not it holds. `twice(20) >= 10` is `40 >= 10`, and
-  the compiler still reports `refinement constraint failed`. That is a
-  false rejection of a correct program, and the message names the wrong
-  cause — nothing was violated. It applies to recursive calls too:
-  `fact(5) >= 10` is `120 >= 10` and is refused identically.
+  The first four are decided: they refuse a value that violates them and
+  accept one that satisfies them. The last two are not, and they say so
+  at both polarities rather than guessing — a predicate that reaches for
+  a function the solver cannot unfold, or indexes a list, is parsed and
+  left unenforced.
 
-  **Until that is fixed, do not put a call in a refinement predicate.**
-  Inline the arithmetic (`it * 2 >= 10` decides correctly at both
-  polarities), or check the call's result in code. The pipe spelling of
-  the same call, `it |> twice >= 10`, warns with `W0500` rather than
-  refusing — unenforced, but it compiles.
+  **A correction, because this page carried the wrong table for four
+  weeks.** Between 2026-08-17 and 2026-09-12 the call row read
+  `error<E500>` in BOTH columns: a predicate that called a function was
+  refused whether or not it held, so `twice(20) >= 10` — which is
+  `40 >= 10` — was reported as a failed constraint. Recursive calls were
+  refused the same way. That is fixed; the row above is the re-measured
+  behaviour.
+
+  It is also why the table now shows both polarities. A diagnostic on
+  the violating case alone cannot tell a decision from a blanket
+  refusal, and reading only that column is how the regression looked
+  like progress.
 
   The warning names the predicate and says what to do:
 
