@@ -7,8 +7,9 @@ description: O(k) path matching on a radix tree. Static / param / wildcard segme
 # `core.net.weft.router`
 
 The router is a radix-tree dispatcher that turns `(method, path)`
-to handler lookups into roughly 200-nanosecond constant-time tree
-walks. It implements `Handler` itself, so a Router can be composed
+to handler lookups into a constant-time tree walk — the cost depends
+on the path's depth, not on how many routes are registered. It
+implements `Handler` itself, so a Router can be composed
 inside another Router via `.nest()`, can be wrapped in `.layer()`,
 and can serve as the root `WeftApp` handler.
 
@@ -246,8 +247,15 @@ Status: not yet implemented (Phase 6 work).
 - **Conformance**: `router_basic` and `router_nest` tests passing.
 - **Phase**: 1 closed; Phase 2 closed (`.nest()`); compile-time
   dispatch tree — Phase 6.
-- **Performance**: roughly 200 nanoseconds per match measured on
-  x86-64. Compile-time tree (Phase 6) targets zero-cost.
+- **Performance**: the lookup is a radix walk, so its cost tracks the
+  path's segment count rather than the size of the route table — that
+  part is a property of the implementation and you can read it there.
+  This page used to attach a figure, "roughly 200 nanoseconds per match
+  on x86-64", and it is withdrawn rather than repeated: it carried no
+  date, no benchmark backs it anywhere in the repository, and it names
+  an architecture the project's own benchmarks no longer run on. A
+  number a reader cannot reproduce is worse than no number. Compile-time
+  tree (Phase 6) targets zero-cost.
 
 ## Related documentation
 
