@@ -122,9 +122,11 @@ async fn serve() -> Result<(), H3ServerError> {
 }
 ```
 
-:::note Corrected 2026-09-08
+:::note Corrected 2026-09-08, and re-counted 2026-09-12
 
-`H3Response` has exactly three constructors and one builder method:
+`H3Response` has **two** constructors, one builder and one converter —
+four public methods, which is the list below. The sentence here said
+"three constructors and one builder" and disagreed with its own list:
 
 ```verum
 H3Response.ok(body: List<Byte>) -> H3Response     // 200, body included

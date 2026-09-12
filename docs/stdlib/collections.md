@@ -33,9 +33,13 @@ Suite sizes and pass rates are deliberately absent rather than
 refreshed: a figure carried forward past the suite it was taken on
 reads as current and is not.
 
-- **Tier-0 interpreter — green across all 20 submodules.** The only
-  non-passing tests are `@ignore`'d pins that lock specific cross-tier
-  / stdlib defects (see below). The
+- **Tier-0 interpreter.** This bullet used to read "green across all 20
+  submodules", which the preamble above disclaims and a reader still
+  takes as a fact. Counted 2026-09-12 against the conformance
+  inventory — the part a gate keeps honest — the twenty rows carry
+  one `complete`, eleven `partial`, five `regression-only` and three
+  `unverified`. "Green" was never true of all twenty, and three of them
+  have no asserted status at all. What is true: the
   earlier `regression-only` gates (CSPRNG-keyed construction for
   `bloom` / `count_min` / `hyperloglog`, the cross-module name table,
   the BTreeMap record-storage corruption) are **resolved** on the
