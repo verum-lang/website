@@ -305,7 +305,7 @@ Notable mappings:
 - **`describe` blocks** → split into separate `tests/*.vr` files.
 - **`expect(...).toBe(...)`** → `assert_eq(left, right)`.
 - **`expect(...).toBeCloseTo(x, digits)`** → `assert_approx_eq(a, b, tol)`.
-- **`expect(fn).toThrow()`** → `assert_panics(\|\| fn())`.
+- **`expect(fn).toThrow()`** → `catch_unwind(\|\| fn())` and assert the `Result` is `Err`. (`assert_panics` reads as the closer match and does not currently work — see the testing guide.)
 - **`test.each(...)`** → `@test_case(...)` (one attribute per row).
 - **`fc.assert(fc.property(...))`** → `@property` on a typed fn.
 - **`it.skip` / `xit`** → `@ignore(reason = "…")`.

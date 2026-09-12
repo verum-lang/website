@@ -167,12 +167,32 @@ assert_approx_eq(left, right, tolerance = 1e-9);  // Float compare
 assert_between(value, lo, hi);                    // inclusive range
 assert_is_sorted(&list);                          // ascending order
 assert_contains(&list, &needle);                  // membership
-assert_panics(|| { something_bad(); });           // expect panic
+assert_panics(|| { something_bad(); });           // expect panic — SEE THE NOTE BELOW
 ```
 
 Every assertion panics on failure with a stable message prefix; the
 runner reads the resulting `InterpreterError.Panic` or process exit
 code 1 and categorises the test as failed.
+
+:::caution `assert_panics` does not currently work
+Measured 2026-09-13: the panic it is meant to catch walks straight
+through it, so a body that panics fails the test and a body that does not
+fails the assertion — there is no body for which it passes. Write the
+panic law through `catch_unwind` instead:
+
+```verum
+mount core.base.panic.{catch_unwind, PanicInfo};
+
+let r: Result<Int, PanicInfo> = catch_unwind(|| withdraw(50, 100));
+assert(r.is_err());
+```
+
+Note the closure body is an EXPRESSION. A block ending in a statement —
+`|| { something_bad(); }` — does not bind the generic's return type and
+is refused with `expected '_', found 'Unit'`; end such a block with an
+explicit `()`. And a runtime trap is not a panic: division by zero aborts
+rather than unwinding, so `catch_unwind` does not see it.
+:::
 
 ## Property-based testing
 

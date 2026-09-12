@@ -145,14 +145,46 @@ tests.
 ## Testing a panic path
 
 ```verum
+mount core.base.panic.{catch_unwind, PanicInfo};
+
+fn withdraw(balance: Int, amount: Int) -> Int {
+    if amount > balance { panic("insufficient funds"); }
+    balance - amount
+}
+
 @test
-fn divide_by_zero_panics() {
-    assert_panics(|| { let _ = 10 / 0; });
+fn withdrawing_more_than_the_balance_panics() {
+    let r: Result<Int, PanicInfo> = catch_unwind(|| withdraw(50, 100));
+    assert(r.is_err());
+
+    // The other polarity, in the same test: a legal withdrawal must NOT
+    // be caught. A one-sided check passes just as well against a
+    // `catch_unwind` that always answers `Err`.
+    let ok: Result<Int, PanicInfo> = catch_unwind(|| withdraw(100, 40));
+    assert(ok.is_ok());
 }
 ```
 
-`assert_panics` is the right primitive — `catch_unwind` works too,
-but the assertion form gives a cleaner failure message.
+`catch_unwind` is the primitive to reach for, and it answers
+`Result<T, PanicInfo>` — never `Result<T, Text>`.
+
+:::caution Two things that look like they work and do not
+**`assert_panics` never passes.** `core.base.panic.assert_panics` reads
+as the obvious choice, and measured 2026-09-13 the panic it is meant to
+catch walks straight through it: a body that panics fails the test, and a
+body that does not fails the assertion. There is no body for which it
+passes. Use `catch_unwind`.
+
+**A runtime trap is not a panic.** `catch_unwind(|| { let _ = 10 / 0; })`
+does NOT return `Err` — division by zero aborts with
+`Division by zero` before any unwind begins. Only an explicit `panic(…)`
+(and the assertion helpers built on it) is catchable.
+
+**A closure body that ends in a statement.** `|| { something_bad(); }`
+does not bind the generic's return type and the call is refused with
+`expected '_', found 'Unit'`. End the block with an explicit `()`, or
+write the body as an expression — `|| something_bad()`.
+:::
 
 ## Parametrised regression
 
