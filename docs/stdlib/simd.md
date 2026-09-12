@@ -11,9 +11,17 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus status="regression-only" />
 
-Vectorised data types with platform dispatch. On x86_64 you get
-SSE/AVX/AVX-512 where available; on aarch64 you get NEON/SVE; scalar
-fallbacks on other targets.
+Vectorised data types with platform dispatch.
+
+:::caution Neither tier vectorises today
+The intent is SSE/AVX/AVX-512 on x86_64 and NEON/SVE on aarch64. What
+runs, on **both** the interpreter and AOT, is a scalar fallback in which
+a "vector" register carries one lane — stated as such in the
+implementation, and the reason AOT emits no LLVM vector intrinsics.
+Measured consequences are listed under [`Vec<T, N>`](#vect-n) below, and
+they include silently wrong numbers, so read them before using this
+module for anything.
+:::
 
 | File | What's in it |
 |---|---|
@@ -113,9 +121,51 @@ and lanes 1..3 fail with `Invalid operand: GetE: expected pointer`.
 number that is wrong twice over, since neither the broadcast nor the
 reduction happened.
 
-**3. `add` ends the build** with `internal compiler error (panic:
-Expected float, got Some(3))`. The other lane-wise operations are
-unmeasured.
+**3. `add` no longer ends the build — it returns a DIFFERENT NUMBER
+EVERY RUN.** Re-measured 2026-09-12; this is the one entry above that
+changed, and it changed for the worse. Where it used to stop with
+`internal compiler error (panic: Expected float, got Some(3))`, the same
+programme now completes and prints:
+
+```text
+$ verum run add.vr        # let s = v + w; print(f"{s.to_array()}")
+100335881120
+$ verum run add.vr
+69199173152
+$ verum run add.vr
+86872981888
+```
+
+Three runs, one file, three answers. A control on the same route —
+`let x = 10.0 + 20.0` — prints `30` every time, so the non-determinism
+is not the runtime's. The numbers are heap ADDRESSES: the arithmetic
+arms read each operand with a scalar conversion, and when the operand
+came from `from_array` the register holds a multi-lane list, so the
+conversion yields the pointer.
+
+The three spellings fail three different ways, which is worth knowing
+before you reach for a workaround:
+
+| Written as | Answers |
+|---|---|
+| `let s = v + w;` | a different number each run |
+| `let s = v.add(w);` | `NaN` |
+| `Vec4f.splat(3.0) + Vec4f.splat(4.0)` | does not compile |
+
+**Why all of this happens, from the implementation's own words.** The
+interpreter's SIMD handler states its contract in its module docstring:
+"BOTH tiers implement the same scalar fallback — a 'vector' register
+carries one lane — because the wire erases the element type and lane
+count of the source-level `Vec<T, N>`. AOT does NOT emit LLVM vector
+intrinsics." So the scalar fallback is by construction and is not an
+oversight, and **the page's opening sentence about SSE/AVX-512 and
+NEON/SVE describes an intent, not what runs** — on either tier.
+
+What the fallback's premise does not survive is `from_array`, a public
+documented constructor that puts a real four-element list in the
+register the fallback assumes holds one lane. Everything above follows
+from that one mismatch: the reductions return the list, and the
+arithmetic converts it to a number.
 
 **What works today**, run on the same day:
 
