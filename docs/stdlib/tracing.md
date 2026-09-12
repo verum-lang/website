@@ -706,15 +706,14 @@ Design budgets for the hot path:
 
 Stated plainly:
 
-1. **Cross-handle shared-state observation is pending interpreter
-   shared-identity support.** Cloning an `InMemoryExporter` (or any
-   shared cell) currently yields an independent copy rather than a
-   second handle onto the same buffer, so a test cannot yet observe
-   the pipeline's sink through its own clone. The delivery chain
-   itself — `end()` → processor → exporter cell — is verified live;
-   the conformance tests that need cross-handle observation are
-   pinned as ignored regressions and re-activate with no code change
-   once shared identity lands.
+1. ~~Cross-handle shared-state observation is pending~~ — **resolved
+   2026-09-12, and measured rather than assumed.** Cloning an
+   `InMemoryExporter` gives a second handle onto the SAME buffer: the
+   provider is given one clone, a span is ended through it, and the
+   text reads back through a different clone. A per-handle copy would
+   return empty there. The conformance suite that this limitation
+   pinned is green whole — 20 of 20, including the two tests that had
+   been failing outside the pins.
 2. **Custom (`…Custom`) pipeline stages cannot be invoked yet.**
    Protocol-object dispatch (`Shared<dyn Sampler>` and friends) is
    not operational in the VBC interpreter: constructing and
