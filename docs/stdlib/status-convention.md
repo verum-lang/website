@@ -34,16 +34,20 @@ submodules — if any submodule is `regression-only`, the aggregate is at
 most `partial`.
 
 :::caution The aggregate rule cannot be evaluated today
-Measured 2026-09-03, re-measured 2026-09-10, comparing the
+Measured 2026-09-03, re-measured 2026-09-10 and 2026-09-12, comparing the
 status-bearing pages against the 589 rows of `core-tests/INVENTORY.md`:
 
 ```
-grep -c unverified core-tests/INVENTORY.md      # 250
+# count the ROWS, not the word: a bare `grep -c unverified` also counts
+# the legend and the prose, and that subtraction is what drifts
+grep -cE '^\| `[^`]+` *\|.*unverified' core-tests/INVENTORY.md   # 247
 ```
 
-Three of those 250 are the legend and the prose around it; **247 are
-row statuses**, which the repository's own gate prints if you would
-rather not subtract by hand:
+Re-measured 2026-09-12: still **247 row statuses**. The bare word-count
+was 250 when this box was first written and is 249 today, which is
+exactly why the command above counts rows instead — the figure the
+argument rests on did not move, and the one that needed subtracting did.
+The repository's own gate prints the same thing:
 
 ```
 python3 scripts/ci/check_doc_status_matches_inventory.py

@@ -347,11 +347,14 @@ fn main() using [GpuDevice] {
     let mut c = GpuBuffer<Float>.allocate(4);
 
     // COMPILE ERROR: not yet supported. The `<<<grid, block>>>` launch syntax appears
-    // nowhere in `grammar/verum.ebnf`, and every occurrence of it in
-    // the conformance suite sits inside a COMMENT — the suite's own
+    // nowhere in `grammar/verum.ebnf`, and all 29 occurrences of it in
+    // the GPU conformance suite sit inside a COMMENT — the suite's own
     // `gpu/kernel/kernel_launch.vr` says "GPU kernel launch syntax
-    // (<<<grid, block>>>) requires runtime" and leaves `fn main` empty,
-    // validating that the kernel BODY parses and nothing more.
+    // (<<<grid, block>>>) requires runtime" and leaves `fn main` holding
+    // two comment lines and nothing else, validating that the kernel BODY
+    // parses and no more. (Elsewhere in the suite `<<<` does appear as
+    // code, in the lexer's own invalid-operator spec and inside a shell
+    // here-string literal; neither is a launch.)
     vec_add<<<Grid.d1(1), Block.d1(4)>>>(&a, &b, &mut c, 4);
 
     let host = c.to_host();
