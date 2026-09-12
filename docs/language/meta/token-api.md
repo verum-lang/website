@@ -23,15 +23,22 @@ SHIPPED, all in `core/meta/token.vr` unless noted: `TokenStream`,
 (`quote.vr`); `TypeKind`, `FieldInfo`, `VariantInfo`, `GenericParam`,
 `ProtocolInfo`, `FunctionInfo` (`reflection.vr`).
 
-WHAT IS NOT: `Ident`, `Punct`, `Group`, `HygieneMark`, `Hygiene`,
-`AstAccess`, and every `*Ast` type — `FnAst`, `TypeAst`, `ImplAst`,
+WHAT IS NOT: `Ident`, `Punct`, `Group`, `HygieneMark`, `Quotable`,
+`Param`, and every `*Ast` type — `FnAst`, `TypeAst`, `ImplAst`,
 `ExprAst`, `StmtAst`, `PatternAst`, `ProtocolAst`, `ContextAst`,
-`AttributeAst`, `BlockAst` — along with `TypeInfo`, `CompileDiag`,
-`Quotable` and `Param`. Re-measured 2026-09-10:
+`AttributeAst`, `BlockAst`.
 
-```
-grep -rlE '^ *public type (Ident|Punct|Group|HygieneMark|Hygiene|AstAccess|[A-Za-z]+Ast|TypeInfo|CompileDiag|Quotable|Param)\b' core/meta/ --include='*.vr' | wc -l
-# 0
+**`TypeInfo`, `AstAccess`, `CompileDiag` and `Hygiene` were on that
+list until 2026-09-12 and should not have been.** All four are declared
+in `core/meta/contexts.vr` — as `context`, not as `type`, which is why
+the census below missed them. The key asked about one declaration
+keyword; the answer it printed was about that keyword, not about the
+names.
+
+```bash
+# the census, now asking about every keyword a declaration can use
+grep -rnE '^ *(public |pub )?(type|context|protocol) +(Ident|Punct|Group|HygieneMark|Hygiene|AstAccess|[A-Za-z]+Ast|TypeInfo|CompileDiag|Quotable|Param)\b' core/meta/ --include='*.vr'
+# TypeInfo, AstAccess, CompileDiag and Hygiene — the rest print nothing
 ```
 
 That pattern is one long line on purpose. Breaking it with a backslash
@@ -255,13 +262,19 @@ correction.
 
 ## AST node types
 
-:::caution Everything from here to the worked example is a design
-`AstAccess` and every `*Ast` type below — `FnAst`, `TypeAst`,
-`ImplAst`, `ExprAst`, `StmtAst`, `PatternAst`, `ProtocolAst`,
-`ContextAst`, `AttributeAst`, `BlockAst` — occur nowhere in `core/`,
-and neither do `TypeInfo`, `CompileDiag`, `Quotable` or `Param`. The
-sections that follow are worth reading as the shape the macro layer is
-being built towards; none of them compiles.
+:::caution The AST NODE types below are a design; the CONTEXTS are not
+Every `*Ast` type below — `FnAst`, `TypeAst`, `ImplAst`, `ExprAst`,
+`StmtAst`, `PatternAst`, `ProtocolAst`, `ContextAst`, `AttributeAst`,
+`BlockAst` — occurs nowhere in `core/`, and neither do `Quotable` or
+`Param`. Read those sections as the shape the macro layer is being
+built towards.
+
+**The contexts they are used through DO exist**, and this box said
+otherwise until 2026-09-12. `core/meta/contexts.vr` declares fourteen
+contexts, among them `TypeInfo` with 37 methods, `AstAccess` with 30,
+`StageInfo` with 24, `CompileDiag` with 10 and `Hygiene` with 9. What is
+missing is the AST vocabulary they would hand you, not the contexts
+themselves.
 
 WHAT DOES EXIST for the two jobs these sections describe. For
 reflection: `core/meta/reflection.vr` declares `TypeKind`,

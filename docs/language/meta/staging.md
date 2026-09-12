@@ -229,17 +229,22 @@ tools:
    *(Not implemented — the flag is rejected as an unexpected
    argument.)*
 
-2. **`StageInfo.current()` / `StageInfo.target()`** are meta-context
-   methods that return the current stage and the stage a surrounding
-   quote will be spliced into. Call them from a meta fn body and
-   emit the result with `CompileDiag.emit_note(...)` to sanity-check
-   where you are.
+2. **`StageInfo.current_stage()` / `StageInfo.quote_target_stage()`**
+   return the current stage and the stage a surrounding quote will be
+   spliced into. Call them from a meta fn body and emit the result with
+   `CompileDiag.emit_note(...)` to sanity-check where you are. Both are
+   real — `StageInfo` is a `context`, declared alongside `TypeInfo`,
+   `AstAccess`, `Hygiene` and `CompileDiag`, and it carries eleven
+   methods including `max_stage()`, `quote_depth()` and
+   `is_valid_transition(from, to)`. *(This entry named them `current()`
+   and `target()` until 2026-09-12; neither shorter name exists.)*
 
-3. **Stage-mismatch diagnostics** always show **four** spans: the
-   offending splice, the binding it tried to reach, the stage each
-   one lives in, and a suggested fix (lift / raw-splice / move the
-   expression). Read all four; the fix is usually obvious once you
-   see them side-by-side.
+3. **Stage-mismatch diagnostics** name the stage you are in, the stage
+   you tried to generate, the stage that was expected, and a hint. The
+   entry here used to promise **four spans** — the splice, the binding,
+   the stage of each, and a suggested fix. Re-measured 2026-09-12: the
+   diagnostic carries **one** optional span; the three stage numbers and
+   the hint are in its message text, not in separate spans.
 
 ## Practical example — a staged specialisation
 
