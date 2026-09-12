@@ -1291,29 +1291,37 @@ entries this table used to carry are fixed**, so the table is now the
 short one, and what closed is listed under it rather than deleted —
 a reader who worked around one of these deserves to learn it can stop.
 
-Re-measured again on 2026-09-12, and **both entries had to be rewritten**
-— one described the wrong symptom, the other named a discriminator that a
-two-line control refutes. Thirty of `Map`'s methods were called on the
-same populated map, one program per method; twenty answered and ten
-trapped, in two families.
+Re-measured on 2026-09-12, and **both entries had to be rewritten** —
+one described the wrong symptom, the other named a discriminator that a
+two-line control refutes. Fifty of `Map`'s methods were then called on
+the same populated map, one program per method: thirty-seven answered
+and thirteen trapped, in three distinct families.
 
 | Defect | Where it shows | Evidence |
 |---|---|---|
-| Ten `Map` methods trap on a map that `get`, `insert`, `len` and `contains_key` all handle correctly: `entry`, `get_mut`, `get_key_value`, `get_or_default`, `remove_entry`, `into_keys`, `into_values`, `invert`, `keys_list`, `values_list` | any of those ten, on any map | one program per method against the same two-key map — twenty answered, these ten did not |
-| The first eight trap with one shared message about a field the object does not have; `keys_list` and `values_list` trap elsewhere, inside the map's own iterator | the split matters: it is two defects, not ten | the two messages differ in wording and in where they name the failure |
+| Eight methods trap reading a field the object does not have: `entry`, `get_mut`, `get_key_value`, `get_or_default`, `remove_entry`, `into_keys`, `into_values`, `invert` | any of them, on any map, empty or not | one shared message naming field index 2 of an object whose data size is 0 |
+| Four trap inside iteration: `keys_list`, `values_list`, `clone`, `partition` | collecting an iterator into a `List`, and copying a map | a null dereference at `MapIter.next`, `Map.clone` and `Map.partition` |
+| `extend` cannot find `next` on its receiver at all | merging one map into another | the map arrives where an iterator was expected |
 
 `entry` does **not** trap only on an empty map. A previous revision of
 this page said `len() == 0` was the discriminator; calling `entry` on a
 map holding one key traps identically, so the discriminator is the
 method, not the map.
 
-The twenty that answer cover the ordinary path — `new`, `insert`, `get`,
-`get_or`, `remove`, `contains_key`, `contains_value`, `len`, `is_empty`,
-`clear`, `capacity`, `reserve`, `shrink_to_fit`, `retain`, `try_insert`,
-`with_capacity`, `pop_entry`, `to_entries`, and walking `keys()`,
-`values()` or `iter()` in a `for` loop. Iteration in a `for` loop works;
-it is collecting the same iterator into a `List` through `keys_list` /
-`values_list` that does not.
+The thirty-seven that answer cover the ordinary path and most of the
+functional surface — `new`, `insert`, `get`, `get_or`, `get_or_insert`,
+`remove`, `contains_key`, `contains_value`, `len`, `is_empty`, `clear`,
+`capacity`, `reserve`, `shrink_to_fit`, `retain`, `try_insert`,
+`with_capacity`, `pop_entry`, `to_entries`, `from_entries`, `entries`,
+`drain`, `merge`, `filter`, `map_values`, `fold`, `find`, `any`, `all`,
+`count_by`, `group_by`, and walking `keys()`, `values()` or `iter()` in a
+`for` loop, including destructuring `for (k, v) in m.iter()`.
+
+Iteration in a `for` loop works; collecting the same iterator into a
+`List` does not, and neither does copying the map. That last one has a
+consumer outside `Map`: `Data.merge` in `core.base.data` traps, and its
+whole body is `a.clone()` plus a destructuring walk over `b` — the walk
+is fine, the copy is not.
 
 ### Working around the ten
 
