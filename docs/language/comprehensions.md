@@ -52,9 +52,27 @@ Lazy, pull-based. Returns a `Stream<T>` that produces elements on
 demand. Use when the input is infinite or large.
 
 ```verum
-let primes = stream[n for n in 2.. if is_prime(n)];
-let first_ten = primes.take(10).collect();     // -> List<Int>
+// A BOUNDED source, and `collect()` — those are what work today.
+let primes = stream[n for n in 2..100 if is_prime(n)];
+let found: List<Int> = primes.collect();       // -> List<Int>
 ```
+
+:::caution Three limits on `stream[...]`, all measured 2026-09-13
+**No combinators.** `primes.take(10)` is refused with `no method named
+'take' found for type 'Stream<Int>'`, so an UNBOUNDED source —
+`stream[n for n in 2..]` — cannot be cut down to a finite prefix and has
+no consumer at all. Bound the range instead, as above.
+
+**The guard must be INLINE.** `stream[n for n in 2..100 if even(n)]`,
+calling a free function, dies at run time with `Type mismatch in
+call_closure: expected closure, got non-pointer`. Written inline —
+`if n % 2 == 0` — it answers correctly, and the *list* comprehension
+`[n for n in 2..100 if even(n)]` takes the function fine. It is the
+stream lowering specifically.
+
+**`collect()` needs its binding annotated.** `let got = s.collect();` is
+refused as not fully determined. Write `let got: List<Int> =`.
+:::
 
 Stream comprehensions compose with stream-producing methods:
 
