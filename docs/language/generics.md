@@ -439,15 +439,40 @@ Rank-2 is how Verum expresses:
 See [cookbook/calc-proofs](/docs/cookbook/calc-proofs) for a rank-2
 example building a verified fold-combinator.
 
-:::caution The record field does not survive the bake
+A rank-2 **record field** used to be the sharp edge here: written exactly
+as above, the field was archived as `Unit`, so the transducer you got back
+was not the function you wrote. That is fixed — the archive now carries the
+quantified type, and the quantified names are bound per parse.
 
-Written exactly as above — a `fn<R>(...)` as a RECORD FIELD — the field
-bakes as `Unit`, so the transducer you get back is not the function you
-wrote. The type checker accepts the declaration; the value is lost
-between there and the archive.
+Measured end to end, a two-field composition through such a record field:
 
-Rank-2 in a plain function signature is a separate question and is not
-covered by that measurement.
+```verum
+type Reducer<A, R> is fn(R, A) -> R;
+
+type Xf<A, B> is {
+    transform: fn<R>(Reducer<B, R>) -> Reducer<A, R>,
+};
+
+fn doubler() -> Xf<Int, Int> {
+    Xf {
+        transform: |down: Reducer<Int, R>| -> Reducer<Int, R> {
+            |acc: R, x: Int| { down(acc, x * 2) }
+        },
+    }
+}
+
+let xf = doubler();
+let sum: Reducer<Int, Int> = |acc: Int, x: Int| { acc + x };
+(xf.transform)(sum)(0, 21)          // 42
+```
+
+:::note One parameter is still unchecked
+
+A single call through a rank-2 field with a **mismatched element type**
+type-checks rather than being refused. The archive carries no
+generic-parameter list for an implementation, so the stage that would
+recover the bound has nothing to read. The value flows correctly; it is
+the rejection that is missing.
 
 :::
 
