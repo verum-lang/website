@@ -56,6 +56,18 @@ right answer 95% of the time.
 
 ## HMAC
 
+:::caution HMAC-SHA is interpreter-only today (AOT crashes)
+
+Measured 2026-09-13 on macOS arm64: `hmac_sha256` over a 4-byte key and `abc`
+returns a full 32-byte tag under `verum run`, and the same program compiled
+with `verum build` faults at `0xfffffff8ffc08200` inside
+`core.hash.crypto.sha256.compress_block`. The address is far above the heap
+floor — array CONTENT used as a pointer — which is the A147 root the digest
+page describes, reached through SHA-256's state rather than through HMAC
+itself. Until it closes, run MAC code under the interpreter.
+
+:::
+
 ### What is HMAC?
 
 HMAC, defined in [RFC 2104](https://datatracker.ietf.org/doc/html/rfc2104),

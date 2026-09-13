@@ -176,6 +176,18 @@ is implementable with modules from this subtree alone.
 | `TLS_CHACHA20_POLY1305_SHA256` | [`sha256`](/docs/stdlib/hash) | [`hkdf_sha256`](/docs/stdlib/security/kdf) | [`chacha20_poly1305`](/docs/stdlib/security/aead) | [`x25519`](/docs/stdlib/security/ecc) |
 | `X25519MLKEM768` (PQ hybrid) | — | — | — | [`x25519`](/docs/stdlib/security/ecc) + [`ml_kem-768`](/docs/stdlib/security/pq) |
 
+:::caution What this matrix claims, and what it does not
+
+It claims the modules are **present and composable** — every cell links to
+code that exists in this subtree. It does **not** claim every cell runs
+today. Measured 2026-09-13: the `x25519` cell traps on both tiers (its
+intrinsic has no registry entry), `ml_kem-768` likewise, and every hash, KDF
+and AEAD cell is correct under the interpreter but faults under AOT. The
+per-primitive status table below carries the measurement for each one; read
+it before planning against a row here.
+
+:::
+
 ## Threat model and what the layer does NOT cover
 
 - **Endpoint compromise.** If the process has been compromised,
@@ -223,17 +235,20 @@ is implementable with modules from this subtree alone.
 
 | Primitive | Status | Notes |
 |---|---|---|
-| SHA-256, SHA-384, SHA-512 | ✅ Production | Pure Verum reference + `crypto-accel` hook |
-| HMAC-SHA-{256,384,512} | ✅ Production | RFC 4231 vectors byte-exact |
-| HKDF-SHA-{256,384,512} | ✅ Production | RFC 5869 vectors byte-exact |
-| AES-128, AES-256 | ✅ Production | Reference + AES-NI / ARMv8 hook |
-| AES-GCM | ✅ Production | 12-byte IV path (TLS/QUIC) |
-| ChaCha20 | ✅ Production | RFC 8439 |
-| Poly1305 | ✅ Production | 5 × 26-bit limbs |
-| ChaCha20-Poly1305 AEAD | ✅ Production | RFC 8439 |
-| X25519 | ✅ Production | Intrinsic-backed scalar-mult |
-| ML-KEM | ✅ Production | FIPS 203 via intrinsic |
-| ML-DSA | ✅ Production | FIPS 204 via intrinsic |
+| SHA-256, SHA-384, SHA-512 | ⚠️ Interpreter only | Pure Verum reference + `crypto-accel` hook. The digests are RIGHT — measured 2026-09-13, `abc` gives `ba7816bf…` (SHA-256) and `ddaf35a1…` (SHA-512) under the interpreter — and the AOT binary faults at `0x0` inside `Sha256.update` / `Sha512.update` before producing any output. The state's `buf: [Byte; N]` field is read through a runtime container classifier that has no arm for a packed buffer; tracked as A147. |
+| SHA-1 (legacy) | ⚠️ Interpreter only | Same shape and the same fault: `abc` gives `a9993e36…` under the interpreter, `0x0` inside `Sha1.update` under AOT. Tracked as A147. |
+| BLAKE3 | ⚠️ Interpreter only | Same shape and the same fault: `abc` gives `6437b3ac…` under the interpreter, `0x0` inside `Blake3.update` under AOT. Tracked as A147. |
+| HMAC-SHA-{256,384,512} | ⚠️ Interpreter only | RFC 4231 vectors byte-exact under the interpreter. Measured 2026-09-13: `hmac_sha256` over a 4-byte key and `abc` answers with a fully non-zero 32-byte tag under the interpreter, and the AOT binary faults at `0xfffffff8ffc08200` inside `core.hash.crypto.sha256.compress_block` — an address far above the heap floor, i.e. array CONTENT used as a pointer, the same A147 root as the digests above. |
+| HKDF-SHA-{256,384,512} | ⚠️ Interpreter only | RFC 5869 vectors byte-exact under the interpreter. Measured 2026-09-13: `hkdf_sha256` asking for 16 bytes returns 16 non-zero bytes under the interpreter, and the AOT binary faults at `0xfffffff8dddf4200` inside `core.hash.crypto.sha256.compress_block` — the same frame and the same A147 root as HMAC above. |
+| AES-128 (block cipher) | ✅ Production | Reference + AES-NI / ARMv8 hook. Verified 2026-09-13 against the FIPS-197 C.1 vector at BOTH tiers, byte for byte: key `2b7e151628aed2a6abf7158809cf4f3c`, plaintext `3243f6a8885a308d313198a2e0370734`, ciphertext `3925841d02dc09fbdc118597196a0b32`. Checked against the published vector rather than against "it no longer crashes" — a resolved-but-wrong block cipher produces a zero tag and never crashes at all. |
+| AES-256 (block cipher) | ✅ Production | Verified 2026-09-13 against the FIPS-197 C.3 vector at BOTH tiers, byte for byte: key `000102…1f`, plaintext `00112233445566778899aabbccddeeff`, ciphertext `8ea2b7ca516745bfeafc49904b496089`. Measured separately from AES-128 — the 60-word key schedule is its own code path and the 128-bit vector does not speak for it. |
+| AES-GCM | ⚠️ Interpreter only | 12-byte IV path (TLS/QUIC). Correct under the interpreter: a 4-byte plaintext gives a 4-byte ciphertext and a 16-byte all-non-zero tag. Under AOT it still faults, but 2026-09-13 the fault MOVED: `Aes128Gcm.new` now completes (it used to die computing `H = E_K(0^128)` before any plaintext), and the failure is now inside `gcm_encrypt_common`, which takes the GHASH subkey `h: &[Byte; 16]` — a reference to a packed BYTE field. That is the half of A147 that is still open. |
+| ChaCha20 | ⚠️ Interpreter only | RFC 8439. Correct under the interpreter — `chacha20_xor` over 8 zero bytes returns 8 non-zero keystream bytes — and the AOT binary faults at `0x7a385155bee7079f`. That address is the keystream itself used as a pointer: `chacha20_block` RETURNS a packed `[Byte; 64]`, and indexing it hits the same runtime container classifier described under the digests. Measured 2026-09-13 through both the low-level block function and the `chacha20_xor` API, which fault at the identical address. Tracked as A147. |
+| Poly1305 | ⚠️ Interpreter only | 5 × 26-bit limbs. Correct under the interpreter — `poly1305_mac` returns a 16-byte all-non-zero tag — and the AOT binary faults at `0x0` inside `Poly1305.update`, the same shape as the digests: a `[Byte; N]` buffer field read through the runtime container classifier. Measured 2026-09-13. Tracked as A147. |
+| ChaCha20-Poly1305 AEAD | ⚠️ Interpreter only | RFC 8439. Correct under the interpreter: a 4-byte plaintext gives a 4-byte ciphertext and a 16-byte all-non-zero tag. The AOT binary faults at `0x0` inside `chacha20_block` — both of this construction's halves are affected on their own (see the two rows above), and it dies in the cipher half first. Measured 2026-09-13. Tracked as A147. |
+| X25519 | ❌ Not implemented | The scalar-mult intrinsic (`verum.x25519.scalar_mult`) has no registry entry, so the call traps on BOTH tiers: the interpreter panics with "is not implemented in this build" and the AOT binary exits on a trap. Measured 2026-09-13 with the RFC 7748 §6.1 secret key. |
+| ML-KEM | ❌ Not implemented | FIPS 203 shape is declared, but `verum.pq.ml_kem_keygen` has no registry entry and `ml_kem_keygen` traps on BOTH tiers. Measured 2026-09-13 (ML-KEM-768). |
+| ML-DSA | ❌ Not implemented | FIPS 204 shape is declared, but `verum.pq.ml_dsa_keygen` has no registry entry and `ml_dsa_keygen` traps on BOTH tiers. Measured 2026-09-13 (ML-DSA-65). |
 | Ed25519 | 🟡 Planned P1 | Modern signatures |
 | P-256 (ECDSA + ECDHE) | 🟡 Planned P1 | Legacy cert chains |
 | RSA-PSS (verify-only) | 🟡 Planned P2 | Legacy cert chains |
