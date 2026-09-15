@@ -381,9 +381,8 @@ r.raw_fd() -> Int
 > the loop dereferences the element VALUE where it expects a reference.
 > The cause is one layer down: `read_until` walks
 > `available.iter().enumerate()`, and a generic iterator adaptor erases
-> which reference convention its inner producer used. Tracked as A106 in
-> the tech-debt register. Until it closes, line-oriented reading is
-> interpreter-only; `read_to_string` and `write` are unaffected at both
+> which reference convention its inner producer used. Until that closes,
+> line-oriented reading is interpreter-only; `read_to_string` and `write` are unaffected at both
 > tiers.
 
 ```verum

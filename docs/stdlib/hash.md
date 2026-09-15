@@ -65,8 +65,7 @@ The cause is not in these algorithms. Each state carries a `buf: [Byte; N]`
 field, and reading an element of a fixed-size primitive array **through a
 field** is answered at runtime by a container classifier that has no arm for
 a packed buffer, so it reads the buffer's own bytes as a header. Until that
-closes, run digest code under the interpreter. Tracked as A147 in the
-tech-debt register.
+closes, run digest code under the interpreter.
 
 :::
 
