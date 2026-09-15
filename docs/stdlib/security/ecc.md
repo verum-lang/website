@@ -365,14 +365,26 @@ adequate for even very high-traffic servers.
 
 ## Security considerations
 
-### What the library handles for you
+### What the library is designed to handle
 
-- ✅ Scalar clamping (automatic in `generate_secret_key` and
-  `secret_key_from_bytes`).
-- ✅ Constant-time Montgomery ladder (via intrinsic backend).
-- ✅ All-zero shared-secret rejection.
-- ✅ Side-channel-resistant CSPRNG (via `verum.rng.fill_secure`
-  intrinsic).
+Read this list against the caution at the top of the page: three of the
+four are delivered by the intrinsic backends that this build does not
+implement, so they describe the DESIGN, not what runs today.
+
+- 🟡 Scalar clamping — pure Verum, in `secret_key_from_bytes`; reached
+  today. `generate_secret_key` does not, because it needs the missing
+  CSPRNG first.
+- ❌ Constant-time Montgomery ladder — `verum.x25519.scalar_mult`, which
+  has no registry entry. Nothing constant-time runs, because nothing
+  runs.
+- ❌ All-zero shared-secret rejection — the check lives past the ladder
+  and is not reached.
+- ❌ Side-channel-resistant CSPRNG — `verum.rng.fill_secure`, also
+  missing; every `generate_*` stops here.
+
+Marked this way deliberately: a ✅ beside a property the build cannot
+deliver is worse than no line at all, because a reader auditing the
+security surface reads the checklist and not the banner.
 
 ### What you must handle
 

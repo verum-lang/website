@@ -10,6 +10,30 @@ Verum's type system and verification pipeline eliminate entire classes
 of vulnerabilities. This guide surveys the tools and the residual
 risks.
 
+:::caution What this guide recommends, and what this build runs
+
+The recommendations below are the right ones to design against. Three of
+them cannot be executed by this build, and a security guide that does not
+say so is worse than none — a reader follows it and ships code that stops
+at the first call.
+
+Measured 2026-09-13, both tiers:
+
+| Recommended here | State in this build |
+|---|---|
+| ML-DSA signatures, ML-KEM-768 exchange | ❌ `verum.pq.*` has no implementation — traps on both tiers |
+| X25519 key exchange | ❌ `verum.x25519.scalar_mult` likewise; `generate_*` also needs the missing CSPRNG |
+| HKDF, HMAC, SHA-2 | ⚠️ correct under the interpreter, fault under AOT (A147) |
+| AES-128 / AES-256 block cipher | ✅ verified against the FIPS-197 vectors at both tiers |
+| ChaCha20, Poly1305, the AEADs | ⚠️ correct under the interpreter, fault under AOT |
+
+So the AEAD advice stands in design and, today, runs only under
+`verum run`. Check [`security/overview`](/docs/stdlib/security/overview)
+before planning against any row here — it carries the per-primitive
+measurement and is updated as the defects close.
+
+:::
+
 ## What Verum prevents by construction
 
 | Class | Mechanism |

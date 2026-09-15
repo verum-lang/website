@@ -45,6 +45,54 @@ Annotations you will see:
 
 ---
 
+## Declared but not implemented — 288 keys (measured 2026-09-13)
+
+The table below covers `core/intrinsics/**`, the canonical home. It is not
+the whole picture: **288 distinct `@intrinsic("verum.…")` keys declared
+across `core/` have no implementation anywhere in `crates/`**, and calling
+one is a runtime trap on both tiers —
+
+```
+Panic: @intrinsic("verum.x25519.scalar_mult") is not implemented in this
+build (called from scalar_mult); it has no registry entry, so there is no
+value to return
+```
+
+That abort is deliberate and recent: an unregistered key used to lower to a
+silent `nil`, which is how a signature routine could "succeed" and return
+nothing. Refusing to fabricate a result is the correct behaviour; the gap it
+reports is real.
+
+The largest families, by declared-key count:
+
+| Family | Keys | What it gates |
+|---|---|---|
+| `verum.crypto.*` | 60 | accelerated digest/cipher backends |
+| `verum.libm_deterministic.*` | 42 | reproducible float maths (`core.math.ieee754_deterministic`) |
+| `verum.compress.*` | 17 | gzip / zstd / lz4 / brotli |
+| `verum.quic.*` | 17 | QUIC transport |
+| `verum.tls.*` | 17 | TLS record layer |
+| `verum.k8s.*` | 12 | Kubernetes client |
+| `verum.p256.*` | 12 | NIST P-256 |
+| `verum.bpf.*` | 11 | eBPF program loading |
+| `verum.spiffe.*` | 11 | SPIFFE identity |
+| `verum.h3.*` | 10 | HTTP/3 |
+| `verum.pq.*` | 9 | ML-KEM / ML-DSA |
+| `verum.qpack.*` | 9 | QPACK header compression |
+
+The full list is a tracked artefact — `scripts/ci/intrinsic_keys_unimplemented.txt`
+— frozen by a ratchet so the set cannot grow unnoticed, and a key leaves it
+the moment something implements it. A second gate refuses to let a
+documentation page call a primitive "Production" while its key is still on
+that list.
+
+**What this means when reading the rest of this page.** A module whose
+surface is documented here can still be unreachable at run time if its
+backend key is on that list: the documentation describes the declared
+contract, the roster says which contracts have an implementation behind
+them. Where a page knows its own backend is missing it says so in a banner
+— [`ecc`](/docs/stdlib/security/ecc) is the worked example.
+
 ## Conformance status by submodule (2026-07-15)
 
 Statuses follow the [status convention](./status-convention.md); the

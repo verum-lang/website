@@ -287,19 +287,32 @@ defect classes (if any) are still open.
 
 ### Status keywords
 
-The four-level status taxonomy is shared between
-`core-tests/INVENTORY.md` (the per-module inventory) and the website
-(the public-facing API reference). Renaming a status anywhere requires
-the same rename in both places.
+The status taxonomy is shared between `core-tests/INVENTORY.md` (the
+per-module inventory) and the website (the public-facing API reference).
 
-| Status | Emoji | Meaning |
+**[Status Convention](/docs/stdlib/status-convention) is the single source
+of truth** for what each keyword means, which emoji renders it, and how a
+page graduates from one to the next. This page does not restate the table:
+it used to, and the two copies had DRIFTED — this one listed six statuses
+where the convention lists five, and gave `stable` a ✅ where the convention
+gives it 🟢. A reader comparing two module pages would have read the same
+badge as two different promises.
+
+What is worth stating here instead is which statuses the tree actually uses.
+Measured 2026-09-15 across every page carrying a `status:` frontmatter field:
+
+| Status | Pages | |
 |---|---|---|
-| `complete` | ✅ | All public APIs covered by unit tests; algebraic laws pinned by property tests; cross-stdlib integration verified; audit findings landed or routed. The module's contract is fully exercised end-to-end on both the interpreter (Tier 0) and AOT (Tier 1) paths. |
-| `partial` | ⚠️ | A subset of the API surface is covered. The reasons for partial coverage are cited in the module's `audit.md`. Typically: the module sits on top of an upstream defect class (e.g. Iterator.next dispatch) that gates entire feature areas. |
-| `regression-only` | ⛔ | The module is **gated** by upstream defects. Few or no public-API tests pass yet — only `@ignore`d regression pins exist (plus a small set of PASS-GUARDs for the bits that work). When the upstream defect closes, removing the `@ignore` on the regression test should turn the suite green automatically. |
-| `stable` | ✅ | Every public method is conformance-tested. |
-| `unverified` | ❔ | A `core-tests/<module>/` folder exists and no status has been asserted for it yet. |
-| `undocumented` | ❔ | No `core-tests/<module>/` folder exists. New modules start here; aim to graduate. |
+| `regression-only` | 25 | gated by an upstream defect |
+| `partial` | 19 | part of the surface is pinned |
+| `undocumented` | 12 | no `core-tests/` folder yet |
+| `complete` | **0** | |
+| `stable` | **0** | |
+
+No page in the tree claims `complete` or `stable` today. That is not an
+oversight to be corrected by relabelling — it is the honest state, and the
+number is here so a reader knows the top two rungs of the ladder are
+currently empty rather than merely unseen.
 
 ### Frontmatter
 
