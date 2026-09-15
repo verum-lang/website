@@ -907,21 +907,6 @@ let c: Cow<List<Int>> = Cow.Borrowed(&xs);
 let owned: &mut List<Int> = c.to_mut();   // clones if Borrowed
 ```
 
-Reading through a `Cow` costs nothing and does not clone. `Deref` is
-implemented, so the borrowed and the owned case read the same way:
-
-```verum
-let borrowed: Cow<Text> = Cow.borrowed(&name);
-let owned:    Cow<Text> = Cow.owned("literal".to_text());
-
-print(*borrowed);          // the referent, not `Borrowed(…)`
-print(*owned);             // the value, not `Owned(…)`
-print(borrowed.as_ref());  // the same thing, spelled out
-```
-
-`deref` delegates to `as_ref`, so the two can never disagree; `to_mut` is
-the one that may clone, and only when the value is still borrowed.
-
 ### Raw pointer helpers
 
 ```verum
