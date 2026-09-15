@@ -13,6 +13,23 @@ Cowboy — **and verifiable**: refinement-typed routes, effect-checked
 middleware, dependent-typed protocol state machines, structurally
 concurrent connection nurseries.
 
+:::danger A server on this page binds, then accepts nothing — measured 2026-09-15
+
+`bind(...)` succeeds and `serve().await` returns `Ok` immediately, having
+accepted no connection: `lsof` on the running process shows no TCP row at
+any sample. The cause is one line in the accept loop, where a fresh
+`Shared<AtomicBool>` drain flag reads back as `true`; the measurements and
+the exact mechanism are on
+[Listener](/docs/stdlib/net/weft/listener). The same root also stops
+`CancellationToken.cancel()` from cancelling, so the graceful-shutdown
+sections below do not hold either.
+
+The code on this page is written against the intended contract and is
+what will work when that defect lands fixed. Today it will not serve a
+request, so do not reach for it to stand something up.
+:::
+
+
 This page is the framework's navigational reference. Every section
 maps a feature area to the actual `core/net/weft/*.vr` module that
 implements it and its conformance status.

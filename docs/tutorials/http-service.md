@@ -9,6 +9,23 @@ description: A tiny URL shortener with refinement types, nursery concurrency, an
 **Time: 60 minutes. Prerequisites: [Hello, World](/docs/getting-started/hello-world),
 [HTTP server recipe](/docs/cookbook/http-server), [Refinement patterns](/docs/cookbook/refinements).**
 
+:::danger A server on this page binds, then accepts nothing — measured 2026-09-15
+
+`bind(...)` succeeds and `serve().await` returns `Ok` immediately, having
+accepted no connection: `lsof` on the running process shows no TCP row at
+any sample. The cause is one line in the accept loop, where a fresh
+`Shared<AtomicBool>` drain flag reads back as `true`; the measurements and
+the exact mechanism are on
+[Listener](/docs/stdlib/net/weft/listener). The same root also stops
+`CancellationToken.cancel()` from cancelling, so the graceful-shutdown
+sections below do not hold either.
+
+The code on this page is written against the intended contract and is
+what will work when that defect lands fixed. Today it will not serve a
+request, so do not reach for it to stand something up.
+:::
+
+
 We'll build `shortl` — a URL shortener. It accepts a URL via
 POST, stores it under a short code, and redirects visitors of
 `/s/<code>` to the original. Along the way we'll:
