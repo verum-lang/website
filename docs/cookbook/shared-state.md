@@ -8,6 +8,37 @@ description: Mutex, RwLock, actors, channels — pick the right one.
 You have one logical piece of state; several tasks need to read/write
 it. Which primitive fits?
 
+:::danger An atomic reached through `Shared` does not answer its value — measured 2026-09-16
+
+`Shared<AtomicBool>` / `Shared<AtomicU64>` is the shape every example on
+this page uses to share a counter or a stop flag between tasks, and reading
+one today answers bits that look like a heap address rather than the value:
+
+```
+AtomicBool.new(false).load(Acquire)              ->  false          correct
+Shared.new(AtomicBool.new(false)).load(Acquire)  ->  true           wrong
+Shared.new(AtomicInt.new(5)).load(Acquire)       ->  41329817312    wrong
+```
+
+Read DIRECTLY the same atomics are exact, which is what makes this a
+carrier defect rather than a broken atomic. Two consequences worth knowing
+before you build on the pattern: a stop flag holding `false` reads as
+`true`, and the answer is **not reproducible between runs** — it is decided
+by function-table order, so a test can pass and then fail on the same
+binary.
+
+The explicit dereference is correct and is the workaround today:
+
+```verum
+let stopped = Shared.new(AtomicBool.new(false));
+if (*stopped).load(MemoryOrdering.Acquire) { … }   // correct
+```
+
+`Shared` itself is sound — `clone`, `strong_count`, `is_unique` and reading
+the value through `*` all answer correctly. It is the implicit method call
+on the carrier that does not.
+:::
+
 ## The decision matrix
 
 | State | Contention | Use |

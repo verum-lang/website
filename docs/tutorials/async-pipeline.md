@@ -361,6 +361,15 @@ No memory blows up; no messages are dropped.
 
 Let me correct the shutdown:
 
+:::caution The stop flag on this page does not read back correctly today
+
+`Shared.new(AtomicBool.new(false))` answers `true` when read through the
+carrier — measured 2026-09-16, and the answer is not reproducible between
+runs. The explicit dereference is correct meanwhile:
+`(*stopped).load(MemoryOrdering.Acquire)`. Measurements and mechanism:
+[Sharing state across tasks](/docs/cookbook/shared-state).
+:::
+
 ```verum
 // Shutdown via shared flag
 let stopping = Shared.new(AtomicBool.new(false));

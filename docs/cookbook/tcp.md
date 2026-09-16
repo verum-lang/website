@@ -176,6 +176,15 @@ read / write; they are cheaper than `select` but less flexible.
 Use a shutdown flag checked on every iteration and a `select` that
 races `accept` against the signal:
 
+:::caution The stop flag on this page does not read back correctly today
+
+`Shared.new(AtomicBool.new(false))` answers `true` when read through the
+carrier — measured 2026-09-16, and the answer is not reproducible between
+runs. The explicit dereference is correct meanwhile:
+`(*stopped).load(MemoryOrdering.Acquire)`. Measurements and mechanism:
+[Sharing state across tasks](/docs/cookbook/shared-state).
+:::
+
 ```verum
 mount core.signal.{ctrl_c};
 //         ^ NOT DECLARED. `core/signal/mod.vr` shows `ctrl_c()` in its
