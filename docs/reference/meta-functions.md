@@ -29,45 +29,79 @@ meta_function_name = 'const' | 'error' | 'warning' | 'stringify' | 'concat' | 'c
                    | 'is_struct' | 'is_enum' | 'is_tuple' | 'implements' ;
 ```
 
-:::warning What a name outside that production does today
+:::info What a name outside that production does
 
-The production above is the set the parser recognises. A name outside it
-— including several documented further down this page — does **not** stop
-the build. The parser emits `warning<E0410>: unknown meta-function`, and
-the expression then takes the type `Unit`, so the failure surfaces later
-as a type mismatch, or not at all where `Unit` happens to fit.
+The production above is the grammar's enumeration. The compiler recognises
+a larger set — the numeric family (`@abs`, `@sqrt`, `@min`, `@max`,
+`@clamp`, `@pow`, …), the backend hatches (`@intrinsic`, `@vbc`, `@asm`),
+and a handful of runtime helpers — and **every name outside what it
+recognises is refused, by name, at the call.**
 
-Measured 2026-09-10 against the shipped compiler:
+```verum
+let v = @zzznotathing(1);
+// error<E0410>: unknown meta-function `@zzznotathing`: no compiler builtin
+//               and no `meta` declaration of that name is in scope
+```
+
+Arity and argument kinds are checked too:
+
+```verum
+@abs(1, 2, 3)   // error<E0443>: `@abs` takes exactly 1 argument, but 3 were given
+@abs()          // error<E0443>: `@abs` takes exactly 1 argument, but 0 were given
+@sqrt("text")   // error<E0444>: `@sqrt` argument 1 must be a number, but it is `Text`
+```
+
+A name the language reserves and the compiler cannot yet lower is refused
+as well, and says which of the two it is:
+
+```verum
+@type_name(Int)
+// error<E0442>: `@type_name` is not implemented: the grammar's
+//               `meta_function_name` production lists it, but no lowering
+//               exists, so the call has no value to produce
+```
+
+:::
+
+:::note How it used to behave, and why the change matters
+
+Until this was fixed, none of the four calls above stopped the build. The
+parser emitted `warning<E0410>: unknown meta-function`, the expression took
+the type `Unit`, and the call lowered to `nil`.
+
+`nil` is indistinguishable from a legitimate answer, so the failure was
+loud only where `Unit` happened not to fit:
 
 ```verum
 const REV: Text = @project_git_revision();
-// warning<E0410>: unknown meta-function `@project_git_revision`
+// warning: unknown meta-function `@project_git_revision`
 // error<E400>: Type mismatch: expected 'Text', found 'Unit'
 ```
 
-That example is the loud half. The quiet half has no second line at all
-— when the expression is used as a *statement*, `Unit` is exactly what
-the position wants, so nothing is mismatched and nothing is reported
-beyond the warning:
+That is the loud half. The quiet half had no second line at all — in
+*statement* position `Unit` is exactly what the position wants, so nothing
+was mismatched and nothing was reported:
 
 ```verum
 // From the standard library, until 2026-09-10. `Thread.yield_now`'s
 // Linux branch was written as an open-coded syscall:
 @cfg(target_arch = "x86_64")  { @syscall(24); }
 @cfg(target_arch = "aarch64") { @syscall(124); }
-// warning<E0410>: unknown meta-function `@syscall`
+// warning: unknown meta-function `@syscall`
 // …and nothing else. Both branches compiled to nothing, so a spin loop
 // calling yield_now never gave way to the scheduler — no crash, no
 // wrong value, no diagnostic anyone reads.
 ```
 
-The difference is only the position. A name that produces `Unit` in a
-value position is caught by the next type check; the same name in
-statement position is not caught by anything.
+The same silence cost `File.size()` its answer: `core/io/file.vr` built the
+`fstat(2)` buffer with `@zeroed()`, which is not a meta-function, so the
+buffer was a zero-byte object handed to an FFI.
 
+:::
 
 Sections marked **Not yet callable** below are in this state: the builtin
-is implemented in the compiler, but no spelling reaches it yet.
+is implemented in the compiler, but no spelling reaches it yet. Calling one
+is now an error naming the name, not a silent `nil`.
 
 :::
 
@@ -180,6 +214,23 @@ See `@cfg` conditions in the full form at
 These meta functions take **no arguments** and return the position
 of the call site.
 
+:::caution `@line()` and `@column()` answer 0, and `@file()` answers a module
+
+Measured against the shipped compiler: `@line()` and `@column()` return
+**0** everywhere, and `@file()` returns the enclosing function's module
+prefix rather than a path. Code generation carries no source position for
+the call, and the accessors behind these three say `Placeholder` in their
+own bodies.
+
+The signatures below are the contract; the values are not yet the ones the
+contract promises. They are documented here rather than in a changelog
+because a reader who logs `@line()` and sees `0` needs to know it is the
+compiler, not their program.
+
+`@module()` and `@function()` do answer correctly.
+
+:::
+
 ### `@file()`
 
 Returns the source file path as a `Text`.
@@ -219,7 +270,62 @@ fn handle(req: Request) -> Response {
 }
 ```
 
+## Numeric
+
+Thirteen numeric meta-functions fold to a single VBC instruction each.
+They are not in the grammar's `meta_function_name` production — they reach
+expression position through `meta_call`, which admits any path — but the
+compiler implements every one.
+
+`@abs`, `@min`, `@max`, `@clamp` and `@pow` are polymorphic over `Ord`, so
+integer arguments give an integer answer. The rest are float-in, float-out.
+
+```verum
+@abs(0 - 5)          // 5
+@min(3, 7)           // 3
+@max(3, 7)           // 7
+@clamp(9, 1, 5)      // 5
+@pow(2, 3)           // 8
+
+@sqrt(4.0)           // 2.0
+@floor(1.7)          // 1.0
+@ceil(1.2)           // 2.0
+@round(1.5)          // 2.0
+@sin(x) @cos(x) @tan(x) @log(x) @exp(x)
+```
+
+The polymorphic result type is what makes the common shape work — a
+dynamic-programming recurrence over `Int` stays `Int`:
+
+```verum
+dp[i][j] = @max(dp[i - 1][j], dp[i][j - 1]);
+```
+
+Each name's arity is fixed and checked: `@pow(2)` and `@clamp(9, 1)` are
+errors, not silently-defaulted calls.
+
 ## Type introspection
+
+:::caution Not yet callable
+
+Every name in this section is **reserved and refused**. The compiler
+recognises each one — they are in the grammar's own `meta_function_name`
+production — and has no lowering for any of them, because lowering needs
+the type checker's view of the argument threaded into code generation and
+that path does not exist yet.
+
+```verum
+@type_name(Int)
+// error<E0442>: `@type_name` is not implemented: the grammar's
+//               `meta_function_name` production lists it, but no lowering
+//               exists, so the call has no value to produce
+```
+
+The signatures below describe the intended behaviour and are the contract
+an implementation has to meet. Until then, a refusal naming the name is the
+honest answer — these used to evaluate to `nil` in silence.
+
+:::
 
 Compile-time type introspection lets macros inspect type structure.
 All these return compile-time values used inside `meta fn` bodies.
@@ -453,9 +559,9 @@ filesystem is touched.
 
 | Function                | Signature                                            | Description                       |
 |-------------------------|------------------------------------------------------|-----------------------------------|
-| `asset_exists(path)`    | `(Text) -> Bool`                                     | True if the file exists           |
-| `asset_list_dir(path)`  | `(Text) -> List<Text>`                               | List directory entries            |
-| `asset_metadata(path)`  | `(Text) -> (UInt, UInt, Bool, Bool, Bool)`           | size, mtime ns, is_dir/file/symlink |
+| `asset_exists(path)`    | `(Text) -> Bool`                                     | True if the file exists           | not yet callable |
+| `asset_list_dir(path)`  | `(Text) -> List<Text>`                               | List directory entries            | not yet callable |
+| `asset_metadata(path)`  | `(Text) -> (UInt, UInt, Bool, Bool, Bool)`           | size, mtime ns, is_dir/file/symlink | not yet callable |
 
 All four require `using [BuildAssets]` in a `meta fn`; the
 attribute forms (`@embed`, `@include_str`) inherit the same
@@ -567,40 +673,49 @@ meta fn derive_display<T>() -> TokenStream {
 
 ## Summary
 
-| Function            | Returns                  | Stage   |
-|---------------------|--------------------------|---------|
-| `@const(e)`         | value of `e`             | compile |
-| `@error(msg)`       | `!` (aborts)             | compile |
-| `@warning(msg)`     | `()`                     | compile |
-| `@stringify(t)`     | `Text`                   | compile |
-| `@concat(a, b, …)`  | literal                  | compile |
-| `@cfg(cond)`        | `Bool`                   | compile |
-| `@file()`           | `Text`                   | compile |
-| `@line()`           | `Int`                    | compile |
-| `@column()`         | `Int`                    | compile |
-| `@module()`         | `Text`                   | compile |
-| `@function()`       | `Text`                   | compile |
-| `@type_name<T>()`   | `Text`                   | compile |
-| `@type_of(e)`       | type                     | compile |
-| `@type_fields<T>()` | `List<FieldDescriptor>`  | compile |
-| `@fields_of<T>()`   | `List<Text>`             | compile |
-| `@variants_of<T>()` | `List<Text>`             | compile |
-| `@is_struct<T>()`   | `Bool`                   | compile |
-| `@is_enum<T>()`     | `Bool`                   | compile |
-| `@is_tuple<T>()`    | `Bool`                   | compile |
-| `@implements(T,P)`| `Bool`                   | compile |
-| `@field_access<T>(e, f)` | expression          | compile |
-| `@embed(path)`      | `Bytes`                  | compile (BuildAssets) |
-| `@embed_glob(pat)`  | `List<(Text, Bytes)>`    | compile (BuildAssets) |
-| `@codegen(p)` / `load_toml(p)` | `Map<Text, Any>` | compile (BuildAssets) |
-| `include_bytes(p)`  | `Bytes`                  | compile (BuildAssets, meta-fn form) |
-| `load_text(p)` / `include_str(p)` | `Text`     | compile (BuildAssets) |
-| `asset_exists(p)`   | `Bool`                   | compile (BuildAssets) |
-| `asset_list_dir(p)` | `List<Text>`             | compile (BuildAssets) |
-| `asset_metadata(p)` | `(UInt, UInt, Bool, Bool, Bool)` | compile (BuildAssets) |
-| `@version_stamp()`  | `(Text, Text, UInt)`     | compile (ProjectInfo) |
-| `@project_git_revision()` | `Text`             | compile (ProjectInfo) |
-| `@project_build_time_ms()` | `UInt`            | compile (ProjectInfo) |
+The **Status** column is the compiler's own answer, not a plan: a name
+marked *refused* is rejected at the call with a diagnostic naming it.
+
+| Function            | Returns                  | Stage   | Status |
+|---------------------|--------------------------|---------|--------|
+| `@const(e)`         | value of `e`             | compile | works |
+| `@error(msg)`       | `!` (aborts)             | compile | works |
+| `@warning(msg)`     | `()`                     | compile | works |
+| `@stringify(t)`     | `Text`                   | compile | works |
+| `@concat(a, b, …)`  | literal                  | compile | works |
+| `@cfg(cond)`        | `Bool`                   | compile | works |
+| `@file()`           | `Text`                   | compile | answers a module name |
+| `@line()`           | `Int`                    | compile | answers 0 |
+| `@column()`         | `Int`                    | compile | answers 0 |
+| `@module()`         | `Text`                   | compile | works |
+| `@function()`       | `Text`                   | compile | works |
+| `@abs(x)`           | `Int` or `Float`         | compile | works |
+| `@min(a, b)`        | `Int` or `Float`         | compile | works |
+| `@max(a, b)`        | `Int` or `Float`         | compile | works |
+| `@clamp(v, lo, hi)` | `Int` or `Float`         | compile | works |
+| `@pow(a, b)`        | `Int` or `Float`         | compile | works |
+| `@sqrt(x)` `@sin` `@cos` `@tan` `@log` `@exp` `@floor` `@ceil` `@round` | `Float` | compile | works |
+| `@type_name<T>()`   | `Text`                   | compile | refused |
+| `@type_of(e)`       | type                     | compile | refused |
+| `@type_fields<T>()` | `List<FieldDescriptor>`  | compile | refused |
+| `@fields_of<T>()`   | `List<Text>`             | compile | refused |
+| `@variants_of<T>()` | `List<Text>`             | compile | refused |
+| `@is_struct<T>()`   | `Bool`                   | compile | refused |
+| `@is_enum<T>()`     | `Bool`                   | compile | refused |
+| `@is_tuple<T>()`    | `Bool`                   | compile | refused |
+| `@implements(T,P)`| `Bool`                   | compile | refused |
+| `@field_access<T>(e, f)` | expression          | compile | refused |
+| `@embed(path)`      | `Bytes`                  | compile (BuildAssets) | not yet callable |
+| `@embed_glob(pat)`  | `List<(Text, Bytes)>`    | compile (BuildAssets) | not yet callable |
+| `@codegen(p)` / `load_toml(p)` | `Map<Text, Any>` | compile (BuildAssets) | not yet callable |
+| `include_bytes(p)`  | `Bytes`                  | compile (BuildAssets, meta-fn form) | not yet callable |
+| `load_text(p)` / `include_str(p)` | `Text`     | compile (BuildAssets) | not yet callable |
+| `asset_exists(p)`   | `Bool`                   | compile (BuildAssets) | not yet callable |
+| `asset_list_dir(p)` | `List<Text>`             | compile (BuildAssets) | not yet callable |
+| `asset_metadata(p)` | `(UInt, UInt, Bool, Bool, Bool)` | compile (BuildAssets) | not yet callable |
+| `@version_stamp()`  | `(Text, Text, UInt)`     | compile (ProjectInfo) | not yet callable |
+| `@project_git_revision()` | `Text`             | compile (ProjectInfo) | not yet callable |
+| `@project_build_time_ms()` | `UInt`            | compile (ProjectInfo) | not yet callable |
 
 ## See also
 
