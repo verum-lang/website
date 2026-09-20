@@ -304,6 +304,16 @@ dp[i][j] = @max(dp[i - 1][j], dp[i][j - 1]);
 Each name's arity is fixed and checked: `@pow(2)` and `@clamp(9, 1)` are
 errors, not silently-defaulted calls.
 
+A meta-function cannot be passed as a value — `integrate(@sin, a, b, n)`
+is refused. Wrap it in a lambda, which the diagnostic spells out for you:
+
+```verum
+integrate(|x| @sin(x), 0.0, 3.14159265, 100000)
+```
+
+The zero-argument names are the exception, because for them the bare form
+*is* the call: `@file` and `@file()` mean the same thing.
+
 ## Type introspection
 
 :::caution Not yet callable
