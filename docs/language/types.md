@@ -64,7 +64,22 @@ let p = Point { x: 1.0, y: 2.0 };
 let u = User   { id: my_id, email: em, age: 28 };
 ```
 
-Struct update:
+A literal must name **every** field the type declares:
+
+```verum
+let bad = Point { x: 1.0 };
+// error: Missing required field 'y' of type Float in record construction
+```
+
+That holds wherever the literal appears and however its head is spelled —
+`Point { … }`, `Self { … }` inside an `implement` block, a `let` with or
+without a type annotation, a function's return position. It held only
+*sometimes* until recently: an annotated binding and every `Self { … }`
+were accepted with fields missing, and the omitted slot then read back as
+a value of the wrong type — a field declared `Int` printing `0.0`.
+
+Struct update fills the rest from a base, and is the one form that may
+name a subset:
 
 ```verum
 let p2 = Point { x: 3.0, ..p };    // same y as p
