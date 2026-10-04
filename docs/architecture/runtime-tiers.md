@@ -11,8 +11,8 @@ often conflated; this page keeps them separate.
 
 | Axis                   | What it selects                                     | Where it lives                          |
 |------------------------|------------------------------------------------------|-----------------------------------------|
-| **Execution mode**     | interpreted VBC vs ahead-of-time-compiled native     | `--aot` flag, `[build].tier` in manifest |
-| **CBGR safety tier**   | how much runtime memory-safety checking is emitted  | `MemoryContext.cbgr_tier` in θ+          |
+| **Execution mode**     | interpreted VBC vs ahead-of-time-compiled native     | `--interp` / `--aot`, `[codegen].tier` |
+| **CBGR safety tier**   | how much runtime memory-safety checking is emitted  | Reference syntax and compiler analysis          |
 | **Runtime profile**    | which subset of the runtime your target can support | `@cfg(runtime = "...")` at build time    |
 
 The remainder of the page treats each axis in turn and then
@@ -20,39 +20,34 @@ describes how they combine.
 
 ## Axis 1 — Execution mode
 
-Two execution modes are supported. A single program can compile to
-either; the choice is per-build, not per-function.
+Verum offers VBC interpretation and ahead-of-time native compilation.
+`verum check` checks source without executing it; it is not a third
+execution tier.
 
-| Mode             | What it is                                        | Used for                                                 |
-|------------------|---------------------------------------------------|----------------------------------------------------------|
-| `Interpreter`    | Direct VBC interpretation                          | `verum run`, REPL, Playbook, tests, `meta fn` evaluation |
-| `Aot`            | Ahead-of-time compilation via LLVM                 | `verum build`, production binaries                       |
-| `Check`          | Type-check only, no code emission. NOT a member of the `Tier` enum — `verum_cli::tier::Tier` has exactly two variants, `Interpret` and `Aot`; `check` is a command and a `[codegen].tier` value that `verum run` explicitly refuses. | `verum check`, editor diagnostics |
+| Mode | Command | Result |
+|---|---|---|
+| Interpreter | `verum run --interp app.vr` | Compile to VBC and execute it in the interpreter. |
+| AOT | `verum run --aot app.vr` | Compile a native executable through LLVM and run it. |
+| Check only | `verum check app.vr` | Report source diagnostics without running the program. |
 
-`verum run` is interpreter-first by default — measured: on a fresh
-project with no `[codegen]` section it prints `Interpreting …` and
-finishes in 0.37s, emitting no native binary. Startup is instant and
-every VBC opcode is available (including cubical, HoTT and autodiff).
+For project execution, an explicit CLI mode takes precedence over
+`[codegen].tier`; the legacy profile tier is a fallback. The default
+`[codegen].tier` is `"interpret"`. Use explicit flags when comparing
+backends rather than relying on a profile name to select one.
 
-The flags are `--interp`, `--aot` and `--tier <name>`, mutually
-exclusive in the clap definition. In the manifest the key is
-`[codegen].tier` (`"interpret"`, `"aot"`, `"check"`), with the older
-`[profile.dev].tier` / `[profile.release].tier` still honoured as a
-fallback — dev defaults to the interpreter, release to AOT.
+**Known limitation, measured 2026-10-04:** interpreter and native
+behaviour are not fully interchangeable. Generic callable chains,
+imported type information, panic handling, and owned-resource cleanup
+still have failing cases. A successful interpreter run does not validate
+the native program. Pending compiler changes are not a released parity
+guarantee.
 
 ### Interpreter — VBC
 
-The VBC interpreter (`verum_vbc::interpreter`) is where most
-development happens — you get instant startup, full diagnostics, and
-no LLVM dependency.
-
-- **Compile time**: seconds (only to VBC).
-- **Execution**: ~5–20× slower than native.
-- **CBGR**: every check runs (~100 ns/deref); tier optimisation is
-  intentionally disabled in the interpreter — safety first.
-- **Features**: every VBC opcode, including cubical + HoTT + autodiff.
-- **Use when**: iterating, testing, running `meta fn`, the REPL, the
-  Playbook TUI.
+The VBC interpreter executes bytecode without an LLVM compilation step.
+It is useful for interactive development, the REPL, and source-level
+checks. Startup and execution cost depend on the program and the amount
+of standard-library code it loads.
 
 The interpreter declares its trust assumption at construction.  A
 **lenient** load is for bytecode that just came out of the compiler
@@ -90,10 +85,10 @@ Surfaces currently covered by the native layer:
 | Text factories    | `Text.new`, `Text.with_capacity`, `Text.from_str`,  …  |
 | Process           | `Process.spawn`, `Command.*`                           |
 
-The native layer is observable only as a performance and
-correctness optimisation — every call returns the value that
-the bytecode body would have returned, on every observable
-boundary.
+These intercepts are intended to implement the same API contracts as
+the bytecode bodies. An interpreter result can nevertheless exercise a
+different implementation from native code; validate both when the
+distinction matters.
 
 :::note Interpreter fallback set
 
@@ -109,32 +104,24 @@ families that require native toolchains:
 - **ML `vmap` / `pmap`** — vectorised/parallel-mapped kernel JITs.
   Use AOT with the tensor-op compilation path.
 
-Everything else — async/await, channels, contexts, refinement
-checks, CBGR — runs identically in both tiers.
+Other features also require backend-specific validation. In particular,
+see the current [async evaluation contract](/docs/language/async-concurrency#async-functions).
 
 :::
 
 ### AOT — LLVM
 
-Ahead-of-time compilation through LLVM — the default for
-`verum build --release` and `verum run --aot`.
+The native path lowers VBC through LLVM and links an executable.
+Use it to assess native deployment, code generation, and resource
+behaviour. LLVM optimisation, target support, and link configuration
+are described in [codegen](/docs/architecture/codegen).
 
-- **Compile time**: seconds per function, dominated by LLVM.
-- **Execution**: the bar is 1× of equivalent C — parity is the
-  floor Verum designs for, and whole-program optimization (fusion,
-  devirtualization, CBGR check elimination) hunts for more.
-- **CBGR**: tier-aware. `&T` references emit a CBGR check
-  (re-measured 1.2–1.7 ns on the `production_targets` bench against a
-  ≤ 15 ns design target); `&checked T` and `&unsafe T` compile to
-  direct loads (0 ns). Escape analysis elides 50–90 % of remaining
-  Tier 0 checks.
-- **Features**: full LLVM optimisation stack, LTO, PGO, cross-target
-  support through MLIR-aware target triples.
-- **Use when**: shipping production binaries.
-- **Stability**: 96–100 % build success rate (fixed in v0.1.0).
-  Stdlib functions with name-arity collisions receive `optnone` +
-  `noinline` attributes and trivial return stubs to prevent LLVM
-  pass crashes on null Type references.
+**Known limitation, measured 2026-10-04:** some CLI builds fall back to
+the interpreter after a single-file AOT compilation failure, including
+when native execution was requested explicitly. For native acceptance,
+confirm that compilation succeeded and that a fresh executable ran;
+exit status alone is insufficient on those builds. A diagnostic saying
+“Falling back to interpreter” means the native path was not validated.
 
 ## Dual-path compilation (CPU vs GPU)
 
@@ -156,126 +143,59 @@ flowchart TD
 See **[codegen](/docs/architecture/codegen)** for the MLIR dialect
 stack and per-target tile sizes.
 
-## Why only two production execution modes
+## Why two execution modes
 
-The two **production** execution modes are Interpreter (Tier 0)
-and AOT (Tier 1).  An MLIR-backed JIT exists internally as the
-**experimental `CompilationMode::MlirJit` mode** (see
-`pipeline::CompilationMode` + `pipeline/mlir.rs::JitEngine`); its
-intended use is hot-reload and incremental-rebuild during
-interactive development, not as a third production tier.
+Interpretation provides a development path without native compilation;
+AOT produces an executable for the target platform. These are the
+supported CLI execution choices. Their availability does not imply
+that every language feature has identical backend coverage.
 
-The design rationale for keeping JIT off the production tier list:
-
-- The interpreter already starts in milliseconds and handles the
-  entire VBC opcode surface (including cubical, HoTT, and autodiff
-  ops a JIT would have to recompile on every type-checker edit).
-  The interpreter's "start-up latency" is measured in milliseconds,
-  not seconds; there is no warm-up to avoid.
-- The AOT path produces native code that matches or beats any
-  JIT's peak performance, once warmed up. A JIT's usual advantage
-  — "no ahead-of-time compile step" — doesn't exist because the
-  interpreter fills that role.
-- A third production tier would double the combinatorial surface
-  of the backend (interpreter × JIT × AOT, each with its own
-  CBGR-tier lowerings) while targeting a use case that neither
-  of the existing two already covers.
-
-The retained JIT infrastructure under `crates/verum_codegen/src/
-mlir/jit/` (engine, hot-reload, incremental, REPL, symbol
-resolver) is reachable only by selecting the experimental
-`MlirJit` compilation mode explicitly. The canonical
-`verum run` / `verum build` flows route through Interpreter /
-AOT respectively; the REPL, the Playbook, and the incremental
-compilation cache all run on the same interpreter that handles
-`verum run`, not on the JIT.
+An experimental MLIR JIT is retained for internal development. It is
+not a third `--tier` choice. See [codegen](/docs/architecture/codegen)
+for the compiler paths and target backends.
 
 ## Axis 2 — CBGR safety tiers
 
-Independent of execution mode, every managed reference carries a
-compile-time **safety tier** that determines what runtime checking
-the compiler emits for it. The tier is a per-reference decision
-made by CBGR analysis, not a global setting.
+Reference safety is independent of interpreter versus native execution.
+The compiler's `ReferenceTier` and `CbgrTier` use three variants:
 
-:::caution Two enums, and this table is the other one
-`core/runtime/env.vr` does define `ExecutionTier` with these four
-variants — but it is chosen **once per build**, not per reference:
-`grep -n 'fn detect_cbgr_tier' core/runtime/mod.vr` finds the one place
-it is decided, and that function picks among them with
-`@cfg(debug_assertions)`, `@cfg(runtime = "embedded")` and
-`@cfg(feature = "cbgr_gen")`. It is a global switch.
+| Reference | Compiler tier | Safety obligation |
+|---|---|---|
+| `&T`, `&mut T` | Tier 0 | Runtime CBGR validation where static analysis cannot eliminate it. |
+| `&checked T`, `&checked mut T` | Tier 1 | Compiler-proven lifetime and access validity. |
+| `&unsafe T`, `&unsafe mut T` | Tier 2 | The programmer supplies the safety argument. |
 
-The per-reference decision this page describes is a **different enum
-with three variants** — `CbgrTier` / `ReferenceTier` in
-`crates/verum_cbgr/src/tier_types.rs`: `Tier0` (runtime-checked,
-**1.2–1.7 ns measured**, against a ≤ 15 ns design target), `Tier1`
-(compiler-proven, 0 ns), `Tier2` (manual proof, 0 ns).
-That is the one escape analysis produces, the one CLAUDE.md documents,
-and the one the `&T` / `&checked T` / `&unsafe T` syntax selects.
+An execution tier named “Tier 1” therefore means native compilation,
+while a reference tier named “Tier 1” means a compiler-proven reference.
+Selecting AOT does not turn all references into checked references.
 
-Nothing in `crates/` ever names `Tier2_Gen` or `Tier3_Unchecked`, so
-the stdlib's third and fourth variants are not outcomes the compiler's
-analysis can reach — re-measured 2026-09-10:
-
-```
-grep -rl Tier2_Gen crates/ --include='*.rs' | wc -l        # 0
-grep -rl Tier3_Unchecked crates/ --include='*.rs' | wc -l  # 0
-```
- And the overheads disagree: `ExecutionTier`'s own
-`overhead_ns` answers 15/8/3/0, while the compiler's model and the
-measurement below put Tier1 at 0 ns / 1.2–1.7 ns.
-
-A third, unrelated `ExecutionTier` lives in `verum_compiler` for the
-interpreter/AOT split — the collision the paragraph after this table
-warns about is a real one, between three enums rather than two.
-:::
-
-Four tiers are defined in `core/runtime/env.vr` as the enum
-`ExecutionTier`:
-
-| Variant           | Overhead per deref              | What's checked                             | How it's reached                               |
-|-------------------|---------------------------------|--------------------------------------------|------------------------------------------------|
-| `Tier0_Full`      | ≤ 15 ns target (re-measured 1.2–1.7 ns on `production_targets`) | generation + epoch + bounds | default for `&T` when analysis is uncertain    |
-| `Tier1_Epoch`     | 1.2–1.7 ns                        | generation + epoch                         | analysis proves bounds safe                    |
-| `Tier2_Gen`       | < Tier1_Epoch (design target)    | generation only                            | analysis proves bounds + epoch safe            |
-| `Tier3_Unchecked` | 0 ns                            | nothing — caller asserts safety            | explicit `&unsafe T` or proven `&checked T`    |
-
-These are **not** the interpreter/AOT tiers; they are orthogonal.
-A reference compiled at `Tier1_Epoch` pays its per-deref cost
-whether it is interpreted or AOT-compiled. The `Tier1_Epoch`
-measurement above comes directly from
-`benches/production_targets.rs` (gen + epoch check fused into the
-same cacheline as the pointer itself).
+The standard library also has a build-wide policy enum in
+`core/runtime/env.vr`, exposed through `MemoryContext.cbgr_tier`. Its
+four names (`Tier0_Full`, `Tier1_Epoch`, `Tier2_Gen`, and
+`Tier3_Unchecked`) belong to that runtime structure. They are not the
+compiler's per-reference choices and should not be used to interpret
+`&checked T` or `&unsafe T`.
 
 ### Tier selection in the compiler
 
-The 11-analysis CBGR suite (`escape`, `nll`, `polonius`,
-`points_to`, `dominance`, `type`, `concurrency`, `lifetime`,
-`ownership`, `tier`, `array`) tries to prove the strongest tier
-possible for each reference. The default is `Tier0_Full`. Three
-tier-raising events:
+CBGR analysis considers escape, lifetime, aliasing, and control-flow
+facts. A managed reference can be promoted when those facts prove its
+uses safe. Inconclusive analysis keeps runtime checking.
 
-1. **Escape analysis succeeds** — the reference doesn't outlive
-   its source; bounds are statically known. Tier lifted to
-   `Tier1_Epoch` or `Tier2_Gen`.
-2. **`&checked T` annotation** — the programmer asserts the
-   reference is compiler-proven safe. The compiler verifies the
-   assertion; if verification passes, tier becomes `Tier3_Unchecked`.
-3. **`&unsafe T` annotation** — caller accepts responsibility.
-   Tier is `Tier3_Unchecked` with no verification.
-
-Tier selection happens once, at compile time; the runtime never
-changes tiers.
+`&checked T` expresses a proof requirement; `&unsafe T` transfers the
+obligation to the programmer. Neither annotation is an ownership or
+resource-cleanup guarantee. See [references](/docs/language/references)
+for the syntax and the current lifetime limitations.
 
 ## Axis 3 — Runtime profiles
 
 The third axis names **which subset of the runtime** a piece of code
-belongs to. `core/runtime/mod.vr` carries 16 `@cfg(runtime = "…")`
-attributes and `core/` uses six values in total.
+is intended to use. The standard library marks these groups with
+`@cfg(runtime = "…")` attributes.
 
-:::caution What is implemented, and what is not
+:::caution Runtime profile selection
 
-The attributes are written and the stdlib is organised by them. **There
+**Known limitation, measured 2026-09-10:** the attributes are written and the stdlib is organised by them. **There
 is no way to select a profile yet.** Verified: `@cfg(runtime = "X")` is
 not a known cfg key — `TargetConfig::matches` handles `target_os`,
 `target_arch`, `target_family`, `target_pointer_width`, `target_endian`,
@@ -327,122 +247,92 @@ The runtime uses a work-stealing executor:
 - **IO reactor**: one thread driving `io_uring` (Linux) / `kqueue`
   (macOS/BSD) / `IOCP` (Windows).
 
-Task context (`ExecutionEnv`, including the capability-context stack)
-is saved and restored at each `.await`. Context stacks are cloned on
-`spawn` so child tasks inherit the parent's capabilities.
+The task runtime carries execution context across task boundaries.
+Keep this distinct from direct `async fn` evaluation: an eager call does
+not become a suspendable task just because it appears next to `.await`.
+See [async and concurrency](/docs/language/async-concurrency).
 
 ## Memory: unified CBGR arena
 
-Both tiers share the same CBGR-managed heap (the mimalloc-inspired
-allocator documented in **[memory
-model](/docs/language/memory-model#allocation-internals)**). A value
-allocated in the interpreter can be passed into AOT code and back
-without copying — the CBGR header makes validity checks consistent
-across tiers.
+The memory-management model uses CBGR metadata to track allocations
+and reference validity. Sharing that model does not make arbitrary
+interpreter and native values ABI-compatible. Use the declared embedding
+or FFI boundary when crossing runtimes. See [allocation
+internals](/docs/language/memory-model#allocation-internals).
 
 ## Selecting the execution mode
 
 ### Per-invocation
 
 ```bash
-verum run          # Interpreter (default)
-verum run --aot    # AOT via LLVM
-verum build        # AOT, debug profile
-verum build --release   # AOT, release profile
+verum run --interp app.vr
+verum run --aot app.vr
+verum run --tier interpret app.vr
+verum run --tier aot app.vr
+verum check app.vr
+verum build --release             # build the current project
 ```
+
+`--interp`, `--aot`, and `--tier` are alternative selectors. Accepted
+`--tier` names are `interpret` (also `interpreter`) and `aot`.
+`--tier check` is rejected: use the `check` command.
 
 ### Per-project (`verum.toml`)
 
 ```toml
-[build]
-tier = "aot"                     # interpret | aot | check
+[codegen]
+tier = "aot"                     # interpret | aot for verum run
 ```
 
-Or override per profile:
+An explicit CLI selector overrides this value. The older
+`[profile.dev].tier` and `[profile.release].tier` settings remain a
+fallback; a configured `[codegen].tier` takes precedence over them.
+`[build].tier` is not the execution-mode setting.
 
-```toml
-[profile.release]
-tier = "aot"
-
-[profile.dev]
-tier = "interpret"
-```
-
-The CLI flag `--tier interpret|aot|check` overrides both.
+Although the configuration model also recognises `"check"`,
+`verum run` refuses `[codegen].tier = "check"` because it cannot execute
+a check-only build.
 
 ## Cost of a CBGR check, by execution mode
 
-The CBGR figures in the table above are AOT costs. The
-interpreter pays more because instruction dispatch dominates:
+A reference check, bytecode dispatch, and the work performed by the
+program are different costs. Measure the whole workload in the selected
+backend before deciding whether reference-check elimination matters.
 
 ### Interpreter
 
-```
-deref(&T) = 1 load (pointer) + 1 load (header) + 1 compare + 1 branch
-          ≈ 90–120 ns   (tree-walker overhead dominates)
-```
-
-- Full check on every deref regardless of the reference's static tier.
-- No elision — safety over speed.
-- Fine for REPL / tests / short scripts.
+The interpreter performs instruction dispatch and runtime bookkeeping.
+A native microbenchmark of the CBGR fast path does not predict the cost
+of an interpreted field access or method call.
 
 ### AOT
 
-**Tier-aware lowering**. Each VBC reference opcode maps to a distinct
-code sequence per CBGR safety tier:
-
-- `Ref` / `RefMut` (`Tier0_Full`) → full CBGR validation (≤ 15 ns
-  design target; 1.2–1.7 ns (re-measured 2026-09-05) for the gen + epoch fast path).
-- `RefChecked` (`Tier3_Unchecked` after verification) → direct
-  `llvm.load`, 0 ns.
-- `RefUnsafe` (`Tier3_Unchecked`) → direct `llvm.load`, 0 ns.
-- `Tier1_Epoch` / `Tier2_Gen` sit in between with reduced checks.
-
-The hot path for a surviving Tier 0 check compiles to:
-
-```
-mov  rax, [rdi]                ; load pointer
-mov  ecx, [rax - 16]           ; load header.generation
-cmp  ecx, [rdi + 8]            ; compare reference.generation
-jne  .use_after_free
-```
-
-Typical check-elision rate: 60–80 % at `--profile debug`,
-90–98 % at `--profile release` with LTO (whole-program escape
-analysis + refinement-informed bounds elimination).
+Tier-aware lowering can omit runtime validation for proven references.
+Surviving managed-reference checks still perform validation. The amount
+of eliminated work depends on what analysis proves for that program;
+it is not a fixed percentage selected by the debug or release profile.
 
 ### Cross-tier transitions
 
-Calls between tiers go through a standard ABI — VBC-compatible layout
-with CBGR headers. Crossing from interpreter to AOT adds no overhead
-beyond a normal C call. Values flowing *from* AOT *into* the
-interpreter have their references downgraded to Tier 0 (the
-interpreter always validates), so the recipient pays the ~100 ns
-check. This is invisible unless you're profiling the interpreter.
+Embedding APIs may cross an interpreter/native boundary. Their calling
+conventions, value layouts, and reference lifetime rules must agree;
+do not infer a zero-cost transition from the fact that both backends
+consume VBC.
 
 ## Memory costs across tiers
 
-Allocation is shared across both tiers. What changes is how many
-safety checks run versus are proven away at compile time.
-
-| Tier           | Alloc fast path | CBGR deref | Cross-thread free | Notes |
-|----------------|-----------------|-----------|-------------------|-------|
-| T0 Interpreter | ~80 ns  | ~100 ns (always) | ~70 ns | every check runs; VBC bookkeeping |
-| T1 AOT (debug) | ~20 ns  | ~1 ns (surviving checks)  | ~55 ns | 60–80 % of Tier 0 checks elided |
-| T1 AOT (release + LTO) | < 20 ns | < 5 ns (or 0 for `&checked`) | ~50 ns | 90–98 % of Tier 0 checks elided |
-| GPU path       | device allocator | N/A | N/A | kernel scratchpad only |
-
-Allocator scalability is tier-independent: thread-local heaps stay
-contention-free up to roughly 32 threads; beyond that, abandoned-
-segment reclamation starts to dominate and cross-thread free latency
-rises.
+Both backends use Verum's memory-management model, but lowering and
+runtime representation affect allocation and access costs. Benchmark
+the target platform and workload instead of treating one allocation or
+dereference timing as a language guarantee.
 
 ### Shared vs per-tier state
 
-Each tier maintains its own code cache and specialisation state. Both
-share **one** allocator, **one** CBGR epoch manager, and **one** task
-scheduler. That is what makes cross-tier calls free — no trampolines,
-no marshalling, just a normal call through a VBC descriptor.
+Code caches and specialisation state depend on the execution backend.
+The chosen API determines which runtime resources are shared. See
+[execution environment](/docs/architecture/execution-environment) for
+the runtime structures and [memory model](/docs/language/memory-model)
+for ownership and allocation.
 
 ## See also
 

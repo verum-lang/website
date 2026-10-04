@@ -5,8 +5,19 @@ title: References
 
 # References
 
-Verum has three reference tiers plus raw pointers. This page gives the
-precise semantics and usage patterns for each.
+Verum has three reference tiers plus raw pointers. Reference syntax
+selects a safety obligation; it does not select the execution backend
+or transfer ownership of the referenced value.
+
+| Form | Who establishes validity? |
+|---|---|
+| `&T` / `&mut T` | Managed references use runtime CBGR validation where needed. |
+| `&checked T` / `&checked mut T` | The compiler must establish the required proof. |
+| `&unsafe T` / `&unsafe mut T` | The programmer is responsible for validity. |
+
+These are independent of the interpreter/native [execution modes](/docs/architecture/runtime-tiers).
+The layouts below describe the CBGR runtime structures, not a stable
+foreign-function ABI for every lowered reference.
 
 ## Tier 0 — `&T` (managed)
 
@@ -30,9 +41,9 @@ fn first<T>(xs: &List<T>) -> &T { &xs[0] }
 ```
 
 **When the compiler can prove the reference cannot dangle**, escape
-analysis rewrites the function signature from `&T` to `&checked T`
-automatically — the CBGR check disappears entirely. This is a
-compile-time decision; no runtime logic changes.
+analysis can select the checked tier for its uses and eliminate runtime
+validation. Promotion is a compile-time decision based on the actual
+reference flow; a short example alone is not proof of promotion.
 
 ## Tier 1 — `&checked T` (zero-cost)
 
@@ -45,18 +56,11 @@ fn tight_loop(data: &checked List<Int>) -> Int {
 }
 ```
 
-You ask for `&checked T` when you want a guarantee from the compiler
-that the CBGR check is eliminable. If the compiler cannot prove it,
-the function is rejected — that's the claim, and this page's
-transcript for it has been removed rather than corrected. Every
-`error[V####]: ... --> file:line:col` transcript checked elsewhere on
-this site today turned out to be fabricated in shape (real
-`verum verify` output is a per-function report with a raw
-counter-example, not a source-anchored diagnostic — see
-[tooling → LSP](/docs/tooling/lsp#diagnostics) for a captured
-example), and this specific one was not independently reproduced
-before that pattern was found, so it's been pulled rather than left
-looking more authoritative than it is.
+`&checked T` expresses a requirement for a compiler-proven reference.
+It is useful at boundaries where the lifetime and aliasing facts are
+available to analysis. It is not a cast that makes arbitrary memory
+safe, and it does not remove the caller's obligations when the pointer
+originated in unsafe code.
 
 `&checked T` is typically used:
 - on hot paths where even the 1.2–1.7 ns per deref compounds into
@@ -99,7 +103,8 @@ implement Counter {
 ```
 
 All three are methods, called the same way — `c.read_fast()`. The tier
-changes what the runtime has to verify, never how the method is reached.
+changes the reference-safety obligation. Method lookup still uses the
+receiver's declared type.
 An owning receiver (`%self`) and a by-value receiver (`self`) are methods
 too; only a function with no receiver at all is an associated function,
 called as `Counter.new()`.
@@ -115,43 +120,81 @@ called as `Counter.new()`.
 
 ## Reaching through a wrapper — `Deref`
 
-A type that implements `Deref` is transparent to the three receiver-shaped
-accesses: **field access**, **indexing**, and **method calls**. All three
-walk the chain, so a guard or a wrapper does not have to be unwrapped by
-hand.
+`Deref` associates a wrapper with a `Target` and provides a reference to
+that target. Field access, indexing, and method lookup can follow this
+relationship. The explicit spelling `(*wrapper).method()` makes the
+intermediate dereference visible in source.
 
 ```verum
+mount core.base.protocols.{Deref};
+
+type Item is { answer: Int };
 type Boxy<T> is { inner: T };
 
 implement<T> Deref for Boxy<T> {
     type Target = T;
     fn deref(&self) -> &T { &self.inner }
 }
-
-let b: Boxy<List<Int>> = Boxy { inner: [10, 20, 30] };
 ```
 
-| expression | |
-|---|---|
-| `b[1]` | 20 — indexing through `Deref` |
-| `b.len()` | 3    — method call through Deref |
+In this declaration, `Boxy<Item>` has `Target = Item`. It does not become
+`Item`: the wrapper retains its own type and any methods declared on
+it. Receiver-owned methods take precedence over looking through a
+`Deref` chain. A mutable operation also needs the appropriate mutable
+reference and `DerefMut` contract; `Deref` alone does not grant mutation.
 
+`Heap<T>` and `Shared<T>` declare this relationship in the standard
+library. A lock guard can also expose its protected value through
+`Deref`, but dereference behaviour and lock release are separate issues.
 
-The canonical case is a lock guard: `MutexGuard<List<T>>` derefs to
-`List<T>`, so `guard[i]`, `guard.len()` and `guard.field` all read the
-protected value rather than the guard.
+**Known limitation, measured 2026-10-04:** qualified wrapper receivers,
+chained method results, and nested fields through `Deref` still have
+compiler gaps in some builds. In particular, a direct access working
+in the interpreter does not prove that an imported generic chain
+preserves its type through native compilation. Corrections under
+validation are not a blanket compatibility guarantee.
 
-Two properties are worth relying on:
+## Qualified type identity
 
-* **A direct match wins.** The chain is walked only when the receiver
-  itself does not answer, so a wrapper that defines its own `len()` keeps
-  it.
-* **The coercion is explicit in the compiled program.** The type checker
-  records how many steps it took and the AST carries that many `deref()`
-  calls, so the value you get is the target's — every tier agrees on it.
+A qualified name identifies the declaring module as well as the type.
+Mounting the type introduces a local spelling for that identity:
 
-`Heap<T>` and `Shared<T>` are peeled by the runtime itself rather than
-through a protocol call; the behaviour you observe is the same.
+```verum
+mount core.base.memory.{Shared};
+mount core.sync.atomic.{AtomicBool};
+
+type StopFlag is Shared<core.sync.atomic.AtomicBool>;
+```
+
+Here `Shared<AtomicBool>` refers to the same type argument as the
+qualified spelling, because the explicit mount resolves `AtomicBool`
+to that declaration. `Shared<Int>` is a different instantiation.
+Two unrelated modules declaring a type with the same short name do
+not make those types interchangeable.
+
+The same identity rule applies inside references and nested generic
+arguments. Use explicit mounts or qualified names at module boundaries
+to make the intended declaration clear; qualification does not perform
+a conversion. See [modules](/docs/language/modules).
+
+**Known limitation, measured 2026-10-04:** imported signatures and
+source-qualified reference parameters still have incomplete type
+identity propagation in some compiler paths. Do not shorten a type name
+to make an unrelated type acceptable, or treat a field-guess diagnostic
+as evidence that the compiler selected the right record layout.
+
+## Resource lifetime
+
+A reference borrows access to a value; the resource owner decides how
+that value is destroyed. Passing `&T`, dereferencing a wrapper, or
+casting an address does not establish a new owner. Reference validity
+checks therefore cannot replace correct `Drop` behaviour.
+
+**Known limitation, measured 2026-10-04:** general native owned-object
+destruction and lock-guard release are incomplete. Borrowed access can
+work while the owner's cleanup is still incorrect. Validate resource
+lifetime in the native backend before relying on scope exit to release
+locks or other exclusive resources.
 
 ## Mutable references
 
@@ -193,11 +236,11 @@ type Cache is {
 };
 ```
 
-The lifetime-parameterised spelling `type Cache<'a> is { hot: &'a Map<Key, Value> }`
-parses, but the `'a` is discarded — it records an intention the
-compiler does not check. Reach for `Shared<T>` when a record must
-outlive the scope that built it; it is cheap, and its safety is
-enforced rather than annotated.
+Use an owning type such as `Shared<T>` when the record needs to keep a
+value alive beyond the scope that created it. A borrowed reference, even
+with an explicit lifetime parameter, does not transfer ownership or
+extend the referent's lifetime. The resource-cleanup limitation above
+still applies to native execution.
 
 ## Taking addresses
 
@@ -221,9 +264,9 @@ if the analysis succeeds.
 | `*volatile T` |  |
 | `*volatile mut T` |  |
 
-Raw pointers are produced via `ptr.addr_of!`, `ptr.addr_of_mut!`, or
-FFI boundary casts. They do not carry lifetime; dereferencing them is
-`unsafe`.
+Raw pointers can cross FFI boundaries and be formed by explicit pointer
+casts. They do not carry a managed lifetime; dereferencing them is
+`unsafe`. A cast does not keep the source allocation alive.
 
 Use raw pointers for:
 - FFI with C APIs that take `void*` / `T*`;
@@ -285,8 +328,10 @@ survives all the way from the compiler to the executor:
 | `RefUnsafe` | 0x76 | 2 | 0 ns — unsafe, user-attested |
 | `DropRef` | 0x77 | — | drop a reference (bookkeeping) |
 
-In the interpreter, all derefs perform the full check (safety first).
-In AOT, Tier 1 and Tier 2 emit direct loads. See
+The backend must preserve the tier and the address of the referenced
+value when lowering these instructions. A reference to a field must
+still address that field when passed to another function; its contents
+are not a substitute for its address. See
 **[CBGR internals → VBC tier opcodes](/docs/architecture/cbgr-internals#vbc-tier-opcodes)**.
 
 ## Escape-analysis promotion model
