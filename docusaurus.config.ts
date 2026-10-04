@@ -9,7 +9,7 @@ const ghPagesBaseUrl = process.env.GH_PAGES_BASE_URL || '/';
 
 const config: Config = {
   title: 'Verum',
-  tagline: 'A complete systems language — proof-grade when you need it',
+  tagline: 'A platform for verifiable systems',
   favicon: 'img/favicon.png',
   url: ghPagesUrl,
   baseUrl: ghPagesBaseUrl,
@@ -114,7 +114,7 @@ const config: Config = {
   themeConfig: {
     metadata: [
       {name: 'keywords', content: 'verum, programming language, refinement types, dependent types, SMT verification, CBGR, systems programming'},
-      {name: 'description', content: 'Verum is a verifiable systems language with refinement types, dependent types, SMT-backed proofs, and a three-tier memory safety model.'},
+      {name: 'description', content: 'Verum connects a systems language, bytecode and native execution, a standard library, and integrated verification. Explore the language and its current implementation.'},
     ],
     image: 'img/social-card.png',
     colorMode: {
