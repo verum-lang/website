@@ -20,73 +20,36 @@ Each `core.collections.*` module carries an explicit conformance status
 so you know what you can rely on today versus what is still in flight.
 The status is the truth-table over the module's API surface as exercised
 by `core-tests/collections/<module>/` under both `verum test --interp`
-(Tier 0 VBC interpreter) and `verum test --aot` (Tier 2 LLVM AOT).
+(Tier 0 VBC interpreter) and `verum test --aot` (Tier 1 LLVM AOT).
 
-:::note What the rows below are, and are not
+:::note Backend coverage
 
-Each row's **status** is checked against the conformance inventory in
-the repository — that is the part a gate keeps honest. The prose beside
-it is a description of the module, not a measurement, and parts of it
-were written during a 2026-05/06 conformance campaign.
+The module statuses record conformance coverage, not a guarantee that
+all collection operations agree between the interpreter and native
+execution. Historical per-module notes below have not all been
+re-measured; use dated API-specific results when choosing a backend.
 
-Suite sizes and pass rates are deliberately absent rather than
-refreshed: a figure carried forward past the suite it was taken on
-reads as current and is not.
-
-- **Tier-0 interpreter.** This bullet used to read "green across all 20
-  submodules", which the preamble above disclaims and a reader still
-  takes as a fact. Counted 2026-09-12 against the conformance
-  inventory — the part a gate keeps honest — the twenty rows carry
-  one `complete`, eleven `partial`, five `regression-only` and three
-  `unverified`. "Green" was never true of all twenty, and three of them
-  have no asserted status at all. What is true: the
-  earlier `regression-only` gates (CSPRNG-keyed construction for
-  `bloom` / `count_min` / `hyperloglog`, the cross-module name table,
-  the BTreeMap record-storage corruption) are **resolved** on the
-  interpreter path.
-- **Tier-1 AOT — partial.** Fully green: `alias_sampler`,
-  `hyperloglog`, `consistent_hash`, `count_min`. The large *mutable*
-  collections (`deque`, `heap`, `lru`, `map`, `btree`,
-  `adjacency_list`) still fail under `--aot`: their compiled stdlib
-  mutation bodies (`push` / `insert` / `grow` → `realloc` of a `self`
-  pointer field) **null-deref at Tier-1**. This is a cross-tier codegen
-  defect, *not* an interpreter or API problem — the same sources pass
-  on Tier-0.
-
-**Two fundamental AOT fixes** (branch `collections-aot-fixes`):
-
-1. `Text.from_utf8_unchecked` / `Text.from_utf8_lossy` were empty VBC
-   stubs intercepted by name on the interpreter but **not** at LLVM
-   lowering, so every AOT caller of `Text.from(text)` trapped
-   (`brk #1`). The LLVM intercept now routes the byte slice through the
-   canonical `verum_text_alloc`. This unblocked AOT construction of
-   every error / value type carrying a `Text` payload —
-   `count_min` AOT 2→6, `consistent_hash` 19→23, `bloom` 11→12.
-2. `List.with_capacity(n)` now **honours its argument** as a capacity
-   guarantee in both tiers (it previously dropped the hint, so
-   `capacity()` reported the runtime default). The interpreter already
-   honoured the hint; AOT gained a capacity-aware `NewList` lowering.
-
-The `with_capacity` fix correctly surfaced a pre-existing
-`resize_buffer` realloc-`self.ptr` SIGABRT on the List
-`reserve` / `shrink_to` / `shrink_to_fit` path (previously masked
-because `with_capacity` never reserved); those four tests are `@ignore`'d
-together pending the realloc fix.
+**Known limitation, measured 2026-10-04:** native `List<Byte>` allocation
+can return an invalid handle on the shrink-and-regrow path. Do not rely
+on native byte-list resizing in production until that path is verified.
+Empty and nonempty `List<Byte>` and `List<Int>` shrink, push, reserve and
+value-preservation checks pass under the interpreter. These results
+cover those operations, not every `List` method or another collection.
 
 :::
 
 | Status | Meaning |
 |---|---|
-| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. A **stable** module graduates to **complete** when those land — the two are not synonyms. |
-| **stable** | Every public method is conformance-tested. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
-| **partial** | Subset of the public API is conformance-tested and stable. The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
+| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. Completion also requires end-to-end checks in both the interpreter and native AOT backend; **stable** alone does not imply this. |
+| **stable** | The covered suite passes under the interpreter. Native coverage must be stated separately; this status does not establish backend parity. See the [shared status convention](./status-convention.md#status-keywords). |
+| **partial** | Only a subset of the API has measured coverage. Consult the backend-specific limitations before using it; a passing or unignored test alone is not a production-safety guarantee. |
 | **regression-only** | Module is gated by upstream stdlib / language-level defects. Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
 | **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
 | **unverified** | The conformance suite has not been run against this module, so nothing on its row is a measurement. Distinct from **undocumented**: the module IS routed into `core-tests/`, but no result has been recorded since the liveness check that began demanding one. |
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `list.vr`           | **partial** | [core-tests/collections/list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/list) — the active conformance suite is green under the interpreter; the deferred cases are named below. 14 stdlib method-body migrations to runtime-intercepted `self.get(i) / self.set(i, v) / self.truncate(at)` surface: (a) raw `ptr_read/write` class — get_mut / pop_front / split_off / binary_search / binary_search_by / partition_point / try_push / append; (b) for/range iterator-closure remap class — position / rposition / find_by / position_by / any / all / starts_with / ends_with / windows / chunks / partition_by / chunk_by / dedup_by / split_at. Bi-modal `position` runtime intercept (closure vs value-form per `arg0.is_func_ref()`). §E for/range defect class FULLY CLOSED. Remaining @ignore: closure-dispatch (sort_unstable populated / sorted / fill Clone / is_sorted ref-deref); resize_buffer SIGABRT (reserve / shrink); cross-module bare-name (try_with_capacity). `List.from` / `List.of` / `List.from_elem` work. Four runtime intercepts back them (contains-needle CBGR deref, set, get_or, swap_remove, truncate). |
+| `list.vr` | **partial** | [core-tests/collections/list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/list) — interpreter shrink/regrow and reserve checks preserve Byte and Int values. Native byte-list allocation remains unsafe on that path; see the dated limitation above. Other method coverage remains partial. |
 | `map.vr`            | **partial** | [core-tests/collections/map](https://github.com/verum-lang/verum/tree/main/core-tests/collections/map) — most of the active conformance suite is green under the interpreter. The gap is `keys_list` / `values_list` and a with-capacity-then-fill case, deferred behind the defect named below. Sections 10–16 added (get_or / with_capacity / insert overwrite contract / remove return contract / many-keys preserved + half-remove / keys_list-values_list / is_empty + capacity invariants). MapIter.next NullPointerAt wrapper-iter dispatch class gates keys_list/values_list (same root as slice §D). Cap=0 bootstrap guard added on insert. |
 | `set.vr`            | **partial** | [core-tests/collections/set](https://github.com/verum-lang/verum/tree/main/core-tests/collections/set) — 23 unit + 10 property + 5 integration + 4 pinned regressions. Set.insert returns Bool (was Unit); Set.union / Set.intersection auto-deref CBGR ref needle. |
 | `multiset.vr`       | **partial** | [core-tests/collections/multiset](https://github.com/verum-lang/verum/tree/main/core-tests/collections/multiset) — 21 unit + 10 property + 5 integration + 12 regressions. Construction / insert / remove / count / contains / clear / cardinality / distinct_len / is_subset / with-empty algebraic ops green; per-element-correct union/intersection/sum/difference and direct iter() pinned (gated on MultisetIter wrapping Map.iter() — wrapper-type dispatch defect, same class as slice §D). |

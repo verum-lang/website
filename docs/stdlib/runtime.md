@@ -4,7 +4,7 @@ title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 status: partial
 status_detail: >-
-  2026-07-16 wave-4: TIER-COHERENT ZERO held — interp 473/0 == AOT 473/0 of 536 (63 pins, each naming its defect class and task). Clock authority, context slots, FFI struct layouts, const-generic seeding all root-fixed.
+  Measured 2026-10-04: interpreter supervisor access works; native use of borrowed results through lazy-initialization accessors can fail. Mutex guard lifetime and general native resource cleanup remain incomplete.
 ---
 
 # `core.runtime`
@@ -13,7 +13,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="Eighteen submodules, all with conformance suites, all exercised under the interpreter. Most are complete there; the partial ones are listed below with what does not work yet. Ahead-of-time compilation covers most of the same ground with a small set of divergences."
+  detail="Runtime coverage differs by backend and API. The dated measurements below describe current supervisor and resource-lifetime limits; the earlier submodule findings remain listed separately."
   defects={[
     {area: 'thread pool', summary: 'Submitting and joining work runs under the interpreter. Retrieving a value through a task handle is still being filled in — use a channel to carry the result meanwhile.'},
     {area: 'context bridge', summary: 'Context slots read and write correctly from one task. Two tasks writing the same slot in parallel is not yet coherent; confine a context to the task that provided it.'},
@@ -50,7 +50,7 @@ for the full open-defects list + deferred-action ranking.
 |---|---|---|
 | `runtime.env` | partial | — |
 | `runtime.cbgr` | complete (interp) | canonical re-export of the memory-safety surface |
-| `runtime.sync` | complete (interp) | thin canonical re-export |
+| `runtime.sync` | regression-only | re-exports the [synchronization APIs](./sync.md); mutex guard lifetime remains incomplete |
 | `runtime.syscall` | complete (interp) | thin canonical re-export |
 | `runtime.time` | complete (interp) | canonical re-export; qualified names bind correctly |
 | `runtime.tls` | complete (interp) | live thread-local round-trips |
@@ -64,13 +64,24 @@ for the full open-defects list + deferred-action ranking.
 | `runtime.recovery` | partial | a foreign `Drop` implementation on a scope guard is not run |
 | `runtime.spawn` | partial | a constructor chain can leak an unresolved stub |
 | `runtime.task_queue` | complete (interp) | — |
-| `runtime.supervisor` | complete (interp) | — |
+| `runtime.supervisor` | complete (interp) | native borrowed root-supervisor access can fail; see below |
 | `runtime.mod` | partial | accessor receiver resolution through a renamed mount |
 
-Every module above is exercised under the interpreter and, separately,
-compiled ahead of time. A change to `core/runtime/` is expected to be
-green on both before it lands, which is why the divergences between the
-two are tracked rather than tolerated.
+Backend coverage must be validated separately. Successful interpreter
+checks do not establish native returned-reference or resource-lifetime
+correctness.
+
+**Known limitations, measured 2026-10-04:** repeated root-supervisor
+access works under the interpreter. In native execution, lazy
+initialization produces the expected value once, but using the borrowed
+result through the accessor chain used by `root_supervisor()` can fail. Successful initialization alone does not establish
+safe access to the returned reference.
+
+Mutex guard lifetime also remains incomplete: an interpreter check can
+report the mutex unlocked while the guard is still in scope. General
+native owned-resource destruction and lock-guard cleanup are not yet
+reliable. See [mutex limitations](./sync.md#mutext) and
+[resource lifetime](/docs/language/references#resource-lifetime).
 
 ## Module map
 

@@ -4,7 +4,7 @@ title: sync
 description: Atomics, Mutex, RwLock, Once, Semaphore, Condvar, Barrier, WaitGroup — thread synchronization primitives.
 status: partial
 status_detail: >-
-  Round 14b (2026-05-27) registered all 9 sync submodules in `core-tests/INVENTORY.md` (an extensive test set, 254 `@test` entries / 27 files). the covered subset stable (atomic, mutex, rwlock, semaphore, once, mod) — full conformance under --interp.  the covered subset partial: `waitgroup` (§A Tier-0 handle-table + §B Duration-bias "add" intercept removal — both CLOSED this round), `condvar` (the covered subset @ignore'd — Tier-0 futex FFI symbol gap on notify_one/notify_all), `barrier` (the covered subset @ignore'd — same FFI gap on Phaser register/terminate + CountDownLatch count_down-to-zero).  All static-state contracts GREEN; live futex paths at vcs/specs/L2-standard.
+  Measured 2026-10-04: mutex guard lifetime remains incomplete in both execution backends. Native use of borrowed results through OnceLock accessor chains can fail after successful initialization.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
@@ -16,12 +16,12 @@ and `Send`/`Sync` marker protocols.
 
 <StdlibStatus
   status="partial"
-  detail="Nine submodules with conformance suites; eight are stable under the interpreter. `waitgroup` is partial: it has an interpreter-side handle table, and adding a duration to a wait deadline is not yet honoured there."
+  detail="Synchronization APIs have partial backend coverage. Mutex guard lifetime and native borrowed access through lazy initialization need separate validation from construction and atomic state changes."
   defects={[
-    {area: 'sync/waitgroup', summary: 'Closed § A: Tier-0 interpreter stubbed all WaitGroup intrinsics as inert no-ops with fixed return values; tests silently passed/failed against the wrong counter state. Real handle-table now lives at crates/verum_vbc/src/interpreter/waitgroup.rs.'},
-    {area: 'sync/waitgroup', summary: 'Closed § B: method_dispatch.rs:4059 had a Duration-bias \"add\" intercept on Int-receivers that fired for any single-field-record-unboxed record (every WaitGroup{handle: Int}.add(delta) silently dropped to a bare Int+Int sum). Same defect class as [[duration_single_field_record_unboxing_2026-05-27]].'},
+    {area: 'MutexGuard', summary: 'The interpreter can report a lock released while its guard is still in scope. Native scope-exit cleanup is also incomplete.'},
+    {area: 'OnceLock', summary: 'Native initialization can succeed once while using the borrowed result through subsequent accessor calls fails.'},
   ]}
-  sweepDate="2026-05-27"
+  sweepDate="2026-10-04"
 />
 
 | File | What's in it |
@@ -46,13 +46,15 @@ contract as [`core.base`](./base.md#module-status),
 [`core.collections`](./collections.md#module-status), and
 [`core.time`](./time.md#module-status). The status row is the truth-table
 over the module's public API exercised by `core-tests/sync/<module>/`
-under both Tier 0 (interpreter) and Tier 2 (AOT). Disagreement between
-tiers is itself a test failure.
+for the interpreter (Tier 0) and native AOT (Tier 1). Read each row's
+coverage together with the dated limitations below; an interpreter result
+is not a native-parity guarantee. Status names follow the
+[shared convention](./status-convention.md#status-keywords).
 
 | Module | Status | Conformance suite |
 |---|---|---|
 | `atomic.vr`    | **stable** | [core-tests/sync/atomic](https://github.com/verum-lang/verum/tree/main/core-tests/sync/atomic) — 8 unit + 14 property + 10 regression. MemoryOrdering 5-variant pairwise disjointness + `name()` canonical-token injectivity + Eq laws (added this round). AtomicInt/AtomicBool single-threaded load/store/fetch_add round-trip in regression suite. Live atomic contention deferred to vcs/specs/L2-standard/sync/atomic/. |
-| `mutex.vr`     | **stable** | [core-tests/sync/mutex](https://github.com/verum-lang/verum/tree/main/core-tests/sync/mutex) — 22 unit + 12 property + 5 regression. Mutex.new + poison/clear_poison/is_poisoned state-machine + PoisonError construction + TryLockError 2-variant ADT (WouldBlock / Poisoned). Default-via-`new(0)` workaround pinned in regression as a pinned regression. Live lock/contention at L2. |
+| `mutex.vr` | **partial** | [core-tests/sync/mutex](https://github.com/verum-lang/verum/tree/main/core-tests/sync/mutex) — construction and poison-state checks do not establish guard lifetime. See the dated limitations below. |
 | `rwlock.vr`    | **stable** | [core-tests/sync/rwlock](https://github.com/verum-lang/verum/tree/main/core-tests/sync/rwlock) — 14 unit + 10 property + 4 regression. RwLock.new + poison protocol + re-exported error types (LockResult / TryLockResult / PoisonError / TryLockError) destructure round-trip + multi-instance independence matrix. Writer-preference fairness pinned by data-shape; live verification at L2. |
 | `semaphore.vr` | **stable** | [core-tests/sync/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/sync/semaphore) — 15 unit + 8 property + 4 regression. try_acquire / release / try_acquire_many / release_many full sequential cycle. add_permits dual-bump (capacity AND availability) + forget_permit asymmetric shrink + binary() ≡ new(1) pinned in regression. Live contention at L2. |
 | `condvar.vr`   | **stable** | [core-tests/sync/condvar](https://github.com/verum-lang/verum/tree/main/core-tests/sync/condvar) — 12 unit + 7 property + 5 regression, of which 9 @ignore'd (audit § 3.6 — Tier-0 futex FFI symbol gap; notify_one/notify_all calls trip "FFI symbol not found: FfiSymbolId(61)").  Live path (Condvar.new + Default + waiter_count + WaitTimeoutResult shape + CondvarNotifyGuard + producer_consumer_pair) all GREEN.  notify_one/notify_all and live wait/wait_timeout/wait_while at vcs/specs/L2-standard/sync/condvar/. |
@@ -159,14 +161,20 @@ m.get_mut() -> LockResult<&mut T>        // unique-borrow, no lock
 m.into_inner() -> LockResult<T>          // consumes
 ```
 
-`MutexGuard<T>` implements `Deref<Target=T>` + `DerefMut`. The lock is
-released when the guard drops.
+`MutexGuard<T>` implements `Deref<Target=T>` + `DerefMut`. Its contract
+is to hold the lock until the guard drops and release it on destruction.
+
+**Known limitation, measured 2026-10-04:** this lifetime contract is not
+yet reliable in either backend. The interpreter can report an unlocked
+mutex while its guard is still in scope; native guard cleanup can fail
+to release the lock at scope exit. Do not rely on the following intended
+scope-exit pattern as a verified synchronization guarantee.
 
 ```verum
 {
     let mut g = config.lock().unwrap_or_else(|p| p.into_inner());
     g.apply(update);
-}   // released here
+}   // intended release point; see the lifetime limitation above
 ```
 
 ### Poisoning is advisory in Verum
@@ -222,6 +230,12 @@ single-shot publication:
 ```verum
 let cfg = CONFIG.get_or_init(|| load_config());
 ```
+
+**Known limitation, measured 2026-10-04:** native initialization can
+publish the expected value once while borrowed access through later
+wrapper calls fails. This occurs on the `root_supervisor()` accessor
+path; verify the returned reference's use, not just the initializer's
+result or invocation count. See [runtime coverage](./runtime.md#submodule-status-overview).
 
 ### `OnceGuard.drop` soundness fix
 

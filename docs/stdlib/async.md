@@ -16,10 +16,19 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="Futures, tasks, channels, streams, timers, structured concurrency, select and cancellation are exercised by conformance suites and green under the interpreter. Async programs also compile ahead of time and run as native binaries — measured 2026-09-04, not inferred. The `LocalExecutor` sequence this page prescribes panics as soon as it has a task to drive, and `block_on` fails too (measured 2026-09-07); `spawn` plus awaiting the handle works — see the LocalExecutor section."
+  detail="Conformance coverage varies by API and backend. Some async programs compile and run natively, but this does not establish parity for every executor, deadline, cancellation or cleanup path. The `LocalExecutor` sequence this page prescribes panics as soon as it has a task to drive, and `block_on` fails too (measured 2026-09-07); `spawn` plus awaiting the handle works — see the LocalExecutor section."
   defects={[]}
   sweepDate="2026-09-04"
 />
+
+**Backend checks, measured 2026-10-04:** interpreter HTTP checks cover
+binary responses, header deadlines, cancellation before reading, and an
+overall deadline across slowly arriving headers. The same complete HTTP
+path has not yet been validated natively. Native checks cover eager
+handler success, typed errors and caught panics; they do not establish
+general cancellation or resource-cleanup correctness. See
+[eager async evaluation](/docs/language/async-concurrency#async-functions)
+and [guard lifetime](/docs/language/async-concurrency#mutex--rwlock).
 
 Full async toolkit: `Future` protocol, executors, channels, async
 streams, timers, structured concurrency (`nursery`), racing (`select`),
@@ -31,14 +40,14 @@ Each `core.async.*` module carries an explicit conformance status so
 you know what you can rely on today versus what is still in flight.
 The status is the truth-table over the module's API surface as
 exercised by `core-tests/async/<module>/` under both `verum test
---interp` (Tier 0 VBC interpreter) and `verum test --aot` (Tier 2 LLVM
+--interp` (Tier 0 VBC interpreter) and `verum test --aot` (Tier 1 LLVM
 AOT, `--test-threads 1`).
 
 | Status | Meaning |
 |---|---|
-| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. A **stable** module graduates to **complete** when those land — the two are not synonyms. |
-| **stable** | Every public method is conformance-tested. Algebraic laws are pinned by exhaustive or large-domain property tests. Cross-stdlib integration is verified. Interpreter and AOT agree on every test. Safe to depend on in production. |
-| **partial** | Subset of the public API is conformance-tested and stable. The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage. The non-ignored API surface is safe; everything else is documented per-module under "Open defects". |
+| **complete** | Everything **stable** requires, plus the coverage bar the conformance inventory sets for its top mark: algebraic laws pinned by property tests, cross-stdlib integration verified, and the module's audit findings landed or routed. Completion also requires end-to-end checks in both the interpreter and native AOT backend; **stable** alone does not imply this. |
+| **stable** | The covered suite passes under the interpreter. Native coverage must be stated separately; this status does not establish backend parity. See the [shared status convention](./status-convention.md#status-keywords). |
+| **partial** | Only a subset of the API has measured coverage. Consult the backend-specific limitations before using it; a passing or unignored test alone is not a production-safety guarantee. |
 | **regression-only** | Module is gated by upstream stdlib / language-level defects. Public-API tests do not pass yet — only `@ignore`d regressions exist to lock the bug shapes. Avoid in production until promoted. |
 | **undocumented** | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite. The current page is a best-effort snapshot of the source; it may drift from runtime behaviour. |
 | **unverified** | The conformance suite has not been run against this module, so nothing on this row is a measurement. Distinct from **undocumented**: the module IS routed into `core-tests/`, but no result has been recorded since the liveness check that began demanding one. |

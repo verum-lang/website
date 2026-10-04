@@ -358,10 +358,11 @@ A guard gives access to its protected value through `Deref`. Access and
 resource lifetime are separate contracts: a successful read through a
 guard does not demonstrate that dropping it unlocks the mutex.
 
-**Known limitation, measured 2026-10-04:** native destruction of owned
-objects and lock guards is incomplete. Native mutex checks can leave a
-lock held after the guard's scope ends. Do not treat general native
-RAII or cancellation cleanup as established behaviour. See
+**Known limitation, measured 2026-10-04:** guard lifetime is incomplete
+in both backends. The interpreter can report a mutex unlocked while its
+guard is still in scope. Native cleanup can leave a lock held after
+scope exit. Verify ownership during guard use as well as release;
+general native RAII and cancellation cleanup are not established. See
 [references and resource lifetime](/docs/language/references#resource-lifetime).
 
 ## Work-stealing executor

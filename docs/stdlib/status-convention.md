@@ -24,7 +24,7 @@ each module page's frontmatter (`status` + `status_detail`), and the
 |---|---|---|
 | `complete` | ✅ | All public APIs covered by unit tests; algebraic laws pinned by property tests; cross-stdlib integration verified; audit findings landed or routed.  The module's contract is fully exercised end-to-end on both the interpreter (Tier 0) and AOT (Tier 1) paths. |
 | `stable` | 🟢 | Suite fully green under `--interp` and the covered surface is trusted for use, but the coverage bar for `complete` (property laws + cross-stdlib integration + routed audit) is not fully met. Graduates to `complete` when those land. |
-| `partial`  | ⚠️ | A subset of the public API is conformance-tested and stable.  The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage.  The non-`@ignore`'d API surface is safe; everything else is documented per-module under "Open defects". |
+| `partial`  | ⚠️ | A subset of the public API is conformance-tested and stable.  The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage.  Backend-specific limitations are documented per module. A passing or unignored test alone does not establish native parity or production safety. |
 | `regression-only` | ⛔ | Module is gated by upstream stdlib / language-level defects (function-id remap, archive-driven default-method dispatch, CBGR generation tracking on returned `&Text`, …).  Few or no public-API tests pass yet — only `@ignore`d regressions exist to lock the bug shapes.  Avoid in production until promoted to `partial` or `complete`. |
 | `undocumented` | ❔ | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite.  The current page is a best-effort snapshot of the source; it may drift from runtime behaviour.  New modules start here; aim to graduate to `regression-only` (write the tests, even if all `@ignore`'d) before merging. |
 
@@ -80,17 +80,17 @@ sidebar widgets can read it without parsing the body:
 ```markdown
 ---
 sidebar_position: 3
-title: text
-description: …
+title: runtime
+description: Runtime backend coverage and limitations.
 status: partial
-status_detail: 189 / 222 (≈85%) tests green under `--interp` as of 2026-05-16; §Y AOT typechecker mount-scoped name resolution deferred.
+status_detail: "Measured 2026-10-04: interpreter root-supervisor access works; native borrowed access through its initializer chain can fail."
 ---
 ```
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
 | `status` | **yes** | one of `complete`, `partial`, `regression-only`, `undocumented` | Mirrors `core-tests/INVENTORY.md` for the same module.  Renaming a status keyword anywhere requires the same rename in both places. |
-| `status_detail` | yes when `status` ≠ `complete` | one-line string under 256 chars | Conformance numbers (`N/M green under --interp` style) + date + the largest open defect class. |
+| `status_detail` | yes when `status` ≠ `complete` | one-line string under 256 chars | Measurement date, covered backend/API and largest open limitation. Keep internal test totals out of public documentation. |
 
 `status_detail` is mirrored into the visible badge body.  Keep it short
 — per-module deep findings belong in `core-tests/<...>/audit.md`, not
@@ -107,12 +107,11 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="121/218 Text + 75/86 Char + … unit tests pass on 2026-05-13."
+  detail="Measured 2026-10-04: interpreter root-supervisor access works; native use of its borrowed result remains incomplete."
   defects={[
-    {area: 'text', summary: '~18 defect classes — KMP find, Iterator.next dispatch, ...'},
-    {area: 'char', summary: '5 defect classes — &mut Char mutation, ...'},
+    {area: 'root supervisor', summary: 'Native use of the borrowed result through the accessor chain can fail after initialization succeeds.'},
   ]}
-  sweepDate="2026-05-13"
+  sweepDate="2026-10-04"
 />
 ```
 
@@ -154,11 +153,11 @@ When a module's conformance numbers change:
      row; do **not** restructure the table.
   3. **Update the module page's frontmatter**: bump `status` if the
      status keyword changed; refresh `status_detail` to mirror the new
-     sweep numbers + date.
+     covered behaviour, backend, limitations and measurement date.
   4. **Refresh the body**: if the page has an aggregate per-submodule
      status table or a `<StdlibStatus />` badge, update those too.
   5. **Commit**: one logical commit per module sweep.  Commit message
-     names the module under sweep + delta in green count.
+     names the module and the behaviour whose status changed.
 
 Step 1 → 2 → 3 is the **mandatory order** — the audit is authoritative,
 the inventory is the per-module digest, and the website page is the

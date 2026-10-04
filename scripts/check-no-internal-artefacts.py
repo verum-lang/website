@@ -159,10 +159,6 @@ CLASSES = {
 # below fails when an entry stops appearing, so a page that drops one
 # cannot leave a silent permission behind.
 EXEMPT: dict[tuple[str, str], str] = {
-    ("roadmap.md", "1506 / 1507 checks pass"):
-        "the sentences around it RETRACT the number and explain why it was "
-        "removed — quoting a withdrawn claim is the page obeying the rule, "
-        "not breaking it",
     ("changelog.md", "27 / 30 (90 %)"):
         "a changelog entry is a DATED record of one release; the pair of "
         "numbers either side of the arrow IS the entry, and a number that "

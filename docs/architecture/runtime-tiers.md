@@ -120,12 +120,12 @@ Use it to assess native deployment, code generation, and resource
 behaviour. LLVM optimisation, target support, and link configuration
 are described in [codegen](/docs/architecture/codegen).
 
-**Known limitation, measured 2026-10-04:** some CLI builds fall back to
-the interpreter after a single-file AOT compilation failure, including
-when native execution was requested explicitly. For native acceptance,
-confirm that compilation succeeded and that a fresh executable ran;
-exit status alone is insufficient on those builds. A diagnostic saying
-“Falling back to interpreter” means the native path was not validated.
+**Verified behaviour, measured 2026-10-04:** when AOT execution is
+requested explicitly, a compilation failure returns an error instead of
+running the source through the interpreter. For native acceptance,
+check the exit status and diagnostics, and confirm that a fresh compiled
+executable ran. Output from an interpreter fallback in an older build
+does not validate the native path.
 
 ## Dual-path compilation (CPU vs GPU)
 

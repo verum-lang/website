@@ -191,10 +191,16 @@ casting an address does not establish a new owner. Reference validity
 checks therefore cannot replace correct `Drop` behaviour.
 
 **Known limitation, measured 2026-10-04:** general native owned-object
-destruction and lock-guard release are incomplete. Borrowed access can
-work while the owner's cleanup is still incorrect. Validate resource
-lifetime in the native backend before relying on scope exit to release
-locks or other exclusive resources.
+destruction and lock-guard release are incomplete. Interpreter mutex
+checks can also report a lock released while its guard is still in
+scope. Borrowed access can work while the owner's lifetime is incorrect;
+validate ownership throughout the guard's use and cleanup in each backend.
+
+Using a native borrowed result through lazy-initialization accessors can
+also fail after successful initialization, as measured on
+`root_supervisor()` on 2026-10-04. Checking the stored value alone does
+not validate a reference returned through the whole call chain. See
+[runtime coverage](/docs/stdlib/runtime#submodule-status-overview).
 
 ## Mutable references
 

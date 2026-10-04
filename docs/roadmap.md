@@ -19,7 +19,7 @@ milestone unblocks a specific class of users; dates are estimates.
 
 ## Current state — v0.32
 
-Production-ready:
+Implemented capabilities, with backend and API limitations:
 
 - **Type system**: bidirectional inference, refinement types (three
   syntactic forms), dependent types (Σ / Π / path), cubical HoTT
@@ -55,7 +55,7 @@ Production-ready:
 - **VBC bytecode**: 250 primary opcodes plus 863 sub-ops across 20
   extended tables (1113 total, counted 2026-09-06),
   full interpreter (**62**-file dispatch table, counted 2026-09-06 —
-  this line said 37), LLVM AOT path (native-C parity bar), MLIR GPU
+  this line said 37), LLVM AOT path with incomplete backend parity, MLIR GPU
   path.
 - **Stdlib**: a substantial `.vr` tree across `core/` — `base`,
   `collections`, `text`, `mem`, `async`, `sync`, `runtime`, `io`,
@@ -66,20 +66,22 @@ Production-ready:
   3.17 with refinement hints, DAP debugger, Playbook TUI, REPL,
   formatter, linter, package manager.
 
-Conformance: the suite is **7136 spec files** as of 2026-09-06 —
-3129 L0-critical, 1528 L2-standard, 702 L1-core, 345 L3-extended,
-91 L4-performance, and 1341 outside the level tree.
+**Known limitations, measured 2026-10-04:** interpreter checks cover
+core generic calls, caught panic payloads, eager handlers, root-supervisor
+access, pointer forwarding, list shrink/regrow and HTTP deadlines.
+Mutex guard lifetime still fails: a lock can appear released while its
+guard is in scope. Native generic-call and panic-handler checks pass,
+but returned references through supervisor access and byte-list
+shrink/regrow still fail. General native resource cleanup and the full
+native HTTP/cancellation path are not validated. These implemented
+capabilities are not a blanket production-readiness claim.
 
-**The pass RATE on this page was stale and is not replaced with a
-guess.** It read "1506 / 1507 checks pass (99.93%)", a denominator that
-matches no level and no total the suite now has; it was true of a
-smaller suite and has not been re-run since. A percentage carried
-forward past the corpus it was measured on is worse than no percentage,
-because it reads as current.
-
-The living truth is `docs/architecture/tech-debt-register.md` plus
-`core-tests/INVENTORY.md` in the repository, and a fresh figure belongs
-here only with the date of the run that produced it.
+Read the [runtime coverage](/docs/stdlib/runtime#submodule-status-overview),
+[collection limitations](/docs/stdlib/collections#module-status) and
+[resource-lifetime guidance](/docs/language/references#resource-lifetime)
+for the relevant backend. Conformance is measured per API and backend;
+a catalogue of tests or a successful interpreter run is not a native
+pass rate.
 
 ## Currently shipping (next minor)
 
