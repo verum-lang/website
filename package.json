@@ -37,7 +37,7 @@
     "typescript": "^6.0.2"
   },
   "engines": {
-    "node": ">=20.0"
+    "node": "20.x || 22.x"
   },
   "overrides": {
     "webpack": "5.99.9",
