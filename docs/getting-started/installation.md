@@ -303,7 +303,7 @@ whether `cargo` puts it on your `$PATH` for you.
 into `~/.cargo/bin` (which `rustup` already adds to your `$PATH`).
 
 ```bash
-cargo install --path <implementation> --force
+cargo install --path crates/verum_cli --force
 ```
 
 `--force` overwrites a previous install with the freshly-built
@@ -339,8 +339,9 @@ restricted binary (e.g. `--no-default-features --features
 parallel-compilation` for a verification-free build).
 
 Expect **10–25 minutes** for the Rust workspace itself, on top of
-the one-time LLVM build. Incremental builds after that are
-sub-minute.
+the one-time LLVM build. Later builds reuse unchanged dependencies.
+Changes to the compiler or standard library can rebuild the embedded standard-library archive, so
+an incremental build can still take substantial time.
 
 ### 4. Verify
 
@@ -437,9 +438,20 @@ Usage:
 `verum info --features` and `verum info --llvm` narrow the output to
 just one slice if you need it.
 
+### Check installation health
+
+```bash
+verum doctor
+```
+
+This checks the compiler version, user directory, caches, content store,
+permission grammar, and the project lockfile when present. Use
+`verum doctor --json` for a machine-readable report. See
+[CLI health and diagnostics](/docs/tooling/cli#health--diagnostics-verum-doctor).
+
 ### Diagnose the verification stack
 
-The nearest thing to a "doctor" command is **`verum smt-info`**:
+Use **`verum smt-info`** for solver diagnostics:
 
 ```bash
 verum smt-info
@@ -466,8 +478,8 @@ verum completions powershell >> $PROFILE
 ```
 
 `verum completions` accepts any of `bash`, `zsh`, `fish`,
-`powershell`, `elvish`, `nushell` — the full set supported by
-[`clap_complete.Shell`](https://docs.rs/clap_complete/).
+`powershell`, and `elvish`. Run `verum completions --help` to check
+the choices supported by your installed binary.
 
 ## Cross-compiling Verum programs
 
@@ -494,7 +506,7 @@ practice:
 
 ## Project manifest (`verum.toml`)
 
-Projects use a `verum.toml` manifest (capitalised `verum.toml` is
+Projects use a `verum.toml` manifest (capitalised `Verum.toml` is
 also accepted on case-sensitive filesystems). The top-level section
 is `[cog]`, not `[verum]`:
 
@@ -555,7 +567,7 @@ require('lspconfig').verum = {
   default_config = {
     cmd = { 'verum', 'lsp' },
     filetypes = { 'verum' },
-    root_dir = require('lspconfig.util').root_pattern('verum.toml', 'verum.toml'),
+    root_dir = require('lspconfig.util').root_pattern('Verum.toml', 'verum.toml'),
     settings = {
       verum = {
         verify = { strategy = 'static' },
@@ -594,14 +606,22 @@ args = ["lsp"]
 
 ## Uninstall
 
+Remove the compiler using the method you used to install it:
+
 ```bash
-sudo rm /usr/local/bin/verum        # or wherever you installed it
-rm -rf ~/.verum                      # SMT stats + signing key (if any)
+# Installed with cargo install:
+cargo uninstall verum_cli
+
+# Copied into /usr/local/bin:
+sudo rm /usr/local/bin/verum
 ```
 
-`~/.verum/` is only used for per-user state (`state/smt-stats.json`,
-`signing_key`, `enterprise.toml`); it is **not** a toolchain tree and
-no binary lives there.
+The user directory `~/.verum/` remains after removing the compiler.
+It can contain settings, signing keys, verification statistics, caches
+(including compiled script executables), and optional standard-library
+source SDKs installed with `verum stdlib install`. Keep any settings or
+keys you need before deleting that directory. Project source files live
+in their own directories.
 
 ## Troubleshooting
 

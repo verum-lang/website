@@ -48,7 +48,7 @@ benches  examples  README.md  src  tests  verum.toml
 The scaffold gives you:
 
 - **`verum.toml`** — the package manifest (also accepted as
-  `verum.toml`). Cog name, version, dependencies, verify defaults,
+  `Verum.toml`). Cog name, version, dependencies, verify defaults,
   build profiles, runtime settings.
 - **`src/main.vr`** — the entry point (for binaries) or
   `src/lib.vr` (for libraries).
@@ -125,9 +125,16 @@ Hello from hello!
 Sum: 15
 ```
 
-The release build enables LLVM optimisations (`O3`, LTO), removes
-debug-only assertions, and strips the binary. Expect it to be about
-40× smaller and 5-10× faster than the debug version on real code.
+The release profile enables optimisation and disables debug assertions
+by default. To remove symbols from the executable, request stripping
+explicitly:
+
+```bash
+verum build --release --strip
+```
+
+Binary size and execution time depend on your program, target, and
+build configuration. Measure the workloads you intend to deploy.
 
 ## Play with a format string
 

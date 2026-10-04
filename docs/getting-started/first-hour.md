@@ -77,10 +77,12 @@ the lenses:
   information.
 - **VBC** — the bytecode your cells compile to, disassembled from the
   exact artifact the interpreter runs.
-- **Tiers** — press `t`: the interpreter and the native AOT build
-  both run your program, and the Playground judges their outputs
-  identical, bit for bit. Two execution tiers, one semantics — this
-  is the identity the toolchain holds itself to.
+- **Tiers** — press `t` to run your program in the interpreter and
+  as a native AOT build. The comparison checks program output lines
+  after removing toolchain banners, plus exit status, and reports
+  whether they agree. Standard error is retained in the report but
+  does not decide the verdict. A match checks this program's observed
+  behaviour; it does not establish parity for every language feature.
 - **Journal** — every question you asked this session, each stamped
   with the content address of the module it was about.
 
