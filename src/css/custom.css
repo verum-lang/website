@@ -168,6 +168,17 @@ article table {
   background: var(--ifm-background-surface-color);
 }
 
+/* Keep wide tables inside the article on mobile. A table formatting box
+   can exceed width:100%; a scrollable block retains access to every column. */
+@media (max-width: 996px) {
+  .markdown table,
+  article table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
 /* Every cell carries right + bottom borders only; the table's own
    border supplies the missing top and left edges. This keeps a single
    1px line between cells everywhere. */
