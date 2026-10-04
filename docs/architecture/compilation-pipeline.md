@@ -250,13 +250,14 @@ ops exceed a cost threshold) go through
 
 ## Phase 7.5 — Final linking (AOT only)
 
-Static linking via **embedded LLD** — Verum ships its own linker.
+Verum includes **embedded LLD** and also has compiler-driver link paths.
+The final dependencies depend on the selected path and target inputs.
 
-- **No-libc freestanding**: the runtime is implemented in Verum's
-  own intrinsics; no glibc / musl / MSVC CRT dependency. macOS is
-  the one exception, where `libSystem.B.dylib` is Apple's stable
-  ABI entry point and the only acceptable boundary. See
-  **[no-libc architecture](/docs/architecture/no-libc-architecture)**.
+- **No-libc contract**: runtime intrinsics must use direct syscalls
+  on Linux/FreeBSD, libSystem on macOS, and kernel32/ntdll on Windows,
+  without glibc, musl or a Windows CRT. Current runtime and linker
+  paths do not all satisfy this requirement; audit the actual output.
+  See **[no-libc architecture](/docs/architecture/no-libc-architecture)**.
 - **LLD flavours**: ELF (Linux, FreeBSD), Mach-O (macOS), COFF
   (Windows).
 - **LTO**: thin by default (configurable in `[linker]` / `[lto]`).

@@ -31,9 +31,12 @@ typically eliminates it anyway).
 ### Can I use it for embedded / bare-metal work?
 
 Yes. `verum.toml` supports `runtime = "embedded"` (stack allocator,
-no heap) and `runtime = "no_runtime"` (kernel / bootloader). Direct
-syscalls on Linux, libSystem on macOS, kernel32 on Windows — no libc
-dependency.
+no heap) and `runtime = "no_runtime"` (kernel / bootloader). The runtime
+contract calls for direct syscalls on Linux/FreeBSD, libSystem on macOS,
+kernel32/ntdll on Windows, and bare-metal facilities for embedded targets.
+Current runtime and release paths still have dependency gaps; consult the
+[no-libc status](/docs/architecture/no-libc-architecture) before relying on
+an artifact for freestanding deployment.
 
 ### Does it have garbage collection?
 

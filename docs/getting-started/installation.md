@@ -8,8 +8,9 @@ description: Install Verum — grab a daily prebuilt dev build for Linux, macOS,
 
 Verum ships as a **single binary** — `verum` — that contains the
 compiler, interpreter, LSP server, Playbook TUI, formatter, and test
-runner. There is no separate runtime or toolchain directory: one
-binary on your `$PATH` is the whole install.
+runner. Release archives package that executable. The current builds may
+still require system or third-party shared libraries; see the
+[dependency status](#what-the-verum-binary-itself-links-against) below.
 
 There are two ways to get it:
 
@@ -48,8 +49,8 @@ occasionally be missing from a given day's assets.
 
 | Platform | Target triple | Dev build |
 |----------|---------------|-----------|
-| Linux x86_64 (glibc) | `x86_64-unknown-linux-gnu` | ✅ daily |
-| Linux aarch64 (glibc) | `aarch64-unknown-linux-gnu` | ✅ daily |
+| Linux x86_64 | `x86_64-unknown-linux-gnu` | ✅ daily |
+| Linux aarch64 | `aarch64-unknown-linux-gnu` | ✅ daily |
 | macOS Apple Silicon | `aarch64-apple-darwin` | ✅ daily |
 | macOS Intel | `x86_64-apple-darwin` | ✅ daily |
 | Windows x64 | `x86_64-pc-windows-msvc` | ✅ daily |
@@ -60,52 +61,81 @@ Anything outside this matrix requires a [source build](#build-from-source).
 
 ### What the `verum` binary itself links against
 
-| Platform | Linked against |
-|----------|----------------|
-| Linux | `libc.so.6` (glibc ≥ 2.31 — Debian 11+ / Ubuntu 22.04+ / RHEL 9+) |
-| macOS | `libSystem.B.dylib` (Apple's stable ABI) — macOS 12+ |
+Verum's architecture requires direct syscalls on Linux and FreeBSD,
+`libSystem.B.dylib` on macOS, and `kernel32.dll` + `ntdll.dll` on Windows,
+without glibc, musl or a Windows CRT. This requirement covers the CLI and
+its interpreter as well as generated programs. **Current release packaging
+and runtime paths do not yet meet that contract throughout.**
 
-This is the toolchain binary you run to compile Verum programs.
-End users running a prebuilt `verum` binary do not install any
-extra toolchain — the binary is self-contained for the target
-platform. The SMT backend is bundled in-binary and routed via
-capability profiles ([SMT routing](/docs/verification/smt-routing));
-no separate solver install is required for default workflows.
-External provers — Lean 4 and Coq / Rocq —
-are needed only for the [external-prover replay](/docs/architecture/external-prover-verification)
-gate (`verum audit --external-prover-replay`); see that page for
-install instructions.
+The reusable [binary build workflow](https://github.com/verum-lang/verum/blob/main/.github/workflows/build-verum.yml)
+uses ordinary Rust GNU/Linux and MSVC/Windows host targets. It does not
+establish a universal minimum glibc version, static Linux linkage, or a
+libSystem-only macOS CLI. Dependencies must be checked on the exact asset:
+
+| Platform | What to inspect before relying on portability |
+|----------|-----------------------------------------------|
+| Linux | ELF interpreter, `NEEDED` libraries and symbol versions (`readelf -l`, `readelf -d`, `readelf --version-info`). GNU target names are packaging facts, not the intended runtime ABI contract. |
+| macOS | `otool -L` imports and deployment target. Current assets can require libraries beyond libSystem, including dependencies from the build machine. |
+| Windows | PE imports (`dumpbin /imports`) and the supported OS version. The MSVC build target does not prove absence of MSVC CRT/UCRT imports. |
+
+**Release inspection (2026-10-04):** the rolling assets published that day
+were inspected without executing them. All inspected platforms had
+imports beyond the required no-libc boundary:
+
+| Inspected assets | Observed imports |
+|------------------|------------------|
+| Linux x86_64 and aarch64 | Dynamic loader, `libc.so.6`, `libm.so.6`, `libgcc_s.so.1`, `libstdc++.so.6`, `libssl.so.3`, `libcrypto.so.3`; versioned glibc imports include `GLIBC_2.39`. |
+| macOS Intel and Apple Silicon | libSystem plus libc++, system frameworks and Homebrew OpenSSL paths (`/usr/local/opt/openssl@3/…` on Intel, `/opt/homebrew/opt/openssl@3/…` on Apple Silicon). |
+| Windows x64 and ARM64 | UCRT `api-ms-win-crt-*` imports, `MSVCP140.dll` and `VCRUNTIME140.dll`, in addition to OS DLLs; x64 also imports `VCRUNTIME140_1.dll`. |
+
+The [recorded artifact inspection](https://github.com/verum-lang/verum/blob/main/docs/architecture/no-libc-dev-artifacts-2026-10-04.json)
+contains asset identities and dependency details. These are observed
+packaging defects, **not a new architectural glibc/CRT requirement** or a
+compatibility certification. In particular, those Linux assets are not
+static, and those macOS assets are not self-contained. Recheck a later
+rolling asset rather than assuming it has the same dependencies.
+
+See the [no-libc architecture and current gaps](/docs/architecture/no-libc-architecture)
+for the required boundaries and verification procedure. Do not infer
+self-contained deployment from the fact that an archive contains one
+executable. Building Verum from source still requires the host tools listed
+[below](#build-from-source).
+
+The SMT backend is bundled in-binary and routed via capability profiles
+([SMT routing](/docs/verification/smt-routing)); no separate solver install
+is required for default workflows. External provers — Lean 4 and Coq /
+Rocq — are needed only for the
+[external-prover replay](/docs/architecture/external-prover-verification)
+gate (`verum audit --external-prover-replay`).
 
 ### What programs compiled by `verum build` link against
 
-Programs you produce with `verum build` do **not** pull in
-libc / libm / pthread. The AOT linker uses a per-platform
-`-nostdlib`-based configuration and goes direct-to-kernel
-wherever the platform allows:
+The native runtime is designed for these boundaries:
 
-| Target | Links against | Entry point |
-|--------|--------------|-------------|
-| Linux | *nothing* — direct syscalls via `syscall` x86_64 instruction | `_start` |
-| macOS | `libSystem.B.dylib` only (Apple forbids direct syscalls from userland); Metal + Foundation frameworks for GPU programs | `main` |
-| Windows | `ntdll.dll` + `kernel32.dll` only (`/NODEFAULTLIB`, no MSVCRT / UCRT) | `mainCRTStartup` |
-| FreeBSD | *nothing* — direct syscalls | `_start` |
-| Embedded / bare-metal | *nothing* (`-ffreestanding`) | `Reset_Handler` |
+| Target | Required runtime boundary | Entry point |
+|--------|---------------------------|-------------|
+| Linux | Direct kernel syscalls, no libc | `_start` |
+| macOS | `libSystem.B.dylib`; explicitly used GPU frameworks add dependencies | `main` |
+| Windows | `ntdll.dll` + `kernel32.dll`, no MSVC CRT / UCRT | `mainCRTStartup` |
+| FreeBSD | Direct kernel syscalls, no libc | `_start` |
+| Embedded / bare-metal | No OS runtime | `Reset_Handler` |
 | WASM-WASI | WASI host imports | `_start` |
 
-Concretely, the LLVM backend emits `syscall` as inline assembly —
-`rax` for the syscall number, `rdi/rsi/rdx/r10/r8/r9` for args —
-rather than calling any C wrapper. A minimal Verum
-`fn main() { print("hi\n"); }` compiled with
-`verum build --release` on Linux produces a fully-static ELF
-binary that runs without glibc, without an interpreter, and
-without any runtime the user has to ship alongside it.
+`NoLibcConfig` describes the native linker configuration, but some current
+compiler-driver links still use default libraries, and runtime paths such
+as ordinary Float output still emit libc calls. Consequently, selecting
+AOT or `--static-link` does not prove no-libc conformance. Audit the actual
+output using the [verification procedure](/docs/architecture/no-libc-architecture#5-verification-procedure).
+A static ELF claim requires inspecting the produced ELF, not extrapolating
+from a target triple or a successful compilation.
 
 ## Dev builds (rolling release)
 
 The fastest way to run Verum today: download a prebuilt binary from the
 rolling [`dev`](https://github.com/verum-lang/verum/releases/tag/dev)
-release. No toolchain, no LLVM build, no compile step — just a single
-binary on your `$PATH`.
+release. You do not need to compile LLVM or Verum to use a downloaded
+asset, but its [shared-library requirements](#what-the-verum-binary-itself-links-against)
+still apply.
 
 **How the `dev` release works.** A GitHub Actions job rebuilds the full
 six-triple platform matrix **once a day (06:00 UTC)** — and on demand
@@ -124,7 +154,7 @@ builds yet.
 
 Every run publishes, per triple, a `verum-dev-<triple>.tar.gz` (Linux /
 macOS) or `verum-dev-<triple>.zip` (Windows) archive plus a matching
-`.sha256`. The binary inside is the same self-contained `verum` toolchain
+`.sha256`. The binary inside is the `verum` toolchain
 described [above](#what-the-verum-binary-itself-links-against).
 
 ### Linux (x86_64)
@@ -192,9 +222,10 @@ This path compiles the toolchain yourself. Use it for platforms outside
 the [prebuilt matrix](#supported-platforms), for a stable pinned
 reference, or to hack on the compiler. The Verum compiler is
 written in the host language and uses unstable features that require the
-**nightly** toolchain. The build is fully self-contained: a single
-`cargo build` clones, configures, and links every native dependency
-the compiler needs.
+**nightly** toolchain. After installing the host prerequisites below,
+`cargo build` manages the compiler build and LLVM preparation. This build
+automation does not imply that the resulting executable has no shared-library
+dependencies.
 
 ### 1. Install prerequisites
 
@@ -697,9 +728,13 @@ the major version on startup and refuses anything older than 21.
 
 ### Linux: `GLIBC_2.xx not found`
 
-(Once prebuilt archives ship.) The Linux archive targets glibc
-2.31+. On older distributions, [build from source](#build-from-source)
-against your system glibc. A musl variant is not currently shipped.
+This error identifies a dependency of the downloaded host executable.
+Inspect that exact asset with `readelf --version-info` and `readelf -d`;
+there is no established universal glibc minimum for all rolling builds.
+Use a compatible host build or [build from source](#build-from-source)
+with your system toolchain. The current release matrix has GNU/Linux
+triples, not a separate musl asset. These packaging limitations do not
+change the [no-libc runtime requirement](/docs/architecture/no-libc-architecture).
 
 ### macOS: "cannot be opened because the developer cannot be verified"
 

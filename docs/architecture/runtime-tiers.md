@@ -69,8 +69,10 @@ through this layer:
 
   - *Syscall-shaped surfaces* — file I/O, env-var ops, stdin /
     stdout, shell-process spawn, networking.  The interpreter
-    services these calls directly against the kernel facilities
-    of the host OS, bypassing libSystem / libffi.
+    services these calls through host-side runtime handlers. Some
+    currently use Rust `std` and libc, including networking; native
+    interception does not itself mean a direct syscall. See the
+    [no-libc contract and migration gaps](/docs/architecture/no-libc-architecture).
   - *Canonical stdlib factories* — well-known constructors
     whose contract is fixed (`Path.new`, `Text.new`,
     `Text.with_capacity`, `Text.from_str`, `Text.from_char`,

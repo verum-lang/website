@@ -94,10 +94,11 @@ native binary:
   performance-sensitive code.
 
 Cogs declared `Tier.Aot` are the default for production code.
-The AOT path enforces the no-libc invariant — Tier-1 binaries
-talk directly to syscalls (Linux/FreeBSD/Embedded) or to the
-platform-required boundaries (libSystem on macOS, ntdll on
-Windows).
+The AOT runtime must obey the [no-libc contract](/docs/architecture/no-libc-architecture):
+direct syscalls on Linux/FreeBSD, libSystem on macOS, kernel32/ntdll
+on Windows, and bare-metal facilities on embedded targets. Selecting
+`Tier.Aot` does not prove conformance: runtime and linker gaps remain,
+and the resulting artifact needs inspection.
 
 ## 4. `Tier.Gpu` — GPU lowering
 
@@ -227,9 +228,10 @@ combination is admissible:
 
 The compatibility tables for Foundation and Tier are
 independent. A cog at `(Foundation.Hott, Tier.Aot)` is
-well-typed if and only if HoTT admits AOT extraction (it does,
-for the constructive fragment) and the cog respects the AOT
-no-libc invariant.
+subject to HoTT's AOT extraction restrictions (the constructive
+fragment supports extraction). The runtime's no-libc contract is an
+additional implementation and artifact requirement; type checking
+alone does not prove that the linked output satisfies it.
 
 ## 11. Cross-references
 

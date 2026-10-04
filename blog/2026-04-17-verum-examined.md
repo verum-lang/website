@@ -214,19 +214,25 @@ Most systems languages leave this story to frameworks. Verum gives it a type sys
 
 ## 10. The standard library is Verum
 
-Almost every production programming language has a layer it doesn't own. C's `stdio` is glibc (or musl, or Apple's libSystem). Rust's `std` builds on libc for anything OS-adjacent — threads, file I/O, the memory allocator. Go writes its own runtime but links against glibc on many targets. Swift's `Foundation` is Objective-C.
+Verum's standard library source is written in Verum: allocation in
+`core/mem/allocator.vr`, synchronization in `core/sync/`, I/O and networking
+in `core/io/` and `core/net/`, and concurrency in `core/runtime/` and
+`core/async/`. These APIs rely on runtime intrinsics implemented by the
+interpreter and LLVM backend.
 
-Verum's standard library is written in Verum. Specifically:
+**Clarification (2026-10-04):** the original article described the no-libc
+architecture as if every runtime path and distributed executable already
+satisfied it. That was too broad. The contract requires direct syscalls on
+Linux/FreeBSD, libSystem on macOS, and kernel32/ntdll on Windows. macOS's
+allowed boundary includes pthread entry points. Current interpreter
+handlers still use Rust `std` and libc, terminal support declares libc FFI,
+and ordinary native Float output still calls `printf`. The shipped Rust
+CLI also needs a separate dependency audit.
 
-- The allocator — the capability-based generational-reference arena — is in `core/mem/allocator.vr`. No `malloc` dependency.
-- Threads, TLS, futexes, atomics — all in `core/sync/` and `core/runtime/thread.vr`, implemented over VBC intrinsics that map to platform syscalls directly. No `pthread`.
-- File I/O, networking, time — `core/io/`, `core/net/`, `core/time/`. Platform syscalls through VBC intrinsics, no libc.
-- Regex in `core/text/regex.vr`; JSON, base64, hex in `core/encoding/`; the tagged-literal compile-time validators for SQL, URL, UUID, email, CIDR, datetime, and the rest of the `tag#"..."` family in `core/text/tagged_literals.vr`. All `.vr`.
-- The concurrency runtime — executor, I/O driver, supervision tree, circuit breakers — all in `core/runtime/` and `core/async/`. No Rust `tokio` dependency, no C `libuv`.
-
-The zero-FFI path works because VBC opcodes `0xF1` (mmap/munmap), `0xF2` (futex, atomics), `0xF4` (io_uring, kqueue, IOCP), and `0xF5` (clock_gettime) are first-class language primitives that the VBC interpreter and the LLVM backend both lower directly. There is no hidden C ABI anywhere in a Verum binary. The consequence for security audits and proof-carrying distribution is large: a `.cog` archive's VBC is a closed artefact that can be validated offline against declared capabilities without the validator needing to trust a distro's libc version.
-
-On macOS the one exception is `libSystem.B.dylib`, Apple's stable ABI entry point — Apple doesn't guarantee syscall ABI stability, so programs linking directly to syscalls would break across macOS versions. `libSystem` is linked, nothing else. No Rust `std`, no glibc, no `libuv`.
+Bytecode capability validation does not prove the dependencies of the host
+interpreter or generated executable. See the
+[no-libc architecture, remaining gaps and artifact checks](/docs/architecture/no-libc-architecture)
+for the current distinction between the contract and its implementation.
 
 The standard library is also where Verum's **framework-axiom packages** live. The cleanest worked example is `core.math.frameworks.owl2_fs` — a sixty-five-axiom verbatim encoding of the W3C OWL 2 Direct Semantics (the standard backing SNOMED-CT, Gene Ontology, DBpedia, FIBO, and most production knowledge graphs). Every operator the OWL 2 Functional-Style Syntax recognises is a named `@framework(owl2_fs, "Shkotin 2019. ...")` axiom that the audit gate `verum audit --framework-axioms --by-lineage owl2_fs` enumerates exactly. A typed-attribute layer (`@owl2_class`, `@owl2_property(domain, range, characteristic)`, `@owl2_subclass_of`, `@owl2_has_key`, ...) adds the OWL 2 vocabulary to ordinary Verum types; `verum import --from owl2-fs` and `verum export --to owl2-fs` give a byte-deterministic round-trip with Pellet/HermiT-compatible `.ofn` files. The OWL 2 layer also ships a cross-framework bridge to higher-topos theory (`core.theory_interop.bridges.owl2_to_htt`): Class becomes a presheaf, ObjectProperty a functor, SubClassOf a monomorphism, HasKey representability — meaning any OWL 2 ontology automatically gets an `(∞, 1)`-topos interpretation. Verum is the first proof assistant with kernel-checked OWL 2 semantics and an automatic translation of ontologies into a categorical language.
 
@@ -338,7 +344,7 @@ None of these are show-stoppers. All of them deserve to be named.
 
 ## 17. Closing
 
-The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, a thirteen-rung gradual-verification ladder generalising SPARK's gold/silver/bronze, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a three-kernel differential-tested trusted base that no other production proof assistant runs, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, a standard library that is itself written in Verum with no libc / `pthread` / Rust-std dependency, the first proof assistant with kernel-checked OWL 2 Direct Semantics, and a mathematical foundation — the MSFS classification of all formal foundations — that pins both ends of the trusted base to a proven law rather than to historical convention. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
+The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, a thirteen-rung gradual-verification ladder generalising SPARK's gold/silver/bronze, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a three-kernel differential-tested trusted base that no other production proof assistant runs, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, a standard library written in Verum with an explicit no-libc runtime contract whose implementation is still incomplete, the first proof assistant with kernel-checked OWL 2 Direct Semantics, and a mathematical foundation — the MSFS classification of all formal foundations — that pins both ends of the trusted base to a proven law rather than to historical convention. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
 
 No single piece of this is new. The combination is — in a production systems language whose surface reads naturally to a Rust or Swift programmer, at a point when much of the software travelling to production was first written by a language model.
 

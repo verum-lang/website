@@ -191,19 +191,19 @@ so it is not a module and does not belong here.)
 - Constants: `UPPER_SNAKE_CASE`.
 - Modules: `lower_snake_case`.
 
-## Zero FFI
+## Runtime and foreign dependencies {#zero-ffi}
 
-The stdlib has no Rust or C++ dependencies. The bootstrap layer
-(`sys`) uses direct syscalls on Linux, libSystem.B.dylib on macOS,
-and kernel32/ntdll on Windows — all via Verum's own FFI machinery.
-This means:
+The stdlib source is written in Verum, but its intrinsics still need
+interpreter or native implementations. The no-libc runtime contract calls
+for direct syscalls on Linux/FreeBSD, libSystem on macOS and kernel32/ntdll
+on Windows. Existing interpreter handlers and some stdlib FFI still
+violate that boundary; writing an API in Verum does not remove its
+underlying runtime dependencies.
 
-- Cross-compilation doesn't also mean cross-building a C toolchain —
-  the stdlib itself carries no C/C++ dependency to cross-compile. You
-  still need a linker and sysroot for the target platform; see
-  [Build System → Cross-compilation](/docs/tooling/build-system#cross-compilation).
-- Embedded targets are first-class.
-- Upgrading the compiler does not change stdlib ABI.
+See the [current no-libc status](/docs/architecture/no-libc-architecture)
+and [cross-compilation requirements](/docs/tooling/build-system#cross-compilation).
+Compiler host tools, target link inputs and explicitly requested foreign
+libraries must be accounted for separately.
 
 ## `core` vs `std` — the allocator boundary
 

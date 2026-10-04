@@ -11,9 +11,9 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 <StdlibStatus status="undocumented" />
 
 `core.database.mysql` — codename **spindle (mysql backend)** — is a
-pure-Verum implementation of the MySQL 8.0 binary protocol.  Zero
-`libmysqlclient`, zero FFI: the wire is encoded and decoded in
-Verum end-to-end.
+pure-Verum implementation of the MySQL 8.0 binary protocol. Its encoder
+and decoder do not use a `libmysqlclient` FFI shim. This does not remove
+the dependencies of the underlying [network runtime](./net.md).
 
 The adapter implements the cross-vendor protocols defined in
 `core.database.common.protocol` (`Adapter`, `Connection`, affine

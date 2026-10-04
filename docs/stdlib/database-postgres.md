@@ -12,8 +12,9 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 `core.database.postgres` — codename **spindle (postgres backend)** —
 is a pure-Verum implementation of PostgreSQL's v3 wire protocol.
-Zero `libpq`, zero FFI: every byte that flows over the TCP socket is
-encoded and decoded in Verum.
+The protocol encoder and decoder are written in Verum, without a `libpq`
+FFI shim. This does not remove the dependencies of the underlying
+[network runtime](./net.md).
 
 The adapter implements the cross-vendor protocols defined in
 `core.database.common.protocol` (`Adapter`, `Connection`, affine

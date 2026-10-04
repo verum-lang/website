@@ -103,7 +103,7 @@ StreamError.with_message(kind: IoErrorKind, msg: Text) -> StreamError
 StreamError.Other(msg: Text) -> StreamError                  // = with_message(Other, msg)
 StreamError.from_raw_os_error(code: Int) -> StreamError      // POSIX-stable codes pinned
 StreamError.from_errno(errno: Int) -> StreamError            // alias for from_raw_os_error
-StreamError.from_os(err: OSError) -> StreamError             // from a libc error wrapper
+StreamError.from_os(err: OSError) -> StreamError             // from a platform OS error
 ```
 
 ### Accessors
@@ -594,7 +594,9 @@ type FileType is
 
 > **Note** (#io-10): The 4-variant FileType collapses POSIX's 8 types
 > (block / char device / fifo / socket dropped into Unknown). Consumers
-> needing the full set must drop to `as_raw_fd` + libc's `S_IS*` macros.
+> needing the full set must inspect the platform's file mode bits through
+> its low-level stat interface. The POSIX `S_IS*` tests describe bit
+> classifications; they do not themselves require linking libc.
 
 ### `Permissions` (Unix)
 

@@ -400,11 +400,11 @@ Nothing in this list is an effect handler. Every mechanism is a
 normal function call against an inline structure; the compiler
 arranges for the structure to be in scope.
 
-## Zero-FFI execution path
+## Bytecode and the OS boundary {#zero-ffi-execution-path}
 
-`core/runtime/mod.vr` declares that every syscall the runtime
-requires goes through a **VBC opcode**, not through C ABI. The
-executive list:
+The runtime models OS operations through **VBC intrinsics/opcodes**.
+The table describes the bytecode boundary; it does not establish how
+an interpreter handler or a native lowering reaches the OS:
 
 | Subsystem | Intrinsic                  | VBC opcode |
 |-----------|----------------------------|-----------:|
@@ -413,9 +413,11 @@ executive list:
 | I/O       | `sys.io_uring_enter`, `sys.kqueue`, IOCP | `0xF4` |
 | Time      | `sys.clock_gettime`        | `0xF5`     |
 
-The consequence for proof-carrying code: a cog's VBC module can be
-validated offline without invoking any C library. No `libc`, no
-`pthread`, no hidden ABI — just bytecode + declared capabilities.
+A cog's bytecode and declared capabilities can be validated offline.
+That validation does not prove the dependencies of the interpreter or
+generated executable. Lowering uses platform ABI boundaries, and current
+runtime paths still include libc calls. See the
+[no-libc architecture and artifact audit](/docs/architecture/no-libc-architecture).
 
 ## See also
 

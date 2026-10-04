@@ -66,6 +66,12 @@ Module: `core.term.raw`
 | `capabilities.vr` | `$TERM`/`$COLORTERM`/`$TERM_PROGRAM` → `TermCapabilities` |
 | `clipboard.vr` | OSC 52 set/get |
 
+The `termios.vr` libc declaration is a current implementation dependency;
+`core/term/event/source.vr` also declares libc `poll`. These are not
+exceptions to Verum's [no-libc contract](/docs/architecture/no-libc-architecture).
+Terminal support needs its own runtime and link audit; the platform table
+is not evidence of a libc-free terminal program.
+
 The raw layer never allocates and never reads terminal input — it only
 writes bytes. Reading is Layer 1's job.
 

@@ -146,8 +146,7 @@ covers per-platform overrides.
 ```bash
 verum build --lto thin            # link-time optimisation
 verum build --lto full            # max wins, longer link
-verum build --static-link         # produce a static binary (musl /
-                                  # no-libc targets where applicable)
+verum build --static-link         # request static linking; inspect the output
 verum build --strip               # strip all symbols
 verum build --strip-debug         # strip only debug info, keep names
 ```
@@ -171,6 +170,10 @@ libraries   = ["dl", "rt"]
 [linker.windows]
 libraries   = ["kernel32", "user32"]
 ```
+
+Explicitly requested foreign libraries remain dependencies of the program.
+Neither `--static-link` nor static inclusion of a foreign library proves
+[no-libc conformance](/docs/architecture/no-libc-architecture).
 
 Profile-scoped overrides (production wins take hold only in `release`):
 

@@ -11,15 +11,20 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus status="partial" />
 
-`sys` is the lowest-level module, the one and only FFI boundary. All
-higher-level stdlib modules (`io`, `net`, `async`, `mem`) sit on top.
+`sys` is the lowest-level OS interface used by higher-level modules
+such as `io`, `net`, `async` and `mem`.
 
-**V-LLSI** = Verum Low-Level System Interface. No libc dependency:
+**V-LLSI** = Verum Low-Level System Interface. Its architectural
+runtime boundaries are:
 
 - **Linux**: direct `syscall` instructions via `syscall6`.
 - **macOS**: Apple's stable ABI via `libSystem.B.dylib` (Mach + Darwin).
 - **Windows**: `kernel32.dll` + `ntdll.dll`.
 - **Embedded** / **no_runtime**: stack allocator, no syscalls, stubs for async.
+
+These boundaries are requirements, not a claim that every current path
+conforms. Interpreter host calls and other stdlib FFI remain; see the
+[no-libc migration status](/docs/architecture/no-libc-architecture).
 
 Most user code never imports `sys` directly. This page is for runtime
 authors, driver writers, and kernel engineers.

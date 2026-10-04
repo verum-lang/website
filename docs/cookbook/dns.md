@@ -6,9 +6,11 @@ description: Resolve hostnames — A, AAAA, MX, TXT, SRV, CNAME, PTR — with ca
 # DNS lookup
 
 Verum ships a pure-Verum DNS client (RFC 1035 over UDP + TCP fallback)
-— no libc `getaddrinfo` dependency. It participates in the async
-runtime and respects cancellation, timeouts, and structured
-concurrency.
+whose protocol implementation does not require libc `getaddrinfo`.
+That does not establish that the underlying interpreter socket path is
+libc-free; see the [current runtime gaps](/docs/architecture/no-libc-architecture).
+The client participates in the async runtime and respects cancellation,
+timeouts, and structured concurrency.
 
 ## Forward resolution
 

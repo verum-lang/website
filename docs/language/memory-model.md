@@ -187,12 +187,13 @@ duplicate explicitly, call `.clone()`.
 
 ## Allocation internals
 
-`Heap<T>`, `Shared<T>`, and every collection-backing allocation go
-through a **mimalloc-inspired, libc-free allocator** with three
-hierarchical scales. This is stable public API only in the sense that
-`Heap(...)` always works — the structure below explains the *costs*
-you see in the summary table, and is useful when reasoning about
-latency-sensitive code.
+The native allocation design uses a **mimalloc-inspired allocator** with
+three hierarchical scales for `Heap<T>`, `Shared<T>` and collection
+backing storage. Its OS boundary must follow the
+[no-libc contract](/docs/architecture/no-libc-architecture); this design is
+not proof that the current interpreter or complete executable has no libc
+dependencies. The structure below describes the allocation model rather
+than a stable representation ABI.
 
 ### Three-tier hierarchy
 

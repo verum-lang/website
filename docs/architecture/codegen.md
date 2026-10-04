@@ -41,8 +41,9 @@ IR (`platform_ir.rs`), and target-triple gating
 - Allocation entry points: every `Heap(...)` lowers to a wrapper
   that calls `verum_os_alloc` / `verum_os_free`, themselves emitted
   by `platform_ir.rs` against `mmap` / `munmap` on Unix and
-  `VirtualAlloc` / `VirtualFree` on Windows. There is no libc
-  allocator in the dependency chain — see
+  `VirtualAlloc` / `VirtualFree` on Windows. These helpers implement
+  the allocator's OS boundary; they do not establish the dependency
+  set of the complete executable — see
   **[no-libc architecture](/docs/architecture/no-libc-architecture)**.
 - Context stack primitives (push, pop, lookup).
 - Panic and unwind machinery.
@@ -248,12 +249,13 @@ pass fuses into the forward kernel whenever the dataflow allows
 ## Linking
 
 `link.rs` drives the in-tree LLD wrapper (`verum_llvm_sys::lld`) and
-applies a **no-libc** linking configuration on every platform:
+defines the **no-libc** linking configuration for each platform.
+The required runtime boundaries are:
 
 - **Linux**: `lld` (ELF flavour). No libc, no libm, no libpthread —
-  the runtime calls direct syscalls.
+  runtime operations must use direct syscalls.
 - **macOS**: `lld` (Mach-O flavour) linking only `libSystem.B.dylib`,
-  Apple's required boundary.
+  Apple's supported system boundary.
 - **Windows**: `lld-link` linking only `ntdll.dll` + `kernel32.dll`
   — no MSVC CRT, no UCRT.
 - **FreeBSD**: `lld` (ELF flavour) with direct syscalls.
@@ -264,13 +266,18 @@ applies a **no-libc** linking configuration on every platform:
   bundle sysroots or cross-linkers; the final link needs the target's
   own toolchain, installed separately.
 
+The compiler-driver fallback does not yet enable the full no-libc
+configuration by default. Interpreter paths and some generated runtime
+operations also retain libc calls. Audit the final executable; the
+presence of `NoLibcConfig` is not proof that every link conforms.
+
 LTO options:
 - `thin` (default): fast, good inlining.
 - `full`: slower, maximum cross-module optimisation.
 
 See **[no-libc architecture](/docs/architecture/no-libc-architecture)**
 for the full ruleset and the per-platform link-audit procedure
-(`ldd` / `otool` / `dumpbin`).
+(`readelf` / `otool` / `dumpbin`).
 
 ## Debug information
 
