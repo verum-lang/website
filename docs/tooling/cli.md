@@ -24,7 +24,7 @@ verum deps list [--tree]
 
 ```bash
 verum build [--release] [--target TRIPLE] [--lto thin|full] [--timings]
-verum run [--interp | --aot] [-- args...]
+verum run [PATH] [--interp | --aot] [-- args...]
 verum check [PATH] [--workspace] [--parse-only]
 verum test  [--filter STR] [--exact] [--skip PAT] [--include-ignored] \
             [--ignored] [--list] [--interp | --aot] \
@@ -38,8 +38,13 @@ verum bench [--filter STR] [--interp | --aot] \
 verum watch [<command>] [--clear]
 ```
 
-`verum run` is interpreter-first. Add `--aot` for LLVM native
-execution when latency matters (LLVM warmup adds ~200 ms).
+`verum run app.vr` defaults to the interpreter. Running a project with
+`verum run` or `verum run ./my-project` uses `[codegen].tier` from its
+manifest, whose default is `"aot"`. Pass `--interp` or `--aot` to select
+the backend explicitly; `--tier interpret` and `--tier aot` are equivalent
+named selectors. `--release` changes build settings without overriding
+the selected backend. See [execution modes](/docs/architecture/runtime-tiers#selecting-the-execution-mode)
+for precedence and configuration.
 
 ### Script invocation
 

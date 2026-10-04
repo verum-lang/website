@@ -31,9 +31,13 @@ execution tier.
 | Check only | `verum check app.vr` | Report source diagnostics without running the program. |
 
 For project execution, an explicit CLI mode takes precedence over
-`[codegen].tier`; the legacy profile tier is a fallback. The default
-`[codegen].tier` is `"interpret"`. Use explicit flags when comparing
-backends rather than relying on a profile name to select one.
+`[codegen].tier`. The default project value is `"aot"`, including when
+the section or its `tier` key is omitted. Set `tier = "interpret"` or
+pass `--interp` to run a project through the interpreter. `--release`
+selects build settings; it does not override the configured execution mode.
+
+An explicit file invocation such as `verum run app.vr` defaults to the
+interpreter. Use explicit flags when comparing backends.
 
 **Known limitation, measured 2026-10-04:** interpreter and native
 behaviour are not fully interchangeable. Generic callable chains,
@@ -284,10 +288,12 @@ verum build --release             # build the current project
 tier = "aot"                     # interpret | aot for verum run
 ```
 
-An explicit CLI selector overrides this value. The older
-`[profile.dev].tier` and `[profile.release].tier` settings remain a
-fallback; a configured `[codegen].tier` takes precedence over them.
-`[build].tier` is not the execution-mode setting.
+An explicit CLI selector overrides this value. Omitting the section or
+the `tier` key still selects its default, `"aot"`. The older
+`[profile.dev].tier` and `[profile.release].tier` settings are consulted
+only when the effective codegen value is not recognised; omitting the
+key does not activate that fallback. `[build].tier` is not the
+execution-mode setting.
 
 Although the configuration model also recognises `"check"`,
 `verum run` refuses `[codegen].tier = "check"` because it cannot execute

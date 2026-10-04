@@ -90,10 +90,10 @@ fn main() {
 Two things are worth noticing:
 
 1. **`print` is a function**, not a macro. No `!`, no `println!`.
-   Standard output is one of a small set of *built-in* effects that do
+   Standard output is one of a small set of built-in operations that do
    not need an explicit context — see
    [reference/builtins](/docs/reference/builtins) for the full list.
-2. **User-defined effects are explicit.** The moment you need a
+2. **Context dependencies are explicit.** When your function needs a
    database, a logger, a clock, or anything else beyond the built-ins,
    you declare it: `fn handle(...) using [Database, Logger, Clock]`.
    No globals, no `@Autowired`. The
@@ -103,20 +103,19 @@ Two things are worth noticing:
 ## Build and run
 
 ```bash
-$ verum run
+$ verum run --interp
 Interpreting /path/to/hello/src/main.vr
 Hello from hello!
 Sum: 15
-        note executed in 0.03s
 ```
 
-There is no link step and no binary: `verum run` interprets, so the
-only lines are the file it is interpreting, your program's output, and
-how long it took.
+`--interp` compiles to VBC bytecode and executes it without linking a
+native executable. The CLI also reports timing, which depends on your
+machine and program.
 
-`verum run` compiles to VBC bytecode and executes it in the
-interpreter by default. Use `--aot` to compile-and-execute the native
-binary instead. For a release build:
+Without an explicit mode, project execution follows `[codegen].tier`
+in the manifest; its default is `"aot"`. Use `verum run --aot` to
+compile and execute a native binary, or build one for later execution:
 
 ```bash
 $ verum build --release
