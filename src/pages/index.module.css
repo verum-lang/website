@@ -410,6 +410,11 @@
   margin: 0 0 1rem;
 }
 
+/* Bright accents remain decoration on a light surface. */
+[data-theme='light'] .pillarTitle {
+  color: var(--ifm-color-emphasis-900);
+}
+
 /* CTA */
 .cta {
   padding: 5rem 1.5rem;
