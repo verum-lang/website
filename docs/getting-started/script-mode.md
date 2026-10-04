@@ -1,20 +1,14 @@
 ---
 sidebar_position: 5
 title: Script mode
-description: Single-file Verum scripts via `#!` shebang — top-level statements, exit-code propagation, and the three-mode contract that keeps interpreter, AOT, and script invocations unambiguous.
+description: Single-file Verum scripts via a shebang, with top-level statements, exit-code propagation, and interpreter or native execution.
 ---
 
 # Script mode
 
-Most languages force a choice: a small shell-grade scripting tool
-(`bash`, `python`, `awk`) for one-shot work, or a full project
-toolchain (Rust, Go, Java) when correctness and types matter.
-Verum collapses that choice. The same compiler that runs your
-verified, refinement-typed cog with SMT-checked contracts can also
-boot a single `.vr` file with a shebang in milliseconds, no
-`verum.toml`, no `fn main()`, no boilerplate — and that file gets
-**the same type system, the same memory model, the same standard
-library** as a production binary.
+Verum scripts are single `.vr` files with top-level statements.
+They use the language's type system, memory model, and standard library
+without a `verum.toml` or an explicit `fn main()`.
 
 This page is the source-of-truth for what script mode does, how
 to write a Verum script today, and the precise contract the
@@ -22,7 +16,7 @@ parser, CLI, and runtime enforce.
 
 ---
 
-## Two execution roles, three invocation modes
+## Source form and execution backend {#two-execution-roles-three-invocation-modes}
 
 Verum draws a strict line between two **roles** a `.vr` source can
 play. The role is determined by what's in the file:
@@ -37,15 +31,16 @@ play. The role is determined by what's in the file:
   entry point. The synthesised wrapper around the top-level
   statements is always the entry.
 
-The roles do not overlap. `main` only ever drives an application;
-the script wrapper only ever drives a script. From those two roles
-you get three invocation modes:
+The source form selects the entry point. The execution backend selects
+whether that entry runs in the interpreter or in a native binary:
 
-| Mode | Role | Invocation | Required source signal |
+| Backend | Source form | Invocation | Required source signal |
 |---|---|---|---|
 | **Interpreter** | Application | `verum run file.vr [-- args…]` | `fn main()` (sync or async) |
-| **AOT** | Application | `verum run --aot file.vr` *or* `verum build` | `fn main()` |
-| **Script** | Script | `verum file.vr [args…]` *or* `./file.vr` | `#!` shebang at byte 0 |
+| **AOT** | Application | `verum run --aot file.vr` | `fn main()` |
+| **Interpreter** | Script | `verum file.vr [args…]` *or* `./file.vr` | `#!` shebang at byte 0 |
+| **Interpreter** | Script | `verum run --interp file.vr [-- args…]` | `#!` shebang at byte 0 |
+| **AOT** | Script | `verum run --aot file.vr [-- args…]` | `#!` shebang at byte 0 |
 
 The shebang line is **the** signal that distinguishes a script
 from a library/binary source. A `.vr` file without a shebang must
@@ -349,17 +344,23 @@ for sandboxing a script you didn't write or relaxing a
 production policy in a one-off debug session:
 
 ```bash
-$ verum --allow=fs:read=./logs --deny-all script.vr   # whitelist
-$ verum --allow-all untrusted.vr                       # explicit "I trust this"
-$ verum script.vr                                      # frontmatter wins
+$ verum run --allow=fs:read=./logs script.vr  # add a filesystem grant
+$ verum run --deny-all script.vr            # deny every grant
+$ verum run --allow-all script.vr           # grant every scope
+$ verum script.vr                          # use frontmatter policy
 ```
 
 CLI flags **augment** frontmatter grants: a frontmatter
 declaring `["net"]` plus `--allow=fs:read=./tmp` ends up with
 both. `--deny-all` is the empty set; `--allow-all` is the
-universal set. Either CLI flag installs a permission policy
+universal set. These two flags are mutually exclusive and override
+individual `--allow` grants. Either flag installs a permission policy
 even if the script's frontmatter is silent — opt-in to
 sandboxing without editing the source.
+
+Use `verum run` for runner options. Bare `verum script.vr ...` forwards
+arguments after the file to the script, including arguments that look
+like permission flags.
 
 The resolved policy is mixed into the script's persistent VBC
 cache key, so two runs with different policies never collide on

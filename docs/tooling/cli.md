@@ -48,11 +48,12 @@ for precedence and configuration.
 
 ### Script invocation
 
-Verum has a third execution mode reserved for **single-file
-scripts** with a `#!` shebang line. Bare `verum file.vr` (no
-`run` subcommand) and `./file.vr` direct exec both route into
-script mode, where top-level statements are accepted without an
-enclosing `fn main()`:
+**Single-file scripts** use a `#!` shebang line to enable top-level
+statements without an enclosing `fn main()`. Bare `verum file.vr`
+(no `run` subcommand) and `./file.vr` direct exec use the same
+single-file runner and default to the interpreter. To compile a script
+to native code, use `verum run --aot file.vr`; the shebang still enables
+script parsing.
 
 ```bash
 $ cat hello.vr
@@ -70,19 +71,22 @@ mode](/docs/getting-started/script-mode)**.
 
 #### Permission flags
 
-`verum run` and the bare script invocation accept three
-permission CLI flags that augment frontmatter declarations:
+Use the explicit `verum run` form to set permission flags for a
+script. These flags augment frontmatter declarations:
 
 ```bash
-verum --allow=<scope>[=<target>]   # add a single grant
-verum --allow-all                   # universal grant set
-verum --deny-all                    # empty grant set (drops every grant)
+verum run --allow=<scope>[=<target>] script.vr  # add a single grant
+verum run --allow-all script.vr               # universal grant set
+verum run --deny-all script.vr                # empty grant set
 ```
 
 `--allow` is repeatable: `--allow=net=api.example.com:443
 --allow=fs:read=./data` installs both. `--allow-all` and
 `--deny-all` are mutually exclusive and override repeated
 `--allow` flags.
+
+Arguments after the file in bare `verum script.vr ...` invocations
+are passed to the script. Use `verum run` when setting runner flags.
 
 Either flag installs a permission policy even if the script's
 frontmatter is silent — opt-in to sandboxing without editing
