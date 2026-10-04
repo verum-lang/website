@@ -222,12 +222,17 @@ interpreter and LLVM backend.
 
 **Clarification (2026-10-04):** the original article described the no-libc
 architecture as if every runtime path and distributed executable already
-satisfied it. That was too broad. The contract requires direct syscalls on
-Linux/FreeBSD, libSystem on macOS, and kernel32/ntdll on Windows. macOS's
-allowed boundary includes pthread entry points. Current interpreter
-handlers still use Rust `std` and libc, terminal support declares libc FFI,
-and ordinary native Float output still calls `printf`. The shipped Rust
-CLI also needs a separate dependency audit.
+satisfied it. The strict contract applies to **generated AOT programs**:
+direct syscalls on Linux/FreeBSD, libSystem on macOS, and kernel32/ntdll on
+Windows. macOS's allowed boundary includes pthread entry points. Native
+terminal lowering and ordinary Float output still need correction; Float
+output currently calls `printf`.
+
+The host CLI and interpreter may use Rust `std`, libc and baseline system
+libraries. They have a separate portability requirement: running on a
+clean supported target OS without separately installed third-party
+libraries. Interpreter and AOT implementations must preserve the same
+language and platform-operation semantics.
 
 Bytecode capability validation does not prove the dependencies of the host
 interpreter or generated executable. See the
@@ -344,7 +349,7 @@ None of these are show-stoppers. All of them deserve to be named.
 
 ## 17. Closing
 
-The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, a thirteen-rung gradual-verification ladder generalising SPARK's gold/silver/bronze, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a three-kernel differential-tested trusted base that no other production proof assistant runs, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, a standard library written in Verum with an explicit no-libc runtime contract whose implementation is still incomplete, the first proof assistant with kernel-checked OWL 2 Direct Semantics, and a mathematical foundation — the MSFS classification of all formal foundations — that pins both ends of the trusted base to a proven law rather than to historical convention. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
+The shortest honest description of Verum is this: it takes refinement types from Liquid Haskell, a thirteen-rung gradual-verification ladder generalising SPARK's gold/silver/bronze, a three-tier memory model descended from CBGR and Pony's capability ideas, a capability-based context system in the place where other languages grew algebraic effects, a dependent-type layer with cubical HoTT support, a three-kernel differential-tested trusted base that no other production proof assistant runs, a single bytecode IR that runs both the interpreter and the AOT backend, a unified per-task execution environment that merges memory, capabilities, errors, and concurrency into one structure, OTP-style supervision in the language runtime, a standard library written in Verum with a strict generated AOT no-libc contract whose implementation is still incomplete, the first proof assistant with kernel-checked OWL 2 Direct Semantics, and a mathematical foundation — the MSFS classification of all formal foundations — that pins both ends of the trusted base to a proven law rather than to historical convention. It wires all of that together under one rule — semantic honesty — and refuses to include features that break the rule.
 
 No single piece of this is new. The combination is — in a production systems language whose surface reads naturally to a Rust or Swift programmer, at a point when much of the software travelling to production was first written by a language model.
 

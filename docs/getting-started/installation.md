@@ -61,26 +61,25 @@ Anything outside this matrix requires a [source build](#build-from-source).
 
 ### What the `verum` binary itself links against
 
-Verum's architecture requires direct syscalls on Linux and FreeBSD,
-`libSystem.B.dylib` on macOS, and `kernel32.dll` + `ntdll.dll` on Windows,
-without glibc, musl or a Windows CRT. This requirement covers the CLI and
-its interpreter as well as generated programs. **Current release packaging
-and runtime paths do not yet meet that contract throughout.**
+The **host `verum` CLI and its interpreter may use libc and baseline system
+libraries**. The deployment requirement is that the downloaded tool run on
+a clean installation of its documented supported target OS, without
+separately installed third-party libraries. The strict no-libc contract
+applies to [generated AOT programs](#what-programs-compiled-by-verum-build-link-against).
 
 The reusable [binary build workflow](https://github.com/verum-lang/verum/blob/main/.github/workflows/build-verum.yml)
 uses ordinary Rust GNU/Linux and MSVC/Windows host targets. It does not
-establish a universal minimum glibc version, static Linux linkage, or a
-libSystem-only macOS CLI. Dependencies must be checked on the exact asset:
+establish a universal minimum glibc version or prove clean-system
+portability. Dependencies must be checked on the exact asset:
 
-| Platform | What to inspect before relying on portability |
-|----------|-----------------------------------------------|
-| Linux | ELF interpreter, `NEEDED` libraries and symbol versions (`readelf -l`, `readelf -d`, `readelf --version-info`). GNU target names are packaging facts, not the intended runtime ABI contract. |
-| macOS | `otool -L` imports and deployment target. Current assets can require libraries beyond libSystem, including dependencies from the build machine. |
-| Windows | PE imports (`dumpbin /imports`) and the supported OS version. The MSVC build target does not prove absence of MSVC CRT/UCRT imports. |
+| Platform | CLI compatibility check |
+|----------|-------------------------|
+| Linux | Compare the ELF interpreter, `NEEDED` libraries and symbol versions (`readelf -l`, `readelf -d`, `readelf --version-info`) with the supported distribution baseline. |
+| macOS | Check `otool -L` imports and the deployment target. System libraries may be used; external Homebrew paths must not be required on a clean installation. |
+| Windows | Check PE imports (`dumpbin /imports`) against the supported Windows baseline. CRT use is allowed for the CLI, but availability of each imported runtime component must be verified. |
 
 **Release inspection (2026-10-04):** the rolling assets published that day
-were inspected without executing them. All inspected platforms had
-imports beyond the required no-libc boundary:
+were inspected without executing them. Their imports were:
 
 | Inspected assets | Observed imports |
 |------------------|------------------|
@@ -89,17 +88,26 @@ imports beyond the required no-libc boundary:
 | Windows x64 and ARM64 | UCRT `api-ms-win-crt-*` imports, `MSVCP140.dll` and `VCRUNTIME140.dll`, in addition to OS DLLs; x64 also imports `VCRUNTIME140_1.dll`. |
 
 The [recorded artifact inspection](https://github.com/verum-lang/verum/blob/main/docs/architecture/no-libc-dev-artifacts-2026-10-04.json)
-contains asset identities and dependency details. These are observed
-packaging defects, **not a new architectural glibc/CRT requirement** or a
-compatibility certification. In particular, those Linux assets are not
-static, and those macOS assets are not self-contained. Recheck a later
-rolling asset rather than assuming it has the same dependencies.
+contains asset identities and dependency details. These observations are
+not a clean-system compatibility certification:
 
-See the [no-libc architecture and current gaps](/docs/architecture/no-libc-architecture)
-for the required boundaries and verification procedure. Do not infer
-self-contained deployment from the fact that an archive contains one
-executable. Building Verum from source still requires the host tools listed
-[below](#build-from-source).
+- The Linux `GLIBC_2.39` imports set a libc symbol-version requirement for
+  those assets. They constrain the compatible OS baseline; they do not
+  violate the CLI contract. `libssl.so.3`, `libcrypto.so.3` and
+  `libstdc++.so.6` must not be assumed present on every clean Linux system.
+- Absolute Homebrew OpenSSL imports are a macOS packaging defect because
+  Homebrew libraries are not part of a clean macOS installation.
+- Windows UCRT and MSVC runtime availability must be checked against the
+  supported target baseline. Their presence in CLI imports is not itself
+  forbidden, but requiring a separate redistributable install would fail
+  the clean-system deployment requirement.
+
+Recheck later rolling assets rather than assuming they have the same
+imports. A single packaged executable does not prove clean-system
+portability. Source builds still require the host tools listed
+[below](#build-from-source); those build tools are not an end-user runtime
+requirement. The [architecture page](/docs/architecture/no-libc-architecture)
+separates CLI compatibility checks from strict generated AOT checks.
 
 The SMT backend is bundled in-binary and routed via capability profiles
 ([SMT routing](/docs/verification/smt-routing)); no separate solver install
@@ -110,7 +118,7 @@ gate (`verum audit --external-prover-replay`).
 
 ### What programs compiled by `verum build` link against
 
-The native runtime is designed for these boundaries:
+Generated AOT programs must obey these strict runtime boundaries:
 
 | Target | Required runtime boundary | Entry point |
 |--------|---------------------------|-------------|
@@ -733,8 +741,9 @@ Inspect that exact asset with `readelf --version-info` and `readelf -d`;
 there is no established universal glibc minimum for all rolling builds.
 Use a compatible host build or [build from source](#build-from-source)
 with your system toolchain. The current release matrix has GNU/Linux
-triples, not a separate musl asset. These packaging limitations do not
-change the [no-libc runtime requirement](/docs/architecture/no-libc-architecture).
+triples, not a separate musl asset. A host CLI libc dependency is permitted;
+its symbol versions must match the advertised OS baseline. This is separate
+from the [strict no-libc requirement for generated AOT programs](/docs/architecture/no-libc-architecture).
 
 ### macOS: "cannot be opened because the developer cannot be verified"
 

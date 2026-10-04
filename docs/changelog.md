@@ -1651,9 +1651,10 @@ all three plus the Decimal-backed NUMERIC encode path.
 
 **Scope clarification (2026-10-04):** this historical entry covers the
 internal conversion helpers described below. It does not establish that
-all native output or the interpreter is libc-free: ordinary native Float
-`print` still calls `printf`, and the float-to-text helper has range and
-precision limits. See the [current no-libc status](/docs/architecture/no-libc-architecture).
+all generated AOT output is libc-free: ordinary native Float `print`
+still calls `printf`, and the float-to-text helper has range and precision
+limits. Host CLI/interpreter libc use is governed separately by OS
+compatibility, not the strict AOT ban. See the [current no-libc status](/docs/architecture/no-libc-architecture).
 
 `P-AOT-NO-LIBC-F64-FMT-V0` closes the third and final piece of
 `T-DEFER-AOT-NO-LIBC`.  The AOT-emitted formatting / parsing

@@ -250,7 +250,7 @@ pass fuses into the forward kernel whenever the dataflow allows
 
 `link.rs` drives the in-tree LLD wrapper (`verum_llvm_sys::lld`) and
 defines the **no-libc** linking configuration for each platform.
-The required runtime boundaries are:
+The required generated AOT runtime boundaries are:
 
 - **Linux**: `lld` (ELF flavour). No libc, no libm, no libpthread —
   runtime operations must use direct syscalls.
@@ -267,9 +267,10 @@ The required runtime boundaries are:
   own toolchain, installed separately.
 
 The compiler-driver fallback does not yet enable the full no-libc
-configuration by default. Interpreter paths and some generated runtime
-operations also retain libc calls. Audit the final executable; the
-presence of `NoLibcConfig` is not proof that every link conforms.
+configuration by default. Some generated runtime operations also retain
+libc calls. Audit the final AOT executable; the presence of `NoLibcConfig`
+is not proof that every link conforms. The host CLI/interpreter may use
+libc under their separate clean-target compatibility requirement.
 
 LTO options:
 - `thin` (default): fast, good inlining.

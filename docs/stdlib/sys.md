@@ -14,7 +14,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 `sys` is the lowest-level OS interface used by higher-level modules
 such as `io`, `net`, `async` and `mem`.
 
-**V-LLSI** = Verum Low-Level System Interface. Its architectural
+**V-LLSI** = Verum Low-Level System Interface. Its generated AOT
 runtime boundaries are:
 
 - **Linux**: direct `syscall` instructions via `syscall6`.
@@ -22,9 +22,10 @@ runtime boundaries are:
 - **Windows**: `kernel32.dll` + `ntdll.dll`.
 - **Embedded** / **no_runtime**: stack allocator, no syscalls, stubs for async.
 
-These boundaries are requirements, not a claim that every current path
-conforms. Interpreter host calls and other stdlib FFI remain; see the
-[no-libc migration status](/docs/architecture/no-libc-architecture).
+These are requirements for generated code, not a claim that every current
+AOT path conforms. The host interpreter may use libc/system libraries,
+subject to CLI portability and consistent API semantics. See the
+[AOT no-libc status and host compatibility boundary](/docs/architecture/no-libc-architecture).
 
 Most user code never imports `sys` directly. This page is for runtime
 authors, driver writers, and kernel engineers.

@@ -229,7 +229,7 @@ combination is admissible:
 The compatibility tables for Foundation and Tier are
 independent. A cog at `(Foundation.Hott, Tier.Aot)` is
 subject to HoTT's AOT extraction restrictions (the constructive
-fragment supports extraction). The runtime's no-libc contract is an
+fragment supports extraction). The generated AOT runtime's no-libc contract is an
 additional implementation and artifact requirement; type checking
 alone does not prove that the linked output satisfies it.
 

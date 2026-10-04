@@ -1,30 +1,41 @@
 ---
 sidebar_position: 15
 title: "No-libc — load-bearing architectural invariant"
-description: "Verum's no-libc runtime contract, current implementation gaps, platform boundaries, and artifact verification."
+description: "Strict no-libc for generated AOT programs, portable host CLI requirements, current gaps, and artifact verification."
 slug: /architecture/no-libc-architecture
 ---
 
 # No-libc architecture
 
-**Status (2026-10-04): architectural requirement; implementation and release
-packaging do not yet satisfy it across all execution paths.**
+**Status (2026-10-04): strict no-libc is an architectural requirement for
+generated AOT programs; native implementation gaps remain. The host CLI
+has a separate OS compatibility and packaging requirement.**
 
-Verum's no-libc contract covers the **VBC interpreter** (Tier 0),
-**AOT-compiled programs** (Tier 1), and the `verum` CLI that hosts the
-interpreter. Emitted libraries and object files must obey the same runtime
-boundary. Calling libc from Rust inside the interpreter is a violation of
-this contract, just as emitting a libc call in a user program is.
+Verum-generated **AOT programs** (Tier 1), including their emitted runtime,
+libraries and object files, must obey the no-libc boundary below. On macOS,
+Apple's supported libSystem ABI is the documented platform boundary.
 
-Building the compiler currently requires a Rust/C++/LLVM host toolchain.
-Those build prerequisites are distinct from the dependencies of a shipped
-executable. They do not exempt the shipped CLI or interpreter from the
-contract. A single-file download, static LLVM linkage, or a successful
-`--version` check does not establish no-libc conformance.
+The **`verum` CLI and VBC interpreter** (Tier 0) may use libc and other
+baseline system libraries. They must run on a clean installation of each
+documented supported target OS, without requiring separately installed
+third-party libraries. This means defining and testing an OS baseline,
+not assuming that every library on the build machine exists on users'
+systems. Homebrew OpenSSL paths are a packaging defect; libc use by the
+host tool is not an AOT no-libc violation.
+
+Building the compiler additionally requires the documented Rust/C++/LLVM
+host toolchain. Build prerequisites, CLI deployment dependencies and
+generated-program dependencies are three separate checks. A single-file
+download or successful `--version` on the build host proves none of them
+for a clean target machine.
+
+Interpreter handlers and AOT lowerings must implement the same language
+and platform-operation contracts. Permission to use libc in Tier 0 does
+not permit host libc calls to leak into generated AOT code.
 
 ## 1. Per-platform replacement strategy
 
-| Target | Required runtime boundary |
+| AOT target | Required generated-runtime boundary |
 |--------|---------------------------|
 | Linux | Direct kernel syscalls: `syscall` on x86_64, `svc #0` on aarch64; no glibc or musl. |
 | macOS | Apple's supported `libSystem.B.dylib` ABI, including its OS and threading entry points. |
@@ -41,7 +52,7 @@ boundary, not a claim of a standalone native executable.
 
 ## 2. Why this matters
 
-The contract makes OS access and runtime dependencies explicit. On Linux,
+The AOT contract makes OS access and runtime dependencies explicit. On Linux,
 meeting it removes a dependency on the distribution's libc version; kernel
 features and target architecture still constrain compatibility. It also
 makes the runtime implementation available for inspection. Neither this
@@ -50,8 +61,8 @@ for a particular program.
 
 ## 3. What this rules out
 
-These are requirements for a conforming runtime, not a description of every
-current implementation path:
+These are requirements for a conforming generated AOT runtime, not a
+description of every current implementation path or a ban on host CLI libc:
 
 - File, network, time and process operations must use the target's boundary
   above. Linux libc wrappers such as `open`, `socket`, `clock_gettime` and
@@ -82,8 +93,9 @@ entry points and target libraries must agree with that same target.
 
 ## 5. Verification procedure
 
-Audit the exact CLI download and the exact generated program separately.
-Record their target, build configuration and checksum. For example:
+Audit the exact CLI download and the exact generated program against
+**different criteria**. Record their target, build configuration and
+checksum. For example:
 
 ```bash
 # Linux: inspect without executing the binary.
@@ -105,12 +117,21 @@ dumpbin /imports verum.exe
 dumpbin /imports program.exe
 ```
 
-A Linux no-libc audit must reject glibc/musl and unintended runtime
-libraries. A **fully static ELF** claim additionally requires checking that
-there is no program interpreter and no dynamic-library dependency; static
-linking alone does not exclude a statically linked libc. Inspect symbols
-and the link inputs as well. On macOS and Windows, compare imports with
-the allowed platform boundary and any explicitly requested feature libraries.
+For a **generated Linux AOT program**, reject glibc/musl and unintended
+runtime libraries. A **fully static ELF** claim additionally requires
+checking that there is no program interpreter and no dynamic-library
+dependency; static linking alone does not exclude a statically linked
+libc. Inspect symbols and the link inputs as well. For generated macOS and
+Windows programs, compare imports with the AOT platform boundary and any
+explicitly requested feature libraries.
+
+For the **host CLI**, compare imports and symbol versions with a clean
+supported OS installation, then run compatibility tests on that baseline.
+Linux glibc symbol requirements are compatibility constraints, not a CLI
+no-libc violation. OpenSSL, C++ runtime libraries and Windows CRT components
+must not be assumed present on every installation; verify availability on
+the stated baseline and package or remove dependencies that are absent.
+The no-libc AOT smoke check does not replace this clean-host test.
 
 The existing `scripts/ci/check_no_libc_link.sh` builds and inspects a
 **generated AOT smoke program** on Linux and macOS. It rejects known
@@ -122,8 +143,9 @@ release asset, every runtime feature, or Windows imports.
 
 The original migration report recorded internal allocation, I/O, byte
 operations and number-conversion helpers. That was scoped implementation
-evidence, not proof that the entire interpreter, compiler distribution or
-all AOT programs were libc-free. The historical
+evidence, not proof that all AOT programs were libc-free. Under the current
+scope, host compiler/interpreter deployment is governed by the separate
+OS compatibility requirement. The historical
 [formatting report](/docs/changelog#added--aot-no-libc-f64--strtol-formatting-trio-complete-2026-05-04)
 is retained with its date; it does not establish complete Float formatting
 semantics or ordinary native print coverage.
@@ -141,34 +163,41 @@ or release assets.
 
 ### Open punch-list
 
-**Source audit: 2026-10-04.** These are observed gaps, not approved exceptions
-to the architecture:
+**Source audit: 2026-10-04.** The following remain generated AOT concerns:
 
 | Surface | Current limitation |
 |---------|--------------------|
-| Shipped CLI | `.github/workflows/build-verum.yml` builds the Rust CLI for GNU Linux and MSVC Windows targets, then smoke-tests `--version` and packages it. There is no per-asset dependency audit in that workflow. Rust, LLVM and other host dependencies can remain in the shipped binary. See [installation](../getting-started/installation.md#what-the-verum-binary-itself-links-against). |
-| Interpreter networking | `crates/verum_vbc/src/interpreter/dispatch_table/handlers/net_runtime.rs` uses `std::net` and libc socket operations. These are runtime calls, not merely compiler build dependencies. |
-| Interpreter FFI | `crates/verum_vbc/src/ffi/platform/linux.rs` uses libc dynamic loading and mapping functions. Generic FFI and native DNS paths need auditing separately from direct-syscall intrinsics. |
-| Terminal support | `core/term/raw/termios.vr` declares `@ffi("libc")` for terminal/I/O operations; `core/term/event/source.vr` also declares libc `poll`. |
+| Terminal support | `core/term/raw/termios.vr` declares `@ffi("libc")` for terminal/I/O operations; `core/term/event/source.vr` also declares libc `poll`. AOT lowering must respect the target boundary: direct syscalls on Linux, allowed libSystem entry points on macOS. |
 | Native Float output | Ordinary Float `print` still reaches `printf` in `crates/verum_codegen/src/llvm/instruction.rs`. This is not confined to an optional debug mode. Internal float-to-text conversion also has documented range and precision limits. |
-| Linker fallback | `NoLibcConfig::nostdlib_cc_driver_enabled` in `crates/verum_codegen/src/link.rs` defaults to disabled. The compiler-driver fallback can therefore add default runtime libraries. A no-libc configuration existing in source is not evidence that every final link uses it. |
+| Linker fallback | `NoLibcConfig::nostdlib_cc_driver_enabled` in `crates/verum_codegen/src/link.rs` defaults to disabled. The compiler-driver fallback can therefore add default runtime libraries to generated programs. A no-libc configuration existing in source is not evidence that every final link uses it. |
+
+The host surfaces below have a **separate portability requirement**, not
+a blanket no-libc ban:
+
+| Host surface | What must be checked |
+|--------------|----------------------|
+| Shipped CLI | `.github/workflows/build-verum.yml` builds GNU/Linux and MSVC/Windows host binaries, smoke-tests `--version`, and packages them without a clean-target dependency audit. [Installation](../getting-started/installation.md#what-the-verum-binary-itself-links-against) records the observed release imports and remaining packaging problems. |
+| Interpreter networking | `crates/verum_vbc/src/interpreter/dispatch_table/handlers/net_runtime.rs` uses `std::net` and libc socket operations. These are permitted host implementation choices, subject to the supported OS baseline and API parity with AOT. |
+| Interpreter FFI | `crates/verum_vbc/src/ffi/platform/linux.rs` uses libc dynamic loading and mapping functions. Its host dependencies and explicitly requested foreign libraries need their own deployment checks; they must not become implicit AOT runtime dependencies. |
 
 Linux exception lowering now uses LLVM SJLJ intrinsics; Darwin uses
 libSystem's `_setjmp` / `longjmp`. This removes the old claim that the Linux
 body necessarily calls libc, but the resulting artifact still needs its
 own link and execution checks.
 
-A passing smoke program establishes only that program's measured boundary.
-None of these remaining paths can be excluded merely because another path
-uses direct syscalls. Complete no-libc conformance remains unfinished.
+A passing AOT smoke program establishes only that program's measured
+boundary. Other emitted paths still need inspection and execution checks.
+Complete AOT no-libc conformance remains unfinished; CLI portability is
+validated separately.
 
 ## 7. Owner and mechanism
 
-Codegen, interpreter/runtime and release maintainers share responsibility
-for the boundary. Reviews of new runtime extern declarations must identify
-the target ABI, distinguish allowed OS entry points from libc/CRT calls,
-and include the relevant artifact checks. Current violations must stay
-visible until their implementation and packaging paths are repaired.
+Codegen and runtime maintainers own the strict generated AOT boundary.
+Interpreter maintainers must preserve language and platform-operation
+semantics across tiers. Release maintainers own CLI compatibility with a
+clean supported OS baseline. Reviews must state which artifact is affected
+and apply its corresponding checks; AOT violations and host packaging
+defects must remain visible without conflating the two requirements.
 
 ## 8. Cross-references
 

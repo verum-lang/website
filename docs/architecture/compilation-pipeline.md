@@ -253,7 +253,7 @@ ops exceed a cost threshold) go through
 Verum includes **embedded LLD** and also has compiler-driver link paths.
 The final dependencies depend on the selected path and target inputs.
 
-- **No-libc contract**: runtime intrinsics must use direct syscalls
+- **AOT no-libc contract**: emitted runtime intrinsics must use direct syscalls
   on Linux/FreeBSD, libSystem on macOS, and kernel32/ntdll on Windows,
   without glibc, musl or a Windows CRT. Current runtime and linker
   paths do not all satisfy this requirement; audit the actual output.

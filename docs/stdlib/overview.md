@@ -194,16 +194,18 @@ so it is not a module and does not belong here.)
 ## Runtime and foreign dependencies {#zero-ffi}
 
 The stdlib source is written in Verum, but its intrinsics still need
-interpreter or native implementations. The no-libc runtime contract calls
-for direct syscalls on Linux/FreeBSD, libSystem on macOS and kernel32/ntdll
-on Windows. Existing interpreter handlers and some stdlib FFI still
-violate that boundary; writing an API in Verum does not remove its
-underlying runtime dependencies.
+interpreter or native implementations. Generated AOT programs must use
+direct syscalls on Linux/FreeBSD, libSystem on macOS and kernel32/ntdll on
+Windows. Some emitted runtime paths still violate that no-libc boundary.
+The host CLI and interpreter may use libc and other baseline system
+libraries, but must run on a clean supported OS without separately
+installed third-party dependencies. Writing an API in Verum does not by
+itself establish either artifact's dependencies.
 
-See the [current no-libc status](/docs/architecture/no-libc-architecture)
+See the [AOT no-libc status and host compatibility requirement](/docs/architecture/no-libc-architecture)
 and [cross-compilation requirements](/docs/tooling/build-system#cross-compilation).
-Compiler host tools, target link inputs and explicitly requested foreign
-libraries must be accounted for separately.
+Compiler build tools, host deployment dependencies, AOT link inputs and
+explicitly requested foreign libraries must be accounted for separately.
 
 ## `core` vs `std` — the allocator boundary
 

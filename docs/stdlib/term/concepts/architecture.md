@@ -67,10 +67,11 @@ Module: `core.term.raw`
 | `clipboard.vr` | OSC 52 set/get |
 
 The `termios.vr` libc declaration is a current implementation dependency;
-`core/term/event/source.vr` also declares libc `poll`. These are not
-exceptions to Verum's [no-libc contract](/docs/architecture/no-libc-architecture).
-Terminal support needs its own runtime and link audit; the platform table
-is not evidence of a libc-free terminal program.
+`core/term/event/source.vr` also declares libc `poll`. Host interpreter
+handlers may use libc, but generated AOT terminal code must follow the
+[strict target boundary](/docs/architecture/no-libc-architecture): direct
+syscalls on Linux and allowed libSystem entry points on macOS. The table
+is not evidence that a generated terminal program already conforms.
 
 The raw layer never allocates and never reads terminal input — it only
 writes bytes. Reading is Layer 1's job.

@@ -9,10 +9,10 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus status="partial" />
 
-Network APIs use Verum's system interface, but the current interpreter
-network handlers still use Rust `std::net` and libc. See the
-[no-libc contract and current implementation gaps](/docs/architecture/no-libc-architecture)
-for the distinction between that interface and its runtime dependencies.
+Network APIs use Verum's system interface. Host interpreter handlers may
+use Rust `std::net` and libc; generated AOT networking must obey the strict
+no-libc target boundary. Both paths must implement the same API semantics.
+See the [host and AOT dependency requirements](/docs/architecture/no-libc-architecture).
 
 ## See also
 

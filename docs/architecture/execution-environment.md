@@ -415,9 +415,10 @@ an interpreter handler or a native lowering reaches the OS:
 
 A cog's bytecode and declared capabilities can be validated offline.
 That validation does not prove the dependencies of the interpreter or
-generated executable. Lowering uses platform ABI boundaries, and current
-runtime paths still include libc calls. See the
-[no-libc architecture and artifact audit](/docs/architecture/no-libc-architecture).
+generated executable. Host interpreter handlers may use libc; generated
+AOT code must satisfy the strict target boundary. Both must implement the
+same declared operation semantics. See the
+[separate host and AOT artifact checks](/docs/architecture/no-libc-architecture).
 
 ## See also
 
