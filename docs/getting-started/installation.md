@@ -129,11 +129,13 @@ Generated AOT programs must obey these strict runtime boundaries:
 | Embedded / bare-metal | No OS runtime | `Reset_Handler` |
 | WASM-WASI | WASI host imports | `_start` |
 
-`NoLibcConfig` describes the native linker configuration, but some current
-compiler-driver links still use default libraries, and runtime paths such
-as ordinary Float output still emit libc calls. Consequently, selecting
-AOT or `--static-link` does not prove no-libc conformance. Audit the actual
-output using the [verification procedure](/docs/architecture/no-libc-architecture#5-verification-procedure).
+`NoLibcConfig` describes the native linker configuration, but some
+compiler-driver links can still use default libraries, and terminal paths
+retain target-specific migration work. Ordinary numeric print now uses an
+owned formatter and a common target-aware writer; focused generated-code
+checks do not certify every runtime path or published binary. Selecting AOT
+or `--static-link` therefore does not prove no-libc conformance. Audit the
+actual output using the [verification procedure](/docs/architecture/no-libc-architecture#5-verification-procedure).
 A static ELF claim requires inspecting the produced ELF, not extrapolating
 from a target triple or a successful compilation.
 

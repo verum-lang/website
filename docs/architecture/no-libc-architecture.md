@@ -173,14 +173,21 @@ its undefined libc symbols from ten to zero. This dated object-level
 measurement is retained; it is not a fresh audit of all emitted programs
 or release assets.
 
-### Open punch-list
+### Implementation and remaining checks
 
-**Source audit: 2026-10-04.** The following remain generated AOT concerns:
+**Source status: 2026-10-05.** Ordinary integer and Float print now use
+owned formatting and a common target-aware writer. Focused generated-code
+checks cover mixed-output order, tiny and large finite f64 values, signed
+zero, partial writes and the target imports. These checks cover source
+lowering, LLVM/JIT execution and emitted objects; complete CLI execution
+and target-system acceptance remain separate.
+
+The following still require generated AOT acceptance:
 
 | Surface | Current limitation |
 |---------|--------------------|
 | Terminal support | `core/term/raw/termios.vr` declares `@ffi("libc")` for terminal/I/O operations; `core/term/event/source.vr` also declares libc `poll`. AOT lowering must respect the target boundary: direct syscalls on Linux, allowed libSystem entry points on macOS. |
-| Native Float output | Ordinary Float `print` still reaches `printf` in `crates/verum_codegen/src/llvm/instruction.rs`. This is not confined to an optional debug mode. Internal float-to-text conversion also has documented range and precision limits. |
+| Numeric formatting | Default f64 print and float-to-text use the shared owned formatter. Explicit precision, source-only conversion and remaining presentation modes need separate semantic checks. A successful formatting check does not certify all output or linker paths. |
 | Linker fallback | `NoLibcConfig::nostdlib_cc_driver_enabled` in `crates/verum_codegen/src/link.rs` defaults to disabled. The compiler-driver fallback can therefore add default runtime libraries to generated programs. A no-libc configuration existing in source is not evidence that every final link uses it. |
 
 The host surfaces below have a **separate portability requirement**, not
@@ -188,7 +195,7 @@ a blanket no-libc ban:
 
 | Host surface | What must be checked |
 |--------------|----------------------|
-| Shipped CLI | `.github/workflows/build-verum.yml` builds GNU/Linux and MSVC/Windows host binaries, smoke-tests `--version`, and packages them without a clean-target dependency audit. [Installation](../getting-started/installation.md#what-the-verum-binary-itself-links-against) records the observed release imports and remaining packaging problems. |
+| Shipped CLI | The build workflow smoke-tests `--version` and checks the packaged executable for external Git/OpenSSL dependencies. That check does not certify Linux symbol versions, Windows runtime availability or execution on a clean OS. [Installation](../getting-started/installation.md#what-the-verum-binary-itself-links-against) retains the dated release inspection and explains the required compatibility checks. |
 | Interpreter networking | `crates/verum_vbc/src/interpreter/dispatch_table/handlers/net_runtime.rs` uses `std::net` and libc socket operations. These are permitted host implementation choices, subject to the supported OS baseline and API parity with AOT. |
 | Interpreter FFI | `crates/verum_vbc/src/ffi/platform/linux.rs` uses libc dynamic loading and mapping functions. Its host dependencies and explicitly requested foreign libraries need their own deployment checks; they must not become implicit AOT runtime dependencies. |
 
