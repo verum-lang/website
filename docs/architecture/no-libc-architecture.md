@@ -133,11 +133,23 @@ must not be assumed present on every installation; verify availability on
 the stated baseline and package or remove dependencies that are absent.
 The no-libc AOT smoke check does not replace this clean-host test.
 
-The existing `scripts/ci/check_no_libc_link.sh` builds and inspects a
-**generated AOT smoke program** on Linux and macOS. It rejects known
-forbidden dependency patterns; other dependencies currently produce
-warnings. It skips unsupported hosts. This is not an audit of every CLI
-release asset, every runtime feature, or Windows imports.
+Updated **2026-10-05**: `scripts/ci/check_no_libc_link.sh` builds a
+**generated AOT smoke program** in a unique temporary workspace, or inspects
+an existing executable with `--artifact PATH`. The inspector selects ELF,
+Mach-O or PE from the artifact, independently of the host. Unknown imports,
+missing tools, inspection failures, malformed output and unsupported formats
+produce a non-success result. Linux controls allow no dynamic runtime or
+userspace loader; macOS controls allow exactly libSystem; Windows controls
+allow kernel32/ntdll and also inspect delayed imports. Explicit application
+FFI or capability libraries need a separate audit.
+
+Regression tests cover dependency decisions and smoke isolation. Checks of
+real ELF, PE and Mach-O host CLI artifacts rejected their dependencies under
+the AOT policy; generated Darwin controls passed. Dependency inspection does
+not execute the artifact. These
+checks do not establish static libc absence, complete runtime coverage or
+Linux/Windows execution. Host CLI compatibility remains a separate release
+requirement.
 
 ## 6. Migration status (2026-05-04)
 
