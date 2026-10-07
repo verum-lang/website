@@ -58,6 +58,11 @@ let mut conn = connect(&cfg)?;
 let result = conn.simple_query(&"SELECT 1".into())?;
 ```
 
+Synchronous `MysqlPool` checkouts require an explicit healthy or discard
+release. `AsyncMysqlPoolGuard` uses a different channel-based return path;
+affine ownership does not establish automatic cleanup. See
+[connection pools and release](./database#connection-pools-and-release).
+
 ## Affine `MysqlTransaction`
 
 `MysqlTransaction` is declared `affine`, with no `@must_consume`

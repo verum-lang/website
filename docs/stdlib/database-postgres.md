@@ -56,6 +56,11 @@ let mut conn = connect(&cfg)?;
 let result = conn.simple_query(&"SELECT 1".into())?;
 ```
 
+Synchronous `PgPool` checkouts require an explicit healthy or discard
+release. Async guards have separate channel-based return paths; automatic
+cleanup is not established by their affine declaration. See
+[connection pools and release](./database#connection-pools-and-release).
+
 ## Affine `PgTransaction`
 
 `PgTransaction` follows the same declared affine discipline as the SQLite
@@ -338,9 +343,13 @@ coverage on every path.
 ```verum
 mount core.database.postgres.row.PgRow;
 
-let row: PgRow = pool.acquire().await?
-    .query_one(&"SELECT id, name, active, created_at FROM users WHERE id = $1".into(),
-               [Some(TvInt4(42))]).await?;
+let guard = pool.acquire().await?;
+let row_result = guard.query_one(
+    &"SELECT id, name, active, created_at FROM users WHERE id = $1".into(),
+    [Some(TvInt4(42))],
+).await;
+guard.release().await;
+let row: PgRow = row_result?;
 
 let id:         Int          = row.get_int("id")?;
 let name:       Text         = row.get_text("name")?;
@@ -374,38 +383,33 @@ programmer error.
 
 ## Parameterised query API — `AsyncPgPoolGuard`
 
-Four ergonomic methods on `AsyncPgPoolGuard` that route through
-`prepare → execute_prepared_typed → close_prepared` internally and
-project rows into the `Row` façade for downstream use:
+Four methods on `AsyncPgPoolGuard` prepare and execute a statement, then
+attempt `close_prepared` after execution succeeds; an execution error can
+bypass that close attempt. Query results use the `PgRow` façade. Keep the guard until the operation
+completes, capture its result, then explicitly attempt release before
+propagating an ordinary query error. `release().await` returns no delivery
+acknowledgement or health verdict; panic and cancellation cleanup remain
+subject to the [pool limitations](./database#connection-pools-and-release).
 
 ```verum
 let pool: AsyncPgPool = ...;
 let conn = pool.acquire().await?;
 
-// Full result set as Vec of Row.
-let rows: List<Row> = conn.query(
+// Capture the result so an ordinary query error does not skip release.
+let query_result = conn.query(
     &"SELECT * FROM users WHERE active = $1".into(),
     [Some(TvBool(true))],
-).await?;
-
-// Exactly one row — errors with SQLSTATE 02000 (no_data) on zero.
-let row: Row = conn.query_one(
-    &"SELECT email FROM users WHERE id = $1".into(),
-    [Some(TvInt4(user_id))],
-).await?;
-
-// Optional single row — Ok(None) on empty.
-let row_opt: Maybe<Row> = conn.query_one_opt(
-    &"SELECT email FROM users WHERE id = $1".into(),
-    [Some(TvInt4(user_id))],
-).await?;
-
-// DML returning command_tag (e.g. "UPDATE 3").
-let tag: Text = conn.execute_with_params(
-    &"UPDATE users SET active = $1 WHERE id = $2".into(),
-    [Some(TvBool(false)), Some(TvInt4(user_id))],
-).await?;
+).await;
+conn.release().await;
+let rows: List<PgRow> = query_result?;
 ```
+
+| Method | Successful result |
+|---|---|
+| `query` | All rows as `List<PgRow>`. |
+| `query_one` | The first `PgRow`; reports SQLSTATE `02000` when no row is available. |
+| `query_one_opt` | The first row as `Maybe<PgRow>`, with `None` when no row or row description is available. |
+| `execute_with_params` | The command tag as `Text`, such as `UPDATE 3`. |
 
 Plus four parameter-less delegations forwarding to the inner
 `AsyncPgConnection`: `execute(sql)`, `simple_query(sql)`, `ping()`,

@@ -307,6 +307,47 @@ the loom `DbError` into the unified `core.database.common.error.
 DbError` so handler code is portable across SQLite / Postgres /
 MySQL.
 
+### Connection pools and release
+
+The synchronous `SqlitePool`, `PgPool` and `MysqlPool` wrappers use
+`core.database.common.pool_impl.ConnectionPool<C>`. Their `acquire` methods
+return `PooledConnection<C>`, whose declaration has no `affine`, `linear` or
+`@must_consume` modifier. Its effective aggregate usage discipline depends
+on its component types; that discipline does not establish cleanup.
+
+Callers must explicitly choose a release path after handling the operation's
+result, including ordinary error returns:
+
+| Call | Behavior after acquiring the pool lock | Limits |
+|---|---|---|
+| `release_healthy()` | Resets the connection arena, requeues the connection and arena, decrements the checkout count, then notifies a waiter. | The caller supplies the healthy verdict; this call does not perform a health check. |
+| `release_discard(reason)` | Destroys the arena, relinquishes the connection value, decrements the checkout count, then notifies a waiter. | There is no explicit vendor close call; discarding the value does not prove that its underlying resources were closed. |
+
+Both methods return `()`. If the pool lock is poisoned, the release route
+returns before updating the queue or checkout count, without reporting that
+failure. `PooledConnection` has no `Drop` implementation that returns an
+abandoned checkout. Do not depend on scope exit, panic or cancellation to
+return a connection automatically. Before `drain`, callers must stop new
+acquisitions themselves: the pool has no shutdown-state flag. Drain waits
+for outstanding checkouts, destroys idle arenas and replaces the idle lists;
+it does not explicitly close each vendor connection.
+
+`core.database.common.pool.PoolHandle<C>` is a separate, affine protocol
+representation. It provides a constructor and accessors, but no `release`,
+`with_connection` or `Drop` implementation. It is not the concrete handle
+returned by these synchronous pools.
+
+The async PostgreSQL and MySQL pools use different affine guards:
+`AsyncPgPoolGuard` and `AsyncMysqlPoolGuard`. Their explicit `release().await`
+attempts a channel send; their declared `Drop` bodies attempt a non-blocking
+`try_send`. Both discard the send result, and neither accepts a health or
+discard verdict. These implementations do not establish successful return
+or correct destructor timing across interpreter and native execution,
+particularly on panic or cancellation. See the release paths in
+`core/database/common/pool_impl.vr`,
+`core/database/postgres/async_pool.vr` and
+`core/database/mysql/async_pool.vr` for the source-level behavior.
+
 ### Postgres + MySQL parity surface
 
 The same architectural patterns extend to the other backends:
