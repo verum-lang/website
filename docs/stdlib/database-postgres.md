@@ -58,8 +58,16 @@ let result = conn.simple_query(&"SELECT 1".into())?;
 
 ## Affine `PgTransaction`
 
-Same shape as the loom L7 `Transaction` (see
-[`database`](./database#affine-transaction)):
+`PgTransaction` follows the same declared affine discipline as the SQLite
+handle: at most one consuming use, with no `@must_consume` requirement.
+Callers must finish manual transactions through `commit_tx` or `rollback_tx`
+and handle errors; an unused handle is not rejected merely because it is
+affine. See [transaction ownership and cleanup limits](./database#affine-transaction).
+
+`with_transaction` attempts commit after the callback returns `Ok`, or
+best-effort rollback after `Err`. A rollback failure does not replace the
+original body error. Panic and cancellation cleanup are not established by
+this helper or by the affine declaration.
 
 ```verum
 mount core.database.postgres.{
@@ -77,11 +85,6 @@ with_transaction(&mut conn, |c| {
     c.execute(&"UPDATE accounts SET balance = balance - 100 WHERE id = 1".into())?;
     Ok(())
 })?;
-
-// Manual — affine handle the user must consume.
-let tx = begin_tx_serializable(&mut conn)?;
-conn.execute(&"...".into())?;
-commit_tx(&mut conn, tx)?;     // or rollback_tx(...)
 ```
 
 `PgTxOpts` builder selects isolation + access mode + DEFERRABLE:
@@ -98,8 +101,12 @@ connection is in `TxFailedTransaction` (Postgres requires ROLLBACK
 after error) or `TxIdle` (no tx in progress) — surfaces
 `DbMisuse(...)` rather than emitting the silent-warning NOTICE.
 
-`rollback_tx` is tolerant of `TxIdle` — server-side may have
-auto-rolled, the affine consume always succeeds.
+`rollback_tx` returns `Ok` immediately for `TxIdle`, where the server has
+already ended the transaction. Otherwise it sends `ROLLBACK`, which can
+fail. Both terminal functions consume the handle even when they return an
+error; recover or discard the connection before reuse instead of attempting
+to reuse that token. In manual code, handle query errors before returning
+so that an early `?` does not skip the rollback attempt.
 
 ## Query cancellation
 

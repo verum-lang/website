@@ -140,12 +140,19 @@ implement Database {
 
 ### Affine `Transaction`
 
-`Transaction` is `affine` — the type system refuses to drop the
-value out of scope, so forgetting to `commit_tx` / `rollback_tx`
-is a *compile-time error* rather than a production bug.  The most
-common SQL bug ("leaked transaction" — opened BEGIN, never reached
-COMMIT or ROLLBACK because of an early return / panic / forgotten
-branch) becomes lexically impossible.
+`Transaction` is declared `affine`: it permits **at most one consuming
+use**. The declaration does not require consumption before scope exit.
+`linear` or `@must_consume` expresses the stronger local consumption
+obligation; these transaction handles have neither. See
+[linearity](/docs/language/linearity).
+
+Callers must explicitly finish a manually opened transaction with
+`commit_tx` or `rollback_tx` and handle the returned error. This is an API
+usage requirement, not a guarantee inferred from `affine`. An early return,
+panic or cancellation can bypass the terminal call. Automatic rollback and
+resource cleanup on those paths are not established for both execution
+backends. Consuming a token also does not prove that the database operation
+succeeded: a terminal call can return an error after taking ownership.
 
 ```verum
 public type affine Transaction is {
@@ -171,8 +178,12 @@ db.with_transaction(|d| {
 })?;
 ```
 
-The body receives `&mut Database`; on `Ok` the tx auto-commits, on
-`Err` it rolls back.  The user never names a `Transaction` value.
+The body receives `&mut Database`; an ordinary `Ok` result triggers a
+commit attempt, while `Err` triggers a best-effort rollback. The helper
+returns a commit error, or the original body error even if rollback fails.
+The user never names a `Transaction` value. The implementation handles
+these `Result` branches; it does not install a panic or cancellation guard.
+A failed terminal operation requires connection recovery before reuse.
 
 ### Online backup
 
@@ -180,7 +191,7 @@ The body receives `&mut Database`; on `Ok` the tx auto-commits, on
 mount core.database.sqlite.native.l7_api.{
     BackupSession,
     backup_init_to_path, backup_init_into,
-    backup_step, backup_finish, backup_to_path_in_one_go,
+    backup_step, backup_finish, backup_abandon, backup_to_path_in_one_go,
 };
 mount core.database.sqlite.native.backup_api.request.{
     BackupStepRequest, from_n_pages,
@@ -195,15 +206,27 @@ loop {
     match backup_step(&mut sess, &mut db, from_n_pages(100)) {
         BoOk     => { /* sleep_ms(10).await; */ }
         BoDone   => break,
-        BoFailed { code, reason } => return Err(...),
+        _ => { // Busy, locked, or failed: end the session before returning.
+            let partial_dst = backup_abandon(sess);
+            partial_dst.close();
+            return Err(...);
+        }
     }
 }
 let _dst = backup_finish(sess);
 ```
 
-`BackupSession` is `affine` — must be terminated with
-`backup_finish` (or its alias `backup_abandon`).  Concurrent
-writers on the source are tolerated: each `backup_step` re-reads
+`BackupSession` is declared `affine`, without `@must_consume`. End a
+manual session with `backup_finish`, or use `backup_abandon` after an error.
+Both consume the session and **return the owned destination `Database`**;
+neither closes or flushes that database. The caller must retain it for
+further use or call its `close` API. The current L7 `Database.close` body
+only consumes the value; it does not itself perform a pager flush or close.
+Implicit cleanup, durable writes and cleanup after failure, panic or
+cancellation must not be inferred from the affine declaration or from the
+example's terminal calls.
+
+Concurrent writers on the source are tolerated: each `backup_step` re-reads
 the source's total page count, so a source that grows mid-backup
 has its tail picked up on the next step (matches SQLite's
 semantics).

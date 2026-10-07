@@ -60,8 +60,18 @@ let result = conn.simple_query(&"SELECT 1".into())?;
 
 ## Affine `MysqlTransaction`
 
-Same shape as the Postgres / SQLite transaction handles.  MySQL
-flavour notes baked into the API:
+`MysqlTransaction` is declared `affine`, with no `@must_consume`
+requirement: it permits at most one consuming use. Callers must explicitly
+finish manual transactions through `commit_tx` or `rollback_tx` and handle
+the returned error. The modifier does not reject every forgotten terminal
+call or establish scope-exit cleanup. See
+[transaction ownership and cleanup limits](./database#affine-transaction).
+
+`with_transaction` attempts commit on an ordinary `Ok` callback result and
+best-effort rollback on `Err`, retaining the original body error if rollback
+also fails. It does not install a panic or cancellation guard. Terminal
+calls consume the token even on error; recover or discard the connection
+before reuse. MySQL-specific options follow:
 
 ```verum
 mount core.database.mysql.{
