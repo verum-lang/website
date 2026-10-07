@@ -142,11 +142,9 @@ type Group is protocol {
 };
 ```
 
-The parser and AST capture protocol axioms today. The
-`implement`-site auto-discharge pass is under active development —
-see the [roadmap](/docs/roadmap) entry **T1-R**. Until it lands,
-models must discharge axioms manually via top-level theorems that
-reference the implementation's concrete operations.
+The parser and AST capture protocol axioms. Automatic discharge at
+`implement` sites is not available; models must discharge axioms manually
+via top-level theorems that reference the implementation's concrete operations.
 
 ### `corollary` — consequences
 

@@ -259,8 +259,6 @@ const sidebars: SidebarsConfig = {
         'community/code-of-conduct',
       ],
     },
-    'roadmap',
-    'changelog',
   ],
   language: [
     'language/overview',

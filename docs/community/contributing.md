@@ -53,7 +53,7 @@ RFCs undergo a **two-week comment period** before merge. Big ones
 
 ### Want to implement something
 
-1. **Check the [roadmap](/docs/roadmap)** for current priorities.
+1. **Check the [issue tracker](https://github.com/verum-lang/verum/issues)** for active work and discuss priorities with maintainers.
 2. **Claim it in an issue** before starting — prevents duplicate work.
 3. **Draft PR early** — mark "WIP" in the title, push initial work,
    get feedback before polishing.
@@ -182,7 +182,6 @@ Before asking for review:
 - [ ] Commit messages follow the format.
 - [ ] New behaviour has tests.
 - [ ] Public API changes documented (rustdoc or website docs).
-- [ ] CHANGELOG entry for user-visible changes.
 
 ## Licensing
 
@@ -241,6 +240,5 @@ blog posts.
 
 - **[Code of conduct](/docs/community/code-of-conduct)** — standards
   we hold each other to.
-- **[Roadmap](/docs/roadmap)** — what's coming next.
 - **[Architecture → crate map](/docs/architecture/crate-map)** —
   what each crate does.

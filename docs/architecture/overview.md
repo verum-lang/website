@@ -219,16 +219,6 @@ verifier and advanced optimisation passes. Full phase detail:
 - Advanced refinement reflection with quantifier instantiation hints.
 - Separation-logic extensions in `verum_verification`.
 
-## What's next
-
-- Parallel-compilation orchestrator end-to-end (per-phase work stealing).
-- Proof-carrying modules at the cog-distribution boundary.
-- WASM target for the browser playground.
-- Incremental proof replay (edit one function, revalidate only the
-  affected obligations).
-
-See **[roadmap](/docs/roadmap)** for the full plan.
-
 ## Invariants of the system
 
 These invariants hold across every code path and every phase. If you

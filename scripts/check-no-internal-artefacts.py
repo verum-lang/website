@@ -158,14 +158,7 @@ CLASSES = {
 # on (page, matched text), each carrying its reason.  `check_exempt_roster`
 # below fails when an entry stops appearing, so a page that drops one
 # cannot leave a silent permission behind.
-EXEMPT: dict[tuple[str, str], str] = {
-    ("changelog.md", "27 / 30 (90 %)"):
-        "a changelog entry is a DATED record of one release; the pair of "
-        "numbers either side of the arrow IS the entry, and a number that "
-        "describes a past release does not drift",
-    ("changelog.md", "29 / 30 (96.7 %)"):
-        "the other half of the same entry",
-}
+EXEMPT: dict[tuple[str, str], str] = {}
 
 
 # Classes whose finding inside a fenced block is content, not a claim.

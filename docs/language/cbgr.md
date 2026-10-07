@@ -84,8 +84,7 @@ Three loads, one compare, one conditional branch. On the
 `production_targets` bench (x86_64, release build) this measures
 **1.2–1.7 ns** — well under the ≤ 15 ns design target, which is stated
 in the project's own [`CLAUDE.md`](https://github.com/verum-lang/verum/blob/main/CLAUDE.md)
-(Three-Tier Reference Model) and tracked on the
-[roadmap](../roadmap.md). The mechanism itself is described in
+(Three-Tier Reference Model). The mechanism itself is described in
 [Architecture → CBGR internals](../architecture/cbgr-internals.md).
 
 ## Why not just bounds-check?

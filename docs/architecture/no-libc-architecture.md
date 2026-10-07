@@ -151,29 +151,7 @@ checks do not establish static libc absence, complete runtime coverage or
 Linux/Windows execution. Host CLI compatibility remains a separate release
 requirement.
 
-## 6. Migration status (2026-05-04)
-
-The original migration report recorded internal allocation, I/O, byte
-operations and number-conversion helpers. That was scoped implementation
-evidence, not proof that all AOT programs were libc-free. Under the current
-scope, host compiler/interpreter deployment is governed by the separate
-OS compatibility requirement. The historical
-[formatting report](/docs/changelog#added--aot-no-libc-f64--strtol-formatting-trio-complete-2026-05-04)
-is retained with its date; it does not establish complete Float formatting
-semantics or ordinary native print coverage.
-
-### Cross-compilation correctness (2026-07-28 — not 2026-05-04)
-
-The historical cross-compilation check recorded a different issue from
-the earlier runtime-helper work: the LLVM module triple had not been set
-from `--target` in both lowering paths. Reading `module.get_triple()` then
-returned the host triple even though codegen consulted the intended API.
-The correction was checked on the same Linux object with `nm -u`, reducing
-its undefined libc symbols from ten to zero. This dated object-level
-measurement is retained; it is not a fresh audit of all emitted programs
-or release assets.
-
-### Implementation and remaining checks
+## 6. Implementation and remaining checks
 
 **Source status: 2026-10-05.** Ordinary integer and Float print now use
 owned formatting and a common target-aware writer. Focused generated-code
@@ -221,7 +199,6 @@ defects must remain visible without conflating the two requirements.
 ## 8. Cross-references
 
 - [Installation and shipped binary dependencies](../getting-started/installation.md#what-the-verum-binary-itself-links-against)
-- [Changelog → AOT no-libc f64 / strtol formatting trio](/docs/changelog#added--aot-no-libc-f64--strtol-formatting-trio-complete-2026-05-04)
 - [Architecture → Compilation pipeline](./compilation-pipeline.md)
 - [Architecture → Codegen](./codegen.md)
 - [Architecture → Runtime tiers](./runtime-tiers.md)

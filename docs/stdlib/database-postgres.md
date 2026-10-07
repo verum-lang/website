@@ -241,12 +241,9 @@ never gets stuck on an exotic OID.
 | **`array<T>`** for every `T` above | ✓ | ✓ | Header + per-element dispatch. |
 | `range<T>`         | ✓      | ✓      | `(lower, upper, flags)`. |
 
-The `NUMERIC`, `tsvector`, and `composite` codecs landed in the
-2026-05-04 batch (changelog entries
-[NUMERIC](/docs/changelog#added--postgres-wire-codec--numeric-tsvector-composite-2026-05-04)).
-With them every PG built-in scalar plus array plus composite
-has a wire codec; parameter binding no longer hits `FmtText`
-for any built-in type.
+The wire codecs cover PostgreSQL built-in scalar, array and composite
+types, including `NUMERIC` and `tsvector`. Parameter binding uses these
+codecs without falling back to `FmtText` for built-in types.
 
 ### `NUMERIC` parameter binding
 
