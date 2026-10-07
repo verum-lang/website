@@ -5,11 +5,7 @@ description: Duration, Instant, SystemTime, Interval — monotonic and wall-cloc
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.time` — Durations, instants, timers
-
-<StdlibStatus status="partial" />
 
 Monotonic time (`Instant`), wall-clock time (`SystemTime`), durations,
 and interval streams.

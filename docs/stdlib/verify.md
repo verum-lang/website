@@ -5,11 +5,7 @@ description: First-class verification API for user code — embed compiler-inter
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.verify` — Verification embedding API
-
-<StdlibStatus status="regression-only" />
 
 `core.verify` is the user-facing entry point for embedding
 verification into Verum programs. It is the stdlib complement to

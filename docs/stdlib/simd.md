@@ -5,11 +5,7 @@ description: Portable SIMD — Vec<T,N>, Mask<N>, arithmetic, reduction, shuffle
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.simd` — Portable SIMD
-
-<StdlibStatus status="regression-only" />
 
 Vectorised data types with platform dispatch.
 

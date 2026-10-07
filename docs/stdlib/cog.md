@@ -5,11 +5,7 @@ description: Cog tooling subsystem — manifest parsing, .vbca archive reading, 
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.cog` — Cog tooling subsystem
-
-<StdlibStatus status="regression-only" />
 
 A **cog** is the Verum unit of package distribution: a `.vbca`
 archive containing pre-compiled VBC modules + manifest metadata,

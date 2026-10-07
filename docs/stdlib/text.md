@@ -3,23 +3,17 @@ sidebar_position: 3
 title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
-status_detail: >-
-  Text and character APIs have partial interpreter and native coverage. Numeric formatting, slicing bounds and process-shared regression cases retain documented limitations.
+status_detail: "Text and character APIs have partial interpreter and native coverage. Covered module controls include core text, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. Numeric formatting and process-shared regression cases retain limitations. Out-of-range slice calls clamp silently instead of enforcing the declared bounds contract; see the Slicing section."
+status_defects:
+  - area: "text"
+    summary: "Two pins remain and both appear only when several tests share a process: sorting through a comparison that answers Less, and a fold that builds a formatted string. Neither reproduces in a program of its own."
+  - area: "char"
+    summary: "Two probes are retained for a case-insensitive ASCII comparison and for one general-category classification."
+  - area: "numeric"
+    summary: "`decimal` is the weakest module in the tree — negation on an integer receiver does not dispatch, and the failures downstream of it follow from that. `bigint` is complete."
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
-
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
-<StdlibStatus
-  status="partial"
-  detail="The whole text tree is exercised under the interpreter and, separately, compiled ahead of time. Everything except three small islands is green: the core text type, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. The numeric sub-tree carries the largest set of remaining pins. And `slice` does not enforce the bounds contract its own body declares — out-of-range calls clamp silently rather than assert; see the Slicing section."
-  defects={[
-    {area: 'text', summary: 'Two pins remain and both appear only when several tests share a process: sorting through a comparison that answers Less, and a fold that builds a formatted string. Neither reproduces in a program of its own.'},
-    {area: 'char', summary: 'Two probes are retained for a case-insensitive ASCII comparison and for one general-category classification.'},
-    {area: 'numeric', summary: '`decimal` is the weakest module in the tree — negation on an integer receiver does not dispatch, and the failures downstream of it follow from that. `bigint` is complete.'},
-  ]}
-/>
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
 >

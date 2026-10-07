@@ -4,11 +4,7 @@ description: Identifiers, span contexts, spans, samplers, processors, exporters,
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.tracing` — distributed tracing
-
-<StdlibStatus status="partial" />
 
 OpenTelemetry-compatible tracing primitives. `core.tracing` supplies
 identifiers, span contexts, spans, samplers, processors, exporters,

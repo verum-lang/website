@@ -294,3 +294,73 @@ article table tbody tr:nth-child(even) {
 .button--secondary:hover {
   background: var(--verum-gradient-subtle);
 }
+
+/* Conformance frontmatter is rendered as static semantic HTML. */
+.conformance-status {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  background: var(--ifm-color-emphasis-100);
+  overflow-wrap: anywhere;
+}
+.conformance-status__header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+}
+.conformance-status__header > p {
+  flex: 1 1 18rem;
+}
+.conformance-status__badge {
+  display: inline-block;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+.conformance-status[data-conformance-status="partial"] .conformance-status__badge {
+  color: var(--ifm-color-warning-darkest);
+}
+.conformance-status[data-conformance-status="regression-only"] .conformance-status__badge {
+  color: var(--ifm-color-danger-darkest);
+}
+.conformance-status[data-conformance-status="complete"] .conformance-status__badge,
+.conformance-status[data-conformance-status="stable"] .conformance-status__badge {
+  color: var(--ifm-color-success-darkest);
+}
+[data-theme="dark"] .conformance-status[data-conformance-status="partial"] .conformance-status__badge {
+  color: var(--ifm-color-warning-lightest);
+}
+[data-theme="dark"] .conformance-status[data-conformance-status="regression-only"] .conformance-status__badge {
+  color: var(--ifm-color-danger-lightest);
+}
+[data-theme="dark"] .conformance-status[data-conformance-status="complete"] .conformance-status__badge,
+[data-theme="dark"] .conformance-status[data-conformance-status="stable"] .conformance-status__badge {
+  color: var(--ifm-color-success-lightest);
+}
+.conformance-status__limitations {
+  border-top: 1px solid var(--ifm-color-emphasis-300);
+  padding-top: 0.75rem;
+}
+.conformance-status__limitations > summary { cursor: pointer; font-weight: 600; }
+.conformance-status__limitations > table {
+  display: table;
+  width: 100%;
+  table-layout: auto;
+  margin-top: 0.75rem;
+}
+.conformance-status__limitations th:first-child,
+.conformance-status__limitations td:first-child {
+  width: 1%;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.conformance-status__limitations th:last-child,
+.conformance-status__limitations td:last-child {
+  overflow-wrap: anywhere;
+}
+.conformance-status > :last-child { margin-bottom: 0; }

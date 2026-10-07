@@ -5,11 +5,7 @@ description: List, Map, Set, Deque, BinaryHeap, BTreeMap, BTreeSet — every sem
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.collections` — Lists, Maps, Sets, Deques
-
-<StdlibStatus status="partial" />
 
 Semantic-honest data structures. You talk to the protocol; the compiler
 chooses the implementation.

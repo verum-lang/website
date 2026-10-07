@@ -3,19 +3,10 @@ sidebar_position: 1
 title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 status: partial
-status_detail: >-
-  Interpreter and native coverage vary by API. Executor, deadline, cancellation and guard-lifetime limitations are described below.
+status_detail: "Conformance coverage varies by API and backend. Some async programs compile and run natively, but this does not establish parity for every executor, deadline, cancellation or cleanup path. The LocalExecutor sequence this page prescribes panics as soon as it has a task to drive, and block_on fails too; spawn plus awaiting the handle works — see the LocalExecutor section."
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.async` — Asynchronous execution
-
-<StdlibStatus
-  status="partial"
-  detail="Conformance coverage varies by API and backend. Some async programs compile and run natively, but this does not establish parity for every executor, deadline, cancellation or cleanup path. The `LocalExecutor` sequence this page prescribes panics as soon as it has a task to drive, and `block_on` fails too; `spawn` plus awaiting the handle works — see the LocalExecutor section."
-  defects={[]}
-/>
 
 **Backend checks:** interpreter HTTP checks cover
 binary responses, header deadlines, cancellation before reading, and an

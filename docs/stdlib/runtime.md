@@ -3,25 +3,21 @@ sidebar_position: 3
 title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 status: partial
-status_detail: >-
-  Checked: interpreter supervisor access works; native use of borrowed results through lazy-initialization accessors can fail. Mutex guard lifetime and general native resource cleanup remain incomplete.
+status_detail: "Interpreter supervisor access works; native use of borrowed results through lazy-initialization accessors can fail. Mutex guard lifetime and general native resource cleanup remain incomplete. Consult the API and submodule limitations below."
+status_defects:
+  - area: "thread pool"
+    summary: "Submitting and joining work runs under the interpreter. Retrieving a value through a task handle is still being filled in — use a channel to carry the result meanwhile."
+  - area: "context bridge"
+    summary: "Context slots read and write correctly from one task. Two tasks writing the same slot in parallel is not yet coherent; confine a context to the task that provided it."
+  - area: "stack allocation"
+    summary: "The allocators are self-contained and available, but a method on an `implement` block parameterised by a const generic does not resolve, which is most of the ergonomic surface. Call the free functions directly."
+  - area: "text"
+    summary: "One Unicode case-category pair is classified wrongly. Everything else in the runtime text surface is correct."
+  - area: "async operations"
+    summary: "Measuring elapsed time across a sleep is unreliable under the interpreter. Read the clock directly on both sides instead."
 ---
 
 # `core.runtime`
-
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
-<StdlibStatus
-  status="partial"
-  detail="Runtime coverage differs by backend and API. Consult the supervisor, resource-lifetime and submodule limitations below."
-  defects={[
-    {area: 'thread pool', summary: 'Submitting and joining work runs under the interpreter. Retrieving a value through a task handle is still being filled in — use a channel to carry the result meanwhile.'},
-    {area: 'context bridge', summary: 'Context slots read and write correctly from one task. Two tasks writing the same slot in parallel is not yet coherent; confine a context to the task that provided it.'},
-    {area: 'stack allocation', summary: 'The allocators are self-contained and available, but a method on an `implement` block parameterised by a const generic does not resolve, which is most of the ergonomic surface. Call the free functions directly.'},
-    {area: 'text', summary: 'One Unicode case-category pair is classified wrongly. Everything else in the runtime text surface is correct.'},
-    {area: 'async operations', summary: 'Measuring elapsed time across a sleep is unreliable under the interpreter. Read the clock directly on both sides instead.'},
-  ]}
-/>
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
 

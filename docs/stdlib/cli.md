@@ -6,11 +6,7 @@ status: regression-only
 slug: /stdlib/cli
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.cli` — declarative CLI framework
-
-<StdlibStatus status="regression-only" />
 
 `core.cli` is Verum's first-class toolkit for building command-line
 tools.  It treats the CLI as a typed surface — every flag, argument,

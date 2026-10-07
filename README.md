@@ -37,6 +37,47 @@ anchors and Markdown compilation. After navigation or layout changes,
 check the production preview at both mobile and desktop widths, including
 both themes and the documentation sidebar.
 
+## Conformance panels in Markdown
+
+Docs use CommonMark (`markdown.format: 'md'`). Keep JavaScript imports and
+JSX out of page bodies. The supported remark plugin reads one canonical
+set of frontmatter fields and renders semantic HTML after the page title:
+
+```yaml
+status: partial
+status_detail: Interpreter construction has coverage; native cleanup remains incomplete.
+status_defects:
+  - area: guard lifetime
+    summary: Scope-exit cleanup requires separate native validation.
+```
+
+`status` accepts the inventory labels `complete`, `stable`, `partial`,
+`regression-only`, `undocumented` and `unverified`. The renderer explicitly
+displays `undocumented` as `unaudited`; no other coverage level is inferred
+or promoted. Omit all three fields when no panel is appropriate.
+`status_detail` is optional plain text. `status_defects` is an optional
+array of objects containing only non-empty `area` and `summary` strings.
+Details without a status, unknown statuses and malformed limitations fail
+the build. Text is inserted as AST text nodes; metadata is never evaluated
+as JavaScript, MDX or raw HTML.
+
+Use ordinary Markdown table text for per-module lifecycle, execution-tier
+and test-coverage labels. Keep their legend and audit links alongside the
+values. Do not add a second source of status metadata or embed component
+props that disagree with frontmatter.
+
+`npm run build` runs conformance controls, compiles the site, then audits
+every rendered documentation page with `scripts/check-rendered-docs.py`.
+The Markdown plugin rejects component source in parsed prose before HTML
+normalization. The HTML audit rejects leaked imports/JSX and verifies
+that each status-bearing page renders exactly one corresponding panel.
+Fenced and inline code examples are deliberately excluded from the leak
+check. The audit uses Docusaurus's parsed frontmatter and resolved permalinks
+to verify the panel label, title ordering and every detail/limitation string
+in the generated HTML, including pages with custom slugs. The local renderer
+is an explicit webpack build dependency, so changing its source invalidates
+the persistent Markdown compilation cache.
+
 ## Structure
 
 ```

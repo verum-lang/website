@@ -3,31 +3,31 @@ sidebar_position: 1
 title: io
 description: Files, paths, stdio, processes, Read/Write protocols, buffered I/O.
 status: partial
-status_detail: 10 submodules covered by core-tests/io/*; 200+ green tests under `--interp` over data-only + construction surface; method-call surface (Reader/Writer/Cursor/File) gated by task #io-1 (mount-scope-aware lookup_function).
+status_detail: "Interpreter conformance covers data-only and construction paths across the I/O submodules. Reader, Writer, Cursor and File read/write/seek remain limited by mount-scope-aware method dispatch. Live I/O and process execution require separate fixture coverage."
+status_defects:
+  - area: "io.protocols"
+    summary: "Sink.write / EmptyReader.read / Cursor.read misdispatch to sys_read/sys_write (bare-name shadow)"
+  - area: "io.protocols"
+    summary: "Cursor<T> defined twice (protocols.vr + buffer.vr alias)"
+  - area: "io.protocols"
+    summary: "`?` operator on IoResult<T> loses StreamError.kind through Err propagation"
+  - area: "io.path"
+    summary: "PathBuf.push Text-equality drift via nested struct field (surgical fix landed for length; eq drift remains)"
+  - area: "io.file"
+    summary: "Live I/O requires temp-dir / fixture harness"
+  - area: "io.fs"
+    summary: "FileType has only 4 variants (vs POSIX 8) — block/char-device/fifo/socket not exposed"
+  - area: "io.process"
+    summary: "Command.{spawn,output,status} return Result<_,Text> instead of IoResult<T>; Output.stdout returns Text not bytes"
+  - area: "io.engine"
+    summary: "IoEngine.new/destroy needs sandboxed test harness; real async I/O via engine.poll still in plan"
 ---
-
-import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.io` — Files, paths, streams, processes
 
 File I/O, path manipulation, standard streams, processes, and the
 `Read`/`Write`/`Seek`/`BufRead` protocol family. Both sync and async
 variants are provided.
-
-<StdlibStatus
-  status="partial"
-  detail="200+ green tests under --interp over the data-only surface across 10 submodules; method-call surface (Reader/Writer/Cursor/File read/write/seek) gated by task #io-1 (mount-scope-aware lookup_function for VBC method dispatch)."
-  defects={[
-    {area: 'io.protocols', summary: 'Sink.write / EmptyReader.read / Cursor.read misdispatch to sys_read/sys_write (bare-name shadow)'},
-    {area: 'io.protocols', summary: 'Cursor<T> defined twice (protocols.vr + buffer.vr alias)'},
-    {area: 'io.protocols', summary: '`?` operator on IoResult<T> loses StreamError.kind through Err propagation'},
-    {area: 'io.path', summary: 'PathBuf.push Text-equality drift via nested struct field (surgical fix landed for length; eq drift remains)'},
-    {area: 'io.file', summary: 'Live I/O requires temp-dir / fixture harness'},
-    {area: 'io.fs', summary: 'FileType has only 4 variants (vs POSIX 8) — block/char-device/fifo/socket not exposed'},
-    {area: 'io.process', summary: 'Command.{spawn,output,status} return Result<_,Text> instead of IoResult<T>; Output.stdout returns Text not bytes'},
-    {area: 'io.engine', summary: 'IoEngine.new/destroy needs sandboxed test harness; real async I/O via engine.poll still in plan'},
-  ]}
-/>
 
 ## Submodule status
 

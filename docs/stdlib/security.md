@@ -5,11 +5,7 @@ description: The security stdlib — cryptographic primitives, information-flow 
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.security`
-
-<StdlibStatus status="regression-only" />
 
 Verum's security stdlib is a consolidated subtree covering:
 

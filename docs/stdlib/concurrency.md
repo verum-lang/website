@@ -5,11 +5,7 @@ description: π-calculus processes and session types — formal concurrency foun
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.concurrency` — Process algebra & session types
-
-<StdlibStatus status="regression-only" />
 
 Formal models for concurrent computation: the **π-calculus** (for
 process semantics) and **session types** (for structured protocol

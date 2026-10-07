@@ -4,11 +4,7 @@ description: Unified Codec protocol over gzip, raw deflate, zlib, brotli, zstd, 
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.compress` — compression codecs
-
-<StdlibStatus status="regression-only" />
 
 :::caution The codecs do not compress anything yet
 

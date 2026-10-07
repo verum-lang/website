@@ -5,11 +5,7 @@ description: Universal configuration subsystem — parse / serialise / validate 
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.configuration` — Universal configuration subsystem
-
-<StdlibStatus status="regression-only" />
 
 A unified surface for parsing, serialising, validating, converting,
 merging, and interpolating configuration in any supported format.

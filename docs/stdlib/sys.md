@@ -5,11 +5,7 @@ description: V-LLSI kernel bootstrap — direct syscalls, I/O engine, platform a
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.sys` — V-LLSI kernel bootstrap
-
-<StdlibStatus status="partial" />
 
 `sys` is the lowest-level OS interface used by higher-level modules
 such as `io`, `net`, `async` and `mem`.

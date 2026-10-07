@@ -5,11 +5,7 @@ description: Scopes, providers, layers, 10 standard contexts, async propagation 
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.context` — Dependency injection primitives
-
-<StdlibStatus status="partial" />
 
 The runtime side of the language-level context system. Users interact
 via `using [...]` and `provide ... = ... in { ... }`; the types here

@@ -247,73 +247,27 @@ Source lives at `core/`.
 
 ## Stdlib status badge system
 
-Module pages carry conformance metadata and may render an explicit
-`<StdlibStatus />` badge. The accompanying detail identifies covered APIs,
-execution backends and remaining limitations.
+A module's status panel summarizes its conformance coverage. Read the
+status together with the API and backend details and the known limitations.
+An interpreter result does not establish native parity, and a successful
+constructor does not establish cleanup or lifecycle correctness.
 
 ### Status keywords
 
-[Status Convention](/docs/stdlib/status-convention) defines inventory and
-frontmatter labels, the component's supported props, and the evidence
-required to change a coverage statement. The component does not automatically
-convert an inventory label or render a page's frontmatter.
+The [status convention](/docs/stdlib/status-convention#status-keywords)
+defines each label. `unaudited` means no conformance assessment is published
+for the surface; the conformance inventory calls this `undocumented`.
+`unverified` means no passing or failing result is asserted.
 
-### Frontmatter
+### Coverage details
 
-Each module page declares its status in the YAML frontmatter so
-search / sidebar widgets can read it without parsing the body:
-
-```markdown
----
-sidebar_position: 3
-title: text
-description: ...
-status: partial
-status_detail: Interpreter coverage includes text construction and character queries; backend-specific limitations are described below.
----
-```
-
-`status_detail` summarizes the covered APIs, execution backend and open limitations.
-A page that renders a badge passes its supported `status` and `detail`
-props explicitly; keep that detail consistent with the frontmatter.
-
-### Component usage
-
-```mdx
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
-<StdlibStatus
-  status="partial"
-  detail="Interpreter coverage includes text construction and character queries; native coverage is tracked separately."
-  defects={[
-    {area: 'text', summary: 'Consult the module page for iterator and mutation limitations.'},
-    {area: 'char', summary: 'Consult the module page for character-classification coverage.'},
-  ]}
-/>
-```
-
-Props:
-
-- **`status`** — the component accepts `complete | partial | regression-only |
-  unaudited`. Inventory and frontmatter labels such as `stable`, `unverified`
-  and `undocumented` are separate metadata; the component does not convert them.
-  `unaudited` means no conformance assessment is published for the surface;
-  consult the module documentation and tests.
-- **`detail`** *(optional)* — string mirroring the
-  `status_detail` frontmatter; rendered in the badge body.
-- **`defects`** *(optional)* — list of `{area, summary}` rows shown in
-  a collapsible defect-class table.
+A panel may describe the covered APIs and list specific limitations by
+area. The module body and linked conformance audit provide the reproduction
+and execution scope. Module tables distinguish lifecycle declarations,
+backend coverage and the presence of a test suite; those are separate facts.
 
 ### Updating status
 
-When a module's verified API or backend coverage changes:
-
-1. Update the per-module `core-tests/<...>/audit.md`.
-2. Record the evidence and coverage in `core-tests/INVENTORY.md`
-   (single-line row; do not restructure the table).
-3. Update the module's website page frontmatter (`status`,
-   `status_detail`) to reflect the verified behaviour and remaining limitations.
-4. Refresh the `<StdlibStatus />` props (`detail`, `defects`).
-
-The same status keywords appear in three places — `INVENTORY.md`, the
-module page frontmatter, and the `<StdlibStatus />` `status` prop — so readers can follow each claim to its conformance evidence.
+A coverage change needs evidence in the module's conformance audit, followed
+by the inventory and this reference. A label alone does not establish new
+behaviour. See the [update procedure](/docs/stdlib/status-convention#update-procedure).

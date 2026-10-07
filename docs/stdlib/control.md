@@ -5,11 +5,7 @@ description: Delimited continuations — shift / reset term algebra.
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.control` — Delimited Continuations
-
-<StdlibStatus status="regression-only" />
 
 Term algebra for **delimited continuations** via `shift` and `reset`.
 

@@ -4,11 +4,7 @@ description: Low-level encoder / decoder for the canonical Protocol Buffers wire
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.protobuf` — Protocol Buffers wire-format codec
-
-<StdlibStatus status="regression-only" />
 
 Low-level encoder / decoder for the canonical Protocol Buffers wire
 format. Sufficient to hand-build message layouts for gRPC or Connect

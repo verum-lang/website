@@ -4,11 +4,7 @@ description: Upstream connection pools, active health checks, load balancers (ro
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.net.proxy` — reverse-proxy toolkit
-
-<StdlibStatus status="unaudited" />
 
 `core.net.proxy` is the *composable-middleware* half of Verum's
 reverse-proxy stack. Where `core.net.weft` provides the full server-

@@ -4,11 +4,7 @@ description: Pure-Verum HTTP/2 wire protocol (frame layer, SETTINGS, stream FSM)
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.net.http2` — HTTP/2 + HPACK
-
-<StdlibStatus status="unaudited" />
 
 Pure-Verum implementation of HTTP/2 (RFC 7540) and its sibling header
 compression format HPACK (RFC 7541). `core.net.http2` supplies the

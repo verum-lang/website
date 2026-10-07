@@ -4,11 +4,7 @@ description: Polymorphic kinds, quantitative type theory (QTT), and two-level ty
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.types` — advanced type-system primitives
-
-<StdlibStatus status="regression-only" />
 
 This module is the user-facing surface of the compiler's research
 machinery. It exposes three orthogonal vocabularies:

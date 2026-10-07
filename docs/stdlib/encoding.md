@@ -4,11 +4,7 @@ description: Data encoding and serialization (JSON, CBOR, MessagePack, Base64/th
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.encoding`
-
-<StdlibStatus status="regression-only" />
 
 **Layer 4.7 — Data encoding and serialization**
 

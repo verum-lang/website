@@ -4,11 +4,7 @@ description: Service-mesh integration (Envoy xDS, Kubernetes Gateway API)
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.mesh`
-
-<StdlibStatus status="unaudited" />
 
 **Layer 5.5 — Service-mesh integration**
 

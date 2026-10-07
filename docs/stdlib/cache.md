@@ -5,11 +5,7 @@ description: Abstract cache subsystem — CacheBackend protocol + concrete adapt
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.cache` — Abstract cache subsystem
-
-<StdlibStatus status="regression-only" />
 
 `core.cache` provides a backend-agnostic cache interface. Consumers
 program against the `CacheBackend` protocol and pick a concrete

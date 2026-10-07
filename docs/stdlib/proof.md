@@ -5,11 +5,7 @@ description: Proof-carrying code bundles and refinement reflection — every pub
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.proof` — Proof infrastructure
-
-<StdlibStatus status="regression-only" />
 
 Runtime support for `@verify(certified)` and proof-carrying bytecode.
 Two public files; one legacy.

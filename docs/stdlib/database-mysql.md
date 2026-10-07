@@ -4,11 +4,7 @@ description: Pure-Verum implementation of the MySQL 8 binary protocol — no lib
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.database.mysql` — pure-Verum MySQL 8 driver
-
-<StdlibStatus status="unaudited" />
 
 `core.database.mysql` — codename **spindle (mysql backend)** — is a
 pure-Verum implementation of the MySQL 8.0 binary protocol. Its encoder

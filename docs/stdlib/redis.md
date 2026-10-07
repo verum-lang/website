@@ -5,11 +5,7 @@ description: Multi-purpose Redis subsystem — RESP3 client + commands + pub/sub
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.redis` — Multi-purpose Redis subsystem
-
-<StdlibStatus status="regression-only" />
 
 Production-grade Redis client speaking RESP2 / RESP3. Used as a
 multi-purpose data store: cache, pub/sub, streams (event queue),

@@ -6,11 +6,7 @@ status: undocumented
 slug: /stdlib/decimal
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.text.numeric.decimal`
-
-<StdlibStatus status="unaudited" />
 
 `Decimal` is a foundational stdlib type for use cases where
 binary float (`Float = f64`) is unsuitable: monetary amounts,

@@ -5,11 +5,7 @@ description: 7-layer TUI framework — raw I/O, events, style, render, layout, w
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.term` — Terminal / TUI framework
-
-<StdlibStatus status="unaudited" />
 
 A seven-layer TUI framework. Each layer is self-contained; higher
 layers are optional, so you can drop down to raw mode when you need

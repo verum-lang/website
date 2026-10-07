@@ -5,11 +5,7 @@ description: Theory registry, translation, coherence audit, JSON-RPC interchange
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.theory_interop` — theory interchange primitives
-
-<StdlibStatus status="unaudited" />
 
 A research-facing stdlib module that organises, translates, and
 audits **formally represented theories** as objects in an

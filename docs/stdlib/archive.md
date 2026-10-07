@@ -5,11 +5,7 @@ description: Uniform packaging functor across tar / zip / ar / cpio formats. Com
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.archive` — File-archive packaging
-
-<StdlibStatus status="regression-only" />
 
 `core.archive` is a **packaging functor** that converts
 `List<(path, metadata, content)>` ↔ `Bytes`. Concrete adapters

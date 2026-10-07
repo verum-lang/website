@@ -5,11 +5,7 @@ description: Abstract search subsystem — SearchIndex protocol + concrete adapt
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.search` — Abstract search subsystem
-
-<StdlibStatus status="regression-only" />
 
 `core.search` provides a backend-agnostic full-text search
 interface. Consumers program against the `SearchIndex` protocol

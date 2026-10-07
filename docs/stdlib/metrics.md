@@ -4,11 +4,7 @@ description: Lock-free Counter / UpDownCounter / Gauge / Histogram primitives, a
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.metrics` — metrics registry
-
-<StdlibStatus status="regression-only" />
 
 A Prometheus-native, OTel-compatible metrics surface. Every family
 (Counter, UpDownCounter, Gauge, Histogram) maps one-to-one to both a

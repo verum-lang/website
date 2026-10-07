@@ -5,10 +5,6 @@ description: TCP, UDP, HTTP, TLS and DNS through Verum networking and platform r
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
-<StdlibStatus status="partial" />
-
 Network APIs use Verum's system interface. Host interpreter handlers may
 use Rust `std::net` and libc; generated AOT networking must obey the strict
 no-libc target boundary. Both paths must implement the same API semantics.

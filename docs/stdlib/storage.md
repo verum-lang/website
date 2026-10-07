@@ -5,11 +5,7 @@ description: Abstract object-store subsystem — ObjectStore protocol + concrete
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.storage` — Abstract object-storage subsystem
-
-<StdlibStatus status="regression-only" />
 
 `core.storage` provides a backend-agnostic object-store interface
 (S3-style get / put / head / delete / list / presign). Consumers

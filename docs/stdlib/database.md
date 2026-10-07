@@ -4,11 +4,7 @@ description: Pure-Verum reimplementation of SQLite 3.x — an 8-layer storage st
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.database` — native SQLite ("loom")
-
-<StdlibStatus status="unaudited" />
 
 `core.database.sqlite.native` — codename **loom** — is a pure-Verum
 reimplementation of SQLite 3.x. It ships zero C code; every layer from

@@ -5,11 +5,7 @@ status: undocumented
 sidebar_position: 2
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # Loom — SQLite engine deep-dive
-
-<StdlibStatus status="unaudited" />
 
 This page complements the high-level overview in [`core.database`](./database)
 with a layer-by-layer dissection of every module under

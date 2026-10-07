@@ -1,7 +1,8 @@
 import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
+import type {Config, Plugin} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import remarkMath from 'remark-math';
+import remarkConformance from './plugins/remark-conformance.mjs';
 import rehypeKatex from 'rehype-katex';
 
 const ghPagesUrl = process.env.GH_PAGES_URL || 'https://verum-lang.org';
@@ -36,7 +37,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          remarkPlugins: [remarkMath],
+          remarkPlugins: [remarkMath, remarkConformance],
           rehypePlugins: [[rehypeKatex, {strict: false}]],
           showLastUpdateTime: false,
           showLastUpdateAuthor: false,
@@ -74,6 +75,26 @@ const config: Config = {
   ],
 
   plugins: [
+    function conformanceCacheDependency(): Plugin {
+      return {
+        name: 'conformance-cache-dependency',
+        configureWebpack(config) {
+          const cache = config.cache;
+          if (typeof cache !== 'object' || cache.type !== 'filesystem') {
+            return {};
+          }
+          return {
+            cache: {
+              ...cache,
+              buildDependencies: {
+                ...cache.buildDependencies,
+                conformanceRenderer: [require.resolve('./plugins/remark-conformance.mjs')],
+              },
+            },
+          };
+        },
+      };
+    },
     // Silence a benign webpack warning from vscode-languageserver-types,
     // a transitive dep of the search plugin's indexer.
     function silenceVscodeWarning() {

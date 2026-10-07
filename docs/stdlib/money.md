@@ -6,11 +6,7 @@ status: regression-only
 slug: /stdlib/money
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.money`
-
-<StdlibStatus status="regression-only" />
 
 Money type with currency-correct arithmetic. Two cogs:
 

@@ -4,11 +4,7 @@ description: The pure-Verum QUIC v1 (RFC the covered subset/9002) + HTTP/3 (RFC 
 status: undocumented
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # QUIC and HTTP/3
-
-<StdlibStatus status="unaudited" />
 
 The QUIC + HTTP/3 documentation has moved into dedicated stack sections
 that mirror the real implementation layout:

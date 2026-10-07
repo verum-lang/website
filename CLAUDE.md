@@ -86,6 +86,19 @@ details are valid content.
 its own positive and negative controls. Run it with the link audit and the
 strict production build before committing documentation changes.
 
+## Markdown presentation contract
+
+Documentation uses CommonMark, not MDX. Page conformance panels have one
+source of truth: `status`, `status_detail` and `status_defects` frontmatter,
+rendered by `plugins/remark-conformance.mjs`. Use plain Markdown text for
+inline lifecycle, tier and test-coverage labels. Do not embed JavaScript
+imports or JSX in page bodies. Literal code examples remain valid.
+
+`npm run build` includes controls for metadata validation and checks the
+rendered HTML for leaked component source and missing status panels. See
+README.md for the authoring contract. Do not bypass this check by hiding
+unrendered content or changing all documentation to MDX.
+
 ## Anchor and link discipline
 
 When linking between docs, anchors must match Docusaurus's

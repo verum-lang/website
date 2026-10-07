@@ -5,10 +5,6 @@ description: Compile-time programming — tokens, AST, reflection, quote, capabi
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
-<StdlibStatus status="partial" />
-
 ## See also
 
 - **[Language → metaprogramming](/docs/language/meta/overview)** — user surface.

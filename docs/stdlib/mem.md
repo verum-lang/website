@@ -5,16 +5,7 @@ description: Capability-Based Generational References — Heap, Shared, allocato
 status: partial
 ---
 
-import ModuleStatus, {
-  LifecycleBadge,
-  TierBadge,
-  TestCovBadge,
-} from '@site/src/components/StdlibBadge';
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.mem` — Memory management
-
-<StdlibStatus status="partial" />
 
 The implementation of CBGR (Capability-Based Generational References),
 the three-tier reference model, and the allocator stack. User code
@@ -49,25 +40,25 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 
 | File | Lifecycle | Tier | Tests | Notes |
 |---|---|---|---|---|
-| `capability.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/capability/` — 4 files + audit |
-| `header.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/header/` — 4 files + audit |
-| `size_class.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/size_class/` — 4 files + audit; uncovered `clz_u64 → ctlz` + PAGE_HEADER_SIZE drift defects (both closed) |
-| `thin_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/thin_ref/` — constructor field round-trips, `.message()` and `.eq()` are covered under the interpreter. Field lookup uses the field name across string-interning namespaces; see audit §8. |
-| `fat_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/fat_ref/` — 4 files + audit (static-shape only) |
-| `hazard.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/hazard/` — **green under the interpreter** (the whole module used to SIGSEGV): live `hazard_stats()` / `force_reclaim_all()` / `cleanup_thread_hazards()` all pass after TYPE-NAME-INFERENCE-1 + PROTOCOL-ITER-1 + CALLSYNC-R0-CLOBBER-1 (audit §8) |
-| `epoch.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — `core-tests/mem/epoch/` — the read and write surface is covered. Epoch advance goes through the same scalar cell and atomic operations that `current_epoch` and the reset helper use, so a test-driven advance and a real one cannot diverge. |
-| `allocator.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/allocator/` — static-shape + live cbgr_alloc round-trip via public `Heap<T>` / `Shared<T>` (audit §A closed); §B realloc-cross-boundary + §C ctx-allocator + §D protocol-impls + §E AllocStats + §F AOT sweep open |
-| `arena.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="partial" /> | <TestCovBadge cov="full" /> | `core-tests/mem/arena/` — `core-tests/mem/arena/` — the constants, the `ArenaConfig` constructors (`default`, `fixed`, `custom`), a disjointness sweep over the four `ArenaError` variants and the message payload of each are all covered, as is the live allocation lifecycle. |
-| `segment.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/segment/` — Mimalloc-style 32 MiB chunks |
-| `heap.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/heap/` — thread-local fast path; live heap_alloc lifted via public `Heap.new` (audit §B closed); HeapError 7-variant + HeapStats 8-field surface exhausted + From&lt;SegmentError&gt; lift covered (audit §D closed) |
-| `diagnostics.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/diagnostics/` — read-only observer surface |
-| `cap_audit.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit/` — capability transition events |
-| `cap_audit_ring.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
-| `mem_raw.vr` (in `core.intrinsics.runtime`) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy_addr`/`memmove_addr`/`memset_addr`/`memcmp_addr`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
-| `mod.vr` (module root) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/mod/` — module-root types (`UseAfterFreeError`, `RevocationError`, `CbgrTier`), execution-tier accessors and umbrella re-exports through `mount core.mem.{Name}` have interpreter coverage. The audit records the field-layout and capability-binding checks. |
+| `capability.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/capability/` — 4 files + audit |
+| `header.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/header/` — 4 files + audit |
+| `size_class.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/size_class/` — 4 files + audit; uncovered `clz_u64 → ctlz` + PAGE_HEADER_SIZE drift defects (both closed) |
+| `thin_ref.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/thin_ref/` — constructor field round-trips, `.message()` and `.eq()` are covered under the interpreter. Field lookup uses the field name across string-interning namespaces; see audit §8. |
+| `fat_ref.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/fat_ref/` — 4 files + audit (static-shape only) |
+| `hazard.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/hazard/` — **green under the interpreter** (the whole module used to SIGSEGV): live `hazard_stats()` / `force_reclaim_all()` / `cleanup_thread_hazards()` all pass after TYPE-NAME-INFERENCE-1 + PROTOCOL-ITER-1 + CALLSYNC-R0-CLOBBER-1 (audit §8) |
+| `epoch.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/epoch/` — `core-tests/mem/epoch/` — the read and write surface is covered. Epoch advance goes through the same scalar cell and atomic operations that `current_epoch` and the reset helper use, so a test-driven advance and a real one cannot diverge. |
+| `allocator.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/allocator/` — static-shape + live cbgr_alloc round-trip via public `Heap<T>` / `Shared<T>` (audit §A closed); §B realloc-cross-boundary + §C ctx-allocator + §D protocol-impls + §E AllocStats + §F AOT sweep open |
+| `arena.vr` | **🟢 Theorem (v0.1)** | partial | 🟢 full | `core-tests/mem/arena/` — `core-tests/mem/arena/` — the constants, the `ArenaConfig` constructors (`default`, `fixed`, `custom`), a disjointness sweep over the four `ArenaError` variants and the message payload of each are all covered, as is the live allocation lifecycle. |
+| `segment.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/segment/` — Mimalloc-style 32 MiB chunks |
+| `heap.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/heap/` — thread-local fast path; live heap_alloc lifted via public `Heap.new` (audit §B closed); HeapError 7-variant + HeapStats 8-field surface exhausted + From&lt;SegmentError&gt; lift covered (audit §D closed) |
+| `diagnostics.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/diagnostics/` — read-only observer surface |
+| `cap_audit.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/cap_audit/` — capability transition events |
+| `cap_audit_ring.vr` | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
+| `mem_raw.vr` (in `core.intrinsics.runtime`) | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` ✓ | 🟢 full | `memcpy_addr`/`memmove_addr`/`memset_addr`/`memcmp_addr`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
+| `mod.vr` (module root) | **🟢 Theorem (v0.1)** | `--interp` ✓ · `--aot` pending | 🟢 full | `core-tests/mem/mod/` — module-root types (`UseAfterFreeError`, `RevocationError`, `CbgrTier`), execution-tier accessors and umbrella re-exports through `mount core.mem.{Name}` have interpreter coverage. The audit records the field-layout and capability-binding checks. |
 
 The dedicated-suite-pending modules are tracked in
-`core-tests/INVENTORY.md`; new modules graduate to <TierBadge tier="both" />
+`core-tests/INVENTORY.md`; new modules graduate to `--interp` ✓ · `--aot` ✓
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 

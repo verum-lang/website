@@ -5,11 +5,7 @@ description: ATS-V Architectural Type System library — canonical types + 32-pa
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.architecture` — ATS-V Architectural Type System
-
-<StdlibStatus status="regression-only" />
 
 `core.architecture` is the Verum-native side of the **Architectural
 Type System v6.5 (ATS-V)**. It mirrors the kernel-side primitives

@@ -3,25 +3,18 @@ sidebar_position: 2
 title: sync
 description: Atomics, Mutex, RwLock, Once, Semaphore, Condvar, Barrier, WaitGroup — thread synchronization primitives.
 status: partial
-status_detail: >-
-  Checked: mutex guard lifetime remains incomplete in both execution backends. Native use of borrowed results through OnceLock accessor chains can fail after successful initialization.
+status_detail: "Synchronization APIs have partial backend coverage. Mutex guard lifetime remains incomplete in both execution backends. Native initialization through OnceLock can succeed while later use of its borrowed result fails; construction and atomic state changes do not establish accessor or cleanup correctness."
+status_defects:
+  - area: "MutexGuard"
+    summary: "The interpreter can report a lock released while its guard is still in scope. Native scope-exit cleanup is also incomplete."
+  - area: "OnceLock"
+    summary: "Native initialization can succeed once while using the borrowed result through subsequent accessor calls fails."
 ---
-
-import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.sync` — Synchronisation primitives
 
 Atomic operations, locking types, condition variables, barriers,
 and `Send`/`Sync` marker protocols.
-
-<StdlibStatus
-  status="partial"
-  detail="Synchronization APIs have partial backend coverage. Mutex guard lifetime and native borrowed access through lazy initialization need separate validation from construction and atomic state changes."
-  defects={[
-    {area: 'MutexGuard', summary: 'The interpreter can report a lock released while its guard is still in scope. Native scope-exit cleanup is also incomplete.'},
-    {area: 'OnceLock', summary: 'Native initialization can succeed once while using the borrowed result through subsequent accessor calls fails.'},
-  ]}
-/>
 
 | File | What's in it |
 |---|---|

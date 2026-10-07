@@ -5,11 +5,7 @@ description: Modal logic (Kripke) and linear logic — the metatheory behind ses
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.logic` — Modal and linear logic
-
-<StdlibStatus status="regression-only" />
 
 Term algebras for two logical systems used as Verum's metatheory:
 

@@ -6,11 +6,7 @@ status: regression-only
 slug: /stdlib/shell
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.shell` — typed shell scripting
-
-<StdlibStatus status="regression-only" />
 
 `core.shell` is Verum's shell-scripting framework. It is the
 practical equivalent of `bash` / `zsh` / `fish` plus the typed

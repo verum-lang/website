@@ -5,11 +5,7 @@ description: Call-by-push-value term algebra — foundations for effects and eva
 status: regression-only
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.eval` — Call-by-Push-Value
-
-<StdlibStatus status="regression-only" />
 
 Term algebra for **Call-by-Push-Value** (CBPV) — Levy's unifying
 framework that sits between call-by-value and call-by-name. This

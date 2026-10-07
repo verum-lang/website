@@ -4,11 +4,7 @@ description: Async signal subscription (SIGTERM, SIGINT, SIGHUP)
 status: partial
 ---
 
-import StdlibStatus from '@site/src/components/StdlibStatus';
-
 # `core.signal`
-
-<StdlibStatus status="partial" />
 
 **Layer 3.3 — Async signal subscription**
 
