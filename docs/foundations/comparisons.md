@@ -98,7 +98,7 @@ are external macros and `proc-macro`-driven validation, per crate.
 
 :::warning Most of them do not produce a usable value yet
 
-Measured 2026-09-12: the compiler recognises 71 tag spellings mapping to
+the compiler recognises 71 tag spellings mapping to
 48 distinct types, and **16 of those types exist in `core/` — 32 do
 not**. `d#"2026-04-17"` types as `DateTime`, which `core/time/` does not
 declare, so nothing can be called on it; `sql#"..."` types as

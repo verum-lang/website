@@ -892,7 +892,7 @@ All commands that compile or check code (`build`, `run`, `check`,
 language-feature overrides:
 
 :::caution `verum verify` is not one of them
-Measured 2026-09-11: `verum verify` accepts none of the fourteen —
+`verum verify` accepts none of the fourteen —
 `verum verify --tier interpret file.vr` exits with `error: unexpected
 argument '--tier' found`. It carries its own axis instead (`--mode`,
 `--solver`, `--timeout`, `--budget`); see

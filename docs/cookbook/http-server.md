@@ -9,20 +9,15 @@ A compact but real HTTP server: typed routes, context-injected
 dependencies, graceful shutdown, JSON responses, and hooks for
 middleware and TLS. Build on top of [`stdlib/net`](/docs/stdlib/net).
 
-:::danger A server on this page binds, then accepts nothing — measured 2026-09-15
+:::caution Backend coverage
 
-`bind(...)` succeeds and `serve().await` returns `Ok` immediately, having
-accepted no connection: `lsof` on the running process shows no TCP row at
-any sample. The cause is one line in the accept loop, where a fresh
-`Shared<AtomicBool>` drain flag reads back as `true`; the measurements and
-the exact mechanism are on
-[Listener](/docs/stdlib/net/weft/listener). The same root also stops
-`CancellationToken.cancel()` from cancelling, so the graceful-shutdown
-sections below do not hold either.
+The shared atomic drain flag is covered by interpreter and native receiver
+checks. This does not establish the entire server lifecycle. Request handling,
+timeouts, cancellation and resource cleanup need checks through the selected
+backend; native guard cleanup remains incomplete. See
+[Listener](/docs/stdlib/net/weft/listener) and
+[async backend coverage](/docs/stdlib/async).
 
-The code on this page is written against the intended contract and is
-what will work when that defect lands fixed. Today it will not serve a
-request, so do not reach for it to stand something up.
 :::
 
 
@@ -197,7 +192,7 @@ type CreateUserRequest is {
 ```
 
 :::note Four names on this page were not real, and the JSON one changes your code
-Corrected 2026-09-06, each verified against `core/`:
+Corrected, each verified against `core/`:
 
 * **`Response.json(value)` does not exist, and nothing serialises a
   record for you.** `resp_json(body: Text)` takes JSON **text** that is
@@ -213,10 +208,7 @@ Corrected 2026-09-06, each verified against `core/`:
 * `req.read_body_limited(n)` does not exist; read the body and check its
   length yourself.
 
-Four more, found 2026-09-08 — the note above named them and the code
-blocks kept using them, which is its own lesson: a correction that
-disclaims a name in prose and leaves it in the example teaches the
-example.
+The examples use these API spellings:
 
 * **`req.uri` does not exist.** A server handler receives a
   `WeftRequest`, whose fields are `method`, `path`, `raw_query`,
@@ -237,7 +229,7 @@ DO exist and are unchanged.
 :::
 
 :::danger The SECOND header on a response does not survive Tier 0
-Measured 2026-09-08, and the boundary is exact — the first one works:
+Checked, and the boundary is exact — the first one works:
 
 ```verum
 Response.new(StatusCode.ok()).header("a", "1")              // fine

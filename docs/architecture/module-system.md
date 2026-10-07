@@ -145,7 +145,7 @@ Read the last clause literally: *both sides resolve to the same name in
 the **importing scope***. The conflict is raised when an importer would
 be ambiguous — not when two modules merely declare the same name.
 
-Measured 2026-09-10 on a three-module stdlib where two modules each
+Checked on a three-module stdlib where two modules each
 declare `public type S` and a third uses the bare name without mounting
 either: the bake emits **zero** conflicting-export diagnostics and
 completes. Nothing at the declaration layer objects.
@@ -159,9 +159,7 @@ decided by different rules for different halves of the type: the id by
 the last claim, the field layout by the first registration. A module
 could receive its own constructor emitting another module's field count.
 
-The stdlib carries **134 colliding type names across 285 definitions**
-(re-measured 2026-09-10; it read 132 across 280 four days earlier, which
-is the drift you should expect from a number like this):
+To inspect repeated type names across standard-library modules:
 
 ```
 python3 -c "

@@ -41,17 +41,13 @@ let [a, b, .., y, z] = list;                // prefix and suffix
 let [x, y, z]: [Int; 3] = fixed_three();
 ```
 
-:::note Both halves fixed 2026-09-03
+:::note Length checking and initialization
 **The length is checked.** A pattern whose length disagrees with
-`[T; N]` is now `error<E400>: this pattern binds 2 element(s), but the
-type is [_; 3]`. Until this date a short pattern compiled and silently
-dropped the extra elements, and a long one compiled and failed at RUN
-time with "Index out of bounds".
+`[T; N]` produces `error<E400>: this pattern binds 2 element(s), but the
+type is [_; 3]`.
 
-**And the annotation no longer discards the initialiser.** A
-fixed-size array annotation on a `let` whose initialiser was a CALL used
-to bind a zero-filled array of the right length. `[Int; N]` and
-`[Float; N]` were affected; `Bool`, `Text` and `Byte` were not.
+A fixed-size array annotation preserves the initializer, including values
+returned by function calls.
 
 A slice pattern is a **lower** bound, so only over-length is an error:
 `[first, ..]`, `[.., last]` and `[a, .., z]` against `[Int; 3]` are all

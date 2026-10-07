@@ -115,9 +115,8 @@ The merge happened in two steps:
    changed from "AP-019..AP-026" to "AP-011..AP-026" with
    coherence content folded into articulation.
 
-2. The CVE articulation-hygiene band (AP-033..AP-040) was added
-   in 2026-05 and slotted into the same
-   articulation page rather than receiving its own band — the
+2. The CVE articulation-hygiene band (AP-033..AP-040) belongs to the
+   articulation page — the
    patterns describe how cogs articulate their CVE discharge,
    which is structurally close to the existing articulation
    discipline.

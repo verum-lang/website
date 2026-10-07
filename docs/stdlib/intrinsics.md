@@ -45,7 +45,7 @@ Annotations you will see:
 
 ---
 
-## Declared but not implemented — 288 keys (measured 2026-09-13)
+## Declared but not implemented — 288 keys
 
 The table below covers `core/intrinsics/**`, the canonical home. It is not
 the whole picture: **288 distinct `@intrinsic("verum.…")` keys declared
@@ -93,13 +93,13 @@ contract, the roster says which contracts have an implementation behind
 them. Where a page knows its own backend is missing it says so in a banner
 — [`ecc`](/docs/stdlib/security/ecc) is the worked example.
 
-## Conformance status by submodule (2026-07-15)
+## Conformance status by submodule
 
 Statuses follow the [status convention](./status-convention.md); the
 per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
 "Both tiers" means the suite passes under `verum test --interp` AND `--aot`.
 
-| Submodule | Status | State (2026-07-15) |
+| Submodule | Status | State |
 |---|---|---|
 | `arithmetic` | ⚠️ partial | Interp green core (129 live). **ARITH-PURE-BODY-1**: the 14 historically-nil intrinsics (`widening_mul`, `carrying_add`, `borrowing_sub`, `checked_shl/shr/rem/next_power_of_two`, `overflowing_neg/shl/shr`, `saturating_div`, `ilog10`, `leading_sign_bits`, `is_power_of_two`) are now pure Verum bodies over the registered primitives — full 14-function battery green on the v20 bake. AOT sweep pending. |
 | `bitwise` | ✅ complete | Both tiers green (127/127). |
@@ -114,15 +114,15 @@ per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
 | `simd` / `gpu` | ❔ undocumented | Neither surface is documented yet. `simd` is waiting on a name-resolution defect that makes intrinsic lookup non-deterministic, and on the splat and reduce operations landing; `gpu` is waiting on a correction to its operand shape and on its first conformance suite. Treat both as unavailable rather than as untested. |
 | `lowlevel/*` | ⚠️ partial | Arch files (x86_64/aarch64/kernel/mmio) audit-only (privileged/@llvm_only). The umbrella's cross-platform surface (`CpuCapabilities`, `detect_capabilities()`, SIMD width constants) is suite-covered; **CFG-CONST-SELECT-1** pinned (@cfg on const items takes the fallback branch — `MAX_SIMD_WIDTH` = 128 on aarch64). |
 | `runtime/tier,time,text,mem_raw,cbgr` | ⚠️ partial | Full suites, interp green; see audits for per-module AOT residuals. |
-| `runtime/sync` | ⚠️ partial | 13/13 interp (restored 2026-07-15 by **ARCHIVE-REF-TIER-DROP-1** — baked signatures lost `&unsafe`/`&checked`/`mut`); AOT green under `--exact`. |
+| `runtime/sync` | ⚠️ partial | Interpreter controls and targeted AOT checks under `--exact` cover the declared reference-tier and mutability signatures. |
 | `runtime/os` | ⚠️ partial | Unit + integration + **property laws** (round-trip identity over a UTF-8 domain, seek algebra, delete lifecycle) — 9/9 interp. |
 | `runtime/io` | ⚠️ partial | Unit + **engine-algebra property laws** (fd-free drift probes) — 6/6 interp. Registration surface belongs to the net suites. |
-| `runtime/tls` | ⚠️ partial | Slot algebra + regression pins for the 2026-07-04 slot-trio cluster; **TLS-SLOT-GET-NULL-1 fixed** (absent slot returns the null pointer, not nil). |
-| `runtime/scripting` | ⚠️ partial | **NEW 2026-07-15**: 30/30 interp (outcome taxonomy, sticky `last_error_kind`, globals, sandbox fuel, List marshaling). Tier contract pinned: AOT = failed outcome kind 4 (no compiler hook). Needed **SCRIPT-HOOK-TEST-RUNNER-1** (test runner now installs the hook). |
+| `runtime/tls` | ⚠️ partial | Slot algebra and absent-slot behaviour have regression controls: reading an absent slot returns a null pointer. |
+| `runtime/scripting` | ⚠️ partial | Interpreter controls cover outcome classification, sticky `last_error_kind`, globals, sandbox fuel and List marshaling. AOT reports failed outcome kind 4 because it has no compiler hook. |
 | `runtime/async_ops` / `runtime/syscall` | ❔ undocumented | Deliberate audit-only exceptions: async surface is conformance-tested at `core-tests/async/intrinsics/`; raw syscalls are a portability landmine (platform-specific numbers). |
 | `mod` umbrellas | ⚠️ partial | Explicit re-export lists pinned green. **UMBRELLA-REEXPORT-RESOLVE-1**: wildcard re-exports through umbrella brace-mounts resolve NONDETERMINISTICALLY per run (map-walk name index) — acceptance blocks committed in the suites. |
 
-Open cross-cutting classes (2026-07-15): MEM-PTR-DEREF-TIER0-1,
+Open cross-cutting classes: MEM-PTR-DEREF-TIER0-1,
 UMBRELLA-REEXPORT-RESOLVE-1, ARCHIVE-GENERIC-BODY-NIL-1 (baked generic
 bodies vs local twins — fixed by SERIALIZE-STUB-IDENTITY-1/v20 for the
 arithmetic battery; broader sweep pending), LITERAL-SIZED-ALIAS-COERCE-1
@@ -215,7 +215,7 @@ Suite: `core-tests/intrinsics/arithmetic/`
 `min` `max` `clamp`; `ilog2`. Ring/order algebraic laws pinned by
 the property suite.
 
-**Source fixes landed this branch:**
+**Arithmetic lowering:**
 
 - **Comparison wrappers `eq/ne/lt/le/gt/ge`** — `emit_intrinsic_direct_opcode`
   had no arm for the `EqI/NeI/LtI/LeI/GtI/GeI` DirectOpcodes, so these
@@ -228,7 +228,7 @@ the property suite.
   handlers read (correct for AOT + direct `@intrinsic` + fresh user wrapper).
   Still gated under the stdlib wrapper by the name-collision below.
 
-**Additional fixes (2026-06-21):**
+**Mounted-name resolution:**
 
 - **`checked_neg`/`checked_abs` + `saturating_add/sub/neg/abs` — bare-name
   collision FIXED.** These were resolving to the unmounted
@@ -298,8 +298,7 @@ associativity, De Morgan, distributivity, idempotence) and bit-manip invariants
 (involutions, popcnt-preservation, rotate-inverse) are pinned by the property
 suite.
 
-**Source / crate fixes landed this branch** (all at registry + codegen +
-interp + LLVM):
+**Bitwise lowering** (registry, codegen, interpreter and LLVM):
 
 - **`bitnot` / `lshr` / `ashr` returned `nil`.** The registry held only the
   semantic *wrapper* names (`bitand` …); the authoritative `@intrinsic` body
@@ -544,7 +543,7 @@ strategies (`DirectOpcode(LoadI)` with no immediate; `DirectOpcode(EqI)` with a
 single operand) fell through to `LoadNil`. Now dedicated inline sequences
 (`LoadI 0` / `LoadI 0` + `CmpI eq`).
 
-**Partially landed (2026-07-01):** the raw-pointer surface now has a focused
+**Raw-pointer coverage:** the surface has a focused
 harness over a `List`-backing pointer (`as_mut_ptr`). `ptr_read`/`ptr_write` work
 on AOT; **`ptr_offset`/`ptr_add`/`ptr_sub` were fixed** — they advanced by *bytes*
 not *elements*, so `ptr_offset(p, 1)` landed mid-slot (every backing slot is an
@@ -793,11 +792,9 @@ Pass these to `tensor_new` / `tensor_fill` / `tensor_from_slice` /
 
 Reads (`tensor_get_scalar → Float`) and writes (`tensor_set_scalar`,
 fills, `from_slice` copies) are **dtype-converting** in both
-directions — an F32/int tensor can never silently read back zeros
-(an earlier write path was F64-only and did nothing for every other
-dtype).
+directions, including F32 and integer tensors.
 
-### Op-code tables (mirror the VBC enums — do not trust older docs)
+### Op-code tables
 
 | `tensor_unop` op | | op | | op |
 |---|---|---|---|---|
@@ -814,10 +811,8 @@ dtype).
 5 var (axis &lt; 0 reduces all).
 `tensor_cumulative`: 0 sum · 1 prod.
 
-> An audit found the previous op listings had drifted
-> from the enums — `math.autodiff`'s sigmoid was emitting **tanh**.
-> These tables are verified against `TensorUnaryOp`/`TensorBinaryOp`/
-> `TensorReduceOp`/`CompareOp` byte values.
+The byte values are defined by `TensorUnaryOp`, `TensorBinaryOp`,
+`TensorReduceOp` and `CompareOp` in the VBC instruction definitions.
 
 ### Surface by group
 

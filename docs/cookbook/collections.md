@@ -98,7 +98,7 @@ One lookup instead of the `.contains_key + .get + .insert` dance.
 
 :::warning
 
-**Known limitation, measured 2026-09-07:** the block above does not run.
+**Known limitation:** the block above does not run.
 `Map.entry` fails at runtime with a null pointer dereference, and so do
 the other `Map` methods that walk the entries array directly —
 `get_key_value`, `remove_entry`, and the `Entry` methods below. The
@@ -197,7 +197,7 @@ let counts: Map<Text, Int> = words
 ```
 
 This uses the entry API, so it carries the same limitation as
-[The entry API](#the-entry-api) above (measured 2026-09-07): it does not
+[The entry API](#the-entry-api) above: it does not
 run today. `get_or` + `insert` inside the fold works.
 
 Or with a comprehension:
@@ -235,8 +235,7 @@ for item in &items {
 }
 ```
 
-Same limitation as [The entry API](#the-entry-api) (measured
-2026-09-07). Read the group with `get_or`, push, then `insert` it back.
+Same limitation as [The entry API](#the-entry-api). Read the group with `get_or`, push, then `insert` it back.
 
 ## Sorting
 

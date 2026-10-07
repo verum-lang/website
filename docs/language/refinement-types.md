@@ -46,19 +46,10 @@ interchangeable:
 - `it` — the implicit binder, seen in `Int{ it >= 0 }`;
 - the name a `where` form introduces, e.g. `T where |x| x > 0`.
 
-**Every other name in a predicate must be in scope.** Since 2026-09-03 an
-unknown one is `error<E100>: unbound variable in refinement predicate`.
-Before that it was accepted, and the consequence was not a weaker type —
-it was a different one:
-
-    type P is Int { slef > 0 };   // a typo of `self`
-    let x: P = -5;                // was ACCEPTED
-    let x: P =  5;                // was REJECTED
-
-An identifier in a predicate becomes a free variable of the solver
-obligation, so an unknown name is not "no constraint", it is an
-arbitrary one — and here it inverted the type, accepting exactly the
-values the refinement was written to reject.
+**Every other name in a predicate must be in scope.** An unknown name
+produces `error<E100>: unbound variable in refinement predicate`.
+For example, `type P is Int { slef > 0 };` is rejected because `slef`
+does not name the value under refinement.
 
 The check applies to a **type declaration's own** predicate. A
 refinement on a parameter may name a sibling parameter — `fn
@@ -119,14 +110,6 @@ that. It carries both halves: a value the compiler can disprove is
 refused at compile time (`error<E500>: refinement constraint failed`),
 and one it cannot decide is checked when the program runs.
 
-That was not always true. Until 2026-09-02 the runtime half was lost
-behind the name: the assert emitter matched the annotation's *syntax*
-rather than asking the type for its predicate, so `let a: Int{it > 0}`
-asserted and `let a: Positive` did not — the same predicate, two
-verdicts, decided by the spelling. The static half worked through the
-name the whole time, which is what made it hard to notice: a literal
-`-1` behind `Positive` was refused, so the type looked enforced.
-
 The last row is the one to know about, because nothing at the
 declaration marks it: the refinement is accepted, reads as a guarantee,
 and no check is emitted. It comes from *instantiating* a generic whose
@@ -141,7 +124,7 @@ produces the value:
 // Not checked: the refinement rides on a type argument.
 fn stored() -> Result<Int{it >= 0}, ImportError> { ... }
 
-// Checked: the refinement is the return type.
+// the refinement is the return type.
 fn count() -> Int{it >= 0} { ... }
 ```
 
@@ -251,8 +234,7 @@ rely on this page's specific claim until that's resolved.
   rejected.** The compiler accepts the predicate, warns that the
   constraint is unenforced, and continues — which is gradual
   verification working as designed, but it is not the same thing as a
-  rejection, and this page previously said "rejected". Re-measured
-  2026-09-12 on the current binary. Each row was run at BOTH polarities —
+  rejection, and this page previously said "rejected". Checked on the current binary. Each row was run at BOTH polarities —
   once with a field value that satisfies the predicate and once with one
   that violates it — because a diagnostic on the violating case alone
   cannot tell a decision from a blanket refusal.
@@ -272,18 +254,9 @@ rely on this page's specific claim until that's resolved.
   a function the solver cannot unfold, or indexes a list, is parsed and
   left unenforced.
 
-  **A correction, because this page carried the wrong table for four
-  weeks.** Between 2026-08-17 and 2026-09-12 the call row read
-  `error<E500>` in BOTH columns: a predicate that called a function was
-  refused whether or not it held, so `twice(20) >= 10` — which is
-  `40 >= 10` — was reported as a failed constraint. Recursive calls were
-  refused the same way. That is fixed; the row above is the re-measured
-  behaviour.
-
-  It is also why the table now shows both polarities. A diagnostic on
-  the violating case alone cannot tell a decision from a blanket
-  refusal, and reading only that column is how the regression looked
-  like progress.
+  The table shows both satisfying and violating values. A diagnostic on
+  the violating case alone cannot distinguish a valid decision from a
+  blanket refusal of the predicate.
 
   Two smaller gaps closed with it, both found by varying the VALUE
   rather than the predicate. A negative or parenthesised value used to

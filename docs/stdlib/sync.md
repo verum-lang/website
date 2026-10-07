@@ -4,7 +4,7 @@ title: sync
 description: Atomics, Mutex, RwLock, Once, Semaphore, Condvar, Barrier, WaitGroup — thread synchronization primitives.
 status: partial
 status_detail: >-
-  Measured 2026-10-04: mutex guard lifetime remains incomplete in both execution backends. Native use of borrowed results through OnceLock accessor chains can fail after successful initialization.
+  Checked: mutex guard lifetime remains incomplete in both execution backends. Native use of borrowed results through OnceLock accessor chains can fail after successful initialization.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
@@ -21,7 +21,6 @@ and `Send`/`Sync` marker protocols.
     {area: 'MutexGuard', summary: 'The interpreter can report a lock released while its guard is still in scope. Native scope-exit cleanup is also incomplete.'},
     {area: 'OnceLock', summary: 'Native initialization can succeed once while using the borrowed result through subsequent accessor calls fails.'},
   ]}
-  sweepDate="2026-10-04"
 />
 
 | File | What's in it |
@@ -47,14 +46,14 @@ contract as [`core.base`](./base.md#module-status),
 [`core.time`](./time.md#module-status). The status row is the truth-table
 over the module's public API exercised by `core-tests/sync/<module>/`
 for the interpreter (Tier 0) and native AOT (Tier 1). Read each row's
-coverage together with the dated limitations below; an interpreter result
+coverage together with the backend limitations below; an interpreter result
 is not a native-parity guarantee. Status names follow the
 [shared convention](./status-convention.md#status-keywords).
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `atomic.vr`    | **stable** | [core-tests/sync/atomic](https://github.com/verum-lang/verum/tree/main/core-tests/sync/atomic) — 8 unit + 14 property + 10 regression. MemoryOrdering 5-variant pairwise disjointness + `name()` canonical-token injectivity + Eq laws (added this round). AtomicInt/AtomicBool single-threaded load/store/fetch_add round-trip in regression suite. Live atomic contention deferred to vcs/specs/L2-standard/sync/atomic/. |
-| `mutex.vr` | **partial** | [core-tests/sync/mutex](https://github.com/verum-lang/verum/tree/main/core-tests/sync/mutex) — construction and poison-state checks do not establish guard lifetime. See the dated limitations below. |
+| `atomic.vr`    | **stable** | [core-tests/sync/atomic](https://github.com/verum-lang/verum/tree/main/core-tests/sync/atomic) — 8 unit + 14 property + 10 regression. MemoryOrdering 5-variant pairwise disjointness + `name()` canonical-token injectivity + Eq laws. AtomicInt/AtomicBool single-threaded load/store/fetch_add round-trip in regression suite. Live atomic contention deferred to vcs/specs/L2-standard/sync/atomic/. |
+| `mutex.vr` | **partial** | [core-tests/sync/mutex](https://github.com/verum-lang/verum/tree/main/core-tests/sync/mutex) — construction and poison-state checks do not establish guard lifetime. See the backend limitations below. |
 | `rwlock.vr`    | **stable** | [core-tests/sync/rwlock](https://github.com/verum-lang/verum/tree/main/core-tests/sync/rwlock) — 14 unit + 10 property + 4 regression. RwLock.new + poison protocol + re-exported error types (LockResult / TryLockResult / PoisonError / TryLockError) destructure round-trip + multi-instance independence matrix. Writer-preference fairness pinned by data-shape; live verification at L2. |
 | `semaphore.vr` | **stable** | [core-tests/sync/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/sync/semaphore) — 15 unit + 8 property + 4 regression. try_acquire / release / try_acquire_many / release_many full sequential cycle. add_permits dual-bump (capacity AND availability) + forget_permit asymmetric shrink + binary() ≡ new(1) pinned in regression. Live contention at L2. |
 | `condvar.vr`   | **stable** | [core-tests/sync/condvar](https://github.com/verum-lang/verum/tree/main/core-tests/sync/condvar) — 12 unit + 7 property + 5 regression, of which 9 @ignore'd (audit § 3.6 — Tier-0 futex FFI symbol gap; notify_one/notify_all calls trip "FFI symbol not found: FfiSymbolId(61)").  Live path (Condvar.new + Default + waiter_count + WaitTimeoutResult shape + CondvarNotifyGuard + producer_consumer_pair) all GREEN.  notify_one/notify_all and live wait/wait_timeout/wait_while at vcs/specs/L2-standard/sync/condvar/. |
@@ -79,7 +78,7 @@ type AtomicOrdering is MemoryOrdering;   // alias for atomic contexts
 ```
 
 `MemoryOrdering` implements `name() -> Text` + `Display` + `Debug` + `Eq`
-(landed this round) — useful for state-machine assertions:
+— useful for state-machine assertions:
 
 ```verum
 assert_eq(o, MemoryOrdering.Acquire);
@@ -164,7 +163,7 @@ m.into_inner() -> LockResult<T>          // consumes
 `MutexGuard<T>` implements `Deref<Target=T>` + `DerefMut`. Its contract
 is to hold the lock until the guard drops and release it on destruction.
 
-**Known limitation, measured 2026-10-04:** this lifetime contract is not
+**Known limitation:** this lifetime contract is not
 yet reliable in either backend. The interpreter can report an unlocked
 mutex while its guard is still in scope; native guard cleanup can fail
 to release the lock at scope exit. Do not rely on the following intended
@@ -231,7 +230,7 @@ single-shot publication:
 let cfg = CONFIG.get_or_init(|| load_config());
 ```
 
-**Known limitation, measured 2026-10-04:** native initialization can
+**Known limitation:** native initialization can
 publish the expected value once while borrowed access through later
 wrapper calls fails. This occurs on the `root_supervisor()` accessor
 path; verify the returned reference's use, not just the initializer's
@@ -382,9 +381,8 @@ latch.wait_for_zero_timeout(timeout_ns) -> Bool
 
 `wait_for_zero_timeout` loops on the predicate under the mutex,
 recomputing remaining_ns against an absolute monotonic deadline each
-iteration. The earlier single-shot implementation returned `false` on
-the first spurious condvar wake even when the count was still > 0. See
-`core/sync/barrier.vr:548-587`.
+iteration. Spurious wakes must recheck the predicate rather than report
+a timeout. See `core/sync/barrier.vr::CountDownLatch.wait_for_zero_timeout`.
 
 ---
 
@@ -426,7 +424,7 @@ the underlying `__waitgroup_add_raw` intrinsic and return a bare
 expected a counter increment. The intercept has been removed; Duration's
 `Add.add` continues to dispatch through its Verum-side body + the
 `time_duration_add` intrinsic. Same defect surface as
-[`[[duration_single_field_record_unboxing_2026-05-27]]`](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration/audit.md#section-g).
+[Duration record-unboxing audit](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration/audit.md#section-g).
 
 ---
 

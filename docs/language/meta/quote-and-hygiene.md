@@ -147,7 +147,7 @@ place double-dollar appears. See the
 ## Quoting non-identifier values
 
 :::warning `Quotable` and `Ident` do not exist; the vocabulary is `Token*`
-Measured 2026-09-12 across every `type`, `context` and `protocol`
+Checked across every `type`, `context` and `protocol`
 declared in `core/` — the keyword matters, and asking only about `type`
 is how an earlier census on a sibling page got its answer wrong:
 

@@ -13,8 +13,7 @@ annotation layer that is not continuously enforced accumulates
 confident falsehood (see the update note in the
 [Architecture-as-Types blog post](/blog/architecture-as-types)).
 
-ATS-V-2 is the accepted successor design (August 2026, forged in an
-adversarial two-session design duel). The direction of truth
+ATS-V-2 is the accepted successor design. The direction of truth
 inverts, and the first pieces are **already shipping**.
 
 ## The two-layer law

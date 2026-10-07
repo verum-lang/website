@@ -4,10 +4,7 @@ title: async
 description: Futures, tasks, channels, streams, timers, nursery, select, parallel.
 status: partial
 status_detail: >-
-  22 modules, 15 with full conformance suites, all green under the
-  interpreter. The three limitations this page carried until
-  2026-09-04 were re-measured and none of them reproduces; see
-  Previously documented limitations below for what was checked.
+  Interpreter and native coverage vary by API. Executor, deadline, cancellation and guard-lifetime limitations are described below.
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
@@ -16,12 +13,11 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="Conformance coverage varies by API and backend. Some async programs compile and run natively, but this does not establish parity for every executor, deadline, cancellation or cleanup path. The `LocalExecutor` sequence this page prescribes panics as soon as it has a task to drive, and `block_on` fails too (measured 2026-09-07); `spawn` plus awaiting the handle works — see the LocalExecutor section."
+  detail="Conformance coverage varies by API and backend. Some async programs compile and run natively, but this does not establish parity for every executor, deadline, cancellation or cleanup path. The `LocalExecutor` sequence this page prescribes panics as soon as it has a task to drive, and `block_on` fails too; `spawn` plus awaiting the handle works — see the LocalExecutor section."
   defects={[]}
-  sweepDate="2026-09-04"
 />
 
-**Backend checks, measured 2026-10-04:** interpreter HTTP checks cover
+**Backend checks:** interpreter HTTP checks cover
 binary responses, header deadlines, cancellation before reading, and an
 overall deadline across slowly arriving headers. The same complete HTTP
 path has not yet been validated natively. Native checks cover eager
@@ -73,19 +69,13 @@ AOT, `--test-threads 1`).
 | `timer.vr`         | **partial**  | [core-tests/async/timer](https://github.com/verum-lang/verum/tree/main/core-tests/async/timer) — the construction surface for `Sleep`, `SleepUntil` and `Delay`, the immediate-versus-first-tick partition of `TimerInterval`, debounce and throttle state-machine round-trips, refusal of a non-monotonic instant, reset-then-acquire across representative intervals, and `TimeoutError` equality. Regression pins cover the `Duration.from_millis` misroute described under Known limitations. |
 | `parallel.vr`      | **complete** (interp) | [core-tests/async/parallel](https://github.com/verum-lang/verum/tree/main/core-tests/async/parallel) — `parallel_map`, `parallel_filter_map`, `parallel_for_each`, `parallel_reduce` and the Blelloch `parallel_scan_exclusive`. The pinned properties are the interesting part: results are invariant under worker count, Blelloch agrees with a reference exclusive prefix scan for `+` and `max`, `parallel_reduce` agrees with a left fold, and `filter_map` yields an index subset of `map`. Validation of the native-compiled path waits on ahead-of-time compilation. |
 | `panic_fence.vr`   | **partial**  | [core-tests/async/panic_fence](https://github.com/verum-lang/verum/tree/main/core-tests/async/panic_fence) — the `panic_safe` factory, record-literal inners, `Ready(Ok)` round-trips over several element types, classification of a fence outcome into its tag, and sequential consumption of a list of fenced futures. One pin remains on in-place mutation of a generic record field through `&mut self`, which is what the fence's documented "inner is empty after Ready" invariant rests on. Coverage of the panicking arm waits on a panicking-future test bed. |
-| `semaphore.vr`     | **regression-only** outside variant algebra | [core-tests/async/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/async/semaphore) — 8 working (SemaphoreError single-variant algebra including the natural `e is SemaphoreError.Closed` form + Result/Maybe wrapping integration) + 9 pinned regressions for #12 (lifecycle tests blocked by `AsyncSemaphore.new` null-derefs through AtomicInt.swap in Mutex/AtomicBool init).  **#13 CLOSED** 2026-05-15 via single-line architectural fix in the parser — `type X is Y;` is now correctly parsed as a single-variant sum (was incorrectly downgraded to alias), closing the entire `SemaphoreError` / `ChannelError` / single-variant marker idiom across stdlib. |
+| `semaphore.vr` | **regression-only** outside variant algebra | [core-tests/async/semaphore](https://github.com/verum-lang/verum/tree/main/core-tests/async/semaphore) — `SemaphoreError.Closed` matching and Result/Maybe wrapping have coverage. Construction has a focused control below; lifecycle coverage remains incomplete and must be validated separately. |
 | `async_iterator.vr`| **complete** (protocol surface) | [core-tests/async/async_iterator](https://github.com/verum-lang/verum/tree/main/core-tests/async/async_iterator) — 4 unit + 3 property + 2 integration + 1 regression GREEN under interpreter. Pins: both protocols (`AsyncIterator`, `IntoAsyncIterator`) mount cleanly without archive-load panic; protocol-bound generic functions compile (`A: AsyncIterator`, `B: IntoAsyncIterator + Clone`); IntoAsyncIterator self-conversion blanket compiles via @inline-identity body; associated-type projection `B.IntoAsyncIter` resolves at function boundary; `List<A: AsyncIterator>` round-trip signature compiles. Stream→AsyncIterator blanket impl deferred behind upstream protocol-resolver projection-reduction work (each Stream-shaped type carries its own direct AsyncIterator impl in its owning module until the resolver lands). |
 | `intrinsics.vr`    | **partial**  | [core-tests/async/intrinsics](https://github.com/verum-lang/verum/tree/main/core-tests/async/intrinsics) — 19 working (Executor.current/in_async_context coherence + future_poll_sync ReadyFuture round-trip across Int/Text/Bool payloads + IntrinsicsYieldNow two-state lifecycle Pending→Ready with exactly-one-Pending tightness). Spawn family + sleep family @intrinsics deferred pending the live-executor test-bed. |
 
-### Previously documented limitations — re-measured, none reproduce
+### Backend coverage
 
-This page carried three limitations until 2026-09-04. Each was
-inherited from an older status table and each was checked directly.
-None of them holds. They are listed rather than deleted, because "this
-page never said that" and "this page said it and it was wrong" are
-different things to a reader who acted on the old text.
-
-**"Async programs do not compile ahead of time."** They do.
+A basic eager async program compiles to a native executable:
 
 ```verum
 async fn work() -> Int { 21 }
@@ -96,23 +86,14 @@ async fn main() {
 }
 ```
 
-`verum build` produces a native binary and running it prints
-`async=42`. A control — the same build on a program with no `async` at
-all — emits the identical code-generation warnings, so those warnings
-are not about asynchrony and were not evidence for the claim.
+`verum build` produces a native binary whose recorded output is `async=42`.
+This control establishes basic eager async execution, not full executor or
+resource-cleanup correctness.
 
-**"`AsyncSemaphore.new` faults during construction."** It does not.
-`AsyncSemaphore.new(2)` constructs and the program continues.
-
-**"`Duration.from_millis` dispatches to `from_nanos`."** It does not.
-`Duration.from_millis(250).as_nanos()` is `250_000_000`, which agrees
-with `Duration.from_nanos(250_000_000).as_nanos()` exactly.
-
-What this page does NOT claim is that every path here is proven. The
-conformance suites cover the modules listed above under the
-interpreter; anything outside them is untested rather than known-good,
-and this section will say so when a limitation is measured rather than
-inherited.
+The construction control `AsyncSemaphore.new(2)` produces a semaphore.
+`Duration.from_millis(250).as_nanos()` returns `250_000_000`, matching
+`Duration.from_nanos(250_000_000).as_nanos()`. These focused checks do not
+establish semaphore lifecycle or general timer scheduling behaviour.
 
 ## `Poll<T>` — the two-state algebra
 
@@ -892,7 +873,7 @@ let completed = exec.run_until_complete();
 
 :::warning
 
-**Known limitation, measured 2026-09-07:** the sequence above panics as
+**Known limitation:** the sequence above panics as
 soon as there is a task to drive.
 
 ```text

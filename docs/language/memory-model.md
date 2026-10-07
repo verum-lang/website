@@ -46,8 +46,7 @@ fn process(x: &User) { ... }
 - **What it is**: a CBGR-checked reference.
 - **Size**: 16 bytes (`ThinRef`) for sized types, 32 bytes (`FatRef`) for unsized.
 - **Runtime cost**: one generation-check per deref — **1.2–1.7 ns**
-  measured (`cargo bench -p verum_cbgr --bench production_targets`,
-  2026-09-05), against a ≤ 15 ns design target.
+  in `cargo bench -p verum_cbgr --bench production_targets`, against a ≤ 15 ns design target.
 - **Safety**: use-after-free and double-free are runtime-detected.
 
 This is the default. Use it unless you have a reason not to.
@@ -177,7 +176,7 @@ duplicate explicitly, call `.clone()`.
 
 | Concept | Syntax | Cost |
 |---------|--------|------|
-| Managed reference | `&T` | 1.2–1.7 ns CBGR check (re-measured 2026-09-05; target ≤ 15 ns) |
+| Managed reference | `&T` | 1.2–1.7 ns CBGR check (target ≤ 15 ns) |
 | Checked reference | `&checked T` | 0 ns |
 | Unsafe reference | `&unsafe T` | 0 ns |
 | Mutable variants | `&mut T`, `&checked mut T`, ... | same as above |

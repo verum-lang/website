@@ -8,7 +8,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.net.proxy` — reverse-proxy toolkit
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 `core.net.proxy` is the *composable-middleware* half of Verum's
 reverse-proxy stack. Where `core.net.weft` provides the full server-
@@ -242,8 +242,7 @@ a new `Handler`), so the stacking order above reads from *inside out*:
 rate-limit first, then circuit-break, then retry, then finally the
 handler that hits the upstream pool.
 
-Three corrections landed here on 2026-09-06, each of which would have
-stopped a copied snippet from compiling:
+The layer APIs use these declarations:
 
 * the rate-limit layer is **`RateLimitLayer`**
   (`core/net/weft/backpressure.vr`), constructed

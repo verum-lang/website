@@ -13,20 +13,18 @@ Cowboy — **and verifiable**: refinement-typed routes, effect-checked
 middleware, dependent-typed protocol state machines, structurally
 concurrent connection nurseries.
 
-:::danger A server on this page binds, then accepts nothing — measured 2026-09-15
+:::caution Listener and shutdown coverage
 
-`bind(...)` succeeds and `serve().await` returns `Ok` immediately, having
-accepted no connection: `lsof` on the running process shows no TCP row at
-any sample. The cause is one line in the accept loop, where a fresh
-`Shared<AtomicBool>` drain flag reads back as `true`; the measurements and
-the exact mechanism are on
-[Listener](/docs/stdlib/net/weft/listener). The same root also stops
-`CancellationToken.cancel()` from cancelling, so the graceful-shutdown
-sections below do not hold either.
+Focused interpreter and native controls preserve the stored values through
+`Shared<AtomicBool>` and `Shared<AtomicInt>`. These atomic checks do not
+establish a complete listener, cancellation or shutdown lifecycle.
 
-The code on this page is written against the intended contract and is
-what will work when that defect lands fixed. Today it will not serve a
-request, so do not reach for it to stand something up.
+Interpreter HTTP controls cover binary responses, header deadlines and
+cancellation before reading. Mutex guard lifetime remains incomplete, and
+native cancellation propagation and end-to-end serving require separate
+validation. Treat the APIs below as contracts subject to those limits; see
+[async backend coverage](/docs/stdlib/async#backend-coverage) and
+[guard lifetime](/docs/language/async-concurrency#mutex--rwlock).
 :::
 
 
@@ -115,7 +113,7 @@ reverse-proxy kit (see below).
 
 :::note `Response.ok(...)` was not a thing — and nothing in the library was using it either
 
-Measured 2026-09-04, re-measured 2026-09-10: `Response.ok` does not
+checked: `Response.ok` does not
 exist anywhere in `core/`, and neither does any construction of the type
 at all:
 
@@ -380,27 +378,20 @@ connection by construction.
 | Memory per idle connection | <= 8 KB |
 | Graceful restart under 1M req/s | 0 dropped |
 
-## Conformance status (2026-04-29)
+## Conformance status
 
-| Suite | Pass | Total | % |
-|---|---|---|---|
-| weft | 29 | 30 | 96.7% |
-| quic | 78 | 130 | 60% |
-| tls13 | 43 | 76 | 56.6% |
-| h3 + http2 + http3 + proxy + ws + tls + shutdown | 16 | 46 | 34.8% |
-
-The weft framework itself is at 96.7% conformance. The remaining
-gaps in protocol-level suites trace back to four shared compiler
-issues which, once closed, unlock approximately half the suite at once.
+Coverage is recorded by API and backend in the
+[networking verification guide](/docs/verification/networking) and the
+[conformance inventory](https://github.com/verum-lang/verum/blob/main/core-tests/INVENTORY.md).
+Weft, QUIC, TLS and HTTP protocol suites have different open paths; a single
+framework pass percentage would conceal those differences. Use the listener
+and shutdown limits above when assessing the examples on this page.
 
 ## Tier-0 interpreter networking
 
-Through 2026-04-29, `verum run --interp` returned `-1` from any TCP
-or UDP intrinsic — interpreted-mode networking was a documentation-only
-feature. Since closure of the Tier-0 networking work, every `__tcp_*_raw`
-and `__udp_*_raw` is backed by real OS sockets keyed in a thread-local
-synthetic-fd registry, so a Verum script can now bind a port and serve
-traffic directly through the interpreter:
+The interpreter implements `__tcp_*_raw` and `__udp_*_raw` with OS
+sockets stored in a thread-local synthetic-fd registry. A script can bind
+a port and serve traffic through these intrinsics:
 
 ```verum
 mount core.intrinsics.runtime.os.{

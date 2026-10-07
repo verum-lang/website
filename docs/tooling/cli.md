@@ -316,7 +316,7 @@ audit gate maps onto a verdict.
 
 | Flag | Dispatcher | Routes |
 |------|------------|--------|
-| `--count-o-dispatch` | **Not accepted (measured 2026-09-11)** — `verum audit` rejects it; the dispatcher below runs, the flag that would select it does not. `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → SMT Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
+| `--count-o-dispatch` | **Not accepted** — `verum audit` rejects it; the dispatcher below runs, the flag that would select it does not. `verum_smt::count_o_dispatch` | OWL 2 `count_o_unbounded` predicates inside refinement-bounded contexts → SMT Finite Model Finding (see [Verification → OWL 2 §5](../verification/owl2.md#5-the-count_o-quantifier-of-quantity)). |
 
 #### Aggregator (1 gate)
 
@@ -594,7 +594,7 @@ The missing-context diagnostic emits `E613`, which the registry
 describes as "context used but not declared in the function signature",
 and `crates/verum_types/src/lib.rs` records the history at the emit site.
 
-Re-measured 2026-09-11 across the whole registry: no documented code now
+Checked across the whole registry: no documented code now
 describes something the compiler never prints. If an explanation still
 does not match the error you saw, trust the error and report it.
 
@@ -659,13 +659,13 @@ design):
 |---|---|
 | `query`   | "What may the code at this path do?" — the inferred capability surface (row-solved, transitive), the `@arch_module` pin, and the judgment between them. `--json` is the append-only machine contract. |
 | `explain` | Structured architectural type information for a cog: `Shape` + anti-pattern violations + suggestions. |
-| `catalog` | The anti-pattern catalog with stable codes `ATS-V-AP-NNN`. Measured 2026-09-07: 40 entries. Equivalent to `verum audit --arch-discharges` filtered to the catalog table. |
+| `catalog` | The anti-pattern catalog with stable codes `ATS-V-AP-NNN`. 40 entries. Equivalent to `verum audit --arch-discharges` filtered to the catalog table. |
 | `check`   | ATS-V invariants on one `.vr` file: parses it, walks every module declaration, reads `@arch_module(...)`, runs the catalog and reports violations. A module without the annotation passes vacuously. |
 
 :::note Three names this page used to list do not exist
 `verum arch primitives`, `verum arch rules` and `verum arch graph` were
 documented here with flags and a description each; all three answer
-`error: unrecognized subcommand` (measured 2026-09-07, against the
+`error: unrecognized subcommand` (checked, against the
 subcommand roster `verum arch --help` prints). The kernel-rule
 inventory the `rules` row promised is real, but it is a band of the
 audit — `verum audit --kernel-rules` — not a subcommand here. Nothing

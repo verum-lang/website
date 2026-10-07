@@ -9,7 +9,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.theory_interop` — theory interchange primitives
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 A research-facing stdlib module that organises, translates, and
 audits **formally represented theories** as objects in an
@@ -33,7 +33,7 @@ integrating external automated reasoners, read on.
 
 ## Module layout
 
-Line counts measured 2026-09-09.
+Line counts checked.
 
 | File | Lines | What's in it |
 |---|---:|---|

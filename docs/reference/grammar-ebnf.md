@@ -1395,7 +1395,7 @@ These are **functions**, not macros. `print(f"x = {x}")` — never `print!()`.
 ### 2.18 Formal proofs and verification (Section 2.19 in the EBNF)
 
 ```ebnf
-(* theorem / lemma share one surface (2026-08 audit alignment): the
+(* theorem / lemma share one surface: the
    old fixed-order production covered a fraction of what the parser
    and stdlib use. Note [ generics ] — angle-bracket form; the old
    bracket-less [ generic_params ] cite was a spec defect.            *)
@@ -1582,7 +1582,7 @@ verum disasm --show-tokens    # does not exist — see note below
 ```
 
 :::warning None of these four commands exists
-Re-measured 2026-09-10, and the commands are the address:
+Inspect the commands with:
 
 ```
 $ verum grammar          # does not exist

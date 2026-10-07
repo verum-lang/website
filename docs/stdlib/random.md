@@ -82,10 +82,8 @@ let mut buf: List<Byte> = List.from_elem(0 as Byte, 32);
 fill_secure(&mut buf);               // dynamic-size form
 ```
 
-Both are FREE FUNCTIONS, not methods: there is no `rng` receiver in
-`core.random.secure`, and the earlier `rng.fill_secure(&mut buf)` spelling
-on this page named a value the module never defines. `List` has no
-`with_size` either — `from_elem(value, n)` is the constructor that gives a
+Both are free functions in `core.random.secure`. Use
+`List.from_elem(value, n)` to construct a
 list of length `n`, and length is what `fill_secure` fills (it reads
 `buf.len()`, so a `with_capacity` list of length zero would come back
 empty).

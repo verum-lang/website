@@ -19,7 +19,7 @@ The language's asynchronous model associates a result with a future.
 The current lowering of `async fn` does not yet implement that model
 as a suspended state machine.
 
-**Known limitation, measured 2026-10-04:** calling an `async fn` executes
+**Known limitation:** calling an `async fn` executes
 its body eagerly and returns its result. Adding `.await` to that direct
 call does not defer its side effects. This applies to the current
 interpreter and native lowering; it is not a promise that all other
@@ -60,7 +60,7 @@ is an associated type, so a future may yield a scalar, record, or
 `Result<T, E>`. `Poll.Ready(Result.Err(error))` means the future has
 completed with an error; it is distinct from `Poll.Pending`.
 
-**Known limitation, measured 2026-10-04:** imported generic future
+**Known limitation:** imported generic future
 outputs and nested record payloads still have gaps in compiler type
 propagation. A working direct future does not establish that every
 associated-type combination works through an imported generic wrapper.
@@ -83,7 +83,7 @@ let handle = spawn { fetch(url).await };
 Handle completion and explicit `Future.poll` are separate mechanisms
 from the eager lowering of a direct `async fn` call.
 
-**Known limitation, measured 2026-09-03:** awaiting the same handle twice
+**Known limitation:** awaiting the same handle twice
 was accepted. Do not rely on the checker to enforce a single-consumer
 handle discipline. Consume handles by value when collecting task results.
 
@@ -358,7 +358,7 @@ A guard gives access to its protected value through `Deref`. Access and
 resource lifetime are separate contracts: a successful read through a
 guard does not demonstrate that dropping it unlocks the mutex.
 
-**Known limitation, measured 2026-10-04:** guard lifetime is incomplete
+**Known limitation:** guard lifetime is incomplete
 in both backends. The interpreter can report a mutex unlocked while its
 guard is still in scope. Native cleanup can leave a lock held after
 scope exit. Verify ownership during guard use as well as release;

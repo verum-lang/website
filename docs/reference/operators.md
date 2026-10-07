@@ -136,7 +136,7 @@ is ordered and incrementable (integers, characters). Float ranges
 ## Unary reference operators
 
 ```verum
-&x              // tier-0 managed (CBGR 1.2–1.7 ns (re-measured 2026-09-05))
+&x              // tier-0 managed (CBGR 1.2–1.7 ns)
 &checked x      // tier-1 compiler-proven (0 ns)
 &unsafe x       // tier-2 programmer-proven (0 ns), needs `unsafe` block
 &mut x          // mutable reference
@@ -186,14 +186,8 @@ puts `x is Type` under patterns. In pattern position it works:
     let v: Int = 7;
     match v { x is Int => "Int", _ => "other" }     // "Int"
 
-Until 2026-09-11 that answered `"other"`, and so did every other type test:
-the compiler turned the type's name into a string-table index and compared it
-against a VARIANT TAG, so the test was false for anything that was not a
-variant carrying that accidental number. It now compares the value's runtime
-type — a primitive answers from its NaN-box, a heap value from its object
-header. Interpreter only for the moment; an AOT build refuses `x is Type`
-rather than lowering it to a different question.
-:::
+The type test compares the value's runtime type with the declared type.
+It does not compare a type-name string index with a variant tag.
 
 See [language/patterns](/docs/language/patterns) and
 [language/active-patterns](/docs/language/active-patterns).

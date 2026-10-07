@@ -12,8 +12,8 @@ import styles from './styles.module.css';
  * - `regression-only` — Module is gated by upstream defects and few/no
  *   public-API tests pass yet — only `@ignore`d regressions exist to
  *   lock the bug shapes (plus a small set of PASS-GUARDs).
- * - `unaudited` — No `core-tests/<module>/` folder exists yet. The
- *   module surface is undocumented in conformance terms.
+ * - `unaudited` — No conformance assessment is published for this
+ *   surface; consult the module documentation and tests.
  */
 export type StdlibStatusKeyword =
   | 'complete'
@@ -35,8 +35,6 @@ interface StdlibStatusProps {
   detail?: string;
   /** Per-defect-area summaries to render in a table. */
   defects?: DefectSummary[];
-  /** Optional sweep date in YYYY-MM-DD form. */
-  sweepDate?: string;
 }
 
 const STATUS_META: Record<StdlibStatusKeyword, { label: string; color: string; emoji: string; description: string }> = {
@@ -66,7 +64,7 @@ const STATUS_META: Record<StdlibStatusKeyword, { label: string; color: string; e
     color: 'var(--ifm-color-secondary-darker)',
     emoji: '❔',
     description:
-      'No core-tests/<module>/ folder exists yet. The module surface is undocumented in conformance terms.',
+      'No conformance assessment is published for this surface; consult the module documentation and tests.',
   },
 };
 
@@ -74,7 +72,6 @@ export default function StdlibStatus({
   status,
   detail,
   defects,
-  sweepDate,
 }: StdlibStatusProps): React.ReactElement {
   const meta = STATUS_META[status];
   return (
@@ -86,14 +83,9 @@ export default function StdlibStatus({
         <span className={styles.tagline}>{meta.description}</span>
       </header>
 
-      {(detail || sweepDate) && (
+      {detail && (
         <div className={styles.detail}>
-          {detail && <p className={styles.detailText}>{detail}</p>}
-          {sweepDate && (
-            <p className={styles.sweepDate}>
-              Last conformance sweep: <code>{sweepDate}</code>
-            </p>
-          )}
+          <p className={styles.detailText}>{detail}</p>
         </div>
       )}
 

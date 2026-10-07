@@ -203,7 +203,7 @@ type RingBuffer<const N: Int { self > 0 }, T> is {
 The refinement `N > 0` is *intended* to be checked at every
 instantiation.
 
-:::warning Measured 2026-09-03: not checkable with the syntax available
+:::warning not checkable with the syntax available
 Two ways to reach it, both blocked:
 
 ```verum

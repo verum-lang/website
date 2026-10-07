@@ -174,7 +174,7 @@ functions      12,421 total  |  new/changed 38 (0.31%)  |  hit rate 99.69%
 stood here as `$ verum cache stats` output. No such subcommand exists
 (the roster is `path`, `list`, `show`, `gc`, `clear`), and neither did
 `cache diff`, `cache explain` or `cache prune`, which were listed
-beside it with arguments each. Measured 2026-09-07.
+beside it with arguments each.
 :::
 
 ### Example cache report
@@ -227,7 +227,7 @@ quarantined:
   today. Function-level parallelism in Phases 6/7 is available, but
   a true multi-worker phase coordinator is on the near-term
   roadmap.
-- **Stdlib loading**: re-measured 2026-09-12 — the stdlib is **not**
+- **Stdlib loading**: the stdlib is **not**
   parsed on every build start, and this entry used to say it was. The
   bake embeds it as a binary blob with sidecars, and the pipeline's
   default for a normal build defers decoding that blob until something

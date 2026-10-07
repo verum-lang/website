@@ -175,7 +175,7 @@ runner reads the resulting `InterpreterError.Panic` or process exit
 code 1 and categorises the test as failed.
 
 :::caution `assert_panics` does not currently work
-Measured 2026-09-13: the panic it is meant to catch walks straight
+the panic it is meant to catch walks straight
 through it, so a body that panics fails the test and a body that does not
 fails the assertion — there is no body for which it passes. Write the
 panic law through `catch_unwind` instead:
@@ -259,7 +259,7 @@ reports how many functions were instrumented.
 :::caution Export is not implemented yet
 `--coverage` really does change the generated code — the binary carries
 a counter array that is incremented on every function entry — but
-nothing writes it out. Re-measured 2026-09-10, and both halves are one
+nothing writes it out. Both halves are one
 grep each. The instrumentation is real:
 
 ```
@@ -271,7 +271,7 @@ grep -rn __verum_coverage_counters crates/ --include='*.rs'
 #   verum_cli/src/commands/test.rs             names it in a comment
 ```
 
-(This block used to cite lines. Re-measured 2026-09-12, the increment
+(This block used to cite lines. Checked, the increment
 site had moved by thirty-seven lines and a fourth hit had appeared —
 which is the normal fate of a line number in prose, and the reason the
 grep is the citation.)

@@ -85,7 +85,7 @@ meant. Every public `core` symbol already resolves bare (above), so the
 glob adds no reach — and it makes the compiler enumerate a surface it
 would otherwise never look at.
 
-Re-measured 2026-09-10 on one three-line program, identical but for the
+Checked on one three-line program, identical but for the
 mount line:
 
 ```verum
@@ -154,7 +154,7 @@ protected     fn type_relative()    { ... }   // see below
 
 :::caution The explicit mount is checked; the bare name is not
 
-Re-measured 2026-09-10 on a fresh cog, and the answer changed since this
+Checked on a fresh cog, and the answer changed since this
 box last said "access control is not applied". Half of it now is.
 
 **Mounting a non-public name is refused**, which it was not before:

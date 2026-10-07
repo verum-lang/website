@@ -83,8 +83,7 @@ That is the loud half. The quiet half had no second line at all — in
 was mismatched and nothing was reported:
 
 ```verum
-// From the standard library, until 2026-09-10. `Thread.yield_now`'s
-// Linux branch was written as an open-coded syscall:
+// Open-coded Linux syscalls for yielding the current thread:
 @cfg(target_arch = "x86_64")  { @syscall(24); }
 @cfg(target_arch = "aarch64") { @syscall(124); }
 // warning: unknown meta-function `@syscall`
@@ -438,9 +437,7 @@ grep -c '"embed"'  crates/verum_compiler/src/meta/builtins/build_assets.rs
 grep -rc '"@embed"' crates/ --include='*.rs'     # 0 — the sigil form
 ```
 
-The first finds the registration; the second finds nothing. Re-measured
-2026-09-10.
-
+The first finds the registration; the second finds nothing.
 :::
 
 Compile-time file loading is sandboxed behind the `BuildAssets`
@@ -597,7 +594,7 @@ sandbox automatically.
 are implemented in the compiler's builtin registry, but no `@`-spelling
 reaches them: written as shown they warn `E0410` and evaluate to `Unit`.
 The measured output is in the note at the top of this page; the two
-halves of WHY are one grep each, re-measured 2026-09-10:
+halves of WHY are one grep each:
 
 ```
 grep -rn '"version_stamp"\|"project_git_revision"\|"project_build_time_ms"' crates/ --include='*.rs'

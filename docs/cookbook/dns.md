@@ -90,8 +90,7 @@ first successful socket.
 Happy-eyeballs (RFC 8305 — racing IPv4 and IPv6 with a head start for
 v6) is **not implemented**. Neither
 `TcpStream.connect_happy_eyeballs_async` nor `HappyEyeballsOptions`
-exists anywhere in `core/`, and this section described both as if they
-did until 2026-09-06.
+exists in `core/`.
 
 What ships today tries the resolved addresses **in order**, IPv6 first,
 and returns the first socket that connects:
@@ -197,7 +196,7 @@ not the record alone.
 
 :::danger There is no cache
 
-`grep -ci cache core/net/dns.vr` → **0**, re-measured 2026-09-10. Every
+`grep -ci cache core/net/dns.vr` → **0**. Every
 query goes to a nameserver.
 
 This section previously documented `cache_clear()`,
@@ -218,7 +217,7 @@ field is the value a cache would key its expiry on.
 
 :::caution Not shipped
 `DnsTransport` and `with_transport` do not exist, and the file has no
-HTTPS side at all — measured 2026-09-10:
+HTTPS side at all:
 
 ```
 grep -rlE 'DnsTransport|with_transport' core/ --include='*.vr' | wc -l  # 0

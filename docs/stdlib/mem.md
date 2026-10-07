@@ -52,7 +52,7 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 | `capability.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/capability/` — 4 files + audit |
 | `header.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/header/` — 4 files + audit |
 | `size_class.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/size_class/` — 4 files + audit; uncovered `clz_u64 → ctlz` + PAGE_HEADER_SIZE drift defects (both closed) |
-| `thin_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/thin_ref/` — 4 files + audit. **D2/CLASS-9 CLOSED 2026-05-29**: `UseAfterFreeError.new(...)` cross-module field round-trip now correct — root was `resolve_field_index`'s descriptor path comparing `fd.name.0` (a `ctx.strings` StringId) against `field_name_indices[field]` (a separate intern namespace), false-matching at index 0; fixed by string-authoritative resolution. `.new(...)`/`.message()`/`.eq()` tests un-ignored, all GREEN under `--interp` (audit §8). |
+| `thin_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/thin_ref/` — constructor field round-trips, `.message()` and `.eq()` are covered under the interpreter. Field lookup uses the field name across string-interning namespaces; see audit §8. |
 | `fat_ref.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/fat_ref/` — 4 files + audit (static-shape only) |
 | `hazard.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/hazard/` — **green under the interpreter** (the whole module used to SIGSEGV): live `hazard_stats()` / `force_reclaim_all()` / `cleanup_thread_hazards()` all pass after TYPE-NAME-INFERENCE-1 + PROTOCOL-ITER-1 + CALLSYNC-R0-CLOBBER-1 (audit §8) |
 | `epoch.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/epoch/` — `core-tests/mem/epoch/` — the read and write surface is covered. Epoch advance goes through the same scalar cell and atomic operations that `current_epoch` and the reset helper use, so a test-driven advance and a real one cannot diverge. |
@@ -64,40 +64,26 @@ source file PLUS the test-coverage state in `core-tests/mem/`.
 | `cap_audit.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit/` — capability transition events |
 | `cap_audit_ring.vr` | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/cap_audit_ring/` — lock-free SPMC ring |
 | `mem_raw.vr` (in `core.intrinsics.runtime`) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="both" /> | <TestCovBadge cov="full" /> | `memcpy_addr`/`memmove_addr`/`memset_addr`/`memcmp_addr`/`strlen`/`strcmp` — see `core-tests/intrinsics/` |
-| `mod.vr` (module root) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/mod/` — 4 files + audit. Module-root surface: `UseAfterFreeError` (5-field record + 3 ctors + message + Debug + Display + Eq) + `RevocationError` (4-variant sum + 4 ctors + message + Debug + Display + Eq) + `CbgrTier` (4-variant sum) + `get/set_execution_tier` global accessor. Unit, property, integration and regression suites cover module-root types + the umbrella re-export contract (every submodule symbol resolves via `mount core.mem.{Name}`). **All pins closed** — the §3.1 field-shift trio un-gated in earlier waves and the §3.4 umbrella `has_capability` collision un-@ignore'd 2026-07-05 (public-mount re-export traversal resolves the binding authoritatively): **87/87/0**. |
+| `mod.vr` (module root) | <LifecycleBadge lifecycle="theorem" version="v0.1" /> | <TierBadge tier="interp" /> | <TestCovBadge cov="full" /> | `core-tests/mem/mod/` — module-root types (`UseAfterFreeError`, `RevocationError`, `CbgrTier`), execution-tier accessors and umbrella re-exports through `mount core.mem.{Name}` have interpreter coverage. The audit records the field-layout and capability-binding checks. |
 
 The dedicated-suite-pending modules are tracked in
 `core-tests/INVENTORY.md`; new modules graduate to <TierBadge tier="both" />
 once all four test files land **and** the audit deferrals all close on both
 tiers.
 
-### What was measured, and what this page no longer claims
+### Coverage boundaries
 
-This section carried two limitations until 2026-09-04. Both were
-inherited from an older status table rather than measured, and one of
-them is false:
-
-**"Compiled ahead of time, a `for` loop over an iterator crashes at run
-time."** It does not.
+A focused iterator control has matching interpreter and native results:
 
 ```verum
 let mut s: Int = 0;
 for x in xs.iter() { s = s + *x; }
 ```
 
-`verum build` produces a binary; running it prints the same answer the
-interpreter gives. Checked both ways on the same program.
-
-The other — that a cross-module static constructor of five or more
-arguments returns a record whose fields read back shifted — is removed
-rather than restated. It may still be true; nobody has shown it on this
-tree, and a limitation a reader cannot reproduce is worse than no
-limitation at all, because it steers them away from a working API.
-
-The reference tiers, `Heap<T>`, the arena and epoch surfaces below are
-covered by conformance suites under the interpreter. That is a
-statement about what is TESTED, which is the strongest thing this page
-can say without measuring each claim.
+This does not establish every iterator-adaptor or constructor path. The
+reference tiers, `Heap<T>`, arena and epoch surfaces have interpreter
+conformance suites; native coverage must be established for the specific
+API being used. See the linked per-module audits for their test scope.
 
 ## File-by-file API surface
 
@@ -268,8 +254,7 @@ s.generation() -> UInt32            s.epoch() -> UInt16
 ```
 
 The two conditions are not the same one: after a single `downgrade()`,
-`is_unique()` is still `true` while `get_mut()` answers `None`. Measured
-2026-09-09 — `weak=0->1` with `unique=true` in the same line.
+`is_unique()` is still `true` while `get_mut()` answers `None`. Checked — `weak=0->1` with `unique=true` in the same line.
 
 `Weak<T>` carries the same triple and does not keep the value alive:
 

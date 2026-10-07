@@ -142,7 +142,7 @@ let z: Tensor<Float32, [4, 3, 5]> = x + y;
 A failing broadcast is *intended* to be a compile error with the
 offending axis called out.
 
-:::danger Measured 2026-09-03: it is not, and the program crashes the
+:::danger it is not, and the program crashes the
 compiler at run time
 The earlier text here said the message below was "illustrative rather
 than a captured transcript" because two attempts to construct a

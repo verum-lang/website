@@ -8,7 +8,7 @@ description: The derive macros that ship with Verum — exact generated-code sem
 
 :::caution This page describes a design, not the current toolchain
 
-Measured 2026-09-03, one record declared per attribute: **`Ord` and
+Checked, one record declared per attribute: **`Ord` and
 `Default` have generators; `PartialOrd` needs none** (the standard
 library's `implement<T: Ord> PartialOrd for T` supplies it). Every
 other `@derive` on this page is parsed, accepted, and then reported as
@@ -60,7 +60,7 @@ what diagnostics are emitted when the derive cannot proceed.
 | `Ord`           | `Ord.cmp` — lexicographic by declaration order         |
 | `PartialOrd`    | `PartialOrd.partial_cmp`                               |
 
-Re-measured 2026-09-12 against the compiler's own registration list;
+Checked against the compiler's own registration list;
 `Copy`, `Eq`, `Hash`, `Ord` and `PartialOrd` were missing from this
 table, and `Serialize` / `Deserialize` were in it and are not built in.
 

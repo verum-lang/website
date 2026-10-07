@@ -107,7 +107,7 @@ let _ = global_tracer_provider().shutdown(Duration.from_secs(5));
 ```
 
 :::danger The global provider comes back empty at Tier 0
-Measured 2026-09-08. The setup above builds correctly — a provider with
+Checked. The setup above builds correctly — a provider with
 one processor really has one — but the value does not survive the global
 slot:
 
@@ -704,17 +704,11 @@ Design budgets for the hot path:
 
 ## Current limitations
 
-Stated plainly:
+`InMemoryExporter` clones share a buffer: a span exported through one
+handle can be read back through another. That focused conformance control
+does not establish custom-stage dispatch or batch-worker correctness.
 
-1. ~~Cross-handle shared-state observation is pending~~ — **resolved
-   2026-09-12, and measured rather than assumed.** Cloning an
-   `InMemoryExporter` gives a second handle onto the SAME buffer: the
-   provider is given one clone, a span is ended through it, and the
-   text reads back through a different clone. A per-handle copy would
-   return empty there. The conformance suite that this limitation
-   pinned is green whole — 20 of 20, including the two tests that had
-   been failing outside the pins.
-2. **Custom (`…Custom`) pipeline stages cannot be invoked yet.**
+1. **Custom2. **Custom (`…Custom`) pipeline stages cannot be invoked yet.**
    Protocol-object dispatch (`Shared<dyn Sampler>` and friends) is
    not operational in the VBC interpreter: constructing and
    configuring a custom stage works, but the first call into it
@@ -722,18 +716,18 @@ Stated plainly:
    stage; the `…Custom` variants become live the moment the language
    gap closes, with no API change. Until then, third-party samplers
    / processors / exporters cannot run.
-3. **`SpanProcessor.on_start` receives the span's context, not the
+2. **`SpanProcessor.on_start` receives the span's context, not the
    live `Span`** — custom processors (once dispatchable) can
    observe span starts but not enrich the span in-place.
-4. **In-tree exporters are `noop`, `stdout`, and `in_memory`.** OTLP
+3. **In-tree exporters are `noop`, `stdout`, and `in_memory`.** OTLP
    and vendor exporters are separate cogs behind the `SpanExporter`
-   protocol and inherit limitation 2 for now.
-5. **No in-process "current span" propagation.** Parenting is
+   protocol and inherit limitation 1 for now.
+4. **No in-process "current span" propagation.** Parenting is
    explicit — pass the parent `SpanContext` to `start_span`;
    cross-process propagation via W3C headers is fully supported.
-6. **The `Tracer` DI context has no ready-made production
+5. **The `Tracer` DI context has no ready-made production
    provider** — applications bridge it to `get_tracer` themselves.
-7. **Batch-worker runtime behaviour and part of the AOT tier are
+6. **Batch-worker runtime behaviour and part of the AOT tier are
    still being conformance-pinned.** The identifier, context, span
    and sampler suites are green under AOT; the remaining suites track
    compiler work in flight.

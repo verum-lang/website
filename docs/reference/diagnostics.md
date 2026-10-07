@@ -90,7 +90,7 @@ wide — a Rust keyword (`E0E0`), a Rust type name (`E0E1`), a `name!(...)`
 macro call (`E0E2`). They are the only three codes in the whole registry whose
 description mentions Rust at all.
 
-Measured against the registry on 2026-09-11: 361 codes in all — 202
+The registry contains 361 codes in all — 202
 three-digit, 111 four-digit, 48 hexadecimal. The sections below cover the
 three-digit families, which are the ones ordinary programs hit; for any code
 in any of the three schemes, `verum explain <code>` prints its entry, and for
@@ -162,7 +162,7 @@ followed (`pre_release` vs `prerelease`, `peer_addr` vs `peer`).
 | `E204` | circular constant dependency | yes |
 
 :::warning Three of these four never fire
-Measured 2026-09-04: only `E201` has an emit site. `E200`, `E202` and
+only `E201` has an emit site. `E200`, `E202` and
 `E203` are registry entries that nothing produces, and the conditions
 they name are reported by the **type** codes instead:
 
@@ -349,7 +349,7 @@ is an `E400`, not an `E407`.
 
 `E501` **is** a rejection of your program, and this paragraph used to say
 the opposite — that the solver had run out of budget. That was the
-registry's wording, not the compiler's. Re-measured 2026-09-10; the code
+registry's wording, not the compiler's. The code
 has exactly two emit sites and neither mentions a timeout:
 
 ```
@@ -411,7 +411,7 @@ holds for them too. Nothing emits `E601` or `E602` today.
 ## Async — `E7xx`, FFI — `E8xx`, Internal — `E9xx`
 
 :::warning None of these nine has an emit site
-Measured 2026-09-04: every code below is a registry entry that no part
+every code below is a registry entry that no part
 of the compiler produces. Three whole categories are reserved rather
 than live.
 

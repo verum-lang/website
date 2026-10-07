@@ -57,7 +57,7 @@ See [custom capabilities](#custom-capabilities) below.
 ## The three-part contract
 
 :::danger `@cap` is not implemented — this page describes a design
-Measured 2026-09-03 on a built compiler, and confirmed independently by
+Checked on a built compiler, and confirmed independently by
 a second session with its own instrument:
 
     @cap(name = "X") on a function, caller WITHOUT @cap
@@ -325,7 +325,7 @@ fn main(args: Args) {
 }
 ```
 
-Checked 2026-09-04: `Args` (`core/base/env.vr:201`) implements
+Checked: `Args` (`core/base/env.vr:201`) implements
 `Iterator`, so the membership test goes through the iterator rather
 than a `contains` method; `grant_cap` appears nowhere in `core/`; and
 Verum has no `name!(...)` macro form at all — every compile-time

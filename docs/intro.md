@@ -110,7 +110,7 @@ server. Start with [CLI tooling](/docs/tooling/cli),
 
 ## Current implementation
 
-**Known limitations, measured 2026-10-04:** interpreter and native AOT
+**Known limitations:** interpreter and native AOT
 coverage are not interchangeable. Native resource destruction and some
 combinations of imported generic and callable types still have open
 correctness gaps. An API's presence, a successful type check, or a passing

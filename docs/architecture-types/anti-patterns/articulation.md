@@ -228,7 +228,7 @@ proof is no longer load-bearing in the upstream foundation. The
 can pass each adjacent edge under a local bridge claim while
 the end-to-end composition still drops two strata.
 
-**Implementation.** As of 2026-05-06 the check runs on two
+**Implementation.** The check runs on two
 layers — the direct one-hop edge surface (already present in
 the `peer_resolution` band) plus the transitive layer composed
 against `verum_kernel::arch_transitive::for_each_transitive_peer`.
@@ -338,7 +338,7 @@ the original theorem inherits the hypothesis's strength even
 though no single citation regresses. Transitive walking
 surfaces this.
 
-**Implementation.** As of 2026-05-06 the predicate is checked
+**Implementation.** The predicate is checked
 through `verum_kernel::arch_transitive::resolve_transitive_lifecycle_regressions`
 — a depth-first walker over `Session.arch_shape_registry` with
 built-in cycle prevention and `MAX_TRANSITIVE_DEPTH = 32`.  The

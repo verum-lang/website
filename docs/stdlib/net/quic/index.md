@@ -294,19 +294,9 @@ contracts, and KAT file references:
 All modules in the map have shipped implementations, and the L2 suite
 does not pass over all of them.
 
-**The pass rates this section used to carry are removed rather than
-refreshed.** They were measured against a 2026-04-29 baseline and never
-re-run; a fraction carried forward past the suite it was taken on reads
-as current and is not. What the numbers were used to say is in the
-paragraphs below and does not depend on them.
-
-The living answer is the conformance inventory, which is re-run rather
-than transcribed. As of 2026-09-10 it holds 32 QUIC rows: three
-`stable` (`connection_id`, `error`, `version`), one `partial` (`frame`),
-one `regression-only` (the `net/quic` root) and **27 `unverified`** —
-a token meaning nothing was ever asserted, which is a different thing
-from a module that fails. Ask it yourself rather than trusting this
-paragraph's age:
+The conformance inventory records the module-specific evidence. An
+`unverified` row has no asserted conformance result and must not be
+read as either a pass or a failure. Inspect the relevant rows directly:
 
 ```
 grep -E '^\| `net/quic' core-tests/INVENTORY.md
@@ -332,8 +322,7 @@ language-layer issues that affect cross-cog symbol resolution:
    / etc. Tests need a one-line mount fix; the underlying API is
    stable.
 4. ~~**Explicit type arguments at function call site** are not yet
-   propagated end-to-end through the resolver.~~ **Re-measured
-   2026-09-03: they work.** `pick<Text>("a", "b")` type-checks and runs;
+   propagated end-to-end through the resolver.~~ **Checked: they work.** `pick<Text>("a", "b")` type-checks and runs;
    the discriminating probe — `pick<Text>(1, 2)`, where the explicit
    argument contradicts the values — is refused with
    `error<E400>: expected 'Text', found 'Int'`, so the argument is
@@ -343,7 +332,7 @@ language-layer issues that affect cross-cog symbol resolution:
 
 Verification obligations V1–V10 each have a theorem file in the L2
 suite, discharged via the SMT layer. They are not all under `net/quic`,
-which is worth knowing before you go looking — re-measured 2026-09-10:
+which is worth knowing before you go looking — checked:
 
 ```
 find vcs -name 'v*_theorem*.vr' | sort

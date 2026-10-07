@@ -105,7 +105,7 @@ pub async fn main() -> Result<(), core.net.h3.server.H3ServerError> {
 ```
 
 :::warning `H3Response.ok()` takes the body; `.text` / `.bytes` / `.html` do not exist
-Measured 2026-09-03 against `core/net/h3/request.vr:138`. The whole
+Checked against `core/net/h3/request.vr:138`. The whole
 surface is four methods:
 
 ```verum
@@ -176,7 +176,7 @@ itself.
 :::warning Every builder below is one of the four that do not exist
 
 Same measurement as the warning under **Minimum viable
-server** above, re-checked 2026-09-08:
+server** above, re-checked:
 `H3Response` has `ok(body)`, `status(code)`, `with_header(name, value)`
 and `to_field_list()`. The examples from here to the end of the page
 chain `.streaming(…)`, `.html(…)`, `.bytes(…)`, `.text(…)` and

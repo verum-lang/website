@@ -63,12 +63,10 @@ lifecycle (what the contract promises); the table above is the
 *conformance* lifecycle (what the implementation delivers under
 test today). They are aligned only when the status reads **stable**.
 
-### Open upstream defects gating context test runs (2026-06-01)
+### Open upstream defects gating context test runs
 
-The bare-variant name collision and the constructor-registration
-cascade that previously gated the whole suite are
-**resolved** — `scope` / `error` / `provider` / `mod` and most of
-`standard` are GREEN under `--interp`. Three codegen defects remain,
+`scope`, `error`, `provider`, `mod` and most of `standard` have passing
+interpreter coverage. Three codegen defects remain,
 all in the cross-module / archive-loaded **CLASS-9** family, all needing a
 compiler rebuild to fix:
 
@@ -103,7 +101,7 @@ blockers: the parallel-codegen LLVM SIGSEGV (`verum test --aot` default
 **fixed** (each test now writes to its own artifact path); the
 remaining blocker is a `MakeVariantTyped` field-count / tag ABI mismatch
 that miscompiles ADT construction — `Scope.Singleton.name()` still returns
-the wrong value under `--aot` (verified 2026-06-01). Promotion to
+the wrong value under `--aot` (verified). Promotion to
 **complete** requires that mismatch fixed and the suite GREEN on both
 tiers.
 
@@ -174,10 +172,8 @@ A scope may only depend on scopes of equal or longer lifetime:
 | `Request` | `Singleton`, `Request` |
 | `Transient` | any |
 
-Violating this is a compile error. (The code cited here until
-2026-09-03 — `E806` — is in no namespace the compiler has; the
-`ScopeViolation` row above is the runtime `ContextError` variant, which
-is a different layer.)
+Violating this is a compile-time error. `ScopeViolation` above is a
+runtime `ContextError` variant, separate from compiler diagnostic codes.
 
 ```verum
 implement Scope {
@@ -231,8 +227,7 @@ checker emits for the static `@injectable` / `using` analysis (in
 *negative-context* `!Ctx` violations, **E608** (an excluded context is
 used), and **E808** (duplicate `provide` for the same context in one
 scope). The codes are those in `crates/verum_error/src/registry.rs`,
-which is the authority — `E3050 / E3051 / E3052`, cited here until
-2026-09-03, are in no namespace the compiler has. There is no 1:1 mapping
+which is the authority. There is no 1:1 mapping
 between the runtime `ContextError` variants and these compile-time codes —
 they live at different layers.
 
@@ -351,8 +346,7 @@ fn main() {
 `core/context/layer.vr` ships **no Verum types** — `layer { … }` and
 `layer A = B + C;` are *compiler* constructs (grammar `layer_def` /
 `layer_expr`), lowered in `crates/verum_compiler`. There is no runtime
-`Layer.new().with_singleton(...).run(...)` builder type in the stdlib;
-earlier revisions of this page advertised one that does not exist. A
+`Layer.new().with_singleton(...).run(...)` builder type in the stdlib. A
 value-level `Layer` builder is tracked as a deferred enhancement
 ([core-tests/context/layer/audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/context/layer/audit.md) §4.1).
 :::
@@ -366,8 +360,7 @@ at the top of your program. Each one follows the same pattern:
 declare with `using [Name]`, provide with `provide Name = impl`.
 
 Nine are declared in `core/context/standard.vr`; `Random` lives in
-`core/context/random.vr` (measured 2026-09-03 — the heading used to
-attribute all ten to `standard.vr`).
+`core/context/random.vr`.
 
 ### `Logger` — structured logging (9 methods)
 

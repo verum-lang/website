@@ -53,7 +53,7 @@ error<E100>: unbound variable: AdjointReversible
 error: compilation failed with 1 error
 ```
 
-Note what strict mode does and does not do (measured 2026-09-11): it
+Note what strict mode does and does not do: it
 withdraws the out-of-horizon resolution, so the name has nothing left
 to bind to and the refusal arrives as an ordinary **unbound variable**.
 It does not arrive as `E430`, and it carries none of the law's
@@ -117,7 +117,7 @@ candidate owners) and `E431` (two horizon types declare the same
 constructor — qualify to disambiguate).
 
 :::warning `E431` does not exist yet
-Measured 2026-09-03: `E431` is in no registry entry and at no emit site,
+`E431` is in no registry entry and at no emit site,
 while `E430` and `E432` — named in the same place in that registry —
 are both present.
 
@@ -226,7 +226,7 @@ which the program was meant to work.
 binds an unchecked payload. Deciding refutability for a variant needs
 the resolved type — `let UserId(n) = id;` on a single-variant newtype
 always matches and must stay legal — while the check that raises E429
-reads the pattern's syntax. Measured 2026-09-12: the tree carries no
+reads the pattern's syntax. the tree carries no
 qualified `let Type.Variant(…)` without an `else` at all, and the five
 places that destructure one already use `let … else`. The census is one
 line, and the number it prints is the one that matters:

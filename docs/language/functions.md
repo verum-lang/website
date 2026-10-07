@@ -84,8 +84,7 @@ parentheses was enough to hide an impure operation from the check. Those
 four rows are now a conformance pin in both directions — the same wrappers
 around genuinely pure expressions must stay silent.
 
-**The three rows this page used to list as a gap now fire.** Re-measured
-2026-09-03 on `verum check`, each probe differing from its control in one
+**The three rows this page used to list as a gap now fire.** Checked on `verum check`, each probe differing from its control in one
 value:
 
 | body of a `pure fn` | result |
@@ -109,7 +108,7 @@ properties are keyed per name, and a probe with `A.reset` impure and
 accepted — the two do not collide.
 
 The negative-context form is **not** a substitute for `pure`, and the
-measurements say so rather than the reasoning. Re-measured 2026-09-03,
+measurements say so rather than the reasoning. Checked,
 each with a control that must stay silent:
 
 | probe | result |
@@ -132,7 +131,7 @@ and their kin. A positive `using [IO]` is refused with
 `error<E605>: undefined context: IO`. A negative `using [!IO]` used to be
 accepted — negative contexts were not validated against the declared set
 — but that gap is closed, and **both directions now refuse an
-undeclared name**: measured 2026-09-04, `using [!IO]` gives the same
+undeclared name**: checked, `using [!IO]` gives the same
 `error<E605>: undefined context: IO`.
 
 So `pure`'s documented expansion to `using [!IO, !State<_>, !Random]`

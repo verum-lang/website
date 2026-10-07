@@ -258,8 +258,7 @@ before it is written.
 This section described a `DataError` sum with `MissingField` and
 `RefinementViolation` arms, and a `json.parse<T>` taking a type
 parameter. Two DIFFERENT error types were being conflated, and the
-distinction is the useful part — one command shows both, re-measured
-2026-09-10:
+distinction is the useful part — one command shows both:
 
 ```
 grep -n 'type DataError' -A 6 core/base/data.vr

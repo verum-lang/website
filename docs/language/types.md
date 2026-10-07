@@ -27,7 +27,7 @@ follows the `is` determines what kind of type you get.
 | `unknown` | top |
 
 :::warning `Float32` does not narrow at Tier 0
-Measured 2026-09-09 on the interpreter. A `Float32` carries the **f64**
+Checked on the interpreter. A `Float32` carries the **f64**
 bit pattern and dispatches to `Float`'s methods:
 
 ```verum

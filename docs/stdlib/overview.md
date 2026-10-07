@@ -16,44 +16,16 @@ The layering is not a description — it is **data, and it is enforced**.
 `scripts/ci/check_core_rings.py` measures the actual `mount` graph
 against it on every PR.
 
-When the law was first gated, on 2026-08-08:
+Use the ring check to validate a checkout:
 
-```
-[ok] ring law holds: 2557 modules, 5275 inter-module edges, 0 violations
-```
-
-Re-measured 2026-09-02, the gate reports four upward edges:
-
-```text
-[fail] 4 UPWARD edge(s) across 4 mount site(s):
-    base.env(r1.0)           -> text.format(r2.0)
-    sys.fs_watch(r1.0)       -> text.format(r2.0)
-    sys.process_native(r1.0) -> text.format(r2.0)
-    sys.process_ops(r1.0)    -> text.format(r2.0)
+```sh
+python3 scripts/ci/check_core_rings.py
 ```
 
-None of those four modules names a formatting dependency — each writes a
-selective root mount of primitives, `mount core.{Maybe, Result, List,
-Text, Byte}`. The edge comes from how the gate counts a root mount: as a
-dependency on everything `core/mod.vr` re-exports. That set gained
-`text.format` on 2026-08-23, when `format_debug` joined the prelude
-because the language itself inserts the name — `f"{x:?}"` desugars to a
-bare `format_debug` call, so it has to resolve everywhere.
-
-So the layering itself is intact and the measurement was not.
-
-**Re-measured 2026-09-12 and the four edges are gone** — the gate now
-reads `[ok] ring law holds: 2559 modules, 6433 inter-module edges, 0
-violations`. Not because the counting changed, but because the four
-modules did: `base.env`, `sys.fs_watch`, `sys.process_native` and
-`sys.process_ops` each replaced their root mount with selective ones —
-between seven and eleven apiece — so there is no longer a root mount to
-read as a dependency on everything the prelude re-exports.
-
-The distinction is still worth keeping if you are deciding where to put
-a module: the rings below are the law, and a root mount is counted as a
-dependency on the whole re-export set, which is a real cost even when
-the layering is fine.
+A root mount is counted as a dependency on the full re-export set in
+`core/mod.vr`. Use selective module mounts in lower rings when a root
+mount would introduce an upward dependency. The ring declarations below
+define the allowed direction of dependencies.
 
 ```
 Ring 5.5  integration-client  the CLIENT halves: sigstore, tuf, oidc,
@@ -157,14 +129,8 @@ built on async.
 | [`verify`](/docs/stdlib/verify) | verification as a first-class API for user code |
 
 
-Twenty-five of those rows were added on 2026-09-09. Every one of them
-already had a page; the table simply did not name it, so half the
-library was reachable only by guessing a URL.
-
-The table is now complete: `core/` holds fifty-one modules and all
-fifty-one are listed. (`core/target` is a build-artefact directory —
-`build`, `debug`, `release`, `audit-reports` — with no `.vr` file in it,
-so it is not a module and does not belong here.)
+The table links the library modules to their API references. `core/target`
+contains build artifacts rather than a library module.
 
 ## Semantic-honest types — the cheat sheet
 
@@ -269,9 +235,9 @@ $ verum api --signature "fn map"       # NOT IMPLEMENTED — see note below
 ```
 
 :::warning `verum api` does not exist
-Measured 2026-09-03: `verum api --help` answers `error: unrecognized
+Checked: `verum api --help` answers `error: unrecognized
 subcommand`, and `verum doc --search` answers `error: unexpected
-argument '--search' found` (re-measured 2026-09-05). There is no search
+argument '--search' found`. There is no search
 of any kind. `verum doc` generates documentation — `--open`,
 `--format`, `--no-deps`, `--document-private-items` — and is the nearest
 thing that ships.
@@ -281,40 +247,16 @@ Source lives at `core/`.
 
 ## Stdlib status badge system
 
-Every stdlib module page carries a **conformance status badge** at the
-top, rendered by the `<StdlibStatus />` component. The badge tells
-readers, at a glance, how thoroughly the module's API contract has
-been pinned by the conformance suite at `core-tests/`, and which
-defect classes (if any) are still open.
+Module pages carry conformance metadata and may render an explicit
+`<StdlibStatus />` badge. The accompanying detail identifies covered APIs,
+execution backends and remaining limitations.
 
 ### Status keywords
 
-The status taxonomy is shared between `core-tests/INVENTORY.md` (the
-per-module inventory) and the website (the public-facing API reference).
-
-**[Status Convention](/docs/stdlib/status-convention) is the single source
-of truth** for what each keyword means, which emoji renders it, and how a
-page graduates from one to the next. This page does not restate the table:
-it used to, and the two copies had DRIFTED — this one listed six statuses
-where the convention lists five, and gave `stable` a ✅ where the convention
-gives it 🟢. A reader comparing two module pages would have read the same
-badge as two different promises.
-
-What is worth stating here instead is which statuses the tree actually uses.
-Measured 2026-09-15 across every page carrying a `status:` frontmatter field:
-
-| Status | Pages | |
-|---|---|---|
-| `regression-only` | 25 | gated by an upstream defect |
-| `partial` | 19 | part of the surface is pinned |
-| `undocumented` | 12 | no `core-tests/` folder yet |
-| `complete` | **0** | |
-| `stable` | **0** | |
-
-No page in the tree claims `complete` or `stable` today. That is not an
-oversight to be corrected by relabelling — it is the honest state, and the
-number is here so a reader knows the top two rungs of the ladder are
-currently empty rather than merely unseen.
+[Status Convention](/docs/stdlib/status-convention) defines inventory and
+frontmatter labels, the component's supported props, and the evidence
+required to change a coverage statement. The component does not automatically
+convert an inventory label or render a page's frontmatter.
 
 ### Frontmatter
 
@@ -327,13 +269,13 @@ sidebar_position: 3
 title: text
 description: ...
 status: partial
-status_detail: 121/218 Text + 75/86 Char + ... unit tests pass on YYYY-MM-DD.
+status_detail: Interpreter coverage includes text construction and character queries; backend-specific limitations are described below.
 ---
 ```
 
-`status_detail` is a one-line summary of the conformance numbers.
-The badge component reads `status` directly; `status_detail` is
-mirrored into the visible badge.
+`status_detail` summarizes the covered APIs, execution backend and open limitations.
+A page that renders a badge passes its supported `status` and `detail`
+props explicitly; keep that detail consistent with the frontmatter.
 
 ### Component usage
 
@@ -342,41 +284,36 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="121/218 Text + 75/86 Char + … unit tests pass on 2026-05-13."
+  detail="Interpreter coverage includes text construction and character queries; native coverage is tracked separately."
   defects={[
-    {area: 'text', summary: '~18 defect classes — KMP find, Iterator.next dispatch, ...'},
-    {area: 'char', summary: '5 defect classes — &mut Char mutation, ...'},
+    {area: 'text', summary: 'Consult the module page for iterator and mutation limitations.'},
+    {area: 'char', summary: 'Consult the module page for character-classification coverage.'},
   ]}
-  sweepDate="2026-05-13"
 />
 ```
 
 Props:
 
-- **`status`** — one of `complete | stable | partial | regression-only |
-  unverified | undocumented`. Re-checked 2026-09-12 against the gate that
-  compares these against the conformance inventory: that is its whole
-  vocabulary, and `unaudited` — which this page used to list and define —
-  is in neither the gate nor the inventory. A token outside the set is not
-  reported as wrong; it is not read as a status at all.
+- **`status`** — the component accepts `complete | partial | regression-only |
+  unaudited`. Inventory and frontmatter labels such as `stable`, `unverified`
+  and `undocumented` are separate metadata; the component does not convert them.
+  `unaudited` means no conformance assessment is published for the surface;
+  consult the module documentation and tests.
 - **`detail`** *(optional)* — string mirroring the
   `status_detail` frontmatter; rendered in the badge body.
 - **`defects`** *(optional)* — list of `{area, summary}` rows shown in
   a collapsible defect-class table.
-- **`sweepDate`** *(optional)* — last conformance-sweep date.
 
 ### Updating status
 
-When a module's conformance numbers change:
+When a module's verified API or backend coverage changes:
 
 1. Update the per-module `core-tests/<...>/audit.md`.
-2. Append the new sweep numbers to `core-tests/INVENTORY.md`
+2. Record the evidence and coverage in `core-tests/INVENTORY.md`
    (single-line row; do not restructure the table).
 3. Update the module's website page frontmatter (`status`,
-   `status_detail`) to reflect the new sweep.
+   `status_detail`) to reflect the verified behaviour and remaining limitations.
 4. Refresh the `<StdlibStatus />` props (`detail`, `defects`).
 
 The same status keywords appear in three places — `INVENTORY.md`, the
-module page frontmatter, and the `<StdlibStatus />` `status` prop — to
-let parallel agents run audits without coordinating on a single source
-of truth.
+module page frontmatter, and the `<StdlibStatus />` `status` prop — so readers can follow each claim to its conformance evidence.

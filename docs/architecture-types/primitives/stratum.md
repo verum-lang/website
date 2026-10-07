@@ -58,7 +58,7 @@ strata) while preventing strong content from *contaminating*
 weaker strata.
 
 Verum's `MsfsStratum` makes the stratification first-class. A
-cog's stratum is declared, checked, and load-bearing in
+cog's stratum is declared, and load-bearing in
 [`AP-007 StratumAdmissibility`](../anti-patterns/classical.md#ap-007).
 
 ## 2. The four strata in detail

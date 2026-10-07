@@ -4,7 +4,7 @@ title: text
 description: Text, Char, format strings, regex, tagged literals, case-fold, TextBuilder, numeric text representations.
 status: partial
 status_detail: >-
-  Sweep 2026-07-11 (dual-tier campaign round 1). INTERP the covered subset (99.3%) — 8 root-caused classes, 6 closed fundamentally (RETNAME-CARRY-1/VBC v2.6 carried return-type names; TUPLE-TYPE-TRACK-1; CALLM-KEEP-CLOSURE-1 prune fix; SET_E-FATREF write parity; SELF-MUT-RECV-COHERENCE-1; NEVER-ABSORB-1; RSPLIT-ORDER-1 + MAKE-ASCII-INPLACE-1 stdlib contracts). Parked with pins: builder Display + rational RefField-through-ref-param (reference-model pillar), 2 in-suite-only flakes, 2 peer-regressed deref-mut persists (a tracked toolchain task). AOT leg is the NEXT round (slice: case_fold the covered subset, bigint the covered subset).
+  Text and character APIs have partial interpreter and native coverage. Numeric formatting, slicing bounds and process-shared regression cases retain documented limitations.
 ---
 
 # `core.text` — UTF-8 text, Char, formatting, regex
@@ -13,13 +13,12 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="The whole text tree is exercised under the interpreter and, separately, compiled ahead of time. Everything except three small islands is green: the core text type, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. The numeric sub-tree carries the largest set of remaining pins. And `slice` does not enforce the bounds contract its own body declares — out-of-range calls clamp silently rather than assert (measured 2026-09-07); see the Slicing section."
+  detail="The whole text tree is exercised under the interpreter and, separately, compiled ahead of time. Everything except three small islands is green: the core text type, characters, case folding, the builder, formatting, regular expressions, tagged literals, bytes, copy-on-write and storage. The numeric sub-tree carries the largest set of remaining pins. And `slice` does not enforce the bounds contract its own body declares — out-of-range calls clamp silently rather than assert; see the Slicing section."
   defects={[
     {area: 'text', summary: 'Two pins remain and both appear only when several tests share a process: sorting through a comparison that answers Less, and a fold that builds a formatted string. Neither reproduces in a program of its own.'},
     {area: 'char', summary: 'Two probes are retained for a case-insensitive ASCII comparison and for one general-category classification.'},
     {area: 'numeric', summary: '`decimal` is the weakest module in the tree — negation on an integer receiver does not dispatch, and the failures downstream of it follow from that. `bigint` is complete.'},
   ]}
-  sweepDate="2026-07-11"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -117,11 +116,9 @@ migrating to a builder layout, so the reported capacity equals the
 current byte length. Only the builder layout carries a separate `cap`
 field that can exceed `len()`.
 
-**Interpreter caveat (open):** the interpreter materialises
-`Text.with_capacity` / `try_with_capacity` results into a representation
-that preserves the cap field, but earlier revisions of the runtime
-collapsed them to a small-string and reported capacity == 0. Tests pin
-the contract at `core-tests/text/text/regression_test.vr::
+**Interpreter capacity contract:** `Text.with_capacity` and
+`try_with_capacity` results must preserve the capacity field. Regression
+controls pin this requirement at `core-tests/text/text/regression_test.vr::
 regression_with_capacity_reports_capacity` (+ siblings).
 
 ### Indexing (byte- and char-based)
@@ -150,7 +147,7 @@ s.to_chars()     -> List<Char>     // collect-to-list shortcut, MATERIALISED
 ```
 
 :::danger `matches` and `match_indices` answer EMPTY at Tier 0
-Measured 2026-09-09, and it is a wrong answer rather than a crash:
+Checked, and it is a wrong answer rather than a crash:
 
 ```verum
 let hay = "abcabcabc";
@@ -186,7 +183,7 @@ s.split_at(mid: Int) -> (Text, Text)           // byte split
 
 :::warning
 
-**Known limitation, measured 2026-09-07:** `slice` does not enforce its
+**Known limitation:** `slice` does not enforce its
 own bounds contract when interpreted. The declared body asserts —
 `assert(end >= start && end <= len, "slice end out of bounds")` — but the
 interpreter clamps silently instead:
@@ -262,12 +259,10 @@ s.words() -> List<Text>                        // split_whitespace alias
 s.lines() -> Lines
 ```
 
-> **`rsplit` order contract (fixed 2026-07-10, RSPLIT-ORDER-1).**
+> **`rsplit` order contract.**
 > `"a,b,c".rsplit(",")` → `["c", "b", "a"]` and
 > `"a,b,c,d".rsplitn(2, ",")` → `["d", "a,b,c"]` — the industry-standard
-> rightmost-first order (Rust `str::rsplit`). Before the fix both
-> returned left-to-right parts, making full `rsplit` observably
-> identical to `split`. Pinned by
+> rightmost-first order. Pinned by
 > `core-tests/text/text/regression_test.vr::regression_z_rsplit*`.
 
 ### Trimming & Stripping
@@ -303,12 +298,10 @@ s.make_ascii_uppercase()                       // in-place, &mut self
 s.make_ascii_lowercase()
 ```
 
-> **In-place case conversion is representation-correct (fixed
-> 2026-07-10, MAKE-ASCII-INPLACE-1).** `make_ascii_*` is implemented as
+> **In-place case conversion.** `make_ascii_*` is implemented as
 > rebuild-and-assign (`*self = self.to_ascii_*()`), which is correct
 > for every Text form (SSO-inline value, static literal, heap record).
-> The previous raw-pointer byte-mutation silently no-oped on SSO/built
-> texts and corrupted heap literals at value-stride offsets. Pinned by
+> Coverage distinguishes each representation through
 > `regression_z_make_ascii_*` (one guard per representation class).
 
 ### Replacement
@@ -691,10 +684,8 @@ r.as_str() -> Text                                // recover raw pattern
 
 All seven operations execute on the **pure-Verum engine** in
 [`core/text/regex_engine.vr`](https://github.com/verum-lang/verum/tree/main/core/text/regex_engine.vr)
-— ONE implementation compiled like any other stdlib code, byte-identical
-in behaviour on the Tier-0 interpreter and Tier-1 AOT binaries (the
-previous design forwarded to interpreter-only Rust intrinsics with no
-Tier-1 runtime; the intrinsic declarations are retired).
+— one implementation compiled as stdlib code for both the Tier-0
+interpreter and Tier-1 AOT binaries.
 
 Supported pattern surface (malformed constructs are rejected by
 `Regex.new`, never mis-accepted):
@@ -980,7 +971,7 @@ own `audit.md` cataloguing open defects + drift surfaces.
 | `text/char` | **partial** | Two minor `@ignore` pins — the §B residual and the §D probe. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/char/audit.md) |
 | `text/case_fold` | **stable** | Green outside the upstream `Text.eq` cascade. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/case_fold/audit.md) |
 | `text/builder` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/builder/audit.md) |
-| `text/format` | **stable** | The §H workaround landed 2026-05-27; the codegen fix is `@ignore`d for follow-up. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
+| `text/format` | **stable** | The audit describes the §H workaround; the corresponding codegen regression remains `@ignore`d. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md) |
 | `text/regex` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/regex/audit.md) |
 | `text/tagged_literals` | **stable** | — | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/tagged_literals/audit.md) |
 | `text/numeric/decimal` | **partial** | §A `Int.neg` dispatch, then the §B / §C cascade. | [audit.md](https://github.com/verum-lang/verum/tree/main/core-tests/text/numeric/decimal/audit.md) |
@@ -999,19 +990,14 @@ test gaps on the AOT path:
 | §Y | AOT typechecker honours mount-scoped names so `core.text.ParseError` wins over `core.cli.error.ParseError` in user code | medium (`crates/verum_types/src/infer/modules.rs`) | 1 + unknown others (AOT path) |
 | §H | Fundamental `(&Primitive).value_self_method()` auto-deref in `compile_method_call` (workaround landed in stdlib; codegen fix `@ignore`d as `regression_h_ref_int_to_hex_auto_deref_pinned`) | multi-session VBC codegen | 1 (and removes the let-binding-deref discipline obligation across the stdlib) |
 
-All previously-open text/text defects (§A / §B / §C / §D / §E / §F /
-§G / §H / §I / §J / §K / §L / §M / §N / §O / §P / §Q / §R / §T / §U /
-§V / §W / §X) are closed or pinned closed under `--interp`.  The
-function-id collision class closed with the cross-module call
-resolution fix; auto-deref closed with a let-binding at the call site
-inside the library.  The two remaining open classes are well-bounded
-language-implementation work — see
-[`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md)
-§Y for the AOT root-cause hypothesis, and
+The interpreter controls and remaining backend limitations are recorded in
+[`core-tests/text/text/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/text/audit.md).
+Consult §Y for the AOT mount-scope hypothesis and
 [`core-tests/text/format/audit.md`](https://github.com/verum-lang/verum/tree/main/core-tests/text/format/audit.md)
-§H for the codegen-side fundamental.
+§H for the reference auto-dereference defect. The library uses a local
+let-binding workaround for the latter; that does not close the compiler issue.
 
-#### Architectural rule pinned by the §H close (2026-05-27)
+#### Formatting contract
 
 Every stdlib free function of shape `public fn f(value: &Primitive)`
 that calls a value-self method on `value` MUST materialise the deref

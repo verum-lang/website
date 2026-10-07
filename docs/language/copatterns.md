@@ -95,7 +95,7 @@ This is the dual of induction's termination check: induction demands
 the input shrink; coinduction demands the output grow.
 
 :::warning The productivity check cannot be what rejects it today
-Measured 2026-09-03 and re-measured 2026-09-04: the productive
+the productive
 definition and the unproductive one
 produce the **same** diagnostic, so the rejection is not the productivity
 check speaking.
@@ -142,16 +142,13 @@ textbook coinductive definition.
 
 :::caution This example does not compile today
 It is written the way the feature is meant to read, not the way it
-currently behaves. Two things are missing, both measured 2026-09-04:
+currently behaves. Two things are missing, both checked:
 
 * copattern bodies still fail inference, the same diagnostic as the
   warning above — so `hamming()` does not typecheck;
 * `merge3` and `map_stream` are declared nowhere in `core/`, and
   `.take(10)` is not available here: the `Stream<T>` protocol on this
-  page declares `.head` and `.tail` and nothing else. Re-measured
-  2026-09-10:
-
-  ```
+  page declares `.head` and `.tail` and nothing else. ```
   grep -rlE '\b(merge3|map_stream)\b' core/ --include='*.vr' | wc -l   # 0
   grep -n 'fn take' core/async/stream.vr                              # :211, :216
   ```

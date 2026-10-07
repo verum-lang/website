@@ -115,7 +115,7 @@ async fn serve() -> Result<(), H3ServerError> {
     let handler = MyHandler { /* ... */ };
     // `ServerOptions` has no `default()` and no PEM builders. Its
     // constructor takes a parsed chain and a signer; `with_alpn` and
-    // `with_idle_timeout` are the only builders (measured 2026-09-08).
+    // `with_idle_timeout` are the only builders.
     let opts = ServerOptions.from_cert(cert_chain, signer)
         .with_alpn(alpn_list);
     // `SocketAddr.from_text`, not `"…".parse()`: `Text` has no `parse`
@@ -127,7 +127,7 @@ async fn serve() -> Result<(), H3ServerError> {
 }
 ```
 
-:::note Corrected 2026-09-08, and re-counted 2026-09-12
+:::note Corrected, and re-counted
 
 `H3Response` has **two** constructors, one builder and one converter —
 four public methods, which is the list below. The sentence here said
@@ -254,7 +254,7 @@ dynamic table carries one):
 - [Server push (§4.6 + §7.2.5)](/docs/stdlib/net/http3/server-push) — PushEmitter,
   push_id lifecycle, MAX_PUSH_ID / CANCEL_PUSH.
 
-## Status (2026-04-25)
+## Status
 
 Client + server facades ship. QPACK baseline (`max_table_capacity=0`)
 is production-ready; dynamic-table encoder extensions are scaffolded

@@ -78,9 +78,7 @@ so a new module inherits the vocabulary its siblings already use.
 ## Canonical primitives (`types.vr`)
 
 Every variant below is read off `core/architecture/types.vr`. A
-capability names WHAT the cog may do to a tagged resource, not an
-abstract property — the earlier vocabulary on this page (`Identity`,
-`Composition`, `Encapsulation`, …) named none of the nine that exist.
+capability specifies the operations a cog may perform on a tagged resource.
 
 ```verum
 public type Capability is
@@ -231,10 +229,7 @@ agreement in `agreements`, with `disagreement_count` as the summary.
 Read the disagreeing observers out of `agreements` — the verdict does
 not carry a single counter-example.
 
-(This paragraph described the verdict as
-`Equivalent | Distinguishable(ShapeObservation)` until 2026-09-06.
-Neither variant exists, and a caller written to `match` on them cannot
-compile. `core/architecture/yoneda.vr` is the source above.)
+The verdict and observation types are declared in `core/architecture/yoneda.vr`.
 
 ## Composition (`composition.vr`)
 

@@ -24,8 +24,7 @@ that half works, and it is the half that matters for catching a `Uri`
 used where an `Int` was wanted.
 
 :::warning The content is not validated
-Clearly-invalid content is accepted by **every** tag. Re-measured
-2026-09-10; the whole probe is three files, and it travels with the
+Clearly-invalid content is accepted by **every** tag. The whole probe is three files, and it travels with the
 claim so you can re-run it:
 
 ```verum
@@ -93,7 +92,7 @@ accepted by the compiler; custom tags fall back to user-defined macros.
 
 ### Data interchange
 
-Result types, measured 2026-09-03 by passing each literal where an `Int`
+Result types, checked by passing each literal where an `Int`
 is required and reading the type the compiler names:
 
 ```verum
@@ -166,7 +165,7 @@ actually does today. Their public API is
 
 :::danger Ten of the eighteen forms on this page name a type that does not exist
 
-Census 2026-09-12 across every type declared in `core/`, with comments
+Census across every type declared in `core/`, with comments
 stripped so a name inside one cannot be mistaken for a declaration:
 
 ```bash

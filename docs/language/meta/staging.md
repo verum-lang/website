@@ -239,13 +239,12 @@ tools:
    `is_valid_transition(from, to)`, `stage_unique_ident(base)`,
    `generation_chain()` and the four stage limits
    (`stage_iteration_limit`, `stage_recursion_limit`,
-   `stage_memory_limit`, `stage_timeout_ms`). *(This entry named them `current()`
-   and `target()` until 2026-09-12; neither shorter name exists.)*
+   `stage_memory_limit`, `stage_timeout_ms`). The shorter names `current()` and `target()` are not available.
 
 3. **Stage-mismatch diagnostics** name the stage you are in, the stage
    you tried to generate, the stage that was expected, and a hint. The
    entry here used to promise **four spans** — the splice, the binding,
-   the stage of each, and a suggested fix. Re-measured 2026-09-12: the
+   the stage of each, and a suggested fix. the
    diagnostic carries **one** optional span; the three stage numbers and
    the hint are in its message text, not in separate spans.
 

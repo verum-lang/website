@@ -9,7 +9,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.script` — Verum as its own scripting language
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 A host Verum program can compile and run Verum **scripts** at runtime,
 in-process, on the same VBC interpreter the host itself runs on.

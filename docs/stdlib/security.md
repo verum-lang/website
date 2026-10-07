@@ -70,7 +70,7 @@ For the full map and architectural context, start at the
   odd-leaf promotion (CVE-2012-2459-safe)
 
 :::caution Everything that needs fresh randomness stops at Tier 0
-Measured 2026-09-12. Three of the modules above cannot produce a value
+Checked. Three of the modules above cannot produce a value
 under the interpreter, and they fail at the point where they ask for
 random bytes:
 

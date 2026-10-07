@@ -337,7 +337,7 @@ builds a heterogeneous record.
 ## Common errors and fixes
 
 :::caution The codes below are not the compiler's
-Measured 2026-09-03 against the compiler's diagnostic-code registry,
+Checked against the compiler's diagnostic-code registry,
 which is the authority on these codes: `E1103`, `E1104` and `W1105` are in no
 namespace, and neither are the messages quoted with them. The registry
 carries no universe code at all.

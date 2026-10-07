@@ -31,19 +31,11 @@ verification stack. For each, you see:
   Config, or Solver) the field reaches; see [scope discipline](#parameter-scope-discipline)
   for why this matters.
 
-Every field listed is **load-bearing**: toggling it has an observable
-effect on the corresponding solver invocation. That is what the
-2026-04-29 audit checked, and it still holds.
+Every field listed controls the corresponding solver invocation.
 
-:::info The **Where set** lines became a working path on 2026-09-07
-Before that date they described an intent. `[verify]` deserialized into
-a `VerifyConfig` with no `solver` field, no `#[serde(flatten)]` and no
-catch-all, so serde dropped `[verify.solver]` and every sub-table under
-it in silence — the values below were accurate about what ran and
-unreachable from a manifest.
-
-They now deserialize, with `deny_unknown_fields`: a misspelled key or
-table fails the parse and names the offender instead of vanishing. A
+:::info Manifest configuration
+`[verify.solver]` and its sub-tables deserialize with `deny_unknown_fields`:
+a misspelled key or table fails the parse and names the offender. A
 partial table is fine — every field defaults, so setting one key leaves
 its siblings and the other tables alone.
 

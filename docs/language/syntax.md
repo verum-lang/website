@@ -158,7 +158,7 @@ the interpolated value:
 Numbers right-align by default; `<`/`>`/`^` override. Precision and
 width compose (`f"{3.14159:8.2}"` → `    3.14`).
 
-Every row above was re-measured on 2026-09-03; centre alignment and the
+The rows above are covered by formatting probes; centre alignment and the
 `+` flag, which this page listed as "still being wired up", both work.
 
 :::note `{:e}` is accepted and ignored

@@ -32,7 +32,7 @@ reference's allowed operations (`READ`, `WRITE`, `EXECUTE`,
 monotonic attenuation.
 
 **CBGR** — Capability-Based Generational References. Verum's default
-memory safety mechanism: 1.2–1.7 ns (re-measured 2026-09-05) runtime check per deref
+memory safety mechanism: 1.2–1.7 ns runtime check per deref
 (≤ 15 ns design target).
 
 **Cog** — A Verum package. Distributable archive containing VBC,
@@ -70,7 +70,7 @@ MLIR for `@device(gpu)` code). Verum does not have a JIT tier.
 See **[Runtime tiers](/docs/architecture/runtime-tiers)**.
 
 **Execution tier** — The CBGR safety tier attached to each
-reference: `Tier0_Full` (≤ 15 ns design target; 1.2–1.7 ns (re-measured 2026-09-05)),
+reference: `Tier0_Full` (≤ 15 ns design target; 1.2–1.7 ns),
 `Tier1_Epoch` (1.2–1.7 ns), `Tier2_Gen` (< Tier1_Epoch),
 `Tier3_Unchecked` (0 ns). Independent of execution mode.
 

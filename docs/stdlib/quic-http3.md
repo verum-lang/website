@@ -8,7 +8,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # QUIC and HTTP/3
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 The QUIC + HTTP/3 documentation has moved into dedicated stack sections
 that mirror the real implementation layout:
@@ -55,7 +55,7 @@ See the cookbook recipes
 server examples that use `core.net.quic.api` + `core.net.h3.client` +
 `core.net.h3.server` directly.
 
-## Status (2026-04-25)
+## Status
 
 | Layer | L2 tests | Pass | V-theorems |
 |-------|---------:|------|------------|

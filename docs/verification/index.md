@@ -368,7 +368,7 @@ incrementally. The grammar recognises 22 built-in tactic forms
 **Escape hatches**: `admit` (assume goal, marked in certificate),
 `sorry` (assume goal). A `--strict-admits` flag that would fail the
 build on either is described in places but is not accepted by the
-shipped CLI (measured 2026-09-11); `verum audit --framework-axioms`
+shipped CLI; `verum audit --framework-axioms`
 is the enumeration that does run today.
 
 The tactic DSL is itself verifiable — tactics written with `@tactic
@@ -603,7 +603,7 @@ Verum stacks three additional layers atop the kernels:
 
 Every claim Verum makes is mechanically observable. As of the
 current revision, `verum audit` exposes **54 gates** organised
-into nine bands (counted 2026-09-06 from `verum audit --help`: 60
+into nine bands (counted from `verum audit --help`: 60
 flags, of which six — `--backend` `--color` `--details`
 `--direct-only` `--format` `--strict` — are output modifiers rather
 than gates). This page said "~49" and named 49; every one of those 49
@@ -641,9 +641,7 @@ exists, and five more were shipped without reaching the catalog.
 **Tooling band** (3 gates): `--proof-term-library` ·
 `--signatures` · `--docker`.
 
-**Precompiled-stdlib + registry band** (5 gates), added to this
-catalog 2026-09-06 after a diff against the binary — every one had
-shipped undocumented:
+**Precompiled-stdlib + registry band** (5 gates):
 `--stdlib-layers` (layer classification over the embedded archive) ·
 `--proof-archive` (decodes the archive's `theorems` table and
 re-resolves each) · `--cross-format-roundtrip` (per-theorem roundtrip

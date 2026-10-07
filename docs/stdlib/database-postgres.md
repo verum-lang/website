@@ -8,7 +8,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.database.postgres` — pure-Verum PostgreSQL driver
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 `core.database.postgres` — codename **spindle (postgres backend)** —
 is a pure-Verum implementation of PostgreSQL's v3 wire protocol.

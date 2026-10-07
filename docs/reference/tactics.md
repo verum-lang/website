@@ -405,7 +405,7 @@ proof {
 
 :::caution A `tactic` body is parsed but not checked
 
-Measured 2026-09-10. Name resolution and type checking do not enter a
+Name resolution and type checking do not enter a
 `tactic` body. The same two lines are refused inside `fn` and accepted
 inside `tactic`:
 
@@ -505,7 +505,7 @@ tactic oracle(goal: Prop, confidence: Float = 0.9) {
 
 :::warning `@llm_oracle` is not a meta-function the compiler knows
 
-Measured 2026-09-11. The name is declared nowhere in the compiler, so the call
+The name is declared nowhere in the compiler, so the call
 in the block above draws
 
     warning<E0410>: unknown meta-function `@llm_oracle`

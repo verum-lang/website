@@ -89,7 +89,7 @@ addressable by name in `proof by my_tactic`.
 A `Goal` has three accessors:
 
 ```verum
-// Transcribed from `core/math/tactics.vr` on 2026-09-06.
+// Source: `core/math/tactics.vr`.
 public type Goal is {
     /// The proposition to be proved.
     proposition: TacticProp,
@@ -435,7 +435,7 @@ Tactic tests run at stage 1 (meta execution) via `verum test
 Five patterns to avoid when authoring tactics.
 
 :::caution No linter flags these today
-Measured 2026-09-03, re-measured 2026-09-10: nothing in `verum_smt` or
+Nothing in `verum_smt` or
 `verum_verification` inspects a tactic tree for these shapes, and `W501`
 is in no error-code registry. Every occurrence of that string in the
 compiler is a doc comment in one file, and it names the

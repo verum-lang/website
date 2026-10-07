@@ -15,7 +15,7 @@ description: Open record types parse today; what they check, and what is not imp
 
 :::warning Status — measured, not planned
 Every row in the table at the end of this page was measured with
-`verum check` on 2026-09-03, each probe differing from its control in one
+`verum check`, each probe differing from its control in one
 value. Three things this page previously called **Stable** do not work.
 Read the table before building on the feature.
 :::

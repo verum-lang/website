@@ -93,10 +93,7 @@ lower it to its native query language without lossy
 approximations. Backends that don't support a particular filter
 combinator (e.g. SQLite FTS5 doesn't have native `In` for arbitrary
 arrays) MUST surface `SearchError.InvalidQuery(...)` naming the
-combinator it could not lower, rather than silently degrade. (This
-paragraph named a `FilterNotSupported` variant until 2026-09-06;
-`core/search/types.vr` has never declared one, so the rule was
-unfollowable as written.)
+combinator it could not lower, rather than silently degrade.
 
 ## Hit + Results
 
@@ -207,12 +204,9 @@ public type SearchError is
     | Backend(Text);
 ```
 
-Transcribed from `core/search/types.vr`. This page carried four
-variants the library does not declare — `IndexAlreadyExists`,
-`FilterNotSupported`, `IndexConfigUnsupported` and `Encoding` — and
-omitted the two it does: `SchemaConflict` and the struct-shaped
-`TooManyDocuments { count, limit }`. Match on the list above; a match
-arm naming any of the four will not compile.
+The variants above are declared in `core/search/types.vr`. Match their
+actual payload shapes, including `SchemaConflict(Text)` and
+`TooManyDocuments { count, limit }`.
 
 ## Status
 
@@ -232,9 +226,6 @@ To add a backend `XYZ`:
    any combinator the backend can't lower losslessly; NEVER silently
    degrade to a permissive query.
 4. Surface `SearchError.SchemaConflict(<option-name>)` at
-   `create_index` time for unsupported config flags. (This item named
-   an `IndexConfigUnsupported` variant until 2026-09-06;
-   `core/search/types.vr` does not declare one, so the instruction
-   could not be followed.)
+   `create_index` time for unsupported config flags.
 5. Add a regression test under `core-tests/search/xyz/` that
    exercises the full protocol surface against a backend stub.

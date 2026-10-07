@@ -7,7 +7,7 @@ slug: /architecture/no-libc-architecture
 
 # No-libc architecture
 
-**Status (2026-10-04): strict no-libc is an architectural requirement for
+**Status: strict no-libc is an architectural requirement for
 generated AOT programs; native implementation gaps remain. The host CLI
 has a separate OS compatibility and packaging requirement.**
 
@@ -133,7 +133,7 @@ must not be assumed present on every installation; verify availability on
 the stated baseline and package or remove dependencies that are absent.
 The no-libc AOT smoke check does not replace this clean-host test.
 
-Updated **2026-10-05**: `scripts/ci/check_no_libc_link.sh` builds a
+`scripts/ci/check_no_libc_link.sh` builds a
 **generated AOT smoke program** in a unique temporary workspace, or inspects
 an existing executable with `--artifact PATH`. The inspector selects ELF,
 Mach-O or PE from the artifact, independently of the host. Unknown imports,
@@ -153,7 +153,7 @@ requirement.
 
 ## 6. Implementation and remaining checks
 
-**Source status: 2026-10-05.** Ordinary integer and Float print now use
+Ordinary integer and Float print now use
 owned formatting and a common target-aware writer. Focused generated-code
 checks cover mixed-output order, tiny and large finite f64 values, signed
 zero, partial writes and the target imports. These checks cover source
@@ -173,7 +173,7 @@ a blanket no-libc ban:
 
 | Host surface | What must be checked |
 |--------------|----------------------|
-| Shipped CLI | The build workflow smoke-tests `--version` and checks the packaged executable for external Git/OpenSSL dependencies. That check does not certify Linux symbol versions, Windows runtime availability or execution on a clean OS. [Installation](../getting-started/installation.md#what-the-verum-binary-itself-links-against) retains the dated release inspection and explains the required compatibility checks. |
+| Shipped CLI | The build workflow smoke-tests `--version` and checks the packaged executable for external Git/OpenSSL dependencies. That check does not certify Linux symbol versions, Windows runtime availability or execution on a clean OS. [Installation](../getting-started/installation.md#what-the-verum-binary-itself-links-against) links the artifact inspection evidence and explains the required compatibility checks. |
 | Interpreter networking | `crates/verum_vbc/src/interpreter/dispatch_table/handlers/net_runtime.rs` uses `std::net` and libc socket operations. These are permitted host implementation choices, subject to the supported OS baseline and API parity with AOT. |
 | Interpreter FFI | `crates/verum_vbc/src/ffi/platform/linux.rs` uses libc dynamic loading and mapping functions. Its host dependencies and explicitly requested foreign libraries need their own deployment checks; they must not become implicit AOT runtime dependencies. |
 

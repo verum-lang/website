@@ -159,10 +159,7 @@ phase that raises them:
 `path` is `Maybe<Text>` and is populated for SEMANTIC errors — the
 typed-loader and reference groups. A syntax error has a line and a
 column but no path through the config tree, because the tree did not
-parse. The previous version of this page claimed "every error variant
-carries the path"; that was true of the invented taxonomy and is not
-true of the shipped one, and code written to `.path.unwrap()` on a
-parse failure would have panicked.
+parse. Handle `Maybe.None` when inspecting `path` on a parse failure.
 
 Transcribed from `core/configuration/error.vr`.
 
@@ -196,13 +193,9 @@ adapter is purely additive — zero upstream code change.
 
 ## Composition example
 
-The functions named in earlier drafts of this page
-(`load_file`/`save_str`/`load_str`/`from_env`) do not exist under any
-spelling — confirmed by searching `core/configuration/` directly. The
-real top-level surface is `load_text` / `dump_text` (`mod.vr`), which
-take **text you've already read**, not a path, plus a `FormatId`
-(`format_id_toml()`, `format_id_yaml()`, … — one constructor function
-per format, `core/configuration/error.vr`):
+The top-level `load_text` / `dump_text` functions in `mod.vr` take text
+and a `FormatId`, such as `format_id_toml()` or `format_id_yaml()` from
+`core/configuration/error.vr`. Read file contents separately:
 
 ```verum
 mount core.configuration.{load_text, dump_text};
@@ -230,10 +223,8 @@ for (key, value) in vars() {
 
 There is no ready-made `configuration.from_env::<T>()` bridge from
 that iterator into a typed overlay, and no `Configuration<T>::load*`
-convenience wrapping path + parse + merge into one call the way
-earlier drafts implied — assembling "defaults overlaid by user file
-overlaid by env" from these primitives is real work your own code
-does, not a one-liner this module provides today.
+convenience wrapping path, parsing and merging into one call. Application
+code assembles the defaults, file and environment overlays from these primitives.
 
 The categorical foundation (slice over `ConfigValue`) ensures
 these compositions are associative + identity-preserving — the

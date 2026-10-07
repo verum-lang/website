@@ -235,8 +235,7 @@ async fn property_no_connection_leak(
 }
 ```
 
-Two corrections from 2026-09-06, both of which would stop the snippet
-compiling:
+The simulator configuration uses these types and methods:
 
 * the network field takes a **`SimNetworkConfig`**, not a `SimNetwork`.
   `SimNetwork` is a different type in a different subsystem

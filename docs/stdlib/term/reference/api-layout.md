@@ -50,9 +50,8 @@ Margin.ZERO                                      // the const
 
 ## `LayoutConstraint`
 
-The type is `LayoutConstraint` — this page used `Constraint` in the
-heading and `LayoutConstraint` in every signature below it. (`Constraint`
-is a different type, in `core.database`.)
+Use `LayoutConstraint` for terminal layout. `core.database.Constraint` is
+a separate type.
 
 ```verum
 public type LayoutConstraint is

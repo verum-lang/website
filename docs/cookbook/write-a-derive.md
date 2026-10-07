@@ -91,7 +91,7 @@ entry has `.name`, `.type_name`, `.type_kind`, `.visibility`, etc.
 $ verum expand-macros src/user.vr        # not implemented — see note
 
 :::warning `verum expand-macros` does not exist
-Measured 2026-09-03: `verum expand-macros --help` answers
+`verum expand-macros --help` answers
 `error: unrecognized subcommand`, and the name appears nowhere in
 `verum --help`. There is no macro-expansion dump command today —
 not under this name, not under `expand`, and not hidden as an

@@ -25,7 +25,7 @@ basic familiarity with `&T`.
 
 | Tier | Syntax          | Runtime cost                              | Invariant provided by     |
 |------|-----------------|-------------------------------------------|---------------------------|
-| 0    | `&T`            | 1.2–1.7 ns (re-measured 2026-09-05) (≤ 15 ns design target) | CBGR generation counter   |
+| 0    | `&T`            | 1.2–1.7 ns (≤ 15 ns design target) | CBGR generation counter   |
 | 1    | `&checked T`    | 0 ns                                      | Compiler escape analysis  |
 | 2    | `&unsafe T`     | 0 ns                                      | You, with `// SAFETY: …`  |
 
@@ -280,7 +280,7 @@ $ verum bench
 ```
 
 The numbers above are for the whole `push_front`, not for a bare
-reference check — that is 1.2–1.7 ns, re-measured 2026-09-05, and 15 ns
+reference check — that is 1.2–1.7 ns, and 15 ns
 is the design CEILING rather than the cost. The `managed` profile always
 runs the check; `mixed` eliminates
 the check where provably safe (the default); `checked` forces the

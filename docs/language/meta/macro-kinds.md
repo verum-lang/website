@@ -91,9 +91,8 @@ types via `TypeInfo` and generates the appropriate handling:
 - `Shared<T>` fields: call `.clone()` which bumps the ref count.
 - `Mut<T>` fields: call `.clone()` only if `T: Clone`; otherwise
   emit a diagnostic naming the field and the missing bound, with a
-  suggestion. (The code cited here until 2026-09-03 — `E4102` — is in
-  no registry; the registered code for a derive that is accepted but
-  generates nothing is `W0507`.)
+  suggestion. The registered code for a derive that is accepted but
+  generates nothing is `W0507`.
 
 ### Variant handling
 
@@ -119,8 +118,7 @@ implement Clone for Shape {
 
 The compiler registers **nine** built-in derives — `Debug`, `Clone`,
 `Copy`, `Eq`, `PartialEq`, `Hash`, `Default`, `Ord`, `PartialOrd`.
-Re-measured 2026-09-12; this paragraph named six and two of those,
-`Serialize` and `Deserialize`, are not among them. See
+`Serialize` and `Deserialize` are not among them. See
 [Derives catalogue](./derives) for the generated-code semantics.
 
 :::warning There are no library derives yet

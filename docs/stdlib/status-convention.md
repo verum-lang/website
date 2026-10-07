@@ -1,81 +1,52 @@
 ---
 sidebar_position: 0
 title: Status Convention
-description: How the stdlib module pages declare their conformance status — taxonomy, frontmatter contract, and update procedure.
+description: Conformance labels, supported badge properties, and the evidence required to update module coverage.
 ---
 
 # Stdlib Module Status Convention
 
-Every page under `docs/stdlib/` on this site declares a
-**conformance status** in its YAML frontmatter.  The status tells
-readers, at a glance, how thoroughly the module's API contract has
-been pinned by the conformance suite at `core-tests/`, and which
-defect classes (if any) are still open.
+Module pages describe the APIs and execution backends covered by the
+conformance suites in `core-tests/`. A status is meaningful only together
+with that scope and the remaining limitations.
 
-This convention is the **single source of truth** for status semantics,
-frontmatter syntax, and the update procedure.  It is shared between
-three places — `core-tests/INVENTORY.md` (the per-module truth-table),
-each module page's frontmatter (`status` + `status_detail`), and the
-`<StdlibStatus />` MDX component (rendered badge).
+The per-module audit records the evidence, `core-tests/INVENTORY.md`
+summarizes it, and the website presents the supported behaviour to users.
+A documentation edit alone does not establish a new conformance result.
 
 ## Status keywords
 
-| Status | Emoji | Meaning |
-|---|---|---|
-| `complete` | ✅ | All public APIs covered by unit tests; algebraic laws pinned by property tests; cross-stdlib integration verified; audit findings landed or routed.  The module's contract is fully exercised end-to-end on both the interpreter (Tier 0) and AOT (Tier 1) paths. |
-| `stable` | 🟢 | Suite fully green under `--interp` and the covered surface is trusted for use, but the coverage bar for `complete` (property laws + cross-stdlib integration + routed audit) is not fully met. Graduates to `complete` when those land. |
-| `partial`  | ⚠️ | A subset of the public API is conformance-tested and stable.  The rest is exercised in `regression_test.vr` via `@ignore`d tests pinning the specific defects that block coverage.  Backend-specific limitations are documented per module. A passing or unignored test alone does not establish native parity or production safety. |
-| `regression-only` | ⛔ | Module is gated by upstream stdlib / language-level defects (function-id remap, archive-driven default-method dispatch, CBGR generation tracking on returned `&Text`, …).  Few or no public-API tests pass yet — only `@ignore`d regressions exist to lock the bug shapes.  Avoid in production until promoted to `partial` or `complete`. |
-| `undocumented` | ❔ | Documentation in this reference is authoritative, but the module has not yet been routed through the `core-tests/` conformance suite.  The current page is a best-effort snapshot of the source; it may drift from runtime behaviour.  New modules start here; aim to graduate to `regression-only` (write the tests, even if all `@ignore`'d) before merging. |
+Inventory rows and page frontmatter use these labels:
 
-The five statuses are **mutually exclusive**.  Aggregate modules (`base`,
-`async`, `collections`, …) carry the **weakest** status across their
-submodules — if any submodule is `regression-only`, the aggregate is at
-most `partial`.
+| Status | Meaning |
+|---|---|
+| `complete` | Public API behaviour, algebraic laws and cross-module integration are covered, with audit findings resolved or explicitly accounted for. Completion requires end-to-end checks on both the interpreter and native AOT paths. |
+| `stable` | The covered interpreter suite passes. Broader coverage and native parity require separate evidence. |
+| `partial` | A subset of the API has conformance coverage. The page and audit identify the untested or failing paths. |
+| `regression-only` | Upstream defects block most public-API use. Regression tests record the failing shapes and any working subset. |
+| `undocumented` | Conformance evidence has not been documented for the module's API surface. The source reference alone does not establish runtime behaviour. |
+| `unverified` | The inventory records no asserted conformance result. This is an absence of evidence, not a passing or failing result. |
 
-:::caution The aggregate rule cannot be evaluated today
-Measured 2026-09-03, re-measured 2026-09-10 and 2026-09-12, comparing the
-status-bearing pages against the 589 rows of `core-tests/INVENTORY.md`:
+The rendered `<StdlibStatus />` component has a smaller vocabulary:
+**`complete`, `partial`, `regression-only`, `unaudited`**. It does not
+convert inventory labels automatically. Keep frontmatter labels separate
+from component props, and describe the actual evidence in `detail` rather
+than implying a stronger level of coverage. `unaudited` means no conformance
+assessment is published for this surface; consult the module documentation
+and tests. It does not assert that no tests exist.
 
-```
-# count the ROWS, not the word: a bare `grep -c unverified` also counts
-# the legend and the prose, and that subtraction is what drifts
-grep -cE '^\| `[^`]+` *\|.*unverified' core-tests/INVENTORY.md   # 247
-```
+Aggregate pages must not claim coverage stronger than their submodules.
+An `unverified` row cannot be treated as a passing result when assessing
+an aggregate. Consult the repository's comparison gate when reconciling
+page metadata with the inventory:
 
-Re-measured 2026-09-12: still **247 row statuses**. The bare word-count
-was 250 when this box was first written and is 249 today, which is
-exactly why the command above counts rows instead — the figure the
-argument rests on did not move, and the one that needed subtracting did.
-The repository's own gate prints the same thing:
-
-```
+```sh
 python3 scripts/ci/check_doc_status_matches_inventory.py
 ```
 
-**So 247 of the 589 rows carry `unverified`, a sixth token this table
-does not define.** It was introduced by the liveness gate to mark a row
-whose status had never actually been asserted — the ABSENCE of a
-conformance level rather than one of the five. Taking it as "weakest"
-propagates it into every aggregate: 32 of the 46 pages would become
-`unverified`, which says less than what they say now.
-
-So the aggregate rule as written is not applicable while that token
-exists, and the two sources are only comparable where both use the five.
-Where they were — `signal` and `simd` — the pages were one status
-PESSIMISTIC and have been corrected against the measurement.
-
-The fix is not to relabel the pages. It is to decide what `unverified`
-means in this table: either it is a sixth status with its own row and
-rank, or those 247 inventory rows need real measurements. Until then, a
-disagreement between a page and the inventory is not evidence of drift
-in the page.
-:::
-
 ## Frontmatter contract
 
-Each module page declares its status in YAML frontmatter so search /
-sidebar widgets can read it without parsing the body:
+Frontmatter records a concise coverage statement:
 
 ```markdown
 ---
@@ -83,95 +54,67 @@ sidebar_position: 3
 title: runtime
 description: Runtime backend coverage and limitations.
 status: partial
-status_detail: "Measured 2026-10-04: interpreter root-supervisor access works; native borrowed access through its initializer chain can fail."
+status_detail: "Interpreter root-supervisor access has coverage; native accessor results require separate validation."
 ---
 ```
 
-| Field | Required | Type | Notes |
-|---|---|---|---|
-| `status` | **yes** | one of `complete`, `partial`, `regression-only`, `undocumented` | Mirrors `core-tests/INVENTORY.md` for the same module.  Renaming a status keyword anywhere requires the same rename in both places. |
-| `status_detail` | yes when `status` ≠ `complete` | one-line string under 256 chars | Measurement date, covered backend/API and largest open limitation. Keep internal test totals out of public documentation. |
+| Field | Required | Notes |
+|---|---|---|
+| `status` | yes | Use the inventory label for the same module and retain its coverage scope. |
+| `status_detail` | when coverage is incomplete | Summarize covered APIs, execution backend and the largest open limitation in one short sentence. Keep test totals and editorial dates in the engineering evidence, not the public badge. |
 
-`status_detail` is mirrored into the visible badge body.  Keep it short
-— per-module deep findings belong in `core-tests/<...>/audit.md`, not
-the badge.
+Frontmatter does not automatically render a badge. Pages that use the
+component pass its props explicitly and keep their text consistent with
+the frontmatter and module body.
 
-## Component usage (optional, badge rendering)
-
-Pages that want a visible badge in the page body — instead of relying
-on sidebar widgets reading the frontmatter — embed the
-`<StdlibStatus />` MDX component:
+## Component usage
 
 ```mdx
 import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="Measured 2026-10-04: interpreter root-supervisor access works; native use of its borrowed result remains incomplete."
+  detail="Interpreter root-supervisor access has coverage; native accessor results require separate validation."
   defects={[
-    {area: 'root supervisor', summary: 'Native use of the borrowed result through the accessor chain can fail after initialization succeeds.'},
+    {area: 'root supervisor', summary: 'Native accessor results must preserve the initialized supervisor identity and name.'},
   ]}
-  sweepDate="2026-10-04"
 />
 ```
 
 Props:
 
-  * **`status`** — one of `complete | partial | regression-only | undocumented`.
-  * **`detail`** *(optional)* — string mirroring the `status_detail`
-    frontmatter; rendered in the badge body.
-  * **`defects`** *(optional)* — list of `{area, summary}` rows shown
-    in a collapsible defect-class table.
-  * **`sweepDate`** *(optional)* — last conformance-sweep date.
+- **`status`** — `complete | partial | regression-only | unaudited`.
+- **`detail`** — optional summary of the supported APIs, backend and limitations.
+- **`defects`** — optional list of `{area, summary}` entries for open limitations.
 
 ## Aggregate-page convention
 
-Pages that document a *family* of submodules (`base.md`, `collections.md`,
-`async.md`, …) carry the **aggregate status** in frontmatter and a
-**per-submodule status table** in the body.  The aggregate is the
-weakest status across submodules.
-
-Template for the body table:
+Family pages such as `base`, `collections` and `async` include a table of
+submodule coverage. Link each row to its conformance suite and state the
+backend explicitly:
 
 ```markdown
 | Module | Status | Conformance suite |
 |---|---|---|
-| `<submodule>.vr` | **\<status\>** | [core-tests/\<...\>/\<submodule\>](https://github.com/verum-lang/verum/tree/main/core-tests/<...>/<submodule>) — \<short detail\>. |
+| `<submodule>.vr` | **<status>** | [Conformance suite](https://github.com/verum-lang/verum/tree/main/core-tests/<family>/<submodule>) — covered APIs, backend and open limitation. |
 ```
 
-Each row links to the matching `core-tests/<...>/<submodule>/` folder
-so readers can drill into the test surface.
+A passing constructor does not establish lifecycle correctness. An
+interpreter result does not establish native parity. A focused native
+control does not establish every API in a module.
 
 ## Update procedure
 
-When a module's conformance numbers change:
+When verified coverage changes:
 
-  1. **Update the per-module audit**: edit `core-tests/<...>/<module>/audit.md`
-     with the new findings, closed defects, and deferred items.
-  2. **Append a row to the inventory**: edit
-     `core-tests/INVENTORY.md` with the new sweep numbers.  Single-line
-     row; do **not** restructure the table.
-  3. **Update the module page's frontmatter**: bump `status` if the
-     status keyword changed; refresh `status_detail` to mirror the new
-     covered behaviour, backend, limitations and measurement date.
-  4. **Refresh the body**: if the page has an aggregate per-submodule
-     status table or a `<StdlibStatus />` badge, update those too.
-  5. **Commit**: one logical commit per module sweep.  Commit message
-     names the module and the behaviour whose status changed.
+1. Record the command, tested artifact or source scope, results and remaining
+   limitations in the per-module `core-tests/<...>/audit.md`.
+2. Update the matching `core-tests/INVENTORY.md` row with that evidence.
+3. Update the page's frontmatter and API limitations to reflect the verified
+   behaviour. Preserve unresolved limitations unless evidence closes them.
+4. Keep body tables and explicit badge props consistent with those statements.
+5. Commit the coherent documentation change and check its links.
 
-Step 1 → 2 → 3 is the **mandatory order** — the audit is authoritative,
-the inventory is the per-module digest, and the website page is the
-public face.  Drift between any two of those three is itself a finding.
-
-## Status taxonomy stability
-
-These four status keywords are pinned: renaming any of them is a
-**website-wide** edit (across every stdlib doc page that uses the
-keyword) plus an `INVENTORY.md` audit row.  Adding a fifth status
-requires opening a tracking task first to scope the cascade.
-
-The aggregate-page convention (status = weakest submodule) is a
-**hard rule**: a single `regression-only` submodule rules the whole
-family out of `complete`.  This is the design that lets readers trust
-the badge — a `complete` aggregate page promises *every* submodule it
-documents is `complete`, not just "most".
+The audit precedes the inventory and public reference. Changing a status
+keyword or adding a component value requires updating its consumers and
+checking the rendered site; a label is not a substitute for validation.

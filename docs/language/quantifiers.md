@@ -118,7 +118,7 @@ line: `forall i in …,` with `j in …` on the next is refused.
 :::
 
 :::caution A quantified refinement on a TYPE does not parse yet
-Measured 2026-09-04. The quantifier is fine and the `where` is fine —
+The quantifier is fine and the `where` is fine —
 it is the pair, in type position, that the parser does not take:
 
     type C is Int where value > 0;                        parses

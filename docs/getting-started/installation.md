@@ -78,36 +78,22 @@ portability. Dependencies must be checked on the exact asset:
 | macOS | Check `otool -L` imports and the deployment target. System libraries may be used; external Homebrew paths must not be required on a clean installation. |
 | Windows | Check PE imports (`dumpbin /imports`) against the supported Windows baseline. CRT use is allowed for the CLI, but availability of each imported runtime component must be verified. |
 
-**Release inspection (2026-10-04):** the rolling assets published that day
-were inspected without executing them. Their imports were:
+Release-specific dependency findings belong to the
+[artifact inspection report](https://github.com/verum-lang/verum/blob/main/docs/architecture/no-libc-dev-artifacts-2026-10-04.json),
+which identifies the inspected downloads. Rolling assets can change;
+check the exact binary you intend to distribute. A packaged executable
+alone does not establish compatibility with a clean OS.
 
-| Inspected assets | Observed imports |
-|------------------|------------------|
-| Linux x86_64 and aarch64 | Dynamic loader, `libc.so.6`, `libm.so.6`, `libgcc_s.so.1`, `libstdc++.so.6`, `libssl.so.3`, `libcrypto.so.3`; versioned glibc imports include `GLIBC_2.39`. |
-| macOS Intel and Apple Silicon | libSystem plus libc++, system frameworks and Homebrew OpenSSL paths (`/usr/local/opt/openssl@3/…` on Intel, `/opt/homebrew/opt/openssl@3/…` on Apple Silicon). |
-| Windows x64 and ARM64 | UCRT `api-ms-win-crt-*` imports, `MSVCP140.dll` and `VCRUNTIME140.dll`, in addition to OS DLLs; x64 also imports `VCRUNTIME140_1.dll`. |
+Absolute Homebrew imports fail the clean-macOS requirement. On Linux,
+compare required glibc symbol versions and other shared libraries with
+the target distribution. On Windows, verify CRT availability on the
+supported baseline; requiring a separate redistributable installation
+fails the deployment requirement.
 
-The [recorded artifact inspection](https://github.com/verum-lang/verum/blob/main/docs/architecture/no-libc-dev-artifacts-2026-10-04.json)
-contains asset identities and dependency details. These observations are
-not a clean-system compatibility certification:
-
-- The Linux `GLIBC_2.39` imports set a libc symbol-version requirement for
-  those assets. They constrain the compatible OS baseline; they do not
-  violate the CLI contract. `libssl.so.3`, `libcrypto.so.3` and
-  `libstdc++.so.6` must not be assumed present on every clean Linux system.
-- Absolute Homebrew OpenSSL imports are a macOS packaging defect because
-  Homebrew libraries are not part of a clean macOS installation.
-- Windows UCRT and MSVC runtime availability must be checked against the
-  supported target baseline. Their presence in CLI imports is not itself
-  forbidden, but requiring a separate redistributable install would fail
-  the clean-system deployment requirement.
-
-Recheck later rolling assets rather than assuming they have the same
-imports. A single packaged executable does not prove clean-system
-portability. Source builds still require the host tools listed
-[below](#build-from-source); those build tools are not an end-user runtime
-requirement. The [architecture page](/docs/architecture/no-libc-architecture)
-separates CLI compatibility checks from strict generated AOT checks.
+Source builds require the host tools listed [below](#build-from-source);
+those build tools are not an end-user runtime requirement. The
+[architecture page](/docs/architecture/no-libc-architecture) separates
+CLI compatibility checks from strict generated AOT checks.
 
 The SMT backend is bundled in-binary and routed via capability profiles
 ([SMT routing](/docs/verification/smt-routing)); no separate solver install

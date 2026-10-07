@@ -64,7 +64,7 @@ verum build --target aarch64-apple-darwin
 not validate it against a fixed list, so any triple LLVM's backend
 recognises can be requested. Verified end-to-end (module triple,
 per-platform runtime bodies, and a linked object carrying zero
-undefined libc symbols) as of 2026-07-28 for `x86_64-unknown-linux-gnu`,
+undefined libc symbols) for `x86_64-unknown-linux-gnu`,
 `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`,
 `aarch64-apple-darwin`, and `x86_64-pc-windows-msvc`. Other triples —
 `wasm32-*`, `riscv64gc-*`, the embedded targets — are expected to work

@@ -15,8 +15,7 @@ This page documents the types and operations every non-trivial meta
 function will touch.
 
 :::caution Half of this page is a design, not an API
-Measured against `core/meta/` on 2026-09-06, name by name. WHAT IS
-SHIPPED, all in `core/meta/token.vr` unless noted: `TokenStream`,
+The available declarations are all in `core/meta/token.vr` unless noted: `TokenStream`,
 `TokenTree`, `Token`, `TokenKind`, `TokenGroup`, `Delimiter`,
 `Spacing`, `Keyword`, `Literal`, `StringKind`, `LexError`; `Span` and
 `MetaSpan` (`span.vr`); `QuoteBuilder`, `GroupBuilder`, `QuotePart`
@@ -28,12 +27,9 @@ WHAT IS NOT: `Ident`, `Punct`, `Group`, `HygieneMark`, `Quotable`,
 `ExprAst`, `StmtAst`, `PatternAst`, `ProtocolAst`, `ContextAst`,
 `AttributeAst`, `BlockAst`.
 
-**`TypeInfo`, `AstAccess`, `CompileDiag` and `Hygiene` were on that
-list until 2026-09-12 and should not have been.** All four are declared
-in `core/meta/contexts.vr` — as `context`, not as `type`, which is why
-the census below missed them. The key asked about one declaration
-keyword; the answer it printed was about that keyword, not about the
-names.
+`TypeInfo`, `AstAccess`, `CompileDiag` and `Hygiene` are declared as
+contexts in `core/meta/contexts.vr`. Searches limited to `type` declarations
+do not include them.
 
 ```bash
 # the census, now asking about every keyword a declaration can use
@@ -269,8 +265,7 @@ Every `*Ast` type below — `FnAst`, `TypeAst`, `ImplAst`, `ExprAst`,
 `Param`. Read those sections as the shape the macro layer is being
 built towards.
 
-**The contexts they are used through DO exist**, and this box said
-otherwise until 2026-09-12. `core/meta/contexts.vr` declares fourteen
+**The contexts they are used through exist.** `core/meta/contexts.vr` declares fourteen
 contexts, among them `TypeInfo` with 37 methods, `AstAccess` with 30,
 `StageInfo` with 24, `CompileDiag` with 10 and `Hygiene` with 6. What is
 missing is the AST vocabulary they would hand you, not the contexts

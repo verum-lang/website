@@ -103,8 +103,8 @@ silently expire mid-session.
 ## `SpiffeClientTransport` — outgoing mTLS
 
 :::caution Not shipped
-`SpiffeClientTransport` does not exist — measured, not guessed, and
-2026-09-10 still `grep -rl SpiffeClientTransport core/ | wc -l` → 0.
+`SpiffeClientTransport` is not declared in `core/`. To inspect the source
+for this transport, run `rg SpiffeClientTransport core/`.
 Neither does a constructor for `HttpClient`, which is a PROTOCOL left for
 you to implement. One command shows both halves of that:
 
@@ -221,7 +221,7 @@ async fn admin_handler(p: &Principal) -> Response {
 `matches(pattern)` — the last does SPIFFE-ID pattern matching, which is
 the identity check the library does provide. Enforce the role in a layer
 if you want it applied uniformly; the compiler will not enforce it for
-you, and this section claimed it would until 2026-09-06.
+you.
 :::
 
 ## Status

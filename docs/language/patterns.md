@@ -20,7 +20,7 @@ Patterns appear in `match` arms, `let` bindings, function parameters,
 | `ref x` | binds a reference instead of moving — **but see the note below for record variants** |
 
 :::danger `ref mut` into a RECORD variant loses the write, silently
-Measured 2026-09-09 on the interpreter. Three forms in one program, one
+Checked on the interpreter. Three forms in one program, one
 run:
 
 ```verum
@@ -47,8 +47,8 @@ between the two is not visible from the call site, the type, or the
 diagnostic.
 
 The other spellings do not rescue it, and **which** way each one fails
-depends on how the value was matched. Every row below was run on
-2026-09-09, one probe per row, `Int` fields, correct answer `3`:
+depends on how the value was matched. The cases below use `Int` fields;
+the expected answer for each is `3`:
 
 | What you write | Matched as | Result |
 |----------------|-----------|--------|

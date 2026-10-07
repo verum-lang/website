@@ -170,8 +170,7 @@ fn withdrawing_more_than_the_balance_panics() {
 
 :::caution Two things that look like they work and do not
 **`assert_panics` never passes.** `core.base.panic.assert_panics` reads
-as the obvious choice, and measured 2026-09-13 the panic it is meant to
-catch walks straight through it: a body that panics fails the test, and a
+as the obvious choice, but the panic it is meant to catch escapes it: a body that panics fails the test, and a
 body that does not fails the assertion. There is no body for which it
 passes. Use `catch_unwind`.
 

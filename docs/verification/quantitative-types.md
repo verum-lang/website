@@ -154,7 +154,7 @@ public fn protocol_step(
 
 :::warning What the compiler does with `@quantity` today
 
-Measured 2026-09-11 against the shipped compiler. `@quantity` is not in the
+Checked against the shipped compiler. `@quantity` is not in the
 parser's attribute table, so every use of it — legal or not — is answered the
 same way and the check finishes:
 

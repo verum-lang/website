@@ -245,17 +245,9 @@ Status: not yet implemented (Phase 6 work).
 
 - **Implementation**: complete (radix tree, nest, fallback, layer).
 - **Conformance**: `router_basic` and `router_nest` tests passing.
-- **Phase**: 1 closed; Phase 2 closed (`.nest()`); compile-time
-  dispatch tree — Phase 6.
-- **Performance**: the lookup is a radix walk, so its cost tracks the
-  path's segment count rather than the size of the route table — that
-  part is a property of the implementation and you can read it there.
-  This page used to attach a figure, "roughly 200 nanoseconds per match
-  on x86-64", and it is withdrawn rather than repeated: it carried no
-  date, no benchmark backs it anywhere in the repository, and it names
-  an architecture the project's own benchmarks no longer run on. A
-  number a reader cannot reproduce is worse than no number. Compile-time
-  tree (Phase 6) targets zero-cost.
+- **Compile-time dispatch**: a compiled dispatch tree is not implemented.
+- **Performance**: lookup follows the radix tree and depends on the matched
+  path segments. No portable latency bound is established by this API reference.
 
 ## Related documentation
 

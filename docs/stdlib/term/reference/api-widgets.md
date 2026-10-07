@@ -257,9 +257,7 @@ SplitState.fixed(n: Int)   -> SplitState
 
 The following are documented inline in the [widget
 catalogue](../widgets/overview.md). They implement `Widget` or
-`StatefulWidget`, but their CONSTRUCTORS do not follow one convention,
-and assuming a `.new()` on each is where this page used to send readers
-wrong:
+`StatefulWidget`; their constructors vary by widget:
 
 ```verum
 TermGauge.new()                       // then .ratio(f) or .percent(n)

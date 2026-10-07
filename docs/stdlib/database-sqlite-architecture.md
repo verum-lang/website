@@ -9,7 +9,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # Loom — SQLite engine deep-dive
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 This page complements the high-level overview in [`core.database`](./database)
 with a layer-by-layer dissection of every module under
@@ -234,18 +234,16 @@ opaque to the VDBE except via the cursor methods.
 
 ## L4 — VDBE
 
-**Responsibility.** Run the bytecode programs L5 emits.  A
-register-SSA virtual machine with **89 opcodes** (counted 2026-09-06 in
-`core/database/sqlite/native/l4_vdbe/opcode.vr`; this page said 97) (vs 147 in C-SQLite —
-the deltas are codepoints we don't yet generate, not opcodes that map
-to behaviour).
+**Responsibility.** Run the bytecode programs L5 emits. This is a
+register-SSA virtual machine; `core/database/sqlite/native/l4_vdbe/opcode.vr`
+defines its instruction set.
 
 **Files.** `core/database/sqlite/native/l4_vdbe/` (7 files).
 
 | File | Purpose |
 |------|---------|
 | `program.vr` | The compiled bytecode container — array of opcodes, constant pool, parameter map, cursor descriptors |
-| `opcode.vr` | The 97-variant `Op` enum.  Each variant carries its operand register/jump-target encoded inline |
+| `opcode.vr` | The `Op` enum.  Each variant carries its operand register/jump-target encoded inline |
 | `register.vr` | The `Register` value type — `Null` / `Int(Int64)` / `Real(Float)` / `Text(Text)` / `Blob(Bytes)` plus `Mem` flags from [`vdbe_register_model`](#) |
 | `cursor_table.vr` | The per-statement cursor table — N slots indexed by `cur_idx`; bridges to L3 cursors via [`cursor_table.vr`](#) |
 | `interpreter.vr` | The step-based fetch-decode-execute loop.  `step(&mut VdbeState) → StepResult` returns `Done` / `Row` / `Yield` / `Error` |

@@ -111,7 +111,7 @@ This step read `verum cert gen --algorithm ed25519 …`. The toolchain
 has no certificate-generation command — `verum --help` lists
 `check-proof`, `elaborate-proof` and `cert-replay`, all of which are
 about SMT and kernel proof certificates, not X.509. The `openssl`
-invocation above was run on 2026-09-07 and produces exactly the two
+invocation above produces the two
 files the rest of the tutorial expects.
 :::
 
@@ -141,7 +141,7 @@ system did.
 ## 4. Server scaffold
 
 :::danger The TLS half of this tutorial cannot be written today
-Measured 2026-09-08 against `core/`, the same finding as
+Checked against `core/`, the same finding as
 [cookbook/quic-server](/docs/cookbook/quic-server):
 
 | written here | reality |
@@ -228,7 +228,7 @@ async fn handle(req: H3Request) -> H3Response {
 ```
 
 :::warning `H3Response.ok()` takes the body; `.text` / `.bytes` / `.html` do not exist
-Measured 2026-09-03 against `core/net/h3/request.vr:138`. The whole
+Checked against `core/net/h3/request.vr:138`. The whole
 surface is four methods:
 
 ```verum
@@ -262,9 +262,7 @@ them compile while teaching a design that is not settled.
 
 :::caution `H3Response.streaming(...)` does not exist — but the pieces do
 `H3Response` carries four public methods and none of them is
-`streaming`. Re-measured 2026-09-10:
-
-```
+`streaming`. ```
 awk '/implement H3Response/,/^}/' core/net/h3/request.vr | grep 'public fn'
 # ok, status, with_header, to_field_list — four, and that is all
 ```
@@ -356,7 +354,7 @@ and the handler can surface a 429 instead of blocking.
 
 :::caution No per-connection stats on the server
 `H3Server` has no `stats()`, and there is no stats record anywhere under
-`core/net/h3` — re-measured 2026-09-10:
+`core/net/h3`:
 
 ```
 grep -rl Stats core/net/h3/ --include='*.vr' | wc -l    # 0

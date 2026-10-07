@@ -243,7 +243,7 @@ verum export-proofs target/proofs/ --to metamath --output target/mm/export.mm
 Additional flags:
 
 :::caution These five flags are not accepted
-Measured 2026-09-11 against both `verum export` and its alias
+Checked against both `verum export` and its alias
 `verum export-proofs`: each of `--selective`, `--include-framework`,
 `--bundle`, `--verify-after` and `--on-mismatch` exits with
 `error: unexpected argument`. The table describes an intended

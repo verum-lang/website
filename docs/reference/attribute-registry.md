@@ -9,7 +9,7 @@ All standard attributes, organised by purpose. Each row lists the
 attribute, its valid targets, and a one-line semantics.
 
 :::caution Twenty-four of these do not exist yet
-Measured 2026-09-03 by feeding each documented attribute to the
+Checked by feeding each documented attribute to the
 compiler, one file per attribute, with `@zzq_control_absent` and
 `@inline` as controls inside the same run:
 
@@ -31,7 +31,7 @@ silent no-op: the code compiles and the attribute does nothing. That
 matters most for `@cap` — see the note on
 [capabilities](/docs/stdlib/security/capabilities).
 
-### Re-measured 2026-09-04, across the whole site
+### Attribute coverage
 
 The run above tested the 92 attributes on THIS page. Repeating it over
 every ```verum block on the site — 145 attributes, one probe file each,

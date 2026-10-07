@@ -26,7 +26,7 @@ before building. The package engine range records these supported versions.
 ```bash
 npm run typecheck
 python3 scripts/check-no-internal-artefacts.py --verum-repo ../verum
-python3 scripts/check-limitations-are-dated.py
+python3 scripts/check-doc-freshness-labels.py
 python3 scripts/check-doc-links.py
 npm run build
 ```

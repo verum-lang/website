@@ -238,14 +238,6 @@ setting reaches.
 `max_unfoldng_depth` fails the manifest parse and names the offender,
 rather than being dropped.
 
-That is deliberate, and it is the point of the section's history. Until
-2026-09-07 none of this block was read at all: `VerifyConfig` had no
-`solver` field, no `#[serde(flatten)]` and no catch-all, so serde
-dropped `[verify.solver]` and every table under it in silence — forty-
-seven documented keys, no warning, no error, no effect. A fix that
-stayed quiet about typos would have moved that silence one level down
-instead of closing it.
-
 Two consequences worth knowing:
 
 * **A partial table is fine.** Every field defaults, so

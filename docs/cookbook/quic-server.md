@@ -150,7 +150,7 @@ let opts = QuicServerOptions.from_cert(chain, Heap(signer));
 ```
 
 :::danger These two mounts name modules that do not exist
-Measured 2026-09-03 against `core/`:
+Checked against `core/`:
 
 | written here | reality |
 |---|---|
@@ -165,8 +165,7 @@ The PEM parsing that does exist is `Certificate.from_pem_chain(&Text)
 
 The signer half has no substitute. `from_cert` wants a
 `Heap<dyn CertSigner>`, and the protocol is declared once with no
-implementation anywhere — one command shows both halves, re-measured
-2026-09-10:
+implementation anywhere — one command shows both halves:
 
 ```
 grep -rn 'type CertSigner' core/ --include='*.vr'

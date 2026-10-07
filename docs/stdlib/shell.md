@@ -186,13 +186,9 @@ opposite things: `Maybe.None` is *unrestricted*, `Maybe.Some([])` is
 *deny everything*. A gate written as "if the list is empty, allow"
 inverts the deny-all case.
 
-Transcribed from `core/shell/context.vr`. Both blocks above were
-previously written with invented field names — `can_exec`, `can_read`,
-`can_write`, `can_network: Bool`, `env: Map<Text, Text>`,
-`mock_layer` — and omitted `strict`, `flavour`, `shell_program`,
-`verbose` and `dry_run` entirely. `can_network: Bool` is the one worth
-naming: the real `net` is an allow-LIST, so the page described a
-coarser permission model than the library implements.
+The fields above are declared in `core/shell/context.vr`. In particular,
+`net` is a host allowlist, so its entries determine which network destinations
+a shell action may access.
 
 ## 8. MockLayer — testable shell scripts
 

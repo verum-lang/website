@@ -8,7 +8,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.mesh`
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 **Layer 5.5 — Service-mesh integration**
 

@@ -207,8 +207,7 @@ local (SHA-256 + HMAC + base64), no network round-trip.
 
 :::caution Multipart is not shipped
 There is no `multipart_create`, `multipart_part` or
-`multipart_complete` — not on `S3Client`, not anywhere in `core/`. An
-earlier version of this page named all three.
+`multipart_complete` in `S3Client` or elsewhere in `core/`.
 
 `put` buffers the whole payload into one request, so today the largest
 object `core.storage` can write is the largest one a single request will

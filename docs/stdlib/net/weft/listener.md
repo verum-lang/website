@@ -14,43 +14,18 @@ TLS-terminating (`TlsServer<H>`), and HTTP/2 cleartext upgrade
 
 Source: `core/net/weft/listener.vr`.
 
-:::danger The accept loop exits on its first iteration — measured 2026-09-15
+:::caution Listener and shutdown coverage
 
-A weft server binds successfully and then accepts **nothing**. Measured on a
-minimal programme using nothing beyond this module and a one-line handler:
+Focused interpreter and native controls preserve the stored values through
+`Shared<AtomicBool>` and `Shared<AtomicInt>`. These atomic checks do not
+establish a complete listener, cancellation or shutdown lifecycle.
 
-```
-WeftApp.new(handler).bind("127.0.0.1:18099")   ->  Ok
-server.serve().await                           ->  Ok, returned at once
-lsof -nP -p <pid> | grep TCP                   ->  no rows, at every sample
-```
-
-The cause is in `accept_loop` itself. Every iteration opens with
-
-```verum
-if token.is_cancelled() { break; }
-if draining.load(MemoryOrdering.Acquire) { break; }
-```
-
-and `draining` is a `Shared<AtomicBool>` built from `AtomicBool.new(false)`.
-Reading an atomic **through `Shared`** does not answer the stored value
-today — it answers bits that look like a heap address — so the fresh
-`false` flag reads as `true` and the loop breaks before reaching its first
-`accept`. Read directly, the same atomics are exact:
-
-```
-AtomicBool.new(false).load(Acquire)              ->  false          correct
-Shared.new(AtomicBool.new(false)).load(Acquire)  ->  true           wrong
-Shared.new(AtomicInt.new(5)).load(Acquire)       ->  51860764000    wrong
-```
-
-The same root stops `CancellationToken.cancel()` from cancelling, so the
-two-phase shutdown described further down this page is equally unavailable
-today: `cancel()` followed by `is_cancelled()` answers `false`.
-
-Everything else on this page describes the intended contract, and the
-source is written against it. What does not hold today is the one sentence
-a reader most needs to be true — that a bound server serves.
+Interpreter HTTP controls cover binary responses, header deadlines and
+cancellation before reading. Mutex guard lifetime remains incomplete, and
+native cancellation propagation and end-to-end serving require separate
+validation. Treat the APIs below as contracts subject to those limits; see
+[async backend coverage](/docs/stdlib/async#backend-coverage) and
+[guard lifetime](/docs/language/async-concurrency#mutex--rwlock).
 :::
 
 ## `ListenerConfig`
@@ -264,18 +239,17 @@ The listener's token is cloned into every spawned connection task.
 When the listener-level token is cancelled, every available
 connection sees it on its next `.await` — `read_cancellable`,
 `write_cancellable`, channel receives, timer waits — all check the
-token. There is no "cancellation gap" where an available handler
-keeps running after shutdown.
+token. These are the intended propagation boundaries; full native
+shutdown and cleanup correctness remain subject to the coverage limits above.
 
 ## Status
 
-- **Implementation**: complete.
-- **Conformance**: `graceful_shutdown` and `slow_loris_pool_exhaustion`
-  tests passing.
-- **Phase**: 1 + 2 closed (basic accept loop, drain, REUSEPORT bind).
+- **Implementation surface**: accept loop, drain and `SO_REUSEPORT` bind.
+- **Conformance**: the `graceful_shutdown` and `slow_loris_pool_exhaustion`
+  suites contain the lifecycle controls. The focused atomic and HTTP checks
+  above do not establish full native serving or shutdown correctness.
 - **Out of scope for current release**: io_uring multi-shot accept,
-  registered buffers, zero-copy send. These are Phase 5 work and
-  require additional kernel intrinsics.
+  registered buffers and zero-copy send require additional kernel intrinsics.
 
 ## Related documentation
 

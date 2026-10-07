@@ -65,6 +65,27 @@ behaviour** (e.g. "compiles at >50K LOC/s", "CBGR check < 15ns",
 "50 KLOC project takes ~N seconds") are user-facing
 characteristics, not internal source-size metrics. These stay.
 
+## Current reference documentation
+
+Describe current language behavior, supported APIs and known limitations.
+Do not add dates to headings, status badges, limitation labels or freshness
+notes such as "as of", "measured" or "last updated". Do not publish a
+roadmap or changelog under `docs/`; maintain history in Git and engineering
+reports. Remove obsolete behavior when updating a page instead of adding
+an editorial correction log.
+
+A limitation needs its affected API/backend, observable behavior and a
+reproduction or structural source reference when available. Verify a claim
+before changing it; removing a date does not establish a new test result.
+Preserve uncertainty and the scope of evidence. Keep artifact identities and
+measurement dates in linked engineering reports rather than public status
+labels. Dates that are API example data, standards identifiers or citation
+details are valid content.
+
+`scripts/check-doc-freshness-labels.py` enforces the date-label rule and runs
+its own positive and negative controls. Run it with the link audit and the
+strict production build before committing documentation changes.
+
 ## Anchor and link discipline
 
 When linking between docs, anchors must match Docusaurus's
@@ -80,7 +101,7 @@ Example: `## The IOU axiom registry — kernel-rule trust extension`
 slugifies to `the-iou-axiom-registry--kernel-rule-trust-extension`
 (double hyphen from the stripped em-dash + space).
 
-The audit at `scripts/audit-doc-links.py` (or hand-rolled) walks
+The audit at `scripts/check-doc-links.py` (or hand-rolled) walks
 every `/docs/path#anchor` and `[link](./relative.md#anchor)`
 reference and checks that the target exists. Run it before
 shipping any doc-touching commit.

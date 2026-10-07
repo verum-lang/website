@@ -178,22 +178,9 @@ yellow(t: Text) -> TextSpan cyan(t: Text) -> TextSpan     magenta(t: Text) -> Te
 white(t: Text) -> TextSpan  grey(t: Text) -> TextSpan
 ```
 
-:::note This layer runs at Tier 0 — the two defects below are fixed
-It did not, and the history is worth keeping because the second half was
-invisible from here. Two defects sat on top of each other:
-
-* the module imported the span type under the name `Span`, which
-  `core/term/widget/paragraph.vr` does not export, so every helper was
-  typed as returning `core.meta`'s `MetaSpan` and `bold("hi").content`
-  did not exist — fixed 2026-09-09;
-* correcting that import surfaced a second failure inside the bake,
-  which the associated-constant pre-registration then removed
-  — `Style.DEFAULT`, which every one of these helpers reads,
-  was being replaced by a fabricated value rather than resolved.
-
-**Re-measured 2026-09-09 after both landed**, and on the values rather
-than on "it stopped erroring" — three helpers, three different right
-answers:
+:::note Interpreter style controls
+The recorded controls distinguish modifier changes, foreground colour
+and an unstyled raw span:
 
 ```text
 bold("x")            add_modifier.bits=1  has_fg=false

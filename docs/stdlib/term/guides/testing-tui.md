@@ -83,8 +83,8 @@ file yourself; nothing in the library does the write-then-diff dance.
 :::caution Not shipped
 None of this section exists. `VirtualTerminal`, `ManualRuntime`,
 `type_keys`, `expect_row`, `run_one_frame` and
-`block_on_with_fake_clock` are absent from `core/` — measured, not
-guessed, and 2026-09-10 the six together still match no file:
+`block_on_with_fake_clock` are absent from `core/`. The source search
+for this proposed testing surface is:
 
 ```
 grep -rlE 'VirtualTerminal|ManualRuntime|type_keys|expect_row|\

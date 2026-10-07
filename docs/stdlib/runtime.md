@@ -4,7 +4,7 @@ title: runtime
 description: core.runtime — the Verum runtime (ExecutionEnv, executor, supervision, thread pool, recovery, timers, TLS) documented against the implementation in core/runtime.
 status: partial
 status_detail: >-
-  Measured 2026-10-04: interpreter supervisor access works; native use of borrowed results through lazy-initialization accessors can fail. Mutex guard lifetime and general native resource cleanup remain incomplete.
+  Checked: interpreter supervisor access works; native use of borrowed results through lazy-initialization accessors can fail. Mutex guard lifetime and general native resource cleanup remain incomplete.
 ---
 
 # `core.runtime`
@@ -13,7 +13,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 <StdlibStatus
   status="partial"
-  detail="Runtime coverage differs by backend and API. The dated measurements below describe current supervisor and resource-lifetime limits; the earlier submodule findings remain listed separately."
+  detail="Runtime coverage differs by backend and API. Consult the supervisor, resource-lifetime and submodule limitations below."
   defects={[
     {area: 'thread pool', summary: 'Submitting and joining work runs under the interpreter. Retrieving a value through a task handle is still being filled in — use a channel to carry the result meanwhile.'},
     {area: 'context bridge', summary: 'Context slots read and write correctly from one task. Two tasks writing the same slot in parallel is not yet coherent; confine a context to the task that provided it.'},
@@ -21,7 +21,6 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
     {area: 'text', summary: 'One Unicode case-category pair is classified wrongly. Everything else in the runtime text surface is correct.'},
     {area: 'async operations', summary: 'Measuring elapsed time across a sleep is unreliable under the interpreter. Read the clock directly on both sides instead.'},
   ]}
-  sweepDate="2026-07-15"
 />
 
 > **Status legend.** See [stdlib status badge system](/docs/stdlib/overview#stdlib-status-badge-system).
@@ -71,7 +70,7 @@ Backend coverage must be validated separately. Successful interpreter
 checks do not establish native returned-reference or resource-lifetime
 correctness.
 
-**Known limitations, measured 2026-10-04:** repeated root-supervisor
+**Known limitations:** repeated root-supervisor
 access works under the interpreter. In native execution, lazy
 initialization produces the expected value once, but using the borrowed
 result through the accessor chain used by `root_supervisor()` can fail. Successful initialization alone does not establish
@@ -124,7 +123,7 @@ public fn with_forked_env<T, F: fn() -> T>(f: F) -> T;
 
 /// CBGR safety tier (four variants, see architecture docs).
 public type ExecutionTier is
-    | Tier0_Full       // full CBGR: ≤ 15 ns design target; 1.2–1.7 ns (re-measured 2026-09-05) (gen+epoch)
+    | Tier0_Full       // full CBGR: ≤ 15 ns design target; 1.2–1.7 ns (gen+epoch)
     | Tier1_Epoch      // gen + epoch: 1.2–1.7 ns
     | Tier2_Gen        // gen only: < Tier1_Epoch
     | Tier3_Unchecked; // no checks: 0 ns (unsafe)
@@ -506,7 +505,7 @@ walk the calling thread's own frames, up to 64 of them.
 
 :::caution `capture()` does not walk anything yet
 
-Measured 2026-09-10. The walk starts from `@frame_address(0)`, and type
+Checked. The walk starts from `@frame_address(0)`, and type
 inference has no arm for that name, so it types as `Unit` — the frame
 pointer the loop tests and advances is not a pointer.
 
@@ -559,10 +558,8 @@ implement ThreadPool {
 
 implement PoolTaskHandle {
     /// Block until the task completes and return its result.
-    /// Named `join` (NOT `await`): postfix `.await` is async-expression
-    /// syntax, so a method named `await` is uncallable — the historical
-    /// `await()` name shipped uncalled (POOL-AWAIT-NAME-1, fixed
-    /// 2026-07-14).  Drop drains an un-joined handle.
+    /// Use `join` for this synchronous handle; `.await` is async-expression syntax.
+    /// Drop drains an un-joined handle.
     public fn join(&mut self) -> Int;
 }
 ```
@@ -572,9 +569,8 @@ threads (`verum_pool_*`).  Tier-0 (interpreter) executes each task
 EAGERLY at the submit point on the interpreter thread and parks the
 result in a slot-recycling handle table — observable `join()` results
 are identical for any result-observing program; only the interleaving
-differs, which the language does not promise.  (Before 2026-07-14 the
-Tier-0 handlers were constant-zero stubs that never ran the task —
-POOL-INTERP-STUB-1; pinned by `core-tests/runtime/pool/`.)
+differs, which the language does not promise. See `core-tests/runtime/pool/`
+for the execution and result-observation controls.
 
 ## Time — `runtime.time`
 
@@ -595,12 +591,9 @@ public mount core.intrinsics.runtime.time.{
 };
 ```
 
-Consumer mounts of this shim resolve through the qualified-key +
-carried-target-name machinery (REEXPORT-QUALIFIED-KEY-1, schema v19);
-before 2026-07-14 the bare-name first-wins table bound
-`monotonic_nanos` to the darwin mach path (DivisionByZero under
-`--interp`) and `num_cpus` to a self-recursive delegator
-(StackOverflow) — pinned by `core-tests/runtime/time/`.
+Consumer mounts preserve the qualified target of each re-export.
+`core-tests/runtime/time/` checks `monotonic_nanos` and `num_cpus` through
+this shim so they reach their intended runtime implementations.
 
 ## Thread-local storage — `runtime.tls`
 
@@ -631,8 +624,8 @@ a balanced-stack pop, not a token-addressed restore.
 
 Deterministic-latency allocators over fixed `[Byte; SIZE]` buffers.
 PRIMARY use is the `no_heap` / `embedded` profiles (EmbeddedRuntime's
-allocator), but since 2026-07-14 the module is NOT cfg-gated: the
-implementations are self-contained and equally useful on the full
+allocator). The module is not cfg-gated; its self-contained
+implementations are also available on the full
 runtime (request arenas, connection pools).  The real API surface:
 
 ```verum

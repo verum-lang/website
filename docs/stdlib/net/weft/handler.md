@@ -304,8 +304,8 @@ be named functions for traceability.
 - **Conformance**: `handler_basic` passing; `json_extractor` test
   blocked on a compiler enhancement (explicit type arguments at
   call site).
-- **Phase**: 1 closed; Phase 2 follow-up (full JSON deserialization
-  through `JsonDeserialize` derive) closed 2026-04-29.
+- **JSON deserialization** uses the `JsonDeserialize` derive; call-site
+  conformance remains subject to the compiler limitation above.
 
 ## Related documentation
 

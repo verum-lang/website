@@ -46,23 +46,20 @@ the truth-table over the module's public API exercised by
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `duration.vr`        | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — 62 unit + 20 property + 11 integration + 19 regression. interp 105/107 (2 reds pin the open List.sort-on-records and test-pipeline `d / Int` defects — tasks filed). **§G/§H CLOSED 2026-07-09**: the raw-Int intrinsic alias surface (`from_*`/`as_*`/`is_zero`/`add`/`saturating_*`/`subsec_nanos`) was deleted — accessors divided heap POINTERS whenever the ctor family and the intercept disagreed; the record bodies are now the only surface on both tiers, pinned by `regression_test.vr §G` over both ctor families, record literals, operator results, and the signed decomposition identity. Signed Debug (`-1.500s`) and the `Int.MIN × -1` checked_mul guard pinned in §H. AOT: 67/107 pre-campaign baseline; re-run pending the as_slice/const-zero root fixes. |
+| `duration.vr` | **partial** | [core-tests/time/duration](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration) — record-based constructors/accessors, signed decomposition, negative Debug output and the `Int.MIN × -1` multiplication guard have regression coverage. Sorting records and test-pipeline `d / Int` remain pinned limitations. Broader native revalidation is pending. |
 | `duration_parse.vr` | **stable** | [core-tests/time/duration_parse](https://github.com/verum-lang/verum/tree/main/core-tests/time/duration_parse) — green under the interpreter; AOT passes most of the suite (a small tail remains; the unit sub-suite re-runs to 34/34 — residual failures are the layer-4 compile-crash flake, not value defects; the historical error-path pair is CLOSED via four stacked fixes ending in the text-free plausibility contract). |
-| `instant.vr`        | **unverified** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — interp 32/33 (1 red = sort-on-records pin). **Clock unification 2026-07-09**: `Instant.now` mounted `sys.<os>.time.monotonic_nanos` (boot-relative) while `Time.monotonic` used the process-relative intrinsic — two monotonic epochs in one program; both now read `core.intrinsics.runtime.time.monotonic_nanos`. Signed `checked_add`/`checked_sub` arms pinned (`regression_test.vr §F`); the §G record round-trip pinned in §G. NOTE: the canonical clock is process-relative — tests must anchor instants away from nanos=0 before subtracting. |
+| `instant.vr` | **unverified** | [core-tests/time/instant](https://github.com/verum-lang/verum/tree/main/core-tests/time/instant) — `Instant.now` and `Time.monotonic` use `core.intrinsics.runtime.time.monotonic_nanos`. Signed arithmetic and record round-trips have focused controls; record sorting remains pinned. The clock is process-relative, so subtraction controls must start away from zero. |
 | `system_time.vr`    | **stable** | [core-tests/time/system_time](https://github.com/verum-lang/verum/tree/main/core-tests/time/system_time) — interp 55/56 (1 red = sort pin). Carry-normalised signed `checked_add`/`checked_sub` (the `nanos ∈ [0,1e9)` invariant held for negative durations pre-fix only by luck); **signed-timeline semantics** — `Maybe.None` signals Int64 overflow only, pre-epoch results are valid (consistent with `from_timestamp(-100)`); `from_timestamp_millis` floor-normalises negative inputs. Pinned in `regression_test.vr §B–§D`. |
-| `interval.vr`       | **stable** | [core-tests/time/interval](https://github.com/verum-lang/verum/tree/main/core-tests/time/interval) — green under the interpreter, including the first live-blocking `tick()` coverage (in `time/mod` integration): pre-2026-07-09 the suite only pinned period STORAGE while `Time.sleep` was a Tier-0 NO-OP and `tick()` never blocked — the stale-green the new tests caught. Negative-period clamp pinned (`regression_test.vr §A`). |
+| `interval.vr` | **stable** | [core-tests/time/interval](https://github.com/verum-lang/verum/tree/main/core-tests/time/interval) — interpreter coverage includes blocking `tick()` integration and the negative-period clamp. Live async polling requires separate executor coverage. |
 | `rfc3339.vr`        | **stable** | [core-tests/time/rfc3339](https://github.com/verum-lang/verum/tree/main/core-tests/time/rfc3339) — green under the interpreter. **Pre-1970 formatting fixed** (truncating→Euclidean day split; `format_utc(-1)` rendered "1970-01-01T00:00:01Z" pre-fix) and round-trip pinned (`regression_test.vr §E`). Offset unit tests were themselves defective (2026 dates with epoch-anchored expectations) — corrected. |
 | `cron.vr`           | **stable** | [core-tests/time/cron](https://github.com/verum-lang/verum/tree/main/core-tests/time/cron) — the full suite passes under the interpreter, including the floor semantics of `decompose` and minute alignment for instants before the epoch.  |
 | `julian.vr`         | **partial** | [core-tests/time/julian](https://github.com/verum-lang/verum/tree/main/core-tests/time/julian) — green under the interpreter, and all but one case under AOT — the best of the family, being pure Int/Float math with no byte-slice walking. |
-| `mod.vr`            | **unverified** | [core-tests/time/mod](https://github.com/verum-lang/verum/tree/main/core-tests/time/mod) — **NEW 2026-07-09** (the `Time` namespace previously had NO suite — a mirror-contract breach). green under the interpreter. Pins: negative-sleep hang clamp (`ns as UInt64` reinterpretation slept ~forever), §G ctor→accessor round-trip on the live clock, monotonic/`Instant` bracketing on the unified clock, `Interval.tick()` blocking/missed-period/zero-period behaviour. |
+| `mod.vr` | **unverified** | [core-tests/time/mod](https://github.com/verum-lang/verum/tree/main/core-tests/time/mod) — focused interpreter controls cover negative sleep durations, live-clock constructor/accessor round-trips, monotonic/Instant bracketing and `Interval.tick()` blocking, missed-period and zero-period behaviour. |
 
-**Why every row says "partial" rather than "stable"**: the status
-convention requires BOTH tiers green. The interpreter legs above are
-green (modulo the two pinned cross-cutting defects); the AOT legs are
-mid-campaign — two systemic AOT roots (`as_slice` byte-stride over
-Value-boxed buffers; unresolved-CallM const-zero degrades) were fixed
-on 2026-07-09 and the per-module AOT re-baseline is the next gate.
-Rows flip to **stable** when their AOT leg is 100%.
+Interpreter coverage and native coverage are separate. The per-module audits
+record pending native checks, including byte-slice and method-dispatch paths.
+A `stable` interpreter result does not establish AOT parity; promotion to
+`complete` requires the coverage defined in the [status convention](./status-convention.md).
 
 The status table is the runtime truth, not the file's `lifecycle`
 annotation: `lifecycle: Lifecycle.Theorem("v0.1")` is the *spec*
@@ -474,15 +471,11 @@ losslessly for ±80 million years around 1970.
 
 ## Open defects
 
-Three entries left this table on 2026-09-12, re-measured rather than
-assumed. `Duration.nanos(-1).as_nanos()` and
-`Duration.from_nanos(-1).as_nanos()` both answer `-1` — the split where
-one clamped and the other did not is gone, across all four scale tiers,
-and `Duration` is signed throughout. `duration_parse.parse(&Text.from("-15m"))`
-answers a negative span, which was gated on that. And `duration_since`
-refuses past the Int64 nanosecond range — roughly the year 2262 — with a
-dedicated `Overflow`, instead of returning a wrapped negative number that
-looks like an answer.
+`Duration` is signed: `Duration.nanos(-1).as_nanos()` and
+`Duration.from_nanos(-1).as_nanos()` both return `-1`, and
+`duration_parse.parse(&Text.from("-15m"))` accepts a negative span.
+`duration_since` reports `Overflow` beyond the Int64 nanosecond range
+rather than wrapping the result. Remaining limitations are listed below.
 
 | ID | Module | Surface | Resolution path |
 |---|---|---|---|

@@ -39,7 +39,7 @@ selects build settings; it does not override the configured execution mode.
 An explicit file invocation such as `verum run app.vr` defaults to the
 interpreter. Use explicit flags when comparing backends.
 
-**Known limitation, measured 2026-10-04:** interpreter and native
+**Known limitation:** interpreter and native
 behaviour are not fully interchangeable. Generic callable chains,
 imported type information, panic handling, and owned-resource cleanup
 still have failing cases. A successful interpreter run does not validate
@@ -123,7 +123,7 @@ Use it to assess native deployment, code generation, and resource
 behaviour. LLVM optimisation, target support, and link configuration
 are described in [codegen](/docs/architecture/codegen).
 
-**Verified behaviour, measured 2026-10-04:** when AOT execution is
+**Verified behaviour:** when AOT execution is
 requested explicitly, a compilation failure returns an error instead of
 running the source through the interpreter. For native acceptance,
 check the exit status and diagnostics, and confirm that a fresh compiled
@@ -202,7 +202,7 @@ is intended to use. The standard library marks these groups with
 
 :::caution Runtime profile selection
 
-**Known limitation, measured 2026-09-10:** the attributes are written and the stdlib is organised by them. **There
+**Known limitation:** the attributes are written and the stdlib is organised by them. **There
 is no way to select a profile yet.** Verified: `@cfg(runtime = "X")` is
 not a known cfg key — `TargetConfig::matches` handles `target_os`,
 `target_arch`, `target_family`, `target_pointer_width`, `target_endian`,

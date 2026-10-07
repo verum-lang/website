@@ -70,7 +70,7 @@ presence proves nothing on its own; here the word occurs precisely
 because a comment asks for it.
 
 What the warning got wrong is the conclusion. The un-prefixed form IS
-syntax: re-measured 2026-09-05, `forall i in 0..n. p` parses in a
+syntax: `forall i in 0..n. p` parses in a
 `requires`, in an `ensures`, in a `where` clause on a type, and inside
 `@verify(...)`. The eight occurrences on this page are `forall … .` now
 and the blocks compile.

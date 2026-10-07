@@ -7,7 +7,7 @@ description: Compile-time-checked regex — match, captures, replace, iterate, f
 
 :::danger `rx#"..."` does not work today — use `Regex.new`
 
-Measured 2026-09-12, with the two spellings of the same pattern in one
+Checked, with the two spellings of the same pattern in one
 program:
 
 ```verum
@@ -106,7 +106,7 @@ Numbered groups:
 
 :::danger Not accepted by the parser — use positional groups
 
-Measured 2026-09-12: both `(?P<name>...)` and `(?<name>...)` are
+both `(?P<name>...)` and `(?<name>...)` are
 rejected at compile time, while `([0-9]{4})` is accepted. The engine
 declares positional capture groups only, with group 0 as the whole
 match.
@@ -218,7 +218,7 @@ type Phone  is Text { self.matches(rx#"^\+?\d[\d\s-]{7,}$") };
 
 :::warning None of that is enforced today, and this page used to say it was
 
-Measured 2026-09-12, three separate reasons, any one of which is enough:
+Checked, three separate reasons, any one of which is enough:
 
 * `Text.matches(&self, pattern: &Text) -> TextMatches` takes a **`Text`**
   and returns an **iterator**, not a `Bool`. It is not a predicate, and
@@ -250,8 +250,7 @@ enters your program.
 
 :::danger The engine accepts no inline flags at all
 
-Every one of these is REJECTED by the pattern parser — measured
-2026-09-12 through `Regex.new`, with an unflagged pattern as the control:
+Every one of these is REJECTED by the pattern parser — checked through `Regex.new`, with an unflagged pattern as the control:
 
 | written | verdict |
 |---|---|
@@ -300,9 +299,7 @@ spell the alternatives into the class: `[Hh]ello`.
 
 :::danger There is none — the engine is byte-oriented and its classes are ASCII
 
-This section used to say the opposite. Measured 2026-09-12:
-
-```verum
+This section used to say the opposite. ```verum
 Regex.new("\\w+")?.is_match("привет")   // false
 Regex.new("\\w+")?.is_match("abc")      // true   — the control
 Regex.new("\\p{L}+")                    // rejected at compile
@@ -320,7 +317,7 @@ into a class, or by narrowing the input before it reaches the regex.
 
 :::danger `(?:...)` is rejected by the parser
 
-Measured 2026-09-12: `(?:abc)+` is refused at compile time while
+`(?:abc)+` is refused at compile time while
 `(abc)+` is accepted. Where you do not need the capture, use an
 ordinary group and ignore it — the alternation and the quantifier
 behave the same.
@@ -338,7 +335,7 @@ let words = rx#"(word1|word2|word3)";
 
 :::danger No lookaround is accepted, and the linearity claim was wrong too
 
-Measured 2026-09-12: `(?=...)`, `(?!...)`, `(?<=...)` and `(?<!...)` are
+`(?=...)`, `(?!...)`, `(?<=...)` and `(?<!...)` are
 all rejected at compile time.
 
 This section also said lookaround "keeps the engine linear (RE2-class) —
@@ -380,7 +377,7 @@ context-sensitive rewrites.
 
 ## Performance notes
 
-Re-measured 2026-09-12 against the engine's own declaration and against
+Checked against the engine's own declaration and against
 `core/text/regex.vr`. Three of the five claims this section used to
 carry were wrong, and all three were wrong in the direction that would
 cost a reader.

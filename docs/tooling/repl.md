@@ -255,7 +255,7 @@ verum check my_script.vr            # just type-check (no eval)
 ```
 
 :::warning `verum eval` does not exist
-Measured 2026-09-03: `verum eval --help` answers `error: unrecognized
+`verum eval --help` answers `error: unrecognized
 subcommand`. To evaluate a single expression, use the REPL (`verum
 repl`) or a one-line script — `verum file.vr` runs a script directly.
 :::

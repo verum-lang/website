@@ -203,8 +203,7 @@ async fn resume_with_0rtt(
 ```
 
 :::caution The 0-RTT client entry point is not shipped
-`TlsClient.new_resumed(cfg, session, early_payload)` does not exist, and
-this page presented it as the resumption API until 2026-09-06.
+`TlsClient.new_resumed(cfg, session, early_payload)` is not declared.
 
 What DOES ship is everything around it, which is why the gap is easy to
 miss. `ClientSession` is complete — `ticket`, `ticket_age_add`,
@@ -280,16 +279,15 @@ in Verum).
   chain validation (`TrustStore.verify(...)`) and the cipher /
   AEAD / KDF primitives the key schedule consumes.
 
-## Status (2026-04-29)
+## Status
 
 Full handshake path (1-RTT + 0-RTT) + resumption + HRR ships.
 Server-side post-handshake auth is wired; anti-replay ships as two
 independent strategies (bloom-filter + monotonic clock).
 
-L2 conformance does not pass over the whole module. The fraction
-this line carried is removed rather than refreshed — it was taken on a
-2026-04-29 baseline and has not been re-run, and a stale rate reads
-as a current one.
+L2 conformance does not pass over the whole module. Consult the
+per-module audits and conformance inventory for the tested surface; no
+module-wide pass rate is asserted here.
 
 The gap is **not** in TLS protocol code: the implementation modules
 all type-check standalone, the V1 / V2 / V8 theorems still discharge

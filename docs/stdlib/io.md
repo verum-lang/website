@@ -3,7 +3,7 @@ sidebar_position: 1
 title: io
 description: Files, paths, stdio, processes, Read/Write protocols, buffered I/O.
 status: partial
-status_detail: 10 submodules covered by core-tests/io/* (2026-05-24); 200+ green tests under `--interp` over data-only + construction surface; method-call surface (Reader/Writer/Cursor/File) gated by task #io-1 (mount-scope-aware lookup_function).
+status_detail: 10 submodules covered by core-tests/io/*; 200+ green tests under `--interp` over data-only + construction surface; method-call surface (Reader/Writer/Cursor/File) gated by task #io-1 (mount-scope-aware lookup_function).
 ---
 
 import StdlibStatus from '@site/src/components/StdlibStatus';
@@ -27,7 +27,6 @@ variants are provided.
     {area: 'io.process', summary: 'Command.{spawn,output,status} return Result<_,Text> instead of IoResult<T>; Output.stdout returns Text not bytes'},
     {area: 'io.engine', summary: 'IoEngine.new/destroy needs sandboxed test harness; real async I/O via engine.poll still in plan'},
   ]}
-  sweepDate="2026-05-24"
 />
 
 ## Submodule status
@@ -372,7 +371,7 @@ r.raw_fd() -> Int
 
 ### Idiomatic line processing (post-#io-1)
 
-> **Open defect — this pattern crashes under AOT.** Measured 2026-09-12
+> **Open defect — this pattern crashes under AOT.** Checked
 > on `docs/by-example/19-file-io`: the interpreter prints every line and
 > the AOT binary writes and reads the file correctly, then faults inside
 > `BufReader.read_until` on the first iteration. The fault address IS

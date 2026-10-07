@@ -60,7 +60,7 @@ See [Diakrisis Bridge Roster](diakrisis-bridge-roster.md) for the
 catalogue of explicit verification checks that each proof rule
 must pass before the kernel ever sees it.
 
-## Recent stdlib promotion (2026-04-28 / 29)
+## Standard-library proof coverage
 
 The April-28/29 sweep promoted **101 tautological framework-citation
 axioms** to V2/V3 witness-parameterised theorems across three

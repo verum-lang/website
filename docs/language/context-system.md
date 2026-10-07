@@ -23,8 +23,7 @@ The ten you will reach for in ordinary code are `Logger`, `Database`,
 (`core/context/random.vr`). See
 [stdlib → context](/docs/stdlib/context#the-10-standard-contexts).
 
-**They are not the only ten, and this box said they were until
-2026-09-12.** The census is one command:
+**Other contexts are available.** List their declarations with:
 
 ```bash
 grep -rcE '^ *(public |pub )?context +[A-Za-z_]' core/ --include='*.vr' \
@@ -139,9 +138,7 @@ value was provided. Delete the `implement ConsoleLogger` block and the
 programme still compiles, still runs, and still prints `user=ada` — the
 log line simply disappears, with no diagnostic.
 
-Measured 2026-09-07, re-measured 2026-09-10 against a compiler built
-that day. The probe is the block above and the block above minus five
-lines:
+Compare the block above with the same source minus its implementation:
 
 ```
 sed '/^implement ConsoleLogger {/,/^}$/d' with_impl.vr > without_impl.vr
@@ -221,7 +218,7 @@ compiler says so:
     Function 'caller' calls 'callee' which requires context 'Zlog',
     but 'Zlog' is excluded via `using [!Zlog]` in 'caller'
 
-:::info What the compiler does with that, measured 2026-09-03
+:::info What the compiler does with that
 It is an **error**, and the build fails. `[context] unresolved_policy`
 in `Verum.toml` chooses the severity, and all four settings now differ:
 
@@ -231,10 +228,6 @@ in `Verum.toml` chooses the severity, and all four settings now differ:
 | `"error"` | non-zero | error | shown |
 | `"warn"` | 0 | none | shown |
 | `"allow"` | 0 | none | silent |
-
-Until this date the `"error"` arm called the same warning routine as
-`"warn"`, so the knob had no effect and a violation reached you as a log
-line that no exit status reflected.
 
 The exclusion also names a real context: `using [!Databse]` is
 `error<E605>: undefined context`, not a silent no-op, so a typo cannot
@@ -293,7 +286,7 @@ context that declares it: `readonly()` above returns a `Store` whose
 promise for you.
 
 :::note The method IS checked — this caution was stale
-Measured 2026-09-04. Calling a method the context does not declare is
+Calling a method the context does not declare is
 refused at compile time with its own diagnostic:
 
     context Store { fn read(url: Text) -> Text; }

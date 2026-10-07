@@ -58,7 +58,7 @@ right answer 95% of the time.
 
 :::caution HMAC-SHA is interpreter-only today (AOT crashes)
 
-Measured 2026-09-13 on macOS arm64: `hmac_sha256` over a 4-byte key and `abc`
+Checked on macOS arm64: `hmac_sha256` over a 4-byte key and `abc`
 returns a full 32-byte tag under `verum run`, and the same program compiled
 with `verum build` faults at `0xfffffff8ffc08200` inside
 `core.hash.crypto.sha256.compress_block`. The address is far above the heap

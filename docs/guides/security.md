@@ -17,7 +17,7 @@ them cannot be executed by this build, and a security guide that does not
 say so is worse than none — a reader follows it and ships code that stops
 at the first call.
 
-Measured 2026-09-13, both tiers:
+Checked, both tiers:
 
 | Recommended here | State in this build |
 |---|---|

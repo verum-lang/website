@@ -53,7 +53,7 @@ commitments or deduplication.
 
 :::caution Interpreter-only today (AOT crashes)
 
-Measured 2026-09-13 on macOS arm64: `Sha256.digest`, `Sha512.digest`,
+Checked on macOS arm64: `Sha256.digest`, `Sha512.digest`,
 `Sha1.digest` and `blake3` all return the **correct** digests under
 `verum run` — `abc` gives `ba7816bf…`, `ddaf35a1…`, `a9993e36…` and
 `6437b3ac…` — and every one of them faults at address `0x0` inside its own

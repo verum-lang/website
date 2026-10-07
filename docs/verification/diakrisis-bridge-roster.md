@@ -21,7 +21,7 @@ proof fails) or **silently admit** (any user `axiom` implicitly
 discharges). Neither is acceptable for an industrial proof
 assistant.
 
-V2 (shipped 2026-04-28 across multiple commits) introduces a third
+Named bridge support introduces a third
 option: **named bridge admits** — the kernel records WHICH preprint
 result is being admitted, produces a structured audit trail, and
 surfaces the dependency to downstream auditors via
@@ -29,7 +29,7 @@ surfaces the dependency to downstream auditors via
 
 ## Roster
 
-The complete inventory of bridge admits as of 2026-04-28:
+The complete inventory of bridge admits:
 
 | `BridgeId` | Audit string | Diakrisis result | K-rule consumer |
 |------------|--------------|------------------|------------------|

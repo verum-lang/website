@@ -198,7 +198,7 @@ pub async fn write_loop(
     // `open_async` does not exist; the async entry point is
     // `AsyncFile.open_with_options`. And the OpenOptions builders take
     // `&mut self`, so they are called on a BOUND variable — chaining
-    // them off `new()` null-dereferences (measured 2026-09-08).
+    // them off `new()` null-dereferences.
     let mut opts = OpenOptions.new();
     opts.create(true);
     opts.append(true);
@@ -361,12 +361,12 @@ No memory blows up; no messages are dropped.
 
 Let me correct the shutdown:
 
-:::caution The stop flag on this page does not read back correctly today
+:::caution Cancellation and cleanup coverage
 
-`Shared.new(AtomicBool.new(false))` answers `true` when read through the
-carrier — measured 2026-09-16, and the answer is not reproducible between
-runs. The explicit dereference is correct meanwhile:
-`(*stopped).load(MemoryOrdering.Acquire)`. Measurements and mechanism:
+Primitive shared-atomic reads preserve the stored value in both backends.
+Full shutdown still depends on cancellation propagation and resource
+cleanup; native guard lifetime remains incomplete. Check the whole flow
+in the selected backend. See
 [Sharing state across tasks](/docs/cookbook/shared-state).
 :::
 

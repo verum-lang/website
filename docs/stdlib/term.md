@@ -9,7 +9,7 @@ import StdlibStatus from '@site/src/components/StdlibStatus';
 
 # `core.term` — Terminal / TUI framework
 
-<StdlibStatus status="undocumented" />
+<StdlibStatus status="unaudited" />
 
 A seven-layer TUI framework. Each layer is self-contained; higher
 layers are optional, so you can drop down to raw mode when you need
@@ -394,7 +394,7 @@ Block.new()
 | `TextSpan.raw("text")` | an inline run; the styled form is `TextSpan.styled("text", Style.new().fg(Color.Red))` |
 
 The span type is `TextSpan`. Bare `Span` is not it, and not one other
-thing but two — re-measured 2026-09-11:
+thing but two — checked:
 
 ```
 grep -rnE '^ *public type (Span|TextSpan)\b' core/ --include='*.vr'
@@ -652,7 +652,7 @@ other; the return shapes differ.
 
 :::caution Not shipped
 `Router`, `Screen` and `CommandPalette` are not part of the terminal
-framework. Measured 2026-09-10:
+framework. Checked:
 
 ```
 grep -rlE '^ *(public )?type (App|Router|Screen|CommandPalette)\b' \
@@ -666,13 +666,10 @@ contradict the box it is evidence for.
 ```
 ```
 
-Scope matters here, and an earlier wording of this box got it wrong by
-claiming zero declarations under `core/` at large. Two of the four names
-ARE declared elsewhere and mean something else — `core/net/weft/router.vr`
-has a `Router` that routes HTTP, `core/cli/runtime.vr` an `App` that is a
-command-line program. Under `core/term/` there is neither. The page once
-showed a `router.route(…).navigate(…)` builder and a `palette.register(…)`
-chain; neither name is callable.
+The declaration search is scoped to `core/term/`. Other modules define
+different types with overlapping names: `core/net/weft/router.vr` supplies
+an HTTP `Router`, and `core/cli/runtime.vr` supplies a command-line `App`.
+Neither supplies a terminal navigation or command-palette builder.
 
 The shipped Layer 6 surface is the five re-exports of
 `core/term/app/mod.vr` — `grep '^public mount' core/term/app/mod.vr` —

@@ -73,7 +73,7 @@ copysign(x, y)          signbit(x) -> Bool
 `core.math.ieee754_deterministic` is re-exported from `core/math/mod.vr`,
 so `mount core.math.ieee754_deterministic.{sqrt}` resolves and compiles.
 Every one of its twenty-one functions then panics on its first call.
-Measured 2026-09-11:
+Checked:
 
 ```verum
 mount core.math.ieee754_deterministic.{sqrt};
@@ -150,18 +150,10 @@ independently verified.
 
 ## Layer 1 — Scalar math
 
-:::note The name-resolution defect this layer carried is gone — re-measured 2026-09-11
+:::note Scalar math behaviour and precision
 
-Between 2026-07-28 and this measurement, this page warned that `sin`,
-`cos`, `exp`, `log` and `sqrt` in `core.math.elementary` resolved to a
-same-named function in a different `core/math/*.vr` file — that some
-calls crashed with a runtime type error and `sin` had been seen
-returning a value of the wrong type silently. **It does not reproduce.**
-
-Fourteen functions from that warning's two "broken" lists were run
-against a compiler built 2026-09-11, on inputs whose answers are
-distinctive rather than on zero — deliberately, because `sin(0) = 0` and
-`cos(0) = 1` are exactly what a wrongly-typed default would also print:
+The recorded `core.math.elementary` controls use nonzero inputs to
+distinguish the selected function from a default-valued result:
 
 ```
 sin(1)      0.8414709848078965      cos(1)     0.5403023058681397
@@ -177,26 +169,21 @@ precision, not a wrong callee: `exp`, `expm1` and `log` land around nine
 significant digits, which is this stack's pure-Verum implementation
 rather than the platform's libm.
 
-**`atan` was wrong near x = 1 and outside its own range below −1. Fixed
-2026-09-11**, and worth reading if you pinned a workaround against it.
+`atan` uses range reduction to preserve its `(−π/2, π/2)` range and
+avoid the slow convergence of a short Taylor series near `|x| = 1`.
+Recorded comparisons give:
 
-It returned −2.0344 for `atan(-2.0)` — outside the `(−π/2, π/2)` the
-signature promises — for every x < −1, because a reduction was written
-`sign * π/2 - atan(1/|x|)` and precedence dropped the parentheses. And
-near |x| = 1 it stepped about 0.07 between 0.999 and 1.001, where the
-true function moves 0.001, because a seven-term series was used across
-the whole of |x| ≤ 1 and that series converges like 1/n at the endpoint.
-
-```
-        before             after                true
--2.0    -2.0344456         -1.1071487177940904  -1.1071487177940906
- 0.999   0.8199361855720    0.7848979134744296   0.784897913314115
- 1.0     0.8209331798389    0.785398163562613    0.7853981633974483
- 1.001   0.7508591481926    0.785897913320462    0.7858979134807815
+```text
+input   elementary atan       reference
+-2.0    -1.1071487177940904    -1.1071487177940906
+ 0.999   0.7848979134744296     0.784897913314115
+ 1.0     0.785398163562613      0.7853981633974483
+ 1.001   0.785897913320462      0.7858979134807815
 ```
 
-Worst error across [−40, 40] is now 1.65e-10. `atan2` inherited both
-faults and is fixed with it.
+The recorded maximum error over `[−40, 40]` is `1.65e-10`; this is a
+bounded numerical control, not a guarantee over all floating-point inputs.
+`atan2` uses the same implementation.
 
 **Two `atan`s, and the bare name is not the exact one.** `core.math.libm`
 delegates to an `@intrinsic("atan2")`, so it answers exactly;
@@ -418,19 +405,12 @@ advances=true in_range=true
 shuffle len=8 sum=36
 ```
 
-:::note Corrected 2026-09-07
+:::note Generator and distribution APIs
 
-This section previously declared `Rng` a protocol with `next_u64` and
-`split`, listed the distributions under it, and showed them after
-`XorShift128.new` — so a reader would reach for `XorShift128.uniform_01`
-and get `no method named uniform_01 found for type XorShift128`. `Rng`
-is a record, the raw generators are separate types, and each list above
-was read off `core/random/deterministic.vr` and run.
-
-Nine entries were moved rather than kept as methods. `shuffle_vec`,
-`choice`, `truncated_normal`, `poisson`, `gamma`, `beta`, `chi_squared`,
-`student_t` and `categorical` all exist — as key-taking FREE FUNCTIONS in
-`core/random/deterministic.vr`, not as `Rng` methods:
+`Rng` is a record. Raw generators such as `XorShift128` are separate
+types. `shuffle_vec`, `choice`, `truncated_normal`, `poisson`, `gamma`,
+`beta`, `chi_squared`, `student_t` and `categorical` are key-taking free
+functions in `core/random/deterministic.vr`:
 
 ```verum
 core.random.deterministic.choice(key, &xs) -> T
@@ -456,7 +436,7 @@ Defines `Tensor<T, const S: Shape>` (statically shaped) and `DynTensor<T>`
 Tensor operations run under the interpreter. The AOT tier lowers some of
 them and announces the rest: of the 107 tensor runtime helpers the
 compiler references, 71 are panic stubs that name themselves when
-reached. Measured 2026-09-02:
+reached. Checked:
 
 ```
 verum run             shape ok
@@ -593,8 +573,7 @@ implementations — for `Float`, `DynTensor<T: RealField>`,
 Two caveats, both measured on the current toolchain rather than read
 off the source:
 
-* A `<T: Differentiable>` bound **is satisfied by `Float`** as of
-  2026-09-03 (it was not when this page was first written). Measured
+* A `<T: Differentiable>` bound **is satisfied by `Float`** (it was not when this page was first written). Measured
   with the control that makes the result mean something:
 
   | probe | result |

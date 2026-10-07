@@ -50,12 +50,6 @@
   font-size: 0.95rem;
 }
 
-.sweepDate {
-  font-size: 0.85rem;
-  color: var(--ifm-color-content-secondary);
-  margin: 0;
-}
-
 .defects {
   margin-top: 0.75rem;
   border-top: 1px solid var(--ifm-color-emphasis-200);

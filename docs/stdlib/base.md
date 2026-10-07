@@ -606,7 +606,7 @@ type Iterator is protocol {
 
 :::warning
 
-**Known limitation, measured 2026-09-07:** `min_by` and `max_by` crash
+**Known limitation:** `min_by` and `max_by` crash
 the compiler. This call —
 
 ```verum

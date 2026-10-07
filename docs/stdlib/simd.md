@@ -120,7 +120,7 @@ v.reduce_min() -> T        v.reduce_max() -> T
 
 :::danger Construction and extraction work; arithmetic and reduction do not
 
-**Known limitation, measured 2026-09-07.** Three separate failures, each
+**Known limitation.** Three separate failures, each
 run rather than inferred.
 
 **1. All seven reductions return their receiver.** `reduce_add`,
@@ -140,7 +140,7 @@ number that is wrong twice over, since neither the broadcast nor the
 reduction happened.
 
 **3. `add` no longer ends the build — it returns a DIFFERENT NUMBER
-EVERY RUN.** Re-measured 2026-09-12; this is the one entry above that
+EVERY RUN.** this is the one entry above that
 changed, and it changed for the worse. Where it used to stop with
 `internal compiler error (panic: Expected float, got Some(3))`, the same
 programme now completes and prints:

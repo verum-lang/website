@@ -26,10 +26,10 @@ by `core-tests/collections/<module>/` under both `verum test --interp`
 
 The module statuses record conformance coverage, not a guarantee that
 all collection operations agree between the interpreter and native
-execution. Historical per-module notes below have not all been
-re-measured; use dated API-specific results when choosing a backend.
+execution. Per-module audits cover different subsets; use API-specific backend
+limitations when choosing an execution mode.
 
-**Known limitation, measured 2026-10-04:** native `List<Byte>` allocation
+**Known limitation:** native `List<Byte>` allocation
 can return an invalid handle on the shrink-and-regrow path. Do not rely
 on native byte-list resizing in production until that path is verified.
 Empty and nonempty `List<Byte>` and `List<Int>` shrink, push, reserve and
@@ -49,7 +49,7 @@ cover those operations, not every `List` method or another collection.
 
 | Module | Status | Conformance suite |
 |---|---|---|
-| `list.vr` | **partial** | [core-tests/collections/list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/list) — interpreter shrink/regrow and reserve checks preserve Byte and Int values. Native byte-list allocation remains unsafe on that path; see the dated limitation above. Other method coverage remains partial. |
+| `list.vr` | **partial** | [core-tests/collections/list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/list) — interpreter shrink/regrow and reserve checks preserve Byte and Int values. Native byte-list allocation remains unsafe on that path; see the backend limitation above. Other method coverage remains partial. |
 | `map.vr`            | **partial** | [core-tests/collections/map](https://github.com/verum-lang/verum/tree/main/core-tests/collections/map) — most of the active conformance suite is green under the interpreter. The gap is `keys_list` / `values_list` and a with-capacity-then-fill case, deferred behind the defect named below. Sections 10–16 added (get_or / with_capacity / insert overwrite contract / remove return contract / many-keys preserved + half-remove / keys_list-values_list / is_empty + capacity invariants). MapIter.next NullPointerAt wrapper-iter dispatch class gates keys_list/values_list (same root as slice §D). Cap=0 bootstrap guard added on insert. |
 | `set.vr`            | **partial** | [core-tests/collections/set](https://github.com/verum-lang/verum/tree/main/core-tests/collections/set) — 23 unit + 10 property + 5 integration + 4 pinned regressions. Set.insert returns Bool (was Unit); Set.union / Set.intersection auto-deref CBGR ref needle. |
 | `multiset.vr`       | **partial** | [core-tests/collections/multiset](https://github.com/verum-lang/verum/tree/main/core-tests/collections/multiset) — 21 unit + 10 property + 5 integration + 12 regressions. Construction / insert / remove / count / contains / clear / cardinality / distinct_len / is_subset / with-empty algebraic ops green; per-element-correct union/intersection/sum/difference and direct iter() pinned (gated on MultisetIter wrapping Map.iter() — wrapper-type dispatch defect, same class as slice §D). |
@@ -153,10 +153,9 @@ xs.first_mut() / xs.last_mut() -> Maybe<T>
 
 :::caution These return the element BY VALUE, not a reference
 
-This block previously read `Maybe<&T>` and `Maybe<&mut T>`, matching the
-Rust API it is modelled on. `core/collections/list.vr` returns `Maybe<T>`
-from all six — checked against the declarations at lines 350, 360, 396,
-402, 412 and 418.
+`core/collections/list.vr` declares `Maybe<T>` for these accessors.
+They return an element value; a mutable-sounding name does not imply a
+returned mutable reference.
 
 Two things follow, and both bite in practice:
 
@@ -238,7 +237,7 @@ xs.enumerate()            // List<(Int, T)>   MATERIALISED
 ```
 
 :::caution Some of these return heap addresses instead of elements
-Measured 2026-09-12 at Tier 0 on `[1, 2, 3, 4]`, and the split is not
+Checked at Tier 0 on `[1, 2, 3, 4]`, and the split is not
 where you would guess:
 
 | Answers correctly | Answers with pointers or worse |
@@ -376,7 +375,7 @@ m.extend(iter)                         // iter yields (K, V)
 
 :::warning
 
-**Known limitation, re-measured 2026-09-10 on a compiler built that day.**
+**Known limitation:**
 The signatures on this page are correct — they are what `core/` declares
 — but two of them answer wrongly and one traps.
 
@@ -386,14 +385,9 @@ The signatures on this page are correct — they are what `core/` declares
 | answers a wrong `Maybe.None`, silently | `get_mut`, `get_key_value` |
 | traps, but **only on an empty map** | `entry` (and every `MapEntry` / `OccupiedEntry` method reached through it) |
 
-Two of those changed since the previous measurement and are worth
-stating precisely.
-
-`get_mut` and `get_key_value` no longer crash. They now return
-`Maybe.None` for a key the same map will happily hand you by other
-means — which is worse in kind, because a crash stops the program and a
-`None` flows on as a plausible answer. The control is short enough to
-paste:
+The recorded `get_mut` and `get_key_value` controls return `Maybe.None`
+for an existing key while other accessors return its value. This silent
+failure can propagate as an apparently valid absence. Reproduction:
 
 ```verum
 let mut m: Map<Text, Int> = Map.new();
@@ -406,10 +400,9 @@ m.get_mut(&k)         // Maybe.None      <- WRONG
 m.get_key_value(&k)   // Maybe.None      <- WRONG
 ```
 
-`entry` traps under two conditions, and neither is the obvious one. It
-is **not** about the key being present, and **not** about the map being
-empty — an earlier revision of this page said the latter, which fitted
-four probes and failed the fifth:
+The recorded `entry` controls distinguish construction and removal
+paths. The map length or presence of the requested key alone does not
+predict the failure:
 
 ```verum
 Map.new();                       m.entry("a")   // traps
@@ -504,7 +497,7 @@ triggers a rehash — which is exactly what `&mut self` on the borrowing
 half prevents you from doing while a borrow is live.
 
 :::caution `values_mut` does not run at Tier 0
-Measured 2026-09-08:
+Checked:
 
 ```verum
 for v in m.values_mut() { *v = *v * 10; }
@@ -1021,7 +1014,7 @@ keyed hashing with per-filter CSPRNG-sourced keys; adversarial
 inputs cannot skew past the theoretical error bound.
 
 :::caution None of the three constructs at Tier 0
-Measured 2026-09-12. `BloomFilter.new(...)`, `HyperLogLog.new(12)` and
+Checked. `BloomFilter.new(...)`, `HyperLogLog.new(12)` and
 `CountMinSketch.with_target(...)` each stop at the constructor:
 
 ```text
@@ -1304,16 +1297,9 @@ regressions. Run with `verum test --interp --filter test_uf_` and
 
 ## Open defects in collections
 
-Re-measured 2026-09-10 on a compiler built that day. **Five of the six
-entries this table used to carry are fixed**, so the table is now the
-short one, and what closed is listed under it rather than deleted —
-a reader who worked around one of these deserves to learn it can stop.
-
-Re-measured on 2026-09-12, and **both entries had to be rewritten** —
-one described the wrong symptom, the other named a discriminator that a
-two-line control refutes. Fifty of `Map`'s methods were then called on
-the same populated map, one program per method: thirty-seven answered
-and thirteen trapped, in three distinct families.
+The recorded populated-map controls identify three failure families.
+These results apply to the tested interpreter surface; they do not
+establish complete native coverage.
 
 | Defect | Where it shows | Evidence |
 |---|---|---|
@@ -1321,10 +1307,8 @@ and thirteen trapped, in three distinct families.
 | Four trap inside iteration: `keys_list`, `values_list`, `clone`, `partition` | collecting an iterator into a `List`, and copying a map | a null dereference at `MapIter.next`, `Map.clone` and `Map.partition` |
 | `extend` cannot find `next` on its receiver at all | merging one map into another | the map arrives where an iterator was expected |
 
-`entry` does **not** trap only on an empty map. A previous revision of
-this page said `len() == 0` was the discriminator; calling `entry` on a
-map holding one key traps identically, so the discriminator is the
-method, not the map.
+`entry` also has a failing populated-map control. An empty map is not a
+sufficient explanation for the failure.
 
 The thirty-seven that answer cover the ordinary path and most of the
 functional surface — `new`, `insert`, `get`, `get_or`, `get_or_insert`,
@@ -1341,45 +1325,31 @@ consumer outside `Map`: `Data.merge` in `core.base.data` traps, and its
 whole body is `a.clone()` plus a destructuring walk over `b` — the walk
 is fine, the copy is not.
 
-### Working around the ten
+### Workarounds
 
 `to_entries()` answers, so a pair-yielding lookup is a filter over it.
 A `for` loop over `keys()` or `values()` replaces `keys_list()` and
 `values_list()`. For `entry`-shaped code, `get` followed by `insert`
 does the same work in two calls.
 
-### Closed since the previous revision
+### Focused working controls
 
-Each was re-run rather than assumed, and each answer below came from a
-program, not from reading the source:
+These behaviours have individual execution controls:
 
-* **`Map.get` on a miss** now yields `Maybe.None`. It used to hand back a
-  zero-valued `V`, which is the failure a reader cannot see.
+* **`Map.get` on a miss** yields `Maybe.None`.
 * **`Map.contains_key`** answers `true` for a present key and `false` for
   an absent one.
 * **`Text` equality** on byte-identical literals is `true`, and `false`
   on different ones.
 * **`Text.from_utf8_unchecked`** builds a Text whose `as_bytes().len()`
   matches its `len()` — two bytes in, two bytes out.
-* **`Reservoir.offer`** runs. It no longer depends on the
-  `core.sys.common.random_bytes` marshalling chain: `core/collections/reservoir.vr`
-  calls the `random_u64` intrinsic directly, and its own comment records
-  why.
+* **`Reservoir.offer`** uses the `random_u64` intrinsic directly in
+  `core/collections/reservoir.vr`.
 
-The addresses in the deleted table were line numbers into `core/`, and
-by the time they were checked **every one of them was wrong**. The
-smallest drift was one line, the largest four hundred and thirty; one
-pointed past the end of its file, which had shrunk below the cited
-line; and one named a `Map.get_optional` that `core/` does not declare
-at all.
+Use the runnable controls and linked per-module audits to evaluate the
+relevant API and execution backend.
 
-That spread is the argument, not the size of it. A citation off by one
-still reads as correct to anyone who opens the file, and a citation off
-by four hundred reads as a mistake in the reader's checkout. Neither
-tells you the claim went stale. So the two rows above point at runnable
-blocks on this page instead of at line numbers.
-
-## Architectural snapshot 2026-05-23
+## Collection architecture
 
 Not every collection is equally ready. This is what works today under
 the interpreter, and what to reach for instead where it does not.

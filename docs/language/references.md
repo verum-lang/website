@@ -147,7 +147,7 @@ reference and `DerefMut` contract; `Deref` alone does not grant mutation.
 library. A lock guard can also expose its protected value through
 `Deref`, but dereference behaviour and lock release are separate issues.
 
-**Known limitation, measured 2026-10-04:** qualified wrapper receivers,
+**Known limitation:** qualified wrapper receivers,
 chained method results, and nested fields through `Deref` still have
 compiler gaps in some builds. In particular, a direct access working
 in the interpreter does not prove that an imported generic chain
@@ -177,7 +177,7 @@ arguments. Use explicit mounts or qualified names at module boundaries
 to make the intended declaration clear; qualification does not perform
 a conversion. See [modules](/docs/language/modules).
 
-**Known limitation, measured 2026-10-04:** imported signatures and
+**Known limitation:** imported signatures and
 source-qualified reference parameters still have incomplete type
 identity propagation in some compiler paths. Do not shorten a type name
 to make an unrelated type acceptable, or treat a field-guess diagnostic
@@ -190,15 +190,15 @@ that value is destroyed. Passing `&T`, dereferencing a wrapper, or
 casting an address does not establish a new owner. Reference validity
 checks therefore cannot replace correct `Drop` behaviour.
 
-**Known limitation, measured 2026-10-04:** general native owned-object
+**Known limitation:** general native owned-object
 destruction and lock-guard release are incomplete. Interpreter mutex
 checks can also report a lock released while its guard is still in
 scope. Borrowed access can work while the owner's lifetime is incorrect;
 validate ownership throughout the guard's use and cleanup in each backend.
 
 Using a native borrowed result through lazy-initialization accessors can
-also fail after successful initialization, as measured on
-`root_supervisor()` on 2026-10-04. Checking the stored value alone does
+also fail after successful initialization. The `root_supervisor()`
+accessor chain is one affected case. Checking the stored value alone does
 not validate a reference returned through the whole call chain. See
 [runtime coverage](/docs/stdlib/runtime#submodule-status-overview).
 
@@ -325,7 +325,7 @@ survives all the way from the compiler to the executor:
 
 | Opcode | Hex | Tier | Runtime behaviour |
 |--------|-----|------|-------------------|
-| `Ref` | 0x70 | 0 | CBGR-validated deref (1.2–1.7 ns, re-measured 2026-09-05) |
+| `Ref` | 0x70 | 0 | CBGR-validated deref (1.2–1.7 ns) |
 | `RefMut` | 0x71 | 0 | mutable CBGR-validated |
 | `Deref` | 0x72 | — | deref with validation |
 | `DerefMut` | 0x73 | — | mutable deref with validation |

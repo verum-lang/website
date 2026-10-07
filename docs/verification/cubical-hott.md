@@ -9,7 +9,7 @@ Verum's type system includes a **cubical** fragment — path types,
 higher-inductive types, and computational univalence. This allows
 equational reasoning that plain SMT cannot express.
 
-:::caution What on this page runs, measured 2026-09-10
+:::caution What on this page runs
 
 The machinery below the surface is real: each `@builtin_*` binds to a
 `CubicalExtended` VBC sub-op, the interpreter implements twelve of
@@ -92,7 +92,9 @@ public fn trans<A>(a: A, b: A, c: A, p: HottPath<A>(a, b), q: HottPath<A>(b, c))
 }
 ```
 
-Both of those reach their codegen arms and emit the `CubicalExtended` sub-op the arm names. That was not true before 2026-09-11: the arms are written to accept two spellings (`"@builtin_sym" | "sym"`), but the `@`-prefixed string was produced only by a compilation route that never consulted this table, so every one of them compiled to `nil` while drawing `warning<E0410>: unknown meta-function`. Both halves are fixed — the warning was itself wrong (the type checker accepts the whole `builtin_` namespace by design) and the call now arrives.
+Both forms reach their codegen arms and emit the corresponding
+`CubicalExtended` sub-op. The type checker accepts the `builtin_` namespace;
+lowering must preserve the selected operation.
 
 ## The interval `I`
 
@@ -298,7 +300,7 @@ See `verum_smt/src/cubical_tactic.rs` for the routing.
   let x: Int = refl(7);` answers `expected 'Int', found 'Unit'`, so the
   archive did not keep `refl`'s declared return type. Everything else in
   this page — the axiom, the normaliser, the sub-ops — is present and
-  checked. Measured 2026-09-10.
+  checked.
 
 ## When to use
 

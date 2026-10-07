@@ -11,7 +11,7 @@ APIs, and cubical higher-inductive types.
 
 :::caution The path-type section is the intended surface, not a working one
 
-Measured 2026-09-10. Σ-types, Π-types and the length-indexed examples
+Σ-types, Π-types and the length-indexed examples
 on this page work. The **path / HoTT** block further down has two
 problems a reader meets immediately.
 
@@ -59,7 +59,7 @@ type variable* — which unifies with `Int`, with `Wrapped`, with anything
 the surrounding signature happens to declare.
 
 The `warning<E0410>: unknown meta-function` that used to accompany these
-calls is gone as of 2026-09-11, and it was never the right diagnostic:
+calls is gone, and it was never the right diagnostic:
 the parser lacked the prefix rule the type checker and the attribute
 validator both carry, so it reported names the compiler deliberately
 accepts. What replaced it speaks only when nothing implements a name, and

@@ -243,8 +243,9 @@ them, and `verum_smt.cubical_tactic` reasons about the types.
 Σ-types, Π-types, `Vec` and `replicate` in the same block are unaffected
 and run.
 
-Measured 2026-09-10 on the stdlib shipped that day. This box stops being
-true once `core.math.hott.refl` reports its declared return type.
+This limitation concerns the archived signature of `core.math.hott.refl`;
+the source declaration alone does not establish that the imported return
+type is preserved.
 
 :::
 

@@ -57,7 +57,7 @@ let primes = stream[n for n in 2..100 if is_prime(n)];
 let found: List<Int> = primes.collect();       // -> List<Int>
 ```
 
-:::caution Three limits on `stream[...]`, all measured 2026-09-13
+:::caution Three limits on `stream[...]`
 **No combinators.** `primes.take(10)` is refused with `no method named
 'take' found for type 'Stream<Int>'`, so an UNBOUNDED source —
 `stream[n for n in 2..]` — cannot be cut down to a finite prefix and has
@@ -156,7 +156,7 @@ fn main() {
 }
 ```
 
-Measured 2026-09-11 with `verum run`: `3` then `2`.
+Checked with `verum run`: `3` then `2`.
 :::
 
 ## Generators — `gen{expr for ... }`

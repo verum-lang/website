@@ -176,12 +176,12 @@ read / write; they are cheaper than `select` but less flexible.
 Use a shutdown flag checked on every iteration and a `select` that
 races `accept` against the signal:
 
-:::caution The stop flag on this page does not read back correctly today
+:::caution Cancellation and cleanup coverage
 
-`Shared.new(AtomicBool.new(false))` answers `true` when read through the
-carrier — measured 2026-09-16, and the answer is not reproducible between
-runs. The explicit dereference is correct meanwhile:
-`(*stopped).load(MemoryOrdering.Acquire)`. Measurements and mechanism:
+Primitive shared-atomic reads preserve the stored value in both backends.
+Full shutdown still depends on cancellation propagation and resource
+cleanup; native guard lifetime remains incomplete. Check the whole flow
+in the selected backend. See
 [Sharing state across tasks](/docs/cookbook/shared-state).
 :::
 

@@ -101,7 +101,7 @@ let latency = registry.histogram(HistogramConfig {
 
 :::danger Blocked at Tier 0 — the handles cannot be resolved
 `handle.with(…)` and `handle.unlabeled()` both panic in the interpreter.
-Measured 2026-09-09:
+Checked:
 
 ```text
 reg.counter(cfg).unlabeled()

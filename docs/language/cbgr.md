@@ -126,8 +126,7 @@ This is how `Database with [Read]` becomes a value at runtime — the
 `Database.write(...)` fails a capability check that is one AND plus
 one branch (~1 ns).
 
-At compile time the direction is checked, and both halves were measured
-on 2026-09-03 with a control:
+At compile time the direction is checked, and both halves were checked with a control:
 
     a [ReadWrite] value where [Read] is required    accepted
     a [Read] value where [ReadWrite] is required    error<E411>
@@ -142,7 +141,7 @@ call, from the parameter's declared capability set.)
 
 ## When the check is elided
 
-The compiler emits the full CBGR check (1.2–1.7 ns, re-measured 2026-09-05) for
+The compiler emits the full CBGR check (1.2–1.7 ns) for
 `&T`. It emits **nothing** for `&checked T` — escape analysis
 (one of eleven compile-time analyses in `verum_cbgr`) has proved
 the check unnecessary. The proof is witnessed in the compilation

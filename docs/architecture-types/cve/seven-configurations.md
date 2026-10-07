@@ -154,7 +154,7 @@ Hypothesis(High)` with a `@plan(target: "v0.5", ...)`.
 **Question:** *is this anything more than prose?*
 
 A `[I]` Interpretation has *all three axes absent*. It is descriptive
-prose only — written down, but not realised, checked, or extracted.
+prose only — written down, but not realised, or extracted.
 
 `[I]` Interpretations are **transitional only**. Mature corpora
 contain zero `[I]` entries; in `strict: true` mode, declaring a

@@ -29,8 +29,7 @@ fn count_errors(path: &Path) -> IoResult<Int>
 }
 ```
 
-> **Open defect — this loop crashes under AOT** (A106). Measured
-> 2026-09-12: the interpreter prints every line; the AOT binary reads
+> **Known limitation — this loop crashes under AOT.** The interpreter prints every line; the AOT binary reads
 > the file correctly and then faults inside `BufReader.read_until` on
 > the first iteration, dereferencing the element VALUE where it expects
 > a reference. Line-oriented reading is interpreter-only until that
@@ -177,7 +176,7 @@ resolvable at the call site, so the call compiled to the builtin
 container-length opcode: it answered **1**, the number of fields on
 `Metadata` (`{ raw: FsMetadataRaw }`), with no error at all.
 
-Re-measured 2026-09-10 on a rebuilt compiler, both spellings, on the
+Checked on a rebuilt compiler, both spellings, on the
 same file:
 
 ```
@@ -303,7 +302,7 @@ public async fn write_async(path: &Text, contents: &Text)      -> IoResult<()>;
 public async fn write_bytes_async(path: &Text, contents: &[Byte]) -> IoResult<()>;
 ```
 
-Two corrections from 2026-09-06: there is no `File.open_async` — the
+There is no `File.open_async` — the
 synchronous `File` has `open` / `create` / `create_new` / `options` and
 nothing async — and the async open takes a `&Text`, not a `&Path`.
 

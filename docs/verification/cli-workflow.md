@@ -47,9 +47,9 @@ verum check [FILE] [OPTIONS]
 
 | Flag            | Default | Effect                                                     |
 |-----------------|---------|-------------------------------------------------------------|
-| `--strict`      | —       | **Not accepted (measured 2026-09-11).** `verum check` rejects it. |
+| `--strict`      | —       | **Not accepted.** `verum check` rejects it. |
 | `--verbose`     | off     | Print per-module timing and cache hits.                    |
-| `--no-stdlib`   | —       | **Not accepted (measured 2026-09-11).** `verum check` rejects it. |
+| `--no-stdlib`   | —       | **Not accepted.** `verum check` rejects it. |
 
 ### Exit codes
 
@@ -87,7 +87,7 @@ project root.
 ### Strategy flags (layer 2: `VerifyStrategy`)
 
 :::caution `--strategy` is not accepted
-Measured 2026-09-11: `verum verify --strategy fast file.vr` exits with
+`verum verify --strategy fast file.vr` exits with
 `error: unexpected argument '--strategy' found`. The whole table below
 describes a layer the shipped CLI does not expose — it is kept because
 the strategy names are the ones the verification engine uses
@@ -122,7 +122,7 @@ What `verum verify` does accept for this axis today is `--mode`
 |--------------------------|---------------------------------------------------------------|
 | `--timeout 60`           | Per-obligation timeout (seconds). Overrides strategy default. |
 | `--budget 5m`            | Total time budget for the entire `verify` run.                |
-| `--budget-policy {fail,skip}` | **Not accepted (measured 2026-09-11).** `--budget` is accepted; the policy switch is not. |
+| `--budget-policy {fail,skip}` | **Not accepted.** `--budget` is accepted; the policy switch is not. |
 
 ### Counterexamples
 
@@ -130,8 +130,8 @@ See also [Counterexamples](./counterexamples.md).
 
 | Flag                               | Meaning                                                     |
 |------------------------------------|-------------------------------------------------------------|
-| `--counterexample {none,minimal,standard,full,json}` | **Not accepted (measured 2026-09-11).** Per-failure counterexample verbosity. |
-| `--minimize-timeout 30`            | **Not accepted (measured 2026-09-11).** Delta-debugging budget per counterexample. |
+| `--counterexample {none,minimal,standard,full,json}` | **Not accepted.** Per-failure counterexample verbosity. |
+| `--minimize-timeout 30`            | **Not accepted.** Delta-debugging budget per counterexample. |
 
 ### Profiling
 
@@ -357,9 +357,9 @@ typed AST and CBGR reachability graph.
 | `--escape`        | on      | CBGR tier-promotion escape analysis.                       |
 | `--context`       | on      | Context-system usage (missing `using [...]`, unused ctx).  |
 | `--refinement`    | on      | Refinement coverage ("which functions have refinements, which don't"). |
-| `--lifetime`      | —       | **Not accepted (measured 2026-09-11).** `verum analyze` rejects it. |
+| `--lifetime`      | —       | **Not accepted.** `verum analyze` rejects it. |
 | `--all`           | off     | Enable every sub-analysis.                                 |
-| `--json`          | —       | **Not accepted (measured 2026-09-11).** `verum analyze` rejects it. |
+| `--json`          | —       | **Not accepted.** `verum analyze` rejects it. |
 
 `analyze` is complementary to `verify`. `verify` proves what you
 wrote; `analyze` reports what you could write to get better
@@ -381,8 +381,8 @@ went.
 |------------|----------------------------------------------------|
 | `--json`   | JSON output.                                       |
 | `--reset`  | Clear the cache.                                   |
-| `--top N`  | **Not accepted (measured 2026-09-11).** `verum smt-stats` rejects it. |
-| `--by-theory` | **Not accepted (measured 2026-09-11).** `verum smt-stats` rejects it. |
+| `--top N`  | **Not accepted.** `verum smt-stats` rejects it. |
+| `--by-theory` | **Not accepted.** `verum smt-stats` rejects it. |
 
 Sample output:
 
@@ -441,11 +441,11 @@ verum audit [OPTIONS]
 | Flag                        | Effect                                                    |
 |-----------------------------|-----------------------------------------------------------|
 | `--framework-axioms`        | List all `@framework`-tagged axioms reachable from public API. |
-| `--admits`                  | **Not accepted (measured 2026-09-11).** `verum audit` rejects it. |
+| `--admits`                  | **Not accepted.** `verum audit` rejects it. |
 | `--kernel-rules`            | List the 38 kernel inference rules (for audit). The TCB fragment (Var/Univ/Pi/Lam/App/Sigma/Pair/Fst/Snd) is the structural sub-roster; cubical, refinement, quotient, inductive, SMT/axiom, and Diakrisis rules layer on top. See the kernel's proof-tree rules, `KernelRule`. |
-| `--cone MODULE`             | **Not accepted (measured 2026-09-11).** Restrict to a module's transitive dependency cone. |
+| `--cone MODULE`             | **Not accepted.** Restrict to a module's transitive dependency cone. |
 | `--format {plain,json}`     | Output format.                                            |
-| `--since GIT_REF`           | **Not accepted (measured 2026-09-11).** Diff mode against a git ref. |
+| `--since GIT_REF`           | **Not accepted.** Diff mode against a git ref. |
 
 Example:
 
@@ -518,8 +518,7 @@ in editor settings without touching `verum.toml`.
 
 :::caution An earlier version of this page named the LSP's invocation as
 `verify --mode static --strategy fast --counterexample=minimal --json`.
-Three of those four flags do not exist on the shipped `verum verify`
-(measured 2026-09-11); only `--mode` does.
+Three of those four flags do not exist on the shipped `verum verify`; only `--mode` does.
 :::
 
 ---
@@ -528,8 +527,7 @@ Three of those four flags do not exist on the shipped `verum verify`
 
 | Symptom                                      | First thing to try                                    |
 |----------------------------------------------|--------------------------------------------------------|
-Every flag in this table was run against the shipped CLI on
-2026-09-11 and is accepted.
+The flags in this table are accepted by the CLI.
 
 | Symptom                                      | First thing to try                                    |
 |----------------------------------------------|--------------------------------------------------------|

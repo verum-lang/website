@@ -216,7 +216,7 @@ return `join(a.label, b.label)`.
 ## When the type checker says "no"
 
 :::danger The type checker does not say "no" — labels are runtime values
-Measured 2026-09-03 against a built compiler, with a control that can
+Checked against a built compiler, with a control that can
 fail:
 
     fn takes_public(x: Labeled<Text>) { print("accepted"); }
