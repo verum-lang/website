@@ -127,6 +127,11 @@ let xs = [1, 2, 3];                    // macro — array of items
 let ys = [0; 10];                           // repeat form — 10 copies of 0
 ```
 
+A function or closure returning `List<T>` can copy a directly produced
+packed numeric array into a new list that supports growth. This conversion
+has [specific return-boundary limits](../language/types.md#returning-an-array-as-a-list);
+it does not apply to every array-valued expression or function argument.
+
 ### Capacity & size
 
 ```verum

@@ -202,21 +202,45 @@ fill(&mut ys);
 // ys is now [0, 10, 20, 30]
 ```
 
+### Returning an array as a list
+
+For a function or closure with a declared `List<T>` result, a directly
+returned packed numeric array can be copied into a new list. The return
+allocates list storage and copies each element, so the caller can grow the
+result with `push`. An empty array produces an empty list that can also
+grow. The copy takes time proportional to the number of elements.
+
+This support covers explicit `return` and tail expressions for locally
+constructed byte, integer and floating-point arrays. The compiler must be
+able to follow the array construction and direct value moves to the return,
+including through simple nested blocks. A closure uses its own declared
+result type.
+
+Automatic conversion is not established for arbitrary array parameters,
+results from other function calls, or values selected across branches and
+loops. An array type annotation alone does not establish this conversion.
+Returning an existing list preserves list storage; declaring a list type on
+an argument, record field or local variable does not enable the same return
+conversion at that other location.
+
 ### Byte buffers and FFI
 
-A `[Byte; N]` **with the annotation** is a packed buffer — `N`
-contiguous bytes, which is what a C `void*` expects. Without the
-annotation, `[0; N]` is a general `List` whose elements are 8-byte
-slots, and handing that to C corrupts it.
+An explicitly typed byte-array literal such as the one below creates a
+packed buffer containing `N` contiguous bytes. An unannotated `[0; N]` uses
+general list storage. Annotating a value returned by a call as `[Byte; N]`
+does not itself copy that value into a contiguous byte buffer. Raw byte
+access must follow the
+[byte-buffer contract](https://github.com/verum-lang/verum/blob/main/docs/architecture/ffi-byte-buffer-contract.md)
+for the actual buffer construction and target backend.
 
 ```verum
 let mut buf: [Byte; 128] = [0; 128];   // packed, ABI-contiguous
 let ptr = buf.as_ptr();                 // addresses buf[0], not a header
 ```
 
-`.as_ptr()` / `.as_mut_ptr()` answer the address of the first element,
-whether you call them on the array or on a subslice of it. Indexing
-arithmetic holds: the pointer of `&buf[1..]` is exactly one byte past
+For the packed buffer above, `.as_ptr()` / `.as_mut_ptr()` answer the
+address of the first element, whether called on the buffer or a subslice.
+Indexing arithmetic holds: the pointer of `&buf[1..]` is exactly one byte past
 the pointer of `&buf[..]`.
 
 ## Function types

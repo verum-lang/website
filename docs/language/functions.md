@@ -172,6 +172,11 @@ is a control-flow operator for early return.
 
 Functions with no explicit return type return `()`.
 
+A declared `List<T>` result supports copying directly produced packed
+numeric arrays into a new growable list, subject to the
+[array return limitations](./types.md#returning-an-array-as-a-list).
+This applies at the function or closure's own return boundary.
+
 Error propagation with `?` uses the nearest function or closure's return
 boundary, unless a `try` in that same callable handles the failure.
 Expected types for record fields, arguments and annotated locals do not

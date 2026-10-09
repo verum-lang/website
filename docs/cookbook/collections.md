@@ -385,10 +385,14 @@ capability you name yourself), not how it is laid out:
 type ReadOnlyLog is List<Text> with [Read];
 ```
 
-For a **specific** layout there is no knob on the semantic types. Take
-the layout you need directly: a fixed-size array `[Byte; 64]` is
-contiguous by construction, and `@repr(C)` pins a record's field order
-for FFI.
+For a **specific** layout there is no knob on the semantic types. Use a
+[packed byte-buffer construction](../language/types.md#byte-buffers-and-ffi)
+for byte-oriented FFI: a type such as `[Byte; 64]` alone does not establish
+the storage layout of an arbitrary returned value. `@repr(C)` pins a
+record's field order for FFI. The supported
+[array-to-list return conversion](../language/types.md#returning-an-array-as-a-list)
+allocates list storage and copies elements; its result is not a promise of
+contiguous raw bytes.
 
 ## Pitfalls
 

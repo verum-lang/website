@@ -36,6 +36,13 @@ Markers work for your own types, not only for the standard library's.
 | `ArrayCoercible` | Array literals (`[1, 2, 3]`) unify with the type at use sites. | Sequence containers: `List`, `Deque`. |
 | `BytewiseFfi` | The type unifies with `[Byte]` / `[UInt8]` for FFI. | Types whose in-memory layout **is** a packed C-struct byte mirror: `Sockaddr`. Never a higher-level wrapper like `SocketStream`. |
 
+`ArrayCoercible` establishes type compatibility. Implementing it does not
+provide a runtime conversion for a container or change an existing value's
+storage. The supported
+[array-to-list return conversion](./types.md#returning-an-array-as-a-list)
+allocates and copies at a function or closure's return boundary. Other use
+sites need their own conversion support.
+
 `Indexable` also lives in `core/base/coercion.vr`, but it is a **declarative
 marker only** — the unifier does not read it, and implementing it buys no
 compiler behaviour today. Indexing (`xs[i]`) works without it.
@@ -100,9 +107,9 @@ Before adding `implement <Marker> for MyType {}`, answer these:
 1. **Is the runtime representation the same thing?** A newtype over `Int`
    qualifies for `IntCoercible`; a record holding an `Int` among other
    fields does not.
-2. **Would the coercion ever produce a value nobody converted?** If yes, the
-   marker is wrong — coercion markers assert *sameness*, they do not insert
-   conversions.
+2. **Does the use site need a runtime conversion?** A marker alone does not
+   provide one. Check whether the compiler or a concrete method supplies the
+   required conversion at that use site; type compatibility is insufficient.
 3. **Is a method clearer?** `fd.as_int()` costs one call and cannot be
    applied by accident. Prefer it when the coercion is convenience rather
    than identity.
