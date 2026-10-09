@@ -18,7 +18,7 @@ MessagePack, DER, varint), and the interoperability-critical
 
 | Submodule | Purpose | Reference |
 |-----------|---------|-----------|
-| `encoding.json` | JSON reader + writer, zero-allocation parsing | RFC 8259 |
+| `encoding.json` | JSON parsing into `JsonValue` and serialization | RFC 8259 |
 | `encoding.jcs` | JSON Canonicalization Scheme (signing-deterministic) | RFC 8785 |
 | `encoding.json_pointer` | Path syntax for JSON sub-value lookup | RFC 6901 |
 | `encoding.cbor` | Concise Binary Object Representation | RFC 8949 |
@@ -51,15 +51,56 @@ public type JsonValue is
     | JsonArray(List<JsonValue>)
     | JsonObject(Map<Text, JsonValue>);
 
+public type JsonMap is Map<Text, JsonValue>;
+
 public fn parse(source: &Text) -> Result<JsonValue, JsonError>;
+public fn parse_strict(source: &Text, max_bytes: Int) -> Result<JsonValue, JsonError>;
+public fn parse_value(source: &Text) -> Result<JsonValue, JsonError>;
+public fn decode_bytes(source: &[Byte]) -> Result<JsonValue, JsonError>;
 public fn stringify(value: &JsonValue) -> Text;
 public fn stringify_pretty(value: &JsonValue) -> Text;
 ```
 
-Strict RFC-8259 semantics — no trailing commas, no comments, no
-single-quoted strings. The parser is zero-allocation for primitive
-leaves; only `Array` / `Object` allocate to own their decoded
-children.
+`parse` reads a complete document and rejects trailing content, comments,
+trailing commas and single-quoted strings. Repeated object keys retain the
+last value. `decode` is an alias for `parse`; `encode` is an alias for
+`stringify`.
+
+`parse_strict` adds a caller-supplied byte limit and rejects repeated decoded
+keys with `DuplicateKey`, including spellings such as `"name"` and
+`"\u006eame"` in the same object. It applies that rule to nested objects;
+the same key in separate objects is allowed. The limit counts the entire
+UTF-8 source, including whitespace and escapes, before constructing JSON
+strings or containers. An oversized document returns `DocumentTooLarge`;
+a negative limit returns `InvalidLimit`. A zero limit admits no nonempty
+document.
+
+Both full-document parsers retain the parser's nesting, string and collection
+limits. `parse_value` reads one value and allows trailing content, but returns
+neither the remaining input nor an offset. It is not an incremental event
+parser.
+
+Parsing builds an owned value tree. Strings use `Text` storage; arrays and
+objects use `List` and `Map` storage. The parser has no zero-allocation
+guarantee. Its result is always `JsonValue`: a record annotation or
+`@derive(Deserialize)` does not change the parser's return type. See the
+[JSON cookbook](/docs/cookbook/json) for explicit field validation.
+
+`decode_bytes` constructs text with `Text.from_utf8_lossy` before calling
+`parse`. When invalid UTF-8 must be rejected, validate the bytes with
+`Text.from_utf8` and handle that error before calling `parse_strict`.
+
+`stringify` builds compact output in a `Text`; `stringify_pretty` uses
+fixed two-space indentation. Neither accepts a writer sink or formatting
+options. Object members follow map iteration order, without canonical key
+sorting. Check floating-point values for finiteness before serialization;
+the serializer returns `Text`, without a validation-error result.
+
+`JsonError` is a record with `kind`, `line`, `column` and `message`. Positions
+are one-based, with columns counted in bytes. Parser errors describe JSON
+syntax and limits; application field validation needs its own error policy.
+The public signatures and parser behavior are defined in
+[`core/encoding/json.vr`](https://github.com/verum-lang/verum/blob/main/core/encoding/json.vr).
 
 ## `base64`
 
