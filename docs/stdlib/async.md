@@ -283,11 +283,26 @@ spawn_blocking(f) -> JoinHandle<T>               // on thread pool
 spawn_detached(future) -> ()                     // fire-and-forget
 yield_now() -> YieldNow                          // cooperate
 
-h.abort()                                         // cancel
+h.cancel()                                        // request cancellation
 h.is_finished() -> Bool
 h.id() -> TaskId
 h.await -> Result<T, JoinError>                   // via Future
 ```
+
+These are the declarations of the library types in
+[`core.async.task`](https://github.com/verum-lang/verum/blob/main/core/async/task.vr).
+Its `Future` implementation adds the join result: for a task whose `T` is
+`Result<Value, WorkError>`, its `Output` is
+`Result<Result<Value, WorkError>, JoinError>`. An application error and a
+join error occupy different layers; `Cancelled` and `Panicked` have no
+payload.
+
+**Known limitation:** the `spawn` keyword also has a compiler task-handle
+path that yields the task body's result directly. The library record's
+methods and `Future.Output` must not be assumed for every keyword handle,
+or obtained by adding an annotation. See
+[task completion contracts](/docs/cookbook/async-basics#task-results-and-join-errors)
+before storing handles in a collection or a generic wrapper.
 
 ### `JoinSet<T>` — dynamic task collection
 

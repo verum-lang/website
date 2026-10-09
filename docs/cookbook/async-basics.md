@@ -1,385 +1,139 @@
 ---
 title: Async / await basics
-description: A practical tour of async in Verum — futures, awaiting, spawning, timing, and the common pitfalls.
+description: Eager async calls, explicit futures, spawned tasks, and handling completion correctly.
 ---
 
 # Async / await basics
 
-This is the task-oriented guide. For the grammar and the full
-concurrency surface, see
-[language/async-concurrency](/docs/language/async-concurrency).
+The current implementation has different completion paths for `async fn`
+calls, explicit values implementing `Future`, and tasks created with
+`spawn`. The limitations below matter when composing them. For the syntax, see
+[Async and Concurrency](/docs/language/async-concurrency).
 
 ## An `async fn`
 
-Every example on this page demands an `Http` context. That context is
-**yours**, not the standard library's: Verum ships `Logger`, `Database`,
-`Clock`, `FileSystem` and about two dozen more, and an HTTP client is
-not among them. One declaration, once:
+**Current implementation limitation:** calling an `async fn` runs its
+body eagerly and returns its result. The lowering does not create a
+suspended future that waits for `.await` to start. The `async` modifier
+permits await points inside the function; it does not delay the call's
+side effects.
+
+A `spawn` block places the operation in a child task. Awaiting the
+keyword's task handle retrieves that task's result:
 
 ```verum
-mount core.net.url.{Url};
-mount core.net.http.{Response, HttpError};
-mount core.base.{Bytes};
-
-context Http {
-    async fn get(url: &Url) -> Result<Response, HttpError>;
+async fn double(value: Int) -> Int {
+    print("double ran");
+    value * 2
 }
 
-async fn fetch(url: &Url) -> Result<Bytes, HttpError> using [Http] {
-    let resp = Http.get(url).await?;
-    Result.Ok(resp.body)
-}
-```
+fn main() {
+    print("before call");
+    let value: Int = double(21);
+    print("after call");
+    assert(value == 42);
 
-An `async fn`:
-
-- Declares the function as asynchronous. `async` is a function
-  modifier, not an effect — it goes before `fn`, not in the
-  `using [...]` clause.
-- Returns a `Future<Output = T>` (where `T` is what the body returns).
-- May use `.await` to suspend on inner futures.
-- May use `using [...]` to demand contexts (propagated across
-  suspensions).
-
-The function **does not execute** when called; it returns a future.
-The future runs when awaited or spawned.
-
-```verum
-let f: Future<Result<Bytes, HttpError>> = fetch(&url);    // not run
-let result = f.await;                                      // runs here
-```
-
-## Driving a future
-
-```verum
-// Top-level (not async). `provide` supplies the context an
-// implementation; without it, `using [Http]` has nothing to bind to.
-fn main() using [Http] {
-    let result = block_on(fetch(&url));
-    print(f"{result:?}");
-}
-
-// Inside another async fn
-async fn worker() using [Http] {
-    let result = fetch(&url).await?;
-    print(f"{result:?}");
+    let handle = spawn { double(3).await };
+    let completed = handle.await;
+    assert(completed == 6);
+    print("async-basics: ok");
 }
 ```
 
-`block_on(future)` runs the future on the current thread until it
-completes. Inside async code you **always** `.await` — never
-`block_on` — or you will deadlock the executor.
+Expected output:
 
-### `block_on` only at entry points
-
-`block_on` is for synchronous entry points: `main`, test harnesses,
-CLI entry. Anywhere in the middle of an async call tree, use
-`.await`:
-
-```verum
-// Wrong — block_on inside async
-async fn wrong() {
-    let x = block_on(fetch(&url));     // deadlocks the executor
-}
-
-// Right — ordinary .await
-async fn right() {
-    let x = fetch(&url).await;
-}
+```text
+before call
+double ran
+after call
+double ran
+async-basics: ok
 ```
 
-## Running futures concurrently
+The first `double` call runs before `after call` is printed. The second
+runs inside the spawned block. `.await` on a direct async call is a yield
+point around an eagerly computed value; `.await` on the keyword's handle
+waits for the child. See the
+[async call semantics](/docs/language/async-concurrency#async-functions)
+and the [keyword await handler](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/interpreter/dispatch_table/handlers/async_nursery.rs).
 
-### `join` — wait for all
+## Driving an explicit future
 
-```verum
-async fn fetch_both() -> (Bytes, Bytes) using [Http] {
-    let (a, b) = join(
-        fetch(&url_a),
-        fetch(&url_b),
-    ).await;
-    (a.unwrap(), b.unwrap())
-}
-```
+An explicit future implements `core.async.future.Future`. Its `poll`
+method returns `Poll.Pending` while work remains and `Poll.Ready(output)`
+when it completes. `.await` yields the associated `Output` type; that
+output can itself be a `Result`.
 
-`join(f1, f2, ...)` runs each future concurrently and returns a tuple
-of their results. Supports 2 through 8 arguments; for variable
-arities, use `join_all(vec)`.
+This is different from assigning the result of an eager async call to a
+variable. Adding a `Future<T>` annotation does not defer the call.
 
-### `try_join` — fail fast
+`block_on` is an executor API for an explicit future. Do not pass an
+already computed async result expecting the executor to run its earlier
+side effects. Consult the
+[executor limitations](/docs/stdlib/async#localexecutor) before choosing
+that path; `block_on` and the explicit executor APIs do not have the same
+validated coverage as the keyword example above.
 
-```verum
-async fn fetch_both_or_err() -> Result<(Bytes, Bytes), HttpError>
-    using [Http]
-{
-    let (a, b) = try_join(fetch(&url_a), fetch(&url_b)).await?;
-    Result.Ok((a, b))
-}
-```
+## Task results and join errors
 
-`try_join` short-circuits on the first `Err` and cancels the others.
+The current implementation exposes two different completion paths:
 
-### `spawn` — let the executor schedule
+| Value being awaited | Completion value |
+|---|---|
+| A handle inferred from the `spawn` keyword | The task body's result `T` on the current keyword path. If the body returns `Result<T, E>`, that is the result you receive. |
+| The library `core.async.task.JoinHandle<T>` through its declared `Future` implementation | `Result<T, JoinError>`. If `T` is already `Result<Value, WorkError>`, completion has two `Result` layers. |
 
-```verum
-async fn dispatch(urls: &List<Url>) -> List<Bytes> using [Http] {
-    let handles: List<JoinHandle<_>> = urls
-        .iter()
-        .map(|u| spawn fetch(u.clone()))
-        .collect();
+For the library contract, `Ok(Ok(value))` is application success,
+`Ok(Err(error))` is application refusal, and `Err(JoinError.Cancelled)`
+or `Err(JoinError.Panicked)` is a join failure. The two `JoinError`
+variants have no payload. Its cancellation method is `cancel()`.
 
-    let mut out = List.new();
-    for h in handles {
-        if let Result.Ok(bytes) = h.await {
-            out.push(bytes);
-        }
-    }
-    out
-}
-```
+**Known limitation:** the keyword task representation and the library
+record are not interchangeable. Explicit annotations, record fields and
+imported generic wrappers can select a different checking or await path.
+Do not add a library handle annotation to a keyword task to obtain
+cancellation or an extra error layer. In particular, a keyword task
+failure is not established to arrive as `JoinError` simply because that
+variant is declared in the library. The distinction is visible in the
+[checker await rules](https://github.com/verum-lang/verum/blob/main/crates/verum_types/src/infer/expr.rs),
+[await lowering](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/codegen/expressions.rs)
+and [library task implementation](https://github.com/verum-lang/verum/blob/main/core/async/task.vr).
 
-`spawn` is heavier than `join` — each `spawn` goes through the global
-task queue and may run on a different thread. For 2–3 futures, prefer
-`join`; for dozens, prefer `spawn` inside a `nursery`.
+When collecting task results, consume each handle once. If your operation
+must finish every child before committing data, retain failures while
+joining the remaining children, then decide whether to commit. Returning
+on the first application error does not establish that siblings have
+finished. Success-only examples do not establish panic or cancellation
+cleanup; validate those paths in the execution mode you deploy.
 
-### Race with `select`
+## Timeouts and cancellation
 
-```verum
-async fn race_two(u: &Url, v: &Url) -> Bytes using [Http] {
-    select {
-        a = fetch(u).await => a.unwrap(),
-        b = fetch(v).await => b.unwrap(),
-    }
-}
-```
+Arguments are evaluated before a function receives them. Passing an
+eager async call to `timeout`, `join` or another future combinator does
+not make that call lazy. Use an explicit future or the API's documented
+deferred-operation form when the boundary must surround the operation.
+Even a deferred blocking call needs an interruption mechanism or
+cooperative polling for a timeout to stop its work.
 
-`select` runs arms concurrently and takes the **first** to complete;
-the others are cancelled. See
-[language/async-concurrency](/docs/language/async-concurrency#select).
+An `.await` is not a universal cancellation check. Cancellation and
+cleanup depend on the operation, executor and backend. Keep blocking
+work out of a critical section, and avoid holding a lock while waiting
+for unrelated I/O. See the
+[cancellation APIs](/docs/stdlib/async#cancellation) and
+[guard lifetime limitations](/docs/language/async-concurrency#mutex--rwlock).
 
-## Timing, yielding, sleeping
+## Discarded results
 
-### `sleep(duration)`
-
-```verum
-async fn polite() {
-    do_work();
-    sleep(500.millis()).await;              // wait half a second
-    do_more();
-}
-```
-
-`sleep` returns when the given `Duration` has elapsed; it does **not**
-occupy the executor while waiting.
-
-### `yield_now`
-
-```verum
-async fn polite_loop() {
-    for i in 0..1_000_000 {
-        crunch(i);
-        if i % 1000 == 0 { yield_now().await; }
-    }
-}
-```
-
-`yield_now` returns control to the executor so other tasks can run.
-Use in long CPU-bound async loops that would otherwise starve
-siblings.
-
-### `timeout`
-
-```verum
-async fn fetch_with_deadline(url: &Url) -> Result<Bytes, Error>
-    using [Http]
-{
-    match timeout(3.secs(), fetch(url)).await {
-        Result.Ok(r) => r.map_err(Error.from),
-        Result.Err(_) => Result.Err(Error.Timeout),
-    }
-}
-```
-
-`timeout(duration, future)` returns `Result<T, TimeoutError>` — either
-the original result (`Ok(T)` → `Ok(Ok(T))`) or a timeout (`Err`). The
-inner future is cancelled on timeout.
-
-### Repeating with backoff
-
-```verum
-async fn retry<F, T, E>(mut f: F, max_attempts: Int) -> Result<T, E>
-    where F: async fn() -> Result<T, E>
-{
-    let mut attempt = 0;
-    loop {
-        match f().await {
-            Result.Ok(v) => return Result.Ok(v),
-            Result.Err(e) if attempt < max_attempts - 1 => {
-                sleep(100.millis() * (1 << attempt)).await;     // exp backoff
-                attempt += 1;
-            }
-            Result.Err(e) => return Result.Err(e),
-        }
-    }
-}
-```
-
-See [cookbook/resilience](/docs/cookbook/resilience) for
-circuit-breaker and bulkhead patterns.
-
-## Common patterns
-
-| I want to…                             | Use                                       |
-|----------------------------------------|-------------------------------------------|
-| Run two futures concurrently           | `join(f1, f2).await`                      |
-| Run N identical futures concurrently   | `join_all(vec).await`                     |
-| Fail fast on first error               | `try_join(f1, f2).await?`                 |
-| Take the first to finish               | `select { a = f1.await => a, b = f2.await => b }` |
-| First non-error                         | `select_any(vec).await`                   |
-| With a time budget                     | `timeout(dur, fut).await?`                |
-| Structured task scope                  | `nursery { spawn f1; spawn f2; }`         |
-| Deferred sync value                    | `ready(value).await`                      |
-| Wait forever                           | `pending<T>().await`                    |
-| Cooperative yield                      | `yield_now().await`                       |
-
-## Pitfall — `.await` inside a synchronous section
-
-Nothing forces a `.await` to yield — but blocking operations **do**.
-Don't put an `.await` inside a synchronous critical section:
-
-```verum
-// DO NOT
-let guard = mu.lock().await;
-let resp = Http.get(&url).await?;      // holds the mutex across the IO!
-guard.commit(resp);
-```
-
-The HTTP request may take milliseconds; holding a mutex for that
-long stalls every other caller. Refactor:
-
-```verum
-let req = {
-    let g = mu.lock().await;
-    g.build_request()
-};
-let resp = Http.get(&req.url).await?;
-{
-    let mut g = mu.lock().await;
-    g.commit(resp);
-}
-```
-
-## Pitfall — forgotten `.await`
-
-```verum
-fetch(&url);                            // WRONG — returns future, no run
-fetch(&url).await;                      // runs the future
-```
-
-The compiler warns on discarded futures but the warning can be
-suppressed; always await or drop explicitly:
-
-```verum
-let _ = fetch(&url).await;              // discard the result explicitly
-```
-
-## Pitfall — cancellation between `.await`s
-
-Cancellation happens **only at `.await` points**. Between two
-`.await` calls, the task is uninterruptible. This is normally
-desirable (you don't want partial state on cancellation). But long
-synchronous sections may delay cancellation:
-
-```verum
-async fn slow() {
-    let data = expensive_cpu_work();     // not cancellable
-    data.send().await;                   // cancellable here
-}
-```
-
-If the caller cancels `slow` during `expensive_cpu_work`, nothing
-happens until the work returns. Insert `yield_now().await` in the
-middle for periodic cancellation checks.
-
-## Cleanup on cancellation — `defer` / `errdefer`
-
-`defer` always runs; `errdefer` runs only on the error path:
-
-```verum
-async fn transactional_write(data: &Data) using [Database] {
-    let tx = Database.begin().await;
-    errdefer tx.rollback().await;
-
-    tx.write(data).await?;
-    tx.commit().await?;
-}
-```
-
-If `write` fails or is cancelled, `errdefer` fires. If `commit`
-succeeds, the `errdefer` is skipped.
-
-## Running in a specific executor
-
-```verum
-// The builder is `RuntimeBuilder`, and its whole surface is
-// `stack_size`, `max_tasks`, `enable_work_stealing`, `enable_io`,
-// `enable_time`, `build`. There is no `worker_threads` and no
-// `on_shutdown` hook.
-let rt = RuntimeBuilder.new()
-    .max_tasks(4096)
-    .enable_work_stealing()
-    .enable_io()
-    .enable_time()
-    .build();
-
-let result = rt.block_on(fetch(&url));
-// `AsyncRuntime.shutdown()` takes no deadline — there is no
-// `shutdown_timeout`. Bound the WORK instead, before you get here.
-rt.shutdown();
-```
-
-`Runtime` is the configurable alternative to `block_on`. For most
-applications, `block_on(future)` (which uses the default runtime) is
-fine; custom runtimes are for fine-tuned server deployments.
-
-## Testing async code
-
-Use `@test` to mark an async test:
-
-```verum
-@test
-async fn test_fetch_timeout() {
-    let result = timeout(100.millis(), pending<()>()).await;
-    assert(result.is_err());
-}
-```
-
-For deterministic time tests, inject a `FakeClock` context:
-
-```verum
-@test
-async fn test_retry_backoff() {
-    let clock = FakeClock.at(epoch());
-    provide Clock = clock.clone() in {
-        let result = spawn slow_retry();
-        clock.advance(10.secs());
-        assert(result.await.is_ok());
-    }
-}
-```
+Discarding an eager async call's result still runs its body. Discarding an
+explicit future does not drive its `poll` implementation, and discarding
+a task handle does not establish that its child finished. Handle the
+application result and retain the relevant future or task handle until
+your operation's completion requirements are met.
 
 ## See also
 
-- **[`stdlib/async`](/docs/stdlib/async)** — Future, Stream, Task,
-  channels, timers, full API.
-- **[Nursery](/docs/cookbook/nursery)** — structured concurrency.
-- **[Channels](/docs/cookbook/channels)** — MPSC, broadcast, oneshot.
-- **[Generators](/docs/cookbook/generators)** — `fn*` and `async fn*`.
-- **[Scheduler](/docs/cookbook/scheduler)** — custom work-stealing
-  configurations.
-- **[Resilience](/docs/cookbook/resilience)** — retry, circuit
-  breakers, bulkheads.
-- **[Async pipeline tutorial](/docs/tutorials/async-pipeline)** —
-  end-to-end production-shaped example.
-- **[language/async-concurrency](/docs/language/async-concurrency)** —
-  grammar and normative reference.
+- [Async and Concurrency](/docs/language/async-concurrency) — syntax and execution boundaries.
+- [`core.async`](/docs/stdlib/async) — API signatures and backend limitations.
+- [Nursery](/docs/cookbook/nursery) — task scopes.
+- [Channels](/docs/cookbook/channels) — communication between tasks.
+- [Generators](/docs/cookbook/generators) — `fn*` and `async fn*`.

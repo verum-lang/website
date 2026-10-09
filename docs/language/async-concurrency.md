@@ -52,7 +52,7 @@ There are three distinct cases:
 | Awaited expression | What drives completion |
 |---|---|
 | An explicit value implementing `Future` | Its `poll` method returns `Poll.Pending` or `Poll.Ready(value)`; `.await` yields the declared `Output`. |
-| A handle returned by `spawn` | Completion of the spawned task. |
+| A handle inferred from the `spawn` keyword | Completion of the spawned task, yielding its body's result on the current keyword path. |
 | A direct `async fn` call | The eagerly computed result, under the limitation above. |
 
 The explicit protocol is declared in `core.async.future`. Its `Output`
@@ -82,6 +82,14 @@ let handle = spawn { fetch(url).await };
 
 Handle completion and explicit `Future.poll` are separate mechanisms
 from the eager lowering of a direct `async fn` call.
+
+The library `core.async.task.JoinHandle<T>` declares a `Future.Output` of
+`Result<T, JoinError>`. The keyword's task representation and this library
+record do not yet share one checked completion path: an inferred keyword
+handle can yield `T` directly. A library type annotation does not establish
+cancellation support or insert a join-error layer. See
+[task result boundaries](/docs/cookbook/async-basics#task-results-and-join-errors)
+for the distinction, especially when `T` is itself a `Result`.
 
 **Known limitation:** awaiting the same handle twice
 was accepted. Do not rely on the checker to enforce a single-consumer
