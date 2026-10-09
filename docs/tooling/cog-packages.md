@@ -159,10 +159,21 @@ metadata includes a signature, is separate from deciding which publisher keys
 to trust. There is no package option that requires a trusted publisher or a
 specified verification level.
 
-The install command queries the registry's vulnerability endpoint, but a
-non-success HTTP response currently becomes an empty advisory list. Its
-"No known vulnerabilities" message therefore does not establish that an
-advisory service was available or that the package is safe.
+Before downloading an archive, installation requests a vulnerability report
+from the configured registry for the selected cog and version. An unsuccessful
+HTTP response, transport failure, malformed report, or report naming a different
+cog or version stops installation. These failures occur before downloading or
+caching an archive and before changing the project manifest or lockfile.
+
+A valid report containing advisories produces warnings and installation
+continues. "No known vulnerabilities" is printed only for a successful response
+with a valid, matching, empty report. It describes the registry's report; it
+does not establish that the package is safe.
+
+See [`check_vulnerabilities`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/registry/client.rs)
+for report validation and
+[`install_from_registry`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/cog.rs)
+for the installation sequence.
 
 ## Dependency management
 
