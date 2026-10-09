@@ -51,21 +51,22 @@ commitments or deduplication.
 
 ## `core.hash.crypto` — the collision-resistant digests
 
-:::caution Interpreter-only today (AOT crashes)
+:::caution SHA-256 has an interpreter runtime failure
 
-Checked on macOS arm64: `Sha256.digest`, `Sha512.digest`,
-`Sha1.digest` and `blake3` all return the **correct** digests under
-`verum run` — `abc` gives `ba7816bf…`, `ddaf35a1…`, `a9993e36…` and
-`6437b3ac…` — and every one of them faults at address `0x0` inside its own
-`update` when the program is compiled with `verum build`. The same holds for
-`core.mac.hmac` and `core.security.kdf.hkdf`, which fault inside
-`sha256.compress_block`.
+On macOS arm64, an ordinary `Sha256.digest` call reaches `Sha256.finalize`
+and fails with `Index out of bounds: index 3 for list of length 3` before
+returning a digest. The
+[`Sha256.finalize` implementation](https://github.com/verum-lang/verum/blob/main/core/hash/crypto/sha256.vr)
+encodes the message length through an inferred `UInt64.to_be_bytes()`
+result, which encounters the
+[byte-conversion limitation](/docs/stdlib/intrinsics#byte-conversion-limitations).
 
-The cause is not in these algorithms. Each state carries a `buf: [Byte; N]`
-field, and reading an element of a fixed-size primitive array **through a
-field** is answered at runtime by a container classifier that has no arm for
-a packed buffer, so it reads the buffer's own bytes as a header. Until that
-closes, run digest code under the interpreter.
+Passing standalone conversions with explicit array annotations do not
+establish working SHA-256. Native digest execution also has unresolved
+array-representation failures. Each hash and backend needs its own
+validation; the interpreter is not a general fallback for these APIs.
+The declarations and algorithm examples below are subject to these runtime
+limitations.
 
 :::
 

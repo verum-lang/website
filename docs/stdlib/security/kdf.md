@@ -6,6 +6,17 @@ description: HKDF (RFC 5869) over SHA-256 / SHA-384 / SHA-512 — the standard k
 
 # `core.security.kdf` — HKDF key-derivation
 
+:::caution HKDF-SHA-256 depends on the affected digest implementation
+
+The SHA-256 HKDF functions call HMAC-SHA-256, which finalizes SHA-256
+states. They are exposed to the
+[SHA-256 interpreter byte-conversion failure](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests).
+This is a dependency limitation; successful key derivation requires its
+own execution checks. The API and algorithm descriptions below do not
+establish working interpreter or AOT behavior for every variant.
+
+:::
+
 ## What is a KDF and why do we need one?
 
 A **Key Derivation Function** (KDF) turns one secret into many

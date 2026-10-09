@@ -57,8 +57,10 @@ tests in `vcs/specs/L1-core/security/`.
 
 ### 4. Production-first, standards-aligned
 
-Every primitive cites its authoritative standard in the module
-header and matches its published test vectors bit-exact:
+The algorithm standards define the expected behavior and test vectors.
+Matching those vectors in Verum requires successful execution of the
+specific API and backend; see [runtime status](#runtime-status) for known
+limitations.
 
 - FIPS 180-4 (SHA-2 family)
 - FIPS 197 (AES)
@@ -231,15 +233,15 @@ it before planning against a row here.
 - **[stdlib/net](/docs/stdlib/net)** — TLS 1.3 record layer,
   QUIC, HTTP/3 all consume the primitives here.
 
-## Status and roadmap
+## Runtime status
 
 | Primitive | Status | Notes |
 |---|---|---|
-| SHA-256, SHA-384, SHA-512 | ⚠️ Interpreter only | Pure Verum reference + `crypto-accel` hook. The digests are RIGHT — checked, `abc` gives `ba7816bf…` (SHA-256) and `ddaf35a1…` (SHA-512) under the interpreter — and the AOT binary faults at `0x0` inside `Sha256.update` / `Sha512.update` before producing any output. The state's `buf: [Byte; N]` field is read through a runtime container classifier that has no arm for a packed buffer. |
+| SHA-256, SHA-384, SHA-512 | ⚠️ Partial | SHA-256 interpreter finalization fails while indexing an inferred big-endian byte result. Native digest execution also has array-representation limitations. Each algorithm and backend needs separate validation; see [hash runtime limitations](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests). |
 | SHA-1 (legacy) | ⚠️ Interpreter only | Same shape and the same fault: `abc` gives `a9993e36…` under the interpreter, `0x0` inside `Sha1.update` under AOT. |
 | BLAKE3 | ⚠️ Interpreter only | Same shape and the same fault: `abc` gives `6437b3ac…` under the interpreter, `0x0` inside `Blake3.update` under AOT. |
-| HMAC-SHA-{256,384,512} | ⚠️ Interpreter only | RFC 4231 vectors byte-exact under the interpreter. Checked: `hmac_sha256` over a 4-byte key and `abc` answers with a fully non-zero 32-byte tag under the interpreter, and the AOT binary faults at `0xfffffff8ffc08200` inside `core.hash.crypto.sha256.compress_block` — an address far above the heap floor, i.e. array CONTENT used as a pointer, the same A147 root as the digests above. |
-| HKDF-SHA-{256,384,512} | ⚠️ Interpreter only | RFC 5869 vectors byte-exact under the interpreter. Checked: `hkdf_sha256` asking for 16 bytes returns 16 non-zero bytes under the interpreter, and the AOT binary faults at `0xfffffff8dddf4200` inside `core.hash.crypto.sha256.compress_block` — the same frame and the same A147 root as HMAC above. |
+| HMAC-SHA-{256,384,512} | ⚠️ Partial | HMAC-SHA-256 finalizes the affected SHA-256 states. This dependency prevents a general interpreter-support claim; native execution also has array-access limitations. See [HMAC](/docs/stdlib/mac#hmac) for the scope. |
+| HKDF-SHA-{256,384,512} | ⚠️ Partial | HKDF-SHA-256 depends on HMAC-SHA-256 and the affected SHA-256 finalizer. Successful derivation requires separate execution checks for each variant and backend; see [HKDF](/docs/stdlib/security/kdf). |
 | AES-128 (block cipher) | ✅ Production | Reference + AES-NI / ARMv8 hook. Verified against the FIPS-197 C.1 vector at BOTH tiers, byte for byte: key `2b7e151628aed2a6abf7158809cf4f3c`, plaintext `3243f6a8885a308d313198a2e0370734`, ciphertext `3925841d02dc09fbdc118597196a0b32`. Checked against the published vector rather than against "it no longer crashes" — a resolved-but-wrong block cipher produces a zero tag and never crashes at all. |
 | AES-256 (block cipher) | ✅ Production | Verified against the FIPS-197 C.3 vector at BOTH tiers, byte for byte: key `000102…1f`, plaintext `00112233445566778899aabbccddeeff`, ciphertext `8ea2b7ca516745bfeafc49904b496089`. Measured separately from AES-128 — the 60-word key schedule is its own code path and the 128-bit vector does not speak for it. |
 | AES-GCM | ⚠️ Interpreter only | The 12-byte IV path used by TLS/QUIC has an interpreter control with a 4-byte ciphertext and 16-byte tag. The recorded AOT control completes `Aes128Gcm.new` but faults in `gcm_encrypt_common` while reading the GHASH subkey through `h: &[Byte; 16]`, a reference to a packed byte field. |
