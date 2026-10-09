@@ -485,6 +485,13 @@ LLVM IR. Tier-aware CBGR lowering selects between
 on the reference's opcode (`Ref` vs `RefChecked` vs `RefUnsafe`).
 Cubical opcodes lower to identity / passthrough (proof erasure).
 
+Array call bindings retain generic element access until physical storage is
+established. LLVM lowering derives that storage from the selected executable
+producer, not the declared array shape or source-body flag. Its bounded
+analysis distinguishes list and packed results and refuses unsupported
+parameter or control-flow cases; see
+[storage of array call results](/docs/architecture/codegen#storage-of-array-call-results).
+
 ## GPU lowering
 
 `@device(GPU)` functions route through `verum_codegen::mlir` instead

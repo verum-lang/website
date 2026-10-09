@@ -33,6 +33,41 @@ IR (`platform_ir.rs`), and target-triple gating
   optimised by LLVM's passes.
 - **Cubical opcodes** lower to identity / noop (proof erasure).
 
+### Storage of array call results
+
+A fixed-size result type `[T; N]` specifies its element type and length.
+The returned value can use list storage or packed numeric storage,
+depending on the selected producer. Both inferred and explicitly typed
+call bindings preserve this distinction: the signature alone does not
+select a packed load or copy the result into a contiguous buffer.
+
+Native lowering examines the final executable body selected for the call.
+It can follow supported straight-line allocations and value moves to the
+returned register, distinguishing list and packed results even when two
+functions have identical array signatures. Indexing, indexed assignment
+and length use the same storage evidence. A declaration's source-body flag
+establishes body presence, not its physical result layout.
+
+This analysis is conservative. Unknown producers, results forwarded from
+another call, mixed return paths and ambiguous ownership of the selected
+body provide no storage proof. Packed or unknown array results in a function with generic element
+or length access and unsupported control flow, including branches and
+loops, cause native compilation to fail. A function combining a fixed-array
+parameter, including a reference to one, with generic element or length
+access is also refused until its argument storage is established. These
+refusals report `Unproven native array storage`; they cannot be replaced
+by a successful zero-result stub.
+
+The implementation lives in
+`crates/verum_vbc/src/codegen/statements.rs` and
+`crates/verum_codegen/src/llvm/array_storage.rs::selected_source_returns`.
+Its compiler-level controls cover source and decoded bytecode. They do not
+validate these paths through an ordinary CLI build, general call-boundary
+conversions, successful SHA-256 execution, or a deployed AOT executable. The
+[byte conversion limitations](/docs/stdlib/intrinsics#byte-conversion-limitations)
+remain applicable. Returning a packed array as a growable list is a
+separate [conversion with its own limits](/docs/language/types#returning-an-array-as-a-list).
+
 ### Runtime support
 
 `runtime.rs` generates:
