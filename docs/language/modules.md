@@ -125,74 +125,59 @@ does that.
 
 ## Visibility
 
-Verum has a **five-level** visibility system. From most restrictive to
-most permissive:
+Visibility modifiers apply to individual declarations. `public` and `pub`
+are equivalent spellings; an unmarked declaration is private. The grammar also
+accepts restricted public forms, `internal`, `protected` and explicit `private`.
 
-| Modifier              | Scope | Common use |
-|-----------------------|-------|------------|
-| (none) `Private`      | defining module only | implementation helpers |
-| `pub(super)`          | parent module and descendants | sibling collaboration |
-| `pub(in path)`        | a specific subtree named by `path` | curated APIs |
-| `internal` / `pub(cog)` | entire current cog, not downstream | cog-wide utilities |
-| `pub`                 | anywhere, including downstream cogs | the cog's stable API |
+The current module access checker applies these rules when an exported item
+reaches it:
 
-```verum
-pub           fn public_api()       { ... }   // exported from the cog
-internal      fn cog_visible()      { ... }   // aka pub(cog)
-pub(super)    fn parent_visible()   { ... }
-pub(in .self.net) fn net_visible()  { ... }   // just the net subtree
-              fn module_private()   { ... }   // no modifier → private
-protected     fn type_relative()    { ... }   // see below
-```
+| Modifier | Rule in the module access checker |
+|----------|-----------------------------------|
+| (none) or `private` | Defining module only. |
+| `pub(super)` | Immediate parent module only; it does not grant access to siblings or more distant ancestors. |
+| `pub(in path)` | The named module and its subtree. |
+| `pub(cog)` | Modules in the same cog. |
+| `public` or `pub` | Any module. |
+| `internal` | Defining module only in the current implementation. |
+| `protected` | Defining module only in the current implementation. |
 
-- `protected` — visible to types that extend or implement this one.
-  Relevant for protocol internals and specialisation; it is not a
-  fifth visibility level but a protocol-local refinement.
-- Visibility is evaluated per item, not per file — a `pub` item inside
-  a non-`pub` module is still reachable by its full path, and the
-  compiler enforces the **minimum** visibility along that path.
+**Implementation limitation:** `internal` is parsed as a distinct modifier,
+not as an alias of `pub(cog)`. Although it expresses intended visibility within
+the cog, the module checker does not give it the same access as `pub(cog)`.
+Similarly,
+`protected` does not grant access to submodules or implementing types through
+this check. See the
+[visibility parser](https://github.com/verum-lang/verum/blob/main/crates/verum_fast_parser/src/decl.rs),
+[declaration model](https://github.com/verum-lang/verum/blob/main/crates/verum_ast/src/decl.rs)
+and [`VisibilityChecker`](https://github.com/verum-lang/verum/blob/main/crates/verum_modules/src/visibility.rs).
 
-:::caution The explicit mount is checked; the bare name is not
+:::caution Import visibility is not uniform across compiler paths
 
-Checked on a fresh cog, and the answer changed since this
-box last said "access control is not applied". Half of it now is.
+The access rules above apply only after an item reaches an export table.
+Ordinary source export extraction includes unrestricted `public` declarations
+only. It omits restricted forms such as `pub(cog)`, `pub(super)` and
+`pub(in path)`, as well as private, `internal` and `protected` declarations.
+A restricted helper can therefore be refused during import even when its
+intended scope includes the caller.
 
-**Mounting a non-public name is refused**, which it was not before:
+The compiler uses that public-only extraction for source cog dependencies and
+cross-file module registration. A separate project-file loading path places
+otherwise non-public declarations in its export table as public. Consequently,
+accepting an import through one path does not establish that private helpers
+remain hidden through every compilation path. These are current implementation
+limitations.
 
-```
-mount probe_cog.util.math.{public_fn};      // public=1     exit 0
-mount probe_cog.util.math.{bare_fn};        // error<E401>  exit 1
-mount probe_cog.util.math.{internal_fn};    // error<E401>  exit 1
-mount probe_cog.util.math.{PrivateThing};   // error<E401>  exit 1
-```
+The relevant boundaries are
+[`extract_exports_with_policy`](https://github.com/verum-lang/verum/blob/main/crates/verum_modules/src/exports.rs),
+[dependency and project-file loading](https://github.com/verum-lang/verum/blob/main/crates/verum_compiler/src/pipeline/loading.rs)
+and [cross-file registration](https://github.com/verum-lang/verum/blob/main/crates/verum_compiler/src/pipeline/cross_file.rs).
 
-**Calling it by bare name is not.** One legitimate mount of the module's
-PUBLIC name is enough to open every other name in that module:
-
-```verum
-// src/main.vr of a cog whose src/util/math.vr declares all three
-mount probe_cog.util.math.{public_fn};
-
-fn main() {
-    public_fn();             // 1  — as intended
-    internal_fn();           // 3  — never mounted, still runs
-    PrivateThing { v: 5 };   // 5  — a non-public type, constructed
-}
-```
-
-Two controls say it is the mount that opens them rather than ambient
-visibility: with no mount from that module at all, and with a mount from
-a *different* module, both names give `error<E100>: unbound variable`.
-
-The compiler announces the mechanism itself on the successful run —
-`[mount-fallback] explicit mount … did not resolve to its named path;
-binding bare '…' owned by a first-wins declarer`. The fallback binds by
-name rather than by module path, and the visibility check lives on the
-path route.
-
-So: write the modifiers, and read them as documentation of intent. They
-now keep a caller from *importing* a private name. They do not yet keep
-one from calling it.
+There is also a separate name-resolution fallback in the
+[code generator](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/codegen/mod.rs):
+a failed qualified lookup can bind a bare name instead. A `[mount-fallback]`
+warning identifies that route. A successful call through it is not evidence
+that the written module path or its visibility was respected.
 
 :::
 
@@ -384,10 +369,11 @@ for the full cache layout.
 
 ## Privacy is by item, not by file
 
-A `pub` item inside a non-`pub` module is still reachable by its fully
-qualified path — visibility is per item, not per path segment. The
-compiler enforces the minimum visibility along the path for a given
-use site.
+`public` marks a declaration's intended exported API. The module must also
+resolve and the item must reach its export table. See the
+[visibility limitations](#visibility) for the current differences between
+source imports and project-file loading; a modifier alone does not establish
+that every qualified access path enforces the same boundary.
 
 ## `cog` — the package
 
