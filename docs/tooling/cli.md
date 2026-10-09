@@ -853,8 +853,12 @@ VERUM_HOME=~/.verum               # toolchain root
 VERUM_LOG=debug                   # log level
 VERUM_SMT_TELEMETRY=1             # emit SMT routing telemetry
 VERUM_TARGET_DIR=target           # build-output directory
-VERUM_TOKEN=...                   # registry token for package publish
+VERUM_REGISTRY_TOKEN=...          # bearer token for package publish
 ```
+
+`verum package publish` reads `VERUM_REGISTRY_TOKEN` before its credentials
+file. See [Cog packages](/docs/tooling/cog-packages#publishing) for authentication
+and publication requirements.
 
 ## Configuration files
 

@@ -944,8 +944,12 @@ VERUM_HOME              # toolchain root (default ~/.verum)
 VERUM_LOG               # log level (trace|debug|info|warn|error)
 VERUM_SMT_TELEMETRY     # emit SMT routing telemetry
 VERUM_TARGET_DIR        # default output directory
-VERUM_TOKEN             # registry authentication
+VERUM_REGISTRY_TOKEN    # bearer token for package publish
 ```
+
+`verum package publish` reads `VERUM_REGISTRY_TOKEN` before its credentials
+file. See [Cog packages](/docs/tooling/cog-packages#publishing) for authentication
+and publication requirements.
 
 ## See also
 
