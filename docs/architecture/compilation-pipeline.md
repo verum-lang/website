@@ -170,11 +170,16 @@ for the solver-side internals.
 
 ## Phase 4a — Autodiff compilation
 
-For every `@differentiable fn`, builds the computational graph and
-synthesises a VJP (vector-Jacobian product) companion. See
-**[math → autodiff](/docs/stdlib/math#layer-6--automatic-differentiation)**
-for the user-facing API; the transformation runs on MLIR
-`verum.tensor` ops so VJPs can fuse with the forward kernel.
+The [autodiff phase](https://github.com/verum-lang/verum/blob/main/crates/verum_compiler/src/phases/autodiff_compilation.rs)
+reads source AST modules, builds computation graphs for supported
+`@differentiable` functions and emits derivative functions as AST declarations.
+This compiler transformation is separate from the interpreter's runtime
+recording of scalar arithmetic and from MLIR GPU lowering.
+
+See [automatic differentiation](/docs/stdlib/math#layer-6--automatic-differentiation)
+for the API and [scalar interpreter gradients](/docs/stdlib/math#scalar-gradients-in-the-interpreter)
+for the bounded call behavior. An interpreter gradient result does not
+validate generated derivative companions or native differentiation.
 
 ## Phase 4b — Context-system validation
 

@@ -78,9 +78,9 @@ memory-mapped I/O.
 
 ## MLIR backend
 
-Located in `verum_codegen::mlir`. Used for autodiff lowering and the
-GPU path (`@device(gpu)` functions and tensor kernels). The LLVM
-backend handles CPU AOT; MLIR owns the GPU target family.
+Located in `verum_codegen::mlir`. It handles the GPU path
+(`@device(gpu)` functions and tensor kernels). The LLVM backend handles
+CPU AOT; MLIR owns the GPU target family.
 
 MLIR is invoked **only at AOT compile time**. There is no
 just-in-time compilation in Verum — GPU kernels are compiled to
@@ -231,20 +231,18 @@ dependency on a live MLIR context.
 
 ## Autodiff lowering
 
-`@differentiable` functions go through a source-transformation pass
-that runs *on the MLIR side* so VJP rules can be expressed over
-`linalg` ops rather than bytecode:
+Automatic differentiation has separate compiler and interpreter paths.
+The compiler's [`@differentiable` phase](/docs/architecture/compilation-pipeline#phase-4a--autodiff-compilation)
+builds derivative declarations from source AST. Scalar interpreter
+recording is implemented in
+[`autodiff_record.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/interpreter/autodiff_record.rs),
+where executed arithmetic contributes operations to a gradient tape.
 
-1. The primal function is lowered to `verum.tensor` as usual.
-2. A reverse-mode pass walks the op graph and emits a companion
-   function using VJP rules registered per op.
-3. Tape storage (for activations that the backward pass needs) uses
-   a stack-allocated `GradientTape` when possible, falling back to
-   `Heap<...>` when shapes are dynamic.
-
-The `GradientTape` context sees every `linalg` op, so the backward
-pass fuses into the forward kernel whenever the dataflow allows
-(saving a materialisation of the primal output).
+Selected numeric source methods use ordinary interpreter calls, preserving
+gradient connections for the [supported scalar receiver and argument paths](/docs/stdlib/math#scalar-gradients-in-the-interpreter).
+This is separate from MLIR GPU lowering. CPU AOT, tensor gradients and GPU
+kernel differentiation require their own validation; the scalar interpreter
+controls do not establish fusion or native gradient support.
 
 ## Linking
 
