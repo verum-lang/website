@@ -103,7 +103,7 @@ per-module deep findings live in `core-tests/intrinsics/<module>/audit.md`.
 | `memory` | ⚠️ partial | Value-level operations and the raw-pointer bridge are covered. `memcpy`, `memmove`, `memset`, `memcmp` and `secure_zero` accept either an integer address or a pointer, and `ptr_is_aligned_to` is available.  |
 | `atomic` | ⚠️ partial | Interp 30/30; AOT 25/30 (compare-and-swap `(observed, succeeded)` tuple under AOT — ATOMIC-CAS-AOT). |
 | `type_info` | ⚠️ partial | `T.size`/`T.bits`/… property surface complete both tiers (102 tests). The legacy meta-fn forms (`size_of<T>()`, `align_of<T>()`) are `@deprecated` and return 0 through every path — use the type-property syntax. |
-| `conversion` | ⚠️ partial | Interp 60 live; AOT 52/60 (f32/f64 bit-reinterpret + endianness round-trip flake). |
+| `conversion` | ⚠️ partial | Endian byte results have representation failures in the interpreter and AOT; see [byte conversion limitations](#byte-conversion-limitations). Float32 bit reinterpretation also has an AOT limitation. |
 | `control` | ⚠️ partial | Both tiers 36/36; 1 pin (generic `expect<T>` result mis-tag under arithmetic). |
 | `platform` | ✅ complete | Both tiers green. |
 | `tensor` | ⚠️ partial | The full surface runs under the interpreter with real CPU kernels, and its conformance suite passes with nothing skipped. The wire format every tensor intrinsic uses — `[dst][mode?][arg-registers]` — is now one authority shared by the emitter and the interpreter; an earlier audit found roughly thirty of seventy operations had drifted from it, which is why the op tables on this page are verified against the enums rather than maintained by hand. **Ahead of time:** the core operations (`new`, `fill`, `from_slice`, element access, `binop`, `unop`, `matmul`, `reduce`, `reshape`, `transpose`, `softmax`, `clone`) compile to real code; every other operation raises a runtime error naming itself rather than failing at link time. |
@@ -587,24 +587,24 @@ itrunc<S, D>(x: S) -> D
 bitcast<S, D>(x: S) -> D             // size(S) == size(D)
 
 // Byte layouts
-to_le_bytes<T, const N: Int>(x: T) -> [Byte; N]
-to_be_bytes<T, const N>(x) -> [Byte; N]
-to_ne_bytes<T, const N>(x) -> [Byte; N]
-from_le_bytes<T, const N>(bytes: [Byte; N]) -> T
-from_be_bytes<T, const N>(bytes) -> T
-from_ne_bytes<T, const N>(bytes) -> T
+to_le_bytes<T, const N: USize>(x: T) -> [Byte; N]
+to_be_bytes<T, const N: USize>(x: T) -> [Byte; N]
+to_ne_bytes<T, const N: USize>(x: T) -> [Byte; N]
+from_le_bytes<T, const N: USize>(bytes: [Byte; N]) -> T
+from_be_bytes<T, const N: USize>(bytes: [Byte; N]) -> T
+from_ne_bytes<T, const N: USize>(bytes: [Byte; N]) -> T
 
-// Width-specific
-to_le_bytes_2 / _4 / _8 / _16                     (UInt16 / UInt32 / UInt64 / UInt128)
-to_be_bytes_2 / _4 / _8 / _16
-from_le_bytes_2 / _4 / _8 / _16
-from_be_bytes_2 / _4 / _8 / _16
+// Width-specific: Int input/output, with arrays of 2, 4 or 8 bytes
+to_le_bytes_2 / _4 / _8
+to_be_bytes_2 / _4 / _8
+from_le_bytes_2 / _4 / _8
+from_be_bytes_2 / _4 / _8
 
 // Endianness
 to_le<T>(x) / to_be<T>(x) / from_le<T>(x) / from_be<T>(x)
 
 // Convenience
-int_to_bytes<T, const N>(x: T) -> [Byte; N]
+int_to_bytes<T, const N: USize>(x: T) -> [Byte; N]
 f32_to_bits(f) -> UInt32             f32_from_bits(b) -> Float32
 f64_to_bits(f) -> UInt64             f64_from_bits(b) -> Float64
 ```
@@ -621,35 +621,46 @@ little-endian target; `to_be`/`from_be` byte-swap.
 
 Suite: `core-tests/intrinsics/conversion/`
 (unit + property + integration + regression + `audit.md`).
-**Green under the interpreter with no `@ignore`d pins; a small tail fails under AOT.**
 
-**Wiring fixes landed (data-only — the codegen/interp/LLVM implementations
-already existed but were unreachable from the intrinsic surface):**
+Byte conversion is partial on both execution backends. The declarations in
+[`core/intrinsics/conversion.vr`](https://github.com/verum-lang/verum/blob/main/core/intrinsics/conversion.vr)
+specify fixed-size results, but the runtime representation of a returned
+value can disagree with how its caller indexes it.
 
-- **`sext`/`zext`/`itrunc`/`fpext`/`fptrunc` returned `nil`** — the generic
-  names aliased to registry names that don't exist (the real entries are
-  width-typed: `i32_to_i64`, `u32_to_u64`, `f32_to_f64`, `f64_to_f32`,
-  `i64_to_i32`). Repointed the aliases.
-- **`f{32,64}_{to,from}_bits` returned `nil`** — the wrappers called the
-  unregistered generic `bitcast` instead of their dedicated bit-reinterpret
-  intrinsics. Routed them correctly.
-- **`to_le`/`to_be`/`from_le`/`from_be` returned a byte array** — they were
-  aliased to `to_le_bytes`/`to_be_bytes`. Now return the endianness-converted
-  `T` (identity / `bswap`).
+### Byte conversion limitations
 
-**AOT-codegen fix landed (`CONV-AOT-BYTEARRAY-1`):** the `to/from_*_bytes`
-`[Byte; N]` intrinsics SIGSEGV'd under AOT.  Root cause was general — AOT `GetE`
-mis-classified a byte-element collection that crossed a function boundary
-(`List<U8>`/`List<I8>` marked as a *slice*; `[T; N]` left unmarked), so it used
-the wrong stride / dereferenced the list header.  A `List<U8>`/`[Byte; N]` is an
-i64-strided list object; true `&[U8]` slices are a distinct representation.
-Fixed in both the return-type and parameter register-marking paths
-(`verum_codegen/llvm`) — this also unblocks every `fn … -> [T; N]` and
-`fn(List<U8>)` under AOT.
+The following behavior is verified on macOS arm64:
 
-**Open (separate, pre-existing):** `CONV-AOT-F32BITS-1` — `f32_to_bits`/
-`f32_from_bits` return `0` under AOT (Float32 cast/parameter handling; the f64
-forms are correct on both tiers).
+| Call and result binding | Interpreter | AOT |
+|---|---|---|
+| `UInt64.to_be_bytes()`, inferred result type | Indexing element 7 raises `Index out of bounds: index 7 for list of length 3`. | The corresponding byte-value assertion fails. |
+| `UInt64.to_be_bytes()` or `UInt64.to_le_bytes()`, explicit `[Byte; 8]` result | Checks of every output byte pass. | These annotated forms have no verified native result here. |
+| `UInt16.to_be_bytes()` with `[Byte; 2]`, or `UInt32.to_be_bytes()` with `[Byte; 4]` | Checks of every output byte pass. | These annotated forms have no verified native result here. |
+
+An explicit result annotation changes the indexing path in these interpreter
+controls; it does not establish general conversion correctness or native
+support. Other widths, reverse conversions and function-boundary uses need
+their own validation.
+
+Fixed-size byte arrays do not have one universal storage layout. In these
+interpreter controls, the typed byte-array literal uses packed storage,
+while the conversion calls return list-backed storage. Binding such a
+result to `[Byte; N]` does not itself copy it into a contiguous byte buffer.
+Consequently, neither the
+declared return type nor a passing element check establishes a safe raw
+byte pointer for FFI. Follow the
+[byte-buffer contract](https://github.com/verum-lang/verum/blob/main/docs/architecture/ffi-byte-buffer-contract.md)
+for packed buffers and slices, and validate the producer and consumer on
+the target backend.
+
+The inferred conversion failure also affects
+[`Sha256.finalize`](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests),
+which uses big-endian bytes internally. An annotated standalone conversion
+does not establish successful digest execution.
+
+Float32 bit reinterpretation has a separate AOT limitation:
+`f32_to_bits` and `f32_from_bits` can return `0` instead of the expected bit
+pattern.
 
 ---
 
