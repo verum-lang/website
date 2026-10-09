@@ -1,317 +1,272 @@
 ---
 sidebar_position: 21
-title: Cog distribution registry
+title: Local cog manifest registry
 ---
 
-# `verum cog-registry` — Verified-mathematics package distribution
+# Local cog manifest registry
 
-Verum's package manager is to verified mathematics what Cargo is
-to Rust: published packages (cogs) carry **cryptographic
-proof-integrity** so a downstream consumer can verify the entire
-dependency closure.  Immutable releases, per-cog reproducibility
-chains, attestation kinds, multi-mirror trust — all designed so
-"this theorem was kernel-checked on date X by signer Y" is a
-verifiable claim, not a trust assumption.
+`verum cog-registry` stores and searches JSON manifests for verified-mathematics
+content in local directories. Each manifest describes a cog, its declared
+dependencies, a reproducibility envelope, attestations and discovery tags.
 
-## Mental model
+For publishing source packages to a network registry and managing project
+dependencies, use the [cog package commands](/docs/tooling/cog-packages).
+The local manifest catalogue has its own JSON format and storage. It does not
+upload source archives, install dependencies or verify a dependency closure.
 
-A **cog** is one published unit of verified content (a library, a
-proof corpus, a framework definition).  Every cog version ships:
+## What the commands verify
 
-1. **Manifest** — name, version, dependencies, license, description,
-   tags.
-2. **Reproducibility envelope** — three blake3 hashes:
-   - `input_hash` — over (sources + lockfile + audit reports).
-   - `build_env_hash` — over the pinned toolchain (Verum kernel
-     version, SMT-solver versions, foreign-tool versions).
-   - `output_hash` — over the compiled `.vbc` archives + cert
-     files.
-   - `chain_hash` — blake3 over the three above, the canonical
-     content identifier.  Tampering with any component breaks
-     `chain_hash_valid()`.
-3. **Attestations** — typed Ed25519 signatures from auditors:
-   - `verified_ci` — `make audit` + `make audit-honesty-gate`
-     passed.
-   - `honesty` — proof-honesty audit clean (no axiom-only
-     placeholder).
-   - `coord` — coord-consistency audit clean (every `@verify(...)`
-     has a matching `@framework(...)`).
-   - `cross_format` — cross-format export round-trip succeeded.
-   - `framework_soundness` — every `@axiom` body is in `Prop`.
-4. **Discovery tags** — paper DOI, framework lineage, theorem
-   catalogue.  Searchable.
+`publish` and `verify` check that the envelope's recorded chain hash can be
+recomputed from its three component hash strings. They do not recompute those
+component hashes from source files, build environments or compiled artifacts.
+A consistent envelope therefore establishes an internal relationship between
+stored values, without establishing reproducibility or mathematical correctness.
 
-## Trust contract
+Attestations are stored as supplied metadata. The CLI can report or filter by
+attestation kind, but it does not authenticate signers, verify Ed25519 signatures,
+run proof checking or replay certificates. A manifest with no attestations can
+pass both `publish` and `verify`.
 
-Three invariants the registry enforces:
+## Commands and storage
 
-1. **Immutable releases.**  Republishing the same `(name,
-   version)` with a different chain hash is a **hard failure**
-   (`VersionConflict`).  Once published, a cog version's content
-   is fixed forever.
-2. **Envelope integrity.**  Publish rejects any manifest whose
-   `chain_hash` doesn't match the canonical derivation from the
-   three component hashes.  Tampering is observable.
-3. **Multi-mirror consensus.**  When the same cog is fetched from
-   N mirrors, the trusted answer is the one every mirror agrees
-   on.  A single mirror disagreeing breaks consensus.
+All subcommands accept `--output plain|json|markdown`; the default is `plain`.
+The following is command syntax, with optional arguments in brackets:
 
-These three together give cog-level cryptographic
-proof-integrity: a downstream consumer can verify the entire
-dependency closure without trusting any single party.
+```text
+verum cog-registry publish --manifest FILE
+  [--root DIR] [--registry-id ID] [--output FORMAT]
 
-## Subcommand reference
+verum cog-registry lookup --name NAME --version VERSION
+  [--root DIR] [--registry-id ID] [--output FORMAT]
 
-```bash
-verum cog-registry publish    --manifest <FILE>
-                              [--root <DIR>] [--registry-id <ID>]
-                              [--output plain|json|markdown]
+verum cog-registry search [--name SUBSTRING] [--paper-doi DOI]
+  [--framework TAG] [--theorem NAME] [--require-attestation KIND]
+  [--root DIR] [--registry-id ID] [--output FORMAT]
 
-verum cog-registry lookup     --name <N> --version <V>
-                              [--root <DIR>] [--registry-id <ID>] [--output ...]
+verum cog-registry verify --name NAME --version VERSION
+  [--root DIR] [--registry-id ID] [--output FORMAT]
 
-verum cog-registry search     [--name <SUB>] [--paper-doi <DOI>]
-                              [--framework <TAG>] [--theorem <NAME>]
-                              [--require-attestation <KIND>]
-                              [--root <DIR>] [--registry-id <ID>] [--output ...]
+verum cog-registry consensus --name NAME --version VERSION
+  --mirror DIR [--mirror DIR ...] [--output FORMAT]
 
-verum cog-registry verify     --name <N> --version <V>
-                              [--root <DIR>] [--registry-id <ID>] [--output ...]
-
-verum cog-registry consensus  --name <N> --version <V>
-                              --mirror <DIR> [--mirror <DIR>]…
-                              [--output ...]
-
-verum cog-registry seed-demo  [--output ...]
+verum cog-registry seed-demo [--output FORMAT]
 ```
 
-`--root` defaults to `<project>/target/.verum_cache/cog-registry`
-when omitted.
+`--root` selects a filesystem directory. Without it, the CLI searches the current
+directory and its ancestors for `Verum.toml`, accepting legacy `verum.toml`, and
+uses `<project>/target/.verum_cache/cog-registry`. Outside a project, supply an
+explicit root. Opening a root creates the directory if it does not exist,
+including for lookup and mirror commands.
+
+`--registry-id` defaults to `local`. It labels the local registry; it does not
+select a network service, authenticate a publisher or change the storage path.
+Manifests are stored under `<root>/<sanitized-name>/<version>.json`.
+
+`--version` takes `major.minor.patch` with an optional nonempty `-prerelease`
+suffix. The three numeric components must fit unsigned 32-bit integers. These
+commands take an exact version, not a dependency version range.
 
 ### `publish`
 
-Reads a manifest JSON file and stores it in the registry.  Validates
-the envelope's chain hash before accepting.  Idempotent for the same
-chain hash; non-zero exit on `VersionConflict` (the immutable-
-release contract).
+Read a `CogManifest` JSON file and store it under the selected root:
 
 ```bash
-$ verum cog-registry publish --manifest cog.json
-Cog publish
-  name        : verum.demo.hello-world
-  version     : 0.1.0
-  chain_hash  : 5e9c1c…
-
-  ✓ accepted
+verum cog-registry publish --manifest cog.json --root ./manifest-registry
 ```
+
+The command rejects an inconsistent envelope. If an existing manifest is found
+at the same storage path, a different chain hash produces `VersionConflict` and
+a nonzero exit. The same chain hash is accepted as a no-op: it leaves the stored
+manifest unchanged, including its description, tags and attestations.
+
+This comparison concerns the recorded envelope hash. It does not compare source
+archives or hash the entire manifest, and the JSON files remain ordinary editable
+files on disk. Publish does not resolve or validate declared dependencies.
 
 ### `lookup`
 
-Fetch a specific `(name, version)`.  Non-zero exit on `NotFound`.
+Read the manifest at an exact name and version:
 
 ```bash
-$ verum cog-registry lookup --name math.algebra --version 1.2.3
-Cog lookup: ✓ found
-  name           : math.algebra
-  version        : 1.2.3
-  description    : Commutative ring algebra
-  authors        : math@verum.lang
-  license        : Apache-2.0
-  envelope:
-    chain_hash     : 5e9c1c…
-    valid          : true
-  attestations:
-    verified_ci            signer=ci@verum.lang ts=1714478400
+verum cog-registry lookup --name math.algebra --version 1.2.3 \
+  --root ./manifest-registry --output json
 ```
+
+A missing entry, unreadable file or invalid JSON produces a nonzero exit.
+Successful JSON output is a lookup result with `"kind": "Found"` and a nested
+`"manifest"`, rather than a bare manifest suitable for `publish --manifest`.
+Lookup does not require a valid envelope or check that the stored name and
+version match the requested path.
 
 ### `search`
 
-Multi-criteria search: name substring, paper DOI, framework
-lineage, theorem catalogue, attestation requirement.  Every flag is
-optional and combinable.
+Combine any of the optional filters. Every supplied filter must match:
+
+| Option | Match |
+|---|---|
+| `--name` | Case-sensitive substring of the manifest name |
+| `--paper-doi` | Exact entry in `tags.paper_doi` |
+| `--framework` | Exact entry in `tags.framework_lineage` |
+| `--theorem` | Exact entry in `tags.theorem_catalogue` |
+| `--require-attestation` | Presence of the specified attestation kind |
 
 ```bash
-$ verum cog-registry search --paper-doi 10.4007/annals.2022.196.3
-Search results: 1 match(es)
-  hott-stuff@1.0.0
+verum cog-registry search --name math --require-attestation verified_ci \
+  --root ./manifest-registry
 ```
 
-```bash
-$ verum cog-registry search --require-attestation verified_ci --framework lurie_htt
-Search results: 3 match(es)
-  category-theory@2.0.0
-  yoneda-formalism@1.5.0
-  presheaf-completeness@1.0.0
-```
+With no filters, search lists the manifests it can read. Unreadable or malformed
+entries are skipped. Search is a discovery operation: a match does not establish
+envelope validity or the truth of an attestation.
 
 ### `verify`
 
-Run the integrity checks on a published cog: envelope chain-hash
-validity + which attestation kinds are present.
+Recompute the chain hash and report which attestation kinds are present:
 
 ```bash
-$ verum cog-registry verify --name alpha --version 1.0.0
-Verify cog `alpha@1.0.0`
-
-  envelope chain_hash valid : ✓
-  attestations:
-    coord                  —
-    cross_format           —
-    framework_soundness    —
-    honesty                —
-    verified_ci            ✓
+verum cog-registry verify --name math.algebra --version 1.2.3 \
+  --root ./manifest-registry --output json
 ```
 
-Non-zero exit when the envelope is invalid.
+The command fails if lookup fails or the envelope is inconsistent. Missing
+attestations do not make it fail. The JSON `attestations` values are presence
+booleans, not signature-verification or proof-checking results.
 
 ### `consensus`
 
-Multi-mirror cross-check.  Each `--mirror` is a separate registry
-root path; the command walks all mirrors and reports per-mirror
-verdicts plus the consensus.
+Compare recorded chain hashes across local directory roots. Supply at least one
+`--mirror`; each is a filesystem path, not a URL:
 
 ```bash
-$ verum cog-registry consensus --name widely-used --version 2.5.0 \
-    --mirror /nfs/registry-a \
-    --mirror /nfs/registry-b \
-    --mirror /nfs/registry-c
-Consensus check: `widely-used@2.5.0` across 3 mirror(s)
-  mirror-1               ✓ found chain=5e9c1c…
-  mirror-2               ✓ found chain=5e9c1c…
-  mirror-3               ✓ found chain=5e9c1c…
-
-Consensus      : ✓
-Agreed hash    : 5e9c1c…
+verum cog-registry consensus --name math.algebra --version 1.2.3 \
+  --mirror ./mirror-a --mirror ./mirror-b --output json
 ```
 
-Non-zero exit when consensus is broken (any mirror has a different
-chain hash).  This is the CI gate for production deployments where
-cog content must be uniformly distributed.
+The CLI uses the library's default policy, which compares only manifests returned
+as `Found`. Its result has these boundaries:
+
+| Mirror lookup results | `consensus` | `agreed_chain_hash` |
+|---|---|---|
+| Found manifests all carry the same chain hash | `true` | That hash |
+| Found manifests carry different chain hashes | `false` | `null` |
+| No manifest is found | `true` | `null` |
+
+`NotFound` and per-mirror lookup errors do not break agreement among found
+manifests. A root that cannot be opened fails the command before comparison.
+The command returns a nonzero exit when `consensus` is false, but even an all-missing
+lookup can exit successfully. Inspect `per_mirror` and require the expected
+`Found` results before treating the output as evidence of availability.
+
+The comparison does not check envelope validity, stored name/version identity,
+signatures or a minimum number of successful mirrors. Matching hashes alone do
+not establish that every mirror has the package or that its content is trusted.
+There are no CLI flags for a quorum or trusted publisher keys.
 
 ### `seed-demo`
 
-Populates an in-process demo registry with a sample cog and dumps
-its metadata.  Useful for the docs generator + tutorial walks; not
-part of the production protocol.
+```bash
+verum cog-registry seed-demo --output json
+```
 
-## Manifest JSON schema
+Create an in-memory sample and print its lookup result. Nothing is written to a
+local registry root. The sample uses synthetic content and placeholder attestation
+data; it is a metadata demonstration. As with `lookup`, the JSON wraps the manifest
+inside a `Found` result.
+
+## Reproducibility envelope
+
+The producer supplies the bytes represented by `input_hash`, `build_env_hash`
+and `output_hash`. These fields are intended to describe inputs, the build
+environment and outputs respectively. The library's `CogReproEnvelope::compute`
+helper hashes each supplied byte sequence with BLAKE3 and encodes the result as
+lowercase hexadecimal. It does not discover files or assemble a toolchain record.
+
+The chain hash is calculated over the UTF-8 component strings with newline
+separators and no trailing newline:
+
+```text
+chain_hash = hex(BLAKE3(
+  UTF8(input_hash) || "\n" || UTF8(build_env_hash) || "\n" || UTF8(output_hash)
+))
+```
+
+The CLI's envelope check applies this formula to the strings in the manifest.
+It does not separately validate their hexadecimal format or recompute their
+underlying bytes. Other manifest fields, including dependencies and attestations,
+are not directly included in this formula.
+
+## Manifest JSON
+
+This is the manifest structure, with illustrative hash and signature placeholders.
+Replace them with values produced for your content before using the file with
+`publish`.
 
 ```json
 {
   "name": "math.algebra",
   "version": { "major": 1, "minor": 2, "patch": 3, "prerelease": null },
   "description": "Commutative ring algebra",
-  "authors": ["math@verum.lang"],
+  "authors": ["maintainer@example.org"],
   "license": "Apache-2.0",
   "dependencies": [
     { "name": "core.proof", "version_constraint": ">=1.0,<2.0" }
   ],
   "envelope": {
-    "input_hash": "<blake3 hex of sources + lockfile + audit reports>",
-    "build_env_hash": "<blake3 hex of pinned toolchain>",
-    "output_hash": "<blake3 hex of compiled .vbc + certs>",
-    "chain_hash": "<blake3 hex of input_hash || build_env_hash || output_hash>"
+    "input_hash": "<input hash>",
+    "build_env_hash": "<build environment hash>",
+    "output_hash": "<output hash>",
+    "chain_hash": "<chain hash derived with newline separators>"
   },
   "attestations": [
     {
       "kind": "verified_ci",
-      "signer": "ci@verum.lang",
+      "signer": "ci@example.org",
       "signature": "<hex Ed25519 signature>",
       "timestamp": 1714478400
     }
   ],
   "tags": {
-    "paper_doi": ["10.4007/annals.2022.196.3"],
-    "framework_lineage": ["lurie_htt"],
-    "theorem_catalogue": ["yoneda_full_faithful"]
+    "paper_doi": [],
+    "framework_lineage": [],
+    "theorem_catalogue": ["ring_identity"]
   },
   "published_at": 1714478400
 }
 ```
 
-The `chain_hash` field MUST match the canonical derivation
-(`blake3(input_hash || "\n" || build_env_hash || "\n" || output_hash)`)
-or the registry rejects the manifest at publish time.
+Timestamps are Unix seconds supplied in the manifest. Dependency constraints are
+stored strings; no command in this family resolves them, traverses dependencies
+or checks a dependency closure.
 
-## Validation contract
+### Attestation kinds
 
-<!-- Deliberately not attributed to one command: the rules below
-     span several subcommands of this family, so the CLI-flag gate
-     cannot read them as one command's option table. -->
+The accepted kind names describe the publisher's declared evidence:
 
-| Rule | Error |
+| Kind | Declared evidence category |
 |---|---|
-| `--manifest` not valid JSON | `manifest must be valid CogManifest JSON` |
-| `--version` not parseable | `version must be major.minor.patch[-pre]` |
-| Envelope `chain_hash` doesn't match canonical derivation | `Rejected: envelope chain_hash mismatch` |
-| Republishing different content for same `(name, version)` | `VersionConflict: existing N proposed M` (non-zero exit) |
-| `lookup` for missing cog | non-zero exit |
-| `verify` on cog whose envelope `chain_hash` is invalid | non-zero exit |
-| `consensus` with 0 mirrors | `consensus requires at least one --mirror` |
-| `consensus` mirrors disagree on chain hash | non-zero exit |
-| `--require-attestation` not in canonical kind set | `--require-attestation must be one of …` |
+| `verified_ci` | Verification in CI |
+| `honesty` | Proof-honesty audit |
+| `coord` | Verification/framework annotation consistency |
+| `cross_format` | Cross-format verification or export checks |
+| `framework_soundness` | Framework soundness audit |
 
-## V0 vs V1+
+The kind, signer label, signature and timestamp are stored values. Publishing
+one of these records does not execute its named audit. The `--require-attestation`
+search filter checks only the kind.
 
-V0 ships:
+For callers integrating the Rust library, `sign_attestation` and
+`verify_attestation` provide Ed25519 operations with explicitly supplied keys.
+`MultiMirrorClient::lookup_with_consensus_policy` also accepts explicit quorum,
+identity and attestation-key requirements. These are separate library APIs;
+the CLI commands above do not enable those checks.
 
-- Production-grade `MemoryRegistry` and `LocalFilesystemRegistry`.
-- Immutable-release contract enforced.
-- Envelope chain-hash integrity check.
-- Multi-mirror consensus aggregator.
-- All CLI subcommands (publish / lookup / search / verify /
-  consensus / seed-demo).
+## Related tools and implementation
 
-V1+ adds:
-
-- Production HTTP server fronting the registry trait
-  (`packages.verum.lang`).  Same trait surface; CLI flags and JSON
-  schemas unchanged.
-- Ed25519 signature verification on publish + serve.
-- Verified-build attestation chain (CI auto-signs; consumers see
-  the badge).
-- Hot-link from paper PDFs (each `\cite{}` opens the corresponding
-  cog version).
-
-## CI usage
-
-The standard publish-on-tag workflow:
-
-```bash
-# .github/workflows/publish-cog.yml — runs on git tag push.
-# Build sources + run verification + assemble manifest.
-verum verify --closure-cache
-verum audit --proof-honesty
-verum audit --coord-consistency
-verum doc-render check-refs
-
-# Compute the envelope.
-verum cog-registry publish --manifest cog.json
-
-# Verify it round-trips.
-verum cog-registry verify --name "$NAME" --version "$VERSION"
-
-# Cross-check against any configured mirrors.
-verum cog-registry consensus --name "$NAME" --version "$VERSION" \
-    --mirror /nfs/mirror-a \
-    --mirror /nfs/mirror-b
-```
-
-Any failure aborts the release.
-
-## Cross-references
-
-- **[Continuous benchmarking](/docs/tooling/benchmarking)** —
-  per-cog metrics that feed the comparison matrix.
-- **[Auto-paper generator](/docs/tooling/auto-paper)** — every
-  rendered theorem can carry the cog's chain hash for the
-  reproducibility envelope.
-- **[Incremental cache](/docs/tooling/incremental-cache)** — the
-  closure-hash cache used by every cog's verification step.
-- **[SMT certificate replay](/docs/tooling/cert-replay)** — the
-  cross-backend agreement contract that drives the
-  `cross_format` attestation.
-- **[Cog packages](/docs/tooling/cog-packages)** — the user-side
-  dependency-management workflow (this page documents the
-  registry protocol; cog-packages documents the consumer
-  experience).
+- [Cog packages](/docs/tooling/cog-packages) describes source package commands and
+  project dependencies.
+- [SMT certificate replay](/docs/tooling/cert-replay) documents separate certificate
+  tools; the local manifest catalogue does not invoke them.
+- The [CLI handlers](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/commands/cog_registry.rs)
+  define command validation, output and exit behavior.
+- The [registry library](https://github.com/verum-lang/verum/blob/main/crates/verum_verification/src/cog_registry.rs)
+  defines `CogManifest`, envelope computation, local storage and mirror policies.
