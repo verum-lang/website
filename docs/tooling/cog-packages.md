@@ -187,11 +187,17 @@ verum workspace remove member-name
 verum workspace exec -- verum package publish --dry-run
 ```
 
-`workspace exec` runs the supplied command in members it discovers. Its member
-scan still checks only lowercase `verum.toml`: on a case-sensitive filesystem it
-skips members containing only `Verum.toml`, and it can report success after
-running no members. For canonical-only members, invoke `package publish` from
-each member directory directly.
+Run these commands from the workspace root. They select `Verum.toml` first,
+with legacy `verum.toml` as a fallback when the canonical file is absent. An
+invalid canonical manifest is an error even if a valid legacy file also exists.
+`workspace add` validates the member before adding its path; `workspace remove`
+accepts a member path or package name. Both persist membership changes to the
+selected workspace manifest.
+
+`workspace exec` runs the supplied command sequentially in each declared member's
+directory. A missing or invalid member manifest, a command that cannot start, or
+a nonzero child exit makes the overall command fail. Other members are still
+attempted, so a failed invocation can have completed work in some members.
 
 Each invocation of `package publish` applies its own manifest and dependency
 checks. It does not rewrite member dependencies or provide an atomic
