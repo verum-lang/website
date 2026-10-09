@@ -206,7 +206,8 @@ flatten_maybe_iter(iter)   // Iterator<Maybe<T>> -> List<T>
 
 ### `?` operator
 
-`?` propagates `None` from a `Maybe`-returning function:
+Outside a local `try`, `?` propagates `None` from the nearest
+`Maybe`-returning function or closure:
 
 ```verum
 fn first_word(text: &Text) -> Maybe<Text> {
@@ -311,8 +312,11 @@ the failure modes stabilise.
 
 ### `?` operator
 
-In a function returning `Result<_, E>`, the `?` operator unwraps an
-`Ok` or returns the `Err` early — converting via `From` if necessary.
+In a function or closure returning `Result<_, E>`, `?` unwraps an `Ok`
+or, outside a local `try`, returns an error early. An operand with error
+type `F` requires `E: From<F>` when conversion is needed; the returned
+error is `E.from(error)`. Record-field and other expression type hints
+do not change the enclosing callable's return type.
 
 ```verum
 fn load_config() -> Result<Config, Error> {
@@ -382,8 +386,27 @@ type FromResidual<R> is protocol {
 };
 ```
 
-`Maybe`, `Result`, and any user-defined sum type can implement `Try`
-to participate in the `?` operator.
+`Try.branch` separates a successful output from a failure residual.
+For early return, the nearest enclosing function or closure's return
+type must provide the matching `FromResidual` conversion. Implementing
+`Try` for an operand alone does not provide that conversion.
+
+The standard library declares these failure conversions in
+[`maybe.vr`](https://github.com/verum-lang/verum/blob/main/core/base/maybe.vr)
+and [`result.vr`](https://github.com/verum-lang/verum/blob/main/core/base/result.vr):
+
+| Operand | Callable return type | Propagated failure | Required bound |
+|---|---|---|---|
+| `Maybe<_>` | `Maybe<_>` | `Maybe.None` | — |
+| `Result<_, E>` | `Result<_, E>` | `Result.Err(error)` | — |
+| `Result<_, F>` | `Result<_, E>` | `Result.Err(E.from(error))` | `E: From<F>` |
+| `Maybe<_>` | `Result<_, E>` | `Result.Err(E.default())` | `E: Default` |
+| `Result<_, E>` | `Maybe<_>` | `Maybe.None`; the error is discarded | — |
+
+A `try` in the same callable provides a local recovery boundary. Nested
+closures keep their own return type and handlers; they do not inherit
+the enclosing callable's recovery scope. See
+[nested callables and recovery](/docs/language/error-handling#nested-callables-and-recovery).
 
 `Never` (alias `!`) is the bottom type; it can be coerced to any
 type. Returned by `panic`, `exit`, infinite loops, etc.

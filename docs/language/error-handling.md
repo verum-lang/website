@@ -33,9 +33,23 @@ fn load_config() -> Result<Config, Error> {
 }
 ```
 
-`?` unwraps an `Ok` or propagates an `Err`. For `Maybe`, `?` propagates
-`None` from a function whose return type is `Maybe<_>` or `Result<_,
-E>` (with `None` lifted to a specific error).
+`?` unwraps `Result.Ok` or `Maybe.Some`. Outside a `try` block in the
+same callable, a failure returns early from the nearest enclosing
+function or closure. Its return type selects the `FromResidual`
+conversion. A record field, function argument or annotated local may
+supply an expected type for an expression; it does not change that
+return boundary.
+
+When the operand and return type use different error types,
+`Result<_, F>` propagates into `Result<_, E>` through `E.from(error)`
+with the bound `E: From<F>`. Propagating `Maybe.None` into a `Result`
+requires `E: Default` and returns `Result.Err(E.default())`. Conversely,
+propagating a `Result.Err` into `Maybe` returns `Maybe.None` and discards
+the error. Use `ok_or` or `ok_or_else` before `?` when an absent value
+needs a specific error.
+
+See [the standard-library conversion table](/docs/stdlib/base#controlflowb-c-and-try)
+for the `Try` and `FromResidual` contracts.
 
 ## `throws`
 
@@ -81,6 +95,20 @@ try { risky_op() } recover |e| {
     default_value()
 }
 ```
+
+### Nested callables and recovery
+
+Inside a `try` block, `?` routes a failure to the recovery handler in
+that callable. A nested function or closure has its own recovery scope:
+declaring a closure inside an outer `try` does not make the outer
+`recover` handle the closure's own `?`. Without a local `try`, a
+`Result`-returning closure returns its error to its caller, including
+when invoked after the surrounding `try` has finished.
+
+A `try` inside the closure handles failures locally. The surrounding
+callable keeps its own handler for subsequent expressions. If the
+caller applies `?` to the closure's returned `Result` inside its own
+`try`, that separate propagation uses the caller's recovery handler.
 
 ## Preventing errors with refinements
 

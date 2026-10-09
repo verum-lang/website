@@ -172,6 +172,12 @@ is a control-flow operator for early return.
 
 Functions with no explicit return type return `()`.
 
+Error propagation with `?` uses the nearest function or closure's return
+boundary, unless a `try` in that same callable handles the failure.
+Expected types for record fields, arguments and annotated locals do not
+replace the callable's return type. See
+[error propagation](/docs/language/error-handling).
+
 ## Generator functions
 
 ```verum
@@ -321,7 +327,8 @@ fn parse_port(s: Text) throws(ParseError) -> Result<Int, Error>
 }
 ```
 
-- `?` propagates a `Result.Err` or `Maybe.None`.
+- `?` propagates a `Result.Err` or `Maybe.None` through the callable's
+  return conversion or its local `try` handler.
 - `throw E` constructs and propagates an error, valid only when `throws(...)` is declared.
 
 ## Closures
@@ -331,6 +338,12 @@ let square     = |x| x * x;
 let typed      = |x: Int| -> Int { x * x };
 let async_task = async |url| Http.get(url).await;
 ```
+
+A closure has its own return and recovery boundary. Its `?` uses its own
+return type, whether written explicitly or inferred from its callable
+signature. An outer `try` surrounding the closure expression does not
+become the closure's handler. See
+[nested callables and recovery](/docs/language/error-handling#nested-callables-and-recovery).
 
 Closures capture their environment by the minimum capability needed
 (immutable reference, mutable reference, or by-move). Force a move
