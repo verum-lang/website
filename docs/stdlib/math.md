@@ -567,7 +567,8 @@ During scalar `Float` gradient recording, a selected numeric source method
 contributes the arithmetic executed by its body. The receiver and explicit
 arguments retain their gradient connections across the call, as does the
 returned scalar. This covers direct values and local references passed to a
-by-value `self`; other reference paths need separate gradient validation.
+by-value `self`. Reference receivers whose gradient-tape origin cannot be
+recovered produce an unsupported-gradient error.
 A builtin derivative rule for a name such as `sin` applies when that builtin
 operation executes. A source method with that name follows its own body.
 

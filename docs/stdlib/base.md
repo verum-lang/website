@@ -83,7 +83,7 @@ The status table is the runtime truth, not the file's `lifecycle` annotation —
 
 ## Method-dispatch surface
 
-The runtime's method-dispatch flow combines several mechanisms — each
+The interpreter's method-dispatch flow combines several mechanisms — each
 contributes a class of behaviours that user code relies on. Knowing
 which mechanism fires for a given call site helps narrow runtime
 "method not found" diagnostics.
@@ -104,7 +104,8 @@ A numeric type's storage width does not choose its method declaration.
 For example, `USize.to_be_bytes` declares `List<Byte>`, while
 `UInt64.to_be_bytes` declares `[Byte; 8]`. A forward declaration without a
 source body preserves the existing builtin fallback. These declaration
-rules do not remove the [byte conversion limitations](/docs/stdlib/intrinsics#byte-conversion-limitations).
+rules do not remove the [byte conversion limitations](/docs/stdlib/intrinsics#byte-conversion-limitations). Native
+lowering requires separate validation of the selected call and return storage.
 
 The table summarizes the dispatch mechanisms; their order also depends on
 the receiver and the call selected by the compiler. Protocol defaults and
