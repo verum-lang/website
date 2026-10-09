@@ -166,6 +166,18 @@ metadata:            module-level attributes
 Modules compress with LZ4. Deserialisation is zero-copy where
 possible (mmap + fixup).
 
+### Source body presence
+
+VBC 2.24 function descriptors use flag bit 3 to record whether the source
+declaration has a body. An empty block counts as a body; a forward
+declaration does not. Synthetic descriptors and modules from older format
+versions do not establish this fact. Readers do not infer it from nonempty
+bytecode: a forward declaration can contain a generated return instruction.
+
+Archive loading preserves this information for numeric method selection.
+It identifies a declared source body, without establishing its return
+storage, ownership behavior or correctness. See [numeric method dispatch](/docs/stdlib/base#method-dispatch-surface).
+
 ## Module-load trust boundary
 
 Loading a `.vbc` module crosses a trust boundary: the bytes might

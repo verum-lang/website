@@ -90,7 +90,8 @@ which mechanism fires for a given call site helps narrow runtime
 
 | Layer | What it dispatches | Example |
 |---|---|---|
-| **Tier-0 inline** | Built-in primitive methods (`Int.cmp`, `Bool.lt`, `Float.partial_cmp`, `Text.eq`, `List.len`, `Map.get`, ...) compiled into the Rust dispatcher for zero overhead. | `42.cmp(&43) == Less` |
+| **Declared numeric body** | An exactly resolved numeric method with a source body keeps its declaration's contract before primitive width dispatch. | `USize` and `UInt64` can declare different return types for the same method name. |
+| **Tier-0 inline** | Built-in primitive methods (`Int.cmp`, `Bool.lt`, `Float.partial_cmp`, `Text.eq`, `List.len`, `Map.get`, ...) handled by the interpreter when no selected numeric source body takes precedence. | `42.cmp(&43) == Less` |
 | **Receiver-type qualified lookup** | `<TypeName>.<method>` against the function table; uses the receiver heap-header's TypeId to recover the type name. | `MyError.message(&err)` |
 | **Built-in TypeId → canonical-name fallback** | When the receiver carries a hardcoded built-in TypeId (Range/List/Map/Set/Maybe/Result/...) but no `TypeDescriptor` exists in `self.types`, the dispatcher maps the TypeId to the canonical name (`Range` for `TypeId(517)` etc.) and retries the lookup. | `range.collect()` where `range` has TypeId::RANGE |
 | **Receiver-type override (qualified mismatch)** | When codegen emits `T.method` but the runtime receiver is actually a different type (alias/inference drift), the dispatcher retries with `<actual>.<bare>`. | `r.is_err()` codegen'd as `Text.is_err` on a `Result` receiver |
@@ -99,15 +100,17 @@ which mechanism fires for a given call site helps narrow runtime
 | **Target-type-aware `.into()` rewrite** | At codegen time, `let x: T = expr.into()` rewrites to `T.from(expr)` when `T.from` exists in the function table. | `let opt: Maybe<Int> = 42.into()` → `Some(42)` |
 | **Unique bare-suffix match** | Last resort when bare-name method is unique across the function table (single function ending in `.<name>`); skipped on ambiguity. | unqualified `it.next()` resolving to a unique `*.next` |
 
-The order above is the **fallback order** — each layer fires only when
-the previous one missed. Tier-0 always wins; protocol-default and
-Deref auto-deref are last-mile safety nets. Diagnostics like "method
-'X' not found on receiver of runtime kind `Y`" mean every layer
-exhausted itself — typically the cause is either (a) the carrier
-module is not in the lazy-load `wanted_module_prefixes` (transitive
-load gap), (b) the receiver's TypeDescriptor genuinely lacks the
-protocol, or (c) the method name has drifted between source and the
-archive's compiled body.
+A numeric type's storage width does not choose its method declaration.
+For example, `USize.to_be_bytes` declares `List<Byte>`, while
+`UInt64.to_be_bytes` declares `[Byte; 8]`. A forward declaration without a
+source body preserves the existing builtin fallback. These declaration
+rules do not remove the [byte conversion limitations](/docs/stdlib/intrinsics#byte-conversion-limitations).
+
+The table summarizes the dispatch mechanisms; their order also depends on
+the receiver and the call selected by the compiler. Protocol defaults and
+Deref forwarding handle unresolved calls. A "method not found" diagnostic
+can indicate that a required module was not loaded, a protocol implementation
+is missing, or the call's name disagrees with the archived declaration.
 
 ---
 

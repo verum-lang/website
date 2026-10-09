@@ -561,6 +561,20 @@ checkpoint(f, x) -> y                        // trade recompute for memory
 recompute(values)
 ```
 
+### Scalar gradients in the interpreter
+
+During scalar `Float` gradient recording, a selected numeric source method
+contributes the arithmetic executed by its body. The receiver and explicit
+arguments retain their gradient connections across the call, as does the
+returned scalar. This covers direct values and local references passed to a
+by-value `self`; other reference paths need separate gradient validation.
+A builtin derivative rule for a name such as `sin` applies when that builtin
+operation executes. A source method with that name follows its own body.
+
+This interpreter behavior does not establish tensor or native
+differentiation, or validate the separate compiler transformation for
+`@differentiable` functions. See [autodiff compilation](/docs/architecture/compilation-pipeline#phase-4a--autodiff-compilation).
+
 `core/math/autodiff.vr` declares four `Differentiable`
 implementations — for `Float`, `DynTensor<T: RealField>`,
 `Vector<Float>` and `Matrix<Float>`. There are none for `Float32` or
