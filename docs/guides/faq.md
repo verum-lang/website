@@ -154,10 +154,12 @@ DAP-compatible front-end (VS Code, nvim-dap, IntelliJ).
 
 ### Package registry?
 
-`verum package publish` / `verum package search` target `registry.verum-lang.org`.
-Self-hosting and private registries are supported. Dependency
-specifiers accept registry, git, local path, and content-addressed
-(IPFS).
+`verum package publish`, `search`, and `install` use the project's
+`[registry].index` URL. The registry service and complete publication-to-build
+workflow are under development. Source publication accepts versioned registry
+dependencies; local and Git dependencies must be replaced explicitly before
+publishing. The CLI manifest rejects IPFS dependency fields. See
+[Cog packages](/docs/tooling/cog-packages) for supported commands and limitations.
 
 ### Can I write one binary that calls out to C?
 

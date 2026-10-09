@@ -1,37 +1,30 @@
 ---
 sidebar_position: 9
 title: cog
-description: Cog tooling subsystem — manifest parsing, .vbca archive reading, Ed25519 signing, pubgrub-style dependency resolution.
+description: Verum library APIs for manifests, compiled archive inspection, signatures and dependency resolution.
 status: regression-only
 ---
 
 # `core.cog` — Cog tooling subsystem
 
-A **cog** is the Verum unit of package distribution: a `.vbca`
-archive containing pre-compiled VBC modules + manifest metadata,
-optionally signed with an Ed25519 envelope. `core.cog` is the
-first-class library API for manipulating cogs.
+`core.cog` provides Verum library APIs for parsing manifests, inspecting compiled
+`.vbca` archives, signing manifest and source bytes, and resolving dependencies.
 
-## Consumers
-
-| Consumer | What it does with `core.cog` |
-|---|---|
-| `verum-registry` (vcogs.io reference impl) | Stores / serves cogs; verifies signatures |
-| `verum package publish` / `verum package install` CLI | Builds, signs, uploads, downloads, verifies |
-| IDE / LSP integration | Manifest validation, dependency hover, suggestion |
-| Build tooling (CI) | Reproducible builds via locked dependency resolution |
-
-`core.cog` is the library *behind* these tools; the tools
-themselves live in `crates/verum_cli/`.
+The host package CLI uses Rust implementations in
+[`crates/verum_cli`](https://github.com/verum-lang/verum/tree/main/crates/verum_cli).
+It publishes source tarballs through the
+[package workflow](/docs/tooling/cog-packages). These library APIs have separate
+schemas and integration limits; their presence does not establish that a CLI
+command or registry service uses them.
 
 ## Layout
 
 | File | What's in it |
 |---|---|
 | `mod.vr` | re-exports |
-| `manifest.vr` | `CogManifest` parser/serializer (Verum.toml schema) |
-| `archive.vr` | `.vbca` archive read/write (header / module table / signing envelope) |
-| `sign.vr` | Ed25519 signature envelope (sign / verify) |
+| `manifest.vr` | `CogManifest` parser and formatter |
+| `archive.vr` | `.vbca` header, module index and payload inspection |
+| `sign.vr` | Ed25519 signatures over manifest and source hashes |
 | `resolve.vr` | Pubgrub-style dependency resolution |
 
 ## Manifest
@@ -80,9 +73,18 @@ public type DependencySpec is {
 };
 ```
 
-Manifest is parsed from `Verum.toml`; the schema is enforced at
-parse time (missing required fields surface as
-`ManifestError.MissingField`).
+`parse_text(source)` parses TOML into `CogManifest`; `parse_value(value)` accepts
+an existing `ConfigValue`. `format_text` and `format_value` perform the reverse
+conversion. Missing required fields return `ManifestError.MissingField`.
+
+The library reads `[dev-dependencies]` and `[build-dependencies]`, while the
+[host CLI manifest](/docs/reference/verum-toml#dependencies-dev_dependencies-build_dependencies)
+uses underscores. The library also represents per-dependency registry and
+workspace sources that the CLI dependency parser refuses. Treat these as
+separate schemas when building tools; converting between them requires explicit
+validation of every field.
+
+Source: [`core/cog/manifest.vr`](https://github.com/verum-lang/verum/blob/main/core/cog/manifest.vr).
 
 ## Archive format (`.vbca`)
 
@@ -117,92 +119,100 @@ public type ModuleEntry is {
 };
 ```
 
-The `.vbca` is the canonical distribution unit — a container of
-pre-compiled VBC modules. Consumers read the header first (small, allows
-a fast magic check), then the index at `index_offset`, then the payloads
-they need. The refinements on the header fields are part of the type:
-a version above 65535 or a negative offset is not representable.
+`read_header` reads the fixed header; `read_archive_bytes` decodes the archive
+and checks its index and payload bounds. `find_module`, `module_bytes`,
+`dependency_graph`, and `topological_order` expose its contents.
+
+Index decoding requires the `vbc_archive_decode_index` runtime intrinsic.
+A supported declaration or a `FLAG_SIGNED` bit alone does not establish archive
+validation or signature verification on a particular backend. This module has
+no public archive-writing function.
+
+Source: [`core/cog/archive.vr`](https://github.com/verum-lang/verum/blob/main/core/cog/archive.vr).
 
 ## Ed25519 signing
 
+The signing module accepts canonical manifest JSON bytes and source archive
+bytes separately:
+
 ```verum
-public type SignatureEnvelope is {
-    signer_key_id:  Text,                // Ed25519 public-key fingerprint
-    signature:      List<Byte>,           // 64-byte Ed25519 signature
-    signed_at:      Int,                  // Unix seconds
-    archive_hash:   List<Byte>,           // SHA-256 of unsigned archive bytes
-};
+public fn sign_cog(
+    seed: &Ed25519Seed,
+    manifest_canonical_json: &List<Byte>,
+    source_archive: &List<Byte>,
+) -> Result<CogSignature, CogSignatureError>;
 
-public fn sign_archive(
-    archive: &CogArchive,
-    private_key: &Ed25519PrivateKey,
-) -> Result<SignatureEnvelope, SignError>;
-
-public fn verify_envelope(
-    archive: &CogArchive,
-    envelope: &SignatureEnvelope,
-    public_key: &Ed25519PublicKey,
-) -> Result<(), SignError>;
+public fn verify_cog(
+    sig: &CogSignature,
+    manifest_canonical_json: &List<Byte>,
+    source_archive: &List<Byte>,
+) -> Result<(), CogSignatureError>;
 ```
 
-Signature semantics: `archive_hash` covers EVERY byte of the
-archive *except* the envelope itself. This means appending a
-signature is non-destructive — the underlying bytes don't change,
-and you can re-sign a previously-signed archive without re-bundling.
+`CogSignature` carries `public_key`, `signature`, `manifest_sha256`,
+`source_sha256`, and `signed_at`. The signed message is the concatenation of the
+two raw SHA-256 digests, with the manifest digest first. The caller supplies the
+canonical JSON representation; the signing function does not canonicalize JSON.
+The timestamp is recorded in the envelope and is not part of the signed message.
+
+`verify_cog` recomputes both digests, compares them with the envelope, and checks
+the signature using its public key. The caller must separately establish that
+this key belongs to an authorized publisher.
+`verify_cog_precomputed_hashes` accepts two existing digests and skips hashing
+the input bytes; the caller owns the provenance of those digests.
+
+These library signatures are not accepted by the
+[source publication protocol](/docs/tooling/cog-packages#source-archive).
+
+Source: [`core/cog/sign.vr`](https://github.com/verum-lang/verum/blob/main/core/cog/sign.vr).
 
 ## Dependency resolution
 
-`core.cog.resolve` implements Pubgrub-style resolution
-(http://pubgrub.dart.dev). The algorithm produces a flat
-`ResolvedGraph` — every transitive dependency resolved to a
-specific concrete `(name, version)` — and surfaces minimal
-explanations on conflict:
+Resolution is asynchronous and obtains package information from a
+`DependencyProvider`:
 
 ```verum
-public type ResolvedGraph is {
-    root:     Text,                       // root package name
-    versions: Map<Text, Semver>,          // name → resolved version
-    edges:    List<(Text, Text, VersionSpec)>,  // dependency edges
+public async fn resolve<P: DependencyProvider>(
+    provider: &P,
+    root_package: PackageName,
+    root_version: SemVer,
+) -> Result<Lockfile, ResolveError>;
+
+public type Lockfile is {
+    packages: Map<PackageName, SemVer>,
 };
 
-// Two arms, not three: the resolver reports one explanation chain for
-// any unsatisfiable graph — conflict, missing package and cycle all
-// arrive as `NoSolution` — and passes provider failures through.
 public type ResolveError is
     | NoSolution { explanation: List<Text> }
     | Provider(ProviderError);
-
-public fn resolve(
-    root_manifest: &CogManifest,
-    available_versions: &Map<Text, List<Semver>>,
-) -> Result<ResolvedGraph, ResolveError>;
 ```
 
-`available_versions` is the index the resolver consults; in
-production it's the registry's version table, but during unit
-testing it's any synthesised map.
+The provider implements `list_versions` and `get_dependencies`. It can also
+control package priority and version choice. The solver uses version ranges,
+constraint propagation, and conflict explanations to select concrete versions.
+It does not fetch or authenticate archive bytes.
 
-Resolution is deterministic — same inputs always produce the same
-output, including conflict-explanation text. This makes `verum
-publish --offline` reproducible and lets CI bots verify a lockfile
-without re-querying the registry.
+Its `Dependency` record contains only a package and version range. Feature
+activation and development-dependency policy must be handled before producing
+those edges; they are not represented in the returned `Lockfile`. This library
+value also differs from the host CLI's on-disk lockfile schema.
+
+Source: [`core/cog/resolve.vr`](https://github.com/verum-lang/verum/blob/main/core/cog/resolve.vr).
 
 ## Status
 
 | File | Status |
 |---|---|
 | `mod.vr` | **undocumented** — re-exports — no conformance suite yet |
-| `manifest.vr` | **regression-only** — full schema — [core-tests/cog/manifest](https://github.com/verum-lang/verum/tree/main/core-tests/cog/manifest) |
-| `archive.vr` | **unverified** — read/write round-trip — [core-tests/cog/archive](https://github.com/verum-lang/verum/tree/main/core-tests/cog/archive) |
+| `manifest.vr` | **regression-only** — manifest parsing and formatting — [core-tests/cog/manifest](https://github.com/verum-lang/verum/tree/main/core-tests/cog/manifest) |
+| `archive.vr` | **unverified** — archive reading — [core-tests/cog/archive](https://github.com/verum-lang/verum/tree/main/core-tests/cog/archive) |
 | `sign.vr` | **unverified** — Ed25519 sign + verify — [core-tests/cog/sign](https://github.com/verum-lang/verum/tree/main/core-tests/cog/sign) |
-| `resolve.vr` | **unverified** — pubgrub core complete; feature-unification + dev-only-edge tracking TBD — [core-tests/cog/resolve](https://github.com/verum-lang/verum/tree/main/core-tests/cog/resolve) |
+| `resolve.vr` | **unverified** — provider-driven resolution; feature and development-edge policy are caller responsibilities — [core-tests/cog/resolve](https://github.com/verum-lang/verum/tree/main/core-tests/cog/resolve) |
 
-## Architectural alignment
+## Integration boundaries
 
-`core.cog` provides the LIBRARY interface to cog manipulation.
-The CLI tools (`verum package publish`, `verum package install`, `verum tree`) at
-`crates/verum_cli/src/commands/` consume this library — no CLI-
-specific manipulation logic in `core/`, no library logic in
-`crates/verum_cli/`. The split keeps the cog model itself
-embeddable in third-party tools (IDEs, custom registries,
-deployment systems) without dragging in the CLI surface.
+Use the [host manifest reference](/docs/reference/verum-toml) and
+[package commands](/docs/tooling/cog-packages) when working with the CLI.
+Use this library's types and source declarations when implementing Verum tools.
+A parser, archive reader, resolver, or signature helper passing its own checks
+does not establish a complete publish, install, and build workflow.

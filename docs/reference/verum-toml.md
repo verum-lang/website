@@ -1,13 +1,17 @@
 ---
 sidebar_position: 6
-title: verum.toml
+title: Verum.toml
 ---
 
-# `verum.toml` — Manifest Reference
+# `Verum.toml` — Manifest Reference
 
-Every cog has a `verum.toml` manifest at its root. The schema below
-is the authoritative description of every field the compiler and CLI
-will consume.
+The canonical project manifest is `Verum.toml`. The CLI also reads the legacy
+`verum.toml` spelling, preferring the canonical file when both exist. Project
+scaffolding still writes the lowercase spelling. Keep one manifest per project.
+
+This page describes the host CLI schema. The Verum-side
+[`core.cog.manifest` API](/docs/stdlib/cog#manifest) has a separate schema and
+is not the parser used by the host CLI.
 
 ## Minimal example
 
@@ -73,7 +77,16 @@ Note the **underscore** spelling: `dev_dependencies`, not
 `dev-dependencies`.
 
 Detailed dependency fields: `version`, `path`, `git`, `branch`, `tag`,
-`rev`, `features`, `optional`.
+`rev`, `features`, `optional`, and `default-features` (alias `default_features`).
+Unknown fields are rejected, including `ipfs`, `registry`, `package`, and
+`workspace`.
+
+For source publication, every entry in `[dependencies]` needs an explicit valid
+version requirement. Detailed entries preserve the feature list and both Boolean
+options. Source fields (`path`, `git`, `branch`, `tag`, `rev`) are refused even
+when a version is present; publication does not rewrite them. An explicit
+`"*"` is accepted, while a missing version is an error. See
+[Cog packages](/docs/tooling/cog-packages#dependencies).
 
 Version specifiers follow SemVer:
 - `"1.4"` — `^1.4` (`>= 1.4.0, < 2.0.0`).
@@ -91,9 +104,11 @@ tls     = ["openssl"]
 gpu     = ["opencl"]
 ```
 
-Optional dependencies participate via the dependency's `optional` flag.
-Enable at build time with `verum build --features gpu` or
-`--all-features`.
+The CLI accepts `verum build --features gpu` and `--all-features`. Publication
+preserves feature declarations and dependency options. Consumer activation of
+optional dependencies, default features, and transitive feature unification is
+not yet fully integrated; declaring these fields does not establish that all
+dependency edges will be selected correctly.
 
 ## `[build]` — basic build settings
 
@@ -427,8 +442,15 @@ exclude = ["vendor/*"]
 
 ```toml
 [registry]
-index = "https://registry.verum-lang.org"
+index = "https://registry.example.com"
 ```
+
+Supply your registry's base URL without `/api/v1`; package commands append the
+API path. `publish`, `search`, and `install` read this setting from the active
+manifest. Set it explicitly because projectless and manifest-backed defaults
+differ. An invalid manifest is reported instead of selecting a fallback registry.
+See [Cog packages](/docs/tooling/cog-packages#configure-a-registry) for the
+publication workflow and its limits.
 
 ## Language-feature sections
 

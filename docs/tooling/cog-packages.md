@@ -5,187 +5,212 @@ title: Cog Packages
 
 # Cog Packages
 
-A **cog** is Verum's unit of distribution — a self-describing archive
-containing VBC bytecode, type metadata, proof certificates, and
-documentation.
+A **cog** is Verum's unit of package distribution. The package CLI publishes
+source archives and metadata to a configured HTTP registry. Compiled `.vbca`
+archives have a separate [precompilation workflow](/docs/reference/cli-commands#verum-cog-precompile).
 
-## Cog structure
+The registry service and its integration with the compiler are under development.
+The client has local publication checks, but a successful dry run does not
+establish that a registry can store, serve, and build the package. Complete
+publication-to-installation acceptance, durable release storage, and consumer
+feature resolution remain limitations of the platform.
 
-A `.cog` file is a compressed tarball:
+## Configure a registry
 
+Set the registry base URL explicitly in the project's `Verum.toml`:
+
+```toml
+[registry]
+index = "https://registry.example.com"
 ```
-my-cog-1.2.3.cog
-├── manifest.toml          # expanded verum.toml
-├── vbc/
-│   ├── lib.vbc
-│   └── ...
-├── metadata/
-│   ├── types.ron          # type metadata
-│   └── api.json           # exposed API
-├── proofs/                # optional
-│   └── *.proof.bin
-├── docs/                  # optional
-│   └── html/
-└── SIGNATURE              # cryptographic signature
-```
+
+Replace the example URL with your registry's address. Despite the field name,
+this is the base URL: package operations append `/api/v1` and their endpoint.
+Do not include `/api/v1` in `index`.
+
+`verum package publish`, `search`, and `install` use this setting. An invalid
+project manifest causes an error instead of silently selecting another registry.
+Implicit defaults differ between manifest-backed and projectless operations, so
+an explicit URL is required for a predictable workflow.
+
+The [local cog registry](/docs/tooling/cog-registry) is a separate catalogue of
+verification manifests, with its own `verum cog-registry` commands.
 
 ## Publishing
 
-The publish / search / install surface lives under `verum
-package`:
+Run these commands from the cog project:
 
 ```bash
-verum package publish [--dry-run] [--allow-dirty]
-verum package search  <query> [--limit 10]
-verum package install <name> [--version X]
+verum package publish --dry-run
+verum package publish
 ```
 
-`verum package publish` defaults to
-`registry.verum-lang.org`. `--dry-run` builds the cog locally
-without uploading; `--allow-dirty` permits publishing from a
-working tree with uncommitted changes (default behaviour
-refuses).
+A dry run validates the manifest and publication dependencies, creates the
+source archive, calculates its SHA-256 digest, and checks the publication
+metadata and size limits. It does not upload or require an authentication token.
+It removes the temporary archive after validation.
 
-For the registry-side surface (signed releases, multi-mirror
-consensus, attestation kinds) see
-[Tooling → Cog distribution registry](/docs/tooling/cog-registry).
+A real upload reads `VERUM_REGISTRY_TOKEN` or the package command's credentials
+file and sends a bearer-authenticated request. Supply the token through your
+shell or CI secret configuration. The package command has no login subcommand.
 
-Requirements:
-- All declared dependencies available.
-- Passes `verum lint --severity error`.
-- Version not already published — immutable releases per
-  cog-registry policy.
-- API compatibility with prior minor version (checked via public-API
-  diff).
+Publishing from a Git working tree with uncommitted changes is refused unless
+`--allow-dirty` is supplied. A dry run permits a dirty tree. Compilation, tests,
+linting, and compatibility with an earlier release are separate checks; the
+publish command does not perform them.
 
-## Dependency resolution
+The client accepts success only when the registry returns a JSON receipt whose
+name, version, and archive checksum match the request. Publication redirects are
+refused. A matching receipt acknowledges those bytes and coordinates; it does
+not certify source correctness or prove durable storage.
 
-Cogs are resolved by SemVer. Lockfile `Verum.lock` pins exact
-versions:
+### Source archive
 
-```toml
-# Verum.lock
-[[cog]]
-name    = "serde"
-version = "1.4.2"
-source  = "registry+https://registry.verum-lang.org"
-checksum = "sha256:abc..."
+The package command creates a gzip-compressed tar archive containing:
+
+```text
+Verum.toml
+src/               # files from the source directory, when present
+README.md          # first available README variant, when present
+LICENSE            # first available LICENSE variant, when present
 ```
 
-## Dependency management
+The manifest entry is always `Verum.toml`, including for projects using the
+legacy lowercase filename. Compiled bytecode, generated API documentation and
+proof certificates are not generated by this command.
 
-Day-to-day dependency operations live under `verum deps`:
+Publication metadata carries identity, descriptive fields, dependencies,
+features, and the SHA-256 checksum of the exact archive bytes. The default
+client limits are 256 KiB of serialized metadata and 64 MiB of archive data.
 
-```bash
-verum deps add <pkg> [--version X] [--dev] [--build]
-verum deps remove <pkg> [--dev] [--build]
-verum deps update [<pkg>]
-verum deps list [--tree]
-```
+Source publication accepts no signature, proof, profile, IPFS or derived-artifact
+claims. The package command still discovers existing signing keys automatically;
+if a key produces a signature, publication and its dry run fail with an
+unsupported-claims error. Signed publication requires further integration.
 
-The dependency tree alone (read-only) is also exposed via
-`verum tree [--duplicates] [--depth N]`.
+## Dependencies
 
-Sources accepted in `verum.toml`:
+Entries in `[dependencies]` can use a version requirement or a detailed declaration:
 
 ```toml
 [dependencies]
-# From the registry
-serde = "1.4"
-
-# Specific version
-tokio = { version = "2.0.0", default-features = false }
-
-# Git repository
-my-lib = { git = "https://github.com/me/my-lib", rev = "abc123" }
-
-# Local path
-utils = { path = "../utils" }
-
-# IPFS content-addressed
-data = { ipfs = "Qm..." }
+codec = "^1.4"
+transport = { version = "2.0", features = ["tls"], optional = true, default-features = false }
 ```
 
-## Registry architecture
+Publication metadata projects the normal `[dependencies]` table; development
+and build dependency tables remain in the archived manifest. Their publication
+validation and consumer handling are not yet integrated. Publishing preserves
+`features`, `optional`, and `default-features`, including
+explicit empty lists and `false` values. `default_features` is also accepted in
+the manifest. A detailed published dependency must contain an explicit valid
+version requirement; an explicit `"*"` is allowed, but a missing version is an
+error.
 
-Three-layer distribution:
-
-1. **Central registry** (`registry.verum-lang.org`) — canonical
-   metadata, authorship, verification.
-2. **CDN / IPFS** — content-addressed binary distribution.
-3. **Git** — for unpublished cogs.
-
-A cog's identity is its content hash; the registry maps
-`name@version` → hash.
-
-## Verification profiles on cogs
-
-A cog can declare its verification profile:
+Local and Git sources can be declared for development:
 
 ```toml
-[cog]
-verification = "portfolio"     # advertised to consumers
+[dependencies]
+utils = { path = "../utils" }
+parser = { git = "https://example.com/team/parser.git", rev = "release-branch" }
 ```
 
-Consumers can filter: `verum deps add some-cog --require-verification=smt`
-refuses to install cogs that do not meet the threshold.
+The source publication format cannot represent `path`, `git`, `branch`, `tag`,
+or `rev`. Publishing refuses a dependency containing any of them, even when it
+also supplies a version. Replace development sources with registry dependencies
+explicitly before publishing; there is no automatic path-to-version rewrite.
+
+Unknown detailed dependency fields are errors during manifest loading. Fields
+such as `ipfs`, `registry`, `package`, and `workspace` are not accepted by the
+CLI dependency schema.
+
+Preserving feature declarations in publication metadata does not establish
+complete feature activation in the consumer. Optional dependencies, default
+features, and transitive feature unification still need end-to-end integration.
+See the [manifest reference](/docs/reference/verum-toml#dependencies-dev_dependencies-build_dependencies)
+for the project schema.
+
+## Search and install
+
+```bash
+verum package search codec --limit 10
+verum package install codec --version 1.4.2
+```
+
+Use an exact version with `--version`. Although the argument is parsed as a
+version requirement, this command passes the supplied text to the version
+endpoint; it does not select a matching release from a range. Omitting the flag
+uses the registry's latest-version endpoint.
+
+Installation obtains metadata and the archive from the configured registry,
+checks the archive checksum, and verifies a signature if metadata includes one.
+It then updates the project dependency and lockfile. The archive cache is under
+the operating system's cache directory, in `verum/cogs`.
+
+Installation of one requested package does not establish a resolved, verified
+transitive dependency closure. Run the project's build and tests after changing
+its dependencies; a successful download alone is not build acceptance.
 
 ## Trust model
 
-Cogs are **signed** by the publisher (Ed25519 by default). The registry
-tracks publisher identities. Each consumer decides which publishers to
-trust:
+A checksum comparison establishes agreement with the retrieved metadata. It
+does not independently authenticate the publisher. Signature verification, when
+metadata includes a signature, is separate from deciding which publisher keys
+to trust. There is no package option that requires a trusted publisher or a
+specified verification level.
 
-```toml
-# ~/.verum/config.toml
-[trust]
-"registry.verum-lang.org" = "required"
-"github.com/verum-lang/*" = "verified"
-"github.com/trusted-author/*" = "trusted"
-```
+The install command queries the registry's vulnerability endpoint, but a
+non-success HTTP response currently becomes an empty advisory list. Its
+"No known vulnerabilities" message therefore does not establish that an
+advisory service was available or that the package is safe.
 
-## Vulnerability advisories
+## Dependency management
 
 ```bash
-verum proof-draft       # cooperating drafts include security audit of dependencies
-verum audit --bundle    # whole-project audit including framework / cog citation surface
+verum deps add codec --version 1.4.2
+verum deps remove codec
+verum deps update
+verum deps list --tree
+verum tree --duplicates --depth 3
 ```
 
-Cog-level vulnerability advisories surface via the registry's
-attestation kinds (`verified_ci`, `honesty`, `coord`,
-`cross_format`, `framework_soundness`) — a cog whose attestation
-chain is broken or whose framework citations conflict surfaces
-through `verum cog-registry verify` and the bundle audit's
-framework-conflict gate.
-
-## Content-addressed storage
-
-Every cog's build artefacts are content-addressed in `target/.verum-cache/`.
-Builds across projects share artefacts — a cog compiled once for
-`cog-a` is reused in `cog-b`. Results in massive speedups on
-multi-project workstations.
+`deps add` and `deps remove` accept `--dev` or `--build` to select the dependency
+table. `deps update` optionally accepts one package name. These commands expose
+no `--require-verification` flag.
 
 ## Workspace publishing
 
-The `verum workspace` surface manages multi-cog workspaces:
-
 ```bash
 verum workspace list
-verum workspace add    <path>
-verum workspace remove <name>
-verum workspace exec   -- <command> [args...]
+verum workspace add path/to/member
+verum workspace remove member-name
+verum workspace exec -- verum package publish --dry-run
 ```
 
-Workspace members can depend on each other by path at development
-time and by version at publish time —
-`verum workspace exec -- verum package publish` per member
-re-resolves path-deps to versioned-deps in the published
-manifest.
+`workspace exec` runs the supplied command in members it discovers. Its member
+scan still checks only lowercase `verum.toml`: on a case-sensitive filesystem it
+skips members containing only `Verum.toml`, and it can report success after
+running no members. For canonical-only members, invoke `package publish` from
+each member directory directly.
+
+Each invocation of `package publish` applies its own manifest and dependency
+checks. It does not rewrite member dependencies or provide an atomic
+multi-package release.
+
+## Implementation references
+
+The executable dispatch is in
+[`PackageCommands` and `WorkspaceCommands`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/main.rs).
+The [package handler](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/cog.rs)
+owns archive creation and installation;
+[publication dependency projection](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/registry/publication_dependencies.rs),
+[request encoding](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/registry/publication.rs),
+and [receipt checking](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/registry/publication_receipt.rs)
+define the client admission boundary.
 
 ## See also
 
-- **[Build system](/docs/tooling/build-system)** — how cogs are built.
-- **[verum.toml reference](/docs/reference/verum-toml)** — manifest
-  schema.
-- **[Architecture → VBC bytecode](/docs/architecture/vbc-bytecode)**
-  — VBC archive format.
+- [Build system](/docs/tooling/build-system)
+- [Manifest reference](/docs/reference/verum-toml)
+- [Cog library APIs](/docs/stdlib/cog)
+- [VBC bytecode](/docs/architecture/vbc-bytecode)
