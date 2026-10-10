@@ -727,7 +727,14 @@ global-registration pipeline the stdlib itself is baked with, applied
 to your cog. Reads `Verum.toml` for the cog name + version, walks the
 source tree, and writes the archive to the canonical registry path
 `target/cog-vbca/<name>-<version>-verum-<compiler>.vbca`. Distributing a
-precompiled cog lets consumers skip recompiling its source.
+precompiled cog lets consumers skip recompiling its source when its format
+and declaration metadata are compatible with the consuming toolchain.
+
+If the compiler reports unknown archived field visibility and asks to
+rebuild the declaring cog, run `verum cog precompile --cog-dir <DIR>` with
+the current toolchain on that cog's source directory, which must contain
+`Verum.toml`. Older archives can lack the full declared field policy even
+when their format is readable. See [archive compatibility and field visibility](/docs/architecture/vbc-bytecode#archive-compatibility-and-field-visibility).
 
 Flags:
 - `--cog-dir <DIR>` — cog directory containing `Verum.toml` (default:

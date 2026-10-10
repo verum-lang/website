@@ -23,7 +23,7 @@ SPIR-V / Metal.
    the backend.
 4. **Cubical-aware** — path types and transports have opcodes that
    the codegen erases to identity in release builds.
-5. **Portable** — serialisable for distribution (`.cog` archives
+5. **Portable** — serialisable for distribution (compiled `.vbca` archives
    carry VBC + metadata + optional proof certificates).
 
 ## Opcode map
@@ -147,12 +147,12 @@ general `Extended` table (71), `Simd` (67), `Arith` (63), `Ml` (62) and
 
 ## Module format
 
-A VBC module is a self-describing archive:
+A VBC module has a self-describing layout:
 
 ```
 header:
   magic:        "VBC\0"
-  version:      (major, minor, patch)
+  version:      (major, minor)
   flags:        bitfield
 type_table:     list of interned types
 const_table:    list of interned constants
@@ -165,6 +165,24 @@ metadata:            module-level attributes
 
 Modules compress with LZ4. Deserialisation is zero-copy where
 possible (mmap + fixup).
+
+### Archive compatibility and field visibility
+
+The current VBC module format is **2.25**. Its field descriptors can carry
+full declared visibility, including restrictions to a cog or module scope.
+This is the inner module format; the outer `.vbca` archive container has
+its own version, **1.0**.
+
+Modules from before VBC 2.25 decode without this declaration policy. An
+absent policy remains unknown: the older coarse visibility flag cannot
+reconstruct it. Passing a format compatibility check therefore does not
+establish the field access policy needed by the compiler.
+
+If the compiler reports unknown archived or declaration visibility and
+asks to rebuild the declaring cog, rebuild that cog from source with the
+current toolchain using [`verum cog precompile`](/docs/reference/cli-commands#verum-cog-precompile).
+Rebuilding preserves the source declarations' policies in the new archive;
+changing an archive's version header does not supply missing metadata.
 
 ### Source body presence
 
