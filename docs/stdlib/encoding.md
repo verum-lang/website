@@ -96,9 +96,12 @@ options. Object members follow map iteration order, without canonical key
 sorting. Check floating-point values for finiteness before serialization;
 the serializer returns `Text`, without a validation-error result.
 
-`JsonError` is a record with `kind`, `line`, `column` and `message`. Positions
-are one-based, with columns counted in bytes. Parser errors describe JSON
-syntax and limits; application field validation needs its own error policy.
+`JsonError` exposes four public diagnostic fields: `kind: JsonErrorKind`,
+`line: Int`, `column: Int` and `message: Text`. Callers can construct and
+update diagnostics; the record alone does not establish that a parser
+produced it. Errors returned by the parser use one-based positions, with
+columns counted in bytes. Parser errors describe JSON syntax and limits;
+application field validation needs its own error policy.
 The public signatures and parser behavior are defined in
 [`core/encoding/json.vr`](https://github.com/verum-lang/verum/blob/main/core/encoding/json.vr).
 

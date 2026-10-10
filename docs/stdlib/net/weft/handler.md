@@ -6,9 +6,8 @@ description: Convert Verum async functions into Services via typed extractors. P
 
 # `core.net.weft.handler` + `core.net.weft.json_extractor`
 
-The handler layer is what makes Weft's developer ergonomics
-indistinguishable from popular axum-style frameworks, while the
-type system makes it impossibly safer.
+The handler layer adapts async functions to request handling through
+typed extractors.
 
 Sources: `core/net/weft/handler.vr`,
 `core/net/weft/json_extractor.vr`.
@@ -17,20 +16,21 @@ Sources: `core/net/weft/handler.vr`,
 
 ```verum
 public type WeftRequest is {
-    method: Method,
-    path: Text,
-    raw_query: Maybe<Text>,
-    headers: Headers,
-    body: List<Byte>,
-    path_params: Map<Text, Text>,    // populated by router on match
-    peer_addr: Maybe<SocketAddr>,
+    public method: Method,
+    public path: Text,
+    public raw_query: Maybe<Text>,
+    public headers: Headers,
+    public body: List<Byte>,
+    public path_params: Map<Text, Text>,    // populated by router on match
+    public peer_addr: Maybe<SocketAddr>,
 };
 ```
 
-Router populates `path_params` after a successful match. Listener
-populates `peer_addr` before invoking the handler. Headers and body
-come from the per-connection HTTP/1.1 parser, or the HTTP/2 frame
-multiplexer.
+All seven fields are public application data for adapters and middleware.
+Callers can construct a request and update its fields. Request construction,
+including a supplied `peer_addr`, establishes no authentication guarantee.
+The router populates `path_params` after a successful match; the listener
+populates `peer_addr` before invoking the handler.
 
 ### Convenience accessors
 
@@ -47,8 +47,15 @@ implement WeftRequest {
 }
 ```
 
-Query-string decode is RFC 3986 percent-decoding plus `+` to space,
-fully in-place when the source buffer has no `%` and no `+`.
+Choose the accessor according to the input your handler needs:
+
+- `header` returns the first case-insensitive match. Use
+  `headers.get_all` when validation needs every occurrence of a header.
+- `query_param` returns the first matching value, percent-decoded with `+`
+  converted to space. `raw_query` preserves the encoded query and the
+  distinction between an absent query and an empty query.
+- `body_text` replaces invalid UTF-8. The `body` field and `body_bytes`
+  retain the bytes, including binary data.
 
 ## `Handler` — protocol implementing `Service`
 
