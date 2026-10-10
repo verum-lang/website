@@ -61,11 +61,13 @@ by a successful zero-result stub.
 The implementation lives in
 `crates/verum_vbc/src/codegen/statements.rs` and
 `crates/verum_codegen/src/llvm/array_storage.rs::selected_source_returns`.
-Its compiler-level controls cover source and decoded bytecode. They do not
-validate these paths through an ordinary CLI build, general call-boundary
-conversions, successful SHA-256 execution, or a deployed AOT executable. The
-[byte conversion limitations](/docs/stdlib/intrinsics#byte-conversion-limitations)
-remain applicable. Returning a packed array as a growable list is a
+Source and decoded-bytecode controls cover inferred and explicit Byte,
+UInt32 and Float result bindings for both list and packed producers, including
+indexing, mutation and length. Ordinary interpreter checks also cover
+[endian conversion](/docs/stdlib/intrinsics#byte-conversion-limitations) and a
+[SHA-256 known-answer input](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests).
+These results do not establish general call-boundary conversions or a deployed
+AOT executable. Returning a packed array as a growable list remains a
 separate [conversion with its own limits](/docs/language/types#returning-an-array-as-a-list).
 
 ### Runtime support

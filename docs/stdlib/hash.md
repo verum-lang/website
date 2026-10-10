@@ -51,22 +51,19 @@ commitments or deduplication.
 
 ## `core.hash.crypto` — the collision-resistant digests
 
-:::caution SHA-256 has an interpreter runtime failure
+:::caution SHA-256 validation is backend-specific
 
-On macOS arm64, an ordinary `Sha256.digest` call reaches `Sha256.finalize`
-and fails with `Index out of bounds: index 3 for list of length 3` before
-returning a digest. The
-[`Sha256.finalize` implementation](https://github.com/verum-lang/verum/blob/main/core/hash/crypto/sha256.vr)
-encodes the message length through an inferred `UInt64.to_be_bytes()`
-result, which encounters the
-[byte-conversion limitation](/docs/stdlib/intrinsics#byte-conversion-limitations).
+On macOS arm64, an ordinary interpreter `Sha256.digest` call completes and
+matches every expected digest byte for a known-answer input spanning a block.
+This exercises updates, compression, padding and finalization in the
+[`Sha256` implementation](https://github.com/verum-lang/verum/blob/main/core/hash/crypto/sha256.vr),
+including its inferred `UInt64.to_be_bytes()` length conversion.
 
-Passing standalone conversions with explicit array annotations do not
-establish working SHA-256. Native digest execution also has unresolved
-array-representation failures. Each hash and backend needs its own
-validation; the interpreter is not a general fallback for these APIs.
-The declarations and algorithm examples below are subject to these runtime
-limitations.
+This result does not establish full algorithm conformance, other hash
+implementations or native digest execution. Native array consumers retain
+[storage and control-flow limits](/docs/architecture/codegen#storage-of-array-call-results).
+Focused LLVM/JIT conversion checks do not validate a complete AOT digest
+program. Each algorithm and backend needs its own validation.
 
 :::
 
@@ -224,8 +221,9 @@ reuses `sha512.compress_block` directly.
 
 ## Test vectors
 
-All three variants pass the FIPS 180-4 Appendix example vectors and
-the NIST CAVP short-message KAT.
+The tables below give standard expected outputs for checking an
+implementation. They do not establish that every variant and backend has
+passed a complete FIPS or NIST CAVP conformance run.
 
 | Input | SHA-256 output (hex) |
 |---|---|

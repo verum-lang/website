@@ -622,41 +622,41 @@ little-endian target; `to_be`/`from_be` byte-swap.
 Suite: `core-tests/intrinsics/conversion/`
 (unit + property + integration + regression + `audit.md`).
 
-Byte conversion is partial on both execution backends. The declarations in
+Byte conversion support depends on the selected numeric declaration and
+execution backend. The declarations in
 [`core/intrinsics/conversion.vr`](https://github.com/verum-lang/verum/blob/main/core/intrinsics/conversion.vr)
-specify fixed-size results, but the runtime representation of a returned
-value can disagree with how its caller indexes it.
+specify result shapes; the selected producer also determines their storage.
 
 ### Byte conversion limitations
 
-The following behavior is verified on macOS arm64:
+Ordinary interpreter checks on macOS arm64 verify every output byte for
+these forms:
 
-| Call and result binding | Interpreter | AOT |
-|---|---|---|
-| `UInt64.to_be_bytes()`, inferred result type | Indexing element 7 raises `Index out of bounds: index 7 for list of length 3`. | The corresponding byte-value assertion fails. |
-| `UInt64.to_be_bytes()` or `UInt64.to_le_bytes()`, explicit `[Byte; 8]` result | Checks of every output byte pass. | These annotated forms have no verified native result here. |
-| `UInt16.to_be_bytes()` with `[Byte; 2]`, or `UInt32.to_be_bytes()` with `[Byte; 4]` | Checks of every output byte pass. | These annotated forms have no verified native result here. |
+| Call and result binding | Interpreter |
+|---|---|
+| `UInt64.to_be_bytes()`, inferred result type | Expected bytes pass, including indexed reads in a loop. |
+| `UInt64.to_be_bytes()` or `UInt64.to_le_bytes()`, explicit `[Byte; 8]` result | Expected bytes pass. |
+| Typed `[Byte; 8]` literal | Expected bytes pass. |
+| `UInt16.to_be_bytes()` with `[Byte; 2]`, or `UInt32.to_be_bytes()` with `[Byte; 4]` | Expected bytes pass. |
 
-An explicit result annotation changes the indexing path in these interpreter
-controls; it does not establish general conversion correctness or native
-support. Other widths, reverse conversions and function-boundary uses need
-their own validation.
+AOT validation remains separate. Focused LLVM/JIT controls cover selected
+numeric bodies and array call-result storage, but do not establish complete
+AOT programs, reverse conversions or arbitrary function-boundary use.
+Native consumers with unproved storage retain the
+[documented compilation refusals](/docs/architecture/codegen#storage-of-array-call-results).
 
-Fixed-size byte arrays do not have one universal storage layout. In these
-interpreter controls, the typed byte-array literal uses packed storage,
-while the conversion calls return list-backed storage. Binding such a
-result to `[Byte; N]` does not itself copy it into a contiguous byte buffer.
-Consequently, neither the
-declared return type nor a passing element check establishes a safe raw
-byte pointer for FFI. Follow the
+Fixed-size byte arrays do not have one universal storage layout. Selected
+functions with identical array signatures can return packed or list-backed
+values. Binding a result to `[Byte; N]` does not itself copy it into a
+contiguous byte buffer. Neither a declared return type nor a passing element
+check establishes a safe raw byte pointer for FFI. Follow the
 [byte-buffer contract](https://github.com/verum-lang/verum/blob/main/docs/architecture/ffi-byte-buffer-contract.md)
-for packed buffers and slices, and validate the producer and consumer on
-the target backend.
+for the actual producer and consumer on the target backend.
 
-The inferred conversion failure also affects
-[`Sha256.finalize`](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests),
-which uses big-endian bytes internally. An annotated standalone conversion
-does not establish successful digest execution.
+[`Sha256.digest`](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests)
+also returns the expected digest for a known-answer input through the ordinary
+interpreter, including its internal big-endian length conversion. Other hashes
+and native digest execution need their own validation.
 
 Float32 bit reinterpretation has a separate AOT limitation:
 `f32_to_bits` and `f32_from_bits` can return `0` instead of the expected bit
