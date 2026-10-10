@@ -248,9 +248,8 @@ request-scope" — runtime arenas *implement* scopes, the calculus
   allocator that implements regions in memory.
 - [`core.net.weft.arena_pool`](/docs/stdlib/net/weft/overview) — per-request
   arena pool on top of `GenerationalArena`.
-- [`labels`](/docs/stdlib/security/labels) — information-flow
-  labels; regions and labels are *orthogonal* dimensions of
-  Verum's security type system.
+- [`labels`](/docs/stdlib/security/labels) — runtime classification
+  tags and explicit flow comparisons, separate from memory regions.
 - [`language/cbgr`](/docs/language/cbgr) — the default memory
   model regions complement.
 

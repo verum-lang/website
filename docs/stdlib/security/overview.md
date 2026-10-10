@@ -1,15 +1,14 @@
 ---
 sidebar_position: 1
 title: security — overview
-description: Verum's security primitives — cryptography, information-flow control, regions, capabilities, identity, secrets. Unified industrial-standard library.
+description: Verum's security primitives — cryptography, runtime classification tags, regions, capabilities, identity, secrets. Unified industrial-standard library.
 ---
 
 # `core.security` — overview
 
 The `core.security` subtree is Verum's consolidated security layer.
-Everything every other module touches for authentication,
-authorisation, confidentiality, integrity, or information-flow
-control routes through it. There are no parallel crypto stacks,
+It includes runtime classification tags and explicit flow comparisons;
+applications decide how to apply those comparisons. There are no parallel crypto stacks,
 nor shortcut FFI wrappers — the layer below TLS, QUIC, SPIFFE,
 gRPC tokens, and application-level AEAD tokens is the **same code**.
 
@@ -135,7 +134,7 @@ core/security/
 │   ├── aws.vr          — AWS Secrets Manager
 │   ├── gcp.vr          — GCP Secret Manager
 │   └── vault.vr        — HashiCorp Vault
-├── labels.vr           — Information-flow labels (IFC)
+├── labels.vr           — Runtime classification tags
 └── regions.vr          — Region-based isolation
 ```
 
@@ -161,9 +160,9 @@ core/security/
 
 - [**`spiffe`**](/docs/stdlib/security/spiffe) — workload identity (SPIFFE/SPIRE)
 - [**`secrets`**](/docs/stdlib/security/secrets) — cloud / Vault secrets backends
-- [**`labels`**](/docs/stdlib/security/labels) — information-flow labels + lattice
+- [**`labels`**](/docs/stdlib/security/labels) — runtime tags and flow comparisons
 - [**`regions`**](/docs/stdlib/security/regions) — region-based isolation
-- [**`capabilities`**](/docs/stdlib/security/capabilities) — `@cap`, declassification
+- [**`capabilities`**](/docs/stdlib/security/capabilities) — capability restrictions and annotation limitations
 
 ## TLS 1.3 / QUIC cipher-suite coverage
 

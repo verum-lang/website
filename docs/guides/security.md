@@ -90,19 +90,10 @@ measurement and is updated as the defects close.
 - Sensitive operations require `using [Auth]` — no global auth.
 - Use capability-restricted types: `Database with [Read]` for views
   that must not write.
-- Label-track sensitive data with
-  [`security.labels`](/docs/stdlib/security/labels):
-
-  ```verum
-  type SessionToken is Labeled<Text>;
-  fn handle(req: Request) {
-      let token = labeled(Label.Secret, extract_bearer(&req));
-      // `token` cannot flow to Public sinks without explicit declassify.
-  }
-  ```
-
-  See also [capabilities](/docs/stdlib/security/capabilities) for
-  the `@cap(declassify)` audit trail on downgrades.
+- [`security.labels`](/docs/stdlib/security/labels) supplies runtime
+  classification tags and explicit comparisons. Apply the result of a
+  label comparison in your application policy; wrapping a value in
+  `Labeled<T>` does not automatically restrict where it can flow.
 
 - Workload identity (K8s / multi-cluster / multi-cloud) —
   [`security.spiffe`](/docs/stdlib/security/spiffe) gives you
@@ -110,7 +101,8 @@ measurement and is updated as the defects close.
 
 ### Secrets
 
-- Never log `Labeled<T: Secret>` values (the stdlib logger refuses).
+- Keep secrets out of logs and public responses. Runtime `Labeled<T>`
+  tags do not make the logger refuse sensitive data.
 - For types holding key material, implement `Drop` to zero the
   buffer before release — see
   [`security.util.zeroise`](/docs/stdlib/subtle)

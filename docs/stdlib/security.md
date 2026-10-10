@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: security
-description: The security stdlib — cryptographic primitives, information-flow control, workload identity, secrets, and regions.
+description: The security stdlib — cryptographic primitives, runtime classification tags, workload identity, secrets, and regions.
 status: regression-only
 ---
 
@@ -20,12 +20,11 @@ Verum's security stdlib is a consolidated subtree covering:
   PHC modular format, CSPRNG session/CSRF/OTP tokens.
 - **Integrity + provenance** — Merkle trees (RFC 6962 CT-style),
   X.509 + RFC 6125 server-identity verifier.
-- **Information-flow control** via typed labels.
+- **Runtime classification tags** and explicit flow comparisons.
 - **Workload identity** (SPIFFE / SPIRE).
 - **Secret stores** (HashiCorp Vault, AWS Secrets Manager, GCP
   Secret Manager).
 - **Region-based isolation** — zero-overhead `&'r T` references.
-- **Capability annotations** and declassification audit.
 
 For the full map and architectural context, start at the
 **[security overview](/docs/stdlib/security/overview)**.
@@ -96,9 +95,9 @@ dependency exactly.
 
 - [`spiffe`](/docs/stdlib/security/spiffe) — workload identity
 - [`secrets`](/docs/stdlib/security/secrets) — Vault / AWS / GCP
-- [`labels`](/docs/stdlib/security/labels) — IFC labels + lattice
+- [`labels`](/docs/stdlib/security/labels) — runtime tags and flow comparisons
 - [`regions`](/docs/stdlib/security/regions) — region-based isolation
-- [`capabilities`](/docs/stdlib/security/capabilities) — `@cap`, declassification
+- [`capabilities`](/docs/stdlib/security/capabilities) — capability restrictions and annotation limitations
 
 ## Where to start
 
@@ -114,9 +113,9 @@ dependency exactly.
   [`core.net.tls`](/docs/stdlib/net), which consumes these as its
   underlying primitives.
 - **Handling PII / regulated data?**
-  [`labels`](/docs/stdlib/security/labels) shows how to mark
-  sensitive data; [`capabilities`](/docs/stdlib/security/capabilities)
-  covers the audit trail on declassification.
+  [`labels`](/docs/stdlib/security/labels) describes runtime tags
+  and their limits. Your application must enforce its own policy at
+  logs, responses, and other output boundaries.
 - **Running in Kubernetes?**
   [`spiffe`](/docs/stdlib/security/spiffe) gives you workload
   identity via SPIRE; [`secrets`](/docs/stdlib/security/secrets)
