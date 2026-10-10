@@ -50,13 +50,22 @@ below gets you writing code quickly; subtleties are flagged with
 | `mod foo;` | `module foo;` |
 | `pub`, `pub(crate)`, `pub(super)` | `public` (`pub` is an accepted synonym), `public(cog)`, `public(super)` |
 | (no equivalent) | `pub(in path)` — restrict to a named subtree |
-| (no equivalent) | `protected` — protocol-local, visible to impls |
+| (no equivalent) | `protected` — limited to the defining module by the current access checker |
 | `unsafe { ... }` | `unsafe { ... }` (same) |
 | `&T` | `&T` (but CBGR-checked) |
 | `&'a T` | `&T` — CBGR checks the deref; `'a` parses but is discarded |
 | (no equivalent) | `&checked T` — proven-safe zero-cost reference |
 | (no equivalent) | `&unsafe T` — unchecked zero-cost reference |
 | `*const T`, `*mut T` | `*const T`, `*mut T` (same) |
+
+Visibility spellings do not imply identical Rust access rules.
+`pub(super)` grants access to the immediate parent module only. `internal`
+is distinct from `pub(cog)` and remains limited to the defining module;
+`protected` does not grant access to implementing types or submodules through
+the current check. Source import and project loading paths also differ in
+how they preserve restricted declarations. See
+[Modules → visibility](/docs/language/modules#visibility) before relying on
+these modifiers as an import boundary.
 
 ---
 

@@ -155,9 +155,13 @@ be explicit about what you're bringing in.
 
 ## Visibility
 
-- Default to private. Only mark `pub` / `internal` when needed.
-- Prefer `internal` over `pub` when the item is not part of the cog's
-  public surface.
+- Default to private. Use `pub` for the exported API.
+- Use the `pub(cog)` spelling to express cog-scoped access. `internal` is a
+  distinct modifier and remains limited to the defining module in the current
+  access checker.
+- Check the [import visibility limitations](/docs/language/modules#visibility)
+  before relying on restricted access: source imports can refuse these items,
+  and some project loading paths do not preserve their restrictions.
 - Documented public items get `///` doc-comments.
 
 ## Documentation
