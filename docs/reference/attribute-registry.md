@@ -464,7 +464,7 @@ section of `verum.toml` — see **[reference → verum.toml](/docs/reference/ver
 | `@internal` | any | internal-only (ignored by `verum doc`) |
 | `@specialize` | impl | specialisation instance |
 | `@universe_poly` | fn, type | enable universe polymorphism |
-| `@cap(name = "X", domain = "Y")` | fn | declares a capability it holds |
+| `@cap(name = "X", domain = "Y")` | fn | Unsupported as a built-in authorization annotation; see [capability limitations](/docs/stdlib/security/capabilities). |
 
 ## Lint suppression / promotion
 
