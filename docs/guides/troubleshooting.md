@@ -216,10 +216,16 @@ and refine from there. See
 
 ## Packaging issues
 
-### "Cannot publish — checksum mismatch"
+### "Publication archive checksum mismatch"
 
-Someone else already published this `name@version`. Bump the version
-in `verum.toml` and re-run `verum package publish`.
+The client hashes the exact source archive bytes and compares the result with
+the checksum in publication metadata before sending an HTTP request. Recreate
+the archive and its metadata together, and ensure the archive does not change
+between calculating its digest and uploading it.
+
+A registry version conflict is a separate response from the server. See
+[publishing](/docs/tooling/cog-packages#publishing) for the client checks and
+registry integration limits.
 
 ### "Dependency version conflict"
 

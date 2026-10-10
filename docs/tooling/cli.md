@@ -475,13 +475,19 @@ verum cog-registry consensus  --name <N> --version <V> --mirror <DIR> [--mirror 
 verum cog-registry seed-demo  [--output ...]
 ```
 
-Verified-mathematics package distribution.  Per-cog
-reproducibility hash chain (sources + build env + output) plus
-typed attestations (verified_ci / honesty / coord / cross_format /
-framework_soundness).  Immutable releases — republishing a
-version with different content is a hard failure.  Multi-mirror
-consensus check via `cog-registry consensus`.  Full guide in
-**[Tooling → Cog distribution registry](/docs/tooling/cog-registry)**.
+These commands maintain a local catalogue of JSON verification manifests.
+`publish` and `verify` recompute the chain hash from the envelope's stored
+hash strings. They do not hash source files or build outputs, authenticate
+attestations, or establish reproducibility.
+
+At an existing name and version, a different recorded chain hash is refused.
+The same chain hash is accepted as a no-op, leaving the stored manifest
+unchanged even if the submitted description, tags or attestations differ.
+`consensus` compares recorded chain hashes across filesystem roots.
+
+See the [local cog manifest registry](/docs/tooling/cog-registry) for these
+commands and their limits. Source archive publication uses the separate
+[cog package workflow](/docs/tooling/cog-packages).
 
 ## SMT certificate replay
 
