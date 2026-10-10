@@ -308,17 +308,22 @@ axiom sheafification_is_topos<C>(c: C) -> Bool
 
 ### Visibility
 
-Five levels:
+`public` and `pub` are equivalent. The module access checker distinguishes
+these forms when a declaration reaches it:
 
-- `pub` — exported from the cog (alias: `public`).
-- `pub(super)` — visible in the parent module and descendants.
-- `pub(in path)` — visible within the named subtree.
-- `internal` — visible within the cog but not to dependents.
-- *(none)* — private to the defining module.
+- `pub` — visible to any module.
+- `pub(cog)` — visible within the same cog; `pub(crate)` is an accepted spelling.
+- `pub(super)` — visible to the immediate parent module only.
+- `pub(in path)` — visible within the named module and its subtree.
+- *(none)* or `private` — private to the defining module.
+- `internal` and `protected` — limited to the defining module by the current
+  checker. `internal` is not an alias of `pub(cog)`; `protected` does not grant
+  access to implementing types or submodules.
 
-Plus `protected` as a protocol-local refinement (visible to subtypes
-and implementations). Details in
-**[modules → visibility](/docs/language/modules#visibility)**.
+Source imports can reject restricted declarations before these rules are
+applied, and some project loading paths do not preserve their restrictions.
+See **[modules → visibility](/docs/language/modules#visibility)** for the
+import and qualified-access limitations.
 
 ### Attributes on items
 

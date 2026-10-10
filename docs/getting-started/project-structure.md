@@ -235,26 +235,26 @@ specifies. Write `cog`.
 
 ### Visibility
 
-Five levels, applied to items:
+Visibility belongs to each declaration. `public` and `pub` are equivalent;
+an unmarked declaration is private.
 
-```verum
-pub         fn public_api()         { ... }   // exported
-pub(super)  fn parent_visible()     { ... }   // parent module + descendants
-pub(in net) fn net_subtree()        { ... }   // within the named subtree
-internal    fn cog_wide()           { ... }   // cog-visible (alias: pub(crate))
-            fn private()            { ... }   // module-local
-```
+The module access checker uses these rules when an item reaches it:
 
-Plus `protected` as a protocol-local refinement:
+| Modifier | Accessible from |
+|----------|-----------------|
+| `pub` | Any module. |
+| `pub(cog)` or `pub(crate)` | Modules in the same cog. |
+| `pub(super)` | The immediate parent module only. |
+| `pub(in net)` | The named module and its subtree. |
+| `private` or no modifier | The defining module only. |
+| `internal` or `protected` | The defining module only in the current checker. |
 
-```verum
-type User is protocol {
-    fn sensitive_hash(&self) -> Hash;   // visible to every implementor
-};
-```
-
-See [language/modules](/docs/language/modules) for the full
-visibility story.
+`internal` is distinct from `pub(cog)`. `protected` does not grant access to
+implementing types or submodules through this check. Source export extraction
+can reject restricted declarations before checking their scope; project loading
+and qualified access also have limitations. See
+[Modules → visibility](/docs/language/modules#visibility) before relying on a
+modifier to establish an import boundary.
 
 ## Entry points
 
