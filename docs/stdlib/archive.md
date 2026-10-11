@@ -1,15 +1,19 @@
 ---
 sidebar_position: 5
 title: archive
-description: Uniform packaging functor across tar / zip / ar / cpio formats. Composes with `core.compress` for `.tar.gz`-style pipelines.
+description: Archive entry types, the Archive protocol, and the declared tar adapter API.
 status: regression-only
 ---
 
 # `core.archive` — File-archive packaging
 
-`core.archive` is a **packaging functor** that converts
-`List<(path, metadata, content)>` ↔ `Bytes`. Concrete adapters
-target POSIX tar (USTAR + PAX), PKZIP, Unix ar, and POSIX cpio.
+`core.archive` declares a common interface for packaging file entries into
+bytes. It contains a tar adapter and selectors for tar, zip, ar and cpio;
+zip, ar and cpio adapters are not implemented.
+
+The declarations and signatures below are API reference excerpts, not
+standalone executable examples. The generic tar adapter has a
+[field-access limitation](#tarentry--archiveentry-adapters).
 
 ## Architectural alignment with `core.compress`
 
@@ -19,19 +23,21 @@ architectural layer. Both transform byte streams; they differ in
 
 | Module | Functor | Domain |
 |---|---|---|
-| `core.compress` | `Bytes → Bytes` (smaller, reversible) | a single byte stream |
-| `core.archive` | `List<(path, metadata, content)> → Bytes` | a multi-file bundle |
+| `core.compress` | bytes → encoded bytes | a single byte stream |
+| `core.archive` | archive entries → bytes | a multi-file bundle |
 
-They compose:
+Tar packaging and compression are separate operations. The direct tar
+writer has this signature:
 
 ```verum
-let tarball: List<Byte> = archive.tar.write_archive(entries)?;
-let gzipped: List<Byte> = compress.gzip.encode(&tarball)?;
-// `gzipped` is now `.tar.gz`
+public fn write_archive(entries: &List<TarEntry>) -> Result<List<Byte>, TarError>;
 ```
 
-The convenience helper `with_compress(archive_alg, compress_alg)`
-builds the composed pipeline directly.
+The declared encoder `core.compress.mod_gzip.Gzip.encode` takes a byte
+slice, compression level and mutable output
+list, and returns `Result<Int, CompressError>`. Its runtime backend is
+unavailable; see [compression codecs](/docs/stdlib/compress). There is no
+exported `with_compress` helper in `core.archive`.
 
 ## Universal entry model
 
@@ -57,6 +63,9 @@ this universal record and their format-specific representation
 (e.g., `TarEntry` for tar — see `core.archive.tar` for the
 USTAR-mapped field set).
 
+The record's fields are private. Use the free constructors below to create
+file, directory and symlink entries.
+
 ## Algorithm selector
 
 ```verum
@@ -67,29 +76,27 @@ public type ArchiveAlgorithm is
     | Cpio;   // POSIX cpio
 ```
 
-The selector is runtime-aware:
+The selector helpers return format tags and associated filename extensions:
 
-| Algorithm | `algorithm_tag` | `algorithm_extensions` |
+| Algorithm | `archive_algorithm_tag` | `archive_algorithm_extensions` |
 |---|---|---|
 | Tar | `"tar"` | `["tar"]` |
 | Zip | `"zip"` | `["zip", "jar"]` |
 | Ar | `"ar"` | `["a", "ar"]` |
 | Cpio | `"cpio"` | `["cpio"]` |
 
-The extensions list is the canonical lookup for "given a filename,
-what algorithm produced it?" — a directory walker reading
-`build/output.tar.gz` decomposes into `(archive=tar,
-compress=gzip)` via `archive_algorithm_extensions` plus the analogous
-`compress_algorithm_extensions`.
+Both helpers take `&ArchiveAlgorithm`. They return the values above;
+they do not inspect archive contents or split compound filenames such as
+`output.tar.gz`.
 
 ## Archive protocol
 
 ```verum
-public protocol Archive {
+public type Archive is protocol {
     fn algorithm(&self) -> ArchiveAlgorithm;
     fn pack(&self, entries: &List<ArchiveEntry>) -> Result<List<Byte>, ArchiveError>;
     fn unpack(&self, bytes: &[Byte]) -> Result<List<ArchiveEntry>, ArchiveError>;
-}
+};
 ```
 
 Bidirectional packaging — format adapters implement this to
@@ -114,71 +121,72 @@ public type ArchiveError is
     | InvalidEntry(Text);
 ```
 
-`Display` + `Debug` are implemented; every variant produces a
-human-readable diagnostic suitable for logging at the call site.
+`Display` and `Debug` implementations are declared for these variants.
 
 ## Algorithm dispatch
 
 ```verum
-pub fn adapter_for(a: ArchiveAlgorithm) -> Result<Heap<dyn Archive>, ArchiveError>;
+public fn adapter_for(a: ArchiveAlgorithm) -> Result<Heap<dyn Archive>, ArchiveError>;
 ```
 
-Resolves an algorithm tag to its concrete adapter. Returns
-`UnsupportedAlgorithm` for not-yet-implemented formats (zip / ar /
-cpio at v0.1).
+The declared implementation selects `TarFormat` for `Tar` and returns
+`UnsupportedAlgorithm` for `Zip`, `Ar` and `Cpio`. `tar_format() -> TarFormat`
+constructs the concrete adapter directly. Its `pack` and `unpack` methods
+depend on the conversion functions described below.
 
 ## Convenience constructors
 
-For ergonomic entry construction:
+These functions are exported by `core.archive`. Reference signatures:
 
 ```verum
-mount core.archive.{
-    ArchiveEntry,
-    entry_for_file, entry_for_directory, entry_for_symlink,
-};
-
-let entry_file: ArchiveEntry =
-    entry_for_file(path, content, mode, mtime);
-
-let entry_dir: ArchiveEntry =
-    entry_for_directory(path, mode, mtime);
-
-let entry_symlink: ArchiveEntry =
-    entry_for_symlink(path, target, mtime);
+public fn entry_for_file(path: Text, content: List<Byte>, mode: Int, mtime: Int)
+    -> ArchiveEntry;
+public fn entry_for_directory(path: Text, mode: Int, mtime: Int) -> ArchiveEntry;
+public fn entry_for_symlink(path: Text, target: Text, mtime: Int) -> ArchiveEntry;
 ```
 
-They are free functions, so this is how they are called once mounted;
-the `archive.` prefix only appears when you reach them through the
-module path instead.
-
-These set the right `kind` variant and zero-fill content for
-non-RegularFile entries.
+They set the corresponding `ArchiveEntryKind`. Directory and symlink
+entries have empty content lists; the symlink constructor sets mode `0o777`.
+The similarly named constructors in `core.archive.tar` return `TarEntry`
+instead. The parent module re-exports them with a `tar_` prefix, such as
+`tar_entry_for_file`.
 
 ## TarEntry ↔ ArchiveEntry adapters
 
-For users that need to drop down to the format-specific representation
-(e.g., to access PAX extended headers, owner UID/GID, group/user
-names), `core.archive.tar` exposes `TarEntry` directly. The
-bidirectional adapters `tar_entry_to_universal(&TarEntry)` and
-`universal_to_tar_entry(&ArchiveEntry)` give round-trip conversion.
+`core.archive.tar` exports the `TarEntry` type, but its fields are private.
+The parent module declares these converters:
+
+```verum
+public fn tar_entry_to_universal(t: &TarEntry) -> ArchiveEntry;
+public fn universal_to_tar_entry(e: &ArchiveEntry) -> TarEntry;
+```
+
+The current [converter implementations](https://github.com/verum-lang/verum/blob/main/core/archive/mod.vr)
+read and construct private fields declared in
+[`core.archive.tar`](https://github.com/verum-lang/verum/blob/main/core/archive/tar.vr).
+Those accesses cross the declaring-module boundary and conflict with the
+field-visibility contract. `TarFormat.pack` and `TarFormat.unpack` call
+these converters; their signatures alone do not establish a working
+generic archive round trip.
+
+The conversion is also lossy: the universal record has no UID, GID or
+owner-name fields. Conversion back sets UID/GID to zero and owner names to
+empty text. The forward converter maps device, FIFO and other unsupported
+entry kinds to `ArchiveRegularFile`. It therefore does not preserve every
+tar entry kind or its metadata.
 
 ## Primary consumers
 
 | Use case | Composition |
 |---|---|
 | Cog-source publication | `verum package publish` creates gzip-compressed tar; see [archive contents](/docs/tooling/cog-packages#source-archive). |
-| Build-output bundles (binary releases) | `archive.tar.write_archive |> compress.gzip.encode` |
-| Backup / restore pipelines | `archive.tar.write_archive |> compress.xz.encode` |
-| Container-image layer construction | `archive.tar.write_archive` (uncompressed; OCI does its own compression) |
+| Tar byte output | `core.archive.tar.write_archive` declares uncompressed tar output; compression is a separate operation. |
 
 ## File-by-file status
 
 | File | Status | Notes |
 |---|---|---|
-| `mod.vr` | **undocumented** | universal entry model + Archive protocol + dispatch — no conformance suite yet |
-| `tar.vr` | **regression-only** | USTAR + PAX header read/write fully implemented; xattr / sparse-file PAX extensions deferred — [core-tests/archive/tar](https://github.com/verum-lang/verum/tree/main/core-tests/archive/tar) |
+| `mod.vr` | **undocumented** | Universal entry model, Archive protocol and dispatch declarations; converter field-access limitation described above. |
+| `tar.vr` | **regression-only** | USTAR + PAX reader/writer source and [regression fixtures](https://github.com/verum-lang/verum/tree/main/core-tests/archive/tar); xattr and sparse-file PAX extensions are unsupported. |
 
-`zip.vr`, `ar.vr`, `cpio.vr` adapters are tracked as future work.
-The `Archive` protocol's `UnsupportedAlgorithm` error variant
-keeps the consumer-side dispatch graceful while implementations
-land.
+There are no `zip.vr`, `ar.vr` or `cpio.vr` adapter implementations.
