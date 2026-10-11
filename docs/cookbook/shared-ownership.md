@@ -31,11 +31,13 @@ freed when the last `Shared<Config>` is dropped.
 // associated functions taking a reference — there is no
 // `Shared.get_mut(&mut s)`.
 let mut s: Shared<Int> = Shared.new(42);
-*s.get_mut().unwrap() += 1;               // Some(&mut) when strong_count == 1
+*s.get_mut().unwrap() += 1;               // Some only when strong == 1 and weak == 0
 ```
 
-Returns `Some(&mut T)` only when no other `Shared` clone exists.
-For shared mutation, wrap in a lock: `Shared<Mutex<T>>`.
+Returns `Some(&mut T)` only when there is one strong reference and no
+weak references. `is_unique()` checks the strong count alone.
+Cloning a `Shared` handle keeps the same allocation and increments its
+strong count; it does not create a uniquely mutable copy of the value.
 
 ### Cycles leak without `Weak`
 
@@ -54,6 +56,8 @@ type Node is {
 
 ### Break with `Weak`
 
+This declaration sketch shows owning child edges and weak parent links:
+
 ```verum
 type Node is {
     value: Int,
@@ -66,19 +70,16 @@ implement Node {
         Shared.new(Node { value, parent: Maybe.None, children: List.new() })
     }
 
-    fn add_child(parent: &Shared<Node>, child: Shared<Node>) {
-        // Give child a weak pointer back to parent.
-        let mut child_inner = child.clone().get_mut().unwrap();
-        child_inner.parent = Maybe.Some(parent.downgrade());
-        // Parent owns child.
-        parent.children.push(child);
-    }
-
     fn parent(&self) -> Maybe<Shared<Node>> {
         self.parent.as_ref().and_then(Weak.upgrade)
     }
 }
 ```
+
+Updating a shared node needs an explicit mutation API. The ownership
+topology above does not make mutation through a cloned handle valid;
+`clone().get_mut().unwrap()` cannot establish unique access while the
+original strong handle remains live.
 
 - `s.downgrade() -> Weak<T>` — creates a non-owning handle.
 - `Weak<T>.upgrade() -> Maybe<Shared<T>>` — returns `Some` if the
