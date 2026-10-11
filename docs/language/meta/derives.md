@@ -50,7 +50,7 @@ what diagnostics are emitted when the derive cannot proceed.
 
 | Derive          | What it generates                                      |
 |-----------------|--------------------------------------------------------|
-| `Clone`         | Deep-clone via field-by-field `.clone()`               |
+| `Clone`         | Field-by-field `.clone()`, following each field's clone contract |
 | `Debug`         | `Debug.fmt_debug` — the `{:?}` formatter               |
 | `Default`       | `Default.default()` using per-field defaults           |
 | `PartialEq`     | `Eq.eq` — field-by-field equality                      |
@@ -102,8 +102,10 @@ Field types are inspected. For each field:
 
 - `&T` → the reference is copied (it is `Copy` by definition).
 - `&checked T` / `&unsafe T` → copied (also `Copy`).
-- `Heap<T>` / `Shared<T>` → call `.clone()` (respects `Rc` vs deep
-  clone according to protocol).
+- `Heap<T>` → call `.clone()`, which allocates a new heap containing
+  the result of `T.clone()`.
+- `Shared<T>` → call `.clone()`, retaining the same allocation and
+  incrementing its strong-reference count.
 - Any other sized `T: Clone` → call `.clone()`.
 
 For `PartialEq` / `Debug` the analogous rules apply — references are
@@ -148,6 +150,14 @@ appear in `@derive(...)`; trying to derive them raises a diagnostic
 that names the protocol and the missing derive helper.
 
 ## `Clone`
+
+The field-by-field algorithm below delegates copy depth to each field's
+clone contract. It does not promise that the entire reachable object
+graph becomes independent: references remain aliases and `Shared<T>`
+retains identity. The language's
+[one-level value-copy contract](/docs/language/memory-model#copy-depth)
+and the availability of a generated `Clone` implementation are separate
+questions; the generator status at the top of this page still applies.
 
 ### Shape
 

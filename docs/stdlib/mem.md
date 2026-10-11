@@ -215,9 +215,16 @@ h.current_epoch() -> UInt16        // the header's epoch, not the reference's
 
 ### Implements
 
-`Deref`, `DerefMut`, `Drop`, `Clone` (deep-copy if `T: Clone`),
+`Deref`, `DerefMut`, `Drop`, `Clone` (if `T: Clone`),
 `Debug`, `Display` (both if `T` is), `Eq`, `Ord`, `Hash`,
 `Default` (if `T: Default`).
+
+The declared `Heap<T>.clone()` implementation allocates a new `Heap`
+containing the result of `T.clone()`. The new allocation does not make
+that result recursively independent: nested references and `Shared`
+handles retain the sharing specified by their own clone contracts.
+See [copy depth](/docs/language/memory-model#copy-depth); `T: Clone` alone
+does not promise a deeply isolated snapshot or support in every backend.
 
 ---
 

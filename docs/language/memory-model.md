@@ -21,19 +21,36 @@ The answer has three parts:
 
 ## Ownership and values
 
-Every value has exactly one owner. Passing a value moves ownership
-(or copies, if the type is `Copy`). Dropping a value runs its `drop`
-implementation.
+Copying a value, borrowing it and transferring a resource have different
+contracts. `Heap<T>` declares unique ownership of an allocation;
+`Shared<T>` provides multiple owning handles to the same allocation.
+A reference borrows access and does not become an owner when copied.
 
-```verum
-let heap_int: Heap<Int> = Heap(42);
-let moved = heap_int;
-// `heap_int` is no longer accessible — moved.
-```
+### Copy depth
 
-`Heap<T>`, `Shared<T>`, and custom allocated types are unique owners.
-`Int`, `Float`, `Bool`, `Char`, tuples of `Copy` types, and arrays of
-`Copy` types are copyable by default.
+The [value-copy contract](https://github.com/verum-lang/verum/blob/main/docs/architecture/value-copy-contract.md)
+defines a copy at one level. Copying an outer value does not recursively
+duplicate everything reachable through its fields.
+
+| Value being copied | Copy-depth contract |
+|---|---|
+| Scalar | The same scalar value. |
+| Record, variant or tuple | Fresh outer storage containing shallow copies of its fields or payload. |
+| `List`, `Map`, `Set` or `Deque` | Fresh container storage and backing array; nested element values are not recursively cloned. |
+| Reference or raw pointer | Another alias to the same referent; copying it does not extend the referent's lifetime. |
+| `Shared<T>` | Another owning handle to the same cell, with a strong-reference count increment. |
+
+For example, copying a record that contains a list does not by itself
+copy that nested list's backing array. Copying the list itself has a
+different boundary: it copies the backing array, while nested values
+inside that array remain shallow. A fresh outer value is therefore not
+a deeply isolated snapshot.
+
+Resource use follows the type's [affine or linear discipline](/docs/language/linearity).
+These copy-depth rules do not authorize duplicating an exclusive resource
+or creating a second destruction obligation. Collection and backend
+support must be checked separately; see the
+[copy limitations](#move-vs-copy) below.
 
 ## References: the three tiers
 
@@ -103,9 +120,11 @@ References are immutable by default. Mutable variants:
 - A `&mut T` is exclusive — while it exists, no other reference to
   the same value may exist.
 
-These rules are enforced statically by the compiler (or, at the CBGR
-level, by the generation counter for references that escape static
-analysis).
+These are aliasing requirements. A generation check establishes liveness
+for the access it validates; it does not by itself establish exclusive
+access or correct resource cleanup. See
+[references](/docs/language/references#resource-lifetime) for the current
+lifetime limitations.
 
 ## Raw pointers
 
@@ -144,7 +163,7 @@ and is fixed.
 
 ## Drops and destructors
 
-The `Drop` protocol runs when a value goes out of scope:
+The `Drop` protocol defines cleanup for an owned value:
 
 ```verum
 implement Drop for File {
@@ -154,23 +173,33 @@ implement Drop for File {
 }
 ```
 
-`drop` is called exactly once, guaranteed. The compiler inserts the
-call at the end of the value's scope (or at the point of move into a
-function that consumes it).
+Correct resource ownership must determine which scope or consuming call
+is responsible for cleanup. Copying a value or passing an argument by
+value does not by itself establish a fresh owner with an independent
+destructor. General native owned-object destruction remains subject to
+the [resource-lifetime limitations](/docs/language/references#resource-lifetime).
 
 ## Move vs copy
 
-A type is `Copy` if it is "plain old data" — no heap, no drop, no
-alias-sensitive invariants. `Copy` is auto-derived where possible and
-can be requested explicitly:
+For ordinary copyable values, a supported copy from a named place leaves
+the source available: `let b = a` gives `b` its own outer value. A
+temporary can be used directly without an extra copy. This distinction
+is separate from the `Copy` protocol and from affine or linear resource
+transfer; absence of `Copy` does not mean every assignment or argument
+automatically moves ownership.
 
-```verum
-@derive(Copy, Clone)
-type Vec2 is { x: Float, y: Float };
-```
+An explicit `.clone()` follows the selected type's clone contract.
+Field-by-field cloning still preserves any sharing specified by those
+fields: a `Shared<T>` clone retains the same cell, and a copied reference
+retains the same referent. See [derives](/docs/language/meta/derives#clone)
+for the separate generator status and semantics.
 
-A non-`Copy` type is moved on assignment and parameter passing. To
-duplicate explicitly, call `.clone()`.
+**Implementation limits:** the copy-depth contract is not evidence that
+every copy expression or backend implements it correctly. Copying from an
+explicit dereference, `.clone()` dispatch and native copying require
+separate validation. Do not use a dereferenced borrow or a generic clone
+as proof of deep snapshot isolation. An API that promises isolation must
+define how its mutable nested values are reconstructed.
 
 ## Summary
 
