@@ -46,7 +46,7 @@ cover those operations, not every `List` method or another collection.
 | Module | Status | Conformance suite |
 |---|---|---|
 | `list.vr` | **partial** | [core-tests/collections/list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/list) — interpreter shrink/regrow and reserve checks preserve Byte and Int values. Native byte-list allocation remains unsafe on that path; see the backend limitation above. Other method coverage remains partial. |
-| `map.vr`            | **partial** | [core-tests/collections/map](https://github.com/verum-lang/verum/tree/main/core-tests/collections/map) — most of the active conformance suite is green under the interpreter. The gap is `keys_list` / `values_list` and a with-capacity-then-fill case, deferred behind the defect named below. Sections 10–16 added (get_or / with_capacity / insert overwrite contract / remove return contract / many-keys preserved + half-remove / keys_list-values_list / is_empty + capacity invariants). MapIter.next NullPointerAt wrapper-iter dispatch class gates keys_list/values_list (same root as slice §D). Cap=0 bootstrap guard added on insert. |
+| `map.vr`            | **partial** | [core-tests/collections/map](https://github.com/verum-lang/verum/tree/main/core-tests/collections/map) — interpreter coverage includes lookup, insertion, removal and mutation through `get_mut`. Entry operations, iterator helpers and map copying remain incomplete. See [Map support](#map-support). Native coverage is not established by interpreter results. |
 | `set.vr`            | **partial** | [core-tests/collections/set](https://github.com/verum-lang/verum/tree/main/core-tests/collections/set) — 23 unit + 10 property + 5 integration + 4 pinned regressions. Set.insert returns Bool (was Unit); Set.union / Set.intersection auto-deref CBGR ref needle. |
 | `multiset.vr`       | **partial** | [core-tests/collections/multiset](https://github.com/verum-lang/verum/tree/main/core-tests/collections/multiset) — 21 unit + 10 property + 5 integration + 12 regressions. Construction / insert / remove / count / contains / clear / cardinality / distinct_len / is_subset / with-empty algebraic ops green; per-element-correct union/intersection/sum/difference and direct iter() pinned (gated on MultisetIter wrapping Map.iter() — wrapper-type dispatch defect, same class as slice §D). |
 | `deque.vr`          | **partial** | [core-tests/collections/deque](https://github.com/verum-lang/verum/tree/main/core-tests/collections/deque) — the active conformance suite is green under the interpreter. Sections 8–14 added (get / get_mut after wrap-around / contains / clear+refill / with_capacity / singleton edge cases / repeated push_front / drain-to-empty refill / alternating push-pop). Stdlib type-decl field order matches runtime intercept allocation. |
@@ -63,7 +63,7 @@ cover those operations, not every `List` method or another collection.
 | `adjacency_list.vr` | **partial** | [core-tests/collections/adjacency_list](https://github.com/verum-lang/verum/tree/main/core-tests/collections/adjacency_list) — 4 unit + 3 property + 2 integration + 5 regressions (3 PASS-GUARDs + 2 @ignore'd edge-mutator pins). add_edge panics with field-write-out-of-bounds (same layout-drift class as BTreeMap §A but for the inner edge-Map). Vertex-only surface green. |
 | `alias_sampler.vr`  | **regression-only** | [core-tests/collections/alias_sampler](https://github.com/verum-lang/verum/tree/main/core-tests/collections/alias_sampler) — 1 unit + 1 property + 1 integration + 4 regressions. AliasSampler construction gated on RNG + wrapper-record layout. Working surface: AliasError variant. |
 | `toposort.vr`       | **unverified** | [core-tests/collections/toposort](https://github.com/verum-lang/verum/tree/main/core-tests/collections/toposort) — the active conformance suite is green under the interpreter; the cyclic-graph cases are deferred behind the defect named below. Acyclic path fully covered: topological-order invariant (dep precedes dependent ∀ edges), permutation/totality, stable tie-break, determinism, duplicate-edge in-degree counting, add_node idempotence; cross-stdlib build-order / install-order / incremental-constraint scenarios. **Open, and the reason this row is not higher:** `toposort()` PANICS instead of returning `Err(Cycle)` for any cyclic graph: the cycle branch calls the generic free fn `node_label(n)` from inside the generic `implement<N> TopoGraph<N>` method and VBC codegen mislays the call frame (`field write out of bounds: field index 80 … type_id=0`). 4 cycle property tests `@ignore`'d; fix = thread the monomorphisation frame for generic-free-fn-from-generic-method calls (or stdlib workaround: inline `Text.from("<node>")`, drop `node_label`). See audit.md §1. |
-| `trie.vr`           | **regression-only** | [core-tests/collections/trie](https://github.com/verum-lang/verum/tree/main/core-tests/collections/trie) — 3 unit + 3 property + 2 integration + 6 regressions. `Map.get_mut(&mut self, key: &K) -> Maybe<&mut V>` exists, which is what the trie mutators needed. Trie mutator path (insert/remove) now structurally unblocked; regression tests pending re-validation under un-ignore. Empty-state surface remains green. |
+| `trie.vr`           | **regression-only** | [core-tests/collections/trie](https://github.com/verum-lang/verum/tree/main/core-tests/collections/trie) — mutators depend on `Map.get_mut`; a working Map accessor alone does not validate trie insertion or removal. Mutation coverage remains incomplete. |
 | `union_find.vr`     | **unverified** | [core-tests/collections/union_find](https://github.com/verum-lang/verum/tree/main/core-tests/collections/union_find) — 31 unit + 14 property + 7 integration + 11 pinned regressions |
 
 ### Core data structures
@@ -335,7 +335,14 @@ order matters, use `remove(i)` (O(n)).
 
 ## `Map<K, V>` — hash map
 
-Swiss-table-style flat hash map. `K: Hash + Eq`.
+Hash map with `K: Hash + Eq`. The
+[source implementation](https://github.com/verum-lang/verum/blob/main/core/collections/map.vr)
+uses Robin Hood probing; the interpreter uses a separate runtime representation. See
+[Map support](#map-support) for the resulting API limitations.
+
+The signatures and call shapes in this section are reference excerpts,
+not standalone programs. For a complete lookup example, see the
+[collections cookbook](/docs/cookbook/collections#map-values-and-mutable-access).
 
 ### Construction
 
@@ -356,88 +363,58 @@ m.reserve(additional)      m.shrink_to_fit()
 ### Access
 
 ```verum
-m.get(&key) -> Maybe<&V>
-m.get_mut(&key) -> Maybe<&mut V>
+m.get(key) -> Maybe<V>
+m.get_mut(&key) -> Maybe<&mut V>       // requires K: Clone
 m.get_key_value(&key) -> Maybe<(&K, &V)>
-m.contains_key(&key) -> Bool
-m[&key]                   // panics on missing
+m.contains_key(key) -> Bool
+m[key]                               // panics on missing
 ```
+
+`get` takes its key by value and returns `V` inside `Maybe`; it does not
+return a reference to the map's value slot. This is not a promise of a
+deep copy: values containing references can still alias other objects.
+`get_mut` borrows the key and, when present, returns a mutable reference
+to the stored value. Replacing `*value` through that reference updates
+the original map.
+
+Keep the map alive and end the returned borrow before inserting,
+removing or clearing entries, reserving capacity, shrinking, or otherwise
+rebuilding its table. These operations can remove or relocate slots.
+Changing the stored value through `&mut V` does not permit a concurrent
+change to the map's structure. This is a validity requirement; it is not
+a claim that every stale-reference use is currently detected.
 
 ### Mutation
 
 ```verum
 m.insert(key, value) -> Maybe<V>       // returns old value if any
-m.remove(&key) -> Maybe<V>
-m.remove_entry(&key) -> Maybe<(K, V)>
+m.remove(key) -> Maybe<V>
+m.remove_entry(key) -> Maybe<(K, V)>
 m.clear()
 m.retain(|k, v| pred(k, v))
 m.extend(iter)                         // iter yields (K, V)
 ```
 
-:::warning
+### Map support
 
-**Known limitation:**
-The signatures on this page are correct — they are what `core/` declares
-— but two of them answer wrongly and one traps.
+Focused interpreter checks cover present and missing keys, scalar replacement
+through `get_mut`, and mutation inside nested variant values. A subsequent
+`get` observes the changed entry. This does not establish complete Map support.
 
-| Behaviour | Methods |
-|---|---|
-| correct | `get`, `remove`, `contains_key`, `retain`, `iter` |
-| answers a wrong `Maybe.None`, silently | `get_mut`, `get_key_value` |
-| traps, but **only on an empty map** | `entry` (and every `MapEntry` / `OccupiedEntry` method reached through it) |
+The source methods and runtime representation do not yet share one
+entry layout: the source uses slots containing key, value, hash and probe
+distance, while the interpreter stores key/value pairs.
 
-The recorded `get_mut` and `get_key_value` controls return `Maybe.None`
-for an existing key while other accessors return its value. This silent
-failure can propagate as an apparently valid absence. Reproduction:
+The entry API and other methods that access the source layout, including
+`get_key_value` and `remove_entry`, remain incomplete. Failures are not
+restricted to empty maps. A successful `get` does not establish that these
+methods can read the same table correctly. Iterator helpers and map copying
+also have separate limitations listed under [open defects](#open-defects-in-collections).
 
-```verum
-let mut m: Map<Text, Int> = Map.new();
-let k = "a";
-m.insert(k, 1);
-m.get(k)              // Maybe.Some(1)   <- correct
-m.contains_key(&k)    // true            <- correct
-m.len()               // 1               <- correct
-m.get_mut(&k)         // Maybe.None      <- WRONG
-m.get_key_value(&k)   // Maybe.None      <- WRONG
-```
-
-The recorded `entry` controls distinguish construction and removal
-paths. The map length or presence of the requested key alone does not
-predict the failure:
-
-```verum
-Map.new();                       m.entry("a")   // traps
-m.insert("a",1);                 m.entry("a")   // ok  — key present
-m.insert("a",1);                 m.entry("zz")  // ok  — key absent
-m.insert("a",1); m.remove("zz"); m.entry("qq")  // ok  — removed a MISSING key
-m.insert("a",1); m.remove("a");  m.entry("zz")  // traps
-m.insert("a",1); m.insert("b",2);
-                 m.remove("a");  m.entry("b")   // traps — and len is 1
-```
-
-The two triggers are a **fresh map**, where `entry` has to allocate the
-table itself, and a **tombstone** anywhere in the table. A `remove` that
-finds nothing leaves no tombstone and is harmless; a `remove` that
-deletes something breaks `entry` for every key afterwards.
-
-The map itself is fine, which is worth knowing before you go looking for
-corruption. On exactly the map that makes `entry` trap:
-
-```verum
-m.len()               // 1
-m.contains_key(&"b")  // true
-m.get("b")            // Maybe.Some(2)
-m.get("a")            // Maybe.None
-```
-
-Every other accessor reads that table correctly.
-
-Use `get` + `insert` where you would reach for `get_mut` or the entry
-API; see
-[the cookbook](../cookbook/collections.md#the-entry-api) for a worked
-replacement.
-
-:::
+Use `get` or `get_or` followed by `insert` for insert-or-update code;
+the [cookbook](../cookbook/collections.md#the-entry-api) shows this pattern.
+These interpreter results do not establish native AOT support, general
+entry-API support, or enforcement of every borrow invalidation rule.
 
 ### Entry API — insert-or-update without double lookup
 
@@ -487,15 +464,12 @@ compare a `Map`'s iteration against a literal in a test.
 `MapKeys.next` returns `Maybe<K>`, not `Maybe<&K>`. That is the opposite
 of `List.iter()`, which yields `&T`.
 
-The split is designed rather than accidental, and the shape of it says
-so: the three accessors that yield owned values take `&self`, and the
-three that hand out borrows — `iter_mut`, `values_mut`, `drain` — all
-take `&mut self`. An oversight would be uniform. The mechanism behind it
-is visible in `core/collections/map.vr`: entries live in an
-open-addressed block with tombstones, and `resize` moves them, so a
-borrow into that block outlives its address as soon as an `insert`
-triggers a rehash — which is exactly what `&mut self` on the borrowing
-half prevents you from doing while a borrow is live.
+`iter_mut` and `values_mut` yield mutable references into the map.
+`drain` also takes `&mut self`, but yields owned `(K, V)` pairs and removes
+them from the map; it does not yield borrowed items. Keep the map and
+its table intact while using borrowed items, following the access rules
+above. A mutable receiver signature alone does
+not demonstrate that all invalid uses are rejected.
 
 :::caution `values_mut` does not run at Tier 0
 Checked:
@@ -505,24 +479,24 @@ for v in m.values_mut() { *v = *v * 10; }
 // Null pointer dereference: op=opcode 0x62 at MapValuesMut.next (pc=60)
 ```
 
-Same shape as `Map.entry` and `Map.get_mut`: the receiver
-register of a `&mut`-yielding map iterator holds an Int-tagged value
-where a pointer is required. The owned-value accessors — `iter`, `keys`,
-`values`, `into_iter` — are unaffected; rebuild the map from `iter()`
-when you need to change every value.
+This iterator path has its own runtime limitation. Coverage of a single
+mutable lookup does not establish support for mutable iteration. Rebuild
+the map from `iter()` when you need to change every value.
 :::
 
-The practical consequence is that `K` and `V` must be copyable or
-cloneable to be iterated at all, and that
+The declared iterator item types differ:
 
 ```verum
 for k in m.keys() { … }        // k is a K — you own it
 for (k, v) in m.iter_mut() { } // k is a &K, v is a &mut V
 ```
 
-do not agree about what `k` is.
+The first loop receives `K` by value; the second receives `&K`.
 
-### Examples
+### Entry API sketches
+
+These reference sketches describe the declared entry API and retain the
+[interpreter limitation](#map-support) above.
 
 ```verum
 // count words
@@ -537,7 +511,7 @@ for u in users {
     groups.entry(u.dept).or_insert_with(List.new).push(u);
 }
 
-// atomic upsert
+// insert or update
 match map.entry(key) {
     MapEntry.Occupied(mut e) => *e.get_mut() += 1,
     MapEntry.Vacant(e) => { e.insert(1); }
@@ -546,8 +520,8 @@ match map.entry(key) {
 
 ### Pitfall — mutating while iterating
 
-Inserting or removing entries while iterating with `iter`/`iter_mut`
-is undefined. Collect the changes and apply after, or use `retain`.
+Do not insert, remove, clear or resize the map while its iterator is in
+use. Collect changes and apply them after iteration, or use `retain`.
 
 ---
 
@@ -950,7 +924,7 @@ s.as_ptr() / s.as_mut_ptr() -> *const/mut T    // unsafe bridge
 | Collection | Default implementation | Notes |
 |---|---|---|
 | `List<T>` | growable contiguous buffer, factor = 2 | `@repr(contiguous, growth = N)` overrideable |
-| `Map<K,V>` | Swiss-table flat hash map | linear probing, tombstones on delete |
+| `Map<K,V>` | Robin Hood probing in source; separate interpreter storage | See [Map support](#map-support); one shared entry representation is not yet established. |
 | `Set<T>` | Swiss-set | same as `Map` |
 | `BTreeMap<K,V>` | red-black tree, B = 12 | cache-friendly node layout |
 | `BTreeSet<T>` | red-black tree | same engine |
@@ -1304,21 +1278,16 @@ establish complete native coverage.
 
 | Defect | Where it shows | Evidence |
 |---|---|---|
-| Eight methods trap reading a field the object does not have: `entry`, `get_mut`, `get_key_value`, `get_or_default`, `remove_entry`, `into_keys`, `into_values`, `invert` | any of them, on any map, empty or not | one shared message naming field index 2 of an object whose data size is 0 |
+| Source-layout access can fail: `entry`, `get_key_value`, `get_or_default`, `remove_entry`, `into_keys`, `into_values`, `invert` | includes populated maps; method and path matter | field-access failures; see [Map support](#map-support) |
 | Four trap inside iteration: `keys_list`, `values_list`, `clone`, `partition` | collecting an iterator into a `List`, and copying a map | a null dereference at `MapIter.next`, `Map.clone` and `Map.partition` |
 | `extend` cannot find `next` on its receiver at all | merging one map into another | the map arrives where an iterator was expected |
 
 `entry` also has a failing populated-map control. An empty map is not a
 sufficient explanation for the failure.
 
-The thirty-seven that answer cover the ordinary path and most of the
-functional surface — `new`, `insert`, `get`, `get_or`, `get_or_insert`,
-`remove`, `contains_key`, `contains_value`, `len`, `is_empty`, `clear`,
-`capacity`, `reserve`, `shrink_to_fit`, `retain`, `try_insert`,
-`with_capacity`, `pop_entry`, `to_entries`, `from_entries`, `entries`,
-`drain`, `merge`, `filter`, `map_values`, `fold`, `find`, `any`, `all`,
-`count_by`, `group_by`, and walking `keys()`, `values()` or `iter()` in a
-`for` loop, including destructuring `for (k, v) in m.iter()`.
+Basic lookup and update operations have interpreter coverage. This does
+not establish correctness for every entry operation, iterator helper,
+capacity change or native execution path; consult [Map support](#map-support).
 
 Iteration in a `for` loop works; collecting the same iterator into a
 `List` does not, and neither does copying the map. That last one has a
@@ -1338,6 +1307,9 @@ does the same work in two calls.
 These behaviours have individual execution controls:
 
 * **`Map.get` on a miss** yields `Maybe.None`.
+* **`Map.get_mut`** yields `Maybe.None` on a miss and a mutable reference
+  on a hit. Scalar replacement and nested variant mutation are visible
+  through a subsequent lookup under the interpreter.
 * **`Map.contains_key`** answers `true` for a present key and `false` for
   an absent one.
 * **`Text` equality** on byte-identical literals is `true`, and `false`
@@ -1363,11 +1335,11 @@ the interpreter, and what to reach for instead where it does not.
 | `toposort` | usable | an error payload built from `Text.from` is wrong |
 | `heap` | usable | `Heap.into_inner` does not dispatch on a generic receiver |
 | `set` | usable | `into_list` and `extract_if` |
-| `map` | usable | `Map.from` and `get_key_value` |
+| `map` | partial | [Map support](#map-support) describes lookup, mutation, entry and iterator limitations. |
 | `list` | usable | `List.of`, `from_elem`, `fill` and the shuffle helpers |
 | `slice` | usable | `position` dispatches to the wrong method |
 | `multiset` | limited | `iter()` does not dispatch through the wrapper |
-| `trie` | limited | `Map.get_mut` does not dispatch |
+| `trie` | limited | Its mutable Map traversal requires separate validation; a passing Map accessor does not establish trie support. |
 | `btree` | **avoid** | a record field holding an optional heap value is cleared on write, so `BTreeMap.insert` followed by `get` faults. Use `Map` until this lands. |
 | `bloom` / `hyperloglog` / `count_min` | limited | the hashing helper they share does not resolve across module boundaries |
 | `alias_sampler` | limited | construction is blocked by the same resolution defect |

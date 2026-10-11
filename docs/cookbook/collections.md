@@ -51,20 +51,64 @@ let d = Deque.from_list(list);
 
 ## Access
 
+Call shapes below are API reference excerpts, not standalone programs.
+
 ```verum
 xs[0]                                // panics on OOB
 xs.get(i)                            // -> Maybe<&T>
 xs.first() / xs.last()               // -> Maybe<&T>
 
-map[&key]                            // panics on missing
-map.get(&key)                        // -> Maybe<&V>
-map.contains_key(&key) -> Bool
+map[key]                             // panics on missing
+map.get(key)                         // -> Maybe<V>
+map.get_mut(&key)                    // -> Maybe<&mut V>, K: Clone
+map.contains_key(key) -> Bool
 
 set.contains(&value) -> Bool
 ```
 
 Prefer `.get` over `[]` when the key might be absent — `.get`
 returns `Maybe` and short-circuits elegantly with `?`.
+
+### Map values and mutable access
+
+`get` takes its key by value. Its `Maybe<V>` result is not a borrow of the
+map's storage, although references inside `V` can still alias other
+objects. `get_mut` takes a borrowed key and returns a mutable reference
+to the existing value slot. Keep that borrow within the map's lifetime
+and end it before insertions, removals, clearing, capacity changes or
+other table rebuilding. Borrow syntax is not a guarantee that every
+invalidated reference is detected.
+
+The complete example below contrasts a scalar value returned by `get`
+with a write through `get_mut`. It runs under the interpreter; native AOT
+and other Map operations have separate
+[support limits](/docs/stdlib/collections#map-support).
+
+```verum
+mount core.collections.map.Map;
+mount core.base.maybe.Maybe;
+
+fn main() {
+    let mut counts: Map<Text, Int> = Map.new();
+    counts.insert("apple", 3);
+    let before = counts.get("apple").unwrap();
+    assert(counts.get("pear") is Maybe.None);
+    assert(counts.get_mut(&"pear") is Maybe.None);
+
+    match counts.get_mut(&"apple") {
+        Maybe.Some(value) => { *value = *value + 1; },
+        Maybe.None => panic("missing key"),
+    }
+
+    assert_eq(before, 3);
+    assert_eq(counts.get("apple").unwrap(), 4);
+    print("map-access: ok");
+}
+```
+
+```text
+map-access: ok
+```
 
 ## Mutation
 
@@ -76,7 +120,7 @@ xs.remove(index) -> T
 xs.swap_remove(index) -> T          // O(1); reorders
 
 map.insert(key, value) -> Maybe<V>  // returns the old value
-map.remove(&key) -> Maybe<V>
+map.remove(key) -> Maybe<V>
 
 set.insert(value) -> Bool           // true if newly inserted
 set.remove(&value) -> Bool          // true if was present
@@ -98,17 +142,18 @@ One lookup instead of the `.contains_key + .get + .insert` dance.
 
 :::warning
 
-**Known limitation:** the block above does not run.
-`Map.entry` fails at runtime with a null pointer dereference, and so do
-the other `Map` methods that walk the entries array directly —
-`get_key_value`, `remove_entry`, and the `Entry` methods below. The
-declarations are correct and the signatures are stable; the interpreter
-carries its own `Map` representation that these bodies cannot read.
+**Known limitation:** the interpreter's entry API is incomplete.
+It can fail on populated maps as well as empty ones. The interpreter
+carries a separate `Map` entry representation that source methods such
+as `entry`, `get_key_value` and `remove_entry` cannot reliably read.
+The entry snippets here describe the declared API; they are not supported
+recipes. See [Map support](/docs/stdlib/collections#map-support) for the
+current backend boundary.
 
-`Map.get`, `Map.insert`, `Map.remove`, `Map.contains_key`, `Map.len` and
-iteration are unaffected — those are served directly by the runtime.
+Basic lookup and update operations are handled by the interpreter's
+runtime path; a successful lookup does not validate the entry API.
 
-**What works today**, measured on the same day:
+Use an explicit lookup followed by insertion:
 
 ```verum
 mount core.collections.{Map, List};
@@ -128,8 +173,7 @@ fn main() {
 a=2 b=1
 ```
 
-It costs the second lookup the entry API exists to avoid. Prefer it
-until this section drops the warning.
+This costs a second lookup and avoids the incomplete entry API.
 
 :::
 
@@ -144,10 +188,10 @@ map.entry(key).and_modify(|v| *v += 1).or_insert(1);
 
 // Pattern match on the entry:
 match map.entry(key) {
-    OccupiedEntry(mut entry) => {
+    MapEntry.Occupied(mut entry) => {
         *entry.get_mut() = new_value;
     }
-    VacantEntry(entry) => {
+    MapEntry.Vacant(entry) => {
         entry.insert(default);
     }
 }
@@ -162,10 +206,15 @@ for x in &xs { ... }                  // iter()  - &T
 for x in &mut xs { ... }              // iter_mut() - &mut T
 for x in xs { ... }                   // into_iter() - owned T (consumes xs)
 
-for (k, v) in &map { ... }            // &K, &V
+for (k, v) in &map { ... }            // declared Map iteration yields (K, V)
 for (k, v) in &mut map { ... }        // &K, &mut V
 for (k, v) in map { ... }             // owned K, V
 ```
+
+For Map, `iter_mut` and `values_mut` yield borrowed values, whereas
+`drain` removes entries and yields owned `(K, V)` pairs. End iterators
+and outstanding borrows before changing the table's structure. See
+[Map support](/docs/stdlib/collections#map-support) for iterator limits.
 
 ### Combinator stack
 
