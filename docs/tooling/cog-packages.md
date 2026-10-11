@@ -50,6 +50,10 @@ source archive, calculates its SHA-256 digest, and checks the publication
 metadata and size limits. It does not upload or require an authentication token.
 It removes the temporary archive after validation.
 
+Archive creation checks completion of the tar stream, the gzip stream and the
+final output flush. An error at any of these stages fails the command before
+upload, including during a dry run.
+
 A real upload reads `VERUM_REGISTRY_TOKEN` or the package command's credentials
 file and sends a bearer-authenticated request. Supply the token through your
 shell or CI secret configuration. The package command has no login subcommand.
