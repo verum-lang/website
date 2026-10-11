@@ -166,7 +166,7 @@ bidirectional adapters `tar_entry_to_universal(&TarEntry)` and
 
 | Use case | Composition |
 |---|---|
-| Cog-source distribution | `archive.tar.write_archive |> compress.zstd.encode` |
+| Cog-source publication | `verum package publish` creates gzip-compressed tar; see [archive contents](/docs/tooling/cog-packages#source-archive). |
 | Build-output bundles (binary releases) | `archive.tar.write_archive |> compress.gzip.encode` |
 | Backup / restore pipelines | `archive.tar.write_archive |> compress.xz.encode` |
 | Container-image layer construction | `archive.tar.write_archive` (uncompressed; OCI does its own compression) |
