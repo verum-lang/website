@@ -6,11 +6,12 @@ slug: /category/verification
 
 # Verification in Verum
 
-> Verum is a verification-first language. Every piece of machinery the
-> compiler exposes — types, contracts, refinements, proofs,
-> univalence — collapses onto the same pipeline: *turn human intent
-> into a proof obligation, discharge the obligation, register the
-> witness in the trusted kernel.*
+Verum connects executable programs, contracts and explicit proofs. The
+verification interface must make each result inspectable: the checked
+statement, its assumptions, the deciding mechanism and any unfinished work.
+Different routes currently provide different kinds of evidence. Start with
+[the kernel boundaries](../architecture/trusted-kernel.md) when a result
+will authorize another system's decisions.
 
 This page is the **deep architectural entry point**. It explains *what
 problem verification solves in Verum*, *how the compiler encodes that
@@ -29,29 +30,22 @@ add a `requires`/`ensures` clause and move on, start at
 
 ## 1. The core thesis
 
-Most languages treat verification as a *tool grafted onto a runtime
-semantics*: write code, then bolt a Hoare-logic frontend, a contract
-library, or a liquid-types checker on top. Verum inverts that
-relationship — **the runtime semantics and the verification semantics
-are one artefact**, derived from the same typed AST and ending in the
-same kernel term. Consequently:
+The design goal is a language where a program's contracts, implementation
+and proof obligations remain connected through compilation. Refinements
+express admissible values, theorem declarations express formal claims,
+and verification strategies choose how to investigate those claims.
 
-- A refinement annotation like `Int { self > 0 }` is not syntactic
-  sugar for a runtime assertion — it is a **dependent typing
-  judgement** that SMT translates into a proof obligation, and that
-  the kernel records as an axiom witness once discharged.
-- A `theorem` declaration is not a second-class "spec document" — it
-  is a **first-class compilation unit** with parameters, imports,
-  generics, proof body, and machine-checkable certificate.
-- The `?` operator and the `throws` clause are not runtime features
-  with a verification extension; they are **verification primitives
-  with a runtime implementation** chosen by the compiler
-  per-obligation. Reflection needs no marker at all: a pure,
-  single-expression function IS its own definition to the solver.
+The connection has several independent obligations: translating the
+source statement faithfully, obtaining a valid derivation, checking its
+assumptions, and preserving runtime behavior during compilation. Sharing
+an AST or an obligation hash helps track those obligations; it does not
+prove all of them.
 
-The payoff: *you never choose between expressive code and provable
-code.* You write ordinary Verum and decide, per function or per
-module, how much of it you want verified.
+Verum exposes concrete mechanisms for this work: a minimal proof-term
+checker, solver integration, framework-citation inventories, comparison
+checkers and compiler-attestation records. Their evidence should compose
+without being conflated. The [knowledge-system profile](./knowledge-systems.md)
+makes that discipline explicit for Noesis and other theory-management systems.
 
 ---
 
@@ -115,9 +109,10 @@ parse time, never silently at solve time.
 
 ## 3. The verification pipeline, end-to-end
 
-Every obligation — whether from a refinement type, a `requires`
-clause, an `ensures` clause, a loop invariant, or a `theorem` body —
-travels the same five-stage pipeline:
+The compiler-facing SMT path organizes IR obligations into the stages below.
+It is separate from the minimal `.vproof` source bridge. A common goal data
+type does not establish that every source form has a faithful translation;
+see the [source-to-goal boundary](./knowledge-systems.md#source-to-goal-boundary).
 
 ```mermaid
 flowchart LR
@@ -125,7 +120,7 @@ flowchart LR
     B --> C[Translation]
     C --> D[Strategy dispatch]
     D --> E[Solve / prove]
-    E --> F[Kernel replay]
+    E --> F[Evidence checks<br/>selected route]
     F --> G[Certificate]
     B -.-> H[Hypotheses<br/>axioms<br/>lemmas]
     H -.-> C
@@ -149,10 +144,10 @@ obligations** as it checks each declaration. Sources:
 - **Loop specifications.** `invariant p` must hold at every entry and
   exit of the loop body; `decreases m` must shrink on each
   iteration (a well-foundedness check).
-- **Theorem declarations.** `theorem name(params) requires/ensures
-  { proof }` compiles to a single obligation whose goal is the
-  stated proposition and whose hypotheses are the `requires` clauses
-  plus any `have` steps from the proof body.
+- **Theorem declarations.** The IR path represents the stated proposition
+  and its premises as obligations. This does not imply support in the
+  minimal source bridge: `from_theorem_decl` refuses generic/value
+  parameters and `requires` clauses rather than changing the formal goal.
 - **Algebraic data type encoding.** Nullary and variant types emit
   structural axioms (disjointness, exhaustiveness) — see
   [ADT encoding](./adt-encoding.md).
@@ -233,30 +228,26 @@ time) to the session statistics cache; see `verum smt-stats`.
 
 ### 3.5 Kernel replay
 
-Successful SMT proofs do not immediately become accepted theorems.
-They enter the **trusted kernel** (`verum_kernel`) as an
-`SmtCertificate` — a serialisable structure carrying the backend
-name, an obligation hash, and a trace of rule tags. The kernel:
+There are two different certificate routes.
 
-1. Verifies the certificate's backend is on an allow-list.
-2. Reads the first rule tag (`0x01 refl`, `0x02 asserted`,
-   `0x03 smt_unsat`, …) and constructs a `CoreTerm::Axiom` witness
-   tagged with `framework = "backend:rule_name"`.
-3. Records the obligation hash as citation metadata.
-4. Returns the witness; the caller compares its hash to the
-   obligation's expected hash before admitting the theorem.
+- A closed `.vproof` carries a term and claimed type for the minimal
+  Π/Σ/identity-type checker. `verum check-proof` rechecks that judgment.
+- `SmtCertificate` carries a solver envelope, backend, rule tag and
+  obligation hash. The current `replay_smt_cert` validates those fields
+  and creates a solver-attributed axiom witness. The
+  `replay_smt_cert_with_obligation` variant additionally checks the
+  consuming goal's expected hash.
 
-The kernel is the **single trusted component** — a small,
-single-reviewer-audit-able Rust crate, with zero calls back into
-user code. Everything
-else — the solver adapters, the translator, the tactic engine,
-framework-axiom registries — sits outside the kernel's trust
-boundary. A lying solver cannot forge a theorem because the
-certificate's trace must correspond to the obligation hash that the
-compiler computed independently.
+Hash association prevents exchanging artifacts between named obligations.
+It does not prove a solver trace sound. This SMT route retains trust in the
+solver and translation until the actual inference steps are reconstructed
+and checked. Neither a strategy named `Certified` nor a successful audit
+renames that evidence into a minimal proof-term derivation.
 
-See [Trusted kernel](./trusted-kernel.md) for the full rule list
-and certificate format.
+See [kernel trust boundaries](../architecture/trusted-kernel.md) for the
+implemented checks and [proof-term rules](./trusted-kernel.md) for the
+separate minimal calculus.
+
 
 ---
 
@@ -273,28 +264,31 @@ flowchart TB
     Adapter1 --> Certificate[SmtCertificate]
     Adapter2 --> Certificate
     Portfolio --> Certificate
-    Certificate --> Kernel[verum_kernel<br/>trusted LCF]
+    Certificate --> Kernel[verum_kernel<br/>SMT envelope replay]
     Kernel --> Axiom[CoreTerm::Axiom]
     Axiom --> Module[module export]
 
     TacticDSL[tactic DSL<br/>verum_smt::proof_search] --> Certificate
     Logic[pure predicates<br/>refinement reflection] --> Translate
-    Framework[framework_axioms<br/>stratified TCB] --> Kernel
-    Cubical[cubical/HoTT<br/>univalence/paths] --> Kernel
+    Framework[framework axioms] --> Registry[Broader CoreTerm registry]
+    Cubical[cubical/HoTT terms] --> Registry
 ```
 
 - **Refinement types & reflected predicates** → encoded as axioms in
   the translator; invisible to the kernel (they constrain
   uninterpreted symbols, not core terms).
-- **`theorem`/`lemma` declarations** → obligations with real kernel
-  terms; the tactic DSL produces `CoreTerm` values that the kernel
-  checks directly.
-- **`@framework(id, "citation")`** → the axiom has a framework tag;
-  `verum audit --framework-axioms` enumerates the entire
-  stratified TCB.
-- **Cubical / HoTT** → additional kernel rules (`Refl`, `HComp`,
-  `Transp`, `Glue`, `PathTy`) that the kernel accepts natively;
-  erased during codegen.
+- **`theorem`/`lemma` declarations** → elaboration and obligation generation.
+  Supported proof-term exports are checked against their formal claimed type;
+  unsupported exports and source-to-goal correspondence remain explicit.
+  The minimal AST converters refuse parameterized or premise-bearing
+  theorems, function contracts and refinement types; explicit formal goals
+  and the compiler's SMT obligations remain distinct interfaces.
+- **`@framework(id, "citation")`** → framework attribution in the broader
+  registry. The framework audit inventories those declarations, not every
+  component of the execution or translation trust boundary.
+- **Cubical / HoTT** → constructors and checking rules in the broader
+  `CoreTerm` infrastructure. They are outside the minimal `.vproof` calculus;
+  code-generation preservation is a separate obligation.
 - **SMT certificates** → trust-tagged; replay reconstructs a
   `CoreTerm::Axiom` with the backend+rule as framework tag.
 
@@ -427,8 +421,10 @@ gradient lets you climb:
 5. **Certify** — `@verify(strategy = Certified)` on the
    theorems that matter most. Certificates land in
    `target/proofs/` and survive in CI artifact storage.
-6. **Export** — `verum export-proofs --to lean` for
-   cross-tooling verification.
+6. **Export** — `verum export-proofs --to lean` for inspection and
+   supported target translations. Inspect statement correspondence,
+   placeholders and the receiving checker's outcome before claiming a
+   cross-tool proof.
 
 See [CLI workflow](./cli-workflow.md) for the complete command
 set; see [Proof corpora](./proof-corpora.md) for how
@@ -516,86 +512,47 @@ the design.
 
 ## 11. The multi-kernel discipline
 
-A *single* trusted kernel is the standard architecture for
-proof assistants — Coq, Lean, HOL Light, Isabelle all run one.
-Verum's discipline is structurally different: **three
-independent kernel implementations** check every certificate,
-with a differential-testing layer that fails the audit the
-moment any pair disagrees.
+Verum compares direct proof-term checking with a Normalisation-by-Evaluation
+implementation. Both consume the same certificate language and share
+syntax and universe-level representations. A third registry slot,
+`KernelV0Kernel`, invokes the direct checker before checking bootstrap
+manifest policy; it is not an independent third term-checking algorithm.
 
-The three kernels:
+The in-process differential audit, mutation audit and Lean reference-checker
+audit exercise complementary failure modes. Positive controls establish
+supported cases; rejecting controls and an always-accept test double check
+that failures are observable. Agreement on these inputs is regression
+evidence, not a general soundness proof or a claim of unique technology.
 
-- **Trusted-base kernel** (`verum_kernel::proof_checker`) — an
-  LCF-style implementation performing direct rule-matching with
-  explicit substitution. Targets a small enough footprint to be
-  read end-to-end.
-- **NbE kernel** (`verum_kernel::proof_checker_nbe`) —
-  normalisation-by-evaluation; compiles terms into a semantic
-  `Value` representation and checks via β-reduction in the value
-  world. Independent algorithmic specification; shares no code
-  with the trusted base beyond the syntax-tree definitions.
-- **kernel_v0 manifest verifier**
-  (`verum_kernel::kernel_registry::KernelV0Kernel`) — a
-  manifest-driven bootstrap kernel that anchors structural
-  type-check, manifest audit-cleanness, the meta-soundness
-  footprint, and per-rule strict-intrinsic dispatch. Orthogonal
-  to the term-level algorithms above.
-
-Differential testing across **three layers**:
-- `verum audit --differential-kernel` runs the canonical 24-cert
-  battery (`verum_kernel::canonical_battery`) through all three
-  kernels and asserts unanimous agreement.
-- `verum audit --differential-kernel-fuzz` chains 1–3 mutations
-  per iteration (from an 11-variant grammar) over a 16-seed
-  roster, auto-shrinks any disagreement to a minimal failing
-  case, and surfaces per-mutation / per-seed / chain-length
-  coverage instrumentation.
-- `verum audit --differential-lean-checker` runs the same
-  canonical battery through the Rust kernel and a Lean
-  ReferenceChecker exe; cross-language verdict-by-verdict
-  agreement asserted.
-
-A single disagreement at any layer fails the audit. A *synthetic
-always-accept kernel* registered alongside the real three acts as
-a liveness pin: the audit's invariant requires it to *disagree*
-on rejected certificates, ensuring the differential check is
-non-vacuous.
-
-Verum is the first production proof assistant to ship multiple
-algorithmic kernels with continuous differential testing. See
-[Three-kernel architecture](./two-kernel-architecture.md) for
-the full mechanics.
+See [differential verification](./two-kernel-architecture.md) for the
+mechanisms and [the Noesis profile](./knowledge-systems.md) for how to
+record their separate results.
 
 ---
 
 ## 12. Beyond the kernel — meta-soundness layers
 
-The trusted-base + NbE + kernel_v0 trio is the L0/L1 floor.
-Verum stacks three additional layers atop the kernels:
+Additional modules describe reflection, theory dependencies, separation
+logic and compiler preservation obligations. Their contribution must be
+read at the level they implement:
 
-- **[Reflection tower](./reflection-tower.md)** —
-  MSFS-grounded meta-soundness in four canonical stages
-  (Base / Stable / Bounded / AbsoluteEmpty). MSFS
-  Theorem 9.6 collapses the iterated levels (`k ≥ 1` realises
-  the same theory); MSFS Theorem 8.2 bounds the tower's
-  consistency-strength to one extra inaccessible; MSFS Theorem
-  5.1 (AFN-T α) seals the absolute boundary as empty.
-- **[Separation logic](./separation-logic.md)** — heap-aware
-  spatial reasoning. Kernel-side `HeapPredicate` (6 arms) +
-  Verum-side `SepAssertion` (13 arms) + a kernel↔verifier
-  bridge with `BridgeFidelity` classification (`Faithful` vs
-  `Approximating`).
-- **Codegen attestation** — per-pass kernel-discharge status
-  for the 6 codegen passes (VBC lowering, SSA construction,
-  register allocation, linear-scan, LLVM emission, machine-code
-  emission). `verum audit --codegen-attestation` reports
-  `Discharged` / `AdmittedWithIou` / `NotYetAttested` per pass.
-- **kernel_v0 self-hosted bootstrap** — a Verum-side
-  description of every kernel rule under
-  `core/verify/kernel_v0/`, with `verum audit --kernel-v0-roster`
-  enforcing manifest↔filesystem agreement. The future
-  three-way differential kernel will register the self-hosted
-  Verum kernel as a third slot.
+- **Reflection and foundation inventories** record declared metatheory
+  requirements. A universe lift or a set-inclusion check on requirement
+  labels is not a proof of a theory's own consistency.
+- **Separation reasoning** has explicit heap assertions and bridge-fidelity
+  classifications. Preservation through the selected bridge is part of
+  the claim, not an implication of its name.
+- **Codegen attestation** records proposed simulation invariants and their
+  evidence status. A cited compiler theorem does not automatically verify
+  Verum's lowering passes.
+- **The `kernel_v0` corpus** describes bootstrap judgments and manifests.
+  The registry's Rust wrapper checks these declarations; it does not
+  execute a self-hosted Verum checker.
+
+These surfaces support an ambitious goal: inspectable dependencies from
+foundations through programs and operational behavior. Each added mechanism
+needs its own executable contract and evidence before downstream results
+can rely on it.
 
 ---
 
@@ -695,28 +652,24 @@ part of the shipping release:
 
 **Trust boundary**
 
-- **Trusted-base kernel** — LCF-style core with allowlist-gated
-  SMT proof-tree replay covering both native solver rules and
-  ALETHE rules, hierarchical composition via `CoreTerm::App`,
-  UIP rejection for univalence preservation. Held to a
-  single-reviewer / single-session audit budget.
-- **NbE kernel** — independent normalisation-by-evaluation
-  implementation; differentially tested against the trusted base.
-- **Reflection tower (MSFS-grounded)** — four-stage
-  meta-soundness verification with MSFS Theorems 9.6 / 8.2 /
-  5.1 as cited discharges.
-- **Separation logic** — heap-aware spatial reasoning;
-  6-arm kernel `HeapPredicate` + 13-arm Verum-side
-  `SepAssertion` + audited bridge.
-- **Codegen attestation** — per-pass kernel-discharge tracking
-  across 6 codegen passes.
-- **kernel_v0 self-hosted bootstrap** — Verum-side rule
-  description with manifest audit.
+- **Minimal certificate checker** — closed Π/Σ/identity-type terms;
+  its authority is separate from broader `CoreTerm` mechanisms.
+- **NbE comparison** — an alternative algorithm with shared syntax and
+  universe-level helpers.
+- **SMT attestation** — envelope and obligation checks with explicit
+  solver trust until complete derivation reconstruction is available.
+- **Foundation and reflection inventories** — declared requirements and
+  policy checks, distinct from consistency proofs.
+- **Separation logic and compiler attestation** — explicit bridge and
+  preservation obligations with their individual evidence status.
+- **`kernel_v0` bootstrap corpus** — Verum-side rule descriptions and
+  a manifest-backed wrapper around the direct checker.
 
 **Outputs**
 
-- **Proof export** — Lean / Coq / Dedukti / Metamath / Isabelle
-  targets with cross-tool re-check CI matrix.
+- **Proof export** — target-specific declarations and supported body
+  translations, with placeholders and statement-correspondence obligations
+  retained; see [Proof export](./proof-export.md).
 - **Program extraction** — Curry-Howard lifting of constructive
   proofs into runnable code (Verum / OCaml / Lean / Coq) via
   `@extract` / `@extract_witness` / `@extract_contract` plus the

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 title: "kernel_v0 — Verum's bootstrap meta-theory"
-description: "The 10-rule Verum-language mirror of the trusted base. Hand-auditable bootstrap, the Milawa pattern, and the trust-base shrinkage roadmap."
+description: "Verum-side bootstrap rule descriptions, their manifest and the boundary between audit policy and an executable self-hosted checker."
 slug: /verification/kernel-v0
 ---
 
@@ -10,15 +10,14 @@ slug: /verification/kernel-v0
 `kernel_v0` is the **Verum-language** mirror of the
 host-implementation trusted-base proof-term checker. It lives
 at `core/verify/kernel_v0/` and ships a hand-auditable 10-rule
-minimal kernel that justifies every other inference rule the
-Verum kernel ships.
+rule description used by the bootstrap manifest and its audits. Its
+existence does not establish every other kernel rule or a self-hosted
+checking implementation.
 
-The architectural role is **self-hosting** — at completion,
-the kernel's logic is *fixed-point compilable by Verum itself*,
-shrinking the trusted base to a tiny bootstrap shim that the
-host language only has to read end-to-end. This is the **Milawa
-pattern**: kernel(N+1) verified by kernel(N), descending to a
-tiny bootstrap.
+The architectural goal is an executable Verum checker with a verifiable
+bootstrap chain. The current registry slot is a Rust wrapper: it calls
+the direct checker and then inspects rule manifests and policy. Self-hosting
+requires an additional implementation and a compilation trust argument.
 
 For the layered three-rule-tier architecture see
 [Trusted kernel](./trusted-kernel.md). For the three-kernel
@@ -29,36 +28,18 @@ algorithmic slot — see
 ## 1. The architectural picture
 
 ```text
-   kernel_v0/  (Verum syntax — core/verify/kernel_v0/)
-   ──────────
-   10 minimal inference rules + soundness lemmas.
-   The bootstrap meta-theory. Hand-auditable.
-
-   ↓ (each subsequent kernel version proves its new rules sound
-      in terms of kernel_v0's rules)
-
-   kernel_v1/  ← extends with refinement subtypes
-   kernel_v2/  ← extends with cubical (Path, hcomp, transp)
-   kernel_v3/  ← extends with modal operators
-   ...
-
-   ↓ at fixed point
-
-   proof_checker (host-implementation)  — generated from kernel_vN
-   kernel dispatcher (host-implementation) — uses kernel_vN's verdict
+Verum-side rule descriptions → bootstrap manifest and citations
+                                           ↓
+.vproof → direct Certificate::verify → manifest/policy checks
+                                           ↓
+                              kernel_v0 registry-slot verdict
 ```
 
-The chain descends to `kernel_v0` and stops. `kernel_v0`'s
-soundness once rested on a small set of open *meta-theory IOUs*
-(substitution-lemma, β-confluence, etc.); every IOU has since been
-closed — six of the ten manifest rules are now
-`DischargedByFramework` (mathlib4 / lean4_stdlib citations) and
-four are structurally `Proved`. The audit-clean steady state is
-enumerable via `verum audit --trust-extension-report`. Any
-future kernel extension that re-introduces an `Admitted` rule
-re-acquires an `iou_axiom_specs` registry row, the `drift_check`
-notices, and the audit gate flips until the structural proof or
-framework citation lands.
+The manifest classifies rules as structurally discharged, attributed to a
+framework, or carrying an outstanding obligation. An empty outstanding-IOU
+list is a property of that classification. It does not mean every cited
+result has been replayed as a local proof or that the implementation's
+soundness follows from the list.
 
 ## 2. The 10 minimal rules
 
@@ -100,11 +81,11 @@ end:
 | `kernel_v0/` Verum source | hand-auditable 10-rule mirror; one file per rule plus soundness lemmas |
 | Manifest verifier | structural type-check + manifest audit-cleanness + meta-soundness footprint + per-rule strict-intrinsic dispatch |
 
-A Verum-side kernel verified *in its own language* is the
-strongest form of trust delegation: a reviewer who reads Verum
-can read the kernel's logic without crossing language
-boundaries. This is the **Milawa pattern** — a self-verified
-kernel chain descending to a hand-auditable bootstrap.
+The Verum-side descriptions make judgments and obligations inspectable in
+the language. A complete self-hosting claim additionally needs execution
+of the checker, preservation through its compiler and an explicit bootstrap
+trust chain. Changing the implementation language alone does not discharge
+those obligations.
 
 ## 4. The differential-kernel role
 
@@ -118,8 +99,9 @@ kernel chain descending to a hand-auditable bootstrap.
 | 3 | `KernelV0Kernel` (Algorithm C — manifest-driven verifier consuming the Verum-source `kernel_v0/` manifest) | active |
 
 The differential gate's invariant strengthens: every certificate
-must be admitted by *all three* kernels, with disagreement on
-any pair flagged as a kernel-implementation bug.
+is compared across the selected registry slots. The third slot depends
+on the first; disagreements require inspection of both term-checking
+and policy outcomes.
 
 ## 5. The file layout
 
@@ -159,8 +141,8 @@ Every file is hand-readable Verum source.
 A representative file (`rules/k_var.vr`) ships:
 
 - The judgment: `Γ ⊢ Var(n) : Γ[n]` for a well-formed context.
-- The Verum encoding as a function returning `Maybe<Type>` —
-  `Some(t)` if the variable is in scope, `None` otherwise.
+- The Verum encoding as `introduce_var`, returning `Maybe<Derivation>` —
+  a variable derivation when lookup succeeds, and `None` otherwise.
 - A soundness lemma: "if `K-Var` admits `(Γ, n)`, then `Γ[n]` is
   well-typed in `Γ`".
 - The lemma's discharge: a structural induction on the
@@ -214,42 +196,23 @@ citation triple** `(lemma_path, framework, citation)`:
 * `citation` — the concrete upstream artefact identifier
   (e.g. `Mathlib.Computability.Lambda.ChurchRosser`).
 
-Both classes are L4-acceptable for the audit gate's *clean*
-verdict. Promoting `discharged_by_framework` → `discharged`
-is the multi-year mechanisation work: replacing each upstream
-citation with a Verum-language proof that re-derives the
-upstream lemma in-kernel. Until then the citation triple is the
-load-bearing trust delegation, and a reviewer can independently
-verify each rule by reading the cited upstream artefact.
-
-**Why is this audit-clean and not just admitted?** The
-distinction matters: an `admitted_with_iou` rule names a
-**missing** lemma whose proof has not yet been written
-anywhere. A `discharged_by_framework` rule names an **existing**
-proof in a vetted upstream corpus (mathlib4 / lean4_stdlib),
-which the audit chronicle pins as a structured trust extension.
-Both are honest about not being kernel-checked, but the latter
-is *resolvable* — anyone can read the upstream proof — while
-the former leaves an open obligation.
+The audit policy accepts both structurally discharged and
+framework-attributed statuses. These are different evidence kinds. A citation
+triple can identify an intended upstream result; it does not verify that
+result's existence, its exact assumptions, or its applicability to this
+implementation merely by being present. A consumer requiring local replay
+must retain the corresponding proof artifact and interpretation separately.
 
 ## 8. Why a separate Verum-side mirror
 
-A natural question: *"why ship `kernel_v0` in Verum rather than
-just trusting the Rust `proof_checker`?"*
+The mirror exposes the intended judgments, their dependencies and their
+source-level presentation. It supports manifest-drift checks and provides
+an interface for an eventual executable Verum checker.
 
-Three reasons:
-
-1. **Independent verification.** The Rust `proof_checker` and
-   the Verum `kernel_v0` are checked against each other in the
-   differential gate. Disagreements are bugs in either.
-2. **Self-hosting.** A kernel verified *in its own language* is
-   the strongest form of trust delegation possible. The
-   Verum-side kernel keeps the trust chain inside the language
-   itself.
-3. **Auditor accessibility.** A Verum-source kernel is readable
-   by anyone who reads Verum — no Rust expertise required. The
-   audit chronicle's auditors are mathematicians and verifiers,
-   not just systems programmers.
+The existing differential gate compares the direct and NbE algorithms;
+its bootstrap slot adds checks on the mirror's manifest while reusing the
+direct verdict. This is useful audit infrastructure with a clear boundary,
+not evidence that a second implementation is already running in Verum.
 
 ## 9. Cross-references
 

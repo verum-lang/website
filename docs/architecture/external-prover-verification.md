@@ -1,7 +1,7 @@
 ---
 sidebar_position: 10
 title: External-Prover Verification
-description: "Multi-prover replay gate for the kernel-soundness corpus — Lean 4, Coq/Rocq, Isabelle/HOL, and Cubical Agda. The audit drives KernelSoundness.lean / kernel_soundness.v / KernelSoundness.thy / KernelSoundness.agda through real `lake build` / `coqc` / `isabelle build` / `agda --cubical` invocations and reports per-backend pass / iou-only / hard-error verdicts. Four independent foundations agreeing on the same soundness claims."
+description: "Multi-prover replay gate for the kernel-soundness corpus — Lean 4, Coq/Rocq, Isabelle/HOL, and Cubical Agda. The audit drives KernelSoundness.lean / kernel_soundness.v / KernelSoundness.thy / KernelSoundness.agda through real `lake build` / `coqc` / `isabelle build` / `agda --cubical` invocations and reports per-backend pass / iou-only / hard-error verdicts. Foreign-tool acceptance of the emitted statements under each export's definitions and assumptions."
 ---
 
 # External-Prover Verification
@@ -69,20 +69,18 @@ shell-out across **four foundations**:
 | Isabelle/HOL (2025-2+) | `isabelle build -d . KernelSoundness` | `verification/external/isabelle/` | re-elaborates `KernelSoundness.thy` |
 | Cubical Agda (2.8+) | `agda --cubical KernelSoundness.agda` | `verification/external/agda/` | re-elaborates `KernelSoundness.agda` under cubical mode |
 
-Four meaningfully-different foundations: Lean 4 is dependent type
-theory (predicative + impredicative `Prop`); Coq / Rocq is CIC
-(impredicative `Prop` + universe polymorphism); Isabelle/HOL is
-classical higher-order logic with extensible foundations; Cubical
-Agda is the only major prover with native CCHM cubical support
-(`--cubical` mode), which closes the cubical-fragment gap that the
-other three foundations leave at the meta-theoretic level.
-Multi-prover agreement on the structural-fragment soundness lemmas
-is the load-bearing gate.
+The targets use different logics and export encodings. Their successful
+builds establish acceptance of those encodings under their declared
+assumptions. They do not automatically establish that all targets express
+the same theorem, or that the Rust implementation satisfies it. In
+particular, enabling Agda's cubical mode does not prove a postulated
+cubical rule sound.
 
 Each backend reports one of four verdicts:
 
 - **`clean`** — backend exited 0 with no diagnostics. The
-  kernel-soundness theorem typechecks unconditionally.
+  emitted declarations typecheck under their definitions and assumptions.
+  A clean process exit does not certify axiom freedom.
 - **`iou-only`** — backend exited 0; the only diagnostics are
   honest IOUs (typed-axiom declarations of shape `axiom <Rule>_iou`
   in Lean, `Axiom <Rule>_iou` in Coq, `axiomatization` blocks in
@@ -101,6 +99,13 @@ Each backend reports one of four verdicts:
   `--strict`; CI uses `--strict`.
 
 ## 3. The structural fragment (real inductive constructors)
+
+An introduction-rule lemma proved by applying the corresponding constructor
+shows that the encoded judgment is closed under that constructor. This is
+useful for checking rule interfaces, but it does not prove that the Rust
+checker implements the judgment, that reduction preserves typing, or that
+the encoded system is consistent. Those require separate implementation
+correspondence and metatheory arguments.
 
 The kernel-soundness export ships a **real `Typing` predicate**
 across all four foundations — never opaque `well_typed t T`
@@ -142,7 +147,8 @@ mathlib / Coq stdlib / Isabelle's HOL — admitted via per-rule typed
 axioms named `<Rule>_iou`. The open-IOU set is now empty: every
 former IOU has been either promoted to a structural-premises
 constructor (the preferred route) or marked
-`DischargedByFramework` with a vetted upstream citation. The
+`DischargedByFramework` with a recorded upstream citation. A citation status does not itself
+instantiate or replay the cited proof for this implementation. The
 `<Rule>_iou` axiom shape is preserved so that future
 re-introductions stay drift-checked; each axiom takes the rule's
 actual operands and returns a `Prop`, so the soundness lemma's
@@ -213,7 +219,8 @@ So `external-prover-replay` verifies:
   (`iou_axiom_specs()` returns `vec![]`) — every kernel rule has
   been promoted from open IOU to either a structurally-premised
   `Proved` constructor or a `DischargedByFramework` rule citing
-  a vetted upstream proof. See [framework axioms — IOU registry](/docs/verification/framework-axioms#the-iou-axiom-registry--kernel-rule-trust-extension)
+  an attributed upstream result. This classification does not replay that
+  result or establish its applicability. See [framework axioms — IOU registry](/docs/verification/framework-axioms#the-iou-axiom-registry--kernel-rule-trust-extension)
   for the full discharge protocol. The historical IOU enumeration
   in §4 below is preserved as context — every entry there has
   since been closed; the drift-check in

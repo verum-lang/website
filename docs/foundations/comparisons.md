@@ -16,11 +16,11 @@ says so.
 | Feature / Concern                    | Verum             | Rust          | Swift             | OCaml           | Haskell      | Idris 2      | Dafny        | F\*         |
 |--------------------------------------|-------------------|---------------|-------------------|-----------------|--------------|--------------|--------------|-------------|
 | Refinement types                     | first-class       | no            | no                | no              | via TH/LH    | no           | yes          | yes         |
-| Dependent types                      | yes (Σ/Π/path)    | const generics| no                | GADTs           | via LH       | yes          | limited      | yes         |
+| Dependent types                      | Σ/Π; paths†       | const generics| no                | GADTs           | promoted kinds / type families | yes          | limited      | yes         |
 | SMT-driven                           | yes (routed)      | via kani      | no                | no              | LH (external)| no           | yes          | yes         |
 | Ownership / borrow                   | three-tier + CBGR | borrow-ck     | ARC               | no              | no           | linear opt.  | GC           | F\*→C       |
 | Lifetimes in signatures              | no                | yes           | no                | no              | no           | no           | no           | no          |
-| Effects visible in signature         | contexts + throws | no*           | throws            | effects (OCaml 5)| type class | effects      | specs        | effects     |
+| Effects visible in signature         | contexts + throws | no*           | throws            | effects (OCaml 5)| IO / effect types | effects      | specs        | effects     |
 | First-class async                    | yes               | yes           | yes               | yes (OCaml 5)   | IO           | no           | no           | no          |
 | Structured concurrency (nursery)     | built-in          | tokio crate   | task groups       | lwt / eio       | stm          | no           | no           | no          |
 | Capability-based attenuation         | built-in          | no            | no                | no              | no           | no           | no           | no          |
@@ -30,10 +30,16 @@ says so.
 | Zero-cost default for safety         | tier-1 automatic  | debug_assert  | ARC elision       | —               | —            | linear opt.  | —            | —           |
 | Native binary via LLVM               | yes               | yes           | yes               | yes (flambda)   | GHC→LLVM     | LLVM backend | —            | extract→C   |
 | Proof certificates                   | yes (cert strat)  | no            | no                | no              | LH (external)| yes          | no           | yes         |
-| Cubical HoTT / paths                 | yes               | no            | no                | no              | no           | no           | no           | no          |
+| Cubical HoTT / paths                 | CoreTerm fragment† | no            | no                | no              | no           | no           | no           | no          |
 
 \* Rust signals async via `async fn` and purity via `const fn`, but
 has no first-class *effect* annotation that covers IO, state, etc.
+
+† Verum's broader `CoreTerm` represents cubical/path operations. The minimal
+`.vproof` calculus supports Π/Σ and its identity-type fragment; it does not
+check arbitrary cubical derivations. Source elaboration, proof export and
+execution coverage must be assessed separately. See the
+[kernel boundary reference](../architecture/trusted-kernel.md).
 
 ---
 
@@ -140,8 +146,11 @@ mostly is not.
 - **Three-tier references vs uniform ARC.** Verum's tier 0 is CBGR
   (not ARC); `Shared<T>` exists but is opt-in.
 - **Refinement types.** Swift has none.
-- **Dependent types.** Swift has none (opaque result types are the
-  closest, and they're existentials).
+- **Type abstraction and dependency.** Swift's `some P` hides a concrete
+  type while preserving its identity; `any P` is an existential container
+  whose underlying type can vary. Neither should be identified with Verum's
+  value-indexed Π/Σ constructs. These are different mechanisms, not a
+  hierarchy of strength. See [Swift's opaque and boxed protocol types](https://docs.swift.org/latest/documentation/the-swift-programming-language/opaquetypes/).
 - **SMT verification.** Swift has none.
 - **Semantic-honest stdlib.** Swift's `Array`, `String`,
   `Dictionary` are closer to operational-honest.
@@ -194,9 +203,13 @@ inclinations; type classes (*protocols* in Verum).
 
 ### Where Verum differs
 
-- **Purity.** Haskell encodes effects with IO, State, etc. Verum
-  uses contexts — an orthogonal but equally expressive mechanism
-  (see [Principle 3](/docs/foundations/principles)).
+- **Effects and dependencies.** Haskell's `IO` represents actions with
+  explicit sequencing; Verum's `using [...]` exposes required context
+  capabilities. Dependency access and effect composition are different
+  contracts. A claim of equal expressive power would require a defined
+  translation preserving behavior, effects and handlers; none is established
+  here. See the [Haskell I/O semantics](https://www.haskell.org/onlinereport/haskell2010/haskellch7.html)
+  and [Verum context system](/docs/language/context-system).
 - **Laziness.** Haskell is lazy by default. Verum is strict; lazy
   data structures are opt-in.
 - **Memory model.** Haskell has a GC. Verum has three reference tiers.
@@ -204,8 +217,12 @@ inclinations; type classes (*protocols* in Verum).
   add-on); Verum integrates SMT as a first-class phase.
 - **Proof DSL.** Haskell has no integrated proof language; Verum has
   theorems and tactics.
-- **Dependent types.** Haskell has `DataKinds` + `TypeFamilies`;
-  Verum has Σ/Π/path types and cubical HoTT.
+- **Type-level programming.** GHC's `DataKinds` promotes suitable datatypes
+  to kinds, and type families support type-level functions. Verum exposes
+  dependent-function and dependent-pair constructs; its broader cubical
+  representation has the fragment boundaries described above. These facts
+  alone establish no containment between the full languages. See
+  [GHC datatype promotion](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/data_kinds.html).
 
 ### When Haskell is the right call
 
@@ -216,32 +233,59 @@ inclinations; type classes (*protocols* in Verum).
 
 ## Verum vs Idris 2 / Agda / Coq / Lean
 
-**Shared DNA**: dependent types, proofs as programs, tactic
-verification, sometimes HoTT.
+These systems share dependent types and the separation of proof construction
+from proof checking. Their calculi, runtime models and supported libraries
+differ; a feature checklist is not a ranking of mathematical strength.
 
-### Where Verum differs
+### Lean's actual baseline
 
-- **Systems focus.** Verum produces native LLVM binaries with C-level
-  performance. Coq/Agda/Lean are primarily interactive theorem
-  provers; Idris 2 targets both but its runtime is heavier.
-- **Gradual verification.** A Verum program does not have to be
-  100% proved. Strategies range from `@verify(runtime)` to
-  `@verify(certified)`, chosen per function.
-- **SMT-first.** Most goals in Verum are discharged automatically by
-  the SMT layer; only the hard goals need tactics. In Coq / Agda, the
-  default is interactive proof.
-- **No built-in totality requirement.** Functions need not be total
-  by default. Coinduction is opt-in via `cofix`.
-- **No universe ceremony** in day-to-day code. Universe polymorphism
-  is available (`universe u`) but invisible unless needed.
+Lean combines a programming language with formal reasoning. Its kernel
+checks explicit terms, and independent checker implementations exist in
+Rust and Lean. Multiple checkers are therefore a shared engineering
+technique, not an exclusive advantage of Verum.
+[Lean's kernel reference](https://lean-lang.org/doc/reference/latest/Elaboration-and-Compilation/).
 
-### When a proof assistant is the right call
+Lean also supports executable `partial` and `unsafe` definitions with
+explicit restrictions on their use in proofs. General recursion in
+application code does not require every program to be proved total.
+[Lean's recursion reference](https://lean-lang.org/doc/reference/latest/Definitions/Recursive-Definitions/).
 
-- You are doing formal mathematics without a software deliverable.
-- You need a total language because the thing you're proving cannot
-  admit partiality (e.g. a kernel for a trusted theorem prover).
-- You need tactic infrastructure and mathematical libraries
-  (`mathlib` for Lean, `MathComp` for Coq).
+For either system, accepting a proof and establishing that its statement
+means what the author intended are separate checks. Imported axioms and
+native-evaluation trust also belong to the chosen profile.
+[Validating a Lean proof](https://lean-lang.org/doc/reference/latest/ValidatingProofs/).
+
+### Verum's concrete direction
+
+Verum aims to connect systems programming, memory/reference discipline,
+contracts and proof artifacts in one language platform. Its useful
+extension points are specific:
+
+| Mechanism | Present surface | Required boundary |
+|---|---|---|
+| Proof-term replay | Closed Π/Σ/identity-type certificates | State the exact calculus, checked statement and supported source bridge |
+| Multiple checking strategies | Direct and NbE checking, plus manifest policy | Retain shared dependencies and incomplete outcomes |
+| Foundation inventories | Citation classification and known-conflict checks | Classification does not construct an interpretation or prove consistency |
+| Theory interoperability | Export and framework attribution | Separate statement scaffolds from translated derivations |
+| Application verification | Contracts, solver routing and execution tooling | Identify solver trust and runtime-preservation obligations |
+
+The [kernel boundary reference](../architecture/trusted-kernel.md) specifies
+what those interfaces establish. The [source bridge](../verification/knowledge-systems.md#source-to-goal-boundary)
+explicitly refuses AST forms whose types and scopes it cannot faithfully
+translate; this is separate from accepting manually supplied formal terms.
+Their combination is valuable for
+[knowledge-system integration](../verification/knowledge-systems.md):
+assumptions, evidence and executable behavior can be kept visible together.
+It does not establish greater soundness, stronger foundations, superior
+performance or complete feature parity with another prover.
+
+### Choosing a tool
+
+Use the prover and libraries that already formalize the mathematics your
+project depends on. Evaluate Verum when its application-language integration
+and explicit verification interfaces solve a concrete engineering problem;
+check the relevant backend and proof fragment on your own workload.
+Neither choice requires treating the other system as a theoretical limit.
 
 ---
 
@@ -252,17 +296,25 @@ practical verification.
 
 ### Where Verum differs
 
-- **Dual-solver portfolio.** Verum routes between solver adapters based
-  on goal shape. F\* is single-solver.
-- **Memory model.** Verum has CBGR with three tiers built into the
-  language. F\* compiles to C via Low\* (or to OCaml, for
-  higher-level fragments) — the memory model lives in the C output.
-- **Cubical HoTT** is available for advanced equational reasoning.
-  F\* has no cubical support.
-- **Structured concurrency** is first-class; F\* has no built-in
-  async.
-- **Tooling.** Verum ships an LSP, a Playbook TUI, and an REPL as
-  part of the language. F\*'s tooling sits on top of Emacs.
+- **Automation interfaces.** Verum exposes solver routing and verification
+  modes. F\* combines SMT automation with programmable Meta-F\* tactics;
+  solver selection alone does not rank their proof power. Compare the
+  supported goals, retained evidence and trust boundaries. See
+  [F\* tactics](https://fstar-lang.org/tutorial/book/part5/part5_meta.html).
+- **Systems integration.** Verum develops its three-tier reference model
+  inside the language platform. F\* has several extraction routes and
+  verified imperative programming facilities, including Pulse for concurrent
+  code. Their memory and concurrency guarantees depend on the selected
+  source fragment and extraction path, not simply the output language.
+- **Cubical representation.** Verum's broader `CoreTerm` contains cubical
+  operations. This is a concrete extension surface; it is not a claim that
+  arbitrary cubical HoTT proofs are accepted by its minimal checker or
+  translated through every backend.
+- **Tooling.** Verum provides an LSP and interactive tools. F\* supports both
+  Emacs and VS Code, including incremental interactive development. Evaluate
+  the relevant editor and workflow directly. The
+  [official F\* overview](https://github.com/FStarLang/FStar/blob/master/README.md)
+  describes editor support, extraction and Pulse.
 
 ### When F\* is the right call
 
@@ -279,17 +331,25 @@ developer-oriented verification.
 
 ### Where Verum differs
 
-- **Memory model.** Dafny compiles to C#/Java/JS, with their GCs.
-  Verum ships its own runtime with three-tier references.
-- **Semantic-honest stdlib.** Dafny's standard collections are
-  `seq<T>`, `set<T>`, `map<K, V>` — thin wrappers on the host
-  language's collections.
-- **Cubical HoTT and coinduction.** Dafny has neither.
-- **Concurrency.** Dafny has no async story beyond the host
-  runtime's.
-- **Proof strategies.** Dafny has one: "let the SMT solver handle it."
-  Verum has nine (`runtime`, `static`, `formal`, `fast`, `thorough`,
-  `certified`, `synthesize`, plus aliases).
+- **Runtime integration.** Dafny uses its selected compilation backend;
+  Verum develops a runtime with three-tier references. Compare concrete
+  allocation and verification contracts for the target workload.
+- **Collections.** Dafny's sequences, sets and maps are mathematical value
+  types with language-defined semantics. Their compiled representations do
+  not reduce them to thin wrappers around host collections. Verum's naming
+  choices are an API preference, not a stronger mathematical guarantee.
+- **Coinduction.** Dafny supports coinductive datatypes and greatest lemmas.
+  Those mechanisms are distinct from the cubical/path constructors in
+  Verum's broader representation; neither substitutes for the other.
+- **Proof development.** Dafny combines SMT discharge with explicit lemmas,
+  induction, assertions, `assert ... by` blocks and `calc` proofs. Verum's
+  verification modes configure checking policy and automation; counting
+  mode names does not measure proof expressiveness. A useful comparison
+  tracks proof structure, assumptions and reproducible evidence for the
+  same obligations.
+
+These Dafny mechanisms are specified in its
+[reference manual](https://dafny.org/dafny/DafnyRef/DafnyRef).
 
 ### When Dafny is the right call
 

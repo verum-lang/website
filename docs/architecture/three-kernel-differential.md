@@ -1,13 +1,13 @@
 ---
 sidebar_position: 12
 title: Three-Kernel Differential
-description: "N-way agreement gate over the canonical 24-cert battery: Slot A (proof_checker bidirectional + WHNF), Slot B (proof_checker_nbe Normalisation by Evaluation), Slot C (kernel_v0 manifest-driven verifier).  Three structurally-distinct algorithms in Rust must agree cert-by-cert; disagreement fails the audit."
+description: "N-way agreement gate over the canonical 24-cert battery: Slot A (proof_checker bidirectional + WHNF), Slot B (proof_checker_nbe Normalisation by Evaluation), Slot C (kernel_v0 manifest-driven verifier).  Two term-checking algorithms and a direct-checker policy wrapper are compared cert-by-cert; disagreement fails the audit."
 ---
 
 # Three-Kernel Differential
 
 > Status: load-bearing CI gate.  The 24-cert canonical battery is
-> run through three structurally-distinct in-process kernels on
+> run through the three registered in-process verification slots on
 > every release; pairwise verdict disagreement fails the audit.
 
 ## 1. Why this gate exists
@@ -27,7 +27,7 @@ Neither of those checks the question:
 
 The trusted base ([`proof_checker.rs`](./trusted-kernel.md)) does
 bidirectional type-checking with explicit substitution + WHNF.
-But Verum ships **two more** in-process kernels:
+The registry also contains two verification slots:
 
 * **`proof_checker_nbe.rs`** — Normalisation by Evaluation.
   Closure-based semantic evaluation + level-indexed quote.
@@ -39,11 +39,11 @@ But Verum ships **two more** in-process kernels:
   every per-rule strict-intrinsic must dispatch positively through
   the canonical registry.
 
-Three independent algorithms checking the same canonical battery
-catch a different bug class than four foundations checking the
-same theorem statements.  A wrong de Bruijn shift in Slot A
-agrees with itself; differential-checking against Slot B (which
-uses closures, not de Bruijn substitution) catches it.
+Slot B can expose term-checking defects in Slot A because its evaluation
+algorithm differs. Slot C calls Slot A and then adds policy checks; it
+shares any term verdict from that call. Agreement across the three slots
+therefore does not amount to three independent derivations. The term
+algorithms also share syntax and universe-level helpers.
 
 See [§4](#4-bug-class-this-gate-is-designed-to-catch) for the
 representative bug class this design surfaces.
@@ -56,8 +56,8 @@ representative bug class this design surfaces.
 | **B** | Normalisation by Evaluation with closures + level-indexed quote (`proof_checker_nbe.rs`).  Structurally distinct from Slot A. |
 | **C** | Manifest-driven meta-soundness verifier (`kernel_v0`).  Anchors on Slot A's structural verdict, then walks the bootstrap rule registry asserting audit-cleanness + meta-soundness footprint + strict-intrinsic dispatch. |
 
-The default `KernelRegistry` registers all three.  Adding a fourth
-slot (e.g., a future HOAS-based checker) is one line.
+The default `KernelRegistry` registers all three.  A new slot must specify its calculus, trust dependencies and completion
+behavior before it can meaningfully join the comparison.
 
 ## 3. The canonical battery
 

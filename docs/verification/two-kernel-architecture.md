@@ -1,345 +1,168 @@
 ---
 sidebar_position: 8
-title: "Three-kernel architecture"
-description: "Verum ships three independent kernel implementations with continuous differential testing — a structural defence against kernel-implementation bugs that single-kernel systems cannot match."
+title: Differential Kernel Verification
+description: Direct and NbE proof checking, a manifest-backed policy wrapper, and the scope of cross-implementation verification.
 slug: /verification/two-kernel-architecture
 ---
 
-# Three-kernel architecture
+# Differential Kernel Verification
 
-Verum's trusted base ships **three independent kernel
-implementations**, all of which check every certificate in the
-proof corpus, with a **differential testing** layer that fails
-the audit the moment any pair disagrees. This is a structural
-property distinguishing Verum from Coq, Lean, HOL Light,
-Isabelle, and every other production proof assistant — all of
-which run a single kernel.
-
-This page explains why the multi-kernel architecture matters,
-how it is implemented, and how to read the differential-test
-verdicts.
+Verum's registry runs multiple verification mechanisms over the same
+certificate. The direct checker and the NbE checker use different
+algorithms. The `kernel_v0` slot wraps the direct checker with additional
+manifest and metatheory-policy checks. This distinction determines which
+kinds of shared defects a comparison can expose.
 
 ## 1. Why multiple kernels?
 
-A proof assistant's *trusted computing base* is the code whose
-correctness must be assumed for soundness to follow. In a
-single-kernel system, the entire trust depends on:
+Independent implementations can disagree because of a substitution,
+conversion, typing or universe-handling defect. Comparing them on valid
+and invalid certificates makes such disagreements reproducible.
+Agreement does not rule out a shared specification error, shared helper
+bug or an unexercised case.
 
-1. The mathematical correctness of the inference rules.
-2. The faithfulness of the implementation to those rules.
-
-Mistakes in (1) — bugs in the *theory* — are caught by careful
-peer review of the rule list. Mistakes in (2) — bugs in the
-*implementation* — are far harder to catch. A subtly wrong
-substitution function, an off-by-one in universe levels, a
-mishandled binder under capture-avoiding rename — these errors
-are *invisible* to peer review of the rules and *invisible* to
-test suites that only exercise the kernel's positive path
-(theorems that should accept). They surface only when:
-
-- A maliciously crafted input exposes the bug.
-- A *different* implementation of the same rules happens to
-  agree where the buggy implementation accepts (false positive)
-  or rejects (false negative).
-
-Verum's multi-kernel architecture addresses (2) directly. Every
-certificate is checked by **three implementations following
-orthogonal algorithmic specifications**:
-
-- The **trusted-base kernel** (Algorithm A) — an LCF-style
-  implementation performing direct rule-matching with explicit
-  substitution.
-- The **NbE kernel** (Algorithm B) — a normalisation-by-evaluation
-  implementation that compiles terms into a semantic value
-  representation and checks via β-reduction in the value world.
-- The **kernel_v0 manifest verifier** (Algorithm C) — a
-  manifest-driven bootstrap kernel that anchors structural
-  type-checking, audit-cleanness of every kernel rule's
-  discharge status, the meta-soundness footprint, and per-rule
-  strict-intrinsic dispatch.
-
-If all three accept, the certificate is sound *with respect to
-three independent algorithmic implementations*. If any pair
-disagrees, exactly one of them has a bug, and the bug is
-reproducible.
+The unit of comparison is a certificate in the supported fragment, not
+every feature represented by the broader `verum_kernel` crate. A result
+must identify the participating implementations and whether their checks
+completed under the selected limits.
 
 ## 2. The trusted-base kernel — Algorithm A
 
-The trusted-base kernel lives in `verum_kernel::proof_checker`
-and implements roughly thirty inference rules covering Π / Σ /
-Path / Refine / Quotient / Inductive / SMT-replay / Framework-axiom
-/ Universe-ascent. The implementation is **direct**:
+`verum_kernel::proof_checker` checks a de Bruijn `Term` language with
+dependent functions, dependent pairs, universe-level expressions and
+identity types with the implemented transport eliminator. It performs
+explicit shifting/substitution and conversion checking.
 
-- Terms are explicit syntax trees.
-- Substitution is α-renaming with capture avoidance.
-- Conversion checks reduce both sides to weak head normal form
-  via direct one-step β.
-- Universe checks compare De Bruijn levels.
-
-The implementation is intentionally *boring*: every rule maps to
-roughly one Rust function, every function is ≤ 100 lines, every
-substitution and binder operation is hand-written. The full
-kernel is targeting a small enough footprint that an external
-auditor can read it end to end.
-
-This is the *authoritative* implementation. The discharge
-manifest, the rule list, the framework-axiom roster, and the
-audit reports all reference this kernel as the reference
-specification.
+A closed `Certificate` contains the term and its claimed type.
+`Certificate::verify` checks the claimed type and the term in the empty
+context. Arbitrary SMT, refinement, cubical and framework-axiom nodes are
+not part of this language. See the [rule reference](./trusted-kernel.md).
 
 ## 3. The NbE kernel — Algorithm B
 
-The NbE kernel lives in `verum_kernel::proof_checker_nbe` and
-implements the *same* fragment via a *different* algorithmic
-shape:
+`verum_kernel::proof_checker_nbe` checks the same term language using
+Normalisation by Evaluation. Terms evaluate to values and closures;
+quotation reconstructs normal forms for comparison.
 
-- Terms are evaluated into a semantic `Value` type (`VPi`,
-  `VLam`, `VSigma`, `VPair`, neutral applications).
-- Closures capture the environment of free variables at the
-  point of binder traversal.
-- β-reduction happens in the value world: `apply_value(VLam(c),
-  arg)` extends the closure's environment and evaluates the
-  body.
-- Conversion is checked by `quote(value, level)`: re-reads the
-  value back into a normal-form term, using level-to-De-Bruijn
-  conversion.
-
-The two syntactic-vs-semantic kernels share *no code* beyond the
-syntax-tree definitions. Every algorithmic decision — binder
-traversal, β-reduction order, universe-level handling — is
-independently implemented.
+The evaluation and binder-handling algorithms differ from the direct
+checker. The implementations share syntax, level representations and
+error types, including level helpers. Therefore a defect in shared
+universe normalization can affect both. “Different algorithm” is a useful
+engineering property, not a claim of complete implementation independence.
 
 ## 4. The kernel_v0 manifest verifier — Algorithm C
 
-The third slot, `verum_kernel::kernel_registry::KernelV0Kernel`,
-takes a structurally orthogonal stance. Rather than re-deriving
-each rule from term syntax, it verifies four meta-anchors that
-together pin down the kernel's discharge surface:
+`KernelV0Kernel::verify` performs these operations:
 
-1. **Structural type-check.** The certificate must pass
-   `Certificate::verify`, which is the same anchor every kernel
-   shares.
-2. **Manifest audit-cleanness.** Every rule in the
-   `kernel_v0_manifest` must carry an audit-clean
-   `DischargeStatus` (Discharged or DischargedByFramework).
-   An admit or unattested rule fails the slot.
-3. **Meta-soundness ceiling.** The
-   `kernel_meta_soundness_holds` predicate must hold — i.e. the
-   kernel's reflective footprint stays within ZFC + 2 inaccessibles
-   and every kernel rule is cited by the meta-soundness theorem.
-4. **Per-rule strict-intrinsic dispatch.** For each
-   `KernelRuleId`, the matching `kernel_<tag>_strict` intrinsic
-   must dispatch to a positive `Decision { holds: true }`.
+1. Calls `Certificate::verify`, the direct checker.
+2. Checks the bootstrap manifest's discharge-status policy.
+3. Checks declared metatheory requirements against a configured ceiling.
+4. Checks the corresponding strict-intrinsic dispatch results.
 
-Because Algorithm C does not re-implement substitution or
-β-reduction, it cannot drift in the same direction as Algorithms
-A or B. A bug in any of those algorithms surfaces as a structural
-disagreement; a bug in the manifest's discharge status, the
-meta-soundness footprint, or the strict intrinsics surfaces as a
-slot-C-only failure. The orthogonality is the point.
+This wrapper can detect manifest or policy drift. It cannot independently
+refute a wrong term verdict already shared with its first step. Nor does
+it compile and run the Verum-language bootstrap corpus as a separate
+proof checker. The label “Algorithm C” names a registry slot, not a third
+independent implementation of conversion.
 
-This slot also closes the bootstrap loop: kernel_v0 verifies the
-manifest that every other kernel cites, and the manifest is
-itself a Verum-side artefact authored in `core/verify/kernel_v0/`.
-Algorithm C is the place where the Verum-self-hosted material
-becomes load-bearing in the differential gate.
+The authority is visible in
+[`kernel_registry.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/src/kernel_registry.rs).
 
 ## 5. The differential gate
 
-`verum audit --differential-kernel` runs every kernel rule's
-canonical certificate through *all three* kernels and reports
-per-rule agreement.
+Run from a Verum checkout with the intended binary selected:
 
-```text
-$ verum audit --differential-kernel
-
-  rule              proof_checker  proof_checker_nbe  kernel_v0    agreement
-  K-Pi-Form         accept         accept             accept       Unanimous   ✓
-  K-Pi-Intro        accept         accept             accept       Unanimous   ✓
-  K-Sigma-Form      accept         accept             accept       Unanimous   ✓
-  K-Path-Form       accept         accept             accept       Unanimous   ✓
-  K-Refine          accept         accept             accept       Unanimous   ✓
-  K-Universe        accept         accept             accept       Unanimous   ✓
-  K-Quotient        accept         accept             accept       Unanimous   ✓
-  K-SMT-Replay      accept         accept             accept       Unanimous   ✓
-  K-Framework-Axiom accept         accept             accept       Unanimous   ✓
-  K-NormalForm      accept         accept             accept       Unanimous   ✓
-
-  10 / 10 Unanimous
-  0 disagreements
-  duration: 0.5s
-  verdict: load-bearing
+```bash
+verum audit --differential-kernel --format json
 ```
 
-The four possible outcomes per rule:
+The audit uses the canonical battery from
+`verum_kernel::canonical_battery`. The registry reports unanimous
+acceptance, unanimous rejection or disagreement with participating
+checkers' diagnostics. The battery includes expected rejection cases:
+accepting every input is a defect, not a successful audit.
 
-- **Unanimous accept** — all kernels admit. ✓ — load-bearing.
-- **Unanimous reject** — all kernels reject. ✓ — intentional
-  negative. Used by liveness-pin synthetic kernels.
-- **Disagreement** — at least one kernel diverges. ✗ — *fails
-  the audit immediately*. This is a kernel-implementation bug
-  (or a manifest/meta-soundness drift in slot C).
-- **NotYetSelfHosting** — observability only. The Verum-source
-  self-hosted parser-blocker has been resolved; this status is
-  retained for transitional Verum-side artefacts that have yet
-  to land their differential entrypoint.
+`verum check-proof file.vproof` uses the direct checker. It does not
+implicitly run the whole registry. Consumers requiring multiple checks
+must invoke their selected comparison profile and retain its result.
 
-A `Disagreement` is the most severe verdict in the entire audit
-infrastructure. It indicates that one of the three reference
-implementations has a soundness bug, and *which* one is
-empirically distinguishable: re-run the certificate, inspect
-which kernel's verdict matches the rule specification, and
-identify the bug.
+An error from one checker can reflect unsupported input, a resource limit
+or a policy restriction. Investigate the concrete outcome before asserting
+that another checker accepted an invalid theorem. A malformed certificate
+and a false mathematical proposition are also different claims.
 
 ## 6. Mutation-fuzz layer
 
-A static differential test on canonical certificates is good but
-not sufficient — bugs typically hide in non-canonical inputs. The
-**mutation-fuzz layer** (`verum audit --differential-kernel-fuzz`)
-sits atop the differential gate and runs **mutation chains** of
-length 1–3 over a 16-seed roster (15 accept-path certs from the
-canonical battery + a K-combinator deeper seed).  The 11-variant
-mutation grammar:
+```bash
+verum audit --differential-kernel-fuzz --format json
+```
 
-| Mutation | What it does |
-|----------|--------------|
-| Lift all universes / term-only / type-only by `δ` | bumps universe levels asymmetrically |
-| Replace term / claimed_type with `Universe(0)` | substitutes with a known well-typed leaf |
-| Replace term with free `Var(idx)` | introduces an unbound variable |
-| App on non-function | wraps term in `App(term, Universe(0))` |
-| Wrap term in extra `λ` | adds a binder layer |
-| Swap term and type | exchanges the two CoreTerm fields |
-| Pi / Lam domain → `Universe(0)` | rewrites a top-level binder's domain |
+The mutation audit explores changes to seed certificates and retains
+counterexamples to agreement. Coverage depends on the seed corpus,
+mutation operations and budget. A minimized disagreement is useful
+regression evidence; absence of disagreement is not exhaustive verification
+of the calculus or its implementations.
 
-Each iteration:
-1. Picks seed `i % seeds.len()` (round-robin).
-2. Samples a chain of length 1–3 (capped at `MAX_MUTATION_CHAIN_LEN = 3`).
-3. Applies mutations in order (left-associative composition).
-4. Runs the mutant through every registered kernel.
+For the cross-language comparison:
 
-Property invariant: every mutant produces unanimous agreement
-across all kernels.  *Any* disagreement is a kernel bug.
+```bash
+verum audit --differential-lean-checker --format json
+```
 
-When a disagreement is found, the harness **automatically shrinks**
-the chain to a minimal failing case via greedy 1-element-removal
-to fixpoint (O(n²) registry calls — at most 6 calls per shrink for
-the 3-chain bound).  The shrunk chain is reported alongside the
-original; auditors see the smallest reproducer rather than a
-deeply-mutated cert.  A shrunk-to-empty chain is the highest-
-priority bug class (the seed alone disagrees).
-
-**Coverage instrumentation** is recorded for every campaign:
-per-mutation hit counts, per-seed hit counts, chain-length
-distribution.  Surfaced in plain-format output when the gate
-**passes** — catches sampling bias before it hides a kernel bug.
-
-The campaign is bounded (default 500 iterations) and uses a
-deterministic xorshift64* seed, so disagreements are reproducible
-across runs.  Auditors who suspect a kernel bug re-run with the
-same `(seed, iteration)` pair and inspect the failing mutant.
-
-See [property-fuzz](../architecture/property-fuzz.md) for the
-full architecture page.
+This runs an executable Verum reference checker authored in Lean. It is
+different from proving the checker sound in Lean, and different again from
+exporting each Verum proof as a derivation in Lean's own type theory.
+See [the Lean comparison protocol](../architecture/differential-lean-checker.md).
 
 ## 7. Liveness pin — the audit's own check
 
-The mutation-fuzz layer can silently degrade if the kernels are
-too lenient. Verum's liveness pin: a **synthetic always-accept
-kernel** is registered alongside the real three. The synthetic
-kernel admits *every* certificate without checking. The audit's
-property invariant is that the synthetic kernel will *disagree*
-with the real kernels on certificates the real kernels reject.
+A deliberately always-accept checker is a useful test double: it must
+disagree on rejecting controls. This checks that the harness compares
+actual outcomes. Positive controls additionally prevent a broken
+always-reject implementation from appearing successful.
 
-If `verum audit --differential-kernel-fuzz` ever reports zero
-disagreements *while the synthetic is registered*, the audit
-infrastructure itself has a bug — the gate is not noticing the
-synthetic accepting things it should not. The pin makes the
-gate *non-vacuous* by construction.
-
-This is the discipline that distinguishes a load-bearing audit
-from an observational one: the audit checks itself.
+Keep these controls separate from the production authority. A test double
+may exercise the audit; it must never contribute a vote that authorizes
+a theorem.
 
 ## 8. Why this matters in practice
 
-A few concrete attack surfaces the multi-kernel architecture
-defends against:
+For a theory-management system, a comparison receipt identifies an artifact,
+the mechanisms that checked it, their results and any disagreement. It
+supports precise regression reports and rechecking after a checker update.
+The [Noesis profile](./knowledge-systems.md) keeps this evidence separate
+from foundation assumptions and translation claims.
 
-- **A subtle bug in capture-avoiding substitution.** Suppose the
-  trusted-base kernel mishandles substitution under a binder in
-  a way that lets a free variable become bound. The bug would be
-  invisible in a single-kernel system; in Verum, the NbE kernel
-  performs substitution implicitly via closure environment
-  extension and would not exhibit the same bug. The two would
-  disagree on the offending certificate.
-
-- **An off-by-one in universe-level checking.** A direct
-  implementation that compares `lvl1 < lvl2` where the
-  specification requires `lvl1 ≤ lvl2` would silently admit a
-  program that should be rejected. The NbE kernel's
-  level-to-De-Bruijn quote function would not exhibit the same
-  off-by-one. The two would disagree.
-
-- **A buggy reduction strategy.** A direct implementation that
-  performs call-by-name reduction where the specification
-  requires call-by-value (or vice versa) would diverge from the
-  NbE kernel's lazy/eager closure semantics. The two would
-  disagree.
-
-- **A drifted manifest discharge.** Suppose a kernel rule's
-  discharge status quietly degrades from `Discharged` to
-  `AdmittedWithIou` without being re-attested. Algorithms A and
-  B keep accepting the certificate (the runtime rules are
-  unchanged), but Algorithm C's manifest audit-cleanness anchor
-  rejects it — the slot-C-only disagreement surfaces the drift.
-
-These are not hypothetical bugs; they are the kinds of mistakes
-that have shipped in production proof assistants historically.
-The multi-kernel architecture catches them at audit time.
+This technique has precedents. Lean's own documentation describes
+independent checker implementations; Verum's contribution must be judged
+by its implemented coverage and useful integration, rather than a claim
+that other systems lack independent checking.
+[Lean's kernel documentation](https://lean-lang.org/doc/reference/latest/Elaboration-and-Compilation/).
 
 ## 9. The trust delegation
 
-Verum does not claim that all three kernels are bug-free. It
-claims:
+Each accepted certificate remains conditional on the selected checker's
+correctness, the decoder and execution environment. Comparing algorithms
+reduces exposure to some implementation mistakes. It does not remove shared
+code, compiler or hardware dependencies, and does not prove correspondence
+between the formal statement and the intended external claim.
 
-> If all three kernels accept a certificate, the certificate is
-> sound with respect to three independent algorithmic
-> implementations of the rules. A bug present in all three
-> implementations would have to be a bug *in the rule
-> specification itself* — the kind of bug peer review of the
-> rule list catches.
+Manifest entries and framework citations document additional assumptions;
+they cannot substitute for a missing derivation. Keep proof checking,
+assumption inventories and compilation-preservation evidence distinct.
 
-The multi-kernel architecture is *not* a substitute for careful
-specification and peer review of the rule list. It is a
-*structural defence* against implementation drift. The two
-layers combine: the rule specification is reviewed; the
-implementations are differentially fuzzed.
+## 10. Self-hosting contract
 
-## 10. Self-hosting roadmap
-
-The third slot landing closes the original parser-blocker on
-the Verum-self-hosted bootstrap path:
-
-- `core/verify/kernel_v0/` carries Verum-source descriptions of
-  every kernel rule, with manifest entries listing each rule's
-  required meta-theory.
-- The `verum audit --kernel-v0-roster` gate verifies the
-  manifest matches the filesystem.
-- `KernelV0Kernel` (Algorithm C) registers as the third
-  differential slot and consumes the manifest as load-bearing
-  evidence.
-
+A self-hosted checker would need an executable implementation in Verum,
+a pinned bootstrap/compiler path, and comparison tests over the same
+certificate language. Its own compilation and metatheory would still
+require an explicit trust argument. The existing manifest wrapper does
+not establish those properties by reading Verum-authored declarations.
 
 ## 11. Cross-references
 
-- [Trusted kernel](./trusted-kernel.md) — the LCF-style
-  trusted-base specification.
-- [kernel_v0 roster](./kernel-v0.md) — the Verum-source bootstrap
-  manifest that Algorithm C consumes.
-- [Soundness gates](./soundness-gates.md) — the predicate-level
-  formalisation of the differential gate's verdict.
-- [Audit protocol](../architecture-types/audit-protocol.md) —
-  how to run the differential gate as part of the bundle.
-- [Reflection tower](./reflection-tower.md) — the
-  ordinal-indexed meta-soundness layer atop the kernels.
-- [Framework axioms](./framework-axioms.md) — the citation
-  inventory the kernels share.
+- [Proof-term rules](./trusted-kernel.md)
+- [Kernel trust boundaries](../architecture/trusted-kernel.md)
+- [In-process differential protocol](../architecture/three-kernel-differential.md)
+- [External-prover replay](../architecture/external-prover-verification.md)
+- [Knowledge-system verification profile](./knowledge-systems.md)

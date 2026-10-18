@@ -103,6 +103,7 @@ const sidebars: SidebarsConfig = {
         'verification/proofs',
         'verification/tactic-dsl',
         'verification/trusted-kernel',
+        'verification/knowledge-systems',
         'verification/kernel-module-map',
         'verification/kernel-v0',
         'verification/two-kernel-architecture',

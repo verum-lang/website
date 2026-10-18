@@ -5,64 +5,47 @@ title: Trusted Kernel
 
 # The Trusted Kernel
 
-> The kernel is the sole trusted component of Verum's verification
-> pipeline. Every other subsystem — the SMT backends, the tactic
-> engine, the translator, the framework-axiom registry, the
-> monomorphizer, even the typechecker — can have bugs and the
-> language remains sound, provided the kernel replays every
-> certificate before admitting a theorem.
+Verum has a small proof-term checker and a broader verification
+infrastructure in the same crate. This page describes the minimal
+certificate calculus and the audit mechanisms around it. An accepted
+certificate establishes the formal judgment checked by that entry point,
+subject to its implementation and execution environment.
 
-This page is the canonical reference for the kernel's design,
-its **three-layer rule architecture**, the `Certificate` lifecycle,
-the replay loop, and the auditor's checklist. It is the closest
-thing Verum has to a "definition of soundness."
+| Surface | Role |
+|---|---|
+| `proof_checker` | Direct checking of closed Π/Σ/identity-type certificates |
+| `proof_checker_nbe` | Alternative conversion and checking algorithm for the same fragment |
+| `kernel_v0` and `KernelRuleId` | Bootstrap descriptions, rule manifests and declared metatheory requirements |
 
-The kernel is **not** monolithic. Three layers cooperate, each
-with its own rule list, its own auditing surface, and its own
-trust delegation:
-
-| Layer | Where | Rules | Purpose |
-|-------|-------|-------|---------|
-| **kernel_v0** | `core/verify/kernel_v0/` (Verum source) | 10 | Verum-side bootstrap meta-theory; hand-auditable |
-| **proof_checker** | `proof_checker` module | 13 | extended CoC checker (Π / Σ / Id with universe polymorphism); the trusted base |
-| **KernelRuleId audit registry** | `zfc_self_recognition` module | 7 | Audit-time meta-soundness footprint enumeration |
-
-This page covers all three layers, their interfaces, and how the
-[differential testing](./two-kernel-architecture.md) and
-[reflection-tower](./reflection-tower.md) layers consume them.
+The [architecture boundary](../architecture/trusted-kernel.md) distinguishes
+these from the broader `CoreTerm` calculus and SMT attestations. The
+[knowledge-system profile](./knowledge-systems.md) describes reproducible
+admission and use in Noesis.
 
 ---
 
 ## 1. Why LCF, and why so small
 
-The kernel follows the **LCF ("Logic for Computable Functions")**
-tradition established by Robin Milner at Edinburgh in the 1970s and
-refined across Coq, HOL, Isabelle, and Lean. The core idea is to
-split the logic implementation into two parts:
+The proof-term route follows the small-trusted-checker principle also
+central to LCF-style systems and modern proof assistants. Proof construction
+may be complex; acceptance is determined by explicit checking rules.
 
-1. A **small, fixed set of primitive inference rules**. Every
-   theorem in the system is ultimately a tree of these rules.
-2. A **large, untrusted automation layer** that produces trees of
-   those rules. Its job is to be fast, creative, and often wrong;
-   the kernel's job is to catch the wrong ones.
+1. A fixed calculus specifies the terms, judgments and conversion rules.
+2. Tactics or other producers propose terms in that calculus.
+3. The checker validates each term against its full claimed type.
 
-The soundness guarantee reduces to: *if the kernel's rule
-implementations are correct and the programming language of the
-kernel doesn't lie, every theorem the kernel accepts is derivable
-from its axioms.* Everything else — tactic engines, SMT proofs,
-user programs — is reduced to *"did the kernel accept it?"* and
-becomes inspection-only at audit time.
+The conditional argument is precise: if these checking rules are sound
+and their implementation and execution preserve them, an accepted term
+establishes its formal judgment under the stated assumptions. This argument
+does not certify a source translation or replace a solver witness with a
+native derivation. The broader SMT and registry routes have additional
+trust dependencies, described in the [kernel boundary reference](../architecture/trusted-kernel.md).
 
-Verum's discipline is *more aggressive* than typical LCF kernels
-on size. The trusted-base proof_checker (Layer B) targets a
-small footprint that an external auditor can read end-to-end —
-order-of-magnitude smaller than HOL Light, Lean, or Coq's
-`coqchk`. The trade-off is deliberate: the checker rejects MOST
-Verum programs (those using refinement / cubical / modal /
-SMT-axiom features), but the programs it accepts have an
-iron-clad independent verdict. The full Verum kernel
-infrastructure handles the broader surface; the proof_checker
-handles the irreducible core.
+The minimal checker deliberately supports a smaller language than the
+broader compiler. This makes its contract easier to inspect, but does not
+establish a size or soundness advantage over other proof assistants.
+Refinement, cubical, modal and SMT-axiom terms do not become admissible
+merely because their implementations share the `verum_kernel` crate.
 
 ---
 
@@ -100,7 +83,7 @@ file. Drift between manifest and filesystem is a build failure.
 `kernel_v0` is intentionally written in Verum source, not in
 the host implementation language. The
 manifest authored under `core/verify/kernel_v0/` is consumed by
-`KernelV0Kernel` — the third independent slot in the
+`KernelV0Kernel` — the manifest-backed wrapper slot in the
 [differential-kernel gate](./two-kernel-architecture.md). The
 slot anchors structural type-check, manifest audit-cleanness,
 the meta-soundness footprint, and per-rule strict-intrinsic
@@ -159,22 +142,30 @@ The Term language carries twelve variants:
 
 Universes are not a flat 32-bit ladder; the carrier is a
 structured `Level` expression supporting universe-polymorphic
-schemas. A level is one of four shapes:
+schemas. A level has the following forms:
 
 - **`Concrete(n)`** — a closed level `Type@n` for some natural `n`.
 - **`Var(u)`** — a level variable `Type@u`, used by polymorphic
   schemas.
 - **`Succ(l)`** — the successor `l + 1`.
-- **`Max(a, b)`** — the meet `max(a, b)` of two levels.
+- **`Max(a, b)`** — the join `max(a, b)` of two levels.
+- **`Offset(l, n)`** — exact addition `l + n`, stored compactly instead of
+  allocating one successor node per unit.
 
-Equality on levels is decided by canonical normalisation
-(idempotency `max(x, x) = x`; identity `max(0, x) = x`;
-common-Succ factoring `max(succ a, succ b) = succ(max a b)`;
-flatten + sort + dedupe `Max` summands). The procedure is
-**sound** (no false positives) and **complete on closed levels**
-(every closed level reduces to a single `Concrete`); on open
-levels with the same canonical form it is decidable, conservative
-on structurally-distinct expressions over the same variables.
+Equality on levels uses algebraic normalization of successors and maxima.
+Closed expressions whose values fit the concrete carrier can reduce to a
+`Concrete` level. A successor beyond that carrier must retain its exact
+symbolic structure; saturating it to the largest concrete level would
+identify different universes. The direct and NbE checkers share this level
+algebra, so comparison between them alone cannot detect every defect in it.
+
+Concrete universe inference can still reject a successor that cannot be
+represented by its bounded API. Exact symbolic normalization does not
+establish completeness for arbitrarily large levels or eliminate resource
+limits. The decoder accepts legacy numeric levels and the supported
+structured forms. A consumer that does not implement `Offset` must reject
+that constructor; it must not reinterpret it as a saturated concrete level.
+Checker and certificate-format identities belong in the verification profile.
 
 A polymorphic schema `λ(A : Type@u). λ(x : A). x` typechecks at
 `Π(A : Type@u). Π(_ : A). A` for every level variable `u` —
@@ -196,14 +187,15 @@ A deliberate scope restriction. The trusted base does NOT:
 
 - Type-check refinement types (`Int { p }` requires SMT — handled
   by the broader infrastructure, not the trusted base).
-- Decide propositional equality up to η beyond α + β + ι.
+- Decide arbitrary propositions or equality beyond the implemented conversion rules.
 - Type-check cubical primitives (HComp / Transp / Glue) — those
   layer above the trusted base via the broader kernel's rule set.
 - Inspect `@framework`-cited axioms (those are leaves the
   apply-graph audit handles).
 - Inductive types beyond Σ — booleans, naturals, lists, etc. are
-  Church-encoded via Π or admitted by `kernel_v0` axioms; native
-  inductives are a future extension.
+  represented by appropriate encodings when available; native
+  inductives are outside this certificate language. A `kernel_v0` axiom
+  does not extend `proof_checker::Term`.
 
 The trade-off is deliberate. A wider kernel admits more programs
 directly; a narrower kernel makes the *surface a reviewer must
@@ -240,10 +232,22 @@ consumes — a pair `(term, claimed_type)` where `term` is the
 proof term and `claimed_type` is the type the term is claimed
 to inhabit.
 
-The audit gate `verum audit --kernel-recheck` runs every
-theorem in the project's corpus through the trusted base by
-calling `check(ctx, term, claimed_type)`. A non-accept result
-fails the audit.
+`verum check-proof file.vproof` invokes `Certificate::verify` on a closed
+JSON certificate. Its `metadata` is diagnostic, not a source of additional
+axioms. `verum audit --proof-term-library` exercises the checked-in
+certificate collection, including rejecting controls.
+
+Source elaboration is a narrower interface. `from_theorem_decl` refuses
+generic/value parameters and `requires` clauses; `from_fn_decl` and
+`from_refined_type` refuse their source forms. This leaves explicit formal
+goal construction and proof-term checking available without claiming a
+faithful AST translation. See the [source-to-goal boundary](./knowledge-systems.md#source-to-goal-boundary).
+
+`verum audit --kernel-recheck` is a different route: it scans project
+modules and invokes the broader `KernelRecheck` façade for selected
+refinement, universe and coherence checks. It is not an assertion that
+every theorem in those modules was translated to this minimal calculus.
+Inspect skipped files and the actual checker named in each report.
 
 ---
 
@@ -264,7 +268,7 @@ explicit ZFC + inaccessible decomposition:
 | `K-Adj-Unit` | α ⊣ ε unit identity (Diakrisis 108.T) |
 | `K-Adj-Counit` | α ⊣ ε counit identity |
 
-Each rule's `required_meta_theory()` returns the precise ZFC
+Each rule's `required_meta_theory()` returns its declared ZFC
 axioms (out of the 9 in `ZfcAxiom::full_list()`) plus the
 inaccessibles (out of `InaccessibleLevel = { Kappa1, Kappa2 }`)
 the rule rests on:
@@ -297,7 +301,9 @@ and confirms each requirement is **bounded by** ZFC + 2-inaccessibles
 base is the headroom the kernel commits to; the actual six-axiom
 + two-inaccessible footprint is what the audit accumulator reports.
 
-This predicate is the **base discharge** for the
+This is a policy check on the declared requirement table. It does not
+derive normalization, consistency or semantic soundness from that table.
+The implementation uses it as the base audit condition for the
 [reflection tower](./reflection-tower.md)'s `REF^0` stage. The
 [MSFS Theorem 9.6 / 8.2 / 5.1](./reflection-tower.md) layer
 extends it to the higher stages.
@@ -306,14 +312,13 @@ extends it to the higher stages.
 
 ## 5. The multi-kernel differential layer
 
-Layer B (`proof_checker`) has two siblings:
-`proof_checker_nbe` — a **second independent algorithmic
-kernel** using Normalisation-by-Evaluation — and
-`KernelV0Kernel` — a **third manifest-driven verifier**
-anchoring structural type-check, manifest audit-cleanness, the
-meta-soundness footprint, and per-rule strict-intrinsic
-dispatch. The three implement the same input/output relation
-via orthogonal strategies; disagreements are bugs in any one.
+Layer B has an alternative algorithm in `proof_checker_nbe` and a
+manifest-backed wrapper in `KernelV0Kernel`. The latter first calls
+`Certificate::verify`, then checks bootstrap declarations and policy.
+It therefore shares the direct checker's term verdict and is not an
+independent third implementation of substitution or conversion.
+The direct and NbE implementations also share the `Term`, `Level` and
+error representations; independence is algorithmic and has a stated scope.
 
 The differential layer is documented in detail in
 [Three-kernel architecture](./two-kernel-architecture.md). At a
@@ -339,8 +344,8 @@ glance:
   *should* disagree with the real kernels on rejected
   certificates.
 
-This is a structural property no other production proof
-assistant ships.
+Agreement is useful regression evidence on the tested fragment. It does
+not exclude shared defects or establish completeness over all inputs.
 
 ---
 
@@ -359,8 +364,9 @@ calls `KernelRegistry::verify_all(cert)` which collects per-kernel
 results and produces an `AgreementVerdict`: `Unanimous` (every
 kernel accepted), `UnanimousReject` (every kernel rejected), or
 `Disagreement { accepting, rejecting }` (the kernels split).
-Disagreement is the failure signal — proof of a real bug in at
-least one kernel implementation.
+Disagreement is an investigation signal. It may expose an implementation
+bug, a policy mismatch or different completion limits; the report must
+preserve the reason rather than merge every non-acceptance into falsity.
 
 Adding a new kernel is therefore additive — the audit pipeline
 need not change when (e.g.) the Verum self-hosted kernel
@@ -370,103 +376,48 @@ becomes exercisable; only the registry registration changes.
 
 ## 7. The framework-axiom layer
 
-Outside the trusted base but inside the trusted infrastructure:
-**framework-axioms**. A theorem may rest on cited external
-results — Lurie's HTT, Schreiber's DCCT, Connes's NCG, Joux's
-group lower bound. Each citation is registered:
+Framework-axiom declarations associate assumptions with sources. The
+`verum audit --framework-axioms` command scans project declarations and
+reports their framework attribution. Its coverage is the scanned input;
+complete transitive dependency coverage must be checked separately.
 
-```verum
-@framework(lurie_htt, "HTT 6.2.2.7")
-@axiom
-public theorem some_external_result : ...;
-```
-
-The `verum audit --framework-axioms` gate enumerates every
-citation reachable from a module's public API and walks every
-`.vr` file under the project root, skipping `target/`, hidden
-directories, and `node_modules/`. The gate's output IS the
-project's external trust boundary — there is no implicit
-framework dependency.
-
-A malformed `@framework(...)` attribute (missing identifier or
-missing citation string) makes the gate exit non-zero, so CI
-can hard-fail on shape errors before the trust boundary diverges.
-The discipline ensures auditors can enumerate the project's
-complete external trust by reading the audit-gate output rather
-than searching the codebase.
+A citation can identify a theorem in another corpus, but does not itself
+supply that theorem's formal proof or an interpretation into Verum's
+calculus. Consumers should retain both the citation and the evidence kind.
+The minimal certificate language has no framework-axiom constructor;
+assumptions must be explicit in its formal statement or use another profile.
 
 ---
 
 ## 8. The codegen-attestation layer
 
-The kernel's verdicts cover *proofs*. A separate layer covers
-*the compiler that emits the binary*: `codegen-attestation`.
+A proof about a source-level program and a proof that its compiled binary
+preserves the same behavior are different obligations.
+`codegen_attestation` records compiler passes and their declared simulation
+invariants. Its `DischargeStatus` distinguishes structural proof,
+framework attribution, a named outstanding obligation and no attestation.
 
-Per `codegen_attestation` module, the codegen
-pipeline has 6+ canonical passes (VBC lowering, SSA construction,
-register allocation, linear-scan reg-alloc, LLVM emission,
-machine-code emission). Each publishes a *simulation invariant*
-(à la CompCert): "this pass preserves observable behaviour".
-
-The audit gate `verum audit --codegen-attestation` reports per
-pass:
-
-The audit reports per pass via the **canonical `DischargeStatus`
-enum** (`crate::soundness::DischargeStatus`) shared with the
-kernel_v0 manifest. Four states cover the full discharge
-lifecycle:
-
-- `Discharged` — invariant has a kernel-checked structural proof
-  internal to Verum.
-- `DischargedByFramework { lemma_path, framework, citation }` —
-  invariant resolved via a vetted upstream proof
-  (mathlib4 / lean4_stdlib / CompCert / Vellvm) with a structured
-  citation triple. **L4-acceptable.**
-- `AdmittedWithIou { iou }` — invariant admitted with a named
-  missing structural lemma. Honest about the gap; not yet
-  L4-acceptable.
-- `NotYetAttested` — trusted by code review only.
-
-The audit-clean predicate `is_audit_clean()` returns true for
-the first two states. All 6 codegen passes currently sit at
-`AdmittedWithIou` with concrete CompCert / Vellvm / Beringer-Stark
-/ George-Appel / Poletto-Sarkar / Wang-Wilke-Leroy IOUs;
-mechanisation work flips entries individually as Verum-language
-proofs of the simulation diagrams land.
-
-(For comparison: the kernel_v0 manifest's 6 admitted bootstrap
-rules — K-Pi-Form, K-Lam-Intro, K-App-Elim, K-Beta, K-Eta,
-K-Sub — have already been promoted to `DischargedByFramework`
-with mathlib4 / lean4_stdlib citations, demonstrating the
-audit-clean discipline. See [kernel_v0](./kernel-v0.md) §7.
-The full kernel-rule registry now sits at **Proved +
-DischargedByFramework only** with the IOU axiom registry empty
-(`iou_axiom_specs()` returns `vec![]`); see
-[framework axioms](./framework-axioms.md#the-iou-axiom-registry--kernel-rule-trust-extension)
-for the discharge protocol.)
+A reference to CompCert or Vellvm does not instantiate their results for
+Verum's implementation. A completed preservation claim needs the actual
+source/target semantics, the implemented transformation, and a checked
+simulation theorem connecting them. Audit policy may accept a cited status;
+knowledge-system consumers must keep it distinct from a locally replayed proof.
 
 ---
 
 ## 9. The trust delegation summary
 
-After the trusted base accepts a `(term, expected_type)` pair,
-the only things a reviewer needs to trust are:
+A closed minimal certificate is checked against the implemented calculus,
+its decoder and execution environment. Its formal statement must also match
+the intended claim. These are the dependencies of that particular route;
+MSFS classification results and framework bibliographies do not become
+additional proof premises merely by appearing elsewhere in the crate.
 
-1. **The `proof_checker` module** (small enough to read
-   end-to-end, exhaustive pattern-matching, no unsafe code).
-2. **The host compiler's correctness** (or, after self-hosting
-   lands, the Verum-self-hosted kernel that consumes the
-   trusted-base output as a verifiable artifact).
-3. **The serialisation format of `.vproof` files** — simple JSON
-   or s-expression, separately auditable.
-4. **The framework axioms cited** — each `@framework(...)` marker
-   is a load-bearing assumption tracked in the
-   `--framework-axioms` inventory.
-5. **MSFS Theorems 5.1 / 8.2 / 9.6** for the reflection-tower
-   meta-soundness layer (machine-verified in the corpus).
-
-The delegation is *enumerable*. There is no implicit trust;
-every assumption is cited and auditable.
+Broader verification routes retain their own registered assumptions and
+solver/translation dependencies. The requirement is explicit provenance,
+not a universal “verified” label shared by all routes. See the
+[Noesis integration profile](./knowledge-systems.md) for the corresponding
+receipt contract.
 
 ---
 
@@ -483,6 +434,6 @@ every assumption is cited and auditable.
 - [Audit protocol](../architecture-types/audit-protocol.md) — the
   full ~45-gate catalog.
 - [Architecture → trusted kernel](../architecture/trusted-kernel.md)
-  — hardware/ABI perspective on the same kernel.
+  — the distinct calculus, solver and assumption boundaries.
 - [Architecture → SMT integration](../architecture/smt-integration.md)
   — integration points for replacing backends.
