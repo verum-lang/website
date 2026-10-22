@@ -16,7 +16,7 @@ gates that compose into a top-level **bundle aggregator**.
 This page documents:
 
 1. The catalog of audit gates and what each one verifies.
-2. The bundle aggregator and its load-bearing semantics.
+2. The bundle aggregator and the scope of its evidence.
 3. How to read the JSON outputs, archive them, and integrate them
    into CI.
 4. The dual verdict surface (developer-facing summary + auditor-
@@ -92,10 +92,10 @@ the catalog has **~45 gates** organised into eight bands:
 | `--kernel-soundness` | Per-rule discharge inventory + parallel Coq / Lean / Isabelle export | `kernel-soundness/` (multi-file) |
 | `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem | `kernel-v0-roster.json` |
 | `--kernel-intrinsics` | Kernel intrinsic registry — every `kernel_*` dispatch entry | `kernel-intrinsics.json` |
-| `--kernel-discharged-axioms` | Axioms admitted under `@kernel_discharge(...)` markers | `kernel-discharged-axioms.json` |
+| `--kernel-discharged-axioms` | Intrinsic evidence inventory; structural status and zero proof discharges | `kernel-discharged-axioms.json` |
 | `--differential-kernel` | Two-kernel agreement (trusted base vs NbE) | `differential-kernel.json` |
 | `--differential-kernel-fuzz` | Mutation property fuzzer over the kernel registry | `differential-kernel-fuzz.json` |
-| `--reflection-tower` | MSFS-grounded meta-soundness (4 stages: Base / Stable / Bounded / AbsoluteEmpty) | `reflection-tower.json` |
+| `--reflection-tower` | Declared footprints and finite reflection diagnostics, without theorem replay | `reflection-tower.json` |
 | `--codegen-attestation` | Per-pass codegen kernel-discharge status (6 codegen passes) | `codegen-attestation.json` |
 
 ### 1.2 ATS-V (architectural-types) band
@@ -115,12 +115,12 @@ the catalog has **~45 gates** organised into eight bands:
 |------|----------|--------|
 | `--framework-axioms` | Citation roster — every `@framework(name, "...")` marker | `framework-axioms.json` |
 | `--framework-conflicts` | Detect citation pairs whose proofs are mutually inconsistent | `framework-conflicts.json` |
-| `--framework-soundness` | Corpus-side K-FwAx classifier: every cited axiom traces to a proof | `framework-soundness.json` |
+| `--framework-soundness` | Corpus-side citation metadata classifier; references do not certify proofs | `framework-soundness.json` |
 | `--foundation-profiles` | Foundation-by-cog inventory (ZFC / HoTT / Cubical / Cic / MLTT / Eff / Custom) | `foundation-profiles.json` |
 | `--accessibility` | `@accessibility(λ)` Diakrisis Axi-4 marker enumeration | `accessibility.json` |
 | `--soundness-iou` | Outstanding "admitted" lemmas + IOU manifest | `soundness-iou.json` |
 | `--dependent-theorems <axiom>` | Apply-graph walker for downstream theorem impact | `dependent-theorems-<axiom>.json` |
-| `--apply-graph` | Whole-corpus apply-graph (which theorem cites which axiom) | `apply-graph.json` |
+| `--apply-graph` | Dependency resolution, separately reported unverified theorem obligations | `apply-graph.json` |
 | `--bridge-discharge` | Diakrisis-bridge `@effect(...)` marker discharge | `bridge-discharge.json` |
 | `--bridge-admits` | Bridge-marker admits + their citation IOUs | `bridge-admits.json` |
 
@@ -135,7 +135,7 @@ the catalog has **~45 gates** organised into eight bands:
 | `--no-coord` | Cogs missing MSFS-coord declarations | `no-coord.json` |
 | `--coherent` | Operational coherence (M4.E): α/ε bidirectional certificate verdicts | `coherent.json` |
 | `--epsilon` | ε-side enactment audit (Diakrisis 108.T duality) | `epsilon.json` |
-| `--proof-honesty` | Proof-honesty walker: classify every proof as proved / admitted / sorry / placeholder | `proof-honesty.json` |
+| `--proof-honesty` | Syntactic proof-body classification; no proof replay | `proof-honesty.json` |
 
 ### 1.5 Cross-format + export band
 
@@ -168,7 +168,7 @@ the catalog has **~45 gates** organised into eight bands:
 
 | Flag | Verifies | Output |
 |------|----------|--------|
-| `--bundle` | All of the above as a single L4 load-bearing verdict | `bundle.json` |
+| `--bundle` | Summary of the configured audits, with each gate's scope and obligations retained | `bundle.json` |
 
 Gates are *idempotent* — running the same gate twice on
 unchanged source produces byte-identical JSON output (modulo
@@ -176,53 +176,20 @@ timestamps).
 
 ## 2. The bundle aggregator
 
-`verum audit --bundle` is the canonical entry point for CI and
-sign-off workflows. It runs every gate above (in dependency
-order), aggregates the verdicts, and emits a single
-`bundle.json` plus a summary table:
+`verum audit --bundle` orchestrates configured audit gates. Read the emitted
+report to determine which gates and artifacts were actually checked. A
+summary is not an implicit replay of every theorem in a repository.
 
-```text
-$ verum audit --bundle
-        --> Bundle audit · L4 load-bearing aggregator
+The meaning of success is specific to each gate. Dependency resolution,
+metadata consistency, finite diagnostic samples, and certificate replay
+answer different questions. A positive result in one does not discharge an
+unverified obligation in another. `VerificationVerdict::StructuralOnly`
+keeps that distinction during verdict aggregation.
 
-  L0 — kernel rules                              ✓ 7 / 7   load-bearing
-  L1 — proof bodies                              ✓ 1024    proved
-  L1b — proof apply-graph                        ✓ no orphan axioms
-  L2 — tactic + SMT certs                        ✓ replayed
-  L3 — meta-theory (ZFC + 2-inacc)               ✓ cited
-  L3b — reflection tower (MSFS-grounded)         ✓ 4 stages discharged
-  L4 — architectural shapes                      ✓ 267 / 267
-  L4b — anti-pattern catalog                     ✓ 32 / 32 ok
-  L4c — counterfactual battery                   ✓ 5 / 5   stable
-  L4d — adjunctions                              ✓ 4 / 4   recognised
-  L4e — codegen attestation                      ✓ 6 / 6   attested
-  L5 — differential kernel                       ✓ rust ↔ nbe agree
-  L5b — differential kernel fuzz                 ✓ 500 mutants, 0 disagreements
-  L6 — articulation hygiene                      ✓ no register-prohibition triggered
-  --------------------------------------------------------------------
-  verdict: load-bearing                          ✓ 14 / 14 gates green
-  bundle.json: target/audit-reports/bundle.json
-  duration: 12.4s
-```
-
-The verdict is **load-bearing** when *every* gate is green. A
-single failure flips the verdict to **observational** (the bundle
-ran but did not certify) or **defective** (the bundle ran and
-identified violations).
-
-The fourteen-gate aggregate is the *L4 load-bearing* claim — the
-strongest aggregate verdict ATS-V issues. L5 and L6 gates
-participate but their roles are as follows:
-
-- **L5 (differential kernel)** — confirms that the proof corpus
-  is checked by *two independent kernel implementations* and
-  they agree.
-- **L6 (articulation hygiene)** — confirms that the audit
-  protocol itself does not trigger register prohibitions (CVE
-  layer-6 self-application).
-
-A failure at L5 is *more severe* than a failure at L4: it
-indicates a kernel-implementation bug, not a corpus defect.
+For a proof-admission workflow, archive the exact source statement, its
+explicit assumptions, the elaboration receipt and the native certificate
+result. A green architectural audit or successful external compilation of
+a generated scaffold cannot replace those artifacts.
 
 ## 3. Gate-by-gate semantics
 
@@ -265,8 +232,8 @@ re-running the gate.
 
 ### 3.3 `--differential-kernel` — two-kernel agreement
 
-Runs every kernel rule's canonical certificate through *two*
-independent kernel implementations:
+Runs the canonical certificate battery through distinct checking
+implementations. The substitution and normalization paths are:
 
 1. The **trusted-base** kernel (`verum_kernel::proof_checker`),
    the LCF-style implementation Verum considers authoritative.
@@ -283,9 +250,9 @@ Per rule, the gate reports:
 - `NotYetSelfHosting` — observability only; one kernel has no
   certificate to check (transitional).
 
-Verum is the first production proof assistant to ship two
-algorithmic kernels with continuous differential testing. A
-disagreement fails the audit immediately.
+Agreement concerns the supplied certificates. It does not mean that every
+source theorem was elaborated and checked, and does not constitute a proof
+of the checkers' own soundness. A disagreement fails the audit.
 
 ### 3.4 `--differential-kernel-fuzz` — mutation property fuzzing
 
@@ -299,27 +266,22 @@ between kernels. Any disagreement is a kernel bug.
 The campaign is bounded (default 500 iterations, deterministic
 xorshift64* seed) so disagreements are reproducible across runs.
 
-### 3.5 `--reflection-tower` — MSFS-grounded meta-soundness
+### 3.5 `--reflection-tower` — structural diagnostics
 
-Walks the four canonical reflection stages: **Base** (per-rule
-footprint over ZFC + 2·κ), **StableUnderUniverseAscent** (MSFS
-Theorem 9.6 — every `k ≥ 1` reduces to base), **BoundedByOneInaccessible**
-(MSFS Theorem 8.2 — tower instantiation ≤ 3 inaccessibles), and
-**AbsoluteBoundaryEmpty** (MSFS Theorem 5.1 — `𝓛_Abs = ∅`).
+Inspects the model's four named stages: `Base`,
+`StableUnderUniverseAscent`, `BoundedByOneInaccessible` and
+`AbsoluteBoundaryEmpty`. Their data consists of declared rule footprints,
+finite witness samples and citations.
 
-Each stage has an *algorithmic discharge function* that returns
-`true` iff the stage's verdict holds; the gate aggregates the
-four verdicts. The verdict reports which stage is the project's
-maximum exercised — typically `Base` for projects using only
-`κ_1` and `κ_2`, or `BoundedByOneInaccessible` for projects that
-exercise the third inaccessible licensed by Theorem 8.2.
+The report carries `proof_status: "structural_only"` and
+`load_bearing: false`. Positive stage and sample counts remain available as
+diagnostics; both proof-discharge counts are zero. The command returns
+nonzero because no proof of the named mathematical obligations was replayed.
 
-The MSFS-grounded picture is *strictly stronger* than the naïve
-ordinal-indexed reflection-tower picture (Pohlers / Beklemishev /
-Schütte) — Theorem 9.6 collapses the ordinal interior, so adding
-"more levels" produces no new content. See
-[verification → reflection tower](../verification/reflection-tower.md)
-for the full picture.
+Comparing declared cardinal indices does not establish a consistency bound.
+Checking finitely many universe indices does not establish universal
+stabilisation. See [Reflection tower](../verification/reflection-tower.md)
+for the full field contract.
 
 ### 3.6 `--codegen-attestation` — per-pass discharge status
 
@@ -354,47 +316,37 @@ soundness depends on. There is no implicit framework axiom — a
 proof that uses an uncited classical axiom (e.g., AC, LEM)
 triggers `AP-014 UndisclosedDependency`.
 
-### 3.8 `--kernel-soundness` — Coq/Lean export
+### 3.8 `--kernel-soundness` — external rule models
 
-Re-emits the trusted base's rule list as parallel `.thy` /
-`.lean` / `.v` files for independent re-checking. This is the
-"the kernel is small enough to read in another prover" claim
-made operational. The exported files live in
-`target/audit-reports/kernel-soundness/`.
+Emits rule-model files under `target/audit-reports/kernel-soundness/`.
+These models and their assumptions must be reviewed separately. An external
+assistant accepting a generated definition or axiomatization does not prove
+that it faithfully represents Verum's implementation or a source theorem.
+This audit is distinct from the public `verum export` command, which rejects
+unsupported foreign theorem exports. See
+[Proof export](../verification/proof-export.md).
 
 ## 4. JSON schema
 
-Every audit report is a structured JSON document with a
-schema-version field at the top:
+Schema versions belong to individual report types. Consumers must dispatch
+on the report kind and its supported version, not assume that all audit
+commands share one schema.
 
-```json
-{
-  "schema_version": 2,
-  "verum_version": "0.x.y",
-  "kernel_vva_version": "...",
-  "audit_kind": "bundle",
-  "generated_at": "2026-05-02T15:30:00Z",
-  "duration_ms": 12400,
+| Report | Version | Proof-authority fields |
+|---|---|---|
+| `--proof-honesty` | `1` | Syntactic classification only; no proof replay result. |
+| `--kernel-discharged-axioms` | `3` | `proof_status`, `citation_count`, `discharge_count`, `evidence_breakdown`. |
+| `--reflection-tower` | `4` | `proof_status`, `load_bearing`, `structurally_consistent`, positive diagnostic counts and separate zero discharge counts. |
 
-  "verdict": "load-bearing",
-  "gates": [
-    { "name": "arch-discharges", "verdict": "ok", "duration_ms": 320 },
-    { "name": "counterfactual",  "verdict": "stable", "duration_ms": 240 },
-    ...
-  ],
+The apply-graph report exposes `dependencies_resolved` for each theorem
+separately from `proof_status` and the `unverified_theorems` total. Unknown
+schemas require an explicit adapter; do not silently interpret missing proof
+status as successful certification.
 
-  "summary": {
-    "total_gates":     14,
-    "ok":              14,
-    "observational":   0,
-    "violations":      0
-  }
-}
-```
-
-Schema version 2 is the current schema. Older schema versions
-have published adapters; future versions will be additive
-(non-breaking) where possible.
+For intrinsic reports, `computed`, `cited` and `needs_structural_args`
+describe evidence origin. For reflection reports, `diagnostic_holds`
+describes an observation and `discharges: false` states its proof limit.
+Preserve these distinctions in dashboards and archives.
 
 ## 5. CI integration
 
@@ -433,43 +385,23 @@ Two patterns worth establishing:
 
 ## 6. The dual verdict surface
 
-Every audit report renders two views:
-
-**Developer view** — terse, single-line verdict per gate, suitable
-for the PR description.
-
-```
-ATS-V audit · 14/14 gates · load-bearing · 12.4s
-```
-
-**Auditor view** — exhaustive, with per-occurrence detail,
-suitable for archival.
-
-```
-[bundle.json — 47 KB structured payload]
-```
-
-The developer view is for fast iteration; the auditor view is
-for sign-off. Both are produced by the same run.
+Plain output gives a concise developer summary; JSON preserves detailed
+observations for review and archival. Both must retain the scope of the
+result. A user interface must not turn `structural_only` into a verified
+badge merely because all diagnostic flags are positive.
 
 ## 7. What "load-bearing" means
 
-A bundle with `verdict: load-bearing` makes a precise claim:
+Interpret `load_bearing` under the contract of the report that produced it.
+An architectural consistency check is not a proof of every theorem in the
+project. A successful native replay establishes a particular formal judgment
+under its declared assumptions; source correspondence is a separate part of
+source-level certification.
 
-> Every architectural primitive declared by every annotated cog
-> in this revision has been checked against the body, against
-> the cross-cog graph, and against the 40-pattern catalog. Every
-> proof admitted in the proof corpus has been re-checked through
-> *both* the trusted-base kernel and the NbE kernel, and they
-> agree. Every framework axiom cited is enumerable in the
-> inventory. Every codegen pass either discharges its
-> soundness invariant internally or cites a published external
-> proof.
-
-The audit chronicle of `load-bearing` verdicts is the project's
-machine-checkable equivalent of "the architectural review
-committee signed off on revision X". It is produced by the
-compiler, not by the committee.
+The intrinsic, reflection and apply-graph audits do not carry the proof
+terms needed for their named mathematical obligations. Their structural
+observations remain useful, but cannot acquire proof authority through a
+bundle summary, a citation, or a successful check of a different statement.
 
 ## 8. Liveness pins — the audit's audit
 
@@ -485,21 +417,18 @@ least one liveness pin:
   reports "no disagreements" with the synthetic in the registry,
   the gate itself has a bug.
 
-The pins are not unit tests in the traditional sense — they are
-*regression checks against silent tautology*. A green audit with
-the pin reporting "synthetic disagrees as expected" is the
-strongest verdict; a green audit *without* the pin's confirmation
-is observational only.
+These negative controls detect silent acceptance and broken diagnostics in
+the exercised cases. They strengthen the test evidence but do not constitute
+a proof of checker soundness or certify untested corpus declarations.
 
-## 9. Adversarial-closure axioms
+## 9. Adversarial diagnostic intrinsics
 
-In addition to the 40-pattern catalog, the audit-bundle aggregator
-walks four kernel-discharge axioms that close known attack vectors
-against the ATS-V declarative surface (see
-[adversarial threat modelling](./red-team.md) for the full
-catalog of attack vectors):
+The intrinsic registry includes checks addressing attack patterns on the
+ATS-V declarative surface. Their results are structural diagnostics, not
+proofs of the annotated axiom declarations. See
+[adversarial threat modelling](./red-team.md) for the attack catalog:
 
-| Axiom                                              | Closes | Explanation |
+| Intrinsic | Pattern | Diagnostic purpose |
 |---|---|---|
 | `kernel_arch_capability_ontology_check`            | AT-1   | Every `Capability.CustomCapability(tag)` must have its `tag` registered before passing the ATS-V phase.  Blocks injection of fake high-privilege capabilities. |
 | `kernel_arch_theorem_cve_required`                 | AT-2   | `Lifecycle.Theorem(...)` requires full CVE-closure regardless of the `strict` flag — Theorem-status semantically implies CVE+. |
@@ -510,21 +439,11 @@ AT-4 (composition path traversal in `composes_with` resolution)
 is delegated to the module-loader; documented for completeness in
 [adversarial threat modelling](./red-team.md).
 
-These axioms surface in the `--bundle` aggregator alongside the
-eight base intrinsics (`kernel_arch_capability_discipline`,
-`kernel_arch_boundary_check`, `kernel_arch_composition_check`,
-`kernel_arch_lifecycle_check`, `kernel_arch_foundation_consistency`,
-`kernel_arch_anti_pattern_check`, `kernel_arch_cve_closure`,
-`kernel_arch_soundness_v0`) and the four operational-engine
-intrinsics (`kernel_arch_composition_engine`,
-`kernel_arch_composition_associative`,
-`kernel_arch_corpus_verify`,
-`kernel_arch_phase_orchestrator`) — sixteen ATS-V discharges in
-the bundle, every one of which has a Verum-side `axiom`
-declaration mirrored to a kernel-side `dispatch_intrinsic` arm.
-The cross-side pin test in
-`crates/verum_kernel/tests/k_arch_v_alignment.rs` asserts both
-sides agree.
+These names have Verum declarations and corresponding
+`dispatch_intrinsic` arms. Cross-side alignment checks, including
+`crates/verum_kernel/tests/k_arch_v_alignment.rs`, can detect drift between
+those registries. Alignment does not supply a proof of an annotated theorem:
+its statement, premises and proof term still require actual verification.
 
 ## 10. The transitive peer-resolution layer
 

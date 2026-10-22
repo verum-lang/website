@@ -7,8 +7,15 @@ status: regression-only
 
 # `core.proof` — Proof infrastructure
 
-Runtime support for `@verify(certified)` and proof-carrying bytecode.
-Two public files; one legacy.
+Runtime support for proof-bundle storage and reflection. Two public files; one
+legacy. These containers retain artifacts; constructing a bundle or attaching
+`@verify(certified)` is not logical acceptance. The portable checker and scoped
+source elaborator are separate from these runtime carriers; see the
+[verification profile](../verification/knowledge-systems.md).
+
+The library's older `core.verify.kernel_v0` model is also distinct from the native
+checker. Its unfinished substitution/reduction routines must not be interpreted
+as a verified implementation or a soundness proof of the production kernel.
 
 | File | What's in it |
 |---|---|

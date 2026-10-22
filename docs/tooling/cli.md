@@ -230,14 +230,14 @@ for the workflow see
 | `--kernel-recheck` | Re-checks every theorem in the project against the trusted base |
 | `--kernel-soundness` | Per-rule discharge inventory + parallel Coq / Lean / Isabelle export |
 | `--trust-extension-report` | Auditor-facing snapshot of the kernel-rule trust extension surface — every `KernelRule` partitioned into `Proved` / `DischargedByFramework { lemma_path, framework, citation }` / `Admitted { reason }` buckets. The current steady state is zero `Admitted`; an `Admitted` entry trips the gate. See [framework axioms — IOU registry](/docs/verification/framework-axioms#the-iou-axiom-registry--kernel-rule-trust-extension). |
-| `--external-prover-replay` | Drives the kernel-soundness export through Lean 4 (`lake build`), Coq / Rocq (`coqc`), and Isabelle/HOL (`isabelle build`); reports per-backend `clean` / `iou-only` / `hard-error` / `not-available`. Three independent foundations agreeing. Backend filter via `--backend lean,coq,isabelle,all`; `--strict` requires all installed. See [external-prover-verification](/docs/architecture/external-prover-verification). |
+| `--external-prover-replay` | Drives the kernel-soundness export through Lean 4 (`lake build`), Coq / Rocq (`coqc`), and Isabelle/HOL (`isabelle build`); reports per-backend `clean` / `iou-only` / `hard-error` / `not-available`. Results concern the generated model and its declared assumptions; they do not establish source correspondence. Backend filter via `--backend lean,coq,isabelle,all`; `--strict` requires all installed. See [external-prover-verification](/docs/architecture/external-prover-verification). |
 | `--differential-lean-checker` | Cert-by-cert agreement gate: a 24-cert battery (T-Univ / T-Var / identity at multiple universes / polymorphic identity / T-Pi-Form / T-App-Elim correct + mismatched / T-App on non-function / boundary-pin certs / nested binders / η-redex / negative shapes) is run through both the Rust kernel (`Certificate::verify`) and the Lean executable `verum_replay_checker` (built via `lake build`); per-cert verdicts must agree. Where `--external-prover-replay` checks meta-theory shape (the 38 `K_*_sound` theorem statements type-check across four foundations), `--differential-lean-checker` checks the operational kernel — same accept/reject judgements as a re-implementation. See [differential-lean-checker](/docs/architecture/differential-lean-checker). |
 | `--kernel-v0-roster` | The kernel_v0 Verum-self-hosted manifest vs filesystem |
 | `--kernel-intrinsics` | Kernel intrinsic registry — every `kernel_*` dispatch entry |
-| `--kernel-discharged-axioms` | Axioms admitted under `@kernel_discharge(...)` markers |
+| `--kernel-discharged-axioms` | Intrinsic evidence inventory; `structural_only`, zero proof discharges, nonzero for unverified obligations |
 | `--differential-kernel` | N-way agreement gate over the canonical 24-cert battery.  Runs every cert through the default kernel registry — Slot A (bidirectional + WHNF), Slot B (Normalisation by Evaluation with closures + level-indexed quote), Slot C (manifest-driven meta-soundness verifier) — and asserts unanimous accept/reject.  Complementary to `--differential-lean-checker`: that gate compares the trusted-base kernel against an independent Lean re-implementation cross-language; this gate compares three structurally-distinct algorithms within the same process on the same battery. See [three-kernel-differential](/docs/architecture/three-kernel-differential). |
 | `--differential-kernel-fuzz` | Property-based mutation fuzz over the canonical-battery seed roster.  Each iteration picks a seed, samples a mutation chain (length 1–3 from an 11-variant grammar — universe lifts, subterm swaps, binder-domain rewrites, app-injections, free-variable substitutions), applies it, and runs the mutant through the default kernel registry (Slot A / B / C).  Disagreements are auto-shrunk to a minimal failing case via greedy 1-element-removal.  The audit report carries per-mutation hit counts + per-seed hit counts + chain-length distribution so sampling bias is observable when the gate passes.  See [property-fuzz](/docs/architecture/property-fuzz). |
-| `--reflection-tower` | MSFS-grounded 4-stage meta-soundness |
+| `--reflection-tower` | Declared footprints and finite reflection samples; structural diagnostics, not theorem proofs |
 | `--codegen-attestation` | Per-pass codegen kernel-discharge status |
 
 #### ATS-V (architectural-types) band (6 gates)
@@ -262,7 +262,7 @@ for the workflow see
 | `--accessibility` | enact / EpsilonOf without `@accessibility(λ)` |
 | `--soundness-iou` | outstanding "admitted" lemmas + IOU manifest |
 | `--dependent-theorems <axiom>` | apply-graph walker for downstream impact |
-| `--apply-graph` | whole-corpus apply-graph |
+| `--apply-graph` | Dependency resolution and unverified theorem inventory; resolution does not prove applications |
 | `--bridge-discharge` | Diakrisis-bridge `@effect(...)` marker discharge |
 | `--bridge-admits` | bridge-marker admits + their citation IOUs |
 
@@ -322,13 +322,18 @@ audit gate maps onto a verdict.
 
 | Flag | Verifies |
 |------|----------|
-| `--bundle` | runs every gate above and emits a single L4 load-bearing verdict |
+| `--bundle` | Aggregates the configured audits; a summary is not a certificate of every corpus theorem |
 
 `--format plain` (default) emits human-readable output. `--format json`
 emits a stable machine-parseable schema suitable for CI dashboards
 and `audit-reports/*.json` archival. Each subcommand may be passed
-solo (e.g. `verum audit --framework-axioms`) or via `--bundle` to
-run all of them.
+individually (e.g. `verum audit --framework-axioms`); inspect the bundle
+report for the gates actually included.
+
+The intrinsic, reflection and apply-graph proof gates report structural
+evidence separately from proof status. They return nonzero when unverified
+obligations remain. Neither a positive diagnostic nor a bibliography entry
+provides a native proof term. See [Proof-honesty audit](../verification/proof-honesty.md).
 
 ### Verification profiling & budgets — `verum verify` {#verification-profiling--budgets}
 
@@ -822,8 +827,9 @@ verum dap --transport stdio|socket [--port N]
 verum config show [--json] [-Z key=val] [--tier interpret|aot]
 verum config validate [-Z key=val]    # typo-check verum.toml
 
-verum export --to <dedukti|coq|lean|metamath> [-o PATH]
-verum export-proofs --to <dedukti|coq|lean|metamath> [-o PATH]  # alias
+verum export --to typed-ir source.vr [-o PATH]
+verum export --to owl2-fs [-o PATH] [--with-provenance]
+verum export-proofs --to typed-ir source.vr [-o PATH]  # alias
 
 verum clean [--all]
 verum version [--verbose]
@@ -834,9 +840,16 @@ effective configuration — the source of truth for "what's actually
 compiled". See **[Reference → verum.toml](/docs/reference/verum-toml)**
 for the manifest schema.
 
-`verum export` walks every theorem / lemma / axiom in the project and
-emits a statement-only certificate file; proofs are admitted. See
-**[Verification → proof export](/docs/verification/proof-export)**.
+`typed-ir` exports a versioned typed AST for one source file. `owl2-fs`
+exports the project ontology; its optional provenance sidecar records
+attribution rather than theorem certification.
+
+Foreign proof formats `lean`, `coq`, `dedukti`, `agda` and `metamath` are
+recognized but refused before creating or replacing files: their exporters
+do not preserve the exact source statement and proof. `export-proofs` has
+the same restrictions. See
+**[Verification → proof export](/docs/verification/proof-export)** for the
+separate native certification path.
 
 ## Global flags
 

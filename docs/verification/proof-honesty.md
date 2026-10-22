@@ -5,426 +5,154 @@ sidebar_position: 18
 
 # Proof-honesty audit
 
-`verum audit --proof-honesty` walks every public `theorem` / `axiom`
-in the project and classifies each by **proof-body shape**. The
-classification surfaces how much of the corpus actually carries
-kernel-rechecked deductive content versus how much remains as
-documentation-only `() -> Bool ensures true` placeholders.
+`verum audit --proof-honesty` classifies public theorem and axiom declarations
+by proof-body shape. It helps locate missing bodies, shallow wrappers and
+concentrated dependencies. It does not type-check the reported proof terms
+or establish that a formal statement faithfully expresses a source theorem.
 
-This is the central tool for tracking the "🟡 axiom-placeholder ⟶ ✅
-verified theorem" promotion progress on machine-verification corpora
-such as the [verum-msfs-corpus](https://github.com/verum-lang/verum-msfs-corpus).
+A long body can prove the wrong proposition. A one-line term can prove the
+right one. Step counts organize review; they are not a measure of verified
+mathematics.
 
-## Companion audits (V2 / V3 trusted-boundary surfaces) — `verum audit` {#companion-audits-v2--v3-trusted-boundary-surfaces}
+## Companion audits {#companion-audits-v2--v3-trusted-boundary-surfaces}
 
-Several audit surfaces work alongside `--proof-honesty`:
+| Flag | Observed evidence |
+|---|---|
+| `--proof-honesty` | Declaration kind and syntactic proof-body shape. |
+| `--kernel-discharged-axioms` | Intrinsic annotations, diagnostic calculations and citations. |
+| `--apply-graph` | Named dependencies and their resolution. |
+| `--reflection-tower` | Declared universe footprints and finite reflection samples. |
+| `--bridge-admits` | Registered bridge assumptions and their provenance. |
+| `--framework-soundness` | Framework citation metadata and its classification. |
+| `--coord-consistency` | Coordinates assigned to declarations and their dependencies. |
 
-| Flag | What it answers |
-|------|------------------|
-| `--proof-honesty` | "How many theorems carry real deductive content?" |
-| `--kernel-discharged-axioms` | "Does every `@kernel_discharge` citation have a verifier behind it — and did that verifier COMPUTE its verdict or cite someone else's proof?" |
-| `--bridge-admits` | "Which Diakrisis preprint results does each theorem rely on?" |
-| `--framework-soundness` | "Are the @framework citations real or trivial-placeholder?" |
-| `--coord-consistency` | "Does each theorem's coord majorise its dependencies?" |
+### Evidence, not proof authority {#evidence-not-just-a-count}
 
-### Evidence, not just a count
+`--kernel-discharged-axioms` uses schema version 3. It reports
+`proof_status: "structural_only"`, `discharge_count: 0` and a separate
+`citation_count`. Its `evidence_breakdown` preserves the origin of evidence:
 
-`--kernel-discharged-axioms` reports an `evidence_breakdown` beside the
-discharge count, because "40 discharged" is a number, not a status:
+- `computed`: a diagnostic computation ran; this alone supplies no proof term
+  for the annotated theorem.
+- `cited`: a reference was recorded; its content and formal translation were
+  not checked by citing it.
+- `needs_structural_args`: the dispatcher lacks structural inputs needed for
+  its diagnostic.
 
-```json
-"evidence_breakdown": { "computed": 28, "cited": 22, "needs_structural_args": 3 },
-```
+The command exits nonzero when it encounters these unverified intrinsic
+obligations or malformed annotations. The historical command name does not
+change this contract.
 
-* **computed** — the kernel ran the check that decides the question.
-  The architectural family is entirely of this kind: each verdict
-  executes its pattern's canonical counterexample against the live
-  checkers, and a checker that goes silent or starts firing
-  indiscriminately turns the discharge red.
-* **cited** — the verdict holds on a proof living outside this kernel.
-  Every such entry names where: `Leroy 2009 §5.2`, `Vellvm POPL 2012
-  §4-5`, a `core/verify/kernel_v0/rules/*.vr` lemma. A citation that
-  named nothing would be indistinguishable from an assertion, so the
-  kernel refuses to construct one.
-* **needs_structural_args** — the dispatcher declined the bare form:
-  this verdict requires structural data the audit does not carry.
-  Saying so is not the same as saying it was discharged.
+`--apply-graph` similarly reports `dependencies_resolved` separately from
+`proof_status`, counts `unverified_theorems`, and fails the proof gate when
+those obligations are present. A resolved name does not check an application,
+its arguments, or its premises.
 
-An unrecognised citation additionally lists the theorems that
-transitively depend on it: the count says something is broken, the
-dependents say what breaks with it.
-
-See [Diakrisis Bridge Roster](diakrisis-bridge-roster.md) for the
-`--bridge-admits` deep-dive, and
-[Soundness gates](soundness-gates.md) for the validator-side
-catalogue of explicit verification checks that each proof rule
-must pass before the kernel ever sees it.
+The common kernel verdict `StructuralOnly` preserves this boundary during
+aggregation. See [Reflection tower](./reflection-tower.md) for the analogous
+separation between positive samples and proof discharge.
 
 ## Standard-library proof coverage
 
-The April-28/29 sweep promoted **101 tautological framework-citation
-axioms** to V2/V3 witness-parameterised theorems across three
-module hierarchies. Aggregate count + per-module breakdown:
+There is no sound coverage estimate obtained by counting `theorem`
+declarations or subtracting `axiom` declarations. Review each claimed result
+against its mathematical statement, quantified objects, assumptions and
+actual proof. A carrier accessor, numeric bound, citation year or declaration
+marker can express useful metadata without proving the named theorem.
 
-### Wave 1 — `core/action/` (47 axioms)
-
-| Module | Axioms removed | V2 theorems added |
-|--------|----------------|--------------------|
-| `core/action/monads/{pure,reader,writer,state,probability,quantum}.vr` | 29 | 29 |
-| `core/action/effects.vr` | 10 | 10 (route through `is_commutative_effect`) |
-| `core/action/ludics.vr` + `ludics_lazy.vr` | 8 | 8 (gate via productivity / cut-elim classifier) |
-
-**Result**: Zero tautological axioms in `core/action/`. The entire
-monad / effect / ludics layer ships with theorems whose ensures
-clauses **state the actual law** rather than just `true`. 173
-let-bindings naming intermediate β-reducts across 9 monad files
-demonstrate the multi-step proof-body pattern.
-
-### Wave 2 — `core/theory_interop/` (37 axioms)
-
-| Module | Axioms removed | V3 theorems added |
-|--------|----------------|--------------------|
-| `core/theory_interop/bridges/owl2_to_htt.vr` | 30 | 30 (gated by Interpretation predicate) |
-| `core/theory_interop/bridges/oc_dc_bridge.vr` | 3 | 3 + GaugeVerdict enum (Decidable / SemiDecidable / Undecidable) |
-| `core/theory_interop/congruence_closure.vr` | 4 | 4 (via Closure observability API: `closure_merged` / `closure_representative`) |
-
-**Result**: Every OWL2 → HTT bridge axiom routes through the
-`Interpretation` protocol's class/object-property/data-property
-predicates; gauge-decidability axioms gate on the `GaugeVerdict`
-verdict bucket; congruence-closure axioms invoke the actual
-`closure_merged` / `closure_representative` API on a constructed
-`CongruenceClosure` value.
-
-### Wave 3 — `core/math/frameworks/diakrisis_acts.vr` (17 axioms)
-
-| Theorem range | Carrier | Ensures form |
-|---------------|---------|---------------|
-| 110.T–112.T (classifying space + Grothendieck + universal performance) | `Enactment` / `Articulation` | `is_adjoint(alpha_of(e), e)` round-trip |
-| 113.T / 117.T / 119.T / 123.T / 126.T (κ-rank witnesses) | `Enactment.activation_rank` | `>= 0` (V3 surface; V4 → ordinal-typed ω-bounded) |
-| 114.T / 116.T / 118.T / 120.T / 122.T / 127.T (functor / morphism existence) | `Enactment` | `is_adjoint(alpha_of(e), e)` |
-| 115.T / 121.T (self-reflection / BHK) | `Articulation` | `articulation_eq(alpha_of(epsilon(α)), α)` |
-
-**Result**: All 17 catalogue boundary axioms (110.T–127.T) ship
-with kernel-checkable ensures clauses routing through the
-existing `core.action.{articulation, enactments}` surface.
-
-### Wave 4 — `core/math/foundations/self_recognition.vr` (9 axioms)
-
-The kernel's seven primitive rules (K-Refine / K-Univ / K-Pos /
-K-Norm / K-FwAx / K-Adj-Unit / K-Adj-Counit) plus
-ladder-monotonicity and articulation-hygiene axioms are now
-witness-parameterised over `Articulation` / `Enactment` carriers.
-The kernel WITNESSES its OWN rules through its α ⊣ ε round-trip
-machinery.
-
-### Wave 5 — `core/math/rich_s/{examples,non_examples}.vr` (20 axioms)
-
-13 R-S example axioms (ZFC / NBG / MLTT / CIC / HoTT / Cubical /
-linear+! / Eff / Lurie / cohesive / NCG / motivic + ZFC-inacc) +
-7 non-example axioms (R1..R5 violators + Proposition 3.2 closure).
-Each example asserts its claimed `n_S` value via the `R::n_S()`
-protocol method; each non-example takes a `violated_index: Int`
-parameter naming the failed R-condition.
-
-### Wave 6 — `core/math/strata.vr` + `connes_reconstruction.vr` (11 axioms)
-
-Strata: 4 axioms over `Stratum` enum (class-definability /
-L_Abs-emptiness / strict-inclusion non-collapse). Connes: 7
-spectral-triple axioms threading conjunction of (i)–(vii)
-through `is_compact_resolvent` / `algebra_dimension >= 0`
-predicates; reconstruction theorem now requires-and-ensures the
-full conjunction.
-
-### Wave 7 — `core/math/{concrete_accessible, stack_model}.vr` + `frameworks/{schreiber_dcct, diakrisis_stack_model}.vr` (20 axioms)
-
-  * `concrete_accessible.vr` (4): `zfc_concrete_kappa_1_accessible`
-    ensures `kappa.is_regular() && kappa.ordinal_rank() == 1`;
-    smoke-checks ensure regularity / `n_F == 1` / Grothendieck-
-    construction reachability through the SetCategory protocol.
-  * `stack_model.vr` (5): `meta_classify_stack` /
-    `stack_tower_colimit_not_representable` /
-    `cat_baseline_is_truncation_of_stack` /
-    `tight_2_inaccessibles_bound` /
-    `axi_8_meta_classifier_not_yoneda_representable` ensure the
-    universe-level is one of `{Truncated, κ_1, κ_2}`.
-  * `schreiber_dcct.vr` (5): cohesive hexagon / adjoint triple /
-    super-cohesion / rheonomy / differential-cohesion axioms
-    ensure modal-image equality via the protocol's
-    `shape() / flat() / sharp() / reduced() / etale() /
-    infinitesimal()` endofunctors.
-  * `diakrisis_stack_model.vr` (5): all 5 catalogue axioms
-    (131.T / 131.L1 / 131.L2 / 131.L3 / 134.T) ensure α ⊣ ε
-    round-trip via `articulation_eq(alpha_of(epsilon(α)), α)`.
-
-### Wave 8 — `core/math/frameworks/diakrisis_extensions.vr` + `bounded_arithmetic/` (16 axioms)
-
-  * `diakrisis_extensions.vr` (4): Theorems 136.T / 137.T / 140.T /
-    141.T witness-parameterised over `Articulation` / `Enactment`
-    carriers.
-  * `bounded_arithmetic/` (12 across 6 files): every complexity-
-    class axiom (V_0 / V_1 / S^1_2 / V_NP / V_PH / IΔ_0) takes
-    a complexity-class index parameter (V0 wire encoding:
-    0=LOGSPACE, 1=P, 2=P-via-PIND, 3=NP-search, 4=PH,
-    999_999=ω-1, 1_000_000=ω). The weak-AFN-T result gates on
-    the stratum-index range 0..5.
-
-### Wave 9 — `core/math/{graph, examples, s_definable/class_s_s}.vr` (15 axioms/theorems)
-
-  * `graph.vr` (7): protocol-internal axioms now witness-
-    parameterise over Bool flags
-    (no_cycle_witness / no_loop_witness / etc.) that callers pass
-    when establishing protocol satisfaction.
-  * `examples.vr` (6): worked-example theorems now ensure the
-    corresponding example function returns true (e.g.
-    `quantum_pure_state_fidelity ensures quantum_logic_example() == true`).
-  * `s_definable/class_s_s.vr` (2): κ_1-accessibility +
-    U_2-smallness axioms ensure `m.closure_depth() >= 0` via the
-    SSMembership carrier protocol.
-
-### Wave 10 — `core/math/frameworks/{lurie_htt, baez_dolan, diakrisis}.vr` (12 axioms)
-
-  * `lurie_htt.vr` (5): every HTT theorem axiom ensures protocol-
-    method observability via `c.is_presentable()` /
-    `f.preserves_filtered_colimits()` / `e.is_cocartesian_closed()`
-    LEM-shaped predicates.
-  * `baez_dolan.vr` (4): tricategory cocompleteness LEM, cobordism
-    + tangle hypotheses ensure
-    `d.dimension() >= 1 && d.admits_duals_up_to_level(d.dimension())`.
-  * `diakrisis.vr` (3): catalogue axioms 107.T / 109.T / 139.T
-    witness-parameterised over `Articulation` / `Enactment`;
-    no-universal-practice-dual gates on a `claimed_universal:
-    Bool == false` precondition.
-
-### Wave 11 — MSFS theorem corpus (25 axioms)
-
-Final pass: the MSFS verification corpus's flagship-theorem layer.
-Every active tautological axiom across the 14-stage MSFS corpus
-V3-promoted to witness-parameterised form. Per-stage breakdown:
-
-  * Stage anchors (1/2/3/4): `msfs_stage_m_*_anchor(stage_index: Int)`
-    — ensures `stage_index == k` for the corresponding M.k stage.
-  * Stage 5 (AFN-T α-part): `msfs_theorem_5_1_proof_template(candidate)`
-    preserves L_Abs triple at every citation site.
-  * Stage 6 (AFN-T β-part): Propositions 6.2 / 6.3 / 6.3-corollary
-    parameterised over `LAbsCandidate` + `SSMembership`.
-  * Stage 7 (Five-axis): Definition 7.5 Lawvere-scope over `S: RichS`,
-    ensures `n_S() >= -1`.
-  * Stage 9 (Meta-classification): Definitions 9.1/9.2 over
-    `LAbsCandidate`, Theorem 9.3 same, Theorem 9.4 + Corollary 9.5
-    over `meta_index: Int 0..2`, Theorem 9.6 over `conjunct_index: 0..2`.
-  * Stage 10 (AC/OC duality): Definitions 10.1/10.2/10.3 + Theorem 10.4
-    over `LAbsCandidate` / `SSMembership`.
-  * Stage 11 (No-go subsumption): Theorem 11.1 anchor parameterised
-    over candidate.
-  * Appendix A (categorical preliminaries): 8 external-citation
-    lemmas parameterised over `citation_year: Int`
-    discriminators (Kelly 1982, Lurie HTT 2009, Riehl-Verity 2022,
-    Pronk 1996, Lawvere 1969, Whitehead `dim_n`,
-    Bergner-Lurie 3-source `(2021, 2013, 2017)`,
-    Adámek-Rosický 1994); aggregator @theorem threads year args.
-  * Appendix B (Paraconsistent extension): Definition B.1 + Theorem B.2
-    over `S: RichS` classical-kernel witness.
-
-In the verum-msfs-corpus repo. The
-MSFS corpus now ships with **zero active tautological axioms** across
-its flagship 14-stage theorem layer; the 5 remaining `weak_axioms_anchor`
-markers carry stage-index discriminators and serve as catalogue
-handles for `verum audit --coord`.
-
-### Aggregate session-wide tautology elimination
-
-```text
-core/action/                                                47 ✓
-core/theory_interop/                                        37 ✓
-core/math/frameworks/diakrisis_acts.vr                      17 ✓
-core/math/foundations/self_recognition.vr                    9 ✓
-core/math/rich_s/{examples,non_examples}.vr                 20 ✓
-core/math/strata.vr                                          4 ✓
-core/math/frameworks/connes_reconstruction.vr                7 ✓
-core/math/{concrete_accessible,stack_model}.vr               9 ✓
-core/math/frameworks/{schreiber_dcct,diakrisis_stack}       11 ✓
-core/math/frameworks/diakrisis_extensions.vr                 4 ✓
-core/math/frameworks/bounded_arithmetic/                    12 ✓
-core/math/{graph,examples,s_definable/class_s_s}.vr         15 ✓
-core/math/frameworks/{lurie_htt,baez_dolan,diakrisis}.vr    12 ✓
-verum-msfs-corpus/theorems/msfs/* (Waves 11)                25 ✓
-───────────────────────────────────────────────────────── ──
-total tautological axioms removed                          229
-```
-
-Down from session-start 232 → ~28 actual tautologies remaining
-(comment-line-reference false positives excluded). The complete
-trusted-boundary surface across `core/{action, theory_interop,
-math}` ships with witness-parameterised theorems — every
-framework citation backs a kernel-checkable predicate via the
-receiving framework's protocol surface.
+A source-level coverage inventory must distinguish an unchecked statement,
+an assumed statement, a checked judgment under explicit assumptions, and a
+checked judgment with a validated correspondence to its source. Keep the
+assumptions and checker identities available for each accepted result.
 
 ## Quick start
 
 ```bash
-# Plain text summary on stdout.
 verum audit --proof-honesty
-
-# Machine-parseable JSON to audit-reports/proof-honesty.json.
-verum audit --proof-honesty --format json > audit-reports/proof-honesty.json
+verum audit --proof-honesty --format json > honesty.json
 ```
 
-Sample output (verum-msfs-corpus, post-iteration-4):
-
-```text
---> Proof-honesty audit (theorem proof-body shape classification)
-scanned 32 files, 219 declarations classified
-  axiom_placeholder      85
-  theorem_no_proof_body  0
-  theorem_trivial_true   0
-  theorem_axiom_only     65
-  theorem_multi_step     69
-by lineage:
-  msfs       multi_step=16  axiom_only=13  axiom_placeholder=53
-  diakrisis  multi_step=53  axiom_only=52  axiom_placeholder=32
-```
+Use the result to select declarations for inspection. Run actual proof
+certification separately; this command does not perform it implicitly.
 
 ## Classification semantics
 
-Every public declaration receives exactly one **kind** label:
+The labels describe the classifier's syntactic categories:
 
-| Kind | Definition | Health signal |
+| Kind | Classification | Interpretation |
 |---|---|---|
-| `axiom-placeholder` | `public axiom <name>(...)` | Trust-boundary marker — appropriate when the axiom either admits an external publication or registers a Definition-anchor. |
-| `theorem-no-proof-body` | `public theorem <name>` declared **without** a `proof { ... }` block | Defect — the theorem makes a claim the kernel cannot recheck. |
-| `theorem-trivial-true` | `proof { }` (no tactic step) | Defect — the body has zero apply / let steps, which means the kernel discharged nothing. |
-| `theorem-axiom-only` | `proof { apply <single-axiom>(args); }` | Acceptable for one-shot dispatch when the called axiom is genuinely the load-bearing single citation. Flagged for review when it is the *only* dispatch shape across a chapter (suggests the chapter wires every theorem to the same axiom). |
-| `theorem-multi-step` | proof body with ≥ 2 tactic / let steps | Honest structured proof — the kernel-recheck trail walks every cited lemma in turn. |
+| `axiom-placeholder` | A public axiom declaration. | An assumption or marker requiring review, not a proved theorem. |
+| `theorem-no-proof-body` | A theorem without a proof body. | No proof body was available to this walker. |
+| `theorem-trivial-true` | A body with no counted proof steps. | Historical label for an empty shape; it does not determine the proposition. |
+| `theorem-axiom-only` | A nonempty body with at most one counted apply step and no counted let binding. | Includes proof terms and method bodies; the name does not establish an axiom dependency. |
+| `theorem-multi-step` | A nonempty body with multiple counted apply steps or at least one counted let binding. | Structured syntax, not evidence of successful kernel replay. |
 
-The walker recurses into `TacticExpr::Seq` so a body shaped like
-`apply A(p); apply B(p);` correctly counts as 2 apply-steps, not 1.
+The walker descends into tactic sequences. Term bodies and method bodies are
+counted as one step. `apply_count`, `let_bindings` and `proof_body_steps`
+therefore describe the representation of the body, not its mathematical
+strength. The classifier lives in
+`crates/verum_cli/src/commands/audit.rs::classify_proof_body`.
 
 ## JSON schema (v1)
 
-```jsonc
-{
-  "schema_version": 1,
-  "scanned_files": 32,
-  "totals": {
-    "axiom_placeholder": 85,
-    "theorem_no_proof_body": 0,
-    "theorem_trivial_true": 0,
-    "theorem_axiom_only": 65,
-    "theorem_multi_step": 69
-  },
-  "by_lineage": {
-    "msfs":      { "theorem_multi_step": 16, "theorem_axiom_only": 13, "axiom_placeholder": 53 },
-    "diakrisis": { "theorem_multi_step": 53, "theorem_axiom_only": 52, "axiom_placeholder": 32 }
-  },
-  "rows": [
-    {
-      "name": "msfs_theorem_5_1_afnt_alpha",
-      "kind": "theorem-multi-step",
-      "apply_count": 4,
-      "let_bindings": 2,
-      "proof_body_steps": 6,
-      "file": "theorems/msfs/05_afnt_alpha/theorem_5_1.vr"
-    }
-    // ...
-  ]
-}
-```
+| Field | Content |
+|---|---|
+| `schema_version` | `1` for the proof-body inventory. |
+| `scanned_files` | Number of files inspected. |
+| `totals` | Counts by classification. |
+| `by_lineage` | Path-based partitions of those counts. |
+| `rows` | Declaration name, kind, source file and syntactic step counts. |
 
-The `by_lineage` partition uses `/msfs/` and `/diakrisis/` substring
-matches on the file path so corpora following the standard
-`theorems/<lineage>/<chapter>/...` layout get separate totals automatically.
+The `by_lineage` grouping recognizes `/msfs/` and `/diakrisis/` in paths.
+This is an organizational convention, not a semantic analysis of a theory.
+Other audit commands have their own schema versions.
 
 ## CI gate pattern
 
-```bash
-# In CI: fail the build if the corpus regresses below baseline.
-verum audit --proof-honesty --format json > /tmp/honesty.json
-python3 -c '
-import json, sys
-d = json.load(open("/tmp/honesty.json"))
-ok = (
-    d["totals"]["theorem_trivial_true"]   == 0 and
-    d["totals"]["theorem_no_proof_body"]  == 0 and
-    d["by_lineage"]["msfs"]["theorem_multi_step"]      >= 16 and
-    d["by_lineage"]["diakrisis"]["theorem_multi_step"] >= 53
-)
-sys.exit(0 if ok else 1)
-'
-```
+A project may use the inventory to reject missing proof bodies or unexpected
+axiom declarations. Such checks enforce source hygiene. Do not require more
+proof steps as a proxy for correctness: that rewards splitting a term into
+irrelevant intermediate bindings.
+
+For proof admission, require a matching formal statement, explicit
+assumptions and successful certificate replay. Add negative controls that
+change the conclusion, a premise or a bound variable and require rejection.
+The syntactic inventory and the certificate gate serve different purposes.
 
 ## Promoting `@axiom` to `@theorem`
 
-The structural pattern proven out across MSFS / Diakrisis iterations
-1-4 is:
+1. State the original mathematical claim with its full scope and assumptions.
+2. Define the carriers and relations that give those words formal meaning.
+3. Construct a proof term of that exact statement. Any remaining premise is
+   part of the resulting conditional theorem and must remain visible.
+4. Check the term, preserve its source correspondence, and verify that
+   materially altered conclusions are rejected.
 
-1. **Find the natural carrier protocol** the axiom is *about* — e.g.,
-   the `&LAbsCandidate` carrier for MSFS Theorem 5.1, or the
-   `&DiakrisisPrimitive` carrier for the canonical-primitive Axi-N
-   axioms (see [Carrier protocols](#carrier-protocols-shipped-in-coremath)).
-2. **Strengthen the axiom signature** to take a witness:
-   `(p: &Carrier) -> Bool [requires <prereq>] ensures p.<accessor>()`.
-3. **Find downstream theorems** that should cite this axiom.
-4. **Promote each to `@theorem`** with a structured proof body:
-   `proof { apply <ax_n>(p); apply <ax_m>(p); }`. The kernel-recheck
-   trail now walks every cited Axi-N at every site.
-
-Run `verum audit --proof-honesty` after each promotion to confirm the
-multi-step counter increments.
+Replacing an assertion with an accessor returning `true`, assuming the
+conclusion, or adding `apply` steps does not complete this process. A useful
+abstract theorem may quantify over an interface, but applying it to a concrete
+model still requires establishing that interface's conditions.
 
 ## Carrier protocols shipped in `core.math`
 
-The following carrier modules have been added to underwrite
-witness-parameterised promotions in the verum-msfs-corpus:
+Modules such as `core.math.s_definable.class_s_s`,
+`core.math.absolute_layer`, `core.math.strata` and
+`core.math.diakrisis_primitive` provide carrier interfaces. Their names and
+Boolean accessors do not certify the corresponding mathematical results.
+For example, a nonnegative closure-depth field does not establish membership
+in a semantic closure class without the representation and closure proofs.
 
-| Module | Carrier protocol(s) | Purpose |
-|---|---|---|
-| `core.math.s_definable.class_s_s` | `SSMembership`, `RefinedSSMembership { closure_depth: Int{>= 0}, ... }` | MSFS S_S<S> class membership — closure-depth bookkeeping for Lemma 3.4 / O1-O6 |
-| `core.math.absolute_layer` | `LAbsCandidate`, `RefinedLAbsWitness { level: CategoricalLevel, ... }`, `ConditionFS / Pi4 / Pi3Max` | MSFS §4 L_Abs candidate triple (F_S) ∧ (Π_4) ∧ (Π_3-max) |
-| `core.math.dual_absolute_layer` | `DualLAbsCandidate.articulation_view()`, `DualConditionFS / Pi4 / Pi3Max` | MSFS §10 AC/OC dual L_Abs candidate with the Theorem-10.4 Morita-duality projection bridge |
-| `core.math.strata` | `StrictInclusionWitness` (5 accessors) | MSFS Proposition 2.2 (iii) strict-inclusion witnesses (L_Fnd ⊋ L_Cls etc.) |
-| `core.math.diakrisis_primitive` | `DiakrisisPrimitive` (15 accessors), `RefinedDiakrisisPrimitive { t_alpha_rank: Int{>= 0}, ... }` | Diakrisis canonical-primitive 4-tuple (⟪⟫, α_math, ρ, 𝖬) — Axi-0..9 + T-α / T-2f* witness surface |
-| `core.math.open_question` | `OpenQuestion`, `OpenQuestionStatus { OqClosed, OqOpen, OqClosedByLP }` | Typed open-question registry — closure-status sum-type with `is_closed()` / `is_open()` accessors |
+## Aggregator `@theorems`
 
-Each carrier exposes one Bool accessor per axiomatic content claim,
-so a single `&Carrier` value can simultaneously satisfy multiple
-axioms without duplicate parameter passing. Refinement-typed companion
-records (where shipped) carry K-Refine-checked numeric invariants
-inline (e.g. `Int{>= 0}` for closure depth and α-rank).
-
-## Aggregator @theorems
-
-For the canonical-primitive layer specifically, three aggregator
-@theorems compose the per-Axi citations into single layer-satisfaction
-postconditions — downstream theorems cite the aggregator instead of
-N separate Axi-N axioms:
-
-```verum
-// 6-conjunct base layer: Axi-0 + Axi-1 + Axi-2 + Axi-3.
-theorem diakrisis_axi_base_layer_satisfaction(p: &DiakrisisPrimitive) ensures ...
-
-// 7-conjunct realisation layer: Axi-4 + Axi-5 + Axi-6 + Axi-7 + Axi-8 + Axi-9.
-theorem diakrisis_axi_realisation_layer_satisfaction(p: &DiakrisisPrimitive) ensures ...
-
-// 2-conjunct extension layer: T-α + T-2f* + T-2f**.
-theorem diakrisis_extension_layer_satisfaction(p: &DiakrisisPrimitive) ensures ...
-
-// 15-conjunct top-level: full canonical-primitive satisfaction.
-theorem diakrisis_canonical_primitive_satisfaction(p: &DiakrisisPrimitive) ensures ...
-```
-
-A similar 8-citation aggregator exists for MSFS Appendix A's external
-categorical preliminaries (`msfs_appendix_A_categorical_preliminaries_full`).
+Combining named results requires checking the exact types and premises of
+their applications. Resolving every dependency in an `apply` graph is useful,
+but does not prove the aggregate conclusion. The same rule applies when
+some dependencies already have valid native certificates: their judgments
+must match the statements used by the aggregate proof.
 
 ## Related surfaces
 
-* [`verum audit --coord`](/docs/verification/msfs-coord) — per-theorem
-  `(Framework, ν, τ)` MSFS coordinate.
-* [`verum audit --coherent`](/docs/verification/actic-dual) — operational
-  coherence (α-cert ⟺ ε-cert correspondence).
-* [`verum audit --framework-axioms`](/docs/verification/framework-axioms)
-  — every `@framework(...)` citation grouped by lineage.
-* [`verum audit --kernel-rules`](/docs/verification/trusted-kernel) —
-  the 38 kernel inference rules implemented in `verum_kernel`
-  (Var/Univ/Pi/Lam/App/Sigma/Pair/Fst/Snd structural fragment plus
-  Cubical, Refinement, Quotient, Inductive, SMT/Axiom, and Diakrisis
-  layers).
+- [Proof export](./proof-export.md): admitted formats and source-linked certification.
+- [Framework axioms](./framework-axioms.md): explicit trust inventory.
+- [Kernel module map](./kernel-module-map.md): checkers and diagnostic modules.
+- [Audit protocol](../architecture-types/audit-protocol.md): per-gate evidence and exit behavior.

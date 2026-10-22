@@ -10,14 +10,16 @@ A knowledge system needs more than a Boolean “verified” field. It must
 retain what was checked, under which assumptions, by which mechanism,
 and whether that check completed. This page defines a narrow, reproducible
 Verum profile and the interface requirements for using it in Noesis.
-The certificate checker is available; the Noesis adapter and receipt store
-are integration requirements, not an existing Verum command.
+The portable native checker and the scoped source elaborator are available.
+Noesis integrates them through bounded workers; stored success flags never
+replace replay of the exact artifact.
 
 ## The minimal proof-term profile
 
 The input is a closed `.vproof` JSON certificate containing `term` and
 `claimed_type`. The authority is
-`verum_kernel::proof_checker::Certificate::verify`, exposed by
+`verum_proof::proof_checker::Certificate::verify` (re-exported by
+`verum_kernel`), exposed by
 `verum check-proof`. Its calculus includes dependent functions, dependent
 pairs and the implemented identity-type fragment. It has no arbitrary
 axiom or solver-witness constructor.
@@ -27,10 +29,71 @@ in a conditional theorem. An unsupported foundation or construction requires
 a different declared checker profile; a foundation tag cannot extend the
 inference rules of this one.
 
+### Exact Verum source profile
+
+`verum_source_proof` uses the production FastParser and an explicit logical
+interpretation, `verum-source-pi-id/1`. It retains an ordered, typed binder
+context with stable identities before lowering to native de Bruijn terms.
+Types, values, explicit premises and universe names remain distinct. The
+closed statement includes **all** parameters: accepting `Π(h : P). P`
+does not establish `P` without `h`.
+
+The transport is a strict JSON envelope containing `profile`, `source` (actual
+Verum UTF-8 text), and `declaration` (the selected top-level declaration).
+This is a source carrier, not a second theorem language. A small example:
+
+```verum
+public theorem composition(a: Type, b: Type, c: Type,
+    f: fn(a) -> b, g: fn(b) -> c, x: a): c proof = g(f(x));
+```
+
+In this **logical profile**, function types denote total dependent functions.
+This does not certify termination or contracts of arbitrary executable functions.
+The supported fragment includes explicit types/universes, dependent function
+families, application, equality/identity types and supported proof constructors.
+Unknown names are rejected; imports and unrelated top-level axioms are not
+silently admitted to the selected theorem's context. Library imports, effects,
+recursive definitions and unsupported syntax need their own checked extensions.
+
+Build the standalone host worker without LLVM:
+
+```sh
+VERUM_NO_AUTO_PRECOMPILE=1 cargo build -p verum_source_proof --bin verum-source-replay
+```
+
+The repository's configured Rust toolchain is required. A trusted host runs
+`verum-source-replay --worker` with a source envelope on stdin, through the
+shared `verum_proof::process::run_worker` supervisor. Worker execution has
+input/output, wall time, CPU, stack and memory limits. Direct use of the worker
+is a low-level interface; the host supervisor supplies the wall-time bound.
+
+A successful report contains the complete source SHA-256, declaration byte span
+and digest, the elaborator identity, ordered telescope, scoped conclusion,
+universe correspondence and native judgment. The elaborator identity covers
+the parser and translation implementation; the native checker has a separate
+identity. Both substitution and normalization-by-evaluation replay must agree.
+Source hashing identifies the input; it does not prove the translation correct.
+Independent statement/term oracles and adversarial scope tests exercise that
+additional boundary.
+
+Noesis admits this carrier as `application/vnd.verum.source+json`. Only trusted
+startup configuration selects `--verum-source-checker /absolute/path`; corpus
+content and remote requests cannot choose a program. The engine checks source
+and span identities, reconstructs the full statement from the telescope, checks
+its equality to the certificate's claimed type, and repeats native replay using
+its own installed checker. An elaborator/native disagreement is inconclusive.
+
+Exact Source dependencies preserve paper quotations and revisions. They **do
+not** certify the semantic equivalence of prose and formalization. Archive
+restoration preserves those bytes and links, and verification is run again.
+A report for one revision cannot certify a changed proof or a future revision
+through a historical snapshot.
+
 ### Source-to-goal boundary
 
 A source declaration and a correctly typed kernel term are different inputs.
-The source bridge enforces the following admission limits:
+The older compiler/tactic bridge is a different API from the scoped source
+profile above. Its admission limits remain:
 
 | Entry point | Accepted input or explicit refusal |
 |---|---|
@@ -54,8 +117,8 @@ Free proposition atoms may be generalized as opaque formal parameters;
 this is distinct from translating a declared source parameter's type.
 Noesis must bind the exact formal `claimed_type` to its intended statement.
 A producer's “verified” label does not establish that correspondence. The
-[external proof exporter](./proof-export.md) is another route with partial
-translations and scaffolds.
+[external proof exporter](./proof-export.md) refuses proof targets until it can
+preserve the exact typed source statement.
 
 The source boundary is implemented in
 [`verification_goal.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/src/verification_goal.rs)

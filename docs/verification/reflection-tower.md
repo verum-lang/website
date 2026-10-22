@@ -1,239 +1,88 @@
 ---
 sidebar_position: 9
-title: "Reflection tower — MSFS-grounded meta-soundness"
-description: "Verum's structured Gödel-2nd escape: MSFS Theorems 9.6 + 8.2 + 5.1 collapse the naive ordinal tower into four structural stages (Base / Stable / Bounded / AbsoluteEmpty)."
+title: "Reflection tower — structural diagnostics"
+description: "Inspect declared universe footprints and finite reflection samples without mistaking them for checked mathematical proofs."
 slug: /verification/reflection-tower
 ---
 
-# Reflection tower — MSFS-grounded meta-soundness
+# Reflection tower
 
-Gödel's second incompleteness theorem says that no consistent
-formal system strong enough to express arithmetic can prove its
-own consistency. A proof assistant claiming *kernel soundness*
-must therefore delegate the trust to a stronger meta-system.
+`verum audit --reflection-tower` inspects declared rule footprints and
+finite reflection samples. It does not replay a proof of consistency,
+meta-classification stabilisation, a cardinal bound, or an empty absolute
+stratum. Its proof status is `structural_only`, even when every observed
+structural condition holds.
 
-A naïve reading suggests building this delegation as an *unbounded
-ordinal hierarchy*: REF^0, REF^1, REF^2, ..., each level strictly
-stronger than the last (Feferman 1962, Pohlers 2009 ordinal
-analysis). That intuition is **wrong** for any classifier-grade
-meta-theory, and Verum's reflection-tower implementation grounds
-the structured Gödel escape on the actual mathematical situation:
-**MSFS** (Sereda 2026, *The Moduli Space of Formal Systems*)
-proves that the tower **collapses**.
+This distinction determines how to use the report. It can expose drift in
+metadata and sampled calculations. It cannot establish a universal theorem
+from a finite set of indices, turn a citation into a proof, or circumvent
+Gödel's incompleteness theorems.
 
-## 1. The two MSFS theorems that change the picture
+## What the stages describe
 
-Two theorems in the MSFS corpus collapse the naive tower.
+The report retains four named stages from the reflection model:
 
-### 1.1 Theorem 9.6 — Meta-classification stabilisation
+| Constructor | Inspected data | What is not established |
+|---|---|---|
+| `Base` | Declared per-rule axioms and inaccessible-cardinal footprint. | That the rule is derivable from those assumptions. |
+| `StableUnderUniverseAscent` | Sampled witness flags at selected universe indices. | Stabilisation at every index or equivalence of the underlying theories. |
+| `BoundedByOneInaccessible` | Comparison of declared cardinal indices with the configured ceiling. | A relative-consistency theorem for an entire reflective tower. |
+| `AbsoluteBoundaryEmpty` | The model's recorded boundary condition and citation. | Nonexistence of a mathematical object satisfying the source statement. |
 
-> For every `k ≥ 1`, the meta-iteration stack `𝔐^(Cls·k)`
-> realises the SAME `(∞,∞)`-theory as `𝔐^(Cls)`.
+Names such as `ConstructiveMetaStabilisationWitness` and legacy fields
+containing `discharge` belong to the model's API. Their Boolean values are
+observations, not inhabitants of the propositions named by the model.
+The authoritative proof status accompanies them explicitly.
 
-That is: **iterated reflection stabilises at the theory level**.
-Adding an *n*-th meta-iteration above the kernel does not produce
-a new theory; it only ascends the *set-theoretic universe*
-`κ_1 < κ_2 < ⋯`. The theories `𝔐^(Cls·1)` and `𝔐^(Cls·17)` agree
-as `(∞,∞)`-categorical objects (Barwick–Schommer-Pries unicity);
-they are distinguishable only by their inhabiting Grothendieck
-universe.
+## Run the diagnostic
 
-The verdict for every `k ≥ 1` is therefore the same as the verdict
-for `k = 1`. There is **nothing to gain** by climbing further.
-
-### 1.2 Theorem 8.2 — Reflective tower boundedness
-
-> For every Rich-metatheory `S`,
-> `Con(reflective tower over S) = Con(S) + κ_inacc`.
-
-That is: **adding the entire reflective tower over `S` costs
-exactly one additional inaccessible cardinal**. There is no
-unbounded consistency-strength ascent.
-
-The kernel's role is to verify that the rules' required meta-
-theory stays bounded by `2 + 1 = 3` strongly-inaccessibles (the
-default ZFC + 2-inacc plus the one extra `κ_inacc` Theorem 8.2
-licenses). For the current rule roster this holds vacuously —
-no rule requires more than two inaccessibles.
-
-### 1.3 Theorem 5.1 — AFN-T α (Absolute boundary)
-
-> The absolute foundation stratum `𝓛_Abs` is empty.
-
-That is: **no extension of the reflection tower can reach an
-absolute stratum**. No Rich-metatheory admits a candidate
-satisfying `(F_S) ∧ (Π_4) ∧ (Π_3-max)` simultaneously. The
-boundary closes the tower from above.
-
-## 2. The four structural stages
-
-`ReflectionStage` is consequently a *four-stage* canonical
-hierarchy — not a five-plus ordinal-indexed family. The four
-stages, from base to boundary:
-
-| Constructor                  | Stage |
-|------------------------------|-------|
-| `Base`                       | REF<sup>0</sup> — per-rule footprint. |
-| `StableUnderUniverseAscent`  | REF<sup>≥1</sup> — Theorem 9.6. |
-| `BoundedByOneInaccessible`   | REF<sup>ω</sup> — Theorem 8.2. |
-| `AbsoluteBoundaryEmpty`      | REF<sup>Abs</sup> — Theorem 5.1. |
-
-| Stage | Verdict source | Citation |
-|-------|----------------|----------|
-| **REF^0** Base | per-rule footprint enumeration over ZFC + 2·κ | `kernel_meta_soundness_holds` (algorithmic) |
-| **REF^≥1** Stable | every k ≥ 1 reduces to REF^1 = REF^0 | MSFS Theorem 9.6 (meta-stabilisation) |
-| **REF^ω** Bounded | tower-instantiation ≤ 3 inaccessibles | MSFS Theorem 8.2 (reflective-tower boundedness) |
-| **REF^Abs** Empty | absolute stratum is empty by AFN-T α | MSFS Theorem 5.1 (boundary lemma) |
-
-Each stage is *algorithmically discharged* — the audit gate runs
-a Rust function that returns `true` iff the discharge holds. The
-discharges are not opaque citations; they are computable
-verdicts.
-
-## 3. The discharge functions
-
-Each stage has a corresponding boolean discharge predicate
-exposed by `verum_kernel::reflection_tower`:
-
-| Predicate                                  | Verdict |
-|--------------------------------------------|---------|
-| `base_discharges()`                        | The per-rule footprint is bounded by ZFC + 2·κ — delegates to `kernel_meta_soundness_holds()`. |
-| `stable_under_universe_ascent_discharges()`| Every `k ≥ 1` reduces to the base stage (MSFS Theorem 9.6). Delegates to `base_discharges()`. |
-| `omega_bounded_discharges()`               | The tower instantiation requires no more than three inaccessibles (MSFS Theorem 8.2). Computed by walking every kernel rule's `required_meta_theory()` and confirming the largest inaccessible-index is ≤ 3. |
-| `absolute_boundary_empty_discharges()`     | The absolute stratum 𝓛<sub>Abs</sub> is uniformly empty (MSFS Theorem 5.1). Holds unconditionally on the current corpus. |
-
-The `omega_bounded` discharge walks every kernel rule's
-`required_meta_theory()`, picks the largest inaccessible-index,
-and confirms it is ≤ 3. The current rule roster requires only
-`κ_1` and `κ_2`, so the bound holds with one inaccessible to
-spare.
-
-## 4. The constructive `MetaStabilisationWitness`
-
-The kernel does more than cite Theorem 9.6 — it ships a
-**constructive witness** (`ConstructiveMetaStabilisationWitness`)
-that the audit pipeline synthesises and consumes. The witness has
-three boolean accessors mirroring the Verum-side `MetaStabilisationWitness`
-protocol from `core/math/meta_cls.vr`:
-
-| Accessor | What it certifies |
-|----------|-------------------|
-| `a_m_cls_is_meta_cls()` | (M1)–(M5) inheritance: the meta-iterate inherits the classifier conditions. |
-| `b_pi_inf_inf_plus_1_equivalent()` | Π_(∞,∞) ↪ Π_(∞,∞+1) equivalence (Theorem A.7 stabilisation). |
-| `b_universe_ascent_with_theory_idempotence()` | Meta-iteration stabilises at the theory level while ascending κ_k. |
-
-When all three accessors hold for a given universe-index `k`, the
-corresponding Verum-side
-`msfs_theorem_9_6_meta_classification_stabilization` theorem
-discharges with the same verdict.
-
-This is the load-bearing constructive content: not just *citation*
-of Theorem 9.6 but algorithmic *execution* of its witness conditions
-at audit time.
-
-## 5. The audit gate
-
-`verum audit --reflection-tower` walks the four stages, runs the
-discharge functions, and emits a structured report:
-
-```text
-$ verum audit --reflection-tower
-        --> Reflection-tower audit · MSFS-grounded meta-soundness
-
-  REF^0  — Base                  ✓ discharged · kernel_meta_soundness_holds
-  REF^≥1 — Stable                ✓ discharged · MSFS Theorem 9.6
-  REF^ω  — Bounded               ✓ discharged · MSFS Theorem 8.2
-                                   max inaccessible required: 2 (≤ 3 budget)
-  REF^Abs — Boundary empty       ✓ discharged · MSFS Theorem 5.1 (AFN-T α)
-
-  project required minimum: REF^0 (ZFC + 2·κ)
-  project required maximum: REF^ω (Con(S) + κ_inacc)
-
-  4 / 4 stages discharged
-  verdict: load-bearing
-  duration: 0.3s
+```bash
+verum audit --reflection-tower --format json
 ```
 
-Each discharge is auditable. The MSFS citations point to the
-machine-verified `.vr` files in the corpus:
+The command writes `target/audit-reports/reflection-tower.json`. It exits
+nonzero because the report contains unverified proof obligations. A positive
+structural observation does not make that proof gate pass.
 
-| Citation | Corpus path |
-|----------|-------------|
-| Base footprint | `verum_kernel::zfc_self_recognition` |
-| Theorem 9.6 | `theorems/msfs/09_meta_classification/theorems_9_3_9_4_9_6.vr` |
-| Theorem 8.2 | `theorems/msfs/08_bypass_paths/theorems_8_1_to_8_8.vr` |
-| Theorem 5.1 | `theorems/msfs/05_afnt_alpha/theorem_5_1.vr` |
+The report uses `schema_version: 4` and separates these fields:
 
-## 6. Why "no layering" is load-bearing
+| Field | Meaning |
+|---|---|
+| `proof_status` | `structural_only`: no mathematical proof was replayed by this audit. |
+| `load_bearing` | `false`: structural diagnostics do not discharge the stated obligations. |
+| `structurally_consistent` | Whether the inspected structural conditions agree. |
+| `structurally_positive_stage_count` | Number of stages with positive diagnostics. |
+| `structurally_positive_sample_count` | Number of sampled indices with positive diagnostics. |
+| `discharged_stage_count` | Zero; not an alias for the positive-stage count. |
+| `constructive_discharged_count` | Zero; not an alias for the positive-sample count. |
+| `base_footprint.declared_footprint_within_ceiling` | Whether the declared footprint fits the configured ceiling. |
 
-A natural objection: *"a four-stage tower is less impressive than
-a five-stage tower with cited Pohlers / Beklemishev / Schütte
-discharges."* The opposite is true. Every level the naive picture
-adds — REF^2, REF^3, REF^ω₁, ... — is, *post-MSFS*, a category
-error. Theorem 9.6 says those levels are not stronger theories;
-they are the *same theory* in a larger universe. Adding levels
-manufactures false content.
+Each entry in `stages` contains `diagnostic_holds`,
+`proof_status: "structural_only"`, and `discharges: false`. Entries in the
+legacy `constructive_discharges_at_sampled_indices` array have the same
+separation. Bibliographic references and source paths identify the intended
+mathematics; they do not certify its translation or proof.
 
-The four MSFS stages are the *minimal* set that the actual
-mathematical situation supports:
+## Trust boundary
 
-- **Base** — grounded by per-rule footprint (algorithmic).
-- **Stable** — the entire ordinal interior, collapsed by Theorem 9.6.
-- **Bounded** — the limit, controlled by Theorem 8.2.
-- **AbsoluteEmpty** — the boundary, sealed by Theorem 5.1.
+`VerificationVerdict::StructuralOnly` prevents aggregation from treating a
+positive diagnostic as a proof. An accepted certificate for some other
+statement cannot discharge these remaining obligations.
 
-Anything more is decoration; anything less leaves a gap in the
-boundary structure.
+To establish one of the mathematical claims, supply its exact formal
+statement, all assumptions, and a proof term checked against that statement.
+The native proof route replays judgments using the substitution and
+normalization checkers in `verum_proof`. Source-level certification also
+requires faithful elaboration of the selected source declaration. Neither
+route derives an external theorem from the reflection model's flags.
 
-## 7. The kernel ↔ corpus duality
+The implementation is in `crates/verum_kernel/src/reflection_tower.rs`;
+CLI serialization and exit behavior are in
+`crates/verum_cli/src/commands/audit.rs`.
 
-Verum's reflection-tower implementation has two symmetric
-components:
+## Related documentation
 
-- **Kernel side** (`verum_kernel::reflection_tower`) — Rust
-  implementation; runs at audit time; algorithmically discharges
-  each stage.
-- **Corpus side** (`core/math/meta_cls.vr` + the MSFS `.vr` files) —
-  Verum-language proofs of Theorems 5.1, 8.2, 9.6 themselves.
-
-The kernel side *cites* the corpus side via `MsfsCitation::corpus_path()`.
-The corpus side is independently verified by the trusted-base
-kernel, the NbE kernel, and the kernel_v0 manifest verifier
-(the [three-kernel architecture](./two-kernel-architecture.md)).
-The two sides cooperate: corpus proves the theorems, kernel
-surfaces their verdicts at audit time.
-
-## 8. Comparing with classical proof-theoretic intuition
-
-A summary table for readers familiar with classical reflection
-hierarchies:
-
-| Classical picture | MSFS-grounded picture |
-|------------------|----------------------|
-| Unbounded ordinal hierarchy REF^0 .. REF^ω₁ | 4-stage structural collapse |
-| Each level strictly stronger | Levels k ≥ 1 = same theory (Theorem 9.6) |
-| Citations: Gödel / Tarski / Schütte / Pohlers / Beklemishev | Citations: MSFS 9.6 / 8.2 / 5.1 |
-| Consistency-strength climbs unbounded | Bounded by Con(S) + κ_inacc (Theorem 8.2) |
-| No upper bound | Absolute boundary empty (Theorem 5.1, AFN-T α) |
-
-The MSFS picture is *strictly stronger*: it covers the same trust
-delegation (the kernel's soundness rests on a stronger meta-theory)
-but eliminates the false-content levels and provides explicit
-upper bounds.
-
-## 9. Cross-references
-
-- [Trusted kernel](./trusted-kernel.md) — the LCF-style core
-  whose meta-soundness the tower establishes.
-- [Three-kernel architecture](./two-kernel-architecture.md) — the
-  differential check on the kernel implementations the tower
-  rests on.
-- [Framework axioms](./framework-axioms.md) — the citation
-  inventory the MSFS theorems contribute to.
-- [MSFS coord](./msfs-coord.md) — the operational MSFS-coordinate
-  machinery.
-- [Audit protocol](../architecture-types/audit-protocol.md) —
-  the gate runner.
-- [Anti-pattern AP-011 AbsoluteBoundaryAttempt](../architecture-types/anti-patterns/articulation.md#ap-011)
-  — the related stratum-admissibility check that prevents claims
-  beyond the reflection tower's `LAbs` boundary.
+- [Proof-honesty audit](./proof-honesty.md): proof-body shape and evidence inventories.
+- [Proof export](./proof-export.md): source correspondence and certificate boundaries.
+- [Kernel module map](./kernel-module-map.md): distinct verification and audit surfaces.
+- [Audit protocol](../architecture-types/audit-protocol.md): interpretation of per-gate reports.

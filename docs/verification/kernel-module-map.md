@@ -7,16 +7,10 @@ slug: /verification/kernel-module-map
 
 # Kernel module map
 
-The `verum_kernel` crate is the trusted infrastructure for Verum's
-verification machinery. As of the current revision it ships **67
-top-level modules + a 12-file `soundness/` submodule**. This page
-is the canonical inventory: every module listed, what it does,
-which trust layer it sits on, and which audit gate consumes it.
-
-The discipline of an enumerable trust boundary cuts both ways:
-auditors get a complete map; new contributors learn the codebase
-faster. There is no implicit trust — every module's role is
-documented.
+The `verum_kernel` crate contains proof checkers, inference machinery,
+metadata registries and diagnostic audits. Membership in this crate does not
+give every module proof authority. This map distinguishes their roles; a trust
+review must follow the particular admission path used by a certificate.
 
 For the layered architecture overview see
 [Trusted kernel](./trusted-kernel.md). For the audit gates that
@@ -31,21 +25,22 @@ The minimum that must be trusted for soundness:
 
 | Module | Role |
 |--------|------|
-| `proof_checker` | **The trusted base (Algorithm A).** Extended-CoC checker (Π/Σ/Id with universe polymorphism + the four DEFECT-{1,2,3,4} fixes) — 13 inference rules, bidirectional `infer` + `check`, fuel-bounded `whnf`, capture-avoiding `subst`. |
-| `proof_checker_nbe` | **Second algorithmic kernel (Algorithm B).** Normalisation-by-Evaluation with closures + level-indexed `quote`. Mirrors all four DEFECT fixes including `Neutral::NStuck` for the App-of-non-function gate. See [differential testing](./two-kernel-architecture.md). |
-| `kernel_registry::KernelV0Kernel` | **Third algorithmic kernel (Algorithm C).** Manifest-driven bootstrap verifier — anchors structural type-check, manifest audit-cleanness, meta-soundness footprint, per-rule strict-intrinsic dispatch. |
-| `proof_checker_meta` | Universe-lift mechanism for meta-mode (Gödel-2nd workaround foundation). Hosts the canonical `shift_universes` walker + the binding-site-correct `shift_universes_in_context`. |
+| `proof_checker` | Substitution-based Π/Σ/Id checker: bidirectional `infer` / `check`, universe handling, fuel-bounded `whnf` and capture-avoiding substitution. |
+| `proof_checker_nbe` | Normalization-by-evaluation checker using closures and level-indexed quotation. See [differential testing](./two-kernel-architecture.md) for agreement checks on supplied judgments. |
+| `kernel_registry::KernelV0Kernel` | Manifest-driven bootstrap verifier. Structural checks, declared footprints and intrinsic diagnostics do not replace replay of a native proof term. |
+| `proof_checker_meta` | Universe-lift operations, including `shift_universes` and `shift_universes_in_context`. A term transformation does not establish a theorem of self-consistency. |
 | `support` | The shared CoreTerm normaliser family (`normalize` / `normalize_full` / `normalize_with_axioms` / `normalize_with_inductives` over a `NORMALIZE_STEP_LIMIT`-bounded driver), capture-avoiding `substitute`, `definitional_eq` / `definitional_eq_with_axioms`, the cubical face/interval markers (`is_face_top` / `is_face_bot` / `is_interval_one`), and the SMT-cert replay surface (`replay_smt_cert` / `replay_smt_cert_with_obligation`). Not Layer-A trusted in the Π/Σ/Id sense — but Layer-A trusted for **every** broader kernel rule that consumes a normaliser. |
 | `term` | The `CoreTerm` data type — proof-term representation. 31 constructors covering Π/Σ + cubical (PathTy/Refl/PathOver/HComp/Transp/Glue) + refinement + quotient (Quotient/QuotIntro/QuotElim) + inductive (Inductive/Elim) + SMT-proof + framework axiom + Diakrisis (EpsilonOf/AlphaOf/ModalBox/ModalDiamond/ModalBigAnd/Shape/Flat/Sharp). |
 | `ctx` | Typing context (`Context`) + framework-axiom attribution (`FrameworkId`). Surface: `extend` / `lookup` / `depth`; every registered axiom carries a `FrameworkId` so `verum audit --framework-axioms` can enumerate the full external-trust set. |
 | `errors` | `CheckError` / `KernelError` — the kernel's error surface. |
-| `verdict` | Canonical `VerificationVerdict` type — single source of truth for verification verdicts across the kernel + audit surface (replaces 5 parallel verdict types from earlier revisions). |
+| `verdict` | Canonical `VerificationVerdict`, including `StructuralOnly`. Aggregation preserves structural obligations; they cannot become discharged proofs by combination with unrelated accepted judgments. |
 | `canonical_battery` | The 24-cert canonical battery — single source of truth shared by `verum audit --differential-kernel` (in-process N-kernel) and `--differential-lean-checker` (Rust ↔ Lean). Each `CanonicalCert` carries its own `expected_outcome` (no parallel lookup table). |
 
-These ten modules are the **trusted-base TCB**. A reviewer
-auditing Verum's soundness reads these top-to-bottom; every
-other module either *cites* one of these or *consumes* its
-output without modifying its trust.
+The portable native admission path in `verum_proof` uses the substitution
+and normalization checkers for an exact judgment. Source certification adds
+the parser and scoped elaborator to that path. Other `CoreTerm` rules, solver
+adapters and bootstrap manifests have separate trust obligations; citing a
+native checker does not establish the correctness of those adapters.
 
 ---
 
@@ -67,13 +62,15 @@ These modules surface *kernel-implementation* trust at audit time
 | Module | Role |
 |--------|------|
 | `zfc_self_recognition` | The 7-rule `KernelRuleId` audit registry + per-rule ZFC + inaccessible decomposition. |
-| `reflection_tower` | MSFS-grounded 4-stage meta-soundness ([reflection tower](./reflection-tower.md)). |
+| `reflection_tower` | Declared footprints and finite reflection diagnostics; `StructuralOnly`, no proof discharge ([reflection tower](./reflection-tower.md)). |
 | `reflection` | Meta-level reflection primitives (Gödel-coding, term reflection). |
 | `godel_coding` | Gödel-numbering for meta-level proof manipulation. |
-| `proof_checker_meta` | Universe-lift wrapper running the proof_checker with one extra inaccessible. |
+| `proof_checker_meta` | Universe-shifting wrapper; its exact term and context transformations require their own checks. |
 
-These modules realise the *meta-soundness* layer that protects
-the trusted base from Gödel-2nd-style self-reference.
+These modules organize the intended meta-theory and its diagnostics. A
+finite sample, declared cardinal footprint or bibliography entry is not a
+proof of the named mathematical theorem. In particular, this registry does
+not establish a way around Gödel's incompleteness theorems.
 
 ---
 
@@ -106,7 +103,7 @@ For the surface documentation see
 | `verification_goal` | Unified `VerificationGoal` type — the single verification surface covering function contracts, theorem propositions, and refinement-type predicates. |
 | `separation_logic` | Heap-aware separation-logic primitives — the verification surface for stateful programs ([separation logic](./separation-logic.md)). |
 | `cert` | `SmtCertificate` envelope (schema-versioned) carrying a backend-specific proof trace plus obligation hash; the mechanism that takes Z3 / CVC5 / E / Vampire / Alt-Ergo **out of the TCB** — a buggy solver's spurious proof fails replay rather than leaking into accepted theorems. |
-| `intrinsic_dispatch` | Kernel intrinsic registry dispatch (every `kernel_*` audit-time function). |
+| `intrinsic_dispatch` | Intrinsic diagnostic dispatch. Computed flags and citations produce structural evidence; they do not prove the theorem named by an annotation. |
 | `inductive` | Inductive type registration + strict-positivity walker (`K-Pos`). |
 | `infer` | Type inference machinery for the broader kernel surface. |
 
@@ -156,20 +153,23 @@ the [framework-axiom audit](./framework-axioms.md).
 
 ### 7a. The `soundness/` submodule
 
-The kernel exports a per-foundation soundness theorem to **four
-independent proof assistants** (Lean 4, Coq / Rocq, Isabelle/HOL,
-Cubical Agda). The exporter lives in its own submodule:
+The `soundness/` submodule contains rule-model emitters for external proof
+assistants. These are separate from native source certification. A generated
+model can assume its own typing rules, postulate a result, or prove a claim
+about a simplified representation; acceptance by an external prover alone
+does not establish soundness of the Verum implementation or correspondence
+with an original corpus theorem. The modules include:
 
 | Module | Role |
 |--------|------|
-| `soundness::mod` | The IOU axiom registry (`iou_axiom_specs`), the canonical 38-rule list (`canonical_rules`) with `LemmaStatus = Proved | DischargedByFramework | Admitted`, and the cross-foundation drift checker. Empty IOU registry (`iou_axiom_specs()` returns `vec![]`) — every kernel rule is either `Proved` or `DischargedByFramework` with a cited upstream proof. |
+| `soundness::mod` | The IOU axiom registry (`iou_axiom_specs`), the canonical 38-rule list (`canonical_rules`) with `LemmaStatus = Proved | DischargedByFramework | Admitted`, and the cross-foundation drift checker. These are manifest classifications: an empty IOU list or a cited framework does not itself supply a checked proof. |
 | `soundness::lean` | `LeanBackend` — emits `inductive Typing : Ctx → CoreTerm → CoreTerm → Prop` with all 38 introduction rules + a case-analysis `theorem kernel_soundness : ∀ rule, Soundness rule`. |
 | `soundness::coq` | `CoqBackend` — emits the same shape in Coq syntax, with `apply (T_var ...)` style lemma proofs and the same case-analysis aggregate theorem. |
 | `soundness::isabelle` | `IsabelleBackend` — emits Isabelle/HOL with the 9 structural rules as an `inductive Typing` declaration; the remaining 29 rules as **independent per-rule `axiomatization where T_<n>: "..."` blocks** (no `and`-chaining), each axiom statement data-driven from the rule's `assumes`/`shows` lemma signature. Per-rule lemmas with status `Admitted` / `DischargedByFramework` emit as their own `axiomatization where K_<n>_sound: "..."` blocks (the lemma name registers as a kernel-level fact without requiring `quick_and_dirty` mode). The aggregate theorem is the `lemmas kernel_full_soundness =` bundle — no case-of `definition Soundness`, since Isabelle's eager `definition` elaboration cannot handle a 38-branch case-of body at universe-polymorphic free-variable density. |
-| `soundness::agda` | `AgdaBackend` — emits Cubical Agda (`{-# OPTIONS --cubical #-}`); per-rule `K_<n>-sound` postulates whose signatures are type-checked end-to-end, plus per-IOU `<Rule>_iou : Ctx → … → Set` postulate blocks generated via `render_iou_axioms_agda()` (the `_agda` member of the four-foundation IOU lockstep — see `IouArgType::agda_repr()`). Cubical Agda is the only major prover with native CCHM cubical support, so it closes the cubical-fragment gap that Lean / Coq / Isabelle leave at the meta-theoretic level. |
+| `soundness::agda` | `AgdaBackend` — emits Cubical Agda (`{-# OPTIONS --cubical #-}`); per-rule `K_<n>-sound` postulates whose signatures are type-checked end-to-end, plus per-IOU `<Rule>_iou : Ctx → … → Set` postulate blocks generated via `render_iou_axioms_agda()` (the `_agda` member of the four-foundation IOU lockstep — see `IouArgType::agda_repr()`). Type-checking those postulates does not prove them. |
 | `soundness::discharge_status` | The `DischargeStatus` / `LemmaStatus` ADT shared with `kernel_v0_manifest` and `codegen_attestation`. |
 | `soundness::kernel_v0_manifest` | The `kernel_v0` manifest verifier table (10 bootstrap rules: K-Var/K-Univ/K-Pi-Form/…). |
-| `soundness::apply_graph` | Apply-graph audit walker for `verum audit --apply-graph`. |
+| `soundness::apply_graph` | Dependency-resolution walker. Reports `dependencies_resolved` separately from `proof_status` and `unverified_theorems`; it does not type-check proof applications. |
 | `soundness::corpus_export` | Per-foundation corpus serialiser. |
 | `soundness::expr_translate` + `soundness::proof_body_translate` | AST → per-foundation expression / tactic-script translators. |
 
@@ -211,8 +211,9 @@ codegen pass's per-pass invariant.
 | `round_trip` | `K-Round-Trip` kernel rule — OC/DC translation round-trip admission (Theorem 108.T / Theorem 16.10). Surface: `check_round_trip{,_v2}`, `canonical_form`, `enumerate_bridge_admits`. Drives `verum audit --round-trip` (108.T round-trip per theorem). |
 | `cross_format_gate` | Cross-format CI hard gate — coverage matrix tracking which proofs export to which prover, surfacing gaps to the audit pipeline. |
 
-These modules underwrite the [proof-export](./proof-export.md)
-pipeline's soundness claims.
+These modules record translation and coverage checks. The public
+[proof-export](./proof-export.md) admission boundary remains separate: lossy
+foreign theorem export is rejected rather than emitted as a certificate.
 
 ---
 
