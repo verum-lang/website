@@ -441,14 +441,46 @@ occ.remove_entry() -> (K, V)
 
 ### Iteration
 
+| Method | Iterator | Item |
+|---|---|---|
+| `iter()` | `MapIter<K, V>` | `(K, V)` |
+| `iter_mut()` | `MapIterMut<K, V>` | `(&K, &mut V)` |
+| `into_iter()` | `MapIntoIter<K, V>` | `(K, V)`; consumes the map |
+| `keys()` | `MapKeys<K, V>` | `K` |
+| `values()` | `MapValues<K, V>` | `V` |
+| `values_mut()` | `MapValuesMut<K, V>` | `&mut V` |
+| `drain()` | `MapDrain<K, V>` | `(K, V)`; consumes entries |
+
+`keys()` and `values()` return iterators. Call `next()` to advance them;
+exhaustion returns `Maybe.None`. `keys_list()` and `values_list()` collect
+owned values into lists and require `Clone` for the corresponding item type.
+These operations have interpreter coverage for populated and empty maps.
+
+This complete example sorts collected keys to obtain a predictable order:
+
 ```verum
-m.iter()        // MapIter<K, V>        Item = (K, V)
-m.iter_mut()    // MapIterMut<K, V>     Item = (&K, &mut V)
-m.into_iter()   // MapIntoIter<K, V>    Item = (K, V); consumes m
-m.keys()        // MapKeys<K, V>        Item = K
-m.values()      // MapValues<K, V>      Item = V
-m.values_mut()  // MapValuesMut<K, V>   Item = &mut V
-m.drain()       // MapDrain<K, V>       Item = (K, V); consuming
+fn main() {
+    let mut scores: Map<Text, Int> = Map.new();
+    scores.insert("Ada", 7);
+    scores.insert("Lin", 11);
+    let mut names = scores.keys_list();
+    names.sort();
+    assert_eq(names.len(), 2);
+    assert_eq(names[0], "Ada");
+    assert_eq(names[1], "Lin");
+
+    let mut values = scores.values();
+    let mut total = 0;
+    while let Maybe.Some(score) = values.next() {
+        total = total + score;
+    }
+    assert_eq(total, 18);
+    assert(values.next() is Maybe.None);
+
+    let collected = scores.values_list();
+    assert_eq(collected.len(), 2);
+    assert_eq(collected[0] + collected[1], 18);
+}
 ```
 
 **Iteration order is UNSPECIFIED.** `Map` is open-addressed with
@@ -1279,7 +1311,7 @@ establish complete native coverage.
 | Defect | Where it shows | Evidence |
 |---|---|---|
 | Source-layout access can fail: `entry`, `get_key_value`, `get_or_default`, `remove_entry`, `into_keys`, `into_values`, `invert` | includes populated maps; method and path matter | field-access failures; see [Map support](#map-support) |
-| Four trap inside iteration: `keys_list`, `values_list`, `clone`, `partition` | collecting an iterator into a `List`, and copying a map | a null dereference at `MapIter.next`, `Map.clone` and `Map.partition` |
+| `clone` and `partition` can trap | copying and partitioning a map | a null dereference at `Map.clone` and `Map.partition` |
 | `extend` cannot find `next` on its receiver at all | merging one map into another | the map arrives where an iterator was expected |
 
 `entry` also has a failing populated-map control. An empty map is not a
@@ -1289,18 +1321,16 @@ Basic lookup and update operations have interpreter coverage. This does
 not establish correctness for every entry operation, iterator helper,
 capacity change or native execution path; consult [Map support](#map-support).
 
-Iteration in a `for` loop works; collecting the same iterator into a
-`List` does not, and neither does copying the map. That last one has a
-consumer outside `Map`: `Data.merge` in `core.base.data` traps, and its
-whole body is `a.clone()` plus a destructuring walk over `b` — the walk
-is fine, the copy is not.
+Key and value iterators, including `keys_list()` and `values_list()`,
+have interpreter execution coverage. Map copying remains a separate
+limitation: `Data.merge` in `core.base.data` calls `Map.clone` and can
+encounter its failure.
 
 ### Workarounds
 
 `to_entries()` answers, so a pair-yielding lookup is a filter over it.
-A `for` loop over `keys()` or `values()` replaces `keys_list()` and
-`values_list()`. For `entry`-shaped code, `get` followed by `insert`
-does the same work in two calls.
+For `entry`-shaped code, use `get` followed by `insert` when a separate
+lookup and update fits the operation.
 
 ### Focused working controls
 
