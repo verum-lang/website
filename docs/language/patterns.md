@@ -17,107 +17,57 @@ Patterns appear in `match` arms, `let` bindings, function parameters,
 | `_` | anything, no binding |
 | `..` | rest (in tuples / arrays / records) |
 | `mut x` | binds and marks as mutable |
-| `ref x` | binds a reference instead of moving — **but see the note below for record variants** |
+| `ref x` | borrows the matched value immutably |
+| `ref mut x` | borrows the matched value mutably |
 
-:::danger `ref mut` into a RECORD variant loses the write, silently
-Checked on the interpreter. Three forms in one program, one
-run:
+## Borrowing variant payloads
 
-```verum
-type Tup is One(Int) | Two;
-type Sum is Pair { x: Int, y: Int } | Nil;
-type Rec is { a: Int };
-
-let mut t = Tup.One(1);
-match t { Tup.One(ref mut v) => { *v = *v + 2; }, _ => {} }   // tuple=3   works
-
-let mut r = Rec { a: 1 };
-r.a = r.a + 2;                                                // struct=3  works
-
-let mut s = Sum.Pair { x: 1, y: 0 };
-match s { Sum.Pair { x: ref mut xv, .. } => { *xv = *xv + 2; }, _ => {} }
-                                                              // sum=1     LOST
-```
-
-A `ref mut` binding into a TUPLE variant writes through. The same
-binding into a RECORD variant does not, and nothing says so: the
-programme exits 0 and the field keeps its old value. The near-identical
-form standing next to it is what makes this dangerous — the difference
-between the two is not visible from the call site, the type, or the
-diagnostic.
-
-The other spellings do not rescue it, and **which** way each one fails
-depends on how the value was matched. The cases below use `Int` fields;
-the expected answer for each is `3`:
-
-| What you write | Matched as | Result |
-|----------------|-----------|--------|
-| `x = x + n` | `match s` (by value) | refused — `cannot assign to immutable variable: x` |
-| `x = x + n` | `match &mut s` (local) | refused — same message |
-| `x = x + n` | `match &mut self.field` | **compiles, prints `1` — the write is lost** |
-| `*x = *x + n` | `match s` (by value) | **compiles, prints `1` — the write is lost** |
-| `{ x: ref mut xv }`, `*xv = *xv + n` | `match s` (by value) | **compiles, prints `1` — the write is lost** |
-
-So a reader gets a refusal or a silent loss depending on a detail of the
-`match` header, and the two forms that lose are the two that look most
-like the ones that work. The refusal is not a type error either — it
-arrives from code generation (`VBC codegen error (user bodies)`), which
-is why it has no error code to look up.
-
-Only the record-variant case behaves this way: the same `ref mut` write
-into a TUPLE variant (`Tup.One(ref mut v)`) writes through correctly.
-
-**What works today** is rebuilding the variant — and the borrow matters,
-so both spellings below are the ones that were actually run:
+Choose the match input according to whether you need to inspect or change the
+original value. Matching `&value` borrows its payloads immutably; matching
+`&mut value` borrows them mutably. A method called on a mutable payload binding
+updates the original payload, including when the variant is a record field.
 
 ```verum
-// Match BY VALUE. `match &s { … s = … }` does NOT compile:
-// error<E310>: cannot borrow `s` as mutable because it is already
-// borrowed as immutable.
-match s {
-    Sum.Pair { x, y } => { s = Sum.Pair { x: x + 2, y: y }; },
-    _ => {},
-}
-
-// Or compute first and assign after, which keeps the `&`:
-let next = match &s {
-    Sum.Pair { x, y } => Sum.Pair { x: x + 2, y: y },
-    _ => Sum.Nil,
-};
-s = next;
-```
-
-Inside a method the `&`-form DOES work on `self`, and that asymmetry is
-worth knowing before you copy code between the two places:
-
-```verum
-implement Holder {
-    public fn bump(&mut self, n: Int) {
-        match &self.s {                                   // works: C sum=3
-            Sum.Pair { x, y } => { self.s = Sum.Pair { x: x + n, y: y }; },
-            _ => {},
-        }
+fn main() {
+    let mut description: Maybe<Text> = Maybe.Some("A cog");
+    match &mut description {
+        Maybe.Some(text) => text.push_str(&" for image processing"),
+        Maybe.None => {},
+    }
+    match description {
+        Maybe.Some(text) => assert_eq(text, "A cog for image processing"),
+        Maybe.None => panic("expected a description"),
     }
 }
 ```
 
-The same shape on a LOCAL holder is refused:
+An explicit `ref mut` pattern borrows an individual payload field. This works
+with both tuple variants and named-field variants. Assign through the reference
+with `*binding = value`:
 
 ```verum
-let mut h = Holder { s: Sum.Pair { x: 1, y: 0 } };
-match &h.s {                                              // error<E310>
-    Sum.Pair { x, y } => { h.s = Sum.Pair { x: x + 2, y: y }; },
-    _ => {},
+type Counter is Value { amount: Int, untouched: Int } | Empty;
+
+fn main() {
+    let mut counter = Counter.Value { amount: 1, untouched: 7 };
+    match counter {
+        Counter.Value { amount: ref mut value, .. } => { *value = *value + 2; },
+        Counter.Empty => {},
+    }
+    match counter {
+        Counter.Value { amount, untouched } => {
+            assert_eq(amount, 3);
+            assert_eq(untouched, 7);
+        },
+        Counter.Empty => panic("expected a counter"),
+    }
 }
 ```
 
-Both were run. So a snippet lifted out of a method into a `fn main` stops
-compiling, and one lifted the other way starts — with no change to the
-pattern itself.
-
-Until this is fixed, treat a record variant as
-immutable-through-patterns and rebuild it.
-:::
+`mut binding` makes the local binding assignable; it does not request a mutable
+borrow of the original field. Use `ref mut` or a mutable match input when the
+change must reach the original value. An immutable borrow does not permit
+mutation. The examples above execute through the interpreter.
 
 ## Tuples and arrays
 
