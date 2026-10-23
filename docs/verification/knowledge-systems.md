@@ -89,6 +89,27 @@ restoration preserves those bytes and links, and verification is run again.
 A report for one revision cannot certify a changed proof or a future revision
 through a historical snapshot.
 
+### Locating source errors
+
+An unsuccessful source report may include `diagnostic_span`: a half-open UTF-8
+byte range and the SHA-256 of that exact fragment. The complete source hash and
+selected declaration bind its context. The range is independent of the selected
+declaration span; a module parse error may occur outside that declaration.
+An empty range marks an insertion point, including end of input.
+
+A consumer checks bounds, UTF-8 boundaries and both hashes before highlighting.
+Textareas use UTF-16 coordinates and may normalize CRLF to LF: navigation must
+account for that projection without changing the stored source. If the text,
+declaration or projection no longer matches, the client requests a new check
+instead of finding a similar word elsewhere. A graph inspector reads the exact
+checked revision, never silently substitutes the latest one.
+
+The report retains the primary parser diagnostic or innermost known elaboration
+range. It is not an exhaustive error list. Historical reports without this
+optional field remain readable; successful reports omit it. Coordinates do not
+supply proof authority. Parentheses group expressions without adding a logical
+rule: the enclosed term must pass the same native checks.
+
 ### Source-to-goal boundary
 
 A source declaration and a correctly typed kernel term are different inputs.
