@@ -1,268 +1,140 @@
 ---
 title: core.compress — compression codecs
-description: Unified Codec protocol over gzip, raw deflate, zlib, brotli, zstd, and lz4. Used by HTTP Content-Encoding, WebSocket permessage-deflate, TLS certificate-compression, and QUIC / RDMA payload paths.
+description: Bounded gzip and raw DEFLATE decoding, codec selection, and implementation limits.
 status: regression-only
 ---
 
 # `core.compress` — compression codecs
 
-:::caution The codecs do not compress anything yet
+`Gzip.decode`, `Gzip.decode_single` and `Deflate.decode` implement bounded
+decoding in Verum. `Identity` copies bytes without compression. Encoding and the
+Zlib, Brotli, Zstd and Lz4 codecs still call unavailable runtime intrinsics.
+Selecting one of those unavailable operations stops execution; it does not
+silently choose another codec.
 
-Every `encode` / `decode` on this page reaches a runtime intrinsic that
-this build does not implement. Running the Gzip example below, verbatim,
-produces:
+## Decode one gzip member
 
+This complete program decodes a fixed gzip member and verifies its output.
+Run it with `verum run --tier interpret` in a project.
+
+```verum
+mount core.compress.mod_gzip.Gzip;
+
+fn main() {
+    // One complete gzip member containing the UTF-8 bytes of "hello\n".
+    let wire: List<Byte> = [
+        31_u8, 139_u8, 8_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 2_u8, 19_u8, 203_u8, 72_u8, 205_u8, 201_u8, 201_u8, 231_u8, 2_u8, 0_u8, 32_u8, 48_u8, 58_u8, 54_u8, 6_u8, 0_u8, 0_u8, 0_u8,
+    ];
+    let mut output: List<Byte> = List.new();
+    let count = Gzip.decode_single(wire.as_slice(), 1024, &mut output).unwrap();
+    assert_eq(count, 6);
+    assert_eq(Text.from_utf8(output.as_slice()).unwrap(), "hello\n");
+    print("gzip verified");
+}
 ```
-Panic: @intrinsic("verum.compress.gzip_encode") is not implemented in
-       this build (called from Gzip.encode); it has no registry entry,
-       so there is no value to return
-```
 
-The same is true of `Deflate`, `Zlib`, `Brotli`, `Zstd` and `Lz4`. The
-call compiles, the compiler warns while building the standard library,
-and the program stops at the first byte you try to compress.
+The example verifies interpreter execution. It does not establish native AOT
+support for every compression operation.
 
-**What on this page does work:** the `Algorithm` enum and its token
-helpers are ordinary Verum and behave as documented —
-`Algorithm.Gzip.content_encoding()` returns `"gzip"`. So the negotiation
-half is usable today; the compression half is a declared surface waiting
-for a backend.
+## Decoding contract
 
-This note stops being true the moment a `verum.compress.*` intrinsic is
-implemented — at which point the example runs and this block should go.
+All three supported decoding methods take `input: &[Byte]`, a positive
+`max_output_bytes: Int` and `out: &mut List<Byte>`. They return
+`Result<Int, CompressError>`; the integer is the number of bytes appended.
 
-:::
+| Method | Accepted input |
+|---|---|
+| `Gzip.decode` | One or more consecutive complete gzip members. |
+| `Gzip.decode_single` | Exactly one complete gzip member. |
+| `Deflate.decode` | One complete raw DEFLATE stream, without a container. |
 
-A single `Codec` protocol with six concrete implementations. Used by
-every Verum layer that touches external byte streams:
+The limit caps the bytes appended by this call, including all gzip members.
+Previously existing output bytes are retained. Failure leaves `out` unchanged,
+including when a later member fails after an earlier member decoded correctly.
+The decoder stages its output before appending it, so budget memory for both
+the decoded buffer and the destination rather than treating the API as a
+streaming reader.
 
-- HTTP `Content-Encoding` negotiation and round-tripping
-- WebSocket `permessage-deflate` extension
-- TLS 1.3 certificate compression (RFC 8879)
-- QUIC payload paths (`datagram` and `stream` frames)
-- Log-pipeline code for archival compression
-- RDMA zero-copy payload paths (`lz4` speed-priority)
+Gzip decoding validates headers, optional header fields, header CRC when
+present, payload CRC32 and ISIZE. DEFLATE supports stored, fixed-Huffman and
+dynamic-Huffman blocks. Invalid code trees, reserved symbols, impossible
+back-references and truncated input are rejected. Trailing bytes, including
+zero padding, are rejected; `decode_single` also rejects a second gzip member.
+CRC and length checks detect corruption. They do not authenticate the sender.
 
-## Spec alignment
+## Limits and errors
 
-| Codec | RFC / spec |
-|-------|------------|
-| Gzip | [RFC 1952](https://datatracker.ietf.org/doc/html/rfc1952) |
-| Deflate (raw) | [RFC 1951](https://datatracker.ietf.org/doc/html/rfc1951) |
-| Zlib | [RFC 1950](https://datatracker.ietf.org/doc/html/rfc1950) |
-| Brotli | [RFC 7932](https://datatracker.ietf.org/doc/html/rfc7932) |
-| Zstd | [RFC 8878](https://datatracker.ietf.org/doc/html/rfc8878) |
-| Lz4 | [lz4 frame format v1.6.3](https://github.com/lz4/lz4/blob/v1.6.3/doc/lz4_Frame_format.md) |
+Bound compressed input before calling a decoder and choose a realistic output
+budget for the application. A positive expansion limit does not replace limits
+on incoming request size, concurrent requests or the format inside the decoded
+bytes. For a gzip-compressed tar archive, decode first, then call the
+[strict tar reader](/docs/stdlib/archive#strict-complete-stream-reading) with its
+own resource policy.
+
+| Error | Meaning |
+|---|---|
+| `CorruptInput(Text)` | Invalid framing, truncation, checksum or compressed data. |
+| `OutputTooLarge { limit }` | Nonpositive output limit or expansion exceeding the budget. |
+| `UnsupportedAlgorithm(Algorithm)` | Declared error for an unavailable algorithm. |
+| `BufferTooSmall { need, have }` | Declared error for insufficient fixed output storage. |
+| `InvalidLevel { algo, level }` | Declared error for an invalid encoder level. |
+| `DictionaryMismatch` | Declared dictionary incompatibility error. |
+| `IoFailure(Text)` | Declared I/O error carrier. |
+
+Unavailable intrinsic-backed codecs currently panic when called; their declared
+`UnsupportedAlgorithm` variant is not a guarantee that those calls return it.
+Do not use unavailable encoders to produce bytes for a decoding example.
 
 ## Module layout
 
-| Submodule | Purpose |
-|-----------|---------|
-| `core.compress` (mod) | `Algorithm`, `CompressError`, `Codec` protocol, dispatch entry points |
-| `core.compress.mod_gzip` | `Gzip`, `Deflate`, `Zlib` — the three RFC-195x formats |
-| `core.compress.mod_brotli` | `Brotli` with configurable window |
-| `core.compress.mod_zstd` | `Zstd` with optional dictionary support |
-| `core.compress.mod_lz4` | `Lz4` speed-priority codec |
+| Module | Types and operations |
+|---|---|
+| `core.compress` | `Algorithm`, `CompressError`, `Codec`, `encode`, `decode`. |
+| `core.compress.mod_gzip` | `Gzip`, `Deflate`, `Zlib`. Only gzip/raw-DEFLATE decoding is implemented. |
+| `core.compress.mod_brotli` | Declared `Brotli` API; backend unavailable. |
+| `core.compress.mod_zstd` | Declared `Zstd` and dictionary API; backend unavailable. |
+| `core.compress.mod_lz4` | Declared `Lz4` API; backend unavailable. |
 
-## `Algorithm` — runtime-dispatchable identifier
+The implemented decoders use Verum arithmetic and the shared CRC32 code. They
+do not select a system zlib or a bundled C decoder. This implementation fact
+alone does not establish AOT dependency conformance for a compiled application.
 
-```verum
-public type Algorithm is
-    | Gzip        // RFC 1952 (deflate + header/footer)
-    | Deflate     // RFC 1951 raw deflate (headerless)
-    | Zlib        // RFC 1950 container around deflate
-    | Brotli      // RFC 7932 — dense, text-optimised
-    | Zstd        // RFC 8878 — tunable; negative levels = fast mode
-    | Lz4         // pure speed, modest ratio
-    | Identity;   // no-op fallback for negotiation
-```
+## Algorithm selection
 
-### HTTP `Content-Encoding` token helpers
+`Algorithm` contains `Gzip`, `Deflate`, `Zlib`, `Brotli`, `Zstd`, `Lz4` and
+`Identity`. `content_encoding()` returns an HTTP token;
+`Algorithm.from_content_encoding(&Text)` parses tokens case-insensitively and
+returns `Maybe.None` for an unknown token.
 
-```verum
-implement Algorithm {
-    public fn content_encoding(self) -> &'static Text;   // "gzip" | "deflate" | "br" | "zstd" | "lz4" | "identity"
-    public fn from_content_encoding(token: &Text) -> Maybe<Algorithm>;
-}
-```
+| Algorithm | Token |
+|---|---|
+| `Gzip` | `gzip` |
+| `Deflate`, `Zlib` | `deflate` |
+| `Brotli` | `br` |
+| `Zstd` | `zstd` |
+| `Lz4` | `lz4` |
+| `Identity` | `identity` |
 
-- `Zlib` shares the HTTP token `"deflate"` with raw `Deflate` (both
-  appear as `deflate` on the wire; the distinguishing byte-level
-  framing is settled by the zlib header `0x78 0x9C …`).
-- `from_content_encoding` is case-insensitive and returns `None` for
-  unknown tokens (server must respond with 415 Unsupported Media
-  Type or fall back to `Identity`).
+The helper maps the ambiguous `deflate` token to raw `Deflate`; it does not
+inspect zlib framing. An HTTP integration must apply its protocol's framing
+rules rather than assuming that this token helper implements negotiation or
+zlib decoding.
 
-## `Codec` protocol
+## Protocol and dispatch
 
-Every algorithm-specific wrapper implements:
+`Codec` declares an `ALGORITHM` associated constant plus `encode` and `decode`
+methods. Encoding takes a level; decoding takes an output limit. Both accept a
+byte slice and mutable output list and return the number of appended bytes
+through `Result<Int, CompressError>`.
 
-```verum
-public type Codec is protocol {
-    const ALGORITHM: Algorithm;
-
-    fn encode(input: &[Byte], level: Int, out: &mut List<Byte>)
-        -> Result<Int, CompressError>;
-
-    fn decode(input: &[Byte], max_output_bytes: Int, out: &mut List<Byte>)
-        -> Result<Int, CompressError>;
-};
-```
-
-- `encode` appends the compressed payload to `out`, returning the
-  number of bytes appended.
-- `decode` appends the decompressed payload, bounded by
-  `max_output_bytes` — exceeding the bound surfaces as
-  `CompressError.OutputTooLarge` to defend against zip-bomb inputs.
-- The `ALGORITHM` associated const pins each implementation to its
-  `Algorithm` variant; dispatch tables use it as the lookup key.
-
-## Dispatch entry points
-
-```verum
-public fn encode(algo: Algorithm, input: &[Byte], level: Int,
-                 out: &mut List<Byte>) -> Result<Int, CompressError>;
-public fn decode(algo: Algorithm, input: &[Byte], max_output_bytes: Int,
-                 out: &mut List<Byte>) -> Result<Int, CompressError>;
-```
-
-These two functions are the recommended surface for HTTP middleware
-and proxy layers. They branch on the `Algorithm` variant to call the
-correct concrete codec:
-
-```verum
-mount core.compress.{Algorithm, CompressError, encode, decode};
-
-fn encode_with_negotiated(algo: Algorithm, body: &[Byte])
-    -> Result<List<Byte>, CompressError>
-{
-    let mut out: List<Byte> = [];
-    encode(algo, body, 6 /* balanced level */, &mut out)?;
-    Ok(out)
-}
-```
-
-## Error model
-
-```verum
-public type CompressError is
-    | UnsupportedAlgorithm(Algorithm)            // backend feature-flag off
-    | CorruptInput(Text)                         // bad header, premature EOF, etc.
-    | BufferTooSmall { need: Int, have: Int }    // fixed-output encoder was short
-    | InvalidLevel { algo: Algorithm, level: Int }   // level out of range
-    | DictionaryMismatch                         // zstd dict ID/hash mismatch
-    | OutputTooLarge { limit: Int }              // zip-bomb defence
-    | IoFailure(Text);                           // I/O propagation from inner reader/writer
-```
-
-All variants are purely data; no I/O happens inside the error path
-other than the caller's own propagation.
-
-### Level ranges
-
-| Algorithm | Valid level range | Typical default |
-|-----------|-------------------|-----------------|
-| `Gzip` / `Deflate` / `Zlib` | 0–9 | 6 |
-| `Brotli` | 0–11 | 4 |
-| `Zstd` | −(2²²)..22 | 3 |
-| `Lz4` | 0–16 | 0 (fast) |
-| `Identity` | any (ignored) | — |
-
-`InvalidLevel { algo, level }` surfaces when the range check fails.
-
-## Per-codec examples
-
-### Gzip (HTTP bodies)
-
-```verum
-mount core.compress.mod_gzip.{Gzip};
-
-fn compress_body(raw: &[Byte]) -> Result<List<Byte>, CompressError> {
-    let mut out: List<Byte> = [];
-    Gzip.encode(raw, 6 /* balanced */, &mut out)?;
-    Ok(out)
-}
-
-fn decompress_body(wire: &[Byte]) -> Result<List<Byte>, CompressError> {
-    let mut out: List<Byte> = [];
-    // 10 MiB output cap is a typical HTTP-body defence.
-    Gzip.decode(wire, 10 * 1024 * 1024, &mut out)?;
-    Ok(out)
-}
-```
-
-### Brotli (text-heavy payloads)
-
-```verum
-mount core.compress.mod_brotli.{Brotli};
-
-let mut out: List<Byte> = [];
-Brotli.encode(html.as_bytes(), 11 /* max quality */, &mut out)?;
-```
-
-Brotli at quality 11 is slow on the encode side but produces notably
-smaller output for HTML / JSON / CSS than gzip-9; use brotli for
-static assets and gzip / zstd for dynamic traffic.
-
-### Zstd with dictionary
-
-```verum
-mount core.compress.mod_zstd.{Zstd};
-
-fn compress_log_line(dict: &[Byte], line: &[Byte])
-    -> Result<List<Byte>, CompressError>
-{
-    let mut out: List<Byte> = [];
-    Zstd.encode_with_dict(line, dict, 3, &mut out)?;
-    Ok(out)
-}
-```
-
-Zstd dictionaries produce dramatic savings on log / metrics streams
-where lines share a common vocabulary (e.g., repeated field names,
-service tags, timestamps) — a 4-KiB trained dictionary typically
-halves the per-line compressed size at zstd level 3.
-
-### Lz4 (speed-priority)
-
-```verum
-mount core.compress.mod_lz4.{Lz4};
-
-let mut out: List<Byte> = [];
-Lz4.encode(payload, 0 /* fast */, &mut out)?;
-```
-
-`Lz4` at level 0 compresses at roughly network-cable throughput on
-modern CPUs (≈ 3–5 GiB/s on a single thread) — the right choice for
-zero-copy RDMA payloads and in-process cache tiers.
-
-## DoS / security discipline
-
-Two defences every decoder respects:
-
-1. **`max_output_bytes` cap** — a small malicious input can expand to
-   gigabytes if the decoder has no bound. Every `decode` call takes
-   an explicit cap; exceeding it returns `OutputTooLarge { limit }`
-   rather than a best-effort OOM.
-2. **Header validation** — all decoders reject malformed headers /
-   magic bytes immediately, before allocating the output buffer. A
-   corrupt gzip header surfaces as `CorruptInput(reason)` within the
-   first 10 bytes of input.
-
-## Backend plugability
-
-All six codecs are backed by `@intrinsic` calls — the runtime wires
-them to the chosen native backend (zlib-ng, brotli-go, libzstd, lz4)
-at build time via a feature flag. The Verum-level surface never
-changes when swapping backends; `UnsupportedAlgorithm(a)` indicates
-the compile-time feature flag for that codec is off.
+The free functions in `core.compress` add an initial `Algorithm` argument and
+dispatch to the selected codec. `decode` rejects a nonpositive output limit
+before dispatch. `Identity` preserves input bytes and applies that bound;
+selecting an unavailable codec does not make its backend available.
 
 ## See also
 
-- [`stdlib/encoding`](/docs/stdlib/encoding) — JSON / CBOR /
-  MessagePack / Base64 — codec-shaped but for data format, not
-  payload compression.
-- [`stdlib/net`](/docs/stdlib/net) — HTTP `Content-Encoding`
-  negotiation sits above this layer.
-- [`stdlib/net/tls`](/docs/stdlib/net/tls/) — RFC 8879 certificate
-  compression uses `Brotli` / `Zstd` backends through this API.
+- [Archive packaging](/docs/stdlib/archive) — named entries inside decoded bytes.
+- [Encoding formats](/docs/stdlib/encoding) — data representation, including JSON and Base64.
+- [Networking](/docs/stdlib/net) — HTTP integrations and transport.
+- [Decoder implementation](https://github.com/verum-lang/verum/blob/main/core/compress/mod_gzip.vr)
