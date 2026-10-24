@@ -9,12 +9,14 @@ A **cog** is Verum's unit of package distribution. The package CLI publishes
 source archives and metadata to a configured HTTP registry. Compiled `.vbca`
 archives have a separate [precompilation workflow](/docs/reference/cli-commands#verum-cog-precompile).
 
-The registry service and its integration with the compiler are under development.
-The client has local publication checks, but a successful dry run does not
-establish that a registry can store, serve, and build the package. Complete
-publication-to-installation acceptance and consumer feature resolution remain
-limitations of the platform. Source admission and durable storage execute through
-the interpreter; the complete registry application and native execution still
+The registry application supports authenticated source publication, durable local
+file storage, and retrieval of the original metadata and archive through the
+interpreter. Identical retries succeed, conflicting releases are refused, and
+accepted releases remain available after restart. A successful client dry run
+only validates the local package; it does not exercise registry storage.
+
+PostgreSQL-backed publication storage, native execution, complete
+publication-to-installation acceptance, and consumer feature resolution still
 require integration.
 
 ## Configure a registry
