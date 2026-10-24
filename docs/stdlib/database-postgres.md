@@ -188,10 +188,24 @@ Driver methods on PgConnection (lower-level):
 
 ## SCRAM-SHA-256-PLUS authentication
 
-`core.database.postgres.auth.scram` — pure-Verum SCRAM-SHA-256
-client.  Channel-binding (`-PLUS`) is preferred when a TLS layer
-is present.  `md5`, `password`, `trust` flows are
-compile-time-rejected unless `@allow_legacy_auth` is opted in.
+`core.database.postgres.auth.scram` implements SCRAM-SHA-256 and verifies
+the server signature before authentication succeeds. When TLS is active and
+the server offers `SCRAM-SHA-256-PLUS`, the driver uses the server certificate
+hash for channel binding; a missing certificate hash fails authentication.
+
+The client requires ordered nonce, salt and iteration attributes, rejects
+unsupported mandatory extensions and duplicate authentication attributes,
+and requires the server nonce to extend the client nonce. Malformed challenges
+leave the client in its failed state. Independent cryptographic vectors cover
+plain and channel-bound proofs and server verification.
+
+Cleartext-password and MD5 challenges are rejected at runtime. A server that
+uses `trust` can send authentication success without a password challenge;
+configure the server to require SCRAM. There is no `@allow_legacy_auth` opt-in.
+
+`PgConfig.with_connect_timeout_ms` stores the requested timeout, but the
+connection path does not yet enforce it across TCP, TLS and SCRAM. It must not
+be treated as a connection or handshake deadline.
 
 ## Extended protocol
 
