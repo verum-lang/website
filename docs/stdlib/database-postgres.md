@@ -41,6 +41,13 @@ across the SQLite / Postgres / MySQL backends — see
 
 ## Opening a connection
 
+The driver is not ready for production connections. With TLS disabled, the
+interpreter currently drops the TCP socket while returning `PgConnection`:
+SCRAM authentication succeeds, but the first prepared query fails with
+`ConnectionFailed`. Persistent connections, pooling and PostgreSQL-backed
+registry publishing require the ownership handoff to be corrected and
+validated end to end. Enabling TLS is not an established workaround.
+
 ```verum
 mount core.database.postgres.{PgConfig, PgConnection, connect};
 
