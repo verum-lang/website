@@ -12,8 +12,10 @@ archives have a separate [precompilation workflow](/docs/reference/cli-commands#
 The registry service and its integration with the compiler are under development.
 The client has local publication checks, but a successful dry run does not
 establish that a registry can store, serve, and build the package. Complete
-publication-to-installation acceptance, durable release storage, and consumer
-feature resolution remain limitations of the platform.
+publication-to-installation acceptance and consumer feature resolution remain
+limitations of the platform. Source admission and durable storage execute through
+the interpreter; the complete registry application and native execution still
+require integration.
 
 ## Configure a registry
 
@@ -67,6 +69,23 @@ The client accepts success only when the registry returns a JSON receipt whose
 name, version, and archive checksum match the request. Publication redirects are
 refused. A matching receipt acknowledges those bytes and coordinates; it does
 not certify source correctness or prove durable storage.
+
+### Admission and immutable releases
+
+The reference publishing implementation checks the archive digest, complete gzip
+and tar streams, resource limits, safe relative paths, and agreement between the
+root `Verum.toml` and the submitted source metadata before writing a release.
+Links, duplicate archive paths, incomplete streams, and mismatched metadata are
+refused.
+
+One immutable record stores the exact archive, full metadata, authenticated
+publisher and authority, and a server timestamp. A success receipt follows file
+and directory synchronization. An identical retry by the same publisher and
+authority retains the original record and timestamp, including after credential
+rotation or a restart. A second valid publication with different metadata, archive
+bytes, publisher, or authority at the same name and version produces a conflict.
+Unreadable or corrupt stored records produce an error; they are never treated as
+absent releases.
 
 ### Source archive
 
