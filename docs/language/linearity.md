@@ -17,12 +17,14 @@ type linear Promise<T> is { pending: Shared<Cell<T>> }; // must be resolved
 type Point is { x: Int, y: Int };        // ordinary — dup/drop freely
 ```
 
-:::info Status
-Core infrastructure is implemented: the three resource kinds
-(`Copy` / `Affine` / `Linear`) parse, type-check, and propagate
-through the inference pipeline. Drop-checking across conditional
-branches and loop carriers is still maturing — see
-[Implementation status](#implementation-status) below.
+:::caution Resource cleanup
+Resource modifiers constrain how a value may be used; they do not, by
+themselves, establish that its destructor runs correctly on every execution
+path. The interpreter supports transfers from resolved affine locals into
+records and variants. Generic calls, pool ownership and automatic destruction
+in native programs remain incomplete. Check the affected API's cleanup
+contract before relying on scope exit to close a handle or release a lock.
+See [implementation status](#implementation-status).
 :::
 
 ## Why linearity?
@@ -31,7 +33,7 @@ Most type systems track **what** a value is. Linearity adds an
 orthogonal question: **how many times** you may use it. That is
 exactly the question you ask when a value represents a *resource*:
 
-| Resource | Problem without linearity | What linearity gives you |
+| Resource | Problem without linearity | Intended resource contract |
 |---|---|---|
 | File handle | Double-close / leak | Close runs **exactly** (linear) or **at most** (affine) once |
 | Lock guard | Unlock twice / never | `MutexGuard` can't escape the region that took the lock |
@@ -530,10 +532,13 @@ provide the method.
 | Drop-check across `if`/`match` arms | **Maturing** | every arm must consume / move equivalently |
 | Drop-check across loops | **Experimental** | covered by linearity test suite |
 | `Linear` / `Affine` kind bounds in generics | **Experimental** | parser understands them, inference partial |
-| Linearity-polymorphic arrows | Planned | — |
+| Affine transfer into records and variants | Partial | resolved local declarations in the interpreter; generic ownership remains incomplete |
+| Automatic native destruction | Incomplete | a resource modifier is not a guarantee of native destructor execution |
+| Linearity-polymorphic arrows | Not supported | — |
 
-Track progress in `vcs/specs/L1-core/linearity/` and the roadmap
-page.
+The conformance fixtures are in `vcs/specs/L1-core/linearity/`. Compile-time
+usage checks and runtime cleanup are separate requirements; passing one does
+not establish the other.
 
 ## FAQ
 
