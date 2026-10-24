@@ -83,6 +83,11 @@ The current implementation exposes two different completion paths:
 | A handle inferred from the `spawn` keyword | The task body's result `T` on the current keyword path. If the body returns `Result<T, E>`, that is the result you receive. |
 | The library `core.async.task.JoinHandle<T>` through its declared `Future` implementation | `Result<T, JoinError>`. If `T` is already `Result<Value, WorkError>`, completion has two `Result` layers. |
 
+The library `core.async.task.spawn` currently constructs a pending task
+without scheduling its supplied future. Its declared `Future` output does not
+establish a working execution path. The executable example above uses the
+`spawn` keyword; the library task API still requires scheduler integration.
+
 For the library contract, `Ok(Ok(value))` is application success,
 `Ok(Err(error))` is application refusal, and `Err(JoinError.Cancelled)`
 or `Err(JoinError.Panicked)` is a join failure. The two `JoinError`
@@ -98,6 +103,10 @@ variant is declared in the library. The distinction is visible in the
 [checker await rules](https://github.com/verum-lang/verum/blob/main/crates/verum_types/src/infer/expr.rs),
 [await lowering](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/codegen/expressions.rs)
 and [library task implementation](https://github.com/verum-lang/verum/blob/main/core/async/task.vr).
+
+Keyword handles can be collected in an inferred list, such as one initialized
+with `let mut pending = List.new()`. Preserve the inferred handle type instead
+of annotating the collection with the unrelated library record.
 
 When collecting task results, consume each handle once. If your operation
 must finish every child before committing data, retain failures while
