@@ -315,6 +315,15 @@ dependent constructor fields and nested or function-valued recursion are outside
 this portable fragment. Named declarations must be translated and checked; they
 do not become portable certificates automatically.
 
+Dependent pair introduction uses the expected family: for a goal
+`Σ(y : A). B(y)`, the checker verifies the first value at `A` and the second
+at `B(first)`. This expected type propagates through functions, arguments,
+constructor fields, induction branches and identity elimination. A witness
+paired with evidence about a different value is rejected. The portable
+substitution and normalization-by-evaluation algorithms and the independent
+Lean replay check these rules. This does not establish full checker soundness
+or extend the supported inductive declaration grammar.
+
 General finite execution and observation preservation are checked using this
 fragment. The statement requires step commutation at every executed admissible
 action and preserves visited states, termination and refusal payloads. It does
