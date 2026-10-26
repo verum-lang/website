@@ -388,6 +388,16 @@ not establish program selection, learning, actual external effects, or the
 correspondence of an arbitrary implementation to those premises. See
 [general trace certificates](/docs/architecture/differential-lean-checker#general-trace-certificates).
 
+Retrospective initialization has a constructive criterion: on every occupied
+reachable-history fibre, the queried state has a unique compatible value if and
+only if the query is constant on that fibre. No value is required for an
+unreachable diagnostic. Refinement transports the entire compatible-state family
+by retaining each history witness; it does not select an arbitrary representative
+or reset state to a default. These statements are proved in
+`VerumExternalReplay.DiagnosticFactorization` and replayed natively through
+`verification/certificates/check_diagnostic_fibres.py`. The uniqueness criterion
+does not itself provide an executable reconstruction algorithm.
+
 Exact one-step transports also compose: if each embedding commutes with its
 partial execution through `Option.map`, their composite does too. Definedness
 is preserved and reflected; injectivity of the composite additionally requires
