@@ -245,69 +245,65 @@ solver upgrades.
 
 ## Trusted kernel
 
-Everything described above — VCGen, encoding, the capability router,
-the SMT executor, proof extraction, caching, bounds elimination —
-runs **outside** Verum's trusted computing base. The sole trusted
-checker is the trusted-base kernel, held to a single-reviewer /
-single-session audit budget.
+Verification has distinct checking paths. The named `CoreTerm` calculus is
+checked by `verum_kernel`; portable certificates use the smaller `verum_proof`
+calculus with direct and normalization-by-evaluation checkers. Independent Lean
+replay covers selected portable certificate forms. A successful check in one
+representation does not establish coverage of the other.
 
-### Surface
+### Checking APIs
 
-The kernel exposes three entry points:
+| Entry point | Role |
+|-------------|------|
+| `infer` | Infer a named term's type from its context and axiom registry. |
+| `verify_full` | Compare the inferred type with the requested goal. It has no inductive declaration registry. |
+| `infer_with_inductives` | Infer with an explicit registry of inductive declarations. |
+| `verify_with_inductives` | Check goal formation and a proof against that registry. |
+| `replay_smt_cert` | Reconstruct a supported certificate's witness; a solver verdict alone is insufficient. |
 
-| Entry point         | Role |
-|---------------------|------|
-| `infer`             | Given a `CoreTerm` and an axiom registry, return the term's inferred type or a typed `KernelError`. |
-| `verify_full`       | Given a `CoreTerm` and an *expected* type, confirm that `infer` agrees with the expected type. |
-| `replay_smt_cert`   | Re-derive a checkable proof term from an `SmtCertificate`; fails closed if the certificate cannot be replayed. |
+Ordinary inductive elimination checks the complete branch family, constructor
+ownership, parameter instantiation and recursive hypotheses. Constructors carry
+their owning declaration; a local variable with the same spelling is not a
+constructor. Recursive fields come from the declaration before parameter
+substitution. Nested recursion requires strict positivity checked from the
+container's definition, rather than assumed from its name.
 
-Each takes the typing context and the axiom registry as
-read-only inputs; none mutates global state.
-
-`CoreTerm` is the explicit typed calculus the kernel checks — Π / Σ /
-Path / HComp / Transp / Glue / Refine / Inductive / Elim / Axiom /
-SmtProof plus the non-dependent constructors. Every other crate
-emits `CoreTerm` values that the kernel re-checks.
+Type conversion preserves lexical binding and distinguishes free variables from
+bound ones. Type parameters and constructor fields must respect the declaration's
+universe. The declaration schema does not yet provide a separate universe
+parameter telescope for every datatype parameter.
 
 ### Trusted computing base
 
-After the kernel lands, Verum's TCB is exactly:
+A proof claim depends on the checker actually invoked, its implementation and
+runtime, and any assumptions supplied through its context or axiom registry.
+Independent replay adds a separate check only for the exact statement and
+certificate representation it accepts. The Rust compiler, linked dependencies
+and execution environment remain part of the native checking boundary.
 
-1. The Rust compiler and its linked dependencies.
-2. The trusted-base kernel's `check` / `infer` / `verify_full` entry points and their subroutines
-   (`substitute`, `structural_eq`, universe rules).
-3. Axioms registered via `AxiomRegistry::register`. Each registration
-   stores a `FrameworkId` attribution (framework name + citation),
-   so `verum audit --framework-axioms` can enumerate the entire
-   trusted boundary of any proof corpus.
+Tactics, elaboration and solver search are intended to produce evidence for
+checking. Their output, an audit entry, or a reconstructed diagnostic proof tree
+is not itself proof acceptance. See [proof honesty](/docs/verification/proof-honesty)
+for the distinction between evidence and audit metadata.
 
-### Consequences
+### Current limitations
 
-**SMT out of TCB.** Every solver adapter — current external
-adapters and the forthcoming native solver alike — produces an
-`SmtCertificate`: a backend-neutral proof trace normalised by
-`verum_smt::proof_extraction`. The kernel's `replay_smt_cert`
-re-derives a `CoreTerm` witness from the certificate. A bug that
-lets a solver emit a spurious "proof" fails the replay here and
-cannot leak into an accepted theorem.
+Higher inductive elimination is refused because the named-term API does not yet
+check the required path-coherence evidence. Its declaration and signature data
+must not be interpreted as an accepted higher inductive proof.
 
-**Tactics out of TCB.** Every tactic — all 22 built-ins plus user-
-defined tactics — produces a `CoreTerm`, which the kernel re-checks
-via `infer`. A buggy tactic can refuse to build, or build an ill-
-typed term that `infer` rejects, but it can never lie to the kernel.
+Registered ordinary induction is available through the named checking APIs.
+The registry-free diagnostic proof-tree recorder does not certify constructor
+derivations, and the portable certificate calculus does not yet carry their
+induction evidence. Native checking therefore does not imply independent
+certificate replay for induction.
 
-**Elaborator out of TCB.** The bidirectional elaborator in
-`verum_types` converts surface `.vr` syntax into `CoreTerm`s; a bug
-in elaboration manifests as "legal program refused" or "kernel
-rejected the elaborated term", not "false theorem accepted".
-
-### Landing status
-
-All `CoreTerm` constructors have real typing rules today except
-`SmtProof`, whose checker is the dedicated `replay_smt_cert` path.
-That routine is implemented per-adapter (one solver's proof format
-first), completing the "SMT out of TCB" story. Kernel-side test
-coverage tracks every replay path.
+Other named-term rules still have incomplete obligations. In particular,
+`QuotElim` in `crates/verum_kernel/src/infer.rs` does not enforce the required
+respect-of-equivalence condition. Full soundness of the named calculus and
+complete end-to-end coverage of surface proofs have not been established.
+External proof export remains subject to the restrictions described in
+[proof export](/docs/verification/proof-export).
 
 ## See also
 
