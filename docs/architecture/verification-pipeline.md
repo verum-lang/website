@@ -539,6 +539,24 @@ identities to pass replay; those controls alone are not runtime evidence.
 The boundary excludes allocator failure, arbitrary meters, 32-bit targets,
 learning correctness and default enrollment.
 
+Adapter versions are explicit. `AcquiredV1` retains the legacy event format;
+`AcquiredV2` requires an optional `pose` field on every event and supports
+`Unit`, `Zero`, `EmptyTrace`, `Identity`, `EventPose` and `QueryPose`. An absent
+historical pose produces a missing-data refusal, while a present zero is a
+value. Unknown versions, primitives, fields and mixed-version exports are
+rejected; new fields are never inferred from the current live state.
+
+`verification/external/lean/check_joint_export.py` accepts a separate joint
+producer export. It recomputes the original initializer and execution report,
+receiver-prefix state, fork transition and full replay. It checks the retained
+nominal definition receipt, original family/index/look consistency and paid-look
+count, preserving the candidate's declared authority. These checks do not prove
+the syntax enumeration maps an index to its emitted program, statistical
+admission, or floating-point fee evaluation. A fresh trusted declaration is a
+new producer premise, not proof of independence from earlier evidence.
+The test-only exporter and synthetic checker controls alone do not establish
+native joint-production correspondence; a frozen native export must pass replay.
+
 The retained native lifecycle fixture exercises foreign and stale commit
 refusals, successful commit, retained and current reads, receiver installation
 and replay, structural installation failures, and exact naming across forks.
