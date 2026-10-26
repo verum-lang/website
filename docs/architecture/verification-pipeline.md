@@ -330,6 +330,14 @@ before use, even when unused. This does not refine the declared type of an
 arbitrary function result or a context assumption: those retain their stated
 types. Normalizing an unchecked expression would erase relevant obligations.
 
+The Lean reference checker uses total operations for binder traversal,
+substitution and fuel-bounded weak-head reduction. General proofs establish
+traversal composition, lifting/lowering cancellation and substitution after
+inserting a fresh binder, including nested datatype fields. These proofs concern
+the executable term operations; typing preservation, the complete checking
+algorithm and correspondence to the Rust implementation remain separate
+obligations. The proof module is `VerumExternalReplay.TermOperations`.
+
 Execution-policy certificates also check conditional action and continuation
 identity, foreign-queue preservation, refusal of credit after error or unwind,
 and receipt preservation through interpretation. Failed interpretation remains

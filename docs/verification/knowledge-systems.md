@@ -191,6 +191,18 @@ For source and test ownership, see
 [`proof_checker.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_kernel/src/proof_checker.rs)
 and the [canonical examples](https://github.com/verum-lang/verum/tree/main/core/verify/proof_term_examples).
 
+## Limits of reconstruction from diagnostics
+
+If two histories produce identical retained diagnostics but require different
+answers to a historical query, no total decoder of those diagnostics can answer
+correctly for both. This requires equality of the **complete** retained
+representation; equality of a selected subset of fields is insufficient.
+The general result is proved in `VerumExternalReplay.DiagnosticFactorization`
+and checked as portable certificates by
+`verification/certificates/check_diagnostic_fibres.py`. Applying it to a storage
+or merge implementation requires separate evidence for the projection collision
+and the different answers. It does not certify that implementation.
+
 ## Evidence that Noesis must retain
 
 The following is a consumer contract, separate from the current `.vproof`
