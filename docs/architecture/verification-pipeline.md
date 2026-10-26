@@ -566,6 +566,24 @@ model and rejects mutations that restore the incorrect refusal classifications.
 This acceptance belongs to the identified frozen producer; later source changes
 require new evidence, and unrelated native regression failures remain separate.
 
+`VerumExternalReplay/ObserverRetirement.lean` specifies conditional retirement
+of a partial acquired observer. Only a semantic undefinedness receipt owned by
+the current instance and cut can remove the failing observer and its dependent
+suffix. The prior vocabulary and epoch are restored while the surviving prefix
+retains its current observer states. Receipt storage is bounded, and retries
+consume one shared, strictly decreasing work allowance.
+
+Retirement preserves the complete physical record supplied to it. Before an
+action, this supports retrying selection and preparation when the prior language
+still admits them within the remaining budget. After an action, the supplied
+record must already contain the committed action and outcome. Continuation
+creates an edge only when the original cut projects exactly at the restored
+epoch and the next value is defined by the surviving committed observers.
+Resource exhaustion and foreign-source refusal do not constitute semantic
+counterexamples. These are conditional model laws: faithful receipts, atomic
+native transitions, physical records and actual work accounting require frozen
+implementation evidence. Model controls alone do not establish that correspondence.
+
 `VerumExternalReplay/CommonDescriptionCost.lean` proves the exact ranking law
 for a fixed corpus and coding interpretation: minimizing complete description
 cost is equivalent to maximizing common coding gain minus the candidate's own
