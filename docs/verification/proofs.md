@@ -127,7 +127,7 @@ or generated from an SMT certificate — reaches **`verum_kernel`**,
 the LCF-style trusted checker. The kernel re-checks the proof term
 against its declared type using a typing rule per `CoreTerm`
 constructor — Var / Universe / Pi / Lam / App / Sigma / Pair /
-Fst / Snd / PathTy / Refl / PathOver / HComp / Transp / Glue /
+Fst / Snd / PathTy / Refl / PathOver / HComp / Transport / Glue /
 Refine / Quotient / QuotIntro / QuotElim / Inductive / Elim /
 Axiom plus the Diakrisis ε/α + modal + cohesive (∫ ⊣ ♭ ⊣ ♯)
 operators. The full rule taxonomy enumerates 38 named kernel

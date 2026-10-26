@@ -439,7 +439,7 @@ for the stdlib `Tensor<Dims, T>` that generalises this pattern.
 
 ## Relation to the trusted kernel
 
-Π, Σ, Path, HComp, Transp, Glue, and the inductive elimination
+Π, Σ, Path, HComp, Transport, Glue, and the inductive elimination
 principle each have a dedicated typing rule in `verum_kernel`.
 Dependent-type proofs reach the kernel as `CoreTerm` values with
 the exact domain / codomain structure preserved, so the kernel's

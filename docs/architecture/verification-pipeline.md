@@ -328,6 +328,11 @@ reflexivity evidence; equal loop endpoints alone are insufficient. See
 [cubical reductions](/docs/verification/cubical-hott#computational-univalence)
 for the surrounding checker and external-prover boundaries.
 
+Ordinary path transport checks the source value against the path’s left type
+and returns its right type. Only reflexive evidence computes to the source
+value. Generalized cubical transport with a regularity face is not supported
+by this named term.
+
 Other named-term rules still have incomplete obligations, including cubical
 face conditions and higher inductive elimination coherence in
 `crates/verum_kernel/src/infer.rs`. Full soundness of the named calculus and

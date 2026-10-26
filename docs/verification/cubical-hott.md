@@ -189,10 +189,24 @@ let n: Nat = transport(p, 42);
 
 A separate, **kernel-internal** cubical-reduction set lives in
 `crates/verum_kernel/src/support.rs::normalize_core` —
-`HComp` face-bot / face-top, `Transp` (i1 / Refl-path / const-carrier),
-`Glue` face-bot / face-top, and reflexive `PathOver` reduction. These
+`HComp` and `Glue` face reductions, ordinary `Transport` over reflexivity,
+and reflexive `PathOver` reduction. These
 rules participate in CoreTerm normalization and definitional equality;
 their presence does not establish the full Kan-fibrancy obligations.
+
+The named term `Transport(p, x)` requires `p : Path(Type(u), A, B)`
+and `x : A`, and returns a term of `B`. It reduces to `x` only when `p`
+normalizes to `Refl(A)`. Neutral paths remain explicit. Local names such as
+`i1`, `true` or `1` carry no computational authority. The serialized named
+term uses the `Transport` tag with `path` and `value` fields; legacy `Transp`
+payloads with a regularity argument are rejected.
+
+This operation does not implement generalized cubical `transp`. That operation
+requires a typed interval and a constancy judgment on the specified face,
+as described in the [Cubical Agda transport rules](https://agda.readthedocs.io/en/latest/language/cubical.html#transport).
+The named kernel does not currently provide that judgment. Its reflexivity
+rule belongs to ordinary identity elimination and must not be presented as
+Cubical Agda's definitional equality.
 
 For `PathOver(M, p, x, y)`, the named kernel requires evidence
 `p : Path(B, a, b)`, a family `M : B → U`, and endpoints
