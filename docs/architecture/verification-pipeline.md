@@ -322,8 +322,14 @@ not establish program selection, learning, actual external effects, or the
 correspondence of an arbitrary implementation to those premises. See
 [general trace certificates](/docs/architecture/differential-lean-checker#general-trace-certificates).
 
-Other named-term rules still have incomplete obligations, including the
-cubical face conditions and dependent path coherence in
+Named dependent-path formation checks the base path evidence, the family
+carrier and both endpoint fibers. Homogeneous reduction requires actual
+reflexivity evidence; equal loop endpoints alone are insufficient. See
+[cubical reductions](/docs/verification/cubical-hott#computational-univalence)
+for the surrounding checker and external-prover boundaries.
+
+Other named-term rules still have incomplete obligations, including cubical
+face conditions and higher inductive elimination coherence in
 `crates/verum_kernel/src/infer.rs`. Full soundness of the named calculus and
 complete end-to-end coverage of surface proofs have not been established.
 External proof export remains subject to the restrictions described in

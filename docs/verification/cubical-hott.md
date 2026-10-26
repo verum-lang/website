@@ -190,11 +190,19 @@ let n: Nat = transport(p, 42);
 A separate, **kernel-internal** cubical-reduction set lives in
 `crates/verum_kernel/src/support.rs::normalize_core` —
 `HComp` face-bot / face-top, `Transp` (i1 / Refl-path / const-carrier),
-`Glue` face-bot / face-top, and the PathOver degenerate-loop
-collapse. These fire whenever the kernel normalises a CoreTerm
-(definitional equality, η-equivalence checks, etc.); they
-implement the *Kan-fibrancy* contract that ties cubical
-constructors to the broader type-theory.
+`Glue` face-bot / face-top, and reflexive `PathOver` reduction. These
+rules participate in CoreTerm normalization and definitional equality;
+their presence does not establish the full Kan-fibrancy obligations.
+
+For `PathOver(M, p, x, y)`, the named kernel requires evidence
+`p : Path(B, a, b)`, a family `M : B → U`, and endpoints
+`x : M(a)` and `y : M(b)`. A path-type annotation cannot substitute for
+path evidence. `PathOver(M, Refl(a), x, y)` reduces to the homogeneous
+path `Path(M(a), x, y)`. Coincident endpoints of an otherwise neutral loop
+do not authorize this reduction. This is the reflexive case of dependent
+paths described in [A Cubical Approach to Synthetic Homotopy Theory](https://dlicata.wescreates.wesleyan.edu/pubs/lb15cubicalsynth/lb15cubicalsynth.pdf).
+Higher inductive elimination remains refused until its path-coherence
+evidence is checked; see [current limitations](/docs/architecture/verification-pipeline#current-limitations).
 
 ## External-prover cross-check via Cubical Agda
 
