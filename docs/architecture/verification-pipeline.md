@@ -539,6 +539,15 @@ identities to pass replay; those controls alone are not runtime evidence.
 The boundary excludes allocator failure, arbitrary meters, 32-bit targets,
 learning correctness and default enrollment.
 
+The retained native lifecycle fixture exercises foreign and stale commit
+refusals, successful commit, retained and current reads, receiver installation
+and replay, structural installation failures, and exact naming across forks.
+It also checks canonical budget exhaustion and acquired trace capacity through
+the actual runtime refusal boundary. CI replays these observations against the
+model and rejects mutations that restore the incorrect refusal classifications.
+This acceptance belongs to the identified frozen producer; later source changes
+require new evidence, and unrelated native regression failures remain separate.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
