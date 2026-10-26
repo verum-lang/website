@@ -201,8 +201,11 @@ regression battery.
 ## General trace certificates
 
 The portable checker supports complete first-order datatype declarations,
-owned constructors, dependent constructor fields, dependent induction and
-checked local definitions. The
+owned constructors, dependent constructor fields, indexed families, dependent
+induction and checked local definitions. Index domains form a dependent telescope;
+constructor result indices and recursive-field indices must check against it.
+`verification/certificates/check_indexed_induction.py` replays a general indexed
+vector-length theorem and rejects changed indices or induction evidence. The
 independent Lean reference checker consumes the same serialized certificate;
 it does not select a proof rule from the theorem name or metadata.
 

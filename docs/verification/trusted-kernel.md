@@ -117,9 +117,9 @@ The checking rules are:
 | 11 | T-Refl-Intro | `Γ ⊢ a : A` ⟹ `Γ ⊢ refl a : Id(A, a, a)` |
 | 12 | T-J-Elim | `Γ ⊢ P : Π_:A. U_i`, `Γ ⊢ h : P a`, `Γ ⊢ p : Id(A, a, b)` ⟹ `Γ ⊢ J(P, h, p) : P b` |
 | 13 | T-Conv | `Γ ⊢ t : A`, `A ≡ B` ⟹ `Γ ⊢ t : B` |
-| 14 | T-Data | Every value-field type lies within the declared universe; recursive fields explicitly refer to the enclosing declaration |
-| 15 | T-Construct | The constructor belongs to the complete declaration and every argument checks against its declared field |
-| 16 | T-Induct | The motive ranges over the declaration, every branch checks against its generated telescope, and every recursive field supplies an induction hypothesis |
+| 14 | T-Data | Index domains and constructor fields are well formed; fields lie within the declared universe; recursive and result indices check against the index telescope |
+| 15 | T-Construct | The constructor belongs to the complete declaration; its arguments check against dependent fields and determine the result indices |
+| 16 | T-Induct | The motive ranges over all indices and the indexed value; every branch checks against its generated telescope, including recursively indexed hypotheses |
 | 17 | T-Let | Check the value, then check the body with that transparent definition in scope |
 
 Definitional equality (T-Conv) decides `α + β + η + level-eq + ι`,
@@ -144,16 +144,22 @@ The `Term` language carries these variants:
 | `Id { ty, lhs, rhs }` | carrier + endpoints | identity type `Id(A, a, b)` |
 | `Refl(value)` | the value | reflexivity proof `refl a` |
 | `J { motive, base, scrutinee }` | predicate + base case + path | path induction |
-| `Data { name, level, constructors }` | complete declaration | first-order datatype identity |
+| `Data { name, level, indices, constructors }` | complete declaration and index telescope | indexed datatype identity |
 | `Construct { data, constructor, args }` | declaration + constructor index + fields | owned constructor application |
 | `Induct { scrutinee, motive, cases }` | value + result family + branches | ordinary dependent induction |
 | `Let { value, body }` | checked value + body binding index zero | transparent local definition |
 
 Datatype identity includes the complete declaration, not just its name.
-A constructor field is `Value(type)`, `Dependent(type)` or `Recursive`.
+A constructor field is `Value(type)`, `Dependent(type)`, `Recursive` or
+`RecursiveAt(indices)`.
 `Value` types use the surrounding context; `Dependent` types additionally see
 one binder for each preceding field, with the most recent field at index zero.
-`Recursive` denotes the same enclosing declaration. All field types must be
+`Recursive` denotes the same unindexed declaration; `RecursiveAt` applies the
+enclosing family to indices in the preceding-field context. Each constructor
+also supplies its result indices in the context of all its fields. Index domains
+may depend on earlier indices. Construction checks each argument and derives
+the result from those indices; it does not trust a claimed result index.
+All field types must be
 well formed within the declaration's universe. Branches bind each field in
 declaration order, followed immediately by its induction hypothesis when the
 field is recursive. Later dependent fields refer to field values, not to the
@@ -220,9 +226,9 @@ A deliberate scope restriction. The trusted base does NOT:
   layer above the trusted base via the broader kernel's rule set.
 - Inspect `@framework`-cited axioms (those are leaves the
   apply-graph audit handles).
-- Indexed or mutually recursive datatypes, and nested or function-valued
-  recursive fields. First-order datatypes such
-  as booleans, naturals, lists and execution outcomes are supported directly.
+- Mutually recursive datatypes, and nested or function-valued recursive fields.
+  First-order datatypes and indexed families, including length-indexed vectors,
+  are supported directly.
   A `kernel_v0` axiom does not extend `proof_checker::Term`.
 
 The trade-off is deliberate. A wider kernel admits more programs

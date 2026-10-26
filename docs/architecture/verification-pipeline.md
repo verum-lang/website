@@ -313,12 +313,16 @@ Lean reference checker replay this fragment. Direct recursive fields receive
 explicit induction hypotheses. Constructor field types may depend on preceding
 fields; construction substitutes their actual values, and induction preserves
 those dependencies while inserting recursive hypotheses. Self references and
-forward references in field types are rejected. Indexed datatypes, mutually
-recursive groups and nested or function-valued recursion remain outside this
-portable fragment. Named declarations must be translated and checked; they do
+forward references in field types are rejected. Indexed families carry a checked
+index telescope, constructor result indices and direct recursive fields at
+explicit indices. Their induction motives quantify over both indices and values.
+Mutually recursive groups and nested or function-valued recursion remain outside
+this portable fragment. Named declarations must be translated and checked; they do
 not become portable certificates automatically. General dependent-record
 elimination and altered-evidence controls are replayed by
-`verification/certificates/check_dependent_constructors.py`.
+`verification/certificates/check_dependent_constructors.py`. General indexed
+vector-length preservation and malformed-index controls are replayed by
+`verification/certificates/check_indexed_induction.py`.
 
 Dependent pair introduction uses the expected family: for a goal
 `Σ(y : A). B(y)`, the checker verifies the first value at `A` and the second
@@ -411,11 +415,12 @@ not establish effects, recursive execution, resource costs or compiler/runtime
 correspondence. Replay and altered-proof controls are available through
 `verification/external/lean/check_typed_programs.py`.
 
-This theorem is checked directly by Lean. Native portable declarations support
-dependent constructor fields but do not yet express the indexed families and
-context-changing recursive indices used by this representation. Native indexed syntax, elimination and
-checked source lowering remain required before claiming native coverage of the
-same general theorem.
+This theorem is checked directly by Lean. Native portable declarations now
+express dependent fields and indexed families, including recursive fields whose
+indices differ from the constructor result. The same general typed-program
+certificate and checked source lowering still require validation before claiming
+native coverage of this theorem. A named certificate producer is not the Verum
+source-language elaborator.
 
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
