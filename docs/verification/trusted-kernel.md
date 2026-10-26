@@ -176,6 +176,12 @@ Closed expressions whose values fit the concrete carrier can reduce to a
 symbolic structure; saturating it to the largest concrete level would
 identify different universes. The direct and NbE checkers share this level
 algebra, so comparison between them alone cannot detect every defect in it.
+The independent Lean reference checker also decodes and normalizes compact
+`Offset` expressions. Its replay controls cover large and nested shifts,
+common-prefix factoring, concrete overflow and altered level bounds. Both
+wire decoders reject out-of-range integer fields and ambiguous constructor
+objects. Compact representation avoids work proportional to the numeric shift;
+equality remains conservative for symbolically different expressions.
 
 Concrete universe inference can still reject a successor that cannot be
 represented by its bounded API. Exact symbolic normalization does not
