@@ -597,6 +597,23 @@ floating-point reassociation. Correct logarithm evaluation, shared corpus and
 alphabet identities, admission evidence and native scoring correspondence
 remain separate obligations.
 
+`VerumExternalReplay/EnumerableMass.lean` specifies exact allocation for an
+enumerable family without requiring its total cardinality. A remaining-mass
+ledger bounds every finite partial sum; independently paid look weights are
+`1 / ((j + 1) * (j + 2))`. Combining program and look mass preserves that bound.
+For a prefix name of length `L`, the allocated mass is exactly
+`1 / (2^L * (j + 1) * (j + 2))`. Invalid or unused words do not redistribute their
+mass, and repeated measurements require distinct paid look names.
+
+The arithmetic model in `VerumExternalReplay/ExactMass.lean` uses positive
+integer denominators and exact cross-multiplication. Codec composition preserves
+both decoded values and unread suffixes. A separate enumeration witness supplies
+a stable index for each code, exact decoding, and finite cumulative work to reach
+it as the budget grows. Positive mass alone does not prove fair scheduling.
+Concrete grammar Kraft bounds, decoder correctness, native accounting and
+statistical calibration remain separate obligations. This contract does not
+reinterpret the finite uniform-family protocol or certify a native migration.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
