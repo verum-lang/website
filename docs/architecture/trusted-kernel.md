@@ -18,7 +18,7 @@ requires distinguishing the following surfaces.
 
 | Surface | Input and authority | What acceptance establishes |
 |---|---|---|
-| `proof_checker::Certificate::verify` | Closed `Term` and `claimed_type` | The pair passes the implemented Π/Σ/identity-type checking rules |
+| `proof_checker::Certificate::verify` | Closed `Term` and `claimed_type` | The pair passes the implemented dependent-function, pair, identity and ordinary-induction rules |
 | `proof_checker_nbe::verify_certificate` | The same certificate language | A second checking algorithm gives its verdict on the same pair |
 | `infer` / `verify_full` | Broader `CoreTerm`, context and registries | Acceptance under that API's rules and registered assumptions |
 | `replay_smt_cert_with_obligation` | SMT envelope and expected obligation hash | Envelope checks and goal association; the current witness is a solver-attributed axiom |
@@ -61,8 +61,10 @@ Two term languages have distinct roles:
 
 - **`proof_checker::Term`** uses de Bruijn indices, universe-level
   expressions, dependent functions and pairs, identity types, reflexivity
-  and an endpoint-indexed transport eliminator. It has no arbitrary
-  `Axiom`, SMT, refinement or cubical constructor.
+  and an endpoint-indexed transport eliminator. It also carries complete
+  first-order datatype declarations, owned constructors, induction and checked
+  local definitions. It has no arbitrary `Axiom`, SMT, refinement or cubical
+  constructor.
 - **`term::CoreTerm`** is the broader named-binder representation used by
   the elaboration and verification infrastructure. It also represents
   refinements, cubical operations, quotients, inductives, modalities and
@@ -81,9 +83,9 @@ Universe levels and dependent substitutions are part of this check.
 An accepted open-context judgment is conditional on that context; it is
 not a closed theorem until its assumptions are discharged or abstracted.
 
-The broader `verify_full` additionally receives axiom and inductive
-registries. Its trust boundary includes the declarations and checks used
-by that route. A successful registry audit is not a replacement for
+The named `verify_full` receives an axiom registry; `verify_with_inductives`
+also receives an inductive registry. Their trust boundaries include the
+checked declarations and explicit assumptions used by those routes. A successful registry audit is not a replacement for
 checking a particular proof against its complete statement.
 
 ## The substitute function

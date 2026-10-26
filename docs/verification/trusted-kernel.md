@@ -13,7 +13,7 @@ subject to its implementation and execution environment.
 
 | Surface | Role |
 |---|---|
-| `proof_checker` | Direct checking of closed Π/Σ/identity-type certificates |
+| `proof_checker` | Direct checking of closed dependent-type and ordinary-induction certificates |
 | `proof_checker_nbe` | Alternative conversion and checking algorithm for the same fragment |
 | `kernel_v0` and `KernelRuleId` | Bootstrap descriptions, rule manifests and declared metatheory requirements |
 
@@ -97,9 +97,10 @@ manifest itself into a self-hosted checker.
 The trusted base lives in the `proof_checker` module and
 implements an extended Calculus of Constructions: dependent
 functions (Π), dependent pairs (Σ), and intensional identity
-types (Id) with universe-polymorphic level expressions.
+types (Id), first-order inductives and transparent local definitions, with
+universe-polymorphic level expressions.
 
-**Thirteen inference rules** are exhaustive:
+The checking rules are:
 
 | # | Rule | Signature (informal) |
 |---|------|---------------------|
@@ -116,12 +117,18 @@ types (Id) with universe-polymorphic level expressions.
 | 11 | T-Refl-Intro | `Γ ⊢ a : A` ⟹ `Γ ⊢ refl a : Id(A, a, a)` |
 | 12 | T-J-Elim | `Γ ⊢ P : Π_:A. U_i`, `Γ ⊢ h : P a`, `Γ ⊢ p : Id(A, a, b)` ⟹ `Γ ⊢ J(P, h, p) : P b` |
 | 13 | T-Conv | `Γ ⊢ t : A`, `A ≡ B` ⟹ `Γ ⊢ t : B` |
+| 14 | T-Data | Every value-field type lies within the declared universe; recursive fields explicitly refer to the enclosing declaration |
+| 15 | T-Construct | The constructor belongs to the complete declaration and every argument checks against its declared field |
+| 16 | T-Induct | The motive ranges over the declaration, every branch checks against its generated telescope, and every recursive field supplies an induction hypothesis |
+| 17 | T-Let | Check the value, then check the body with that transparent definition in scope |
 
 Definitional equality (T-Conv) decides `α + β + η + level-eq + ι`,
 where `ι` is path induction's β-rule `J(_, h, refl) → h` and
-β-projection `fst(a, _) → a` / `snd(_, b) → b`.
+β-projection `fst(a, _) → a` / `snd(_, b) → b`. Ordinary induction reduces
+at a constructor, inserting recursive calls only at declared recursive fields.
+A local definition unfolds by capture-safe substitution.
 
-The Term language carries twelve variants:
+The `Term` language carries these variants:
 
 | Variant | Carries | Role |
 |---|---|---|
@@ -137,6 +144,17 @@ The Term language carries twelve variants:
 | `Id { ty, lhs, rhs }` | carrier + endpoints | identity type `Id(A, a, b)` |
 | `Refl(value)` | the value | reflexivity proof `refl a` |
 | `J { motive, base, scrutinee }` | predicate + base case + path | path induction |
+| `Data { name, level, constructors }` | complete declaration | first-order datatype identity |
+| `Construct { data, constructor, args }` | declaration + constructor index + fields | owned constructor application |
+| `Induct { scrutinee, motive, cases }` | value + result family + branches | ordinary dependent induction |
+| `Let { value, body }` | checked value + body binding index zero | transparent local definition |
+
+Datatype identity includes the complete declaration, not just its name.
+A constructor field is `Value(type)` or `Recursive`; the latter denotes the
+same enclosing declaration. Value-field types can capture surrounding type
+parameters. Branches bind each field in declaration order, followed immediately
+by its induction hypothesis when the field is recursive. This representation
+checks positivity by construction and does not admit forward-name aliases.
 
 ### 3.0 Universe polymorphism — Level expressions
 
@@ -192,18 +210,17 @@ A deliberate scope restriction. The trusted base does NOT:
   layer above the trusted base via the broader kernel's rule set.
 - Inspect `@framework`-cited axioms (those are leaves the
   apply-graph audit handles).
-- Inductive types beyond Σ — booleans, naturals, lists, etc. are
-  represented by appropriate encodings when available; native
-  inductives are outside this certificate language. A `kernel_v0` axiom
-  does not extend `proof_checker::Term`.
+- Indexed or mutually recursive datatypes, dependent constructor fields,
+  and nested or function-valued recursive fields. First-order datatypes such
+  as booleans, naturals, lists and execution outcomes are supported directly.
+  A `kernel_v0` axiom does not extend `proof_checker::Term`.
 
 The trade-off is deliberate. A wider kernel admits more programs
 directly; a narrower kernel makes the *surface a reviewer must
 audit* smaller. Verum balances the trade-off by including Π / Σ /
-Id (the foundational equality type former) — sufficient to encode
-every "exists" proposition and every transport/symm/trans/cong
-proof — while leaving cubical / inductive / refinement to the
-broader infrastructure.
+Id and first-order structural induction. Cubical operations, refinements and
+richer datatype signatures remain separate from this portable certificate
+fragment. Neither a rule manifest nor an audit label supplies missing evidence.
 
 ### 3.1a Derived constructions in the trusted base
 

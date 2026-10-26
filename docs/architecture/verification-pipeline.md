@@ -306,11 +306,21 @@ Higher inductive elimination is refused because the named-term API does not yet
 check the required path-coherence evidence. Its declaration and signature data
 must not be interpreted as an accepted higher inductive proof.
 
-Registered ordinary induction is available through the named checking APIs.
-The registry-free diagnostic proof-tree recorder does not certify constructor
-derivations, and the portable certificate calculus does not yet carry their
-induction evidence. Native checking therefore does not imply independent
-certificate replay for induction.
+The portable certificate calculus supports first-order inductive declarations,
+owned constructors, dependent induction and transparent local definitions.
+Its substitution and normalization-by-evaluation checkers and the independent
+Lean reference checker replay this fragment. Direct recursive fields receive
+explicit induction hypotheses. Indexed datatypes, mutually recursive groups,
+dependent constructor fields and nested or function-valued recursion are outside
+this portable fragment. Named declarations must be translated and checked; they
+do not become portable certificates automatically.
+
+General finite execution and observation preservation are checked using this
+fragment. The statement requires step commutation at every executed admissible
+action and preserves visited states, termination and refusal payloads. It does
+not establish program selection, learning, actual external effects, or the
+correspondence of an arbitrary implementation to those premises. See
+[general trace certificates](/docs/architecture/differential-lean-checker#general-trace-certificates).
 
 Other named-term rules still have incomplete obligations, including the
 cubical face conditions and dependent path coherence in

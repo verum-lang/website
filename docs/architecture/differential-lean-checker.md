@@ -198,6 +198,44 @@ catches any genuine type mismatch downstream.  The boundary cert
 (`defect-2-univ-max-minus-one-ok`) is permanently part of the
 regression battery.
 
+## General trace certificates
+
+The portable checker supports complete first-order datatype declarations,
+owned constructors, dependent induction and checked local definitions. The
+independent Lean reference checker consumes the same serialized certificate;
+it does not select a proof rule from the theorem name or metadata.
+
+`verification/certificates/generate_conservative_refinement.py` constructs
+closed general proofs of finite execution and observation preservation. They
+quantify over state and action types, transition functions, state-dependent
+action lifting and projection. Step commutation is required at every executed
+admissible action. The conclusion preserves visited states and the distinct
+continue, stop and refuse outcomes, including terminal and refusal payloads.
+Observation preservation additionally requires pointwise observation commutation.
+
+Run the acceptance check from the Verum repository root:
+
+```bash
+cargo build --release -p verum_proof --features process --bin verum-proof
+(cd verification/external/lean && lake build verum_replay_checker)
+python3 verification/certificates/check_conservative_refinement.py \
+  --native target/release/verum-proof \
+  --lean verification/external/lean/.lake/build/bin/verum_replay_checker \
+  --report conservative-refinement-acceptance.json
+```
+
+The runner uses the actual bounded native process and independent Lean replay.
+Controls alter continuation state, outcome classification, payloads, recursive
+admissibility and observation evidence while retaining the original formal
+statement. Rejection must reach proof checking; a decode error or exhausted
+resource budget does not count as a successful negative control.
+
+These proofs are conditional execution laws. They do not establish learning,
+search or selection quality, universal availability of an initial lifted state,
+or a particular runtime's implementation of the transition and delivery
+premises. Independent reference-checker agreement also does not constitute a
+proof of the Rust checker's implementation correctness.
+
 ## 6. Running locally
 
 Run the commands from the Verum repository root.
