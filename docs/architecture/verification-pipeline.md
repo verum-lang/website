@@ -554,10 +554,14 @@ count, preserving the candidate's declared authority. These checks do not prove
 the syntax enumeration maps an index to its emitted program, statistical
 admission, or floating-point fee evaluation. A fresh trusted declaration is a
 new producer premise, not proof of independence from earlier evidence.
-The test-only exporter and synthetic checker controls alone do not establish
-native joint-production correspondence; a frozen native export must pass replay.
+CI also replays a frozen native export from ordinary automatic acquisition,
+checking its original initializer, retained authority receipt, receiver history,
+and fork/live/full-replay agreement. Long histories compose kernel-checked
+transition equalities without enlarging proof limits. This evidence covers the
+identified producer and exported observations; synthetic controls alone do not
+establish native correspondence, and joint read behavior is not exported here.
 
-The retained native lifecycle fixture exercises foreign and stale commit
+The retained native lifecycle fixtures exercise foreign and stale commit
 refusals, successful commit, retained and current reads, receiver installation
 and replay, structural installation failures, and exact naming across forks.
 It also checks canonical budget exhaustion and acquired trace capacity through
