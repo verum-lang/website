@@ -166,6 +166,19 @@ field is recursive. Later dependent fields refer to field values, not to the
 inserted hypotheses. This representation
 checks positivity by construction and does not admit forward-name aliases.
 
+Transparent local definitions retain their checked types. Reusing a definition
+checks conversion against that type before considering its body; expected
+dependent-pair families can still require checking the original introduction.
+The substitution checker memoizes only the expansion of acyclic definitions
+within their original binder prefix. It weakens each use into its actual context.
+This avoids repeated proof checking without adding a certificate authority or
+allowing later binders to change a stored definition.
+
+Native admission bounds input size, logical nodes and binder depth separately
+from physical JSON nesting. The isolated worker also enforces CPU and wall-clock
+budgets and a memory termination threshold. Exceeding any resource budget is an
+inconclusive refusal, never an accepted proof or a counterexample.
+
 ### 3.0 Universe polymorphism — Level expressions
 
 Universes are not a flat 32-bit ladder; the carrier is a

@@ -415,7 +415,18 @@ not establish effects, recursive execution, resource costs or compiler/runtime
 correspondence. Replay and altered-proof controls are available through
 `verification/external/lean/check_typed_programs.py`.
 
-This theorem is checked directly by Lean. Native portable declarations now
+The native portable calculus also checks context-indexed references, typed
+program execution, capture-safe substitution and continuation splicing.
+General native certificates establish that substitution and splicing preserve
+the complete optional execution result. Heterogeneous environments are derived
+dependent products, and the proofs use structural induction and identity
+transport without assuming function extensionality. Replay and altered-evidence
+controls are available through
+`verification/certificates/check_typed_programs.py`. Concrete execution controls
+also verify that an unused failed instruction remains a failure and that a new
+register cannot capture an earlier input.
+
+The full macro-translation theorem above is checked directly by Lean. Native portable declarations now
 express dependent fields and indexed families, including recursive fields whose
 indices differ from the constructor result. The same general typed-program
 certificate and checked source lowering still require validation before claiming
