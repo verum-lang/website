@@ -256,7 +256,7 @@ representation does not establish coverage of the other.
 | Entry point | Role |
 |-------------|------|
 | `infer` | Infer a named term's type from its context and axiom registry. |
-| `verify_full` | Compare the inferred type with the requested goal. It has no inductive declaration registry. |
+| `verify_full` | Check goal formation and compare the proof type with the goal in the inductive-free fragment. |
 | `infer_with_inductives` | Infer with an explicit registry of inductive declarations. |
 | `verify_with_inductives` | Check goal formation and a proof against that registry. |
 | `replay_smt_cert` | Reconstruct a supported certificate's witness; a solver verdict alone is insufficient. |
@@ -272,6 +272,20 @@ Type conversion preserves lexical binding and distinguishes free variables from
 bound ones. Type parameters and constructor fields must respect the declaration's
 universe. The declaration schema does not yet provide a separate universe
 parameter telescope for every datatype parameter.
+
+Declarations are checked before admission. Transparent definitions must have
+closed, well-typed bodies at their declared types. Mutually dependent inductives
+are admitted atomically after checking field types, universe bounds, parameter
+scope and strict positivity against every member of the group. Unknown type
+names are errors. Registries retain dependency identities and reject a later
+environment that replaces a dependency with another declaration of the same name.
+
+Quotient elimination supports relation-respecting maps into a constant result
+type. `QuotElim` carries an explicit `respect` proof: related inputs must produce
+equal outputs. Formation, introduction, the case function and that proof are
+checked in the kernel. A genuinely dependent quotient motive is refused until
+dependent transport coherence is supported. Ordinary transport checks that the
+path relates types and that the value inhabits its source type.
 
 ### Trusted computing base
 
@@ -298,9 +312,9 @@ derivations, and the portable certificate calculus does not yet carry their
 induction evidence. Native checking therefore does not imply independent
 certificate replay for induction.
 
-Other named-term rules still have incomplete obligations. In particular,
-`QuotElim` in `crates/verum_kernel/src/infer.rs` does not enforce the required
-respect-of-equivalence condition. Full soundness of the named calculus and
+Other named-term rules still have incomplete obligations, including the
+cubical face conditions and dependent path coherence in
+`crates/verum_kernel/src/infer.rs`. Full soundness of the named calculus and
 complete end-to-end coverage of surface proofs have not been established.
 External proof export remains subject to the restrictions described in
 [proof export](/docs/verification/proof-export).

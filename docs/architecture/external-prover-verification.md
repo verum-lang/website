@@ -273,17 +273,22 @@ the structural proof landed).
   3-premise structural constructor (`Typing Γ a base`,
   `Typing Γ base (Universe i)`,
   `Typing Γ predicate (Pi x base (Universe 0))`).
-  Predicate-truth-at-the-introduced-value remains the kernel's
-  runtime contract (mirroring `K_Quot_Elim` discipline).
+  This schema does not establish that the executable Rust implementation
+  checks predicate truth at the introduced value.
 
-### Quotient (HIT)
+### Quotient maps
 
-* `K_Quot_Form`, `K_Quot_Intro`, `K_Quot_Elim` — **all `Proved`**
-  with structural premises (scrutinee at the quotient, motive
-  at the dependent universe, case_fn at the dependent product).
-  The respect-of-equivalence side condition that mathlib's
-  `Quotient.lift` requires its caller to discharge externally
-  remains the kernel's input contract.
+The Lean, Coq and Isabelle rule schemas for `K_Quot_Form`, `K_Quot_Intro` and
+`K_Quot_Elim` include relation formation, typed case functions and an explicit
+relation-respect premise. Elimination uses a constant result family and records
+binder-hygiene conditions. Agda's export remains postulated at this layer.
+
+These exports are abstract rule-closure statements: deriving the declared rule
+from its premises does not prove correspondence with the Rust checker. The
+native named checker independently validates the mandatory `respect` term and
+rejects genuinely dependent quotient motives. See the
+[checking APIs](/docs/architecture/verification-pipeline#checking-apis) for that
+boundary.
 
 ### Inductive
 

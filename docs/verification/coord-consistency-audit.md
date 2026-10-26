@@ -92,11 +92,14 @@ with the cited framework's bare coordinate and classifies missing citations:
 | `verify-lift` | `inferred_nu` differs from the inferred framework's bare coordinate | Reports the annotation-derived coordinate difference; does not check a proof |
 | `missing-framework` | Theorem has `@verify(...)` but **no** `@framework(...)` citation | **Violation** — the theorem's claim has no recorded framework lineage |
 
-This metadata audit does not establish enforcement at every proof-term node.
-In `crates/verum_kernel/src/infer.rs`, `infer_with_full_context` checks a direct
-axiom reference when both coordinates are available. Recursive inference calls
-currently reset the theorem coordinate, so nested axiom references do not
-receive the same check. An audit classification does not close that limitation.
+The metadata audit remains separate from proof checking.
+`infer_with_full_context` in `crates/verum_kernel/src/infer.rs` carries the theorem
+coordinate through recursive typing obligations and checks each axiom reference
+when both coordinates are available. Transparent definitions retain the strongest
+citation requirement of their type and body, so an alias cannot erase it.
+Unannotated axioms and callers without a theorem coordinate do not receive this
+coordinate policy check; an audit classification alone does not establish proof
+validity.
 
 ### Illustrative output
 
