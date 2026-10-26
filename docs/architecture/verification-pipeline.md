@@ -344,6 +344,14 @@ reference verifier has a closed proof and goal. Native admission and independent
 replay check scope before normalization. Scope establishes that variables are
 bound; it does not establish typing or logical soundness.
 
+`VerumExternalReplay.ReductionScope` proves that every fuel-bounded weak-head
+reduction preserves scope, including constructor induction and truncated runs.
+`VerumExternalReplay.ReductionSemantics` connects every evaluator result to a
+finite sequence of explicit beta, let, projection, identity-transport and
+induction steps. The rules do not assume evaluator correctness. Fuel exhaustion
+can leave a reducible term, so reachability does not imply normality. These
+results do not yet establish typing preservation or Rust-checker correspondence.
+
 Execution-policy certificates also check conditional action and continuation
 identity, foreign-queue preservation, refusal of credit after error or unwind,
 and receipt preservation through interpretation. Failed interpretation remains
