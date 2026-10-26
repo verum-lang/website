@@ -548,6 +548,15 @@ model and rejects mutations that restore the incorrect refusal classifications.
 This acceptance belongs to the identified frozen producer; later source changes
 require new evidence, and unrelated native regression failures remain separate.
 
+`VerumExternalReplay/CommonDescriptionCost.lean` proves the exact ranking law
+for a fixed corpus and coding interpretation: minimizing complete description
+cost is equivalent to maximizing common coding gain minus the candidate's own
+name fee. Unselected context costs cancel only when unchanged; domain and name
+fees remain payable. The proof uses an exact ordered additive group, not
+floating-point reassociation. Correct logarithm evaluation, shared corpus and
+alphabet identities, admission evidence and native scoring correspondence
+remain separate obligations.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
