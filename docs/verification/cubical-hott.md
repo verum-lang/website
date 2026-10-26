@@ -208,6 +208,16 @@ whose occurrences disappear during simplification. This checks the face
 formula; it does not discharge the cubical term's remaining obligations.
 In particular, `(i = 0) ∨ (i = 1)` is not the whole interval.
 
+`crates/verum_kernel/src/interval.rs` provides a separate De Morgan interval
+algebra: endpoints, dimensions, meet, join, involution and substitution.
+Its canonical expressions preserve `i ∧ ~i ≠ 0` and `i ∨ ~i ≠ 1`; treating
+intervals as Boolean values would invalidate cubical reasoning. Endpoint
+projection maps an interval expression into the shared face algebra.
+`Context::extend_dimension` and `Context::check_interval` check a separate
+dimension namespace. Interval expressions are not ordinary terms in a fibrant
+universe. These library operations do not yet provide cubical path binders,
+partial elements or the boundary checks required to admit `HComp` and `Glue`.
+
 The named term `Transport(p, x)` requires `p : Path(Type(u), A, B)`
 and `x : A`, and returns a term of `B`. It reduces to `x` only when `p`
 normalizes to `Refl(A)`. Neutral paths remain explicit. Local names such as

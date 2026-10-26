@@ -333,10 +333,11 @@ and returns its right type. Only reflexive evidence computes to the source
 value. Generalized cubical transport with a regularity face is not supported
 by this named term.
 
-Named `HComp` and `Glue` are refused because interval contexts, partial
+Named `HComp` and `Glue` are refused because their dimension binding, partial
 elements and coherence obligations are not yet checked. Their raw syntax
 cannot authorize face reductions. The shared canonical face algebra and its
-scoped parser lowering do not replace those judgments. Higher inductive
+scoped parser lowering, and the separate De Morgan interval algebra with
+explicit dimension scope, do not replace those judgments. Higher inductive
 elimination is also refused pending path coherence.
 
 Full soundness of the named calculus and complete end-to-end coverage of
