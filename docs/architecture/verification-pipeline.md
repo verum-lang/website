@@ -497,6 +497,24 @@ memory bounds, foreign ownership, panic behavior, or event provenance. Finite
 conformance is distinct from a universal proof of the foreign runtime and from
 native Verum certificate replay.
 
+The lifecycle model in `VerumExternalReplay/ObserverOwnership.lean` checks
+instance identity before state identity. A rejected commit retains its original
+preparation and leaves the destination unchanged. A fresh state allocation
+invalidates earlier preparations even when its value is unchanged. Reads retain
+their immutable cut; a fork has an independent instance owner. Relating these
+identities to live allocations and private constructors is an explicit foreign
+implementation obligation; the model does not establish affine memory safety
+or panic behavior.
+
+`VerumExternalReplay/ExactNames.lean` proves that an append-only table of exact
+keys assigns stable, injective names within one shared namespace. A key may
+contain both the full input and an arbitrary structured output. Existing names
+remain available at capacity; refusing a new key preserves the table. Forks
+must share the namespace for these guarantees to apply across branches.
+Independent tables can assign the same number to different keys, so equal
+numeric epoch labels alone do not establish common ownership. These are general
+model laws; frozen implementation observations are checked separately.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
