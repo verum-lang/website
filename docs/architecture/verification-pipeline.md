@@ -324,6 +324,12 @@ substitution and normalization-by-evaluation algorithms and the independent
 Lean replay check these rules. This does not establish full checker soundness
 or extend the supported inductive declaration grammar.
 
+Expected families also reach introductions through transparent local definitions,
+including alias chains and uses beneath later binders. Each definition is checked
+before use, even when unused. This does not refine the declared type of an
+arbitrary function result or a context assumption: those retain their stated
+types. Normalizing an unchecked expression would erase relevant obligations.
+
 Execution-policy certificates also check conditional action and continuation
 identity, foreign-queue preservation, refusal of credit after error or unwind,
 and receipt preservation through interpretation. Failed interpretation remains
@@ -333,6 +339,16 @@ policy model, checked alongside altered-policy rejection controls; correspondenc
 to application code, affine consumption, adapter fidelity and durable delivery
 remain separate obligations. The reproducible entry point is
 `verification/certificates/check_dispatch_contract.py`.
+
+Candidate-support locality is checked as a separate conditional contract. At a
+fixed valid candidate, preserving membership and support witnesses on a nonempty
+admitted domain preserves that same domain's admission. Time and event support
+may have different witnesses. Selection from the eligible set retains membership
+in the full situation universe; identity comparison requires the same domain and
+scoring context. These predicate-level laws do not prove arithmetic thresholds,
+statistical confidence, optimizer completeness or application correspondence.
+Expanding the full universe can change selection cost. The reproducible checker
+entry point is `verification/certificates/check_candidate_locality.py`.
 
 General finite execution and observation preservation are checked using this
 fragment. The statement requires step commutation at every executed admissible
