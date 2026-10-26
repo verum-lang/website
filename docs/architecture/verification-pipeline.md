@@ -415,23 +415,23 @@ not establish effects, recursive execution, resource costs or compiler/runtime
 correspondence. Replay and altered-proof controls are available through
 `verification/external/lean/check_typed_programs.py`.
 
-The native portable calculus also checks context-indexed references, typed
-program execution, capture-safe substitution and continuation splicing.
-General native certificates establish that substitution and splicing preserve
-the complete optional execution result. Heterogeneous environments are derived
-dependent products, and the proofs use structural induction and identity
-transport without assuming function extensionality. Replay and altered-evidence
-controls are available through
-`verification/certificates/check_typed_programs.py`. Concrete execution controls
-also verify that an unused failed instruction remains a failure and that a new
-register cannot capture an earlier input.
+The native portable calculus checks the same general macro-preservation law,
+including its definedness and injective-result-reflection corollaries.
+Context-indexed references, heterogeneous environments, substitution and
+continuation splicing are ordinary checked definitions. Environments are
+derived dependent products; the proofs use structural induction and identity
+transport without assuming function extensionality. Both native algorithms and
+the independent Lean replay checker validate the generated certificates through
+`verification/certificates/check_typed_programs.py`. Changed-evidence controls
+reject omitted correspondence and injectivity premises. Execution controls cover
+merged source sorts, target-only intermediate sorts, unused failing instructions
+and register capture.
 
-The full macro-translation theorem above is checked directly by Lean. Native portable declarations now
-express dependent fields and indexed families, including recursive fields whose
-indices differ from the constructor result. The same general typed-program
-certificate and checked source lowering still require validation before claiming
-native coverage of this theorem. A named certificate producer is not the Verum
-source-language elaborator.
+The native certificate quantifies over base-universe sort and value carriers;
+the direct Lean theorem allows independent universe levels. These are model
+preservation results. Correspondence with source-language elaboration and the
+actual compiler/runtime remains a separate obligation. A named certificate
+producer is not the Verum source-language elaborator.
 
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual

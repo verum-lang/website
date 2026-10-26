@@ -122,11 +122,13 @@ The checking rules are:
 | 16 | T-Induct | The motive ranges over all indices and the indexed value; every branch checks against its generated telescope, including recursively indexed hypotheses |
 | 17 | T-Let | Check the value, then check the body with that transparent definition in scope |
 
-Definitional equality (T-Conv) decides `α + β + η + level-eq + ι`,
+Definitional equality (T-Conv) checks `α + β + η + level-eq + ι`,
 where `ι` is path induction's β-rule `J(_, h, refl) → h` and
 β-projection `fst(a, _) → a` / `snd(_, b) → b`. Ordinary induction reduces
 at a constructor, inserting recursive calls only at declared recursive fields.
-A local definition unfolds by capture-safe substitution.
+A local definition unfolds by capture-safe substitution. Dependent-pair η
+identifies `(fst(p), snd(p))` with `p` at their checked common type; it does
+not identify swapped or duplicated components.
 
 The `Term` language carries these variants:
 
@@ -172,7 +174,10 @@ dependent-pair families can still require checking the original introduction.
 The substitution checker memoizes only the expansion of acyclic definitions
 within their original binder prefix. It weakens each use into its actual context.
 This avoids repeated proof checking without adding a certificate authority or
-allowing later binders to change a stored definition.
+allowing later binders to change a stored definition. The normalization checker
+captures only referenced environment slots, preserving local telescope binders.
+Lambda inference checks each domain in order and normalizes the final dependent
+signature once, avoiding repeated normalization at each surrounding binder.
 
 Native admission bounds input size, logical nodes and binder depth separately
 from physical JSON nesting. The isolated worker also enforces CPU and wall-clock
