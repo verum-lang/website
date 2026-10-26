@@ -387,6 +387,31 @@ in `VerumExternalReplay.ExactTransports` and portable replay through
 `verification/certificates/check_exact_transports.py`. They do not verify an
 acquisition grammar, learner, implementation or empirical generalization.
 
+Typed finite register programs have a separate structural preservation theorem
+in `VerumExternalReplay.TypedPrograms`. Context-indexed references allow inputs
+and earlier registers, including shared intermediate results; heterogeneous
+argument lists enforce each primitive's signature. Translation expands each
+source primitive into a finite target program, with capture-avoiding substitution
+and continuation splicing. Given exact primitive and literal correspondence,
+the theorem preserves the entire `Option` execution result on every translated
+input, including failure at an instruction whose result is unused.
+
+Source and target sorts may differ, and multiple source sorts may map to the
+same target sort. Register relabeling preserves positions, and expanded programs
+may use intermediate sorts outside the image of that mapping. Definedness is
+preserved and reflected; reflection of a particular result additionally requires
+an injective value translation for that result sort. These statements
+cover pure deterministic partial operations and finite eager programs. They do
+not establish effects, recursive execution, resource costs or compiler/runtime
+correspondence. Replay and altered-proof controls are available through
+`verification/external/lean/check_typed_programs.py`.
+
+This theorem is checked directly by Lean. Native portable declarations do not
+yet express the dependent constructor telescopes and context-changing recursive
+indices used by this representation. Native indexed syntax, elimination and
+checked source lowering remain required before claiming native coverage of the
+same general theorem.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
