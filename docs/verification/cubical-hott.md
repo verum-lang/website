@@ -214,9 +214,16 @@ Its canonical expressions preserve `i ∧ ~i ≠ 0` and `i ∨ ~i ≠ 1`; treati
 intervals as Boolean values would invalidate cubical reasoning. Endpoint
 projection maps an interval expression into the shared face algebra.
 `Context::extend_dimension` and `Context::check_interval` check a separate
-dimension namespace. Interval expressions are not ordinary terms in a fibrant
-universe. These library operations do not yet provide cubical path binders,
-partial elements or the boundary checks required to admit `HComp` and `Glue`.
+dimension namespace. `Context::assume_face` adds scoped face assumptions;
+`entails_face` checks coverage and `intervals_equal` checks interval equality
+under every disjunct of the assumption. Free dimensions retain their full
+De Morgan structure: agreement at their endpoints alone is insufficient.
+Scope errors are rejected even under contradictory assumptions. General
+interval substitution on faces commutes with endpoint projection.
+
+Interval expressions are not ordinary terms in a fibrant universe. These
+library judgments do not yet provide cubical path binders, partial elements
+or equality of term-valued boundaries required to admit `HComp` and `Glue`.
 
 The named term `Transport(p, x)` requires `p : Path(Type(u), A, B)`
 and `x : A`, and returns a term of `B`. It reduces to `x` only when `p`
