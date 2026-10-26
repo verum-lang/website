@@ -202,30 +202,25 @@ cube boundary structure programmatically.
   Constructively derivable from `Glue`.  `ua-unique` enforces
   uniqueness up to canonical path.
 
-## V0 vs V1+
+## Implementation boundaries
 
-V0 ships:
+The CLI exposes the primitive catalogue, named computation rules and a
+face-formula parser with Unicode and ASCII syntax, precedence, parentheses
+and free-variable tracking. Parsing and rendering a face do not certify a
+cubical proof.
 
-- Production-grade typed catalogue (17 primitives × 5 categories).
-- Production-grade face-formula parser / validator (Unicode +
-  ASCII grammar, precedence + parens, free-variable tracking,
-  canonical round-trip).
-- 30 named computation rules with `lhs ↪ rhs` + rationale +
-  participating primitives.
-- All four CLI subcommands, every output format.
+Library consumers can use `FaceFormula::lower_scoped` from
+`verum_verification::cubical` to check an explicit dimension scope and lower
+into the kernel's canonical face algebra. Unknown dimensions are rejected
+before simplification. Normalization preserves the distinction between the
+two endpoint faces and the whole interval.
 
-V1+ adds:
-
-- Actual kernel-side reduction rules (currently the catalogue
-  names them; the reductions live in the kernel).
-- Higher inductive types (HITs) checked via the strict-positivity
-  infrastructure.
-- A constructive-derivability proof of `univalence` from `Glue`
-  (today the primitive is admitted; the proof itself is V1).
-- Per-primitive type-checking integration into `verum verify`.
-
-The trait surface is unchanged across V0 → V1, so CLI / docs / CI
-scripts continue to work identically as the kernel-side fills in.
+The named kernel supports ordinary path transport and dependent-path
+formation. It refuses `HComp`, `Glue` and higher inductive elimination until
+their respective boundary and coherence judgments are implemented. The
+catalogue's mathematical rules describe these operations; they are not
+proofs that every operation is implemented. See
+[cubical proof boundaries](/docs/verification/cubical-hott#computational-univalence).
 
 ## CI usage
 

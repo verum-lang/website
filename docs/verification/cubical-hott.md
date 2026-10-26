@@ -187,12 +187,26 @@ let n: Nat = transport(p, 42);
 // 8. ua(id_equiv)              ↦ refl(Type)
 ```
 
-A separate, **kernel-internal** cubical-reduction set lives in
-`crates/verum_kernel/src/support.rs::normalize_core` —
-`HComp` and `Glue` face reductions, ordinary `Transport` over reflexivity,
-and reflexive `PathOver` reduction. These
-rules participate in CoreTerm normalization and definitional equality;
-their presence does not establish the full Kan-fibrancy obligations.
+The named kernel implements ordinary `Transport` over reflexivity and
+reflexive `PathOver` reduction in
+`crates/verum_kernel/src/support.rs::normalize_core`. These rules do not
+establish the full Kan-fibrancy obligations.
+
+Named `HComp` and `Glue` are refused with an `UnsupportedCubical` error.
+Their syntax is retained for diagnostics, but neither typing nor normalization
+interprets variable names as face evidence. A supported implementation requires
+typed interval contexts, partial elements, boundary agreement and checked
+gluing equivalences. An abstract exported rule schema or a catalogue entry
+does not establish acceptance by the named kernel.
+
+The face algebra in `crates/verum_kernel/src/cofibration.rs` supplies canonical
+finite joins, meets, implication and endpoint restriction. Its immutable
+normal forms remove contradictions, duplicate clauses and absorbed clauses.
+The verification parser lowers into this shared algebra only after checking
+all mentioned dimensions against an explicit scope, including dimensions
+whose occurrences disappear during simplification. This checks the face
+formula; it does not discharge the cubical term's remaining obligations.
+In particular, `(i = 0) ∨ (i = 1)` is not the whole interval.
 
 The named term `Transport(p, x)` requires `p : Path(Type(u), A, B)`
 and `x : A`, and returns a term of `B`. It reduces to `x` only when `p`
@@ -348,5 +362,4 @@ dependent types are enough. Cubical is there when you need it.
 - **[Architecture → SMT integration](/docs/architecture/smt-integration)**
   — cubical tactic dispatch.
 - **[Architecture → trusted kernel](/docs/architecture/trusted-kernel)**
-  — the typing rules for `PathTy`, `Refl`, `HComp`, `Transp`, and
-  `Glue` that the kernel actually checks.
+  — supported path rules and the boundaries of native proof acceptance.
