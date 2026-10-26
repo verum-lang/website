@@ -468,6 +468,18 @@ stated pure primitive and input correspondence. They do not establish a learner,
 a concrete runtime adapter, physical event provenance, or resource costs.
 Semantic undefinedness and exhausted checking or execution budgets are distinct.
 
+Frozen runtime observations can be checked against this model with
+`verification/external/lean/check_observer_export.py`. The extraction preserves
+finite owned code trees, lexical calls, every eager instruction, explicit or
+last-register output, and ordered input bindings. Lowering uses the checked
+register substitution and splicing operations. The concrete semantic model
+represents checked 64-bit arithmetic, truncating byte packing and primitive
+refusals. Each exported equality is checked by the Lean kernel; the report
+records source, export and checker identities and audits theorem axioms.
+Agreement establishes conformance for those observations. It does not prove all
+foreign runtime executions, ownership, resource accounting, or event provenance,
+and is separate from native Verum certificate replay.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
