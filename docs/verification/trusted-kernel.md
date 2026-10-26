@@ -150,10 +150,14 @@ The `Term` language carries these variants:
 | `Let { value, body }` | checked value + body binding index zero | transparent local definition |
 
 Datatype identity includes the complete declaration, not just its name.
-A constructor field is `Value(type)` or `Recursive`; the latter denotes the
-same enclosing declaration. Value-field types can capture surrounding type
-parameters. Branches bind each field in declaration order, followed immediately
-by its induction hypothesis when the field is recursive. This representation
+A constructor field is `Value(type)`, `Dependent(type)` or `Recursive`.
+`Value` types use the surrounding context; `Dependent` types additionally see
+one binder for each preceding field, with the most recent field at index zero.
+`Recursive` denotes the same enclosing declaration. All field types must be
+well formed within the declaration's universe. Branches bind each field in
+declaration order, followed immediately by its induction hypothesis when the
+field is recursive. Later dependent fields refer to field values, not to the
+inserted hypotheses. This representation
 checks positivity by construction and does not admit forward-name aliases.
 
 ### 3.0 Universe polymorphism — Level expressions
@@ -216,8 +220,8 @@ A deliberate scope restriction. The trusted base does NOT:
   layer above the trusted base via the broader kernel's rule set.
 - Inspect `@framework`-cited axioms (those are leaves the
   apply-graph audit handles).
-- Indexed or mutually recursive datatypes, dependent constructor fields,
-  and nested or function-valued recursive fields. First-order datatypes such
+- Indexed or mutually recursive datatypes, and nested or function-valued
+  recursive fields. First-order datatypes such
   as booleans, naturals, lists and execution outcomes are supported directly.
   A `kernel_v0` axiom does not extend `proof_checker::Term`.
 

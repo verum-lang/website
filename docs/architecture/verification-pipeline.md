@@ -310,10 +310,15 @@ The portable certificate calculus supports first-order inductive declarations,
 owned constructors, dependent induction and transparent local definitions.
 Its substitution and normalization-by-evaluation checkers and the independent
 Lean reference checker replay this fragment. Direct recursive fields receive
-explicit induction hypotheses. Indexed datatypes, mutually recursive groups,
-dependent constructor fields and nested or function-valued recursion are outside
-this portable fragment. Named declarations must be translated and checked; they
-do not become portable certificates automatically.
+explicit induction hypotheses. Constructor field types may depend on preceding
+fields; construction substitutes their actual values, and induction preserves
+those dependencies while inserting recursive hypotheses. Self references and
+forward references in field types are rejected. Indexed datatypes, mutually
+recursive groups and nested or function-valued recursion remain outside this
+portable fragment. Named declarations must be translated and checked; they do
+not become portable certificates automatically. General dependent-record
+elimination and altered-evidence controls are replayed by
+`verification/certificates/check_dependent_constructors.py`.
 
 Dependent pair introduction uses the expected family: for a goal
 `Σ(y : A). B(y)`, the checker verifies the first value at `A` and the second
@@ -406,9 +411,9 @@ not establish effects, recursive execution, resource costs or compiler/runtime
 correspondence. Replay and altered-proof controls are available through
 `verification/external/lean/check_typed_programs.py`.
 
-This theorem is checked directly by Lean. Native portable declarations do not
-yet express the dependent constructor telescopes and context-changing recursive
-indices used by this representation. Native indexed syntax, elimination and
+This theorem is checked directly by Lean. Native portable declarations support
+dependent constructor fields but do not yet express the indexed families and
+context-changing recursive indices used by this representation. Native indexed syntax, elimination and
 checked source lowering remain required before claiming native coverage of the
 same general theorem.
 

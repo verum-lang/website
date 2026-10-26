@@ -201,7 +201,8 @@ regression battery.
 ## General trace certificates
 
 The portable checker supports complete first-order datatype declarations,
-owned constructors, dependent induction and checked local definitions. The
+owned constructors, dependent constructor fields, dependent induction and
+checked local definitions. The
 independent Lean reference checker consumes the same serialized certificate;
 it does not select a proof rule from the theorem name or metadata.
 

@@ -62,7 +62,8 @@ Two term languages have distinct roles:
 - **`proof_checker::Term`** uses de Bruijn indices, universe-level
   expressions, dependent functions and pairs, identity types, reflexivity
   and an endpoint-indexed transport eliminator. It also carries complete
-  first-order datatype declarations, owned constructors, induction and checked
+  first-order datatype declarations with dependent fields, owned constructors,
+  induction and checked
   local definitions. It has no arbitrary `Axiom`, SMT, refinement or cubical
   constructor.
 - **`term::CoreTerm`** is the broader named-binder representation used by
