@@ -59,12 +59,17 @@ The audit gate `--kernel-soundness` drift-checks all four.
 
 ### 2.2 Foreign-tool re-check
 
+Run the commands from the Verum repository root.
+`verification/external/lean/lean-toolchain` selects the exact Lean version;
+use that pin for local checks and CI rather than maintaining a second version.
+
+
 `verum audit --external-prover-replay` extends the gate with a real
 shell-out across **four foundations**:
 
 | Backend | Tool | Project | Invocation |
 |---------|------|---------|------------|
-| Lean 4 (4.29.1+) | `lake build` | `verification/external/lean/` | builds `VerumExternalReplay/KernelSoundness.lean` |
+| Lean 4 (repository toolchain pin) | `lake build` | `verification/external/lean/` | builds `VerumExternalReplay/KernelSoundness.lean` |
 | Coq / Rocq (9.0+) | `coqc -Q . VerumExternalReplay kernel_soundness.v` | `verification/external/coq/` | type-checks the export |
 | Isabelle/HOL (2025-2+) | `isabelle build -d . KernelSoundness` | `verification/external/isabelle/` | re-elaborates `KernelSoundness.thy` |
 | Cubical Agda (2.8+) | `agda --cubical KernelSoundness.agda` | `verification/external/agda/` | re-elaborates `KernelSoundness.agda` under cubical mode |
@@ -373,7 +378,7 @@ you're scripting it outside CI:
   run: |
     # elan + lake
     curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-      | sh -s -- -y --default-toolchain leanprover/lean4:v4.29.1
+      | sh -s -- -y --default-toolchain "$(cat verification/external/lean/lean-toolchain)"
     source $HOME/.elan/env
     # rocq via apt or brew, depending on runner OS
     sudo apt-get install -y coq rocq-prover

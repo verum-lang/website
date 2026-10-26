@@ -454,5 +454,5 @@ certificate whose version exceeds the kernel's current
 - **[Architecture → verification pipeline](/docs/architecture/verification-pipeline)**
   — the solver-side internals.
 - **[Architecture → trusted kernel](/docs/architecture/verification-pipeline#trusted-kernel)**
-  — the LCF-style check loop in `verum_kernel`, the sole trusted
-  checker in the stack.
+  — the named and portable checking paths, their trust boundaries,
+  and current coverage limits.

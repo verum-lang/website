@@ -200,6 +200,11 @@ regression battery.
 
 ## 6. Running locally
 
+Run the commands from the Verum repository root.
+`verification/external/lean/lean-toolchain` selects the exact Lean version;
+use that pin for local checks and CI rather than maintaining a second version.
+
+
 ```bash
 # Default — runs trusted-base kernel + Lean exe, reports per-cert verdicts.
 verum audit --differential-lean-checker
@@ -225,7 +230,7 @@ Add to the GitHub Actions matrix alongside the tri-prover replay:
   run: |
     # elan + lake (required for both gates)
     curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-      | sh -s -- -y --default-toolchain leanprover/lean4:v4.29.1
+      | sh -s -- -y --default-toolchain "$(cat verification/external/lean/lean-toolchain)"
     source $HOME/.elan/env
     verum audit --differential-lean-checker
 ```

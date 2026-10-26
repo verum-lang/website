@@ -3,22 +3,21 @@ title: Coord-consistency + framework-soundness audits
 sidebar_position: 19
 ---
 
-# Coord-consistency + framework-soundness audits (M4.A / M4.B)
+# Coord-consistency + framework-soundness audits
 
-Two complementary audit subcommands close the corpus-side gap between
-**kernel-time** soundness gates (which fire only at axiom registration
-or proof re-check) and **audit-time** validation (which catches issues
-in CI before any kernel work runs):
+These subcommands inspect declaration syntax and framework metadata. They do
+not prove propositions, establish consistency, or replace proof checking.
 
-| Audit | Mirrors kernel-side | What it surfaces |
+| Audit | Inputs | What it surfaces |
 |---|---|---|
-| `verum audit --framework-soundness` | V8.1 #222 — `AxiomRegistry::register` defaults to `SubsingletonRegime::ClosedPropositionOnly` | every `public axiom` whose proposition is just `true` (no propositional content) |
-| `verum audit --coord-consistency` | V8.1 #232 — `check_coord_cite` auto-fires at every `CoreTerm::Axiom` reference site | every `@verify(...)`-annotated theorem that has no `@framework(...)` citation |
+| `verum audit --framework-soundness` | Public axiom proposition syntax | Literal `true` and conjunctions made entirely of `true` |
+| `verum audit --coord-consistency` | Framework citations and verification annotations | Verification annotations without recorded framework lineage, plus coordinate classifications |
 
-Both commands emit `audit-reports/<name>.json` (schema_version=1) +
-non-zero exit on hard violations, suitable for CI `make` targets.
+Both commands support text and JSON output on standard output. Redirect JSON
+when a report file is needed. The coordinate audit fails on missing-framework
+rows; the framework audit reports classifications without failing on placeholders.
 
-## `verum audit --framework-soundness` (M4.A)
+## `verum audit --framework-soundness`
 
 Walks every `public axiom` in the project and classifies its
 **proposition** (the parser's requires-AND-ensures conjunction stored
@@ -26,15 +25,16 @@ on `AxiomDecl::proposition: Heap<Expr>`):
 
 | Classification | Definition | What it means |
 |---|---|---|
-| `sound` | proposition has non-trivial structure (binop / call / refinement etc.) | Real propositional content — passes K-FwAx-light gate |
-| `trivial-placeholder` | proposition is just `Literal::Bool(true)` (or AND-chain of `true` literals) | Documentation-only marker; consider strengthening to witness-parameterised form, promoting to `@theorem`, or accepting as Definition-anchor / external-paper citation / trust-boundary marker |
+| `sound` | proposition is not a literal `true` or conjunction made entirely of `true` | A syntax classification; truth and consistency are not established |
+| `trivial-placeholder` | proposition is just `Literal::Bool(true)` (or an AND-chain of `true` literals) | The proposition carries no claim beyond `true`; review its intended meaning |
 
-The walker uses the same machinery as the kernel's
-`axiom::register_with_regime`
-`SubsingletonRegime::ClosedPropositionOnly` gate, projected into AST
-form so it runs without kernel registration.
+The implementation is `expr_is_trivially_true` in
+`crates/verum_cli/src/commands/audit.rs`. It does not invoke the kernel's
+`AxiomRegistry::register` checks. Even literal `false` receives the `sound`
+classification because it is not a trivial `true` expression; that label is
+not a proof verdict.
 
-### Sample output
+### Illustrative output
 
 ```text
 $ verum audit --framework-soundness
@@ -72,46 +72,33 @@ trivial-placeholder axioms (consider strengthening or promoting to @theorem):
 }
 ```
 
-### Acceptable trivial-placeholder kinds
+### Interpreting placeholder rows
 
-Not every `trivial-placeholder` row is a defect. The following shapes
-are **structurally appropriate** as `@axiom ... ensures true`:
+A placeholder may mark a definition, source citation or intended trust boundary.
+Its name or citation does not establish the associated mathematical law. A
+marker whose proposition is `true` proves only `true`. Before claiming the law,
+state its actual proposition and supply checked evidence or an explicit,
+reviewed assumption.
 
-* **Definition anchors** — `msfs_definition_7_5_lawvere_scope`,
-  `msfs_definition_8_3_display_class`, etc. The definitional content
-  is fully expressed in the function's signature; the proposition body
-  is just a marker.
-* **External-paper citations** — `msfs_lemma_A_1_kelly_2_categorical`,
-  `msfs_lemma_A_8_adamek_rosicky`. Verbatim admissions of authoritative
-  external publications.
-* **Trust-boundary markers** — `diakrisis_uhm_noesis_223_path_b_anchor`,
-  `msfs_stage_m_4_anchor`. Mark a downstream-extension boundary.
+## `verum audit --coord-consistency`
 
-Verum-MSFS baseline post-M4.A: 38 sound / 47 trivial-placeholder of
-85 total axioms (45% sound; remaining 47 are all in the appropriate
-trivial-placeholder shapes listed above).
-
-## `verum audit --coord-consistency` (M4.B)
-
-Walks every public theorem / axiom and validates the **(Fw, ν, τ)
-supremum invariant** — every theorem's inferred coordinate must be
-≥ max(cited frameworks' coordinates). Reuses the
-`invert_to_per_theorem` collector + `PerTheoremCoord` row from the
-existing `--coord` audit; classification:
+Collects per-declaration coordinates from framework citations and verification
+annotations using `invert_to_per_theorem`. It compares each reported coordinate
+with the cited framework's bare coordinate and classifies missing citations:
 
 | Classification | Definition | What it means |
 |---|---|---|
 | `consistent` | `inferred_nu` matches the bare ν of the maximum-cited framework | Theorem's ν is purely from framework citations |
-| `verify-lift` | `inferred_nu` exceeds max(cited fw ν) due to `@verify(...)` strategy | Informational — the strategy lift is intentional per VVA §2.3 |
+| `verify-lift` | `inferred_nu` differs from the inferred framework's bare coordinate | Reports the annotation-derived coordinate difference; does not check a proof |
 | `missing-framework` | Theorem has `@verify(...)` but **no** `@framework(...)` citation | **Violation** — the theorem's claim has no recorded framework lineage |
 
-Mirror of V8.1 #232 kernel-side typing-judgment integration
-(`infer_with_full_context` auto-fires `check_coord_cite` at every
-`CoreTerm::Axiom` reference site). Pre-M4.B the gate fired only at
-kernel re-check time; the corpus-side walker now surfaces violations
-at audit time (CI catchable).
+This metadata audit does not establish enforcement at every proof-term node.
+In `crates/verum_kernel/src/infer.rs`, `infer_with_full_context` checks a direct
+axiom reference when both coordinates are available. Recursive inference calls
+currently reset the theorem coordinate, so nested axiom references do not
+receive the same check. An audit classification does not close that limitation.
 
-### Sample output
+### Illustrative output
 
 ```text
 $ verum audit --coord-consistency
@@ -122,25 +109,17 @@ scanned 33 files, 219 per-theorem-coord rows + 0 no-citation @verify items
   missing_framework    0
 ```
 
-Verum-MSFS baseline post-M4.B: 84 consistent / 135 verify-lift / 0
-missing-framework. The walker exits with code 1 if any
-`missing_framework` rows surface.
+The walker exits with code 1 if any `missing_framework` rows are found.
 
-### Why three classes?
+### Reading the classifications
 
-* **`consistent`** — theorem's ν is purely from its `@framework(...)`
-  citations. Common case for "axiom-postulated" theorems.
-* **`verify-lift`** — theorem's ν exceeds bare-framework ν because
-  the user annotated `@verify(formal)` (lifts to ν=ω) or stricter.
-  This is the intended use of the gradual-verification ladder
-  (VVA §2.3) — kernel discharges obligation at the higher tier than
-  the framework alone provides.
-* **`missing-framework`** — theorem has a verify-strategy but no
-  framework citation. This means the kernel can't trace which
-  framework axiom set the proof depends on. Catches the
-  refactor-induced defect class where someone strengthens
-  `@verify(runtime)` → `@verify(proof)` but forgets the
-  `@framework(...)` annotation.
+- `consistent` means the reported coordinate matches the cited framework's
+  bare coordinate. It is not a theorem-validity result.
+- `verify-lift` records a coordinate difference associated with the verification
+  strategy. An annotation alone does not discharge its proof obligations.
+- `missing-framework` means a declaration has a verification annotation without
+  a framework citation. This is a lineage-policy violation, not a demonstration
+  that the proposition is false.
 
 ## CI gate pattern
 
@@ -161,7 +140,7 @@ audit-coord-consistency:
 `audit-coord-consistency` returns non-zero exit on any violation —
 `make audit-coord-consistency` fails the build. `audit-framework-soundness`
 emits the report but doesn't fail (the trivial-placeholder set is
-expected to non-zero on any corpus that ships Definition-anchors).
+expected to be nonzero on a corpus containing such markers).
 
 ## Related surfaces
 
