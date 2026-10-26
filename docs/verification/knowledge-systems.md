@@ -255,6 +255,11 @@ exports have different evidential force.
 
 ## Resource discipline
 
+Native certificate admission checks binder scope during the structural walk.
+An out-of-scope variable produces `unbound_variable` at the `admission` stage,
+including occurrences in discarded arguments, datatype fields and induction
+branches. Successful scope validation does not imply successful type checking.
+
 A proof service accepts untrusted artifacts. Limits should cover decoding,
 term size and depth, conversion, allocations and the outer process. A fuel
 counter on one reduction routine does not bound the entire verification

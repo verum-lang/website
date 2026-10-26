@@ -338,6 +338,12 @@ the executable term operations; typing preservation, the complete checking
 algorithm and correspondence to the Rust implementation remain separate
 obligations. The proof module is `VerumExternalReplay.TermOperations`.
 
+`VerumExternalReplay.TermScope` proves scope preservation under context
+extension, lifting and substitution, and that every certificate accepted by the
+reference verifier has a closed proof and goal. Native admission and independent
+replay check scope before normalization. Scope establishes that variables are
+bound; it does not establish typing or logical soundness.
+
 Execution-policy certificates also check conditional action and continuation
 identity, foreign-queue preservation, refusal of credit after error or unwind,
 and receipt preservation through interpretation. Failed interpretation remains
@@ -364,6 +370,14 @@ action and preserves visited states, termination and refusal payloads. It does
 not establish program selection, learning, actual external effects, or the
 correspondence of an arbitrary implementation to those premises. See
 [general trace certificates](/docs/architecture/differential-lean-checker#general-trace-certificates).
+
+Exact one-step transports also compose: if each embedding commutes with its
+partial execution through `Option.map`, their composite does too. Definedness
+is preserved and reflected; injectivity of the composite additionally requires
+injectivity of both embeddings. These conditional laws have direct Lean proofs
+in `VerumExternalReplay.ExactTransports` and portable replay through
+`verification/certificates/check_exact_transports.py`. They do not verify an
+acquisition grammar, learner, implementation or empirical generalization.
 
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
