@@ -324,6 +324,16 @@ substitution and normalization-by-evaluation algorithms and the independent
 Lean replay check these rules. This does not establish full checker soundness
 or extend the supported inductive declaration grammar.
 
+Execution-policy certificates also check conditional action and continuation
+identity, foreign-queue preservation, refusal of credit after error or unwind,
+and receipt preservation through interpretation. Failed interpretation remains
+inadmissible after later transformations. Transport confirmation and eligibility
+for outcome credit are distinct facts. These are general laws of the explicit
+policy model, checked alongside altered-policy rejection controls; correspondence
+to application code, affine consumption, adapter fidelity and durable delivery
+remain separate obligations. The reproducible entry point is
+`verification/certificates/check_dispatch_contract.py`.
+
 General finite execution and observation preservation are checked using this
 fragment. The statement requires step commutation at every executed admissible
 action and preserves visited states, termination and refusal payloads. It does
