@@ -474,7 +474,7 @@ finite owned code trees, lexical calls, declared operand arity, every eager
 instruction, explicit or last-register output, and ordered input bindings.
 Lowering uses checked register substitution and splicing. The concrete semantic
 model represents checked 64-bit arithmetic, truncating byte packing and exact
-primitive refusals.
+primitive refusals. Supplied primitive-refusal classifications are checked explicitly; a resource refusal cannot be substituted for semantic undefinedness.
 
 The operational model retains halt positions, prefix registers, dispatch counts
 and structural work accounting. Observer admission checks interface and input
@@ -509,7 +509,7 @@ or panic behavior.
 `VerumExternalReplay/ObserverInstallation.lean` checks the semantic installation
 path: a compatible receiver prefix contains no gaps and is replayed from the
 definition's initial state. Conflicting retained history under the same origin
-is refused. Cuts are relative to the input language's birth in the journal;
+is refused. Structural refusal checks preserve native ordering: an invalid cut precedes history comparisons, training comparisons precede fresh comparisons, and the first conflict precedes the first gap. Cuts are relative to the input language's birth in the journal;
 a global event position cannot substitute for that relative length. Admission,
 origin fidelity and runtime resource refusals remain separate obligations.
 
@@ -521,6 +521,23 @@ must share the namespace for these guarantees to apply across branches.
 Independent tables can assign the same number to different keys, so equal
 numeric epoch labels alone do not establish common ownership. These are general
 model laws; frozen implementation observations are checked separately.
+
+`verification/external/lean/check_lifecycle_export.py` checks the separate
+lifecycle export. It preserves full structured values, typed source identities,
+ordered histories and retained allocation identity classes. Repeated owners
+must retain their definitions and immutable payloads; new forks and preparations
+must have fresh identities. Installation is independently replayed from the
+receiver prefix. Naming checks retain the shared table across observations and
+check comparison charges and refusal behavior.
+
+The acquired-observer semantic adapter models checked 64-bit operations,
+oldest-first event traces, queries and structured outcomes. Primitive trace
+capacity is a resource refusal; missing data is semantic undefinedness. Synthetic
+positive and corrupted-export controls validate the checker itself. Acceptance
+of an implementation requires its actual frozen export and recorded producer
+identities to pass replay; those controls alone are not runtime evidence.
+The boundary excludes allocator failure, arbitrary meters, 32-bit targets,
+learning correctness and default enrollment.
 
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
