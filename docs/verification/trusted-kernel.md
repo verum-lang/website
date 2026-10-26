@@ -171,10 +171,11 @@ checks positivity by construction and does not admit forward-name aliases.
 Transparent local definitions retain their checked types. Reusing a definition
 checks conversion against that type before considering its body; expected
 dependent-pair families can still require checking the original introduction.
-The substitution checker memoizes only the expansion of acyclic definitions
-within their original binder prefix. It weakens each use into its actual context.
-This avoids repeated proof checking without adding a certificate authority or
-allowing later binders to change a stored definition. The normalization checker
+The substitution checker keeps acyclic definitions and their types shared in
+their original binder frame. Weak-head reduction unfolds a definition only when
+its value is needed; conversion tracks each additional telescope binder. This
+avoids expanding whole proof libraries into every use, while preserving lexical
+scope and the existing reduction budget. The normalization checker
 captures only referenced environment slots, preserving local telescope binders.
 Lambda inference checks each domain in order and normalizes the final dependent
 signature once, avoiding repeated normalization at each surrounding binder.

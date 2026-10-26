@@ -443,6 +443,31 @@ preservation results. Correspondence with source-language elaboration and the
 actual compiler/runtime remains a separate obligation. A named certificate
 producer is not the Verum source-language elaborator.
 
+Pure partial observers use an initial state, an update operation and a separate
+read operation. Replay agrees with the online fold on every finite ordered event
+history. Initial-state, update and read commutation imply exact observation
+preservation and definedness reflection; these transports compose. Products
+require both components: their update and read domains are the intersections of
+the respective component domains. An undefined read does not silently block
+state updates, and a pending product cannot return only one component's output.
+
+The observer construction specializes the typed-program theorem to arbitrary
+heterogeneous event and read-query input rows. Register substitution represents
+explicit input binding, including repeated or reordered references. Both native
+checkers and independent Lean replay validate the complete typed-program
+observer preservation and definedness certificates through
+`verification/certificates/check_partial_observers.py`. Direct Lean theorems and
+causal proof controls are checked through
+`verification/external/lean/check_partial_observers.py`. Visited-state preservation
+also reuses the conservative-refinement execution model.
+
+Each theorem concerns one ordered history from its declared origin. Independent
+histories cannot be combined by adding their final states, and sufficient state
+for one observer need not support another observer. These results assume the
+stated pure primitive and input correspondence. They do not establish a learner,
+a concrete runtime adapter, physical event provenance, or resource costs.
+Semantic undefinedness and exhausted checking or execution budgets are distinct.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
