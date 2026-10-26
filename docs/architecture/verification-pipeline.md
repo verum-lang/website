@@ -506,6 +506,13 @@ identities to live allocations and private constructors is an explicit foreign
 implementation obligation; the model does not establish affine memory safety
 or panic behavior.
 
+`VerumExternalReplay/ObserverInstallation.lean` checks the semantic installation
+path: a compatible receiver prefix contains no gaps and is replayed from the
+definition's initial state. Conflicting retained history under the same origin
+is refused. Cuts are relative to the input language's birth in the journal;
+a global event position cannot substitute for that relative length. Admission,
+origin fidelity and runtime resource refusals remain separate obligations.
+
 `VerumExternalReplay/ExactNames.lean` proves that an append-only table of exact
 keys assigns stable, injective names within one shared namespace. A key may
 contain both the full input and an arbitrary structured output. Existing names
