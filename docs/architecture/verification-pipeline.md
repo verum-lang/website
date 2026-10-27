@@ -553,10 +553,18 @@ nominal definition receipt, original family/index/look consistency and exact
 Uniform or Kraft charge arithmetic, preserving the candidate's declared
 authority. Large native integers retain their canonical decimal representation;
 they are never rounded to a floating-point or machine-sized rank. Structural
-code words and admission-profile metadata are retained explicitly. Without the
-immutable grammar and address witnesses, these words do not prove decoding or
-materialization to the emitted programs. The checks also do not establish
-statistical admission or floating-point fee evaluation. A fresh trusted declaration is a
+code words and admission-profile metadata are retained explicitly. The original
+joint schema preserves these words without asserting a program correspondence.
+The structural-witness schema includes the actual immutable catalogues, owned
+addresses, native decoded addresses and both materialized programs.
+`VerumExternalReplay/StructuralNames.lean` independently recomputes gamma-length
+and fixed-width decoding, encoding and materialization. Replay checks complete
+catalogues, operand scopes, selected roots and captured libraries, then binds
+the results to the acquired initializer, update and read programs. Names that
+pass decoding in the same immutable catalogue have unique structural addresses.
+These checks do not prove enumeration-index correspondence, grammar cardinality,
+Kraft summability, exact audit-meter costs, statistical admission or
+floating-point fee evaluation. A fresh trusted declaration is a
 new producer premise, not proof of independence from earlier evidence.
 CI also replays a frozen native export from ordinary automatic acquisition,
 checking its original initializer, retained authority receipt, receiver history,
