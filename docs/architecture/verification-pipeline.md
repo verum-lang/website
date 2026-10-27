@@ -570,6 +570,26 @@ model and rejects mutations that restore the incorrect refusal classifications.
 This acceptance belongs to the identified frozen producer; later source changes
 require new evidence, and unrelated native regression failures remain separate.
 
+`verification/external/lean/check_physical_read_export.py` replays retained native
+reads and commits at measured physical boundaries. It checks the chronological
+owner and cut, full query/update results and execution reports, prior event
+ports, namespace transitions, and terminal table behavior. Hypothetical queries
+are checked as queries; physical correspondence additionally requires a read
+whose complete ports and name match the measured prior or successor state.
+The corpus's raw `Next` key and the acquired transition-table name are checked
+separately. An `End` outcome must have no table successor, even if the runtime
+has already resumed another episode.
+
+CI retains the complete frozen successor and terminal observations in losslessly
+compressed fixtures. Their provenance records the original export, compact JSON,
+producer binary and source hashes. Long trace facts are proved from the complete
+event lists, compiled once in a private model snapshot, and imported by bounded
+claim batches; every generated theorem receives the same axiom audit. This
+finite evidence does not establish original work-budget admission, lower-prefix
+projection fidelity, exact native outcome-witness selection, arbitrary world
+fidelity, or retirement. Later producer changes require a new frozen replay;
+passing these observations does not imply that unrelated native regressions pass.
+
 `VerumExternalReplay/ObserverRetirement.lean` specifies conditional retirement
 of a partial acquired observer. Only a semantic undefinedness receipt owned by
 the current instance and cut can remove the failing observer and its dependent
