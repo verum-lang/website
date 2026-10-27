@@ -549,10 +549,14 @@ rejected; new fields are never inferred from the current live state.
 `verification/external/lean/check_joint_export.py` accepts a separate joint
 producer export. It recomputes the original initializer and execution report,
 receiver-prefix state, fork transition and full replay. It checks the retained
-nominal definition receipt, original family/index/look consistency and paid-look
-count, preserving the candidate's declared authority. These checks do not prove
-the syntax enumeration maps an index to its emitted program, statistical
-admission, or floating-point fee evaluation. A fresh trusted declaration is a
+nominal definition receipt, original family/index/look consistency and exact
+Uniform or Kraft charge arithmetic, preserving the candidate's declared
+authority. Large native integers retain their canonical decimal representation;
+they are never rounded to a floating-point or machine-sized rank. Structural
+code words and admission-profile metadata are retained explicitly. Without the
+immutable grammar and address witnesses, these words do not prove decoding or
+materialization to the emitted programs. The checks also do not establish
+statistical admission or floating-point fee evaluation. A fresh trusted declaration is a
 new producer premise, not proof of independence from earlier evidence.
 CI also replays a frozen native export from ordinary automatic acquisition,
 checking its original initializer, retained authority receipt, receiver history,
