@@ -628,12 +628,26 @@ For positive parent likelihood and positive `alpha*q`, the exact comparison
 `Q / Pmax > 1 / (alpha*q)` is equivalent to `alpha*q*Q > Pmax`. Here `q` is the
 allocated program-and-look mass. The separate code-preference comparison
 `q*Qchild > QparentPredictive` does not establish an all-null false-positive
-bound. Neither arithmetic equivalence proves statistical calibration: that
-requires the parent maximum likelihood to dominate each null law on the same
-sample space, causal and predictable context selection, a frozen training and
-evaluation protocol, and valid program/look accounting. Native count updates,
-alphabet identities, likelihood computation, and actual admission decisions
-still require implementation correspondence evidence.
+bound.
+
+`VerumExternalReplay/FiniteAdmission.lean` proves a conditional finite error
+bound on a common outcome space whose atoms are complete experiment paths.
+If the predictive mass sums to at most one and the parent maximum likelihood
+pointwise dominates the true null probability, one test's rejection probability
+is at most `alpha*q`. The union over a finite paid family is at most
+`alpha*sum(q)`, hence at most `alpha` when the allocations sum to at most one.
+Overlapping rejection events need no independence assumption. A data-dependent
+selection is covered only when its rejection implies one of those same paid
+tests rejects. Every repeated entry is charged; a new name or look is not free.
+Use `0 < alpha < 1` for a nontrivial error level.
+
+These are explicit conditional guarantees. The proof does not derive null
+likelihood dominance, causal context selection or a valid frozen training and
+evaluation protocol from counts. Each test's predictor must be a proper law
+on the same complete sample space; a marginal or prefix score alone does not
+supply that premise. Infinite-horizon stopping, native count updates, alphabet
+identities, likelihood computation, and actual admission decisions still
+require separate evidence.
 
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
