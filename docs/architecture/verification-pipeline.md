@@ -555,6 +555,10 @@ and cursor-owned namespace. Chronological sibling appends and capacity grants
 are checked against the same table. Missing snapshots, substituted keys and
 unobserved progress are rejected. This boundary covers naming; it does not
 verify the preceding VM evaluation or authenticate exported pointer identities.
+CI replays the original frozen native cursor observations and rejects altered
+input ownership, scan positions, sibling results, shared tables and capacity
+boundaries. The retained query must also share its actual native input owner
+and complete contents with the call that produced the selected value.
 
 The acquired-observer semantic adapter models checked 64-bit operations,
 oldest-first event traces, queries and structured outcomes. Primitive trace
