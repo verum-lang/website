@@ -637,8 +637,12 @@ outcome, and checks the complete append-only journal with weighted slot charges.
 Work consumed before a later refusal remains consumed. The model uses journal
 length as its logical revision; separate comparisons check native cut identity.
 Native coverage is reported separately for BeforeAct, AfterAct and nonempty
-surviving prefixes. Synthetic controls validate the checker contract; accepting
-a runtime requires its frozen export and an audit of the producer's snapshot hooks.
+surviving prefixes. CI retains a frozen native export covering both action
+boundaries, resource refusals and an advanced surviving lower observer. Its
+original bytes replay against the model, including independent precommit cuts.
+Synthetic mutations check rejection behavior. This finite evidence does not
+establish correctness for arbitrary executions or replace review of the
+producer's snapshot hooks.
 
 `VerumExternalReplay/CommonDescriptionCost.lean` proves the exact ranking law
 for a fixed corpus and coding interpretation: minimizing complete description
