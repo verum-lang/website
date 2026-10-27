@@ -539,6 +539,14 @@ These metadata do not carry the retained frames, operands or ownership needed
 to resume. Continuation correctness requires separate state-transition evidence;
 legacy completed-execution replay does not establish it.
 
+`VerumExternalReplay/RetainedNames.lean` models one admitted comparison or
+insertion in a resumable exact-name scan. Its checked-prefix invariant survives
+shared-table appends. Denied work preserves the cursor; successful naming
+projects to the exact interner and preserves injectivity across branches.
+This requires the same full key and namespace owner, serialized append-only
+updates, exact comparison and successful allocation. It does not establish
+correspondence to native continuations without their state observations.
+
 The acquired-observer semantic adapter models checked 64-bit operations,
 oldest-first event traces, queries and structured outcomes. Primitive trace
 capacity is a resource refusal; missing data is semantic undefinedness. Synthetic
