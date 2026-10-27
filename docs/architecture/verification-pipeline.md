@@ -662,6 +662,22 @@ Concrete grammar Kraft bounds, decoder correctness, native accounting and
 statistical calibration remain separate obligations. This contract does not
 reinterpret the finite uniform-family protocol or certify a native migration.
 
+`VerumExternalReplay/AcquisitionScheduling.lean` separates declaration addresses,
+paid openings, and service turns. Its diagonal enumeration reaches every finite
+positive depth and evidence round. In the queue's projection to stable owned
+attempt identities, an entry with `k` predecessors is selected within `k + 1`
+service turns when new arrivals and unfinished attempts enter at the tail.
+Only opening consumes a paid look; a resource-deferred unopened source receives
+the current look when it eventually opens. Resource refusal supplies no negative
+semantic assessment.
+
+These bounds require retained ownership, compatible profiles, usable work after
+capture and routing, and sufficient atomic work or actual VM continuations.
+They do not establish progress from repeatedly restarting an interrupted
+primitive, infinite retention in fixed memory, or native scheduler conformance.
+`check_acquisition_scheduling.py` checks the proofs and rejects altered finite
+claims about queue order, prices, resource refusals and storage.
+
 `VerumExternalReplay/CategoricalPrediction.lean` proves exact finite-alphabet
 Dirichlet half-count prediction: a label with count `c` has probability
 `(2*c + 1) / (2*total + K)`, where `K` is the fixed alphabet size. Each observation
