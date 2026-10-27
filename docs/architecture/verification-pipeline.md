@@ -614,6 +614,27 @@ Concrete grammar Kraft bounds, decoder correctness, native accounting and
 statistical calibration remain separate obligations. This contract does not
 reinterpret the finite uniform-family protocol or certify a native migration.
 
+`VerumExternalReplay/CategoricalPrediction.lean` proves exact finite-alphabet
+Dirichlet half-count prediction: a label with count `c` has probability
+`(2*c + 1) / (2*total + K)`, where `K` is the fixed alphabet size. Each observation
+is scored before its count is incremented. Unknown labels are refused. The
+proofs establish positive path probabilities, normalization over every finite
+future tree, independent counts for each context, and normalization when the
+next context is chosen from prior observations. A held-out suffix starts from
+the supplied training counts; composing samples preserves every factor and
+count without resetting the predictor.
+
+For positive parent likelihood and positive `alpha*q`, the exact comparison
+`Q / Pmax > 1 / (alpha*q)` is equivalent to `alpha*q*Q > Pmax`. Here `q` is the
+allocated program-and-look mass. The separate code-preference comparison
+`q*Qchild > QparentPredictive` does not establish an all-null false-positive
+bound. Neither arithmetic equivalence proves statistical calibration: that
+requires the parent maximum likelihood to dominate each null law on the same
+sample space, causal and predictable context selection, a frozen training and
+evaluation protocol, and valid program/look accounting. Native count updates,
+alphabet identities, likelihood computation, and actual admission decisions
+still require implementation correspondence evidence.
+
 Named dependent-path formation checks the base path evidence, the family
 carrier and both endpoint fibers. Homogeneous reduction requires actual
 reflexivity evidence; equal loop endpoints alone are insufficient. See
