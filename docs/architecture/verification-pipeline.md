@@ -584,11 +584,24 @@ CI retains the complete frozen successor and terminal observations in losslessly
 compressed fixtures. Their provenance records the original export, compact JSON,
 producer binary and source hashes. Long trace facts are proved from the complete
 event lists, compiled once in a private model snapshot, and imported by bounded
-claim batches; every generated theorem receives the same axiom audit. This
-finite evidence does not establish original work-budget admission, lower-prefix
-projection fidelity, exact native outcome-witness selection, arbitrary world
-fidelity, or retirement. Later producer changes require a new frozen replay;
-passing these observations does not imply that unrelated native regressions pass.
+claim batches; every generated theorem receives the same axiom audit.
+
+The `synarc-physical-observer-read-v2` schema requires explicit lower-prefix
+metadata. The current checker accepts an observed first floor with no lower
+floors or tier dictionary, checks that the floor exists and uses the base input
+epoch, and proves that each query and update input equals its raw observation.
+Nonempty prefixes require additional projection evidence and are rejected.
+The legacy schema does not accept these new fields or infer their values.
+Any schema correction applied to a frozen export records both original and
+derived hashes and preserves every observation.
+
+The identified frozen producer's outcome lookup matches the complete sample
+identity, epoch, time and event, and rejects multiple matching records. This is
+an audit of the pinned producer source, separate from the kernel replay of its
+exported observations. The finite replay does not establish original work-budget
+admission, general lower-prefix projection fidelity, arbitrary world fidelity,
+or retirement. Later producer changes require a new frozen replay; passing these
+observations does not imply that unrelated native regressions pass.
 
 `VerumExternalReplay/ObserverRetirement.lean` specifies conditional retirement
 of a partial acquired observer. Only a semantic undefinedness receipt owned by
