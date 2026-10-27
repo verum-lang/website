@@ -530,6 +530,15 @@ must have fresh identities. Installation is independently replayed from the
 receiver prefix. Naming checks retain the shared table across observations and
 check comparison charges and refusal behavior.
 
+A resumable invocation can report `Suspended` with its observer phase, work or
+dispatch refusal reason, cumulative dispatch count and explicit meter-error
+presence. The lifecycle checker preserves this as a resource refusal without
+constructing an execution report. It checks observable budget monotonicity and
+bounds the current grant's dispatch delta by the cumulative invocation count.
+These metadata do not carry the retained frames, operands or ownership needed
+to resume. Continuation correctness requires separate state-transition evidence;
+legacy completed-execution replay does not establish it.
+
 The acquired-observer semantic adapter models checked 64-bit operations,
 oldest-first event traces, queries and structured outcomes. Primitive trace
 capacity is a resource refusal; missing data is semantic undefinedness. Synthetic
