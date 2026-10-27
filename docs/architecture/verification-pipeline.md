@@ -621,6 +621,21 @@ counterexamples. These are conditional model laws: faithful receipts, atomic
 native transitions, physical records and actual work accounting require frozen
 implementation evidence. Model controls alone do not establish that correspondence.
 
+`check_retirement_export.py` checks the `synarc-observer-retirement-v1` boundary
+contract. Its producer must independently snapshot the live attempt entry, the
+point immediately before the first representation mutation, and the exit.
+The precommit snapshot therefore includes any preceding updates to surviving
+lower observers. Both successful receipts and resource refusals are compared
+with these observations; a receipt cannot supply its own before/after evidence.
+The checker replays the typed `Undefined` result, compares actual instance/state
+identities and physical ports, preserves the current prefix and committed
+outcome, and checks the complete append-only journal with weighted slot charges.
+Work consumed before a later refusal remains consumed. The model uses journal
+length as its logical revision; separate comparisons check native cut identity.
+Native coverage is reported separately for BeforeAct, AfterAct and nonempty
+surviving prefixes. Synthetic controls validate the checker contract; accepting
+a runtime requires its frozen export and an audit of the producer's snapshot hooks.
+
 `VerumExternalReplay/CommonDescriptionCost.lean` proves the exact ranking law
 for a fixed corpus and coding interpretation: minimizing complete description
 cost is equivalent to maximizing common coding gain minus the candidate's own
