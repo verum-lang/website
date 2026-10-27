@@ -547,6 +547,15 @@ This requires the same full key and namespace owner, serialized append-only
 updates, exact comparison and successful allocation. It does not establish
 correspondence to native continuations without their state observations.
 
+`verification/external/lean/check_retained_names_export.py` checks a separate
+export of native naming cursors after body evaluation. Zero- and one-unit grants
+are checked against the retained-scan transition. The export carries the actual
+cursor and input-owner identities, full query and selected value, native cut,
+and cursor-owned namespace. Chronological sibling appends and capacity grants
+are checked against the same table. Missing snapshots, substituted keys and
+unobserved progress are rejected. This boundary covers naming; it does not
+verify the preceding VM evaluation or authenticate exported pointer identities.
+
 The acquired-observer semantic adapter models checked 64-bit operations,
 oldest-first event traces, queries and structured outcomes. Primitive trace
 capacity is a resource refusal; missing data is semantic undefinedness. Synthetic
