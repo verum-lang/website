@@ -539,6 +539,19 @@ These metadata do not carry the retained frames, operands or ownership needed
 to resume. Continuation correctness requires separate state-transition evidence;
 legacy completed-execution replay does not establish it.
 
+`VerumExternalReplay/RetainedExecution.lean` gives the owned finite-code model
+explicit frames, lexical scopes, registers, resolved argument prefixes and
+instruction phases. Atomic, phased and unmetered execution share those semantic
+transitions. `RetainedExecutionTrace.lean` proves that completed services from
+the same state and fixed semantics have identical final states and ordered
+callback results, regardless of slicing. It also proves immutable original
+allowances, monotone usage and exact accounting across grants. Refused attempts
+remain in the service history; discarded undersized atomic grants do not add up
+to an admitted instruction. These are model laws. Correspondence to native
+paused execution, callback purity and post-unwind accounting require separate
+proofs and original transition observations; terminal metadata alone is
+insufficient.
+
 `VerumExternalReplay/RetainedNames.lean` models one admitted comparison or
 insertion in a resumable exact-name scan. Its checked-prefix invariant survives
 shared-table appends. Denied work preserves the cursor; successful naming
