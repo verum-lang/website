@@ -382,6 +382,36 @@ they do not certify arbitrary source bodies, omitted recursive edges, mutual
 recursion, integer overflow semantics or kernel replay. Source adapters must
 supply every relevant transition and account for intervening execution.
 
+
+### Checking structured loop bodies
+
+`verify_loop_invariant_with_precondition` checks an explicit entry predicate,
+invariant, body, exit condition and postcondition. Initialization must follow
+from the entry predicate and declared scalar types. Preservation checks the
+invariant in the actual successor state, and exit sufficiency checks the
+postcondition. `verify_termination_in_domain` uses the same body lowering and
+the shared ranking verifier to prove nonnegativity, domain closure and strict
+decrease. The caller must also establish entry into the supplied domain.
+
+The supported body consists of `Int` and `Bool` expressions, sequential
+assignments, plain scoped local bindings, blocks and conditional branches.
+Every assignment reads the preceding state. Branches merge through typed
+conditional expressions, preserving both paths without enumerating path
+combinations; block tails and shadowed bindings retain their lexical meaning.
+Executed addition, subtraction, multiplication and negation must stay within
+signed 64-bit bounds at every intermediate step. Branch and Boolean
+short-circuit conditions guard these safety obligations. Specification terms
+use mathematical integer arithmetic over bounded source states.
+
+Unknown names, incompatible types and unsupported effects return errors.
+Calls, reference or aggregate mutations, nested loops, early control transfers,
+pattern guards, division, remainder and bitwise operations require additional
+semantics and are rejected. The legacy `verify_loop_invariant` API supplies no
+entry assumption beyond types; `verify_termination` supplies neither a domain
+restriction nor an exit condition. Neither infers missing assumptions from the
+candidate invariant or rank. These Rust APIs verify the supported AST fragment;
+they do not certify arbitrary compiler output or produce kernel certificates.
+
 ---
 
 ## BisimulationConfig — coinductive equivalence
