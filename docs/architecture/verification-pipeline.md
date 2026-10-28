@@ -547,10 +547,35 @@ the same state and fixed semantics have identical final states and ordered
 callback results, regardless of slicing. It also proves immutable original
 allowances, monotone usage and exact accounting across grants. Refused attempts
 remain in the service history; discarded undersized atomic grants do not add up
-to an admitted instruction. These are model laws. Correspondence to native
-paused execution, callback purity and post-unwind accounting require separate
-proofs and original transition observations; terminal metadata alone is
-insufficient.
+to an admitted instruction. These are model laws; their application to an
+implementation requires original transition observations and an explicit
+semantic adapter.
+
+`verification/external/lean/check_retained_execution_export.py` replays frozen
+native machine observations against `RetainedNative.lean`. It checks source-bound
+frames, resolved operands, callback order, active guards, admission order,
+partial work charges and consuming reports. Interrupted primitive calls retain
+their poison and charged work; no return value is invented for an unwind.
+Whole and sliced executions must share their actual source, semantics and input
+authority before their final states and callback streams are compared.
+
+`verification/external/lean/check_retained_invocation_export.py` extends this
+boundary to the enclosing call. It checks retained cut and input ownership,
+paid binding prefixes, the immutable original allowance, per-service dispatch
+charges, preservation of a completed body across denied output work, and the
+selected reading or prepared update. Binding and output values are independently
+replayed in Lean; allocation identity classes and intermediate wrapper snapshots
+are checked by the extraction protocol. Neither checker authenticates the
+exporter or proves arbitrary callback purity, allocation success, unobserved
+installation and commit behavior, or universal native correctness.
+
+The preserved invocation evidence includes a terminal-state defect: a consumed
+primitive resource refusal is treated as resumable and a retry returns poison
+without an unwind. The checker reports this separately. Reproducing that behavior
+establishes correspondence to the frozen implementation, not a valid continuation
+contract. Resource classification alone cannot authorize resumption; intact
+retained execution state is also required. A corrected implementation needs a
+new frozen export and replay before this gap can be closed.
 
 `VerumExternalReplay/RetainedNames.lean` models one admitted comparison or
 insertion in a resumable exact-name scan. Its checked-prefix invariant survives
