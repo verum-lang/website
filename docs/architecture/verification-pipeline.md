@@ -569,13 +569,22 @@ are checked by the extraction protocol. Neither checker authenticates the
 exporter or proves arbitrary callback purity, allocation success, unobserved
 installation and commit behavior, or universal native correctness.
 
-The preserved invocation evidence includes a terminal-state defect: a consumed
-primitive resource refusal is treated as resumable and a retry returns poison
-without an unwind. The checker reports this separately. Reproducing that behavior
-establishes correspondence to the frozen implementation, not a valid continuation
-contract. Resource classification alone cannot authorize resumption; intact
-retained execution state is also required. A corrected implementation needs a
-new frozen export and replay before this gap can be closed.
+`VerumExternalReplay/AffineService.lean` separates retained ownership, a consumed
+result and poisoning. Its generic laws prove that consumed retries preserve the
+prior result and cannot change the payload or emit effects; poison takes
+precedence over consumption. Error classification is independent of ownership:
+a terminal resource failure consumes the call, while suspension at an immutable
+original limit retains state without promising further progress.
+
+The invocation adapter preserves the original schema's terminal-state defect
+and explicitly supports the corrected schema. Corrected terminal retries retain
+`AlreadyReturned`, `Undefined` or `Resource` as appropriate, without repeated
+work, callbacks or publication. The replay binds normal returns and entry guards
+to the affine lifecycle model. The preserved observations exercise retries through
+the enclosing call; they do not exercise the direct invocation's consumed guard
+or every classification and resumability projection. Those branches need their
+own native observations. Passing these finite replays also does not override
+failures in the producer's broader integration run.
 
 `VerumExternalReplay/RetainedNames.lean` models one admitted comparison or
 insertion in a resumable exact-name scan. Its checked-prefix invariant survives
