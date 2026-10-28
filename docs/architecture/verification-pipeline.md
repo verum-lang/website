@@ -1122,6 +1122,15 @@ Wrong widths and out-of-range bytes are refused. The read still uses the
 pre-outcome query; the update runs the exported acquired program on the
 completed inputs.
 
+`AcquiredCausalObservation` extends that contract to structured events, queries,
+traces and exact outcome bytes. Both adapters use the same input-completion law:
+append one decoded value while preserving the interface and the entire input
+prefix. The byte decoder has a proved round trip and cannot alias distinct
+accepted wires. Receiver row admission compares the complete pre-event source,
+query and context, including sensory data, pose and action. These are model
+laws; the native adapter must still supply the compared rows and publication
+observations to establish implementation correspondence.
+
 `check_causal_snapshot.py` replays complete exported histories, including
 observations before each assessed read, and checks installation against the
 retained history. Training and fresh-assessment banks, outcome-order branches,
