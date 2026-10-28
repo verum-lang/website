@@ -547,17 +547,27 @@ by full reading values within each context. It checks child KT against both
 parent KT and empirical parent maximum likelihood, using exact arithmetic and
 strict selection and risk thresholds. Confirmation compares the joint score
 with training and applies the original family's thresholds; it does not require
-the fresh-only score to pass independently.
+the fresh-only score to pass independently. An installed receiver must have
+purchased training and confirmed joint validation; correctly recomputing a
+negative decision does not establish admission.
 
 Installation and current state are separate replay boundaries. The checker
 folds the original installation prefix and the full current history against
 their respective retained cuts, checks immutable prefixes and later evidence,
 and rejects a snapshot paired with the wrong history. Publication forks the
 installed observer, so the published owner differs from the retained
-installation owner. Checked endpoint values and identity separation do not
-establish the intervening native fork and commit transitions: those need their
-own original observations. The adapter also does not establish physical event
-provenance, arbitrary stopping-time validity or whole-letter ingress limits.
+installation owner. Without transition observations, these checks establish
+endpoint values and identity separation only. When the original native trace
+is supplied, the checker follows catch-up commits, the publication fork and
+reads in their actual order. Every successful commit must consume the next
+retained history event. Its before/after cuts, full values and exposed body
+execution report must agree with the independent model; missing transitions,
+reused identities and changed reports are rejected.
+
+Body reports are replayed with sufficient model work. They do not reconstruct
+the native work budget or certify allocation costs. The adapter also does not
+establish physical event provenance, refused or unobserved transitions,
+arbitrary stopping-time validity or whole-letter ingress limits.
 
 `VerumExternalReplay/RetainedExecution.lean` gives the owned finite-code model
 explicit frames, lexical scopes, registers, resolved argument prefixes and
