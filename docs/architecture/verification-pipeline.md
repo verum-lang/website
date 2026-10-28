@@ -1051,6 +1051,36 @@ computational efficiency or native implementation correspondence, and impose no
 such limitation on mixtures or other model families. The native positional
 model's normalization and ownership proofs remain valid.
 
+`FrozenTraining` separates parameters retained by a forecast from its evolving
+causal path and pending training delta. The path can depend on earlier target
+bits; scoring always reads the original parameter bank. Repeated visits to the
+same statistical cell accumulate their full multiplicity. The complete row
+publishes that delta once. Chunking and denied scoring steps preserve the final
+result, and a partial row cannot return a completed bank.
+
+This distinction matters when keys alias. Starting with an empty binary KT
+cell, two zero bits have frozen likelihood `1/4`. Updating that cell between
+bits instead produces `3/8`: a different forecast contract. The generic model
+proves equality with the declared frozen forecast without requiring distinct
+keys, and retains the finite-body normalization theorem. A variable-length
+prefix-dependent stopping model additionally needs a proof that its remaining
+infinite-path mass vanishes.
+
+`OutcomeTransitions` gives live execution and history replay one completed-row
+contract. Prediction precedes the outcome; the same captured outcome drives
+both the state transition and learning. A capture from a different retained
+dispatch is refused. Old updates embed by ignoring the outcome, which proves
+their limitation: equal pre-event histories give equal VM results regardless of
+outcome order. The model composes with frozen-row training and the existing
+nominal publication guard. State and bank decoding remain explicit premises.
+
+An implementation must retain actual completed outcomes independently of
+training-sample selection, preserve their order and dispatch ownership, and
+use the same update semantics during acquisition, installation and live
+execution. Anchor comparison alone does not establish where a physical capture
+came from. These models specify the correspondence obligations; they do not
+certify every native path or replace source-bound replay.
+
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
 accepted aliases. Restricting wire probabilities to that image gives total mass
