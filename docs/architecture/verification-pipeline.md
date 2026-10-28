@@ -1104,6 +1104,15 @@ with the existing target semantics and ignores restart bytes. Native anchor
 and slot identity, callback fidelity and internal cursor behavior require
 separate correspondence evidence.
 
+`check_physical_causal_export.py` checks frozen physical reservations,
+structured action failures, exact target bytes and complete journal publication
+observations. The replay checks every exported ownership-guard conjunct,
+reserved-slot freshness, retained refusals, independent completion order and
+legacy input preservation. Preparation is checked for outer-stage continuity,
+unchanged published ownership and work-budget bounds. Pointer and native-root
+comparisons remain supplied execution observations; internal tree cursors,
+allocator behavior and physical adapter truth are outside this proof.
+
 `CausalObservation` connects the completed-row contract to a declared native
 scalar callback: decode the exact eight-byte little-endian outcome, append it
 to the retained pre-event inputs, and preserve their interface identifier.
