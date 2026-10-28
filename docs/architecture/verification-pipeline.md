@@ -965,8 +965,12 @@ at the current byte length and all 256 possible next bytes. This requires a
 common causal kernel, retained state and fixed mask across final lengths;
 normalization separately at each length does not imply that consistency.
 The completed-row adapter checks the learned histogram against every supplied
-frontier. Actual probability calls and partial-row lifecycle behavior need their
-own frozen native evidence; a histogram replay alone does not establish them.
+frontier. Separate native query and boundary adapters check exact candidate and
+reference probabilities, retained forecasts, private partial-row banks, and
+observed refusal and publication results against frozen records. Repeated
+histories reuse kernel-checked transition proofs; every supplied forecast and
+query still has its own checked claim. These finite replays do not prove every
+native execution, allocator failure, overflow path or physical sampling event.
 
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
