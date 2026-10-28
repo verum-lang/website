@@ -653,6 +653,22 @@ historical pose produces a missing-data refusal, while a present zero is a
 value. Unknown versions, primitives, fields and mixed-version exports are
 rejected; new fields are never inferred from the current live state.
 
+`VerumExternalReplay/SensoryPort.lean` specifies immutable sensory snapshots as
+exact schema and body bytes captured with the observation. Port presence is
+part of interface identity; payload contents remain ordinary data. A present
+empty payload differs from an absent port. Event and query reads expose the
+same captured bytes, and a forged interface flag cannot manufacture missing
+data. The model supports byte length and indexed access without interpreting
+the schema or recovering content from a compact key.
+
+The proofs preserve captured values under future history appends and establish
+agreement between online updates and replay over complete events. Installation
+rejects a changed payload or presence even when older scalar fields match.
+The current native adapters embed legacy observations with an absent sensory
+port and reject new sensory fields and operations. Accepting native sensory
+exports requires an explicit versioned adapter and frozen implementation
+evidence; the model laws alone do not establish native capture timing or ownership.
+
 `verification/external/lean/check_joint_export.py` accepts a separate joint
 producer export. It recomputes the original initializer and execution report,
 receiver-prefix state, fork transition and full replay. It checks the retained
