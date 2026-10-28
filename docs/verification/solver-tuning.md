@@ -281,6 +281,29 @@ program correctness. Raw query answers are exposed separately and are not
 converted into empty solutions. A predicate body such as `x >= 0` is a property
 of that relation's states, not an unconditional global invariant.
 
+`RecursiveProgramVerifier.verify_recursive_program` checks an explicit
+`RecursiveProgram`: relation declarations, Horn rules and universally quantified
+`VerificationCondition` values. Each condition binds its inputs, outputs and
+intermediate variables, specifies reachable relation hypotheses and path
+constraints, and states the required assertion. All relations are registered
+before rules, allowing mutual recursion. Missing definitions or safety
+conditions, unknown relations, unbound variables and mismatched types are
+errors; an intentionally empty relation needs an explicit false-guard rule.
+
+The verifier lowers each assertion's negation to a fresh violation relation.
+It returns `Verified` only when every violation is unreachable, or `Refuted`
+with the failing condition's index and any raw backend answer. An unknown result
+is an error, including resource exhaustion. Each call uses a fresh engine so
+previous models and failed registrations cannot affect later checks.
+`verify_recursive_program_with_params` accepts fixedpoint engine and resource
+parameters; the default call uses SPACER and the standard solver timeout.
+
+This is partial correctness of the supplied model. The caller must establish
+that its rules cover the actual program and that its conditions express the
+intended contract. Termination is a separate check over the explicit self-call
+model and ranking function; neither result establishes source correspondence
+or supplies a kernel-checked certificate.
+
 This is a Rust solver integration API, not a Verum source annotation.
 
 ---
