@@ -1108,7 +1108,9 @@ separate correspondence evidence.
 structured action failures, exact target bytes and complete journal publication
 observations. The replay checks every exported ownership-guard conjunct,
 reserved-slot freshness, retained refusals, independent completion order and
-legacy input preservation. Preparation is checked for outer-stage continuity,
+legacy input preservation. Reports distinguish `captured_publications`, which
+retain completed outcomes, from `legacy_publications`, which record events
+without outcomes. Preparation is checked for outer-stage continuity,
 unchanged published ownership and work-budget bounds. Pointer and native-root
 comparisons remain supplied execution observations; internal tree cursors,
 allocator behavior and physical adapter truth are outside this proof.
