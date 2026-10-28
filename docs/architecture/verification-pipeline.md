@@ -720,7 +720,9 @@ structured constructor and execution observations. It checks constructor
 acceptance or the exact refusal, every returned capture field, target bytes or
 missing-data refusal, the dispatched byte-valued action, the retained pre-action
 sensory query and the actual intake bytes. Failure stage, context and cause are
-preserved as data. The decoder rejects unknown fields, ambiguous results and
+preserved as data. The shared JSON loader rejects duplicate keys and non-JSON numeric constants
+such as `NaN` and `Infinity`, including in metadata outside a model projection.
+The decoder rejects unknown fields, ambiguous results and
 allocator-capacity observations for which this export supplies no evidence.
 
 These finite observations do not establish native capture timing, lawful
@@ -756,6 +758,18 @@ and fork/live/full-replay agreement. Long histories compose kernel-checked
 transition equalities without enlarging proof limits. This evidence covers the
 identified producer and exported observations; synthetic controls alone do not
 establish native correspondence, and joint read behavior is not exported here.
+
+`CompositionalFamily` proves an exact count for a duplicate-free finite space
+of instruction alternatives, operand choices, child-program names and output
+registers. A branch includes both child families; a fold includes its complete
+body family. Counts use products and sums without enumerating every name.
+Dependencies must precede their parent declaration, and repeated owners,
+missing children and incompatible body widths are refused.
+`check_compositional_census.py` checks this declaration census and the Uniform
+paid-look denominator against a frozen native acquisition export. This does
+not establish the mapping from native enumeration indices to code words,
+word-codec correctness, Branch/Fold VM execution, resource bounds or acquisition
+quality. Those require separate correspondence evidence.
 
 The retained native lifecycle fixtures exercise foreign and stale commit
 refusals, successful commit, retained and current reads, receiver installation
