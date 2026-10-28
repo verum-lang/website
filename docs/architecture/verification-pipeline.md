@@ -950,6 +950,24 @@ The concrete geometric law assigns length `n` mass `2^-(n+1)` and proves its tai
 vanishes. A fixed unit width supports bit or byte lengths; scoring derives the
 length from the complete body and refuses incomplete units.
 
+`VerumExternalReplay/AdaptiveLength.lean` extends this proper law with a shared
+histogram of completed byte lengths. With count `C(n)` and total `N = sum C(n)`,
+the next length has probability `(C(n) + 2^-(n+1)) / (N+1)`. A prefix of `m`
+bytes uses the inclusive tail `(sum(n >= m) C(n) + 2^-m) / (N+1)`. The proofs
+establish exact conservation, a vanishing tail, positive support for unseen
+lengths, and one count increment per completed row, including empty rows.
+Sharing this positive factor between candidate and reference preserves their
+likelihood ratio exactly; it still changes their absolute probabilities.
+
+`VerumExternalReplay/AdaptiveResidual.lean` composes the learned length bank
+with the retained positional predictors. Its prefix partition includes stopping
+at the current byte length and all 256 possible next bytes. This requires a
+common causal kernel, retained state and fixed mask across final lengths;
+normalization separately at each length does not imply that consistency.
+The completed-row adapter checks the learned histogram against every supplied
+frontier. Actual probability calls and partial-row lifecycle behavior need their
+own frozen native evidence; a histogram replay alone does not establish them.
+
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
 accepted aliases. Restricting wire probabilities to that image gives total mass
