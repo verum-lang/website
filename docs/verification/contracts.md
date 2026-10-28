@@ -231,10 +231,11 @@ fn transfer(from: &mut Account, to: &mut Account, amount: Money)
 ## Separation logic (selected cases)
 
 Separation assertions express exact ownership of heap cells and disjoint
-composition. The compiler's separation entailment path uses
+composition. The explicit SMT API is
 `verum_smt::separation_logic::SepLogicEncoder`. It checks implications
 between assertions; it does not by itself prove a function body's memory
-accesses or provide a replayable kernel certificate.
+accesses or provide a replayable kernel certificate. Source calls retain
+their declared meanings; a function name does not select spatial semantics.
 
 The supported core covers empty heaps, singleton ownership, separating
 conjunction and scoped scalar logic. General array partitions and recursive

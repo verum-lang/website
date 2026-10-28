@@ -77,20 +77,25 @@ can both hold:
 | `Unknown` | The solver could not decide, including timeout or incomplete theory support. |
 | Encoding error | The assertion uses semantics the encoder cannot represent. |
 
-The AST dispatcher in `verum_smt::separation_recognizer` maps encoding
-errors to `Unknown`. A solver result is evidence about the encoded
+The explicit AST interpretation API in `verum_smt::separation_recognizer`
+maps encoding errors to `Unknown`. It does not resolve source declarations. A solver result is evidence about the encoded
 assertions. Kernel certification additionally requires a proof of the same
 proposition that the kernel checks.
 
 ## Source integration and local reasoning
 
-The compiler's theorem path invokes the separation dispatcher. Its current
-recognizer matches constructor spellings rather than resolved declaration
-identities. A constructor-shaped call therefore does not establish that the
-corresponding standard-library declaration owns its meaning. The theorem
-path also has not established a complete separation-specific chain from
-source declarations and program execution to replayable kernel evidence.
-Do not interpret its success as a certified heap-manipulating function.
+Source theorems and generic SMT translation keep function calls in their
+declared form. Names such as `emp` and `points_to` confer no special logical
+authority. The theorem verifier checks the actual proposition and its proof
+body; matching preconditions and postconditions cannot substitute for that
+proposition or bypass a failing tactic.
+
+The compiler returns a `ProofSummary` containing the elaborated goal,
+initial hypotheses and evidence kind: assumption, tactic discharge or
+explicit admission. This metadata is not a kernel certificate. Declaration-bound
+elaboration of spatial predicates and a separation-specific source-to-kernel
+proof chain are not yet implemented. Use the explicit SMT assertion API only
+with its documented interpretation.
 
 The `HeapPredicate` and `HoareTriple` carriers in `core/logic/separation.vr`
 and `verum_kernel::separation_logic` describe assertions and triples. Their
