@@ -251,7 +251,12 @@ Z3's fixedpoint engine for Horn clauses. Registering a relation transfers
 its declaration to the engine and returns a shared handle. The declaration
 retains its exact argument types, including bitvector widths and named sorts.
 Facts preserve literal values; Horn clauses bind their declared variables
-universally and retain their constraints.
+universally and retain their constraints. `RecursivePredicate.vars`,
+`DatalogRule.vars`, and `CHC.vars` declare those binders explicitly;
+undeclared symbolic constants are rejected. Every recursive premise and guard
+participates in the implication. Recursive definitions are validated completely
+before their rules are installed. Registering a relation alone adds no facts.
+An unseeded recursive cycle therefore derives nothing in the least fixed point.
 
 For a derivability query, `Sat` means the queried atom follows from the
 registered rules, and `Unsat` means it does not. `Unknown` is inconclusive;
@@ -319,15 +324,47 @@ directly — `RefinementConfig.timeout_ms` propagates here.
 
 **Owner**: `verum_smt::coinductive::BisimulationChecker`.
 
-**Used by**: behavioural equivalence checks for session
-types, π-calculus processes, lazy data structures.
+**Scope**: the Rust expression-level observation checker. A source type
+schema alone cannot establish a greatest fixed point or productivity.
 
 | Field | Default | Effect |
 |-------|--------:|--------|
-| `max_depth` | `100` | Hard cap on recursive-destructor unfolding. |
+| `max_depth` | `100` | Hard cap on recursive-destructor unfolding. Exhaustion returns `Unknown`. |
 | `timeout_ms` | `30 000` | Per-query solver budget. |
 | `generate_counterexamples` | `true` | When `false`, leave the counterexample slot as `None` to save formatting work — useful when you only need the boolean answer. |
-| `infinite_strategy` | `BoundedUnfolding` | `BoundedUnfolding` (unfold to `max_depth`, assume bisimilar beyond) / `CoinductiveHypothesis` (assume bisimilarity at recursive positions) / `GreatestFixpoint` / `Hybrid`. |
+| `infinite_strategy` | `BoundedUnfolding` | `BoundedUnfolding` checks finite observations; exhaustion is inconclusive. `CoinductiveHypothesis` cannot discharge unresolved recursive observations. `GreatestFixpoint` requires a resolved model and returns `Unknown` in the expression-only API. `Hybrid` preserves these limitations. |
+
+### Coinduction over a typed model
+
+`verum_smt::coinductive::CoinductionModel` checks a candidate relation `R`
+over paired symbolic states. The left and right state representations may have
+different sorts; each initial state and successor must retain its side's sort.
+Every observation pair must have matching sorts.
+
+The model supplies initial states, observation pairs, and successor pairs.
+`verify(ContextConfig)` discharges these obligations:
+
+1. The initial pair belongs to `R`.
+2. Every pair in `R` has equal observations, for **every** observation pair.
+3. Every successor pair of every pair in `R` belongs to `R`.
+
+Together the last two obligations state `R ⊆ F(R)`, where `F` conjoins
+observation equality with membership of all successor pairs in its relation
+argument. That argument occurs only positively, so `F` is monotone.
+Coinduction then gives membership of the initial pair in the greatest fixed
+point of `F`. Expressions may depend on both symbolic states: this is a model
+of their joint behavior, not an assumption of independent implementations.
+
+Each obligation is checked by asking whether its negation is satisfiable.
+Only `Unsat` discharges it. `CandidateRefuted` identifies the failed obligation
+and includes a solver counterexample when available; a failed candidate does
+not prove that the initial states are inequivalent. `Unknown` remains
+inconclusive, and the configured resource policy applies to each solver query.
+
+This establishes a theorem about the supplied model. Connecting observations
+and successors to actual source execution, proving productivity, and replaying
+evidence in the Verum proof kernel are separate obligations. The expression-only
+checker does not construct that correspondence automatically.
 
 ---
 

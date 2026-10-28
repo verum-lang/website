@@ -311,7 +311,10 @@ Used internally by `SubsumptionChecker`.
 
 ### `BisimulationConfig` — coinductive bisimulation
 
-Used by `BisimulationChecker` for behavioural equivalence.
+Used by `BisimulationChecker` for finite observation checks. An unfolding limit
+or unresolved recursive closure returns `Unknown`. Type schemas do not establish
+greatest-fixed-point or productivity proofs. For explicit typed models, see
+[model-level coinduction](../verification/solver-tuning.md#coinduction-over-a-typed-model).
 
 | Field                       | Default      | Effect |
 |-----------------------------|--------------|--------|
