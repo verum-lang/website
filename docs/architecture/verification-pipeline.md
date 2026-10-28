@@ -781,6 +781,30 @@ next context is chosen from prior observations. A held-out suffix starts from
 the supplied training counts; composing samples preserves every factor and
 count without resetting the predictor.
 
+`VerumExternalReplay/RefinementCapacity.lean` proves a sharp finite upper bound
+on child KT likelihood divided by empirical parent maximum likelihood. For a
+fixed positive alphabet size `K` and `n` observations, let `q = n / K` and
+`r = n % K`, using integer division. With rising factorial `(a)_m` and
+`w(K,m) = (1/2)_m / ((K/2)_m * m^m)`, the bound is
+`G(K,n) = n^n * w(K,q)^(K-r) * w(K,q+1)^r`, with `0^0 = 1`.
+The proof covers every finite refinement partition of width `K` and constructs
+a partition attaining equality: balanced label totals split into pure-label
+children. Empty contexts contribute one; bounds multiply across contexts.
+
+`VerumExternalReplay/CapacityRecurrence.lean` proves the exact one-observation
+update, including quotient rollover. The bound is not monotone in the sample
+count: for example, `G(8,1) = 1/8` but `G(8,2) = 1/16`. It can rule out a
+threshold at a particular prefix; it cannot justify permanently discarding a
+candidate or accepting one without its exact score. A singleton context has
+capacity `1/K`, so refining unique exact-state contexts cannot itself provide
+shared predictive generalization across unseen states.
+
+These rational-arithmetic proofs use Lean's standard `propext`,
+`Classical.choice` and `Quot.sound` axioms. They establish a finite algebraic
+maximum, not a statistical error bound, native execution or resource-accounting
+correctness. The finite native replay checker retains its separate, narrower
+axiom policy.
+
 For positive parent likelihood and positive `alpha*q`, the exact comparison
 `Q / Pmax > 1 / (alpha*q)` is equivalent to `alpha*q*Q > Pmax`. Here `q` is the
 allocated program-and-look mass. The separate code-preference comparison
