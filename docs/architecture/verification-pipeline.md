@@ -903,6 +903,24 @@ scoring. Every finite bit body has positive mass. The exact fraction library
 also proves cancellation of a common positive factor in a likelihood ratio, so
 identical length factors can be cancelled from both scores without changing the ratio.
 
+`VerumExternalReplay/KTMerge.lean` compares two separately initialized binary
+words with their concatenation under the same exact KT predictor. For two words
+of sixteen zeros, the merger ratio is `315208830571481 / 62142696120150 > 3`;
+for sixteen zeros followed by sixteen ones, it is `1 / 601080390 < 1`. A fixed
+naming weight of `1/3` therefore permits the first purchase and refuses the
+second. Equality at the price gives no gain. Both word pairs have positive
+probability under the same fair IID source, so a shared source law does not
+force matching sample counts or a profitable merger.
+
+These are ordered-word probabilities, not count-event probabilities with
+multinomial factors. The proofs identify the fractions with sequential scoring;
+they do not infer a universal purchase time, binary learning impossibility,
+adaptive selection guarantee, or source-independent finite regret from an
+asymptotic approximation. The Lean axiom audit permits only the inherited
+propositional extensionality and quotient soundness dependencies. Checking the
+corresponding integer inequalities with Verum's theorem tactics is a separate
+check: tactic discharge metadata is not a native replayable kernel certificate.
+
 `VerumExternalReplay/PositionPrediction.lean` models independent counter cells
 selected by exact keys. It proves that scoring a body against frozen counters
 agrees with incremental scoring when the position schedule is injective. This
