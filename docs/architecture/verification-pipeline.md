@@ -650,8 +650,8 @@ Adapter versions are explicit. `AcquiredV1` retains the legacy event format;
 `AcquiredV2` requires an optional `pose` field on every event and supports
 `Unit`, `Zero`, `EmptyTrace`, `Identity`, `EventPose` and `QueryPose`. An absent
 historical pose produces a missing-data refusal, while a present zero is a
-value. Unknown versions, primitives, fields and mixed-version exports are
-rejected; new fields are never inferred from the current live state.
+value. Unknown versions, primitives, fields and unsupported version combinations
+are rejected; new fields are never inferred from the current live state.
 
 `VerumExternalReplay/SensoryPort.lean` specifies immutable sensory snapshots as
 exact schema and body bytes captured with the observation. Port presence is
@@ -664,10 +664,25 @@ the schema or recovering content from a compact key.
 The proofs preserve captured values under future history appends and establish
 agreement between online updates and replay over complete events. Installation
 rejects a changed payload or presence even when older scalar fields match.
-The current native adapters embed legacy observations with an absent sensory
-port and reject new sensory fields and operations. Accepting native sensory
-exports requires an explicit versioned adapter and frozen implementation
-evidence; the model laws alone do not establish native capture timing or ownership.
+`verification/external/lean/check_sensory_export.py` replays frozen native
+sensory lifecycle exports with an explicit `AcquiredV3` definition. The format
+uses `sensory: true` for a present source port and a schema/body object for a
+captured payload; absent ports and payloads omit the field. Explicit false,
+null, non-byte values and unknown fields are rejected. The adapter preserves
+forged interface metadata so that the model must reproduce the reported
+missing-data refusal. Legacy adapters retain their closed vocabulary.
+
+The physical replay section carries one definition and links to the first
+successful installation. Verification checks the complete installed history
+prefix, the suffix fold from the installed state, the full fold from the
+initializer, and equality of the reported live and replayed semantic states.
+Changed-history refusals retain the complete installation request. Where the
+export omits before/after instance cuts, it supplies no live-frame preservation
+evidence. Physical replay values have no separate owner identifiers; equal
+payloads do not establish nominal identity. Ownership is checked through the
+lifecycle operations that actually supply those identifiers. These finite
+checks and universal model laws do not establish native device capture timing,
+allocator ownership or correspondence for arbitrary native executions.
 
 `verification/external/lean/check_joint_export.py` accepts a separate joint
 producer export. It recomputes the original initializer and execution report,
