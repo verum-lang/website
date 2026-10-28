@@ -1092,6 +1092,18 @@ execution. Anchor comparison alone does not establish where a physical capture
 came from. These models specify the correspondence obligations; they do not
 certify every native path or replace source-bound replay.
 
+`CausalJournal` separates a completed physical event from the availability of
+its target bytes. Binding checks a complete journal and the exact retained
+revision anchor. Dispatch closes that journal until completion; a foreign
+action or unobserved delivery returns the retained invocation. Successful
+publication preserves the prior history, fills the reserved slot and retains
+the actual outcome. A known action without sensor bytes can be recorded, while
+its target remains unavailable. Legacy confirmation carries no outcome and
+cannot be treated as complete causal replay. The capture projection agrees
+with the existing target semantics and ignores restart bytes. Native anchor
+and slot identity, callback fidelity and internal cursor behavior require
+separate correspondence evidence.
+
 `CausalObservation` connects the completed-row contract to a declared native
 scalar callback: decode the exact eight-byte little-endian outcome, append it
 to the retained pre-event inputs, and preserve their interface identifier.
