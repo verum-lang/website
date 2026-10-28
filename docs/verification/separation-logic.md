@@ -1,333 +1,108 @@
 ---
 sidebar_position: 10
 title: "Separation logic"
-description: "Heap-aware spatial reasoning for stateful Verum programs. Six canonical heap-predicate variants, Hoare triples, heap capabilities, and the kernel ↔ verifier alignment."
+description: "Exact heap ownership, supported separation assertions, and the boundary between SMT entailment and program verification."
 slug: /verification/separation-logic
 ---
 
 # Separation logic
 
-**Separation logic** (Reynolds 2002, O'Hearn 2007) is the proof
-discipline for reasoning about *stateful* Verum programs —
-mutating heap, concurrent threads, IO-bearing operations. Where
-[refinement-reflection](./refinement-reflection.md) handles
-verification of pure-value functions, separation logic extends
-the surface to triples `{ pre } command { post }` over heap
-shapes.
+Separation logic describes what a program owns in memory. A points-to
+assertion owns one cell; separating conjunction combines assertions over
+disjoint cells. This makes local reasoning possible: an operation can preserve
+an unrelated region without describing every cell in that region.
 
-This page documents the actual implementation: the
-`HeapPredicate` variant (kernel-side and Verum-side mirrors),
-the `HoareTriple` carrier, the heap-`Capability` enum, and how
-separation goals plug into the unified verification dispatcher.
+Verum's SMT separation encoder checks implications between heap assertions.
+It does not, by itself, verify execution of a function body or produce a
+kernel-checked proof. This distinction matters when choosing the evidence
+needed for a memory-safety claim.
 
-## 1. The heap-predicate variant — six canonical arms
+## Heap assertions
 
-Both the kernel side (`verum_kernel::separation_logic::HeapPredicate`)
-and the Verum-side mirror (`core/logic/separation.vr`) carry the
-same six arms:
+The entailment backend is `verum_smt::separation_logic::SepLogicEncoder`.
+It represents a partial heap using a value array and a Boolean allocation
+map, both indexed by 64-bit addresses. Values are 64-bit words. Only
+allocated cells belong to the heap.
 
-```verum
-public type HeapPredicate is
-    | Emp
-    | PointsTo { addr: Text, value: Text }
-    | Sep { lhs: Heap<HeapPredicate>, rhs: Heap<HeapPredicate> }
-    | And { lhs: Heap<HeapPredicate>, rhs: Heap<HeapPredicate> }
-    | Pure { prop: Text }
-    | Named { name: Text, args: Text };
-```
+The notation below describes logic, not executable Verum syntax.
 
-The reading:
+| Assertion | Meaning |
+|-----------|---------|
+| `emp` | The owned domain is empty. |
+| `x ↦ v` | The owned domain contains exactly `x`, whose value is `v`. |
+| `P ∗ Q` | The entire owned domain splits into two disjoint parts satisfying `P` and `Q`. |
+| `P ∧ Q`, `P ∨ Q` | Ordinary conjunction or disjunction on the same heap. |
+| `pure(b)` | A Boolean proposition independent of heap ownership. It does not require an empty heap. |
+| `∃x. P`, `∀x. P` | Quantification over word values, with lexical binding and shadowing. |
+| `P −∗ Q` | Every disjoint extension satisfying `P` makes the combined heap satisfy `Q`. |
+| Named predicate | An opaque relation of its name, all arguments and the owned heap. It cannot inspect unowned values. |
 
-| Variant | Reading | When to use |
-|---------|---------|-------------|
-| `Emp` | `emp` — the heap is empty | identity for `Sep`; baseline state |
-| `PointsTo { addr, value }` | `addr ↦ value` — singleton heap | precise pointer state |
-| `Sep { lhs, rhs }` | `lhs ∗ rhs` — separating conjunction; heap splits into disjoint parts | the discipline's namesake — local reasoning under the frame rule |
-| `And { lhs, rhs }` | `lhs ∧ rhs` — ordinary heap-stable conjunction; same heap | combining heap-stable predicates |
-| `Pure { prop }` | `pure(P)` — heap-irrelevant proposition | lifting a `Bool` proposition into the heap-predicate language |
-| `Named { name, args }` | user-defined heap predicate | inductive heap shapes (lists, trees) named in the axiom registry |
+For example, `x ↦ a ∗ y ↦ b` requires distinct addresses and owns exactly
+two cells. It does not entail `x ↦ a`: that conclusion would discard the
+second owned cell. By contrast, `P ∗ emp` and `emp ∗ P` have the same
+meaning as `P`. The partition witnesses are local to each assertion,
+including assertions in the conclusion.
 
-The six arms cover the standard small-step Reynolds vocabulary
-plus *named* predicates for inductive heap shapes. They are
-*sufficient* for the verification surface — extensions like
-magic wand (`P -* Q`), existentials (`∃x. P(x)`), or specialised
-shapes (linked-list segments, contiguous blocks) are expressed
-as `Named { ... }` predicates whose definitions live in the
-axiom registry.
+Repeated free variables retain their identity throughout an obligation.
+Bound variables hide an outer variable only within their quantifier's body.
+Named predicates have no implicit definition: assuming one predicate does
+not establish a different name, different arguments or a particular shape.
 
-## 2. Smart constructors
+## Scalar expressions and unsupported layouts
 
-The Verum-side surface exposes smart constructors for each arm:
+The encoder accepts Boolean logic, word equality and signed comparisons,
+and word addition, subtraction, multiplication and negation. Arithmetic is
+modulo the 64-bit word size. Integer literals must fit the signed 64-bit
+range and be unsuffixed or explicitly `i64`. Other widths, unsigned suffixes,
+unit suffixes, arbitrary calls and unsupported expression forms produce an
+encoding error. A variable cannot be both a Boolean and a word in the same
+obligation. These are the encoder's semantics, not a translation guarantee
+for arbitrary source types or checked arithmetic.
 
-```verum
-public fn emp() -> HeapPredicate { HeapPredicate.Emp }
+The empty list-segment base case requires equal endpoints and an empty
+heap. Nonempty list segments, trees, blocks and array segments lack an exact
+layout/domain definition in this encoder and are rejected. Increasing an
+unfolding budget does not supply that missing definition. Reaching a work
+limit never replaces an unfinished assertion with `true`.
 
-public fn points_to(addr: Text, value: Text) -> HeapPredicate {
-    HeapPredicate.PointsTo { addr, value }
-}
+## Results and evidence
 
-public fn sep_conj(lhs: HeapPredicate, rhs: HeapPredicate) -> HeapPredicate {
-    HeapPredicate.Sep { lhs: Heap(lhs), rhs: Heap(rhs) }
-}
+`verify_entailment` asks whether the antecedent and the negated conclusion
+can both hold:
 
-public fn heap_and(lhs: HeapPredicate, rhs: HeapPredicate) -> HeapPredicate {
-    HeapPredicate.And { lhs: Heap(lhs), rhs: Heap(rhs) }
-}
+| Result | Interpretation |
+|--------|----------------|
+| `Valid` | The solver found the encoded counterexample condition unsatisfiable. |
+| `Invalid` | The solver found a counterexample to the encoded implication. |
+| `Unknown` | The solver could not decide, including timeout or incomplete theory support. |
+| Encoding error | The assertion uses semantics the encoder cannot represent. |
 
-public fn pure(prop: Text) -> HeapPredicate {
-    HeapPredicate.Pure { prop }
-}
+The AST dispatcher in `verum_smt::separation_recognizer` maps encoding
+errors to `Unknown`. A solver result is evidence about the encoded
+assertions. Kernel certification additionally requires a proof of the same
+proposition that the kernel checks.
 
-public fn named(name: Text, args: Text) -> HeapPredicate {
-    HeapPredicate.Named { name, args }
-}
-```
+## Source integration and local reasoning
 
-A function contract that uses separation logic looks like:
+The compiler's theorem path invokes the separation dispatcher. Its current
+recognizer matches constructor spellings rather than resolved declaration
+identities. A constructor-shaped call therefore does not establish that the
+corresponding standard-library declaration owns its meaning. The theorem
+path also has not established a complete separation-specific chain from
+source declarations and program execution to replayable kernel evidence.
+Do not interpret its success as a certified heap-manipulating function.
 
-```verum
-@verify(formal)
-public fn swap(p: &mut Cell, q: &mut Cell)
-    requires sep_conj(points_to("p", "old_p"), points_to("q", "old_q"))
-    where ensures sep_conj(points_to("p", "old_q"), points_to("q", "old_p"))
-{
-    let tmp = *p;
-    *p = *q;
-    *q = tmp;
-}
-```
+The `HeapPredicate` and `HoareTriple` carriers in `core/logic/separation.vr`
+and `verum_kernel::separation_logic` describe assertions and triples. Their
+existence does not establish lossless elaboration of text payloads, body
+verification, or proof replay. Opaque text is not an executable heap model.
 
-## 3. Classification predicates
+The frame rule preserves an unrelated heap region when an operation cannot
+modify it. Applying that rule to real programs requires complete ownership
+footprints and the operation's actual memory accesses. The existing
+footprint helpers do not yet establish this for arbitrary layouts or named
+predicates. General automatic framing and array-region proofs should not be
+assumed from the core entailment support described here.
 
-Three predicates classify a `HeapPredicate` for the verification
-dispatcher:
-
-```verum
-public fn is_emp(p: HeapPredicate) -> Bool { ... }
-public fn is_pure(p: HeapPredicate) -> Bool { ... }
-public fn is_separating_conjunction(p: HeapPredicate) -> Bool { ... }
-```
-
-- **`is_emp`** — recognises the empty-heap predicate. Used to
-  normalise `Sep(Emp, P) → P`.
-- **`is_pure`** — recognises heap-irrelevant predicates. Pure
-  predicates can be discharged by the pure kernel without
-  invoking the separation-logic dispatcher.
-- **`is_separating_conjunction`** — recognises `Sep(...)` outermost.
-  Used by the frame-rule recogniser: a triple whose precondition
-  has shape `Sep(P, R)` admits the frame rule with frame `R`.
-
-## 4. Hoare triples — `{ pre } command { post }`
-
-A `HoareTriple` carries a precondition, a command (an opaque text
-identifier in the kernel — typically a function name), and a
-postcondition:
-
-```verum
-public type HoareTriple is {
-    pre:     HeapPredicate,
-    command: Text,
-    post:    HeapPredicate,
-};
-
-public fn hoare(pre: HeapPredicate, command: Text, post: HeapPredicate) -> HoareTriple {
-    HoareTriple { pre, command, post }
-}
-```
-
-The triple is the *verification goal* for stateful operations.
-The verification dispatcher consumes triples through the same
-pattern as ordinary `VerificationGoal`s, allowing the unified
-verify-ladder strategies (`@verify(formal)`, `@verify(certified)`)
-to handle both pure and stateful proofs.
-
-## 5. Heap capabilities — distinct from architectural capabilities
-
-A subtle but load-bearing distinction: the `Capability` type in
-`core/logic/separation.vr` is **not** the same as the
-[architectural Capability](../architecture-types/primitives/capability.md).
-The two share a name but live at different layers:
-
-```verum
-// core/logic/separation.vr — heap capability
-public type Capability is
-    | None     // command doesn't touch the heap
-    | Read     // read-only access
-    | Write    // read + write (linear; aliased writes forbidden)
-    | Own;     // full ownership (allocation / deallocation)
-```
-
-The heap capability classifies the *kind of access* a command
-needs to a heap region. The architectural capability (in
-`core.architecture.types`) classifies the *kind of permission* a
-cog declares. They cooperate but do not unify:
-
-| Heap capability | Architectural correlate |
-|-----------------|------------------------|
-| `Read` | `Capability.Read(ResourceTag.Memory(name))` |
-| `Write` | `Capability.Write(ResourceTag.Memory(name))` |
-| `Own` | `Capability.Write(ResourceTag.Memory(name))` + ownership marker |
-| `None` | (no architectural capability needed) |
-
-The architectural capability flows into the cog's `Shape.exposes`
-list; the heap capability flows into the verification triple's
-soundness check. Both must agree on the resource being accessed.
-
-The classification predicates `Capability::allows_read()` /
-`allows_write()` are used by the soundness invariant: a Hoare-
-triple obligation can only mutate regions whose heap capability
-is `Write` or `Own`.
-
-## 6. The kernel ↔ verifier alignment
-
-The kernel-side `HeapPredicate` (in
-`verum_kernel::separation_logic`) carries `Term` payloads —
-kernel proof-term values. The Verum-side `HeapPredicate` (in
-`core/logic/separation.vr`) carries `Text` payloads — surface
-text representations.
-
-The alignment is structural — same six arms, same algebraic
-laws, same classification semantics — but operates on different
-payload types. The translation between them happens at the
-verification dispatcher boundary:
-
-- User-written contracts produce Verum-side `HeapPredicate`
-  values via the smart constructors.
-- The verification phase translates these into kernel-side
-  `HeapPredicate` (with `Text` payloads lifted to `Term` payloads
-  via the elaborator).
-- The kernel re-checks the produced separation goal.
-- The verdict travels back as a structural agreement: did the
-  kernel admit the triple under its frame rule?
-
-The alignment is enforced by the corpus-side `core/verify/separation_soundness/separation_logic_alignment.vr`,
-which defines a `BridgeFidelity` classifier: every translation
-is labelled `Faithful` (round-trip preserves meaning) or
-`Approximating` (some surface detail lost in the translation).
-
-## 7. The frame rule — the discipline's payoff
-
-The classical Reynolds frame rule:
-
-```text
-   { P } c { Q }
-   ─────────────────
-   { P ∗ R } c { Q ∗ R }
-```
-
-reads: *if `c` transforms a heap satisfying `P` into one
-satisfying `Q`, and `c`'s footprint is disjoint from `R`, then
-adding `R` to both sides preserves the triple.* This is the
-discipline's namesake — *separation* — and the load-bearing
-property that makes local reasoning sound.
-
-Verum's verifier recognises the frame rule via `is_separating_conjunction`:
-a triple whose precondition has shape `Sep(P, R)` may be
-strengthened to a triple proving only `Sep(P', R)` with the body
-operating on `P` (and not touching `R`). The `R` portion is
-*framed out* of the verification obligation, reducing proof
-work to the function's actual footprint.
-
-## 8. Worked example — list reverse
-
-A linked-list reverse with separation contract:
-
-```verum
-@arch_module(
-    lifecycle: Lifecycle.Theorem("v1.0"),
-    exposes:   [Capability.Write(ResourceTag.Memory("list_*"))],
-)
-module algos.list_reverse;
-
-mount core.logic.separation.{sep_conj, points_to, named};
-
-@verify(certified)
-public fn reverse<T>(list: &mut LinkedList<T>)
-    requires named("lseg", f"{list.head}, null")
-    where ensures named("lseg", f"{old(list.tail)}, null")
-{
-    let mut prev = null;
-    let mut curr = list.head;
-    while curr != null {
-        let next = curr.next;
-        curr.next = prev;
-        prev = curr;
-        curr = next;
-    }
-    list.head = prev;
-}
-```
-
-The contract pins three claims:
-
-1. **Architectural** (cog level) — the cog has the right to
-   mutate `list_*` memory regions.
-2. **Heap-capability** (function level) — the function needs
-   `Write` access to the list nodes.
-3. **Separation** (contract level) — the heap before contains a
-   linked-list segment from `list.head` to `null`; after, a
-   segment from `old(list.tail)` to `null`.
-
-The verifier discharges (3) by encoding the contract into the
-kernel's `HoareTriple` form, checking the frame rule applies
-(no other heap regions are mentioned), and dispatching the
-soundness check through `K-SMT-Replay` if the body's
-verification reduces to an SMT obligation.
-
-## 9. Capability vs property vs separation — the orthogonality
-
-Three superficially-related concepts that the verifier and ATS-V
-keep distinct:
-
-| Axis | Tracks | Where checked | Cost |
-|------|--------|---------------|------|
-| **Architectural capability** | What the cog *may* do | compile-time architectural | 0 ns |
-| **Property** | What the function *body* does | compile-time function-type | 0 ns |
-| **Separation** | What the heap *shape* is | verification-time | per query |
-| **Heap capability** | What kind of heap access the *command* needs | verification-time | structural check |
-
-A function may simultaneously:
-
-- Be in a cog declaring `Capability.Write(ResourceTag.Memory("buffer_X"))`.
-- Carry property `{Mutates}`.
-- Carry heap capability `Write`.
-- Carry separation contract `requires points_to("buffer_X.head", "value")`.
-
-Each axis catches a different bug class. See
-[Three orthogonal axes](../architecture-types/orthogonality.md)
-for the full discussion.
-
-## 10. Limitations
-
-The current separation-logic surface is a *minimal viable kernel*.
-Known gaps relative to the literature:
-
-- **Magic wand `P -* Q`** is not a first-class `HeapPredicate`
-  arm; it is expressed as a `Named { name: "wand", args: ... }`
-  predicate whose definition lives in the axiom registry.
-- **Existential / universal quantification** (`∃x. P(x)`,
-  `∀x. P(x)`) over heap shapes is similarly expressed via
-  `Named` rather than as first-class arms.
-- **Higher-order predicates** (predicates parameterised over
-  predicates) are limited to what `Named` can express.
-
-Each limitation is *intentional* — the six-arm minimal kernel is
-load-bearing for soundness. Extensions go through the axiom
-registry, which keeps every higher-level predicate's semantics
-explicit and audit-checkable.
-
-## 11. Cross-references
-
-- [Trusted kernel](./trusted-kernel.md) — the kernel-side
-  primitives.
-- [Refinement reflection](./refinement-reflection.md) — the
-  pure-value verifier complementing separation logic.
-- [Three-kernel architecture](./two-kernel-architecture.md) — the
-  differential check that protects the kernel-side
-  `HeapPredicate` implementation.
-- [Three orthogonal axes](../architecture-types/orthogonality.md)
-  — capability vs property vs separation.
-- [Type properties](../language/type-properties.md) — the
-  function-level effect tracker.
-- [Architectural Capability primitive](../architecture-types/primitives/capability.md)
-  — the cog-level permission, distinct from heap capability.
+For ordinary program contracts, start with [Contracts](./contracts.md).
+For proof evidence and its trust boundary, see [Trusted kernel](./trusted-kernel.md).

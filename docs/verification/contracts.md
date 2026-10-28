@@ -230,19 +230,16 @@ fn transfer(from: &mut Account, to: &mut Account, amount: Money)
 
 ## Separation logic (selected cases)
 
-When contracts need to talk about disjoint memory regions, Verum uses
-a lightweight separation-logic fragment. This is handled under the
-hood by `verum_verification::separation_logic` — user-facing cases are
-limited to array partitioning and disjointness of mutable references:
+Separation assertions express exact ownership of heap cells and disjoint
+composition. The compiler's separation entailment path uses
+`verum_smt::separation_logic::SepLogicEncoder`. It checks implications
+between assertions; it does not by itself prove a function body's memory
+accesses or provide a replayable kernel certificate.
 
-```verum
-fn swap_regions<'a>(a: &'a mut [Int], b: &'a mut [Int])
-    requires disjoint(a, b)
-{ ... }
-```
-
-Most code does not need this; the common case is covered by mutable-
-reference aliasing rules.
+The supported core covers empty heaps, singleton ownership, separating
+conjunction and scoped scalar logic. General array partitions and recursive
+layouts are not established by this encoder. See [Separation logic](./separation-logic.md)
+for the exact semantics, unsupported cases and source-integration boundary.
 
 ## See also
 
