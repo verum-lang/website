@@ -1035,6 +1035,22 @@ retained continuations, semantic simulation of other architectures, acquisition
 and computational cost require further proofs. Arbitrary external decoder
 callbacks and the full VM are outside the byte-preserving primitive model.
 
+`ConditionalExpressiveness` separates a normalized probability model from the
+class of dependencies it can express. With the model, context, mask and length
+fixed, independent positional factors obey
+`P(00) × P(11) = P(01) × P(10)`. Common length and remaining-bit factors preserve
+this identity. The strictly positive law with diagonal probabilities `3/8` and
+off-diagonal probabilities `1/8` violates it, despite being normalized. This
+isolates an independence limit rather than a zero-mass smoothing issue.
+
+The existing causal-kernel model can retain the target prefix and realizes that
+correlated law. Positional models embed exactly, and a general transport theorem
+requires both probability agreement and preservation of future state transitions.
+These are semantic expressiveness results. They do not prove acquisition,
+computational efficiency or native implementation correspondence, and impose no
+such limitation on mixtures or other model families. The native positional
+model's normalization and ownership proofs remain valid.
+
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
 accepted aliases. Restricting wire probabilities to that image gives total mass
