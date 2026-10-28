@@ -703,11 +703,32 @@ no equality and supplies no missing bytes.
 The model retains the dispatch cut and pre-action observation separately from
 the completion. It rejects attachment for a different action and derives the
 query only from the retained request. Starting an invocation clears its previous
-capture slot, including when the action value repeats. These are conditional
-model laws: native capture timing, lawful action equality, actual slot clearing,
-wire materialization and allocation, and physical adapter fidelity require
-separate evidence. They do not establish a decision rule over forecasts or
-normalization over a remembered subset of possible outcomes.
+capture slot, including when the action value repeats. The request retains the
+full action value; a sensory query uses an explicitly supplied byte encoder.
+This does not establish injective serialization of arbitrary action types.
+
+`VerumExternalReplay/ActionTargetWire.lean` encodes the outcome kind and both
+length-delimited sensory fields. Its decoder is a left inverse for fields whose
+lengths fit unsigned 64-bit integers, proving that equal encodings imply equal
+semantic targets. Every successful materialization decodes to the original
+target and fits the explicit total-byte capacity. The full byte alphabet is
+supported; empty fields remain distinct from absent observations. Native
+allocation success is a separate obligation.
+
+`verification/external/lean/check_action_capture_export.py` replays frozen,
+structured constructor and execution observations. It checks constructor
+acceptance or the exact refusal, every returned capture field, target bytes or
+missing-data refusal, the dispatched byte-valued action, the retained pre-action
+sensory query and the actual intake bytes. Failure stage, context and cause are
+preserved as data. The decoder rejects unknown fields, ambiguous results and
+allocator-capacity observations for which this export supplies no evidence.
+
+These finite observations do not establish native capture timing, lawful
+equality for arbitrary action types, actual slot clearing, successor-guard
+calls or physical adapter fidelity. The corresponding general model laws
+remain conditional on those implementation obligations. Neither the wire nor
+the replay establishes a decision rule over forecasts or normalization over
+a remembered subset of possible outcomes.
 
 `verification/external/lean/check_joint_export.py` accepts a separate joint
 producer export. It recomputes the original initializer and execution report,
