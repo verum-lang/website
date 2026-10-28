@@ -412,6 +412,23 @@ restriction nor an exit condition. Neither infers missing assumptions from the
 candidate invariant or rank. These Rust APIs verify the supported AST fragment;
 they do not certify arbitrary compiler output or produce kernel certificates.
 
+
+### Scalar frame conditions
+
+`verify_frame_condition_with_precondition` uses the same checked source
+transition to prove that every state variable outside the `modifies` list has
+its original value on return. It checks the complete body, including nested
+blocks, branches, scoped locals and intermediate arithmetic safety. The
+`verify_frame_condition` convenience API assumes only the declared types at
+entry. Unknown names in the `modifies` list are errors, and allowing every
+variable to change does not bypass body validation. Only a proved obligation
+succeeds; counterexamples and inconclusive solver results are errors.
+
+This is a post-state frame for the supported scalar fragment. A temporary
+write followed by restoration can satisfy it. It is not a write-footprint,
+heap-aliasing or concurrent-interference guarantee; calls and memory effects
+need their own checked semantics before these APIs can accept them.
+
 ---
 
 ## BisimulationConfig — coinductive equivalence
