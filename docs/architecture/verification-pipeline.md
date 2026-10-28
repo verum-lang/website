@@ -826,6 +826,27 @@ scoring. Every finite bit body has positive mass. The exact fraction library
 also proves cancellation of a common positive factor in a likelihood ratio, so
 identical length factors can be cancelled from both scores without changing the ratio.
 
+`VerumExternalReplay/PositionPrediction.lean` models independent counter cells
+selected by exact keys. It proves that scoring a body against frozen counters
+agrees with incremental scoring when the position schedule is injective. This
+condition matters: reusing a cell within the body changes later probabilities.
+The residual predictor uses the complete context bytes and bit position as its
+key; the raw reference uses bit position alone.
+
+`VerumExternalReplay/ResidualPrediction.lean` replays completed byte rows in
+least-significant-bit order, preserving both counter banks and the exact ratio
+across training, fresh evaluation and live continuation. Its strict native
+export adapter checks every supplied frontier, including all allocated keys and
+counts, and consumes the whole stream. Intermediate transition witnesses are
+untrusted computation hints: Lean proves each transition before reusing it in
+the complete-stream theorem. The checker audits theorem axioms and binds the
+export, model and producer identities to an immutable replay snapshot.
+
+This establishes correspondence for the supplied completed-row evidence. It
+does not prove native VM execution, pre-observation physical causality, partial
+transaction behavior, overflow refusals or statistical stopping guarantees.
+Those require their own implementation evidence and explicit assumptions.
+
 `VerumExternalReplay/FiniteWire.lean` combines that kernel with a proper length
 law. The law conserves mass at every finite cut and proves that the remaining
 mass becomes smaller than every positive rational tolerance. Conservation alone

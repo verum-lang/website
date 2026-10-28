@@ -264,6 +264,23 @@ it must not discharge a proof obligation. Set engine and resource limits
 through Z3 parameters passed to `set_params`. A solver answer is not a
 kernel-checked proof certificate.
 
+`validate_solution` checks a complete proposed interpretation against every
+original rule, background assertion and supplied global property. Each relation
+has explicit, distinct symbolic parameters in its registered argument order.
+Its body must be a quantifier-free theory formula over those parameters;
+recursive predicate references, unbound symbols and hidden function definitions
+are refused. Missing or unknown interpretations and mismatched argument types
+are errors. A false background assertion is checked as an obligation, rather
+than assumed to make every proof vacuous.
+
+Validation uses a fresh solver and accepts only when every negated obligation
+is unsatisfiable. `validate_solution_with_config` accepts a `ContextConfig` for
+this check; an unknown result retains its reason as an error. Acceptance
+establishes an inductive overapproximation, not the least fixed point or source
+program correctness. Raw query answers are exposed separately and are not
+converted into empty solutions. A predicate body such as `x >= 0` is a property
+of that relation's states, not an unconditional global invariant.
+
 This is a Rust solver integration API, not a Verum source annotation.
 
 ---
