@@ -539,6 +539,26 @@ These metadata do not carry the retained frames, operands or ownership needed
 to resume. Continuation correctness requires separate state-transition evidence;
 legacy completed-execution replay does not establish it.
 
+`verification/external/lean/check_transfer_export.py` checks transferred code
+against the original portable card and its declared correlated
+initializer/update/read triple. The exact scorer preserves the complete frozen
+alphabet for every context, including unobserved outcomes, and groups children
+by full reading values within each context. It checks child KT against both
+parent KT and empirical parent maximum likelihood, using exact arithmetic and
+strict selection and risk thresholds. Confirmation compares the joint score
+with training and applies the original family's thresholds; it does not require
+the fresh-only score to pass independently.
+
+Installation and current state are separate replay boundaries. The checker
+folds the original installation prefix and the full current history against
+their respective retained cuts, checks immutable prefixes and later evidence,
+and rejects a snapshot paired with the wrong history. Publication forks the
+installed observer, so the published owner differs from the retained
+installation owner. Checked endpoint values and identity separation do not
+establish the intervening native fork and commit transitions: those need their
+own original observations. The adapter also does not establish physical event
+provenance, arbitrary stopping-time validity or whole-letter ingress limits.
+
 `VerumExternalReplay/RetainedExecution.lean` gives the owned finite-code model
 explicit frames, lexical scopes, registers, resolved argument prefixes and
 instruction phases. Atomic, phased and unmetered execution share those semantic
