@@ -1127,8 +1127,9 @@ traces and exact outcome bytes. Both adapters use the same input-completion law:
 append one decoded value while preserving the interface and the entire input
 prefix. The byte decoder has a proved round trip and cannot alias distinct
 accepted wires. Receiver row admission compares the complete pre-event source,
-query and context, including sensory data, pose and action. These are model
-laws; the native adapter must still supply the compared rows and publication
+query and context, including sensory data, pose and action. A separate journal
+check requires the same pre-event input and complete outcome wire. These are
+model laws; the native adapter must still supply the compared rows and publication
 observations to establish implementation correspondence.
 
 `check_causal_snapshot.py` replays complete exported histories, including
