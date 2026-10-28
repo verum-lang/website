@@ -811,6 +811,37 @@ next context is chosen from prior observations. A held-out suffix starts from
 the supplied training counts; composing samples preserves every factor and
 count without resetting the predictor.
 
+`VerumExternalReplay/CausalCoding.lean` provides a binary prediction kernel
+whose probabilities depend on the retained state before each bit is observed.
+The complete finite word space is normalized from every initial state.
+Continuation scoring preserves the trained state and every probability factor.
+A residual XOR mask fixed before the body preserves its length and permutes this
+space, including when the mask is shorter or longer than the body. Choosing the
+mask or initial state from the body being scored does not satisfy this contract.
+
+`VerumExternalReplay/BinaryPrediction.lean` instantiates that kernel using the
+existing categorical half-count predictor. Its correspondence theorem identifies
+both the exact path likelihood and the final retained counts with categorical
+scoring. Every finite bit body has positive mass. The exact fraction library
+also proves cancellation of a common positive factor in a likelihood ratio, so
+identical length factors can be cancelled from both scores without changing the ratio.
+
+`VerumExternalReplay/FiniteWire.lean` combines that kernel with a proper length
+law. The law conserves mass at every finite cut and proves that the remaining
+mass becomes smaller than every positive rational tolerance. Conservation alone
+is insufficient: a distribution can leave positive mass on infinite bodies.
+The concrete geometric law assigns length `n` mass `2^-(n+1)` and proves its tail
+vanishes. A fixed unit width supports bit or byte lengths; scoring derives the
+length from the complete body and refuses incomplete units.
+
+Lossless typed serialization is a separate obligation. Its decoder round trip
+proves injectivity, and re-encoding identifies the canonical image, excluding
+accepted aliases. Restricting wire probabilities to that image gives total mass
+at most one. It is normalized at a chosen length exactly when the omitted mass
+is zero; XOR does not remove this condition. These executable models establish
+mass accounting, without establishing a learned representation, native scorer
+correspondence, null-model dominance or an infinite-horizon statistical bound.
+
 `VerumExternalReplay/RefinementCapacity.lean` proves a sharp finite upper bound
 on child KT likelihood divided by empirical parent maximum likelihood. For a
 fixed positive alphabet size `K` and `n` observations, let `q = n / K` and
@@ -854,7 +885,7 @@ Use `0 < alpha < 1` for a nontrivial error level.
 
 These are explicit conditional guarantees. The proof does not derive null
 likelihood dominance, causal context selection or a valid frozen training and
-evaluation protocol from counts. Each test's predictor must be a proper law
+evaluation protocol from counts. Each test's predictor must have total mass at most one
 on the same complete sample space; a marginal or prefix score alone does not
 supply that premise. Infinite-horizon stopping, native count updates, alphabet
 identities, likelihood computation, and actual admission decisions still
