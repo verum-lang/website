@@ -320,6 +320,30 @@ directly — `RefinementConfig.timeout_ms` propagates here.
 
 ---
 
+## Ranking functions over guarded transitions
+
+`verum_smt::ranking::RankingFunction::verify` accepts explicit symbolic parameters,
+a domain predicate, guarded successor arguments and a `ContextConfig`. It proves
+that the domain implies both a nonnegative integer rank and the candidate's
+additional constraint. For every transition, the domain and path guard must
+imply that the simultaneous successor arguments remain in the domain and
+strictly decrease the rank. The additional constraint is proved, never assumed
+to hide counterexamples.
+
+Only `Unsat` of each negated obligation counts as success. `false` refutes the
+candidate rank; it does not prove nontermination. Solver `Unknown` and malformed
+models return errors. Parameters must be distinct symbolic constants, and every
+successor must have the corresponding exact sort. Resource settings apply to
+each obligation.
+
+`RecursiveProgramVerifier::verify_termination` uses the same checker with the
+function's explicit parameters and guarded self-calls. These are Rust model APIs;
+they do not certify arbitrary source bodies, omitted recursive edges, mutual
+recursion, integer overflow semantics or kernel replay. Source adapters must
+supply every relevant transition and account for intervening execution.
+
+---
+
 ## BisimulationConfig — coinductive equivalence
 
 **Owner**: `verum_smt::coinductive::BisimulationChecker`.
