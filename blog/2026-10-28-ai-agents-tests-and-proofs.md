@@ -14,7 +14,7 @@ Possibly a great deal. Agents can find edge cases, build useful regression tests
 
 The central problem is **who defines success, who may change that definition, and what the resulting evidence actually covers**. It becomes sharper when agents write both the system and its evaluator. For complex services and experimental AI architectures, the answer must connect requirements, tests, formal models, proofs, and the executed artifact.
 
-This article explains that problem, draws lessons from published research and our work with SYNARC, and describes the verification workflow Verum is intended to provide. Parts of that workflow exist; the complete solution is a design goal, not a claim about today's implementation.
+This article explains that problem, draws lessons from published research and our work with [SYNARC](https://synarc.ai), and describes the verification workflow Verum is intended to provide. Parts of that workflow exist; the complete solution is a design goal, not a claim about today's implementation.
 
 <!-- truncate -->
 
@@ -91,7 +91,7 @@ Safety and progress also need different statements. An ownership invariant may e
 
 ## Lessons from an agent-developed learning system
 
-Our collaboration with SYNARC has made these distinctions concrete. The examples below concern observed defects or overclaims in its surrounding implementation and mathematical work. They are not a controlled experiment proving that agents are worse developers than humans.
+Our collaboration with [SYNARC](https://synarc.ai) has made these distinctions concrete. The examples below concern observed defects or overclaims in its surrounding implementation and mathematical work. They are not a controlled experiment proving that agents are worse developers than humans.
 
 ### When the test and the claim agree on the wrong mathematics
 
