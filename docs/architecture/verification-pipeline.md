@@ -1051,6 +1051,17 @@ computational efficiency or native implementation correspondence, and impose no
 such limitation on mixtures or other model families. The native positional
 model's normalization and ownership proofs remain valid.
 
+`check_expressiveness_export.py` checks frozen native separating witnesses. It
+replays complete training rows, forecasts, exact point masses and the declared
+conditioning event. It also evaluates a legacy pre-event update program over
+opposite outcome orders, comparing the resulting VM values, whole learned
+banks, returned target bytes and observed nominal identities. The replay uses
+the exact embedding into the outcome-dependent contract. Recorded source,
+binary and log identities bind the supplied data; strict controls reject altered
+programs, ownership and probabilities. These are finite observations with an
+explicit seed-bank and callback premise, not a replay of the newer causal
+lifecycle or a proof of arbitrary native execution.
+
 `FrozenTraining` separates parameters retained by a forecast from its evolving
 causal path and pending training delta. The path can depend on earlier target
 bits; scoring always reads the original parameter bank. Repeated visits to the
