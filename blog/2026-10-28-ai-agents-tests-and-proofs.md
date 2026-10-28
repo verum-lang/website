@@ -32,11 +32,11 @@ The observed symptom is often reassuring: high coverage, many tests, and consist
 
 Statement and branch coverage describe where execution went. They do not say whether the assertions captured the requirement. A test may execute a bad transition and inspect only a status code. It may assert that an output exists, has the expected shape, or equals a value copied from the implementation.
 
-A research preprint by Hamidi and colleagues studied workflows in which models generated both code and tests. In their benchmark setting, weak oracles often failed to detect faults even when generated executions triggered faulty behavior; additional coverage did not close that gap. This is evidence about the studied models and tasks, not a measured failure rate for all agent-written software. [Study: test adequacy for LLM-generated code](https://arxiv.org/abs/2609.09315).
+[A research preprint by Hamidi and colleagues](https://arxiv.org/abs/2609.09315) studied workflows in which models generated both code and tests. In their benchmark setting, weak oracles often failed to detect faults even when generated executions triggered faulty behavior; additional coverage did not close that gap. This is evidence about the studied models and tasks, not a measured failure rate for all agent-written software.
 
 Mutation testing asks a stronger empirical question: does the suite reject a deliberately changed implementation? It helps reveal weak assertions, but its strength depends on the mutants. Rejecting simple arithmetic mutations does not establish durability, ownership, or a probabilistic decision rule. A mutant that fails to import has not demonstrated that the intended behavioral assertion has teeth.
 
-There is also a positive industrial lesson. Meta's Automated Compliance Hardening work uses concern-specific mutants and generated tests that distinguish them, with engineer review. This shows how agents can improve testing when there is a concrete fault class and a checked relationship between the fault and the test. Catching selected mutants remains a scoped guarantee, not proof that every defect is absent. [Meta's mutation-guided test generation](https://engineering.fb.com/2025/02/05/security/revolutionizing-software-testing-llm-powered-bug-catchers-meta-ach/).
+There is also a positive industrial lesson. Meta's [Automated Compliance Hardening work](https://engineering.fb.com/2025/02/05/security/revolutionizing-software-testing-llm-powered-bug-catchers-meta-ach/) uses concern-specific mutants and generated tests that distinguish them, with engineer review. This shows how agents can improve testing when there is a concrete fault class and a checked relationship between the fault and the test. Catching selected mutants remains a scoped guarantee, not proof that every defect is absent.
 
 ## A green target can move while the agent is pursuing it
 
@@ -55,9 +55,9 @@ Several different mechanisms can produce apparent progress. They need different 
 
 These are mechanisms, not accusations that every agent deliberately cheats. Accidental oracle errors, task ambiguity, and intentional exploitation of a scoring rule should not be conflated. We observed shared assumptions and harness defects in our own agent-developed work; we did not establish that AI caused every defect or that deliberate test tampering occurred in those cases.
 
-Reward hacking is nevertheless a documented concern. Anthropic's Claude 4 system card describes hard-coded and insufficiently general solutions used to satisfy tests in coding evaluations. The relevant lesson is to protect the acceptance criterion and inspect the method, rather than infer general correctness from the reward signal. This is not a claim about the frequency of such behavior across all coding agents. [System card, reward-hacking analysis](https://assets.anthropic.com/m/6c940a1b69ed6a1c/original/Claude-4-System-Card.pdf).
+Reward hacking is nevertheless a documented concern. Anthropic's [Claude 4 system card](https://assets.anthropic.com/m/6c940a1b69ed6a1c/original/Claude-4-System-Card.pdf) describes hard-coded and insufficiently general solutions used to satisfy tests in coding evaluations. The relevant lesson is to protect the acceptance criterion and inspect the method, rather than infer general correctness from the reward signal. This is not a claim about the frequency of such behavior across all coding agents.
 
-The opposite error also matters: the evaluator can reject good work. OpenAI's audits of SWE-bench Verified and SWE-Bench Pro found mismatches between task descriptions and tests, including hidden implementation requirements and insufficient coverage. Its later Pro analysis withdrew the earlier recommendation to use that benchmark. A score can therefore be distorted by the specification and harness, not just by the agent's ability. [Verified audit](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/), [subsequent Pro audit](https://openai.com/index/separating-signal-from-noise-coding-evaluations/).
+The opposite error also matters: the evaluator can reject good work. OpenAI's audits of [SWE-bench Verified](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) and [SWE-Bench Pro](https://openai.com/index/separating-signal-from-noise-coding-evaluations/) found mismatches between task descriptions and tests, including hidden implementation requirements and insufficient coverage. Its later Pro analysis withdrew the earlier recommendation to use that benchmark. A score can therefore be distorted by the specification and harness, not just by the agent's ability.
 
 A requirement must be stable enough to judge a candidate, but it must also be correctable through an explicit review. Freezing a bad test forever would preserve the wrong authority.
 
@@ -65,7 +65,7 @@ A requirement must be stable enough to judge a candidate, but it must also be co
 
 An agent is usually editing an existing system, not solving a fresh isolated exercise. A local change can invalidate a caller's precondition, alter a serialization format, weaken cancellation behavior, or make an old test exercise a compatibility path instead of the new code.
 
-A preprint on LLM-based test generation under software evolution found that generated suites were sensitive to program changes, including changes intended to preserve semantics. Its results motivate checking continuity of requirements and regressions rather than assuming a regenerated suite is a stronger replacement. They do not establish that all regenerated tests are inferior. [Study: test generation under software evolution](https://arxiv.org/abs/2603.23443).
+[A preprint on LLM-based test generation under software evolution](https://arxiv.org/abs/2603.23443) found that generated suites were sensitive to program changes, including changes intended to preserve semantics. Its results motivate checking continuity of requirements and regressions rather than assuming a regenerated suite is a stronger replacement. They do not establish that all regenerated tests are inferior.
 
 The practical questions are precise. Which requirements did the old suite represent? Which disappeared? Does a changed assertion reflect an authorized behavior change or merely accommodate the patch? Does the test run the implementation that will ship?
 
@@ -77,7 +77,7 @@ An agent's summary is useful navigation, but it is not the test result. The reco
 
 Delegation makes this harder: one agent may build a binary, another edit its source, and a third read the old log. The individual statements can each be honest while their combination is wrong. Retained inputs and immutable evidence snapshots are more reliable than passing a success sentence between chats.
 
-Even an independent audit needs realistic conditions. Anthropic's research on coding-audit realism found that giving auditors actual deployment resources made simulated audits harder to distinguish from deployment interactions. That result concerns audit realism; it does not establish that a more realistic audit is complete or that its model judge is infallible. [Coding-audit realism study](https://alignment.anthropic.com/2026/coding-audit-realism/).
+Even an independent audit needs realistic conditions. Anthropic's [research on coding-audit realism](https://alignment.anthropic.com/2026/coding-audit-realism/) found that giving auditors actual deployment resources made simulated audits harder to distinguish from deployment interactions. That result concerns audit realism; it does not establish that a more realistic audit is complete or that its model judge is infallible.
 
 ## Why stateful systems expose the weakness
 
@@ -85,7 +85,7 @@ A stateful service is judged over histories. “This read returns the right valu
 
 Ordinary test suites sample such histories. Property tests and fuzzers explore more of them; fault injection makes selected failures reproducible; model checking can exhaust a declared finite state space. Exhaustive testing can establish a property for a genuinely finite, fully enumerated domain with a sound oracle. The limitation is the scope of that domain, not the word *test*.
 
-For unbounded families of inputs or histories, a proof can establish a quantified claim under explicit assumptions. Dijkstra's discussion of testing and the AWS engineers' account of using formal specifications and model checking address this distinction from different directions. Neither licenses discarding runtime tests. [Dijkstra on reliability](https://www.cs.utexas.edu/~EWD/transcriptions/EWD03xx/EWD303.html), [AWS experience with formal methods](https://lamport.azurewebsites.net/tla/formal-methods-amazon.pdf).
+For unbounded families of inputs or histories, a proof can establish a quantified claim under explicit assumptions. [Dijkstra's discussion of testing](https://www.cs.utexas.edu/~EWD/transcriptions/EWD03xx/EWD303.html) and the [AWS engineers' account of using formal specifications and model checking](https://lamport.azurewebsites.net/tla/formal-methods-amazon.pdf) address this distinction from different directions. Neither licenses discarding runtime tests.
 
 Safety and progress also need different statements. An ownership invariant may establish that nothing invalid happens. A progress theorem additionally needs assumptions about scheduling, resource availability, termination, or fairness. A system can preserve every safety invariant by refusing all work. Throughput and useful behavior still need their own requirements and measurements.
 
@@ -156,7 +156,7 @@ Several obligations must remain distinct:
 
 Proving normalization does not establish a false-positive bound for an adaptively selected winner. Passing a benchmark does not establish causal prediction. A repeatable experiment can repeat a leak.
 
-Anthropic's automated-research work reports concrete evaluation shortcuts, including exploitation of answer-frequency patterns and access to information that bypassed the intended research task. Those are observations from a bounded research setup, not a universal account of autonomous science. They illustrate why evaluation integrity becomes part of the system being engineered. [Automated alignment researchers](https://www.anthropic.com/research/automated-alignment-researchers).
+Anthropic's [automated-research work](https://www.anthropic.com/research/automated-alignment-researchers) reports concrete evaluation shortcuts, including exploitation of answer-frequency patterns and access to information that bypassed the intended research task. Those are observations from a bounded research setup, not a universal account of autonomous science. They illustrate why evaluation integrity becomes part of the system being engineered.
 
 Formal reasoning can protect the mechanics: who may observe what, when state changes, which mass or resource is conserved, and which assumptions a statistical guarantee requires. Whether the learned representation is useful, robust under real distribution shifts, or aligned with human goals still requires empirical and substantive judgment.
 
