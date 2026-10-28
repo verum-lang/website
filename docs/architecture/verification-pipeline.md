@@ -1092,6 +1092,25 @@ execution. Anchor comparison alone does not establish where a physical capture
 came from. These models specify the correspondence obligations; they do not
 certify every native path or replace source-bound replay.
 
+`CausalObservation` connects the completed-row contract to a declared native
+scalar callback: decode the exact eight-byte little-endian outcome, append it
+to the retained pre-event inputs, and preserve their interface identifier.
+Wrong widths and out-of-range bytes are refused. The read still uses the
+pre-outcome query; the update runs the exported acquired program on the
+completed inputs.
+
+`check_causal_snapshot.py` replays complete exported histories, including
+observations before each assessed read, and checks installation against the
+retained history. Training and fresh-assessment banks, outcome-order branches,
+completed update inputs, final reads, forecasts and nominal publication are
+checked together. Strict controls reject forged history, state, outcome input,
+bank values and reused revisions. The source and native receipt identities are
+retained with the frozen export. This establishes correspondence for the
+exported snapshots. Native capture fidelity, physical journal authority,
+interface pointer identity, acquisition acceptance and internal VM
+continuations remain outside that evidence; the scalar callback semantics and
+export-to-program association are explicit premises.
+
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
 accepted aliases. Restricting wire probabilities to that image gives total mass
