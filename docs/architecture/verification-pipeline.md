@@ -684,6 +684,31 @@ lifecycle operations that actually supply those identifiers. These finite
 checks and universal model laws do not establish native device capture timing,
 allocator ownership or correspondence for arbitrary native executions.
 
+
+`VerumExternalReplay/ActionCapture.lean` separates an action's outcome observation
+from a later resumed birth observation. Each has independent optional presence;
+missing terminal data cannot be reconstructed from the current or resumed
+state. A failed action may supply an outcome only when its terminal belongs to
+the same action operation and has action scope. The original failure, including
+its diagnostic detail, remains a failure. Resumed data require a successful
+terminal result with resumption; they do not turn a failed restart into success.
+
+The complete semantic target retains the observed outcome kind and exact
+schema/body bytes. Resumption status is separate. The continuing successor is
+the outcome for an ordinary step or refusal, the distinct birth for a successful
+restart, and absent after failure or a stopped terminal. A successor guard
+compares two present observations exactly. Passing with missing data establishes
+no equality and supplies no missing bytes.
+
+The model retains the dispatch cut and pre-action observation separately from
+the completion. It rejects attachment for a different action and derives the
+query only from the retained request. Starting an invocation clears its previous
+capture slot, including when the action value repeats. These are conditional
+model laws: native capture timing, lawful action equality, actual slot clearing,
+wire materialization and allocation, and physical adapter fidelity require
+separate evidence. They do not establish a decision rule over forecasts or
+normalization over a remembered subset of possible outcomes.
+
 `verification/external/lean/check_joint_export.py` accepts a separate joint
 producer export. It recomputes the original initializer and execution report,
 receiver-prefix state, fork transition and full replay. It checks the retained
