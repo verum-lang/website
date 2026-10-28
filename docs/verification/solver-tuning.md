@@ -244,12 +244,37 @@ auto_tactics  = false   # remove heuristic non-determinism
 
 ---
 
+## Fixedpoint engine — Horn clauses and recursive relations
+
+The Rust integration API `verum_smt::fixedpoint::FixedPointEngine` uses
+Z3's fixedpoint engine for Horn clauses. Registering a relation transfers
+its declaration to the engine and returns a shared handle. The declaration
+retains its exact argument types, including bitvector widths and named sorts.
+Facts preserve literal values; Horn clauses bind their declared variables
+universally and retain their constraints.
+
+For a derivability query, `Sat` means the queried atom follows from the
+registered rules, and `Unsat` means it does not. `Unknown` is inconclusive;
+it must not discharge a proof obligation. Set engine and resource limits
+through Z3 parameters passed to `set_params`. A solver answer is not a
+kernel-checked proof certificate.
+
+This is a Rust solver integration API, not a Verum source annotation.
+
+---
+
 ## Cvc5Config — cvc5 adapter tuning
 
 **Owner**: `verum_smt::cvc5_backend::Cvc5Backend`
 (the struct is `verum_smt::cvc5_backend::Cvc5Config`).
 
 **Where set**: `[verify.solver.cvc5]`.
+
+The default build does not provide a native CVC5 backend:
+`Cvc5Backend::new` reports `NotAvailable`. Native CVC5 integration is
+incomplete; configuring these fields does not establish an operational
+backend or independent solver validation. Use the Z3 backend for supported
+solver execution.
 
 | Field | Default | Adapter option | Effect |
 |-------|---------|-------------|--------|
