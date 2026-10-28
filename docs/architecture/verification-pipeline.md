@@ -991,11 +991,23 @@ bit total and length observation; processing the last bit is insufficient.
 Denied atomic scoring steps retain the entire private cursor, and arbitrary
 pauses preserve the completed result without counting the row twice.
 
-These are general model laws. Applying them to a native transaction requires
-observed allocation identities, prepared/read coherence, full partial banks and
-actual commit results. A VM preparation call can earn progress before a later
-resource refusal; the unchanged-cursor law applies to a denied atomic scoring
-step. Native overflow, allocation and poison behavior require separate evidence.
+`verification/external/lean/check_predictive_transactions.py` connects these laws
+to a complete frozen native event stream. It checks retained cut, input, score
+and model identities; evaluates the exported read and update programs; and
+compares every observed partial scorer state with a checked prefix of the
+incremental model. Commit admission is derived from the actual cut and score
+identities. Refusals must retain both published components and return the same
+update. Fresh revision, score and model identities cannot reuse earlier retained
+allocations, even when their payloads agree. Frozen forecasts retain their
+original model counts across later commits. Shared prefix proofs are checked
+before reuse, and each supplied observation retains its own obligation.
+
+Initial score frontiers and explicitly declared callback encodings are input
+premises for this transaction replay. A VM preparation call can earn progress
+before a later resource refusal; the unchanged-cursor law applies to a denied
+atomic scoring step. Internal VM frames and native error classifications need
+separate continuation evidence. These finite observations do not establish
+universal native overflow, allocator, poison or physical-causality behavior.
 
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
