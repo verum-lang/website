@@ -20,7 +20,8 @@ needed for a memory-safety claim.
 ## Heap assertions
 
 The entailment backend is `verum_smt::separation_logic::SepLogicEncoder`.
-It represents a partial heap using a value array and a Boolean allocation
+Its spatial operations use the shared `verum_smt::partial_heap::PartialHeap`
+algebra. It represents a partial heap using a value array and a Boolean allocation
 map, both indexed by 64-bit addresses. Values are 64-bit words. Only
 allocated cells belong to the heap.
 
@@ -81,6 +82,29 @@ The explicit AST interpretation API in `verum_smt::separation_recognizer`
 maps encoding errors to `Unknown`. It does not resolve source declarations. A solver result is evidence about the encoded
 assertions. Kernel certification additionally requires a proof of the same
 proposition that the kernel checks.
+
+## Explicit heap commands
+
+The Rust compatibility API `verum_verification::separation_logic::verify_triple`
+and its diagnostic variant `verify_triple_z3` check a single explicit heap
+command with the same spatial algebra. This frontend uses mathematical integer
+addresses and values. It does not silently change them to wrapping machine
+words or establish correspondence with an arbitrary Verum function body.
+
+A write updates the addressed value and preserves the other cells. A load
+assigns the selected value to its destination after evaluating the address;
+a free removes that cell from the owned domain. Each operation must establish
+ownership, even when the postcondition is `true`. Allocation requires an
+available address, preserves occupied cells, and checks the postcondition for
+every fresh choice. Exhaustion cannot make the obligation pass vacuously.
+
+Supported scalar terms are integer literals and variables, addition,
+subtraction, multiplication, negation, absolute value and conditionals over
+supported integer comparisons. Spatial quantifiers bind integers lexically.
+Fields need a declared layout; structured and Boolean heap values need an
+explicit representation. The API rejects these missing interpretations and
+unsupported pure formulas. Solver uncertainty remains an error. Older symbolic
+formula-generation helpers are not covered by this command-verification path.
 
 ## Source integration and local reasoning
 
