@@ -46,7 +46,7 @@ const config: Config = {
         blog: {
           showReadingTime: true,
           blogTitle: 'Verum Blog',
-          blogDescription: 'Release notes and articles on the Verum programming language',
+          blogDescription: 'Articles on Verum, verification, and building reliable systems',
           postsPerPage: 10,
           blogSidebarTitle: 'Posts',
           blogSidebarCount: 'ALL',
