@@ -1009,6 +1009,32 @@ atomic scoring step. Internal VM frames and native error classifications need
 separate continuation evidence. These finite observations do not establish
 universal native overflow, allocator, poison or physical-causality behavior.
 
+Expressiveness is a separate obligation from ownership, normalization and
+successful replay. `AcquiredBytes` models an acquired-observer primitive language
+whose operations preserve existing byte-string leaves. A successful output can
+only contain byte strings from its inputs, retained history or finite program
+literals. Indexing bytes produces a number; pairing, selection and sensory
+extraction do not construct a new byte string. The proof lifts this invariant
+through the existing typed-program semantics and finite code with nested calls.
+An exact `(Bytes context, Bytes mask)` decoder preserves the same restriction.
+
+The model proves a separating input-dependent transformation: appending a byte
+to an input cannot be implemented for every finite input by any fixed old
+program. The general argument accounts for its finite literals; the literal-free
+case already has a one-byte counterexample. The unbounded-input result does not
+assume that a native machine has unlimited resources. The pinned Rust source
+has a reviewed correspondence with the primitive model; this review is not a
+machine-checked translation of Rust semantics.
+
+`ProgramProperties` supplies a general extension contract: embedded old programs
+must preserve their exact partial semantics, while strict additional
+expressiveness requires a behavior no old program can realize. General sequence
+constructors instantiate this contract as a model example. This is not a claim
+that those constructors alone provide universality. Structural iteration,
+retained continuations, semantic simulation of other architectures, acquisition
+and computational cost require further proofs. Arbitrary external decoder
+callbacks and the full VM are outside the byte-preserving primitive model.
+
 Lossless typed serialization is a separate obligation. Its decoder round trip
 proves injectivity, and re-encoding identifies the canonical image, excluding
 accepted aliases. Restricting wire probabilities to that image gives total mass
