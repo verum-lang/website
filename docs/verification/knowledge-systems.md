@@ -128,13 +128,41 @@ equal endpoints does not make a neutral proof reflexive, and the rule does not
 assert that all proofs of an equality coincide. The existing `J` certificate
 constructor retains its endpoint-dependent transport semantics.
 
+### Dependent local hypotheses
+
+Identity induction automatically generalizes local hypotheses whose types depend
+on the endpoint or equality proof, including further locals that depend on those
+hypotheses. This works for declaration parameters and locals introduced by `intro`,
+even when a dependent value occurs before the path in the parameter list:
+
+```verum
+public theorem transport_local(a: Type, p: fn(a) -> Type,
+    x: a, y: a, value: p(y), path: Path<a>(x, y)): p(x)
+proof by induction path; exact(value);
+```
+
+The induction motive quantifies `value` at each endpoint. In the reflexive branch,
+`value` has type `p(x)`, so `exact(value)` completes that branch. The generated
+certificate abstracts the branch value with a lambda, performs identity induction,
+and applies the resulting function to the original `value: p(y)`. The theorem
+retains all its original parameters and assumptions; no existing value is cast
+to a different type.
+
+Generalization preserves dependency order, lexical shadowing and explicit universe
+parameters. It also handles hypotheses whose types mention the equality proof
+itself, and composes with further identity inductions. Local names refer to their
+reintroduced branch values. The endpoint and path parameters themselves remain
+available with their original types; use `x` and `@builtin_refl(x)` when expressing
+the reflexive endpoint and proof in a branch term.
+
+The path's carrier, fixed origin and the parameters they require remain fixed.
 Goal abstraction uses scoped structural matching and must produce a well-typed
-family for an arbitrary endpoint and path. The tactic does not automatically
-transport dependent local hypotheses. Such a goal may require explicitly
-quantifying those dependencies before induction; an ill-typed family is rejected.
-Source elaboration, both native checkers and independent Lean certificate replay
-exercise the same rule, including rejection of unsound fixed-loop elimination
-and evidence from the wrong fibre.
+family for an arbitrary endpoint and path. An ill-typed family is rejected;
+generalization does not justify fixed-loop elimination or identify arbitrary
+proofs. Rewriting a named hypothesis with `rewrite ... at ...` remains a separate,
+unsupported operation in this profile. Both native checkers and independent Lean
+certificate replay validate the generated dependent functions and identity
+eliminators using their existing rules.
 
 Build the standalone host worker without LLVM:
 
