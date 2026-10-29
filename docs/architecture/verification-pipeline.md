@@ -781,6 +781,20 @@ native enumeration indices to code words, word-codec correctness, Branch/Fold
 VM execution, resource bounds or acquisition quality. Those require separate
 correspondence evidence.
 
+`DeclarationCoverage` proves coverage of finite lexical program trees over a
+fixed, validated primitive and literal alphabet. It computes separate bounds
+for instructions per body, nesting depth and child input width. Every
+well-formed tree belongs to the layered declaration family under any bounds
+that meet those requirements. Both branch bodies are selected independently
+from their shared child catalogue; folds require accumulator and element
+ports. The membership check preserves operand scopes, nonempty bodies, selected
+outputs and exact child widths, and its soundness theorem rules out malformed
+trees. This theorem concerns the mathematical declaration schema. Native
+constructor overflow checks, retention and allocation limits, library-index
+renaming and materialization, cursor transitions and scheduler progress require
+separate correspondence proofs. Increasing mathematical bounds does not prove
+that a finite machine can construct or search the resulting declaration.
+
 The retained native lifecycle fixtures exercise foreign and stale commit
 refusals, successful commit, retained and current reads, receiver installation
 and replay, structural installation failures, and exact naming across forks.
