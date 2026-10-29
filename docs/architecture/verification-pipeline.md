@@ -604,6 +604,16 @@ returning control without claiming completion. Zero grants never invoke the
 callback, and yields, completed results and refusals retain their exact state,
 remaining work and ordered effects.
 
+`GuardedDrain.lean` constructs this progress contract from a runtime guard.
+A pending callback that increases work is refused; one that spends no work and
+does not lower its rank yields. The guard retains all callback state, work and
+effects, and preserves already returned ready/refused results. It does not hide
+an invalid meter by clipping its value. Bounded-work accounting therefore still
+requires a monotone meter. A proved finite rank encoding preserves lexicographic
+comparison of a reversed bounded ordinal, lifecycle level and local phase,
+without adding arithmetic to the native implementation. Reversing an unbounded
+ordinal would not provide the same termination argument.
+
 The driver uses the supplied callback directly, without an arbitrary iteration
 limit or an extra charge for the outer loop. The proofs compose callback
 invariants, accounting and transition correspondence, and reject a truncated
