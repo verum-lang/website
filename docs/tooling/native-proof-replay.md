@@ -185,10 +185,13 @@ term checker.
 `verification/external/lean/check_predeclared_export.py` checks frozen declaration
 and selection snapshots against these laws. It compares declaration identity,
 native paid ordinals, retained source and origin, ordered sample prefixes,
-capacity and admission of the first validation row. A missing signature remains
+capacity, cached versus independently derived inputs, and validation admission.
+For a refused preselection row it checks that ordinary source, order and capacity
+guards would admit it, while the selection frontier refuses it and preserves the
+buffer. The first fresh row must pass the same guards with the frontier enforced. A missing signature remains
 missing; matching null fields cannot establish a signature. The report lists
-unverified obligations, including independent input/action projection, omitted
-refused inputs, criterion semantics and exact grammar cardinality.
+unverified obligations, including refusal diagnostic text, cross-epoch
+replacement sources, criterion semantics and exact grammar cardinality.
 
 Applying the model to a program requires exported witnesses for the actual
 frozen declaration, row provenance, resource refusals and selection boundary.
