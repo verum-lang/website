@@ -45,10 +45,11 @@ Plaintext interpreter connections support SCRAM authentication, prepared
 queries, binary and text parameters, SQL-error recovery, and explicit close.
 Rejected authentication and TLS refusal also release their TCP sockets.
 
-Connection pooling currently fails with a null dereference in
-`ConnectionPool.acquire`, so PostgreSQL-backed registry publishing is not
-ready for production. Native compilation still rejects packed-array reads
-across control flow. TLS connections require separate end-to-end validation.
+PostgreSQL-backed registry publishing is not ready for production. Interpreter
+connection and prepared-query checks do not yet establish durable publishing,
+pooled-session reuse, and crash recovery through the complete registry application.
+Native compilation still rejects packed-array reads across control flow.
+TLS connections require separate end-to-end validation.
 
 ```verum
 mount core.database.postgres.{PgConfig, PgConnection, connect};
