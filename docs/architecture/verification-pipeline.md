@@ -764,12 +764,21 @@ of instruction alternatives, operand choices, child-program names and output
 registers. A branch includes both child families; a fold includes its complete
 body family. Counts use products and sums without enumerating every name.
 Dependencies must precede their parent declaration, and repeated owners,
-missing children and incompatible body widths are refused.
+missing children and incompatible body widths are refused. Before projecting
+arities, a generic checked constructor verifies unique primitive identities,
+unique literal values and a nonempty set of instruction alternatives. Its
+specification proves both acceptance and rejection conditions. Distinct
+primitives may share an arity; captured calls remain distinct alternatives even
+when their bodies are equal, matching the native declaration contract.
 `check_compositional_census.py` checks this declaration census and the Uniform
-paid-look denominator against a frozen native acquisition export. This does
-not establish the mapping from native enumeration indices to code words,
-word-codec correctness, Branch/Fold VM execution, resource bounds or acquisition
-quality. Those require separate correspondence evidence.
+paid-look denominator against a frozen native acquisition export. Its source
+codec preserves the producer's primitive identities and complete Bit/Sequence
+values and validates the structure of captured programs. Other primitive and
+value vocabularies require their own source-bound codec. These checks do not
+establish that captured programs execute successfully, nor the mapping from
+native enumeration indices to code words, word-codec correctness, Branch/Fold
+VM execution, resource bounds or acquisition quality. Those require separate
+correspondence evidence.
 
 The retained native lifecycle fixtures exercise foreign and stale commit
 refusals, successful commit, retained and current reads, receiver installation
