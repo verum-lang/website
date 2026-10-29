@@ -985,12 +985,28 @@ Only opening consumes a paid look; a resource-deferred unopened source receives
 the current look when it eventually opens. Resource refusal supplies no negative
 semantic assessment.
 
-These bounds require retained ownership, compatible profiles, usable work after
-capture and routing, and sufficient atomic work or actual VM continuations.
-They do not establish progress from repeatedly restarting an interrupted
-primitive, infinite retention in fixed memory, or native scheduler conformance.
-`check_acquisition_scheduling.py` checks the proofs and rejects altered finite
-claims about queue order, prices, resource refusals and storage.
+A fixed source round retains nominal owner identities even when their storage
+positions change. With every scheduled owner still available, selection returns
+exactly the frozen roster prefix; newcomers wait for the next round. Losing an
+owner refuses selection rather than substituting or skipping it.
+
+Persistent search alternates an uninterrupted frontier with a revisit cursor.
+Profile revisions replace the revisit cursor without resetting that turn or the
+frontier. For a cursor whose successful successor increases its rank by one,
+`n` completed declarations advance the frontier rank by at least `floor(n / 2)`,
+even with revisions and suspensions interleaved. A declaration counts when its
+address and successor are retained: opening may subsequently run out of work.
+Retrying an existing address, a refused successor, and an ordinary service poll
+do not count as new declarations.
+
+Applying these bounds requires retained ownership, compatible intake profiles,
+returning callbacks, usable work after capture and routing, and sufficient atomic
+work or actual VM continuations. The scheduling projection does not prove that
+those resources will become available or that archived continuation payloads
+remain intact. It establishes neither acquisition speed, infinite retention in
+fixed memory, nor native scheduler conformance. `check_acquisition_scheduling.py`
+checks the proofs and rejects altered claims about owner substitution, frontier
+resets, resource refusals, prices and storage.
 
 `VerumExternalReplay/CategoricalPrediction.lean` proves exact finite-alphabet
 Dirichlet half-count prediction: a label with count `c` has probability
