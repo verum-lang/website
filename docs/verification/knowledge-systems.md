@@ -55,6 +55,36 @@ Unknown names are rejected; imports and unrelated top-level axioms are not
 silently admitted to the selected theorem's context. Library imports, effects,
 recursive definitions and unsupported syntax need their own checked extensions.
 
+### Equality transport and scoped tactics
+
+The profile supports `intro`, `rewrite`, `exact`, `assumption`, `reflexivity`
+and sequential composition with `;`. Each successful proof produces an ordinary
+native certificate, checked by both substitution and normalization by evaluation.
+For example, equality of two indices transports a value between the corresponding
+types in a dependent family:
+
+```verum
+public theorem transport(a: Type, p: fn(a) -> Type,
+    x: a, y: a, equality: Path<a>(x, y), value: p(x)): p(y)
+proof by rewrite < equality; exact(value);
+```
+
+`rewrite(h)` replaces occurrences of the left endpoint of `h` in the goal with
+its right endpoint; `rewrite < h` reverses this direction. Matching uses the
+scoped term structure, including binder identities, rather than identifier text.
+`intro(name)` introduces one dependent function binder; `intro(x, y)` introduces
+two. An unnamed `intro` creates one anonymous binder usable by `assumption`.
+Nested sequences preserve this scope. A proof must close its remaining goal;
+unfinished sequences and tactics after a completed proof are rejected.
+
+Rewriting constructs a type family and transports evidence through the native
+identity eliminator. Reverse paths are derived using the same rule, without a
+symmetry axiom. The constructed family must itself be well typed: changing an
+index cannot silently retype a local value that depends on the original index.
+Rewriting hypotheses with `at`, implicit matching by conversion, and induction
+whose motive depends on the equality proof itself are outside this profile.
+The final kernel checks still use definitional equality.
+
 Build the standalone host worker without LLVM:
 
 ```sh
