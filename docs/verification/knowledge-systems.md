@@ -77,6 +77,20 @@ two. An unnamed `intro` creates one anonymous binder usable by `assumption`.
 Nested sequences preserve this scope. A proof must close its remaining goal;
 unfinished sequences and tactics after a completed proof are rejected.
 
+Quantifier annotations share the regular type parser, including dependent
+families and identity types. This lets a proof introduce an equality hypothesis
+directly from its quantified statement:
+
+```verum
+public theorem symmetry(a: Type, x: a):
+    forall y: a. forall equality: Path<a>(x, y). y == x
+proof by intro(y, equality); rewrite(equality); reflexivity;
+```
+
+Parenthesize the binding when its type contains a qualified name: outside those
+parentheses, the first dot ends the annotation and starts the quantified body.
+Dots inside delimited type arguments remain part of their qualified names.
+
 Rewriting constructs a type family and transports evidence through the native
 identity eliminator. Reverse paths are derived using the same rule, without a
 symmetry axiom. The constructed family must itself be well typed: changing an
