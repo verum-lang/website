@@ -637,6 +637,11 @@ payloads, so this replay does not establish complete receiver or VM ownership.
 predictor must agree with its query/event allocations, and the native current
 snapshot guard must agree with the predictor's revision and learned-score
 identities. Forked owners remain distinct even when their values match.
+`RetainedOwnership.lean` checks each registration against its earlier binding:
+the retained sample, query, event and predictor allocations cannot change under
+the same owner/invocation key. An observed removal or replacement retires that
+binding, which cannot reappear later. These properties compose across the entire
+accepted checkpoint sequence, including observations of unrelated owners.
 Registered and late evaluations are compared with earlier observed registrations
 and completed invocation identities. Supplied invocation checkpoints must follow
 the phase model: cancellation and unknown delivery cannot become completion.
