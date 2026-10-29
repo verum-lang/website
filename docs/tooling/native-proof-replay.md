@@ -35,11 +35,43 @@ cargo run -p verum_proof --features process --bin verum-proof < identity.json
 
 The process emits one JSON report. A successful report has `accepted: true`, `diagnostic: null`, the logical profile and an identity derived from the exact checking sources. Failure exits nonzero. The checker identity supports reproducibility; it is not a digital signature or a proof of the checker's soundness.
 
+## Function extensionality
+
+The separate `verum-native-funext/1` profile adds dependent function
+extensionality. A `FunExt` term supplies `function_type`, `lhs`, `rhs` and
+`pointwise`. For a function type Π(x : A). B(x), the checker requires both
+functions to have that type and a proof of Id(B(x), lhs(x), rhs(x)) for every x.
+It then produces Id(Π(x : A). B(x), lhs, rhs). Arbitrary domains and dependent
+codomain families are supported; testing finitely many inputs cannot supply this
+premise.
+
+The verifier must explicitly select the foundation, and the judgment must name
+that exact profile:
+
+```sh
+cargo run -p verum_proof --features process --bin verum-proof -- \
+  --foundation function-extensionality < extensional-judgment.json
+```
+
+Embedded callers select `Foundation::FunctionExtensionality` through
+`process::replay_with_foundation`. The default replay and certificate APIs remain
+intensional. Metadata and a submitted profile name cannot enable the additional
+principle on their own. A successful report records the selected profile.
+
+Extensionality proofs stay opaque: they do not reduce to reflexivity, even for
+identical endpoints. The rule adds neither equality reflection nor proof
+irrelevance. Both native algorithms and the independent Lean checker validate
+the dependent premise. The direct Lean formulation uses `funext`, whose
+foundation audit reports `Quot.sound`. This is an explicit foundational
+assumption, not a project-specific axiom or a proof of the entire checker's
+soundness. Source elaboration under `verum-source-pi-id/1` remains intensional;
+this native capability does not add a source `funext` tactic.
+
 ## Untrusted inputs and limits
 
 Use the process adapter for untrusted artifacts. It starts a fresh child before parsing terms, clears inherited environment variables and reaps the child on completion, error or timeout. The parent validates the worker report and checks its logical profile and checker identity.
 
-The admission policy limits input to 1 MiB, term and universe nodes to 4096 and structural depth to 64. JSON decoding also retains its recursion limit. The worker has a five-second wall deadline, a three-second CPU limit, a bounded stack and output size, and a 512 MiB memory termination threshold. Unix systems supporting address-space limits also enforce that limit. macOS uses sampled resident-memory monitoring: the threshold may be exceeded between samples and is not an instantaneous allocation guarantee. Deployments requiring a hard aggregate memory boundary must additionally constrain the worker service at the OS/container level. Unsupported process-limit configurations do not silently fall back to unbounded replay.
+The admission policy limits input to 1 MiB, term and universe nodes to 65,536 and logical structural depth to 128. An iterative JSON envelope check bounds physical nesting before decoding; the logical bounds are checked separately. The worker has a five-second wall deadline, a three-second CPU limit, a bounded stack and output size, and a 512 MiB memory termination threshold. Unix systems supporting address-space limits also enforce that limit. macOS uses sampled resident-memory monitoring: the threshold may be exceeded between samples and is not an instantaneous allocation guarantee. Deployments requiring a hard aggregate memory boundary must additionally constrain the worker service at the OS/container level. Unsupported process-limit configurations do not silently fall back to unbounded replay.
 
 A process timeout, exhausted budget, crash or unavailable worker means **inconclusive**. It does not mean the theorem is false. Structural limits alone do not bound normalization cost; untrusted input must not be sent directly to the in-process replay function.
 

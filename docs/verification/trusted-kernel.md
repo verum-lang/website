@@ -271,11 +271,16 @@ without any further rule additions:
   `h : P a` to a value of type `P b`
 - **Congruence** of `f`: motive `λx. Id(B, f(a), f(x))` discharged
   by `J` at `refl_(f(a))`
-- **Function extensionality** (with Π and Id) — an axiom in this
-  fragment, but provable in the cubical extension layered above
 
 These derivations are kernel-checked once the user names them; the
 trusted base does not need to recognise them syntactically.
+
+Function extensionality is a separate, explicitly selected foundation. The
+[`verum-native-funext/1` profile](/docs/tooling/native-proof-replay#function-extensionality)
+checks a universal pointwise proof before constructing equality of dependent
+functions. The default intensional profile and `Certificate::verify` reject
+that additional rule. Its proof term remains opaque; it introduces no equality
+reflection or proof irrelevance.
 
 ### 3.2 The `Certificate` lifecycle at this layer
 

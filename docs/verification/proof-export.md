@@ -22,6 +22,7 @@ unfinished migration inputs wherever they were previously stored.
 | Artifact | Meaning |
 |---|---|
 | `verum-native/1` judgment | Exact native statement and certificate replayed by the portable checker |
+| `verum-native-funext/1` judgment | Native replay under explicitly selected dependent function extensionality |
 | `verum-source-pi-id/1` carrier | Actual source plus selected declaration, elaborated under an explicit logical profile |
 | `.vproof` | Minimal closed certificate accepted by `check-proof` under its own input contract |
 | `SmtCertificate` | Solver envelope with a separate replay trust boundary; structural replay is not proof authority |
