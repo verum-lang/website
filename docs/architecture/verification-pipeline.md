@@ -595,6 +595,24 @@ to an admitted instruction. These are model laws; their application to an
 implementation requires original transition observations and an explicit
 semantic adapter.
 
+`VerumExternalReplay/WorkDrain.lean` supplies a termination and composition
+contract for a service that drains an existing work grant. Every continuing
+callback must either reduce remaining work or lower a retained phase rank at
+unchanged work. Paid steps may reset the rank; unpaid handoffs cannot form a
+cycle. A callback may instead yield explicitly, preserving its state and
+returning control without claiming completion. Zero grants never invoke the
+callback, and yields, completed results and refusals retain their exact state,
+remaining work and ordered effects.
+
+The driver uses the supplied callback directly, without an arbitrary iteration
+limit or an extra charge for the outer loop. The proofs compose callback
+invariants, accounting and transition correspondence, and reject a truncated
+execution that still has work and pending progress. Applying this contract to a
+native service requires evidence for its progress rank and every actual
+callback, including resource refusals. Equal final counters or a replay of an
+inner scoring loop alone do not establish that correspondence. The contract
+also does not prove a wall-clock bound or termination inside foreign callbacks.
+
 `verification/external/lean/check_retained_execution_export.py` replays frozen
 native machine observations against `RetainedNative.lean`. It checks source-bound
 frames, resolved operands, callback order, active guards, admission order,
