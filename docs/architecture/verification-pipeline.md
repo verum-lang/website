@@ -761,6 +761,30 @@ checks and universal model laws do not establish native device capture timing,
 allocator ownership or correspondence for arbitrary native executions.
 
 
+`VerumExternalReplay/SignatureCatalogues.lean` separates immutable signature
+publication from consumer-specific selection of initial, update and read calls.
+Source identity and execution semantics must agree before any phase is included.
+A port mismatch can exclude update or read while retaining the initializer.
+Universal projection laws preserve order and the exact signature and body
+identities; equal version numbers or equal printed programs cannot substitute
+for nominal owners.
+
+`verification/external/lean/check_signature_catalogue_export.py` independently
+replays the exported catalogue transitions. It checks parent traversal, phase
+indices, body identity, arity, paid work, capacity refusal and constructor
+handoff. A continuation must begin at an observed retained state under the same
+source, semantics and ports; capacity may increase on retry. Successful handoff
+requires a complete, untaken catalogue and changes only its taken state.
+Allocation failures are not modeled as capacity refusals.
+
+The replay report separates checked catalogue events from unchecked publication,
+linking, queueing, freezing and execution events. Its finite evidence does not
+establish arbitrary VM execution or empirical admission. The export retains
+signature and body owners but does not identify each mutable library instance
+after traversal completes. Consequently, matching retained state values cannot
+authenticate ownership between distinct instances with identical contents.
+
+
 `VerumExternalReplay/ActionCapture.lean` separates an action's outcome observation
 from a later resumed birth observation. Each has independent optional presence;
 missing terminal data cannot be reconstructed from the current or resumed
