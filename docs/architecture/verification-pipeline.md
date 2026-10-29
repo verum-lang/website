@@ -1493,6 +1493,23 @@ selection is covered only when its rejection implies one of those same paid
 tests rejects. Every repeated entry is charged; a new name or look is not free.
 Use `0 < alpha < 1` for a nontrivial error level.
 
+`VerumExternalReplay/FiniteRisk.lean` extends this foundation to first crossings
+at arbitrary finite horizons. A nonnegative predictive mass flows from each
+history to its complete set of possible next outcomes without increasing.
+First-crossing histories form a cut: descendants of an earlier crossing are
+not counted again. The model proves that their mass equals the full path event
+under a conserving null flow. If the null mass is bounded by an envelope `D`,
+then crossing `D <= alpha*q*Q` has event mass at most `alpha*q`. This comparison
+uses no division and remains defined on zero-mass histories; the ratio itself
+need not be a supermartingale. A finite, predeclared family with total allocation
+at most one has union risk at most `alpha`, including overlapping events.
+
+The theorem requires complete outcome branches, causal predictive mass and
+pointwise null domination. It does not infer these properties from a successful
+native trace. Infinite-horizon probability semantics, adaptive declarations,
+retained row ownership and the implementation's exact likelihood calculation
+require their own correspondence proofs.
+
 These are explicit conditional guarantees. The proof does not derive null
 likelihood dominance, causal context selection or a valid frozen training and
 evaluation protocol from counts. Each test's predictor must have total mass at most one
