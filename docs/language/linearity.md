@@ -502,6 +502,14 @@ fn drop_silently<T: Affine>(_: T) {}
 (`Affine` and `Linear` are built-in kind protocols; `Copy` is the
 default when no bound is given.)
 
+Compiled declaration interfaces retain source parameter and result types
+separately from erased calling conventions. Constructor results and callable
+bounds can therefore supply generic ownership witnesses after serialization,
+linking and specialization. Missing declaration evidence remains unknown; an
+erased return type or a textual type hint cannot authorize ownership transfer.
+This metadata preservation does not establish complete generic cleanup or
+native destructor coverage.
+
 ## Linearity and protocols
 
 Protocol methods can take `self`, `&self`, or `&mut self`. On a

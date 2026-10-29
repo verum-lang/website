@@ -85,6 +85,34 @@ required evidence. The matching Lean source is
 translation of runtime code, a finite physical register, execution cost or
 statistical-risk guarantees.
 
+## Program translation and resource budgets
+
+`verification/certificates/check_resource_transfer.py` checks exact translations
+between partial program semantics. Program, input and output embeddings have
+independent types. Composition preserves semantic absence and successful
+results; reflecting a particular successful value requires an injective output
+embedding. Semantic absence is distinct from operational suspension.
+
+A monotone budget map transports an explicit cost bound. Scalar budget maps
+compose only when both contracts use the same accumulated cost semantics,
+including the claimed translation, search, library acquisition and execution
+charges. A shrinking map cannot justify discarding work already paid.
+
+The separate paid-work model carries a pair `(A, B)`: acquisition work already
+paid and remaining execution budget. Successive steps with overheads `a`, `b`
+and execution maps `f`, `g` produce `(A + a + b, g(f(B)))`. Paid work never
+decreases, and execution within the final budget gives a lifetime bound of
+`A + a + b + g(f(B))`. This additive accounting does not describe peak memory;
+each resource dimension needs its own composition law.
+
+Both native checkers and independent Lean replay check the terms. The matching
+source is `VerumExternalReplay/ResourceTransfer.lean`. Pointwise loss transport
+requires compatible losses on exact terminal outcomes. A fixed aggregation of
+those losses is preserved under the explicit function-extensionality foundation.
+These contracts do not establish runtime cost measurements, optimal search,
+probabilistic approximation or statistical validity. Corruption controls reject
+erased overhead, discarded paid work and substitution of success for absence.
+
 ## Physical histories and scheduling
 
 `verification/certificates/check_physical_transducers.py` checks universal laws
