@@ -997,6 +997,27 @@ next context is chosen from prior observations. A held-out suffix starts from
 the supplied training counts; composing samples preserves every factor and
 count without resetting the predictor.
 
+`VerumExternalReplay/CommonWindow.lean` separates descriptive reassessment from
+admission. Within each common context, both partitions use the same declared
+alphabet, including outcomes absent from the observed window. Their cell sets,
+retained counts and selectors may differ. Context selection uses the prefix
+before the next outcome. The model proves that both partitions accept exactly
+the same finite words and that each distribution sums to one over that complete
+word space. Unknown labels are refused; support is not grown from the outcomes
+being scored. Fixing the declaration before intake remains a source obligation.
+
+For child probabilities `q_old`, `q_new` and a shared positive reference `p`,
+the ratio `(q_new / p) / (q_old / p)` equals `q_new / q_old`. The old child must
+also have positive probability. The comparison retains the original name and
+paid-look masses: its weighted ratio is `(q_new * mass_new) / (q_old * mass_old)`.
+Equivalent unreduced fractions are accepted. The model's obligation checker
+requires the same retained window identity, ordered support and reference value;
+equal rows in separately owned windows do not satisfy that identity requirement.
+Native pointer equality depends on immutable construction to establish the other
+properties. These laws neither replay a foreign implementation nor establish a
+statistical admission guarantee. A descriptive replacement score cannot create
+fresh evidence or installation authority.
+
 `VerumExternalReplay/CausalCoding.lean` provides a binary prediction kernel
 whose probabilities depend on the retained state before each bit is observed.
 The complete finite word space is normalized from every initial state.
