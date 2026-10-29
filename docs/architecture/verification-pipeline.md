@@ -1114,9 +1114,32 @@ This distinction matters when keys alias. Starting with an empty binary KT
 cell, two zero bits have frozen likelihood `1/4`. Updating that cell between
 bits instead produces `3/8`: a different forecast contract. The generic model
 proves equality with the declared frozen forecast without requiring distinct
-keys, and retains the finite-body normalization theorem. A variable-length
-prefix-dependent stopping model additionally needs a proof that its remaining
-infinite-path mass vanishes.
+keys, and retains the finite-body normalization theorem.
+
+`StoppedProcess` extends causal prediction to complete blocks with a STOP
+choice at each boundary. A point probability includes its final STOP; a prefix
+cylinder omits it. Every finite cut of possible continuations, together with
+its remaining tail, equals that same cylinder. The scoring interface refuses
+partial or oversized blocks. A uniform continuation bound supplies a geometric
+tail and an explicit finite cutoff for every positive error tolerance, proving
+that no mass remains on infinite outputs. Positive stopping probabilities at
+individual prefixes alone do not supply this guarantee.
+
+`ContextualStop` instantiates this model with separate STOP and BIT KT cells.
+A total selector receives the decision kind and already revealed raw bits in
+newest-first order. It chooses a context and optional outcome inversion;
+scoring reads one frozen bank throughout the row. Canonical training outcomes
+preserve inversion and every repeated-cell visit, including the final STOP.
+If each frozen STOP count is at most `C`, either outcome has probability at least
+`1 / (4*C + 2)`, uniformly over prefixes. This establishes proper termination
+without requiring distinct context keys. Native fixed-width counts require
+wider arithmetic before their sum is doubled.
+
+These are exact model laws. Correspondence still requires the actual selector,
+wire bit order, counter arithmetic, retained pauses and complete-row publication
+to match them. An undefined selector is a refusal, and resource exhaustion
+retains pending work; neither can be reinterpreted as a zero-probability outcome.
+The native positional model remains a separate supported contract.
 
 `OutcomeTransitions` gives live execution and history replay one completed-row
 contract. Prediction precedes the outcome; the same captured outcome drives
