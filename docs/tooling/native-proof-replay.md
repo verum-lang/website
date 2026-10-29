@@ -113,6 +113,29 @@ These contracts do not establish runtime cost measurements, optimal search,
 probabilistic approximation or statistical validity. Corruption controls reject
 erased overhead, discarded paid work and substitution of success for absence.
 
+## Bounding information from a finite binary partition
+
+`VerumExternalReplay/BinaryPartitionKT.lean` models fixed binary
+Krichevsky–Trofimov prediction with exact rational probabilities. For any finite
+partition of observations, it proves that the conditional likelihood divided
+by the parent likelihood is at most the binomial coefficient `C(n, k)`, where
+`n` counts all observations and `k` counts positive outcomes. Separating the
+outcomes into pure cells attains the bound. The model also proves the prediction
+recurrence and positivity of the parent probability.
+
+Positive outcomes alone do not bound the information gain. Four positive and
+four negative observations split into pure cells give a likelihood ratio of
+70; mixing the same counts into two balanced cells gives 18/35. Naming costs
+remain part of the comparison: multiplying a price factor of 20 by eight names
+raises it above 70. Exact counterexamples and semantic refusal controls check
+these distinctions without floating-point logarithms.
+
+These are finite mathematical model proofs checked by Lean. They do not prove
+an anytime statistical guarantee, correspondence with a native scorer, or
+successful acquisition from a runtime trace whose actual counts have not been
+exported. Native execution and portable Verum proof terms have separate evidence
+requirements.
+
 ## Constructing numbers without literals
 
 `verification/certificates/check_numeral_programs.py` checks partial iteration:
