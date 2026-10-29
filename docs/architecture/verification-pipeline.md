@@ -633,6 +633,25 @@ returns follow the inspected source branch; the packet does not observe those
 outer return values separately. Rank projections also omit retained transaction
 payloads, so this replay does not establish complete receiver or VM ownership.
 
+`check_preaction_export.py` checks the exposed registration boundary. A retained
+predictor must agree with its query/event allocations, and the native current
+snapshot guard must agree with the predictor's revision and learned-score
+identities. Forked owners remain distinct even when their values match.
+Registered and late evaluations are compared with earlier observed registrations
+and completed invocation identities. Supplied invocation checkpoints must follow
+the phase model: cancellation and unknown delivery cannot become completion.
+The model supplies a possible transition path between checkpoints; omitted
+intermediate phases are not treated as observations.
+
+The adapter also checks that exposed invocation and target refusals preserve
+the runtime, registration and receiver frontier. The native capture-match
+predicate remains an observation: this packet does not separately expose its
+slot equality and presence inputs. The registration's private constructor links
+the predictor to its snapshot; checking the exposed fields does not prove that
+constructor or the allocator. Pending transaction payloads, roster scheduling,
+VM execution and score arithmetic require their own evidence. A phase label
+alone cannot establish ownership through prediction, observation and learning.
+
 `verification/external/lean/check_retained_execution_export.py` replays frozen
 native machine observations against `RetainedNative.lean`. It checks source-bound
 frames, resolved operands, callback order, active guards, admission order,
