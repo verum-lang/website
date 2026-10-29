@@ -764,8 +764,9 @@ of instruction alternatives, operand choices, child-program names and output
 registers. A branch includes both child families; a fold includes its complete
 body family. Counts use products and sums without enumerating every name.
 Dependencies must precede their parent declaration, and repeated owners,
-missing children and incompatible body widths are refused. Before projecting
-arities, a generic checked constructor verifies unique primitive identities,
+missing children and incompatible body widths are refused. The added branch
+condition must fit the native input-index width, even when a child family is
+empty. Before projecting arities, a generic checked constructor verifies unique primitive identities,
 unique literal values and a nonempty set of instruction alternatives. Its
 specification proves both acceptance and rejection conditions. Distinct
 primitives may share an arity; captured calls remain distinct alternatives even
