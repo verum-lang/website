@@ -21,7 +21,7 @@ The input is a closed `.vproof` JSON certificate containing `term` and
 `verum_proof::proof_checker::Certificate::verify` (re-exported by
 `verum_kernel`), exposed by
 `verum check-proof`. Its calculus includes dependent functions, dependent
-pairs and the implemented identity-type fragment. It has no arbitrary
+pairs and identity types with full based identity induction. It has no arbitrary
 axiom or solver-witness constructor.
 
 At the proof-term level, supported assumptions can be explicit Π binders
@@ -57,8 +57,8 @@ recursive definitions and unsupported syntax need their own checked extensions.
 
 ### Equality transport and scoped tactics
 
-The profile supports `intro`, `rewrite`, `exact`, `assumption`, `reflexivity`
-and sequential composition with `;`. Each successful proof produces an ordinary
+The profile supports `intro`, `rewrite`, identity `cases` and `induction`,
+`exact`, `assumption`, `reflexivity`, and sequential composition with `;`. Each successful proof produces an ordinary
 native certificate, checked by both substitution and normalization by evaluation.
 For example, equality of two indices transports a value between the corresponding
 types in a dependent family:
@@ -95,9 +95,46 @@ Rewriting constructs a type family and transports evidence through the native
 identity eliminator. Reverse paths are derived using the same rule, without a
 symmetry axiom. The constructed family must itself be well typed: changing an
 index cannot silently retype a local value that depends on the original index.
-Rewriting hypotheses with `at`, implicit matching by conversion, and induction
-whose motive depends on the equality proof itself are outside this profile.
-The final kernel checks still use definitional equality.
+Rewriting hypotheses with `at` and implicit matching by conversion are outside
+this profile. The final kernel checks still use definitional equality.
+
+### Proof-dependent identity induction
+
+An equality proof can occur in the property being proved. For a path
+`path: Path<a>(x, y)`, based identity induction checks a family that depends on
+both the endpoint `y` and the path itself. Evidence at the base point, with
+reflexivity, extends to every endpoint and path:
+
+```verum
+public theorem identity_induction(a: Type, x: a,
+    family: fn<y: meta a>(Path<a>(x, y)) -> Type,
+    base: family(x, @builtin_refl(x)),
+    y: a, path: Path<a>(x, y)): family(y, path)
+proof by induction path; exact(base);
+```
+
+`@builtin_refl(x)` constructs the reflexivity proof of `Path<a>(x, x)` in this
+logical profile. It introduces no assumption. `induction path` abstracts the
+path and its right endpoint from the goal and reduces the remaining obligation
+to the reflexive case. Here `exact(base)` supplies that evidence. `cases path`
+is equivalent for identity proofs; both compose with `intro` and other supported
+tactics. The same rule supports families in distinct explicit universes.
+
+The native certificate contains `IdElim(motive, base, path)`. Its motive has type
+`Π(y : A). Π(p : Id(A, x, y)). Type(v)`, its base has type
+`motive(x, Refl(x))`, and its result has type `motive(y, path)`.
+It computes to the base only when the path reduces to reflexivity. Merely having
+equal endpoints does not make a neutral proof reflexive, and the rule does not
+assert that all proofs of an equality coincide. The existing `J` certificate
+constructor retains its endpoint-dependent transport semantics.
+
+Goal abstraction uses scoped structural matching and must produce a well-typed
+family for an arbitrary endpoint and path. The tactic does not automatically
+transport dependent local hypotheses. Such a goal may require explicitly
+quantifying those dependencies before induction; an ill-typed family is rejected.
+Source elaboration, both native checkers and independent Lean certificate replay
+exercise the same rule, including rejection of unsound fixed-loop elimination
+and evidence from the wrong fibre.
 
 Build the standalone host worker without LLVM:
 
