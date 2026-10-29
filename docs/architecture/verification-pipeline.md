@@ -810,7 +810,15 @@ and owner metadata; sorted native maps need not equal insertion-ordered lists.
 
 `verification/external/lean/check_source_calibration_export.py` checks frozen
 profile transitions, typed preflight refusals, immutable declaration snapshots
-and service stuttering. Initial states are supplied boundaries. The report
+and service stuttering. Its versioned calibration export adds prospective
+reservation ordinals and opening-row identities. The existing reservation
+model checks that declaration spends the next ordinal before intake, that
+retained attempts preserve it, and that physical observations do not allocate
+or refund a look. Opening rows must follow the frozen calibration boundary in
+source order. The legacy schema remains strict and supplies no such evidence.
+These are projections of the discovery's visible owners; they do not establish
+a global risk inventory, actual allocation identity or row payload fidelity.
+Initial states are supplied boundaries. The report
 identifies missing cut-layer projections, prepared tokens and materializer
 spines separately: profile agreement alone cannot establish those operations'
 ownership or causality. Logical work accounting does not prove exact snapshot

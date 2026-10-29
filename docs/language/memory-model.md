@@ -176,8 +176,16 @@ implement Drop for File {
 Correct resource ownership must determine which scope or consuming call
 is responsible for cleanup. Copying a value or passing an argument by
 value does not by itself establish a fresh owner with an independent
-destructor. General native owned-object destruction remains subject to
-the [resource-lifetime limitations](/docs/language/references#resource-lifetime).
+destructor. The bytecode compiler supports explicit affine returns from a
+proven direct local and from supported fresh aggregate constructors. An
+ownership transfer into a function or method argument does not prove ownership
+of its result: returning that result, including inside another constructor,
+is refused until the resource-bearing result producer is established. An
+unrestricted result can still be returned while the caller cleans up its
+remaining locals. Deferred or escaping
+cleanup also restricts these return paths. General native owned-object
+destruction remains subject to the
+[resource-lifetime limitations](/docs/language/references#resource-lifetime).
 
 ## Move vs copy
 
