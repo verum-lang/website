@@ -1152,6 +1152,17 @@ to match them. An undefined selector is a refusal, and resource exhaustion
 retains pending work; neither can be reinterpreted as a zero-probability outcome.
 The native positional model remains a separate supported contract.
 
+The frozen contextual export adapter checks every supplied native attempt for
+its declared selector fixture: raw prefix order, selected context and inversion,
+work refusals, frozen and staged banks, exact point and reference probabilities,
+and the separate completed-row publication step. Sparse-bank comparison covers
+both supplied and expected keys; a checked support comparison proves count
+agreement at every key. Repeated visits retain their full multiplicity.
+`verification/external/lean/check_contextual_rows_export.py` binds the replay to
+the frozen source and artifact identities. This finite projection check does not
+establish arbitrary acquired-selector totality, native Branch/Fold refinement,
+allocator behavior or pointer ownership.
+
 `PartialPrediction` supplies a separate contract for partial selectors. Each
 resolved decision has a normalized pair of weights; refused and pending
 selections retain explicit outcomes and their incoming mass. A successful
