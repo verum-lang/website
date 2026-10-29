@@ -633,6 +633,24 @@ returns follow the inspected source branch; the packet does not observe those
 outer return values separately. Rank projections also omit retained transaction
 payloads, so this replay does not establish complete receiver or VM ownership.
 
+`check_service_export.py` checks actual operations inside a retained service:
+validation completion, the paid publication gate, receiver preparation and
+installation. Each exported operation must join its predecessor's complete
+snapshot projection. The existing driver checker verifies work consumption,
+phase progress and stopping; separately observed outer results must agree with
+the final operation. Zero grants contain no operations, and both publication
+errors and blocked receivers retain their actual work and ownership facts.
+
+The adapter checks attempt, definition, publication, signature-admission and
+installed-floor identities within each trace. Physical lineage and ordinal stay
+fixed during service; installation advances the output epoch while retaining
+the original source binding. Arc identities are opaque process-local labels,
+so independent executions are compared by a bijective renaming within each
+trace. The supported publication outcome retains a signature awaiting its
+source. The snapshots omit VM payloads, allocation state and other queue entries;
+these checks establish the exported control and ownership correspondence, not
+complete VM refinement, FIFO correctness or termination inside a callback.
+
 `check_preaction_export.py` checks the exposed registration boundary. A retained
 predictor must agree with its query/event allocations, and the native current
 snapshot guard must agree with the predictor's revision and learned-score
