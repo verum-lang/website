@@ -569,10 +569,13 @@ the native work budget or certify allocation costs. The adapter also does not
 establish physical event provenance, refused or unobserved transitions,
 arbitrary stopping-time validity or whole-letter ingress limits.
 
-`VerumExternalReplay/RetainedExecution.lean` gives the owned finite-code model
-explicit frames, lexical scopes, registers, resolved argument prefixes and
-instruction phases. Atomic, phased and unmetered execution share those semantic
-transitions. `RetainedExecutionTrace.lean` proves that completed services from
+`VerumExternalReplay/RetainedExecution.lean` gives the retained VM explicit
+frames, lexical scopes, registers, resolved argument prefixes and instruction
+phases. One immutable source view supplies each scope's dispatch, operands and
+selected output. The owned finite-code adapter preserves these observations;
+resolving an instruction does not copy its surrounding instruction list. Atomic,
+phased and unmetered execution share the same transitions and source interface.
+`RetainedExecutionTrace.lean` proves that completed services from
 the same state and fixed semantics have identical final states and ordered
 callback results, regardless of slicing. It also proves immutable original
 allowances, monotone usage and exact accounting across grants. Refused attempts
