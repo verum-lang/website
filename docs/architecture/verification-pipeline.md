@@ -1141,6 +1141,22 @@ to match them. An undefined selector is a refusal, and resource exhaustion
 retains pending work; neither can be reinterpreted as a zero-probability outcome.
 The native positional model remains a separate supported contract.
 
+`PartialPrediction` supplies a separate contract for partial selectors. Each
+resolved decision has a normalized pair of weights; refused and pending
+selections retain explicit outcomes and their incoming mass. A successful
+complete trace has exactly the product of its resolved factors. Every finite
+cut conserves total mass across complete, refused and pending leaves, while
+the completed portion is at most one. Every successful finite trace appears
+in all sufficiently deep cuts, so the bound does not omit difficult successes.
+
+A defined prefix product therefore bounds the mass of successful finite
+continuations. Equality requires additional totality and vanishing-tail
+proofs. Undefined selection remains a typed refusal, resource pauses remain
+pending, and exhausting the proof horizon preserves unresolved mass. The
+partial STOP/BIT interface uses the same block protocol and admits the total
+stopped model as a special case. Native correspondence and selector totality
+still require their own evidence.
+
 `OutcomeTransitions` gives live execution and history replay one completed-row
 contract. Prediction precedes the outcome; the same captured outcome drives
 both the state transition and learning. A capture from a different retained
