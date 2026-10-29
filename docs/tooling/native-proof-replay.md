@@ -85,6 +85,25 @@ required evidence. The matching Lean source is
 translation of runtime code, a finite physical register, execution cost or
 statistical-risk guarantees.
 
+## Physical histories and scheduling
+
+`verification/certificates/check_physical_transducers.py` checks universal laws
+for a state machine whose physical observations update state and whose service
+events leave it unchanged. Erasing service events preserves the complete final
+state. Two histories with the same ordered physical observations, started from
+the same state, therefore produce the same result. Observation payloads can
+retain source identities and physical event identifiers; neither order nor
+payload identity is discarded.
+
+The terms quantify over arbitrary state, observation and service types at
+independent universe levels. Both native checkers and independent Lean replay
+validate the inductive proofs. Controls reject changing state during service,
+erasing an observation and exchanging observations. The matching source is
+`VerumExternalReplay/PhysicalTransducers.lean`. Service stuttering is part of
+this mathematical model: applying the theorem to a runtime requires separate
+evidence for its actual transitions, including capacity, overflow and refusal
+behavior. It does not certify a calibration algorithm or statistical guarantee.
+
 ## Untrusted inputs and limits
 
 Use the process adapter for untrusted artifacts. It starts a fresh child before parsing terms, clears inherited environment variables and reaps the child on completion, error or timeout. The parent validates the worker report and checks its logical profile and checker identity.
