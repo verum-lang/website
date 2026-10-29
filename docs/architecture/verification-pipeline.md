@@ -1003,7 +1003,9 @@ Applying these bounds requires retained ownership, compatible intake profiles,
 returning callbacks, usable work after capture and routing, and sufficient atomic
 work or actual VM continuations. The scheduling projection does not prove that
 those resources will become available or that archived continuation payloads
-remain intact. It establishes neither acquisition speed, infinite retention in
+remain intact. Finishing a declaration's intake also requires actual incoming
+observations; CPU fairness alone cannot complete collection. The bound establishes
+neither acquisition speed, infinite retention in
 fixed memory, nor native scheduler conformance. `check_acquisition_scheduling.py`
 checks the proofs and rejects altered claims about owner substitution, frontier
 resets, resource refusals, prices and storage.
@@ -1038,6 +1040,19 @@ Native pointer equality depends on immutable construction to establish the other
 properties. These laws neither replay a foreign implementation nor establish a
 statistical admission guarantee. A descriptive replacement score cannot create
 fresh evidence or installation authority.
+
+`check_common_window_export.py` replays the parent and both child KT probabilities
+from exported native readings and the common declared support. It checks the
+exported compression ratios and cancellation of the shared reference. Each
+context retains its own alphabet, including unobserved labels. Original price
+fields must agree with their declared name and look factors; a single-use
+allocation does not invent a paid look.
+
+This replay takes the readings and shared-owner observation as inputs. Program
+debug descriptions and query metadata do not prove VM execution or causal access.
+The export does not expose the native price-weighted comparison stage, so its
+correspondence remains a separate obligation. Matching scores neither establish
+that support was declared before outcomes nor authorize statistical admission.
 
 `VerumExternalReplay/CausalCoding.lean` provides a binary prediction kernel
 whose probabilities depend on the retained state before each bit is observed.
