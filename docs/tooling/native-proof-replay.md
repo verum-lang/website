@@ -132,6 +132,35 @@ this mathematical model: applying the theorem to a runtime requires separate
 evidence for its actual transitions, including capacity, overflow and refusal
 behavior. It does not certify a calibration algorithm or statistical guarantee.
 
+## Reserving evidence before computation
+
+A deferred computation must retain the declaration that determined its evidence
+budget. `verification/certificates/check_predeclared_evidence.py` checks model
+laws for increasing, injective reservation indices, unchanged reservations at
+completion, and refusal without refunding an index. The declaration is an
+immutable value: it can contain the source, origin, calibration end, signature,
+family address and criterion. Completing computations in a different order does
+not assign them new reservation indices.
+
+Ordered buffers retain their reservation and exact row sequence. Appending
+batches composes by concatenation; pausing leaves the prefix unchanged, and
+transfer retains that prefix. A separate validation buffer starts empty at a
+supplied selection boundary. These structural laws have portable proof terms
+checked by both native checkers and independent Lean replay.
+
+`VerumExternalReplay/PredeclaredEvidence.lean` also proves exact admission and
+risk-accounting laws. Its source-bound transition rejects foreign sources,
+non-increasing row ordinals and exhausted capacity. The rational allocation
+`1 / ((j + 1) * (j + 2))` has total finite-prefix mass at most one, including
+prefixes with skipped reservations. These arithmetic and admission extensions
+are Lean proofs; they are not additional arithmetic primitives in the native
+term checker.
+
+Applying the model to a program requires exported witnesses for the actual
+frozen declaration, row provenance, resource refusals and selection boundary.
+The model alone does not establish single consumption of a runtime resource,
+statistical independence, or that validation began after physical selection.
+
 ## Untrusted inputs and limits
 
 Use the process adapter for untrusted artifacts. It starts a fresh child before parsing terms, clears inherited environment variables and reaps the child on completion, error or timeout. The parent validates the worker report and checks its logical profile and checker identity.
