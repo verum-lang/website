@@ -785,6 +785,21 @@ after traversal completes. Consequently, matching retained state values cannot
 authenticate ownership between distinct instances with identical contents.
 
 
+`VerumExternalReplay/SourceCalibration.lean` models source-owned calibration,
+bounded preflight checks and prepared-token ownership. Its representation
+relation compares support membership while preserving exact source, revision
+and owner metadata; sorted native maps need not equal insertion-ordered lists.
+
+`verification/external/lean/check_source_calibration_export.py` checks frozen
+profile transitions, typed preflight refusals, immutable declaration snapshots
+and service stuttering. Initial states are supplied boundaries. The report
+identifies missing cut-layer projections, prepared tokens and materializer
+spines separately: profile agreement alone cannot establish those operations'
+ownership or causality. Logical work accounting does not prove exact snapshot
+traversal. These checks establish finite correspondence for the stated
+projection, without proving the complete observer agenda or statistical validity.
+
+
 `VerumExternalReplay/ActionCapture.lean` separates an action's outcome observation
 from a later resumed birth observation. Each has independent optional presence;
 missing terminal data cannot be reconstructed from the current or resumed
