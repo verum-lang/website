@@ -150,11 +150,22 @@ checked by both native checkers and independent Lean replay.
 
 `VerumExternalReplay/PredeclaredEvidence.lean` also proves exact admission and
 risk-accounting laws. Its source-bound transition rejects foreign sources,
-non-increasing row ordinals and exhausted capacity. The rational allocation
+non-increasing row ordinals and exhausted capacity. Calibration records the last
+consumed row, so trial rows must have strictly greater ordinals. Selection records
+the next physical ordinal: validation admits that ordinal and later ones, while
+retaining the same source, ordering and capacity checks. The rational allocation
 `1 / ((j + 1) * (j + 2))` has total finite-prefix mass at most one, including
 prefixes with skipped reservations. These arithmetic and admission extensions
 are Lean proofs; they are not additional arithmetic primitives in the native
 term checker.
+
+`verification/external/lean/check_predeclared_export.py` checks frozen declaration
+and selection snapshots against these laws. It compares declaration identity,
+native paid ordinals, retained source and origin, ordered sample prefixes,
+capacity and admission of the first validation row. A missing signature remains
+missing; matching null fields cannot establish a signature. The report lists
+unverified obligations, including independent input/action projection, omitted
+refused inputs, criterion semantics and exact grammar cardinality.
 
 Applying the model to a program requires exported witnesses for the actual
 frozen declaration, row provenance, resource refusals and selection boundary.
