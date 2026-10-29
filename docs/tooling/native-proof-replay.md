@@ -113,6 +113,24 @@ These contracts do not establish runtime cost measurements, optimal search,
 probabilistic approximation or statistical validity. Corruption controls reject
 erased overhead, discarded paid work and substitution of success for absence.
 
+## Constructing numbers without literals
+
+`verification/certificates/check_numeral_programs.py` checks partial iteration:
+zero iterations preserve the initial result, another iteration applies the
+partial successor, and an undefined result remains undefined. Induction proves
+that zero followed by successors expresses every mathematical natural number.
+Both native checkers and independent Lean replay check this structural core.
+
+`VerumExternalReplay/NumeralPrograms.lean` connects the result to the existing
+intrinsically typed register programs and their composition theorem. The closed
+program has no inputs and its literal type is empty. A separate bounded
+interpretation returns a number exactly when it fits the declared range;
+successor at the maximum is undefined. For an unsigned 64-bit range this means
+overflow refuses, rather than wrapping to zero or producing an unbounded value.
+The typed-program connection and bounded arithmetic are Lean theorems, not
+additional native primitives or a proof that a runtime enumerator emits every
+such program within finite time or memory.
+
 ## Physical histories and scheduling
 
 `verification/certificates/check_physical_transducers.py` checks universal laws
