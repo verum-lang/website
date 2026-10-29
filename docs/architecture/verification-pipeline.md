@@ -623,6 +623,16 @@ callback, including resource refusals. Equal final counters or a replay of an
 inner scoring loop alone do not establish that correspondence. The contract
 also does not prove a wall-clock bound or termination inside foreign callbacks.
 
+`check_guarded_driver_export.py` checks frozen native driver observations against
+`GuardedDrainTrace.lean`: each work grant, callback work/rank pair, and explicit
+yield or exhaustion must follow the guard and preserve continuity within its
+grant. A zero grant cannot contain a callback. These checks use the finite
+ordinal, level and phase ranges of the exported native representation. Source
+and binary provenance must be established separately. Ready and refused outer
+returns follow the inspected source branch; the packet does not observe those
+outer return values separately. Rank projections also omit retained transaction
+payloads, so this replay does not establish complete receiver or VM ownership.
+
 `verification/external/lean/check_retained_execution_export.py` replays frozen
 native machine observations against `RetainedNative.lean`. It checks source-bound
 frames, resolved operands, callback order, active guards, admission order,
