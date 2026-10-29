@@ -1010,6 +1010,25 @@ fixed memory, nor native scheduler conformance. `check_acquisition_scheduling.py
 checks the proofs and rejects altered claims about owner substitution, frontier
 resets, resource refusals, prices and storage.
 
+`VerumExternalReplay/FiniteDecoder.lean` proves an empirical limit for a fixed
+representation on a finite labelled cohort. If `n[z,y]` counts observations with
+representation value `z` and label `y`, no deterministic decoder of that
+representation can correctly label more than `sum_z max_y n[z,y]` observations.
+A constructively selected majority label in each fibre attains the bound.
+Any decoder state or history used to distinguish observations must be included
+in the representation. Repeated observations retain their multiplicity; conflicting labels in one fibre
+prevent perfect decoding even when the raw input itself has been retained.
+
+If the coarse representation factors through a finer one, every coarse decoder
+can be lifted to the finer representation, so its best attainable count cannot
+decrease. This describes available distinctions, not whether a learner will
+acquire or exploit them. The proof requires a faithful encoding of the cohort's
+actual equality classes and finite label domain. It neither certifies a native
+extractor nor extrapolates training accuracy to new observations.
+`test_finite_decoder.py` checks the constructive proof graph and rejects bounds
+that discard repeats, reverse refinement, or transfer a cohort-specific result
+to unseen data.
+
 `VerumExternalReplay/CategoricalPrediction.lean` proves exact finite-alphabet
 Dirichlet half-count prediction: a label with count `c` has probability
 `(2*c + 1) / (2*total + K)`, where `K` is the fixed alphabet size. Each observation
