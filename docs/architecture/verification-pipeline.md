@@ -425,6 +425,17 @@ not establish effects, recursive execution, resource costs or compiler/runtime
 correspondence. Replay and altered-proof controls are available through
 `verification/external/lean/check_typed_programs.py`.
 
+`ProgramTotality` derives exact success conditions from this typed IR. A
+certificate supplies an input precondition and an output relation; its weakest
+precondition holds exactly when the existing evaluator returns a value satisfying
+that relation. Primitive-domain proofs compose with continuation contracts and
+proved program splicing. The same condition applies through finite-code lowering,
+so unused failing calls, unresolved operands and absent callees cannot disappear
+from a totality argument. Closed conditions are decidable when the output
+predicate is decidable. These laws cover finite eager code; native resource
+completion, recursive execution and Branch/Fold correspondence need separate
+proofs.
+
 The native portable calculus checks the same general macro-preservation law,
 including its definedness and injective-result-reflection corollaries.
 Context-indexed references, heterogeneous environments, substitution and
