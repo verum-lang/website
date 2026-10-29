@@ -156,8 +156,18 @@ such program within finite time or memory. `VerumExternalReplay/CheckedNumerals.
 connects the observer VM model's checked successor to that bounded interpretation,
 including overflow classification, arity and type errors. The extended runtime
 export decoder admits this instruction explicitly; the legacy decoder retains
-its original vocabulary. Runtime correspondence still requires frozen native
-code and execution evidence.
+its original vocabulary.
+
+`verification/external/lean/check_numeral_export.py` checks frozen native numeral
+programs, nested calls and boundary execution reports against the VM model.
+The comparison includes every retained register, dispatch and call counters,
+completion or refusal, and the precise halt location and reason. It also checks
+that the exported original and decoded program trees agree. Frozen examples
+cover closed numerals, the largest representable successor, overflow, wrong
+arity and wrong argument type; altered reports must fail kernel checking.
+These are finite correspondence checks. Portable byte decoding, binding and
+syntax-cell accounting, allocation behavior and completeness of runtime
+enumeration require separate evidence.
 
 ## Physical histories and scheduling
 
