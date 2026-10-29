@@ -129,7 +129,12 @@ successor at the maximum is undefined. For an unsigned 64-bit range this means
 overflow refuses, rather than wrapping to zero or producing an unbounded value.
 The typed-program connection and bounded arithmetic are Lean theorems, not
 additional native primitives or a proof that a runtime enumerator emits every
-such program within finite time or memory.
+such program within finite time or memory. `VerumExternalReplay/CheckedNumerals.lean`
+connects the observer VM model's checked successor to that bounded interpretation,
+including overflow classification, arity and type errors. The extended runtime
+export decoder admits this instruction explicitly; the legacy decoder retains
+its original vocabulary. Runtime correspondence still requires frozen native
+code and execution evidence.
 
 ## Physical histories and scheduling
 
