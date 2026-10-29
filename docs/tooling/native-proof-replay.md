@@ -67,6 +67,24 @@ assumption, not a project-specific axiom or a proof of the entire checker's
 soundness. Source elaboration under `verum-source-pi-id/1` remains intensional;
 this native capability does not add a source `funext` tactic.
 
+## Reversible observations and readouts
+
+The replay battery `verification/certificates/check_adaptive_observation.py`
+checks universal laws for adding an XOR observation while retaining its source,
+recovering the original state by applying the lift twice, and transporting a
+readout through a proved refinement. Partial readouts preserve the complete
+Option value, including absence. A separated-fibre theorem proves why an
+observation that merges distinct targets cannot reconstruct them both.
+
+These proofs quantify over arbitrary types and functions with independent
+universe levels. The function-valued lift laws use the explicit extensional
+foundation; the other laws remain intensional. Controls reject erasing the
+source, reconstructing arbitrary bits through a constant readout, and omitting
+required evidence. The matching Lean source is
+`VerumExternalReplay/AdaptiveObservation.lean`. Neither replay establishes a
+translation of runtime code, a finite physical register, execution cost or
+statistical-risk guarantees.
+
 ## Untrusted inputs and limits
 
 Use the process adapter for untrusted artifacts. It starts a fresh child before parsing terms, clears inherited environment variables and reaps the child on completion, error or timeout. The parent validates the worker report and checks its logical profile and checker identity.
