@@ -45,6 +45,10 @@ rails with file and agent status, and Results into a summary strip. Select a
 rail or the Results arrow to restore it. Drag a divider to resize a panel;
 with the divider focused, use the arrow keys, Home or End, or Enter to collapse.
 Panel sizes and collapse preferences are saved in this browser.
+The header provides project search, panel toggles, theme switching and Settings.
+Hover an action icon or focus it with the keyboard to see its label. The theme
+button cycles through System, Light and Dark directly; System follows your
+operating-system preference.
 
 Studio preserves space for the editor as the window narrows. Expanding a side
 panel gives it priority when both side panels cannot fit. On small screens,
@@ -54,6 +58,7 @@ subtle at rest and appear during interaction.
 
 | Action | Shortcut |
 | --- | --- |
+| Find a project file | Command/Ctrl + P |
 | Toggle Explorer | Command/Ctrl + B |
 | Toggle Collaborator | Command/Ctrl + Shift + B |
 | Toggle Results | Command/Ctrl + J |
@@ -97,7 +102,8 @@ capability and revision check.
 
 ## Choose an interface language
 
-Use the language selector in the top bar to choose English or Russian.
+Open **Settings** to choose English or Russian and inspect the workspace path,
+server address and connection state.
 Studio initially follows a supported browser language and remembers an explicit
 choice. Switching updates the interface, accessibility labels and editor search
 without reloading the workspace or discarding drafts, undo history or active
