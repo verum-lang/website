@@ -33,7 +33,7 @@ Store it as `identity.json`, then run from the Verum source tree:
 cargo run -p verum_proof --features process --bin verum-proof < identity.json
 ```
 
-The process emits one JSON report. A successful report has `accepted: true`, `diagnostic: null`, the logical profile and an identity derived from the exact checking sources. Failure exits nonzero. The checker identity supports reproducibility; it is not a digital signature or a proof of the checker's soundness.
+The process emits one JSON report. A successful report has `outcome: "accepted"`, `accepted: true`, `diagnostic: null`, the logical profile and an identity derived from the exact checking sources. Reports also record the selected admission limits and, for isolated replay, the requested process policy and installed OS ceilings. Failure exits nonzero. The checker identity supports reproducibility; it is not a digital signature or a proof of the checker's soundness.
 
 ## Function extensionality
 
@@ -233,11 +233,54 @@ statistical independence, or that validation began after physical selection.
 
 ## Untrusted inputs and limits
 
-Use the process adapter for untrusted artifacts. It starts a fresh child before parsing terms, clears inherited environment variables and reaps the child on completion, error or timeout. The parent validates the worker report and checks its logical profile and checker identity.
+Use the process adapter for untrusted artifacts. It starts a fresh child before
+parsing terms, clears inherited environment variables and reaps the child on
+completion, error or timeout. The parent validates the worker's logical profile,
+checker identity, resource policy and outcome consistency. Proof metadata cannot
+select or enlarge the verifier's budget.
 
-The admission policy limits input to 1 MiB, term and universe nodes to 65,536 and logical structural depth to 128. An iterative JSON envelope check bounds physical nesting before decoding; the logical bounds are checked separately. The worker has a five-second wall deadline, a three-second CPU limit, a bounded stack and output size, and a 512 MiB memory termination threshold. Unix systems supporting address-space limits also enforce that limit. macOS uses sampled resident-memory monitoring: the threshold may be exceeded between samples and is not an instantaneous allocation guarantee. Deployments requiring a hard aggregate memory boundary must additionally constrain the worker service at the OS/container level. Unsupported process-limit configurations do not silently fall back to unbounded replay.
+The default admission policy allows 1 MiB of input, 65,536 term and universe
+nodes, and logical structural depth 128. An iterative JSON envelope check bounds
+physical nesting before decoding; logical bounds are checked separately. The
+default worker policy allows five seconds of wall time, three seconds of CPU
+time, a 16 MiB stack, 64 KiB of output and a 512 MiB memory termination threshold.
+These are verifier defaults, not limits on the size of mathematical theorems.
 
-A process timeout, exhausted budget, crash or unavailable worker means **inconclusive**. It does not mean the theorem is false. Structural limits alone do not bound normalization cost; untrusted input must not be sent directly to the in-process replay function.
+Callers select a policy explicitly. For the identity example above:
+
+```sh
+cargo run -p verum_proof --features process --bin verum-proof -- \
+  --max-nodes 4096 --wall-ms 2000 < identity.json
+```
+
+The CLI also accepts `--max-bytes`, `--max-depth`, `--cpu-seconds`,
+`--memory-bytes`, `--stack-bytes` and `--output-bytes`. Embedded integrations use
+`process::replay_with_limits` with a `limits::ReplayLimits` value. Direct trusted
+replay uses `admission::replay_with_limits` with `limits::AdmissionLimits`.
+Explicit policies are not silently clamped to the defaults. Inherited OS limits
+may impose stricter ceilings, which the worker records. Unsupported process-limit
+configurations do not fall back to unbounded replay.
+
+Reports distinguish `accepted`, `rejected`, `unsupported`, `resource_exhausted`
+and `inconclusive`. A structural or known process budget exhaustion is
+`resource_exhausted`; an unavailable worker, crash or invalid worker response is
+`inconclusive`. Exit codes are 0 for acceptance, 1 for rejection, 2 for an
+unsupported request or usage error, 3 for resource exhaustion and 4 for an
+inconclusive result. Neither exhaustion nor an inconclusive result establishes
+that the theorem is false. Increasing a
+budget authorizes more checking work; it does not supply missing proof evidence.
+
+Unix systems supporting address-space limits enforce the selected bound.
+macOS uses sampled resident-memory monitoring: the threshold may be exceeded
+between samples and is not an instantaneous allocation guarantee. Deployments
+requiring a hard aggregate memory boundary must additionally constrain the
+worker service at the OS or container level.
+
+These policies govern admission and process execution. Native substitution
+normalization still has an internal head-reduction ceiling and can return an
+unfinished conversion as a mismatch; resumable normalization aligned with the
+normalization-by-evaluation checker is not implemented. Structural limits alone
+do not bound normalization cost. Untrusted input must use isolated replay.
 
 ## Scope of the evidence
 
