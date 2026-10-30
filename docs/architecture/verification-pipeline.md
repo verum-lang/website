@@ -499,9 +499,12 @@ paid prefix-equality check.
 against this representation, retaining exact snapshot, node and input-owner
 identities. It checks work refusals, publication order, indexing and retained
 owner counts; reported storage capacities are checked only as lower bounds.
-Missing lifecycle fields or unknown schemas refuse replay. This finite export
-uses abstract origins and does not establish physical runtime ownership or
-whole-engine correctness.
+Missing lifecycle fields or unknown schemas refuse replay. The richer edge
+schema also checks returned append owners, poison after a work-meter unwind,
+retry behavior and mixed forward/reverse iterator boundaries. Labels do not
+stand in for owner identity; cursor lifetime follows the recorded operations.
+These finite exports use abstract origins and do not establish physical runtime
+ownership, arbitrary panic behavior or whole-engine correctness.
 
 `VerumExternalReplay/ObservableLasso.lean` covers an autonomous finite state
 trajectory that closes by returning to an earlier state. For states `0..n-1`
