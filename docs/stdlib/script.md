@@ -2,7 +2,8 @@
 sidebar_position: 33
 title: script
 description: Embedded scripting — a host Verum program compiles and runs Verum scripts at runtime, in-process, on the same VBC interpreter.
-status: undocumented
+status: partial
+status_detail: "Interpreter regressions cover captured and generic host callbacks, host identity and Engine handle lifetime. Session, Outcome and World retain legacy raw-handle paths; this does not establish complete sandboxing or native parity."
 ---
 
 # `core.script` — Verum as its own scripting language
@@ -10,71 +11,62 @@ status: undocumented
 A host Verum program can compile and run Verum **scripts** at runtime,
 in-process, on the same VBC interpreter the host itself runs on.
 
-This is the capability a game engine gets from embedding Lua — user
-content that ships after the binary does — with one difference that
-shapes the whole design: there is **no second virtual machine, heap, or
-sandbox**. Script and host are the same execution model, so the boundary
-that usually costs marshalling costs nothing to cross.
+`Engine` compiles source through the host's installed compiler hook and runs
+it in an interpreter. Without that hook, source evaluation reports
+`CompilerUnavailable`; executing an already compiled module is a separate
+operation. Native embedding requires its own compiler/runtime integration.
 
 ```verum
 mount core.script.{Engine, ScriptValue, ScriptResult};
 
-let engine = Engine.new();
-match engine.eval(user_script) {
-    ScriptResult.Ok(ScriptValue.Int(n)) => use_result(n),
-    ScriptResult.Err => report_failure(),
-    _ => {},
-};
+fn main() {
+    let engine = Engine.new();
+    match engine.eval("fn main() -> Int { 42 }") {
+        ScriptResult.Ok(ScriptValue.Int(value)) => assert(value == 42),
+        _ => panic("script failed"),
+    }
+}
 ```
 
-## Layout
+## Host callbacks
 
-| File | Lines | What's in it |
-|---|---:|---|
-| `engine.vr` | 431 | `Engine`, `Session`, `World`, `ScriptValue`, `ScriptResult`, `ErrorKind` |
-| `mod.vr` | 44 | Re-exports; declares `public module engine` |
+`Engine.register(name, callback)` accepts `fn(Int) -> Int`. A callback keeps
+its captured environment and the lexical generic arguments required by its
+body, including nested closures. Registration preserves the callable value;
+it does not turn a closure into a bare function identifier.
+
+A callback is tied to its originating host interpreter and module. A foreign
+host, an expired host or a host reset invalidates that authority. Callback
+errors propagate back through script evaluation. Engine operations use
+interpreter-owned handles and an exclusive execution lease: stale handles
+and reentrant access to an active engine are refused.
 
 ## The three affine handles
 
-`Engine`, `Session` and `World` are all declared `affine`, which is what
-makes lifetime management disappear from the caller's code: a handle is
-used at most once along any path, so the compiler knows exactly where it
-dies.
+`Engine`, `Session` and `World` are declared affine. `Engine` is the
+compile-and-run surface. `Session`, obtained through `load`, `link` or
+`link2`, retains a compiled script and its state across calls. `World`
+provides a shared environment.
 
-**`Engine`** is the compile-and-run surface. It owns the interpreter
-handle and is freed automatically when it goes out of scope — no explicit
-teardown, no leak on an early return.
+These declarations do not by themselves establish runtime handle safety.
+The checked handle registry currently covers `Engine`; the `Session`,
+`World` and outcome interfaces still contain raw-handle paths requiring
+separate lifetime validation.
 
-**`Session`** is obtained from `Engine.link2` and holds state *across*
-calls. Globals and heap written by an earlier `call` are visible to later
-ones, shared by reference rather than copied. This is the shape you want
-for a REPL, a modding API, or anything where scripts accumulate context.
+## Value boundaries and validation scope
 
-**`World`** carries the shared environment scripts observe.
+Host callbacks run against their originating host state. Script evaluation
+uses its own interpreter state; a shared execution model does not imply
+that every value can cross heaps without conversion.
 
-## Why sharing works here and not elsewhere
+`Engine.call_args` currently supports self-contained scalar arguments.
+`Text`, `List` and `Map` arguments require reconstruction on the script
+side. Values visible through a shared `World` are a distinct interface and
+do not establish support for these call arguments.
 
-Because host and script run on one interpreter, values cross the boundary
-**by reference**. Boundary-crossing engines — Wasm, BEAM, V8 — cannot
-offer this: their guest heap is a separate address space, so every value
-is copied or proxied.
-
-The source notes that scalars and `Text` share correctly today **through
-the `World` table**. That qualifier matters: it describes the shared
-environment, not every boundary crossing. Passing arguments to a call is a
-separate path — `Engine.call_args` currently carries self-contained scalar
-values, and `Text`, `List` and `Map` arguments need reconstruction on the
-script side that is not wired yet. So a `Text` visible through the shared
-world is not the same as a `Text` handed over as a call argument.
-
-Richer structures generally are the area to check against the sources
-before relying on them, which the status above already implies: with no
-`core-tests/script/` suite, the guarantee is what the implementation does,
-not what a conformance run has confirmed.
-
-## Status
-
-There is no conformance suite for this module. The public surface above
-is read from the sources; runtime behaviour across tiers has not been
-validated the way `regression-only` and `partial` modules have. Treat the
-API as documented-but-unpinned until a `core-tests/script/` suite lands.
+The interpreter callback and handle regressions live in
+[`script_host_callable.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/tests/script_host_callable.rs).
+They include the actual `Engine` wrapper, captured and nested generic
+callbacks, invalid host ownership, callback failures and stale handles.
+They do not establish full module conformance, isolation of untrusted
+scripts, or parity with native embedding.

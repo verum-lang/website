@@ -115,55 +115,66 @@ the child may use).
 
 ## `select`
 
-Race multiple futures; the first to complete wins.
+`select` polls explicit `Future` values or handles produced by the `spawn`
+keyword. A ready arm supplies its result to the arm body. A pending arm does
+not prevent other arms from being polled.
 
 ```verum
-select {
-    bytes = fetch(url1).await => process(bytes),
-    bytes = fetch(url2).await => process(bytes),
-    _     = sleep(5.seconds).await => Err(Error.Timeout),
+mount core.async.future.Future;
+mount core.async.poll.Poll;
+mount core.async.waker.Context;
+
+type Countdown is { remaining: Int, value: Int };
+implement Future for Countdown {
+    type Output = Int;
+    fn poll(&mut self, _context: &mut Context) -> Poll<Int> {
+        if self.remaining > 0 {
+            self.remaining = self.remaining - 1;
+            Poll.Pending
+        } else {
+            Poll.Ready(self.value)
+        }
+    }
 }
 
-select biased {            // try arms in order; useful for prioritisation
-    priority = high.await => ...,
-    normal   = low.await  => ...,
-}
-```
-
-### Arms, guards, and else
-
-The full grammar:
-
-```ebnf
-select_expr = 'select' , [ 'biased' ] , '{' , select_arms , '}' ;
-select_arms = select_arm , { ',' , select_arm } , [ ',' ] , [ select_else ] ;
-select_arm  = { attribute } , pattern , '=' , await_expr , [ select_guard ] , '=>' , expression ;
-select_guard = 'if' , expression ;
-select_else  = 'else' , '=>' , expression , [ ',' ] ;
-```
-
-Arms can carry attributes and guards:
-
-```verum
-select biased {
-    @cold ev = high_priority_queue.recv_fut().await if !paused => handle(ev),
-    ev      = normal_queue.recv_fut().await                    => handle(ev),
-    _       = shutdown.await                               => return,
-    else    => sleep(10.millis()).await,       // no future ready, no await blocked
+async fn main() {
+    let result = select biased {
+        first = Countdown { remaining: 2, value: 1 }.await => first,
+        second = Countdown { remaining: 0, value: 7 }.await => second,
+    };
+    assert(result == 7);
+    print(result);
 }
 ```
 
-Semantics:
+This example prints `7`: the first arm is pending when the second becomes
+ready. Each operand must use `.await`. A direct eager `async fn` result
+cannot participate unless the returned value itself implements `Future`.
 
-- Without `biased`: arms are polled in fair order.
-- With `biased`: arms are polled top-to-bottom each iteration.
-- A failing `if` guard marks that arm dormant for the iteration.
-- `else` runs when **all** guards are false or no future is ready.
-- An arm's `pattern = expr` binds the future's result (the pattern
-  is matched — mismatches cause the arm to be skipped).
+Guards run once, in source order, when entering the selection. A false guard
+prevents construction of that arm's future. A completed result that does
+not match its pattern disables the arm permanently for this selection;
+it is not polled again. An `else` arm runs after one sweep if no enabled
+arm produces a matching ready result. Without `else`, exhausting all
+eligible arms raises an error.
 
-Each arm's awaited expression **must** use `.await` form (not a bare
-call that returns a future) — the grammar enforces this.
+With `biased`, each sweep starts at the first arm. Otherwise, selection
+chooses a random starting arm and visits the arms cyclically. Random order
+does not provide a deterministic fairness or latency bound.
+
+Named futures and futures reached through fields or references are borrowed:
+mutations made by `poll`, including replacement of the receiver, remain
+visible to their owner. Temporary futures belong to the selection. Their
+cleanup runs before the selected body, and a discarded ready result is
+cleaned up using its declared output type. Unsupported ownership metadata
+is refused; recursive owned declaration graphs are not yet supported by
+this cleanup path.
+
+**Execution limit:** the driver yields cooperatively between pending sweeps.
+It does not yet park on readiness notifications. A blocking `poll` method
+blocks the driver, and a permanently pending selection can keep polling.
+Full async state-machine lowering and reactor integration remain necessary
+for general scalable asynchronous execution.
 
 ## `nursery` — structured concurrency
 
