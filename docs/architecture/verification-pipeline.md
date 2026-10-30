@@ -462,6 +462,16 @@ require both components: their update and read domains are the intersections of
 the respective component domains. An undefined read does not silently block
 state updates, and a pending product cannot return only one component's output.
 
+Observers may share update execution when they have equal initial states and
+extensionally equal pure deterministic partial updates on the same ordered
+history. `VerumExternalReplay/SharedUpdates.lean` proves that each separate read
+receives the same resulting state. A failed update retains its first failure
+position, preceding state, input event and error; appending events cannot erase
+or replace that refusal. Equal names, hashes or sampled outputs do not establish
+the premise, and hidden mutable host state invalidates it. These laws justify
+factoring the model's computation; native ownership, scheduling and resource
+costs still need independent correspondence evidence.
+
 The observer construction specializes the typed-program theorem to arbitrary
 heterogeneous event and read-query input rows. Register substitution represents
 explicit input binding, including repeated or reordered references. Both native
@@ -765,6 +775,13 @@ captured payload; absent ports and payloads omit the field. Explicit false,
 null, non-byte values and unknown fields are rejected. The adapter preserves
 forged interface metadata so that the model must reproduce the reported
 missing-data refusal. Legacy adapters retain their closed vocabulary.
+
+Joint exports select the same explicit adapter for initialization, structural
+grammars, materialized programs, retained states and history replay. `AcquiredV3`
+also supports ordinary ports without sensory data and the checked `Succ`
+primitive; declaring `AcquiredV2` does not authorize that primitive. Structural
+and indexed naming may carry `declared_triples: null`, but a non-null correlated
+family declaration requires its own adapter. Unknown fields remain errors.
 
 The physical replay section carries one definition and links to the first
 successful installation. Verification checks the complete installed history
@@ -1503,6 +1520,15 @@ then crossing `D <= alpha*q*Q` has event mass at most `alpha*q`. This comparison
 uses no division and remains defined on zero-mass histories; the ratio itself
 need not be a supermartingale. A finite, predeclared family with total allocation
 at most one has union risk at most `alpha`, including overlapping events.
+
+Delayed publication is covered when every published path retains a genuine
+prior threshold crossing from that same experiment. The selected path event
+is then a subset of the crossing event, so its probability obeys the same
+bound. Selection may depend on the complete finite history; it need not
+publish the earliest crossing. This does not authorize a new predictor,
+retrospective experiment boundary, changed allocation, or an invented
+crossing receipt. An implementation must preserve the ownership and causal
+prefix that connect publication to its original crossing.
 
 The theorem requires complete outcome branches, causal predictive mass and
 pointwise null domination. It does not infer these properties from a successful

@@ -338,42 +338,53 @@ fn parse_port(s: Text) throws(ParseError) -> Result<Int, Error>
 
 ## Closures
 
+An ordinary `fn(T) -> U` value can represent a named function or a closure
+with a shared environment. A closure uses `|parameters| expression`; write
+`|| expression` when there are no parameters.
+
 ```verum
-let square     = |x| x * x;
-let typed      = |x: Int| -> Int { x * x };
-let async_task = async |url| Http.get(url).await;
+fn probe() -> Int {
+    let value: Int = 7;
+    let f = || value;
+    f()
+}
 ```
+
+This function returns `7`. Closure creation checks every captured value's
+original declaration type. Owned captures must have unrestricted usage:
+an affine or linear resource cannot enter an ordinary shared callable.
+Missing type evidence is a refusal, not permission to copy. Function
+parameter and result types do not describe ownership of its environment.
+
+Mutable captures use shared cells. The check applies to the cell's contents,
+so boxing a resource does not bypass its ownership restriction:
+
+```verum
+fn probe() -> Int {
+    let mut value: Int = 7;
+    let f = || { value = value + 1; value };
+    f();
+    f()
+}
+```
+
+This function returns `9`: both calls access the same cell. Sharing a
+callable does not promise independent state or thread safety. Explicit
+references retain their reference type and remain subject to borrow and
+lifetime rules; this ownership check does not prove those rules by itself.
+
+Generic creation checks use the creator's exact type witnesses. Native
+specialization substitutes those witnesses at the creation instruction.
+An escaping generic closure does not yet retain all lexical type witnesses
+needed to create another generic closure after invocation; such unresolved
+nested captures are refused. Legacy bytecode with captured values but no
+declared capture types is also refused and must be rebuilt.
 
 A closure has its own return and recovery boundary. Its `?` uses its own
 return type, whether written explicitly or inferred from its callable
 signature. An outer `try` surrounding the closure expression does not
 become the closure's handler. See
 [nested callables and recovery](/docs/language/error-handling#nested-callables-and-recovery).
-
-Closures capture their environment by the minimum capability needed
-(immutable reference, mutable reference, or by-move). Force a move
-with `move`:
-
-```verum
-let name = "Alice".to_string();
-let greet = move |greeting| f"{greeting}, {name}!";
-// `name` moved into the closure; no longer accessible here.
-```
-
-Closure types implement `Fn` / `FnMut` / `FnOnce` protocols:
-
-| Protocol | Captures | Can call | Meaning |
-|----------|----------|----------|---------|
-| `Fn` | `&self` | multiple times | read-only closure |
-| `FnMut` | `&mut self` | multiple times | may mutate captures |
-| `FnOnce` | `self` | once | consumes captures |
-
-In function signatures use `fn(T) -> U` for thin function pointers
-(no captures). For closures with captures, Verum has no `impl
-Trait`-in-argument-position sugar: write the bound explicitly as a
-type parameter, `<F: Fn(T) -> U>`, when the caller chooses the
-closure; use `dyn Fn(T) -> U` when you need runtime polymorphism
-(a heterogeneous collection of closures, for instance).
 
 ## Forward declarations
 
