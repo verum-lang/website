@@ -495,6 +495,14 @@ runtime owners, checking native transitions and justifying balance or resource
 bounds are separate obligations. These representation laws do not replace the
 paid prefix-equality check.
 
+`check_persistent_history_export.py` checks frozen native append operations
+against this representation, retaining exact snapshot, node and input-owner
+identities. It checks work refusals, publication order, indexing and retained
+owner counts; reported storage capacities are checked only as lower bounds.
+Missing lifecycle fields or unknown schemas refuse replay. This finite export
+uses abstract origins and does not establish physical runtime ownership or
+whole-engine correctness.
+
 `VerumExternalReplay/ObservableLasso.lean` covers an autonomous finite state
 trajectory that closes by returning to an earlier state. For states `0..n-1`
 closing at `r`, the chronological projection `i mod p` preserves every
