@@ -492,7 +492,9 @@ transient is allowed: states `0,1,2,1,2,…` with labels `0,1,0` produce the pur
 observable cycle `0,1,0,1,…`.
 
 The least valid candidate is the least positive period of the entire infinite
-observable word. The proof uses periodicity under remainders and greatest
+observable word. Conversely, any positive pure observable period implies that
+the raw cycle length is a valid candidate, so exhaustive rejection of the
+bounded candidate family proves absence of pure periodicity. The proof uses periodicity under remainders and greatest
 common divisors; it does not infer a period from a finite sample alone. An
 arbitrary nonminimal observable period need not divide the concrete cycle
 length. Native use requires a complete closed carrier, exact immutable labels,
@@ -1107,6 +1109,21 @@ machine-word implementations additionally require representable intermediate
 arithmetic. A service counter cannot replace an original name, and a cursor's
 next name does not identify an already retained materializer. Runtime ownership
 and pause correspondence require separate evidence.
+
+`check_dyadic_ownership_export.py` checks the exported finite dyadic ownership
+projection against the original-name and additive-traversal models. Every
+issued selection has one retained owner; a pending enumeration name is separate
+from issued work. The checks preserve initializer identity while materialization
+is paused, require evaluated work before promotion, and retain the reported
+refusal when transferring work to the unknown set. Zero-work steps and capacity
+extension preserve the exported state. The format is explicitly versioned and
+does not fall back to the correlated-family interpretation.
+
+The projection omits initializer identity after promotion, active stop state,
+denied retry operations, and capacity and source-authority identities. Those
+behaviors need richer runtime evidence; opaque diagnostic text is not a VM
+semantics. Executing a frozen native test and checking its exported projection
+does not establish correctness for every runtime execution.
 
 `VerumExternalReplay/AcquisitionScheduling.lean` separates declaration addresses,
 paid openings, and service turns. Its diagonal enumeration reaches every finite
