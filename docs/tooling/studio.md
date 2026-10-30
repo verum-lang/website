@@ -187,7 +187,10 @@ file preserves the existing review flow for unsaved changes.
 language server's parsed AST. Select a declaration or requirement to return to
 its source. The project inspector combines the workspace file inventory with
 analyzed document snapshots. Each snapshot carries its document version,
-source hash and project generation hash. Files without a snapshot are explicitly marked as not analyzed.
+source hash and project generation hash. Closed dependencies can be marked as
+**Indexed source**: their declarations are available for imports, while their
+bodies have not received the open-buffer check. Other files are marked as not
+analyzed.
 Invalid or pending source revisions do not display an older structure as current.
 
 The shared service resolves module-path imports against captured project sources
