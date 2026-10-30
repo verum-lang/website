@@ -1131,6 +1131,18 @@ the remaining mass budget. Adding classification evidence or fresh unique names
 with unchanged old weights narrows the interval. A lower endpoint strictly above
 another action's upper endpoint establishes a strict one-step ranking.
 
+[Partial STOP/BIT processes](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/PartialStop.lean)
+supply completed-event weights for causal binary kernels whose outgoing mass is
+at most one. A frozen KT bank with a partial selector is one such kernel:
+undefined selections contribute zero without conditioning the remaining paths.
+Every finite cut enumerates complete blocks followed by a final STOP, has unique
+names and total mass at most one, and gains mass monotonically as the cut grows.
+Fixed positive block width makes flattened wire names injective. These weights
+can feed the classified-event laws directly. Mapping native refusal or
+nontermination to an undefined selection, faithful parsing, and selector purity
+still require implementation correspondence; the theorem does not establish
+almost-sure termination or an executable decision procedure for divergence.
+
 These are reusable Lean model laws. Completed-event weights, faithful and pure
 classification callbacks, and correspondence between a learned forecast and
 physical dynamics remain premises. Prefix search bounds cannot supply completed
