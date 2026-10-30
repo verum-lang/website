@@ -85,6 +85,34 @@ required evidence. The matching Lean source is
 translation of runtime code, a finite physical register, execution cost or
 statistical-risk guarantees.
 
+## Action-conditioned observational factors
+
+The Lean replay module [ActionQuotient](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ActionQuotient.lean)
+checks a projection from concrete states to abstract states. Its `Factor`
+contract preserves the result of every action and every query, including
+semantic undefinedness. These one-step laws preserve behavior under every
+finite action sequence. Concrete states may be infinite: a universally proved
+counter projection can still have a finite abstract state space.
+
+`check_sound` requires complete coverage of concrete states, actions and queries.
+A successful check over sampled rows does not supply that coverage. For an
+infinite domain, the contract needs a universal proof or a justified restriction
+to a closed invariant. Checker exhaustion and resource suspension remain
+inconclusive; they cannot stand for semantic undefinedness.
+
+A finite state space does not imply an autonomous finite clock. A one-state
+transducer can echo an unbounded external age. `Separating` additionally requires
+distinct abstract states to have distinguishable future behavior; it identifies
+behavioral classes in the projection's image, without proving reachability of
+all abstract states. Clock divisibility needs a commuting phase action and a
+proved closed world clock. Relating its period to a unit-group order requires a
+separate group and implementation-correspondence argument.
+
+These are Lean model proofs. They do not certify an arbitrary executable,
+a learned representation, acquisition within a budget or correspondence to an
+external world. They are not additional source-proof tactics or an automatic
+Rust-to-Verum verification pass.
+
 ## Program translation and resource budgets
 
 `verification/certificates/check_resource_transfer.py` checks exact translations
