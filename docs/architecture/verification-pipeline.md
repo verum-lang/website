@@ -1058,6 +1058,17 @@ Concrete grammar Kraft bounds, decoder correctness, native accounting and
 statistical calibration remain separate obligations. This contract does not
 reinterpret the finite uniform-family protocol or certify a native migration.
 
+`VerumExternalReplay/AdditiveTraversal.lean` proves exhaustive product search
+by the sum of component costs. Each cost layer must be finite, contain no
+duplicates, and describe its membership exactly. Every admitted tuple then
+belongs to one bucket and is reached in a finite prefix, even for infinite
+supports. Finite supports may have different sizes or be empty. A dyadic
+instance keeps ordinal zero alone and groups positive ordinals into
+`[2^(e-1), 2^e)`; clipping preserves the original component values. Traversal
+position is not a replacement for an existing name or probability allocation.
+These are enumeration guarantees, not bounds on native execution time or work;
+a resumable implementation must separately preserve its cursor and provenance.
+
 `VerumExternalReplay/AcquisitionScheduling.lean` separates declaration addresses,
 paid openings, and service turns. Its diagonal enumeration reaches every finite
 positive depth and evidence round. In the queue's projection to stable owned
