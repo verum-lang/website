@@ -186,14 +186,25 @@ file preserves the existing review flow for unsaved changes.
 **Structure** projects declarations and explicit context requirements from the
 language server's parsed AST. Select a declaration or requirement to return to
 its source. The project inspector combines the workspace file inventory with
-analyzed document snapshots. Each snapshot carries its document version and
-source hash. Files without a snapshot are explicitly marked as not analyzed.
+analyzed document snapshots. Each snapshot carries its document version,
+source hash and project generation hash. Files without a snapshot are explicitly marked as not analyzed.
 Invalid or pending source revisions do not display an older structure as current.
 
-This is single-module analysis with builtins. It does not resolve all imported
-module types, build a complete project type registry, or verify whole-project
-contracts. The declaration/context view is a source projection for exploring
-Architecture as Type; it is not evidence of runtime implementation correspondence.
+The shared service resolves module-path imports against captured project sources
+and local path dependencies, using the compiler's module registry and declaration
+preparation. **Structure** displays resolved import bindings and inferred declaration
+types; imported definitions navigate to their declaring source, including through
+aliases and re-exports. Dependency edits invalidate unchanged consumers as well.
+Use the project refresh control after external changes; returning focus also
+refreshes the current source analysis.
+
+Release standard-library archive metadata and installed binary cogs are not yet
+loaded by this source service. Real projects using these can report unavailable
+library types or methods. Whole-project build and proof acceptance still requires
+the corresponding CLI operation. The declaration/context view is a source
+projection for exploring Architecture as Type; it is not evidence of runtime
+implementation correspondence. See [LSP analysis scope](./lsp.md#diagnostics)
+for source-capture limits and dependency coverage.
 The live analysis uses module syntax. Run top-level scripts through **Run**;
 module-analysis errors alone do not establish that a script is invalid.
 

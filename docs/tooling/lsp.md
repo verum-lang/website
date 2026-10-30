@@ -15,15 +15,41 @@ indexing infrastructure with
 
 ### Diagnostics
 
-Open documents are parsed and type-checked with the compiler's builtins. Each
-published diagnostic set includes its document version. Stale edits and stale
-analysis results cannot replace the current revision. Source positions use LSP
-UTF-16 columns, including non-BMP characters and CRLF line endings.
+Open documents are parsed and type-checked against a captured project source
+generation. The service shares module candidate resolution, export visibility,
+import resolution and declaration preparation with the compiler. Project types,
+functions, aliases and re-exports therefore feed diagnostics, imported-name
+completion, hover and definition navigation from the same source registry.
 
-This analysis is module-local: imported module types and whole-project contracts
-require a project check. Optional disk-based lint runs only when the saved source
-matches the analyzed buffer. Cursor refinement validation is a separate request;
-a clean diagnostics list is not a proof that all program contracts hold.
+The workspace root selects `src/` when present. `Verum.toml` or `verum.toml`
+supplies the cog name and local path dependencies. Open buffers override captured
+disk contents. Changing or closing a dependency rechecks open consumers, including
+consumers whose document version has not changed. File watcher notifications and
+analysis requests also detect changed disk sources and manifests.
+
+Each published diagnostic set includes its document version; snapshot requests
+also return a project generation hash. Stale diagnostic generations cannot
+replace current results. Positions use LSP UTF-16 columns, including non-BMP
+characters and CRLF line endings. Without a workspace root, analysis remains
+module-local.
+
+This source service does not yet load the compiler's release standard-library
+archive metadata or registry-installed binary cogs. Such imports can remain
+unresolved, and library types or methods can produce unavailable-type diagnostics.
+An empty diagnostics list covers the open module bodies and available dependency
+declarations, not every dependency body or whole-project contracts. Use the CLI
+project checker for build acceptance. Optional disk lint runs only when the saved
+source matches the buffer; cursor refinement validation is a separate request.
+
+The `verum/documentSnapshot` and `verum/projectSnapshot` requests expose these
+same declarations, resolved bindings, source hashes, project revision and capture
+issues to Studio, VS Code's Architecture view and reviewed agent tools. Source
+capture is bounded to 4,096 files, 512 KiB per file and 64 MiB total; exceeding a
+limit reports unavailable analysis instead of retaining an older generation.
+Explicit source-library directories can be supplied through the startup
+`initializationOptions.libraryRoots` map from cog name to absolute source root.
+Custom build feature selection, file-relative mounts and binary archive loading
+remain compiler build responsibilities.
 
 ### Code navigation
 
