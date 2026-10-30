@@ -85,6 +85,22 @@ been saved. Script mode uses the same language and standard-library
 implementation as the CLI; Studio does not translate experiments into
 another language.
 
+Open **Options** to select the wall-time budget and script permission
+mode. **Source / CLI defaults** preserves the CLI's frontmatter policy; without
+an explicit policy, execution can be unrestricted. **Deny all grants** passes
+`--deny-all`, clearing grants including those in frontmatter. **Allow all grants**
+passes `--allow-all`. These are interpreter policy controls, not operating-system
+isolation: coverage depends on the runtime operation and does not confine every
+FFI or nested execution path. Execute trusted code only.
+
+**Inspect run plan** shows the source hash, executable, budget and selected mode
+without starting a process. Editing the source or execution settings invalidates
+the displayed plan. Each run retains the same contract in its receipt; an older
+receipt without a recorded permission mode is shown as **Not recorded**. Module
+and proof checks reject script permission overrides rather than silently ignoring
+them. Agent tools use the same planner and launcher: `verum_plan` inspects a
+request, while execution still follows the existing human review flow.
+
 **Check module** runs `verum check` on a source snapshot. Use it for module
 source, such as:
 

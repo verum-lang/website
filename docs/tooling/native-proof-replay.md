@@ -146,11 +146,25 @@ Final ratios are insufficient for continuation: two prefixes with the same
 score can score differently after the same next observation. The model includes
 counterexamples for lost cell identities, duplicate evidence and independently
 reset predictors. Its successful-step correspondence theorem accepts any storage
-representation that proves the lookup-update law. It does not establish that a
-foreign implementation satisfies that law, handles overflow or preserves
-refusal precedence. Native ownership, frozen declarations, contiguous evidence
-boundaries and pending execution state remain separate obligations. These are
-Lean replay laws, not additional Verum source-proof tactics or a runtime cache.
+representation that proves the lookup-update law.
+
+[CountBankOwnership](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/CountBankOwnership.lean)
+adds a checked join for summaries of physical observation intervals. Both
+summaries must have the same owner, identifying an immutable input ledger and
+compatible partition/classifier revision. Every interval must be disjoint,
+including intervals already present within either input. Two branches containing
+the same nonempty prefix are refused; equal values at different physical
+positions still contribute separately. Checked splits reject cuts outside the
+original interval, and joining valid prefix/delta banks recovers the unsplit bank.
+
+The accepted-join theorem preserves exact counts and physical observation
+multiplicity when the input summaries correspond to that ledger and classifier.
+The join retains the supplied interval order; count-table equivalence does not
+authorize reordering physical events or treating replay as original execution.
+A foreign adapter must establish the actual owner identity, input correspondence,
+finite-counter overflow handling, allocation and refusal precedence, and evidence
+lifetime. Pending execution state remains a separate obligation. These are Lean
+replay laws, not additional Verum source-proof tactics or a runtime cache.
 
 ## Program translation and resource budgets
 

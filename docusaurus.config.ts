@@ -11,7 +11,7 @@ const ghPagesBaseUrl = process.env.GH_PAGES_BASE_URL || '/';
 const config: Config = {
   title: 'Verum',
   tagline: 'A platform for verifiable systems',
-  favicon: 'img/favicon.svg',
+  favicon: 'img/favicon.ico',
   headTags: [
     { tagName: 'link', attributes: { rel: 'alternate icon', href: `${ghPagesBaseUrl}img/favicon.ico` } },
     { tagName: 'link', attributes: { rel: 'apple-touch-icon', sizes: '180x180', href: `${ghPagesBaseUrl}img/apple-touch-icon.png` } },
@@ -156,7 +156,7 @@ const config: Config = {
     navbar: {
       logo: {
         alt: 'Verum Logo',
-        src: 'img/verum-mark.svg',
+        src: 'img/verum-emblem-128.png',
       },
       items: [
         {
