@@ -482,6 +482,19 @@ its result, including the first refusal. These laws require immutable histories
 and lawful, stable event equality; an `Arc` does not by itself prove either
 premise. Native work accounting and retained ownership remain separate checks.
 
+`VerumExternalReplay/PersistentEvents.lean` connects immutable chunk forests
+to ordered event lists. Each branch must cache its exact event count, and a
+snapshot's outer length must equal the sum across its roots. Under these
+invariants, tree and snapshot lookup agree with list indexing, including the
+end boundary. Ordered carry merges preserve the predecessor followed by the
+new suffix; completed appends preserve old indices and expose suffix indices
+at the correct offset. Continuing the shared update evaluator therefore
+preserves its result and first refusal. Different chunk sizes and retained
+forks do not change the event sequence. Binding event identities to actual
+runtime owners, checking native transitions and justifying balance or resource
+bounds are separate obligations. These representation laws do not replace the
+paid prefix-equality check.
+
 `VerumExternalReplay/ObservableLasso.lean` covers an autonomous finite state
 trajectory that closes by returning to an earlier state. For states `0..n-1`
 closing at `r`, the chronological projection `i mod p` preserves every
