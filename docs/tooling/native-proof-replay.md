@@ -194,6 +194,31 @@ These contracts do not establish runtime cost measurements, optimal search,
 probabilistic approximation or statistical validity. Corruption controls reject
 erased overhead, discarded paid work and substitution of success for absence.
 
+## Shared allocation ownership
+
+`VerumExternalReplay/ResourceLedger.lean` is an external Lean model of shared
+allocation accounting. A slot denotes one allocation; aliases change its
+reference count without duplicating its byte charge. Final release removes the
+charge. Replacement storage coexists with the old allocation until release, so
+rollback preserves the recorded peak. Poison blocks new admission while retaining
+existing alias and release authority. Resumption preserves the supplied
+computation identity when its account and capacity conditions hold.
+
+The model keeps the representable-byte maximum explicit. The native export
+adapter `verification/external/lean/check_resource_ledger_export.py` compares
+frozen account snapshots with proved reserve, grant, alias and release operations.
+It checks quota, held bytes, peak, class charges and reservation count, retaining
+the exact unsigned 64-bit maximum. The regression gate recompiles the model in
+isolation, audits theorem axioms and requires semantic rejection of altered
+observations. Checker exhaustion does not count as a rejected false claim.
+
+These are model laws and finite correspondence checks, not portable native Verum
+certificates or a proof of the whole foreign implementation. Diagnostic refusal
+counters, allocator metadata, nested payload storage, total process memory and
+scheduler liveness are outside this accounting projection. Unboxing describes the
+payload after its readiness predicate returns; it does not assume callback purity.
+New runtime changes require new source-bound exports before claiming correspondence.
+
 ## Bounding information from a finite binary partition
 
 `VerumExternalReplay/BinaryPartitionKT.lean` models fixed binary
