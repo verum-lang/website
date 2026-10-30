@@ -472,6 +472,16 @@ the premise, and hidden mutable host state invalidates it. These laws justify
 factoring the model's computation; native ownership, scheduling and resource
 costs still need independent correspondence evidence.
 
+`VerumExternalReplay/SealedAppend.lean` binds checked append evidence to the
+source, exact predecessor and successor history identities, and full prefix
+length. Equal contents under different identities do not permit reuse. Missing
+evidence selects the existing scan; mismatching evidence refuses the boundary.
+Induction over contiguous accepted boundaries preserves the original source and
+events. Continuing the existing update evaluator over the exact suffix preserves
+its result, including the first refusal. These laws require immutable histories
+and lawful, stable event equality; an `Arc` does not by itself prove either
+premise. Native work accounting and retained ownership remain separate checks.
+
 The observer construction specializes the typed-program theorem to arbitrary
 heterogeneous event and read-query input rows. Register substitution represents
 explicit input binding, including repeated or reordered references. Both native
