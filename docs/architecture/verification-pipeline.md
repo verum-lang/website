@@ -1069,6 +1069,17 @@ position is not a replacement for an existing name or probability allocation.
 These are enumeration guarantees, not bounds on native execution time or work;
 a resumable implementation must separately preserve its cursor and provenance.
 
+`VerumExternalReplay/RectangularNames.lean` preserves original names when a
+finite rectangular product changes its service order. The maximum component
+coordinate selects a shell; clipped box sizes and an explicit tie order define
+the original rank. Binary-search decoding and ranking are inverses on their
+valid domains, and distinct valid tuples have distinct names. Out-of-range names
+and empty products are refused. The proofs use unbounded natural numbers;
+machine-word implementations additionally require representable intermediate
+arithmetic. A service counter cannot replace an original name, and a cursor's
+next name does not identify an already retained materializer. Runtime ownership
+and pause correspondence require separate evidence.
+
 `VerumExternalReplay/AcquisitionScheduling.lean` separates declaration addresses,
 paid openings, and service turns. Its diagonal enumeration reaches every finite
 positive depth and evidence round. In the queue's projection to stable owned
