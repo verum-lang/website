@@ -294,6 +294,31 @@ this mathematical model: applying the theorem to a runtime requires separate
 evidence for its actual transitions, including capacity, overflow and refusal
 behavior. It does not certify a calibration algorithm or statistical guarantee.
 
+## Owned physical time and restart
+
+`VerumExternalReplay/PhysicalClock.lean` models a dispatch clock with ready,
+in-flight and pending-terminal phases. A receipt must match the clock's origin,
+episode and pre-action age. An observed step or refusal advances age once; a
+terminal resets age while retaining the old episode until terminal closure.
+Unknown delivery leaves ownership pending. Publishing a journal entry does not
+make its uncommitted time receipt disposable, and an untracked dispatch still
+blocks restart while pending. Refused restart preserves the clock and the
+caller's episode-local state. Checked episode exhaustion never wraps to zero.
+
+`verification/external/lean/check_physical_clock_export.py` compares frozen native
+handoffs against these operations. It checks state continuity, retained receipts,
+consumption, fresh restart origins and the projected restart state. The retained
+corpus includes ordinary execution and explicitly labeled injected arithmetic
+boundaries at the exact unsigned 64-bit limit. Proof regressions audit axioms
+and require semantic rejection of altered observations.
+
+This is an external Lean model and finite native correspondence evidence. Origin
+names represent allocation identity observed by the native exporter; numeric
+timestamp equality alone is insufficient. Capture authenticity and the native
+receipt's affine API remain implementation obligations. A declared new run does
+not certify that the external world reset, and these laws establish neither a
+finite period nor a finite-factor representation of that world.
+
 ## Reserving evidence before computation
 
 A deferred computation must retain the declaration that determined its evidence
