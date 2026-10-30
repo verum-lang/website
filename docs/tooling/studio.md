@@ -38,6 +38,38 @@ and collaborative editing are not supported. Programs run with your local
 account permissions: open and execute code you trust. The outer time and
 output budgets are execution limits, not an operating-system sandbox.
 
+## Arrange your workspace
+
+The arrows in panel headers collapse Explorer and Collaborator into narrow
+rails with file and agent status, and Results into a summary strip. Select a
+rail or the Results arrow to restore it. Drag a divider to resize a panel;
+with the divider focused, use the arrow keys, Home or End, or Enter to collapse.
+Panel sizes and collapse preferences are saved in this browser.
+
+Studio preserves space for the editor as the window narrows. Expanding a side
+panel gives it priority when both side panels cannot fit. On small screens,
+use the bottom navigation to switch panes. In short windows, expanding Results
+uses the central area; collapsing it returns to the editor. Scrollbars remain
+subtle at rest and appear during interaction.
+
+| Action | Shortcut |
+| --- | --- |
+| Toggle Explorer | Command/Ctrl + B |
+| Toggle Collaborator | Command/Ctrl + Shift + B |
+| Toggle Results | Command/Ctrl + J |
+| Save source | Command/Ctrl + S |
+| Run source | Command/Ctrl + Enter |
+| Check module | Command/Ctrl + Shift + Enter |
+
+## Choose an interface language
+
+Use the language selector in the top bar to choose English or Russian.
+Studio initially follows a supported browser language and remembers an explicit
+choice. Switching updates the interface, accessibility labels and editor search
+without reloading the workspace or discarding drafts, undo history or active
+operations. Source code, compiler diagnostics, proof reports and agent responses
+retain their original text.
+
 ## Explore a script
 
 The starter experiment is a complete Verum script:
@@ -77,7 +109,7 @@ parent traversal, and symlinks are refused.
 ## Inspect proof evidence
 
 Open the identity example, select declaration `identity`, and choose
-**Check proof**:
+**Prove**:
 
 ```verum
 theorem identity(A: Type, x: A): A proof = x;
