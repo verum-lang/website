@@ -1130,10 +1130,19 @@ intact or transfer together into the unknown set; a completed candidate cannot
 roll back to an earlier materializer. Missing required fields refuse checking rather than select
 an older interpretation. Opaque diagnostic text is not used as VM semantics.
 
-Candidate grammar and provenance authority, look allocation/payment events,
-and private invocation receipts are still absent from these projections.
-Executing a frozen native test and checking its exported projection does not
-establish correctness for every runtime execution.
+The format with provenance authority also preserves the exact grammar owner
+and its source authority through materialization, candidate promotion and
+member enrollment. A retained grammar maps to one immutable authority;
+different grammars may share an authority. Source and provenance authorities
+use one identity namespace, while grammar, search, initializer and paid-look
+identities remain separate. Provenance must exist before initialization and
+cannot disappear once retained. Missing fields do not select an older format.
+
+These bindings concern authority identities. Exact provenance-object identity
+and its linkage to the executable definition, look allocation/payment events,
+and private invocation receipts remain separate obligations. Executing a frozen
+native test and checking its exported projection does not establish correctness
+for every runtime execution.
 
 `VerumExternalReplay/AcquisitionScheduling.lean` separates declaration addresses,
 paid openings, and service turns. Its diagonal enumeration reaches every finite
