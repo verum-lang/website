@@ -1110,6 +1110,24 @@ arithmetic. A service counter cannot replace an original name, and a cursor's
 next name does not identify an already retained materializer. Runtime ownership
 and pause correspondence require separate evidence.
 
+`VerumExternalReplay/ExactCardinality.lean` proves preservation of finite
+structural counts when completed results are memoized by immutable owner
+identity. A decreasing dependency rank constructs the unique count for an
+acyclic declaration graph. Repeated references still contribute independent
+choice factors: a branch using the same child twice contributes the square of
+its count. Equal counts do not make distinct owners interchangeable.
+
+Operand pools include inputs, literals and earlier registers. Pruning a
+positive-arity alternative requires a zero operand pool at every represented
+position; nullary alternatives retain their single empty operand tuple.
+Empty child languages return zero without a memo entry. Publication exposes
+only a completed count, and induction over publications preserves exactness.
+The recurrence includes the choice of output register for every nonempty body.
+These are arithmetic and completion-level model laws. Frozen native tests
+check concrete census, reuse and refusal behavior; they do not establish a
+universal native enumeration bijection, bounded bigint latency or allocation
+progress.
+
 `check_dyadic_ownership_export.py` checks the exported finite dyadic ownership
 projection against the original-name and additive-traversal models. Every
 issued selection has one retained owner; a pending enumeration name is separate
