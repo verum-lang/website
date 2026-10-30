@@ -482,6 +482,24 @@ its result, including the first refusal. These laws require immutable histories
 and lawful, stable event equality; an `Arc` does not by itself prove either
 premise. Native work accounting and retained ownership remain separate checks.
 
+`VerumExternalReplay/ObservableLasso.lean` covers an autonomous finite state
+trajectory that closes by returning to an earlier state. For states `0..n-1`
+closing at `r`, the chronological projection `i mod p` preserves every
+transition exactly when the positive period `p` divides `n-r`. Matching each
+state's exact label to the label at `i mod p` then preserves all finite
+observations through the shared execution model. An invisible internal
+transient is allowed: states `0,1,2,1,2,…` with labels `0,1,0` produce the pure
+observable cycle `0,1,0,1,…`.
+
+The least valid candidate is the least positive period of the entire infinite
+observable word. The proof uses periodicity under remainders and greatest
+common divisors; it does not infer a period from a finite sample alone. An
+arbitrary nonminimal observable period need not divide the concrete cycle
+length. Native use requires a complete closed carrier, exact immutable labels,
+and correspondence with actual update and read execution. Revision binding
+and current publication ownership are additional obligations; these results
+do not establish a physical environment's period or acquisition efficiency.
+
 The observer construction specializes the typed-program theorem to arbitrary
 heterogeneous event and read-query input rows. Register substitution represents
 explicit input binding, including repeated or reordered references. Both native
