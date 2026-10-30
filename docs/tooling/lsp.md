@@ -23,13 +23,19 @@ completion, hover and definition navigation from the same source registry.
 
 The workspace root selects `src/` when present. `Verum.toml` or `verum.toml`
 supplies the cog name and local path dependencies. Open buffers override captured
-disk contents. Changing or closing a dependency rechecks open consumers, including
-consumers whose document version has not changed. File watcher notifications and
-analysis requests also detect changed disk sources and manifests.
+disk contents. Changes to effective dependency contents recheck open consumers,
+including consumers whose document version has not changed. Opening or closing
+an unchanged saved source reuses the other documents' analysis. Closing an
+unsaved dependency restores its disk contents and invalidates consumers when
+those contents differ. File watcher notifications and analysis requests also
+detect changed disk sources and manifests.
 
 Each published diagnostic set includes its document version; snapshot requests
-also return a project generation hash. Stale diagnostic generations cannot
-replace current results. Positions use LSP UTF-16 columns, including non-BMP
+also return a project generation hash derived from effective sources, project
+configuration and library identity. Document versions and reopen incarnations
+remain separate publication guards. Stale diagnostic generations cannot replace
+current results. `verum/getProfile` reports completed project checks in
+`compilationMetrics.projectChecks`, so unchanged-document reuse is observable. Positions use LSP UTF-16 columns, including non-BMP
 characters and CRLF line endings. Without a workspace root, analysis remains
 module-local.
 

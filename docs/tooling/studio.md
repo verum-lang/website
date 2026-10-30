@@ -210,8 +210,14 @@ A standalone server without that artifact reports analysis with builtins.
 
 Installed binary cogs and source-only blanket protocol seeding remain outside this
 editor path. Whole-project build and proof acceptance still requires the
-corresponding CLI operation. Analysis requests have a time limit; large library
-implementation sets can exceed it. A timed-out analysis is not a successful check.
+corresponding CLI operation. Analysis requests have a shared 30-second budget,
+including queue time. Expired or abandoned requests signal cooperative
+cancellation to compiler analysis; queued expired requests are skipped. Compiler
+checkpoints stop interrupted work without publishing a successful verdict or
+retaining partial type information. This is cooperative cancellation, not a
+real-time execution guarantee. Opening another unchanged saved source reuses
+valid analysis for documents already open. A timed-out analysis is not a
+successful check.
 The declaration/context view is a source
 projection for exploring Architecture as Type; it is not evidence of runtime
 implementation correspondence. See [LSP analysis scope](./lsp.md#diagnostics)
