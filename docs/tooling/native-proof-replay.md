@@ -133,6 +133,25 @@ evidence does not count as executing the program again: an adapter must account
 for actual shared execution and recipient admission work separately. These
 proofs do not install a runtime cache or certify an arbitrary foreign adapter.
 
+## Exact count-bank continuation
+
+The Lean module [CountBank](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/CountBank.lean)
+proves that appending accepted rows agrees with adding their labeled count
+banks. It connects those banks to the existing categorical scorer, so scoring
+merged counts agrees with scoring the concatenated rows. A complete cell census
+may change order; labels, multiplicities and the declared alphabet must remain
+exact. Distinct-cell support combines by set union, not by adding cardinalities.
+
+Final ratios are insufficient for continuation: two prefixes with the same
+score can score differently after the same next observation. The model includes
+counterexamples for lost cell identities, duplicate evidence and independently
+reset predictors. Its successful-step correspondence theorem accepts any storage
+representation that proves the lookup-update law. It does not establish that a
+foreign implementation satisfies that law, handles overflow or preserves
+refusal precedence. Native ownership, frozen declarations, contiguous evidence
+boundaries and pending execution state remain separate obligations. These are
+Lean replay laws, not additional Verum source-proof tactics or a runtime cache.
+
 ## Program translation and resource budgets
 
 `verification/certificates/check_resource_transfer.py` checks exact translations
