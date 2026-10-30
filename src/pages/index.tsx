@@ -7,7 +7,7 @@ import CodeBlock from '@theme/CodeBlock';
 import styles from './index.module.css';
 
 /**
- * Verum hero mark — the prismatic "V" softly floating inside a layered
+ * Verum hero mark — the Vector Engine "V" softly floating inside a layered
  * cyberpunk bloom. Three stacked halos (outer violet/cyan cloud, middle
  * magenta/cyan chromatic separation, inner warm gold core) are each
  * heavily blurred and animated on staggered periods. The logo itself
@@ -20,7 +20,7 @@ function VerumMark() {
       <div className={styles.markHaloMid}   />
       <div className={styles.markHaloCore}  />
       <img
-        src={useBaseUrl('/img/verum-logo-512.png')}
+        src={useBaseUrl('/img/verum-logo-512.webp')}
         alt=""
         className={styles.markImage}
         loading="eager"
