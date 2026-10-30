@@ -1121,6 +1121,22 @@ Concrete grammar Kraft bounds, decoder correctness, native accounting and
 statistical calibration remain separate obligations. This contract does not
 reinterpret the finite uniform-family protocol or certify a native migration.
 
+[Classified event mass](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ClassifiedMass.lean)
+bounds a goal probability from disjoint sets of correctly classified completed
+outcomes: the lower endpoint is the mass known to meet the goal; the upper
+endpoint is one minus the mass known not to meet it. Unknown, malformed,
+unvisited or nonterminating work does not justify renormalizing these masses.
+The exact rational model admits any outside-carrier goal completion that fits
+the remaining mass budget. Adding classification evidence or fresh unique names
+with unchanged old weights narrows the interval. A lower endpoint strictly above
+another action's upper endpoint establishes a strict one-step ranking.
+
+These are reusable Lean model laws. Completed-event weights, faithful and pure
+classification callbacks, and correspondence between a learned forecast and
+physical dynamics remain premises. Prefix search bounds cannot supply completed
+event mass. Infinite-measure semantics and native implementation correspondence
+require separate proofs.
+
 `VerumExternalReplay/CanonicalProduct.lean` proves when an exact rational
 product can omit a second normalization pass after cross-cancellation.
 Both inputs must already have coprime numerator and denominator; the resulting
