@@ -45,9 +45,12 @@ Plaintext interpreter connections support SCRAM authentication, prepared
 queries, binary and text parameters, SQL-error recovery, and explicit close.
 Rejected authentication and TLS refusal also release their TCP sockets.
 
-PostgreSQL-backed registry publishing is not ready for production. Interpreter
-connection and prepared-query checks do not yet establish durable publishing,
-pooled-session reuse, and crash recovery through the complete registry application.
+Interpreter validation covers the registry's PostgreSQL storage path: writes
+and reads across fresh processes, exact stored bytes, identical retries,
+conflicting records and competing writers under a restricted publisher role.
+This establishes the tested storage behavior; complete HTTP publishing, crash
+recovery and sustained pooled-session reuse still require application validation.
+PostgreSQL-backed registry publishing is not ready for production.
 Native compilation still rejects packed-array reads across control flow.
 TLS connections require separate end-to-end validation.
 
