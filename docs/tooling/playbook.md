@@ -1,10 +1,13 @@
 ---
 sidebar_position: 5
-title: Playground
+title: Terminal Playbook
 description: The notebook TUI — cells, guided tours, and research lenses over the same vocabulary agents use.
 ---
 
-# Playground (`verum play`)
+# Terminal Playbook (`verum play`)
+
+For a browser editor, reviewed agent edits, and source-bound proof results,
+see [Verum Studio](./studio.md).
 
 `verum play` opens Verum's notebook TUI — the human client of the
 same machine surface that agents and the CLI speak. One derivation of

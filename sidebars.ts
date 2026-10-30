@@ -144,6 +144,7 @@ const sidebars: SidebarsConfig = {
         'tooling/property-testing',
         'tooling/lsp',
         'tooling/vscode-extension',
+        'tooling/studio',
         'tooling/playbook',
         'tooling/repl',
         'tooling/diagnostics',
