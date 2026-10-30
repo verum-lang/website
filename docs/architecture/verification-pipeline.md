@@ -1092,6 +1092,13 @@ address and successor are retained: opening may subsequently run out of work.
 Retrying an existing address, a refused successor, and an ordinary service poll
 do not count as new declarations.
 
+When a revisit cursor is available, the count is exact: starting with a frontier
+turn gives `ceil(n / 2)` frontier advances, while starting with a revisit turn
+gives `floor(n / 2)`. Revisions retain the phase; suspensions preserve the entire
+state. The availability premise matters: without a revisit cursor, fallback may
+advance the frontier on both turns. These are counts of completed declarations,
+not bounds on calls or execution time.
+
 Applying these bounds requires retained ownership, compatible intake profiles,
 returning callbacks, usable work after capture and routing, and sufficient atomic
 work or actual VM continuations. The scheduling projection does not prove that
