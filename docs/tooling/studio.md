@@ -61,6 +61,40 @@ subtle at rest and appear during interaction.
 | Run source | Command/Ctrl + Enter |
 | Check module | Command/Ctrl + Shift + Enter |
 
+## Navigate a project and review changes
+
+Explorer loads directories when you expand them. Closed subtrees do not require
+an initial recursive scan. Folder expansion is remembered per workspace. Use
+arrow keys to navigate, Left/Right to collapse or expand, Enter to open a file,
+and Home/End to reach the first or last visible entry. Typing a filename prefix
+moves focus within the visible tree. **Collapse folders** restores the root view.
+
+The file filter searches paths across the project, including closed folders.
+Results retain their folder hierarchy. Search stops after 200 matches or 50,000
+visited entries and reports truncation; refine the query to narrow the result.
+A single directory can contain at most 10,000 exposed entries. Hidden paths,
+symlinks, `target`, `node_modules` and `llvm` are excluded from navigation.
+
+**Changes** filters the tree to Git changes, including deleted and untracked
+files. Folder counts summarize changed descendants. Two-character badges retain
+Git's index and working-tree status separately: `M` means modified, `A` added,
+`D` deleted, `R` renamed and `??` untracked; a dot means unchanged on that side.
+Conflict states remain visible. The footer distinguishes a Git branch, a
+workspace without Git and unavailable Git inspection.
+
+Select a change badge or press Alt+Enter on a changed file to review it.
+**Staged** compares the index with HEAD; **Working tree** compares saved files
+with the index. An untracked file shows its complete saved text. Unsaved editor
+drafts have a separate dot and are not part of either Git comparison. These
+views are read-only: Studio does not stage, commit, reset or discard Git changes.
+Status refreshes while the page is visible; **Refresh files** requests an update.
+Git status and patches describe their read time, not an atomic repository snapshot.
+
+The reviewed agent tools `verum_files` and `verum_changes` use these same directory,
+path-search and Git services. Filesystem discovery does not establish compiler
+analysis or proof coverage. Verum source proposals retain their source-only
+capability and revision check.
+
 ## Choose an interface language
 
 Use the language selector in the top bar to choose English or Russian.
@@ -119,8 +153,10 @@ revision you opened before replacing a file. A detected external edit
 refuses the save and leaves your draft available for review. This is
 optimistic conflict detection: an independent writer can still race the
 filesystem replacement. Avoid simultaneous writes while applying changes.
-Only regular `.vr` files inside the workspace are exposed; hidden paths,
-parent traversal, and symlinks are refused.
+The editor also opens and saves regular UTF-8 project text files up to 512 KiB.
+Run, Check and Prove apply to `.vr` sources; supporting text uses plain-text
+editing without Verum diagnostics. Hidden paths, parent traversal, binary
+content and symlinks are refused.
 
 ## Inspect proof evidence
 
