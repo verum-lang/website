@@ -373,12 +373,30 @@ callable does not promise independent state or thread safety. Explicit
 references retain their reference type and remain subject to borrow and
 lifetime rules; this ownership check does not prove those rules by itself.
 
-Generic creation checks use the creator's exact type witnesses. Native
-specialization substitutes those witnesses at the creation instruction.
-An escaping generic closure does not yet retain all lexical type witnesses
-needed to create another generic closure after invocation; such unresolved
-nested captures are refused. Legacy bytecode with captured values but no
-declared capture types is also refused and must be rebuilt.
+Generic closures retain their creator's exact type arguments, independently
+of captured values. Those arguments remain available after the creator returns,
+including when the closure creates another closure:
+
+```verum
+fn make<T>(value: T) -> fn() -> T {
+    || { let inner = || value; inner() }
+}
+
+fn probe() -> Int {
+    let f = make(7);
+    f()
+}
+```
+
+This function returns `7`. Different instantiations retain separate type
+arguments. Invocation, synchronous callbacks and panic recovery use the
+closure's own evidence. Native specialization follows closure creation and
+specializes the nested bodies, removing the dynamic type arguments.
+
+Missing arguments, unresolved associated types and ambiguous legacy generic
+slots are refused. A named generic function value needs a complete expected
+callable signature to determine its type arguments. Legacy bytecode with
+captured values but no declared capture types must be rebuilt.
 
 A closure has its own return and recovery boundary. Its `?` uses its own
 return type, whether written explicitly or inferred from its callable

@@ -506,6 +506,15 @@ stand in for owner identity; cursor lifetime follows the recorded operations.
 These finite exports use abstract origins and do not establish physical runtime
 ownership, arbitrary panic behavior or whole-engine correctness.
 
+`check_periodic_routing_export.py` checks a separate native Automatic routing
+projection: each physical action receives at most its single acquisition lease,
+periodic boundaries preserve the pending owner, and a first retention refusal
+remains sticky. Settled receipts must conserve their actual grants and agree
+with ledger totals. Independent native runs cover zero entitlement, a paused
+materializer and capacity refusal across multiple retention windows. These
+runs have no installed incumbents; they do not establish incumbent retention
+or harm decisions, hidden VM ownership, or a universal refinement theorem.
+
 `VerumExternalReplay/ObservableLasso.lean` covers an autonomous finite state
 trajectory that closes by returning to an earlier state. For states `0..n-1`
 closing at `r`, the chronological projection `i mod p` preserves every
