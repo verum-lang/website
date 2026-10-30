@@ -25,7 +25,7 @@ ext install verum-lang.verum
 ### From a `.vsix` file
 
 ```bash
-code --install-extension verum-language-0.2.0.vsix
+code --install-extension ./verum-language.vsix
 ```
 
 The extension requires the `verum` binary on `$PATH` (or set
@@ -39,9 +39,9 @@ per [Installation](/docs/getting-started/installation).
 | **TextMate grammar** | Offline syntax highlighting grammar-complete against the [EBNF specification](../reference/grammar-ebnf.md) — keywords, refinement predicates, raw multiline strings, tagged literals, `@attribute(args)`. | `syntaxes/verum.tmLanguage.json` |
 | **Semantic highlighting** | LSP-driven additions on top of TextMate: refinement vs. regular types, CBGR reference tiers, proof identifiers, context providers / consumers. | `verum lsp` → `textDocument/semanticTokens` |
 | **Snippets** | Prefix-driven scaffolds for `type is`, `is protocol { }`, `implement for`, `mount`, `fn-verify-formal`, `nursery`, `select`, refinement shapes, tagged literals, proof blocks. | `snippets/verum.json` |
-| **Diagnostics** | Parse errors, type errors, refinement counter-examples, CBGR warnings — on-type, debounced, with concrete witness values. | `verum lsp` → `textDocument/publishDiagnostics` |
-| **Code actions** | Promote `&T` → `&checked T`, insert runtime-check fallback, weaken refinement, convert to sigma type. | `verum/getQuickFixes` custom request |
-| **Inlay hints** | Inferred refinement types, inferred generic parameters, CBGR tier hints. | `verum/getInlayHints` custom request |
+| **Diagnostics** | Versioned compiler diagnostics for open buffers; explicit cursor-refinement results have separate proof status. | `verum lsp` → `textDocument/publishDiagnostics` |
+| **Code actions** | Promote `&T` → `&checked T`, insert runtime-check fallback, weaken refinement, convert to sigma type. | `textDocument/codeAction` |
+| **Inlay hints** | Inferred refinement types, inferred generic parameters, CBGR tier hints. | `textDocument/inlayHint` |
 | **Profile dashboard** | Webview showing verification / CBGR / compile metrics, hot-spot navigation. | `verum/getProfile` custom request |
 | **Debug adapter** | Launch / step / breakpoints via `verum dap` speaking DAP over stdio. | `verum dap --transport stdio` |
 | **Task provider** | `build` / `run` / `test` / `check` wired to `verum` with the `$verum` problem matcher. | VS Code task API |
@@ -62,8 +62,28 @@ ${verum.lsp.serverPath} lsp --transport stdio
 ```
 
 and keeps the client alive for the life of the window. The first
-`.vr` you open triggers the LSP's project analysis; subsequent edits
-reuse the incremental pipeline.
+`.vr` you open is analyzed as a module. Later edits produce versioned
+analysis; imported types and whole-project contracts require a project check.
+
+## Explore architecture
+
+Open **Verum: Show Architecture** to inspect the active file's declarations,
+explicit context requirements, imports and diagnostics. The tree uses the same
+`verum/documentSnapshot` response as [Studio](./studio.md), with no second parser
+in the extension. Selecting an item navigates to its source range.
+
+A snapshot must match the open buffer's URI, version and source hash. Editing,
+closing or switching documents clears stale entries; late responses cannot
+restore them. This is a source-level view of Architecture as Type, not a proof
+of runtime behavior or complete cross-module analysis. Update the `verum` binary
+alongside the extension to provide this protocol.
+
+Cursor refinement actions are explicit and require saved source. Results and
+suggested edits are checked against the document revision before display or
+application. The four validation outcomes are **valid**, **invalid**, **unknown**
+and **not applicable**; an empty diagnostics list is never labelled as verified.
+See [verification outcomes](./lsp.md#analysis-revisions-and-verification-outcomes)
+for the precise boundary.
 
 ## Commands
 
@@ -73,7 +93,7 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 |---------|-----------------|--------|
 | `Verum: Run Current File` | `Cmd+Shift+R` | `verum run <file>` in an editor terminal. |
 | `Verum: Run Test` | — | `verum test <file> --filter <fn>` at the cursor. |
-| `Verum: Verify Function Contracts` | — | Re-verify `@verify(...)` obligations under the cursor. |
+| `Verum: Verify Function Contracts` | — | Function-wide contract verification is not exposed by the language server; use the compiler proof workflow. |
 | `Verum: Show Escape Analysis` | — | Show the CBGR escape-analysis report for the `&` sigil at the cursor. Re-dispatches to `editor.action.showHover`; the hover bubble already contains the structured markdown (tier, mutability, escape verdict, promotion availability). Emitted by the LSP code-action "View escape analysis details". |
 | `Verum: Promote to &checked Reference` | `Cmd+Alt+C` | Ask the server to upgrade `&T` → `&checked T` with proof comment. |
 | `Verum: Add Runtime Check (Result<T, E>)` | — | Wrap in a runtime fallback when escape-analysis fails. |
@@ -85,7 +105,7 @@ All commands live under the **`Verum`** category (Ctrl/Cmd-Shift-P):
 | `Verum: Show Language Server Status` | — | Current state + crash count. |
 | `Verum: Format Document` | `Cmd+Shift+F` | Delegates to LSP formatter. |
 
-All five `verum/*` JSON-RPC methods backing these commands are live;
+The supported `verum/*` JSON-RPC methods backing language inspection are shared with Studio;
 the server routes them through
 `LspService.build(...).custom_method(...)`. The SMT layer is isolated behind a
 dedicated `verum-smt-worker` OS thread so the handler futures are
@@ -105,14 +125,14 @@ recommendations in [CLI](/docs/tooling/cli) and
 |---------|---------|---------|
 | `verum.lsp.enable` | `true` | Master switch. |
 | `verum.lsp.serverPath` | `"verum"` | Path to the `verum` binary. |
-| `verum.lsp.validationMode` | `"quick"` | `quick` (&lt; 100 ms) / `thorough` (&lt; 1 s) / `complete` (unbounded). |
-| `verum.lsp.enableRefinementValidation` | `true` | Run SMT-backed refinement validation while typing. |
+| `verum.lsp.validationMode` | `"quick"` | `quick` (100 ms deadline) / `thorough` (1 s) / `complete` (configured timeout). |
+| `verum.lsp.enableRefinementValidation` | `true` | Enable explicit cursor refinement validation; standard compiler diagnostics remain independent. |
 | `verum.lsp.showCounterexamples` | `true` | Attach concrete witness values to refinement errors. |
 | `verum.lsp.showInlayHints` | `true` | Inline inferred types and CBGR tiers. |
-| `verum.lsp.diagnosticDelay` | `200` ms | Debounce between keystroke and validation. |
-| `verum.lsp.smtSolver` | `"auto"` | `auto` / `smt-backend`. `auto` lets the compiler's capability router pick. Override only to reproduce a specific result. |
+| `verum.lsp.diagnosticDelay` | `200` ms | Debounce for refreshing the architecture view after an edit. |
+| `verum.lsp.smtSolver` | `"auto"` | `auto` / `z3` / `cvc5`. The cursor-validation worker uses Z3; CVC5 is reported as inconclusive. |
 | `verum.lsp.smtTimeout` | `50` ms | Per-obligation SMT timeout for live validation (build-time timeout is separate; see `verum.toml [verify] solver_timeout_ms`). |
-| `verum.lsp.cacheValidationResults` | `true` | Cache SMT results keyed by goal hash. |
+| `verum.lsp.cacheValidationResults` | `true` | Cache cursor results by source content, position, mode and configuration. |
 | `verum.lsp.cacheTtlSeconds` | `300` | Cache entry TTL. The server hot-swaps capacity/TTL on `workspace/didChangeConfiguration` — no restart. |
 | `verum.lsp.cacheMaxEntries` | `1000` | Cache capacity. On downsize, oldest entries are evicted. |
 | `verum.lsp.maxCounterexampleTraces` | `5` | Max execution-trace steps attached to a counter-example. |

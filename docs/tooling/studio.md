@@ -174,9 +174,34 @@ The proof worker additionally enforces its own admission and process limits.
 These bounds do not prove that every internal arithmetic operation is
 interruptible or charged to a semantic work budget.
 
-The current editor supplies syntax highlighting, search, history, and source
-navigation. LSP diagnostics/navigation, MCP transport, native-case artifact
-import, interactive debugger stepping, and durable conversation resumption
-are not integrated into Studio. The existing language servers and terminal
-tools remain separate capabilities; the UI does not present them as working
-Studio features.
+## Inspect language analysis and project structure
+
+Studio runs the same LSP service used by `verum lsp` on a dedicated analysis
+worker. Diagnostics refer to the current buffer, including unsaved edits.
+Select the analysis indicator in the editor status bar to open **Diagnostics**;
+select a diagnostic to navigate to its source range. Completion and hover use
+the language server, and **F12** navigates to a definition. Navigation to another
+file preserves the existing review flow for unsaved changes.
+
+**Structure** projects declarations and explicit context requirements from the
+language server's parsed AST. Select a declaration or requirement to return to
+its source. The project inspector combines the workspace file inventory with
+analyzed document snapshots. Each snapshot carries its document version and
+source hash. Files without a snapshot are explicitly marked as not analyzed.
+Invalid or pending source revisions do not display an older structure as current.
+
+This is single-module analysis with builtins. It does not resolve all imported
+module types, build a complete project type registry, or verify whole-project
+contracts. The declaration/context view is a source projection for exploring
+Architecture as Type; it is not evidence of runtime implementation correspondence.
+The live analysis uses module syntax. Run top-level scripts through **Run**;
+module-analysis errors alone do not establish that a script is invalid.
+
+The reviewed agent tools `verum_analyze` and `verum_project` use this same
+service and snapshot format. Analysis can inspect submitted source without
+writing it to disk; omitting source analyzes the saved file. Language inspection
+cannot execute arbitrary LSP commands or bypass workspace path restrictions.
+
+MCP transport, a complete cross-module architecture graph, native-case artifact
+import, interactive debugger stepping, and durable conversation resumption are
+not integrated into Studio. Existing terminal tools remain separate capabilities.

@@ -15,35 +15,15 @@ indexing infrastructure with
 
 ### Diagnostics
 
-- Real-time parse, type, and verification errors.
-- **Refinement-type violations** with **counter-examples** inline.
-- **CBGR warnings** with escape-analysis explanations.
-- Under `@verify(formal)`, SMT results on save (or on-type, if fast
-  enough).
+Open documents are parsed and type-checked with the compiler's builtins. Each
+published diagnostic set includes its document version. Stale edits and stale
+analysis results cannot replace the current revision. Source positions use LSP
+UTF-16 columns, including non-BMP characters and CRLF line endings.
 
-Example — a violating postcondition. The transcript below is the
-*actual* `verum verify` output for
-`fn abs_maybe(x: Int) -> Int ensures result > 0 { x }` — captured, not
-reconstructed. Verification reports per function rather than
-per source line, and it's the whole-program counter-example the
-solver found (the weakest violating input), not necessarily the one
-you were picturing:
-
-```
-Verification Report:
-============================================================
-  ✗ abs_maybe: Failed in 0.01s
-      Counterexample: Counterexample:
-  result = 0
-  x = 0
-
-Violates: postcondition violation
-
-Summary: 1 proved, 1 failed, 0 timeout, 0 skipped
-```
-
-The LSP surfaces this as an inline diagnostic anchored to the
-function; the shape above is what `verum verify` itself prints.
+This analysis is module-local: imported module types and whole-project contracts
+require a project check. Optional disk-based lint runs only when the saved source
+matches the analyzed buffer. Cursor refinement validation is a separate request;
+a clean diagnostics list is not a proof that all program contracts hold.
 
 ### Code navigation
 
@@ -133,10 +113,10 @@ picks up changes on the fly.
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
 | `enableRefinementValidation` | bool | `true` | Master switch for refinement diagnostics. |
-| `validationMode` | `"quick"` \| `"thorough"` \| `"complete"` | `"quick"` | Per-call SMT latency cap — 100ms / 1s / 600s. |
+| `validationMode` | `"quick"` \| `"thorough"` \| `"complete"` | `"quick"` | Per-call deadline: 100 ms, 1 s, or the configured `smtTimeout`. |
 | `showCounterexamples` | bool | `true` | Include concrete counter-examples in diagnostics. |
 | `maxCounterexampleTraces` | int | `5` | Cap on execution-trace steps in a counter-example. |
-| `smtSolver` | `"auto"` | `"smt-backend"` | SMT backend selection. |
+| `smtSolver` | `"auto"` \| `"z3"` \| `"cvc5"` | `"auto"` | Cursor validation uses Z3 for `auto`/`z3`; CVC5 is inconclusive in this worker. |
 | `smtTimeout` | int (ms) | `50` | Per-query SMT timeout. |
 | `cacheValidationResults` | bool | `true` | Cache SMT queries so unchanged refinements don't re-run. |
 | `cacheTtlSeconds` | int | `300` | Cache entry TTL. |
@@ -174,17 +154,15 @@ allows.
 
 ### Custom `verum/*` JSON-RPC methods — architecture
 
-All five `verum/*` methods are live — see the table above under "Custom
-LSP extensions". Their call path is:
+The supported `verum/*` methods are listed under [Custom LSP extensions](#custom-lsp-extensions). Their call path is:
 
 1. The client sends `verum/validateRefinement` (or similar) over the
    stdio / TCP / pipe transport.
 2. The LSP router dispatches to the matching `handle_*` async
    method, registered through the standard custom-method chain.
-3. The handler awaits the refinement-validator surface
-   (`validate_refinement` / `promote_to_checked` /
-   `infer_refinement`), which in turn pushes SMT work onto a
-   dedicated `verum-smt-worker` thread.
+3. Refinement handlers capture the open document and analyze that exact source.
+   Validation sends SMT work to a dedicated `verum-smt-worker` thread. A response
+   is refused if the document was changed, closed or reopened during analysis.
 4. The worker thread exclusively owns the solver-adapter context; it returns
    `SmtCheckResult` through a `tokio.sync.oneshot`. Only `Send`
    types cross the await boundary.
@@ -213,7 +191,7 @@ Features unique to the VS Code extension:
 
 - Inline counter-example explorer.
 - "Run test at cursor" code lens.
-- Run `@verify(formal)` from the gutter.
+- Explicit cursor refinement validation with distinct inconclusive outcomes.
 - Embedded Playbook panel.
 
 ### Neovim (nvim-lspconfig)
@@ -282,49 +260,54 @@ Beyond standard LSP 3.17, the Verum server routes these JSON-RPC methods:
 
 | Method                       | Status | Purpose                                                                                                     |
 |------------------------------|--------|-------------------------------------------------------------------------------------------------------------|
-| `verum/validateRefinement`   | live   | Validate the refinement at a cursor position; returns `{ valid, diagnostics, performanceMs }` with counter-examples and quick-fix edits. |
+| `verum/validateRefinement`   | live   | Validate the refinement at a cursor position; returns `{ status, valid, diagnostics, performance_ms }` with counter-examples and quick-fix edits. |
 | `verum/promoteToChecked`     | live   | Upgrade `&T` → `&checked T` with proof comment; returns the `TextEdit`s to apply.                           |
-| `verum/inferRefinement`      | live   | Infer the tightest refinement type for a symbol from its usages; returns `{ inferredType, confidence, usages, edits }`. |
+| `verum/inferRefinement`      | live   | Infer the tightest refinement type for a symbol from its usages; returns `{ inferred_type, confidence, usages, edits }`. |
 | `verum/getEscapeAnalysis`    | live   | CBGR escape-analysis report for the reference sigil under the cursor; returns `{ markdown, range, sigil, tier, derefCostNs, promotable }`. |
 | `verum/getProfile`           | live   | Return the cached per-document compilation / CBGR profiling summary used by the dashboard webview.           |
 
-All five methods are registered through the LSP service's
+These methods are registered through the LSP service's
 custom-method chain. The SMT-adapter session driving the refinement
 methods runs on a dedicated OS thread (`verum-smt-worker`)
 isolated from the async runtime, so the futures that cross the
 `Send` bound never capture non-`Send` adapter binding types.
 
+## Analysis revisions and verification outcomes
+
+`verum/documentSnapshot` accepts `{ textDocument: { uri }, version }` and returns
+`verum-document-analysis/1`: the exact source hash, version, compiler diagnostics,
+declaration ranges, context requirements and mounts. A mismatched version is
+refused with `ContentModified`. `verum/projectSnapshot` returns analyzed document
+snapshots with `coverage: "analyzed-documents-only"`; it is not a whole-project
+proof. [Studio](./studio.md) and the [VS Code extension](./vscode-extension.md)
+consume these shared projections.
+
+The refinement methods use snake_case fields: `text_document`, `include_proof`,
+`inferred_type` and `performance_ms`. The document must be open in the LSP session.
+`verum/validateRefinement` reports one of:
+
+| Status | Meaning |
+|--------|---------|
+| `valid` | The selected refinement obligation was discharged. |
+| `invalid` | A counterexample was found for that obligation. |
+| `unknown` | Validation was disabled, unsupported by the selected worker, timed out, or inconclusive. |
+| `not_applicable` | No supported refinement obligation was found at the cursor. |
+
+The compatibility field `valid` is true only for status `valid`. An absent
+obligation, missing result or timeout must never be presented as a proof.
+Validation caches are bound to source content, cursor position, mode and
+configuration. Inconclusive results are not cached. The current cursor-validation
+worker uses Z3; selecting CVC5 yields `unknown` rather than relabelling a Z3 result.
+This cursor operation does not establish whole-function or whole-project
+correctness; use the verification commands for those obligations.
+
 ## Performance
 
-- **Incremental**: a keystroke triggers only the changed functions'
-  re-verification.
-- **Typical responsiveness on a 50 K-LOC project**:
-  - Diagnostics: within 100 ms.
-  - Completion: within 50 ms.
-  - Hover: within 30 ms.
-  - Go-to-def: within 20 ms.
-- SMT verification runs in the background; results stream in as they
-  arrive.
-- An on-disk **proof cache** (`target/proof-cache/`) keeps already-
-  discharged goals hot across restarts.
-
-## Diagnostics over time
-
-The LSP streams partial results. For slow verification goals, the
-"verification pending" marker appears immediately and upgrades to
-success or failure once the solver finishes. Expect to see
-`@verify(thorough)` results arrive over seconds for heavy proofs.
-
-## Performance tuning
-
-Large projects benefit from background workers:
-
-```toml
-[lsp.workers]
-type_check    = 4               # parallel type-check workers
-smt           = 2               # parallel SMT workers
-completion    = 1               # single completion worker (CPU-light)
-```
+Document updates reparse and type-check the module. Analysis is not yet an
+incremental dependency graph that rechecks only changed functions. Refinement
+queries have per-call deadlines; their in-memory cache avoids repeated work on
+identical source and settings. Actual latency depends on document size and query
+complexity, so the editor does not treat a deadline as a verification success.
 
 ## Logging and diagnostics
 
