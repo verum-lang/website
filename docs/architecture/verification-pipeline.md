@@ -1119,11 +1119,21 @@ refusal when transferring work to the unknown set. Zero-work steps and capacity
 extension preserve the exported state. The format is explicitly versioned and
 does not fall back to the correlated-family interpretation.
 
-The projection omits initializer identity after promotion, active stop state,
-denied retry operations, and capacity and source-authority identities. Those
-behaviors need richer runtime evidence; opaque diagnostic text is not a VM
-semantics. Executing a frozen native test and checking its exported projection
-does not establish correctness for every runtime execution.
+The richer ownership format additionally checks initializer identity through
+promotion, exact search and source identities while materializing, and the
+paid-look authority, index and denominator together. Typed stop reasons distinguish
+work shortage from an immutable dispatch limit; resumability also depends on
+retained execution state. Explicit denied retry operations preserve the retained
+state. Capacity extensions take the maximum of the existing limit and requested
+grant, so a smaller grant is a no-op. A parked owner and refusal must remain
+intact or transfer together into the unknown set; a completed candidate cannot
+roll back to an earlier materializer. Missing required fields refuse checking rather than select
+an older interpretation. Opaque diagnostic text is not used as VM semantics.
+
+Candidate grammar and provenance authority, look allocation/payment events,
+and private invocation receipts are still absent from these projections.
+Executing a frozen native test and checking its exported projection does not
+establish correctness for every runtime execution.
 
 `VerumExternalReplay/AcquisitionScheduling.lean` separates declaration addresses,
 paid openings, and service turns. Its diagonal enumeration reaches every finite
