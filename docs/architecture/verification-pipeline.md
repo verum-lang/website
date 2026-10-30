@@ -1095,7 +1095,9 @@ pair then equals the fully normalized ordinary product exactly. Zero numerators
 are supported, while division requires a positive divisor. A canonical witness
 carried by an accumulator preserves this invariant across products. Raw fractions
 cannot acquire that witness without normalization or a proof. Strict comparisons
-retain their exact result. Applying this law to a native arithmetic helper still
+retain their exact result. The model also proves termination and correctness
+of exact Euclidean remainder reduction, including initial operand sorting and
+the unit fast path. Applying these laws to a native arithmetic helper still
 requires checking its constructors, mutation boundaries and failure behavior;
 the arithmetic theorem alone supplies no execution-time bound.
 
