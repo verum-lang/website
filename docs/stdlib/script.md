@@ -64,6 +64,12 @@ that every value can cross heaps without conversion.
 side. Values visible through a shared `World` are a distinct interface and
 do not establish support for these call arguments.
 
+Capability enforcement also depends on the entry point. The engine's outcome
+execution path installs its capability policy; compiled sessions and nested
+worlds do not yet uniformly inherit that authority. Reusing the interpreter is
+not sufficient to establish sandbox isolation. See
+[script enforcement limits](/docs/getting-started/script-mode#enforcement-limits).
+
 The interpreter callback and handle regressions live in
 [`script_host_callable.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/tests/script_host_callable.rs).
 They include the actual `Engine` wrapper, captured and nested generic

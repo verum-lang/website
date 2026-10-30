@@ -291,13 +291,12 @@ containing only declarations produces no wrapper.
 
 ## Sandboxing scripts with permissions
 
-A Verum script is a security boundary. The dynamic-language
-default is "the script can do anything the user could do" —
-fine for one-shot work on your own machine, terrifying for
-anything you fetched off the internet or run on someone else's
-data. Verum closes that gap with a declarative permission
-surface that the **same enforcement engine** honours under both
-the interpreter and an AOT-compiled binary.
+The CLI accepts explicit permission grants and applies them at supported runtime
+and native permission gates. This is a partial enforcement mechanism, not complete
+isolation for untrusted code. A source with no permission declarations or runner
+flags retains the legacy unrestricted mode. Explicit `permissions = []`,
+`default-permissions = []` or `--deny-all` installs a policy with no grants;
+an empty policy never selects unrestricted execution.
 
 ### Declaring grants
 
@@ -306,16 +305,10 @@ metadata block delimited by `// /// script` lines. Frontmatter
 sits immediately after the shebang:
 
 ```verum
-#!/usr/bin/env verum
 // /// script
-// permissions = ["fs:read=./data", "net=api.example.com:443"]
+// permissions = []
 // ///
-mount json;
-
-let body = io.fs.read_text("./data/config.json")?;
-let resp = http.get("https://api.example.com:443/v1/echo")?;
-print(resp.body);
-0
+fn main() -> Int { 42 }
 ```
 
 Each grant has a **kind** and an optional **target**:
@@ -333,15 +326,14 @@ Each grant has a **kind** and an optional **target**:
 
 A bare kind grants the **wildcard** for that scope:
 `permissions = ["net"]` allows every host:port combination,
-while `permissions = ["net=internal.svc:5432"]` allows only the
-listed target. Multiple targets in one declaration combine
+while `permissions = ["net=internal.svc:5432"]` declares the
+listed target. Actual target enforcement depends on the gate carrying that
+target identity; see the limitations below. Multiple targets in one declaration combine
 additively (`["net=a:80", "net=b:80"]` permits both).
 
 ### CLI overrides
 
-You can also drive permissions from the command line — useful
-for sandboxing a script you didn't write or relaxing a
-production policy in a one-off debug session:
+You can also select permissions from the command line:
 
 ```bash
 $ verum run --allow=fs:read=./logs script.vr  # add a filesystem grant
@@ -355,28 +347,26 @@ declaring `["net"]` plus `--allow=fs:read=./tmp` ends up with
 both. `--deny-all` is the empty set; `--allow-all` is the
 universal set. These two flags are mutually exclusive and override
 individual `--allow` grants. Either flag installs a permission policy
-even if the script's frontmatter is silent — opt-in to
-sandboxing without editing the source.
+even if the source has no frontmatter, including ordinary `.vr` files.
 
 Use `verum run` for runner options. Bare `verum script.vr ...` forwards
 arguments after the file to the script, including arguments that look
 like permission flags.
 
-The resolved policy is mixed into the script's persistent VBC
-cache key, so two runs with different policies never collide on
-the same cached binary.
+Permission mode and runner grants contribute to both VBC and AOT cache
+identities alongside the source, compiler and other execution flags. A restricted
+request cannot reuse a binary cached under unrestricted execution.
 
 ### Enforcement: same gate, both tiers
 
-Verum's defining property is that **the interpreter and the
-AOT-compiled binary enforce the policy identically**. There is
-no "AOT is fast but unsafe" fallback. The mechanism:
+Both policy builders use the same resolved CLI grants and scope mapping.
+This aligns decisions at matching gates; it does not establish that every
+operation in both execution tiers reaches a gate. The mechanism:
 
 * **Interpreter (Tier 0).** A runtime `PermissionRouter` lives
   inside the dispatch loop. Every gated FFI call (`open`,
   `connect`, `socket`, `_exit`, `mmap`, …) and every raw
-  syscall intrinsic checks the router on the warm path
-  (≤ 2 ns one-entry cache hit). A denied call panics with
+  syscall gate checks the router. A denied call panics with
   `permission denied: <scope>(<target>)` and exits 143
   (SIGTERM-style, distinct from logic-panic exit 1).
 
@@ -393,16 +383,30 @@ no "AOT is fast but unsafe" fallback. The mechanism:
   | Specific targets listed                   | `switch i64 %target_id { T1 => ok, T2 => ok, default => panic }` (LLVM compiles the switch to compact branch-on-equal sequences) |
   | No script-mode policy installed (trusted application path) | **No code** (every gate is elided; matches the interpreter's allow-all default) |
 
-  The panic site is **inlined per call site** rather than
-  routed through a runtime helper. Inlining keeps the policy
-  sealed in the binary — there is no helper symbol an attacker
-  could intercept and no env-var protocol to tamper with — and
-  lets LLVM merge identical denial sites across the module.
+  The denial branch is emitted at each permission assertion site, allowing
+  LLVM to merge equivalent branches. This does not provide operating-system
+  isolation or protect operations that have no permission assertion.
 
 * **Sealed at build time.** The AOT cache key includes the
-  resolved policy hash, so a binary cached for one policy is
+  permission mode and grants, so a binary cached for one policy is
   never reused for another. A script's compiled `.bin` always
   reflects the policy that was active when it was built.
+
+### Enforcement limits
+
+The CLI currently maps filesystem read and write grants to one runtime scope.
+Some FFI boundaries carry a placeholder target rather than a path or host, so
+fine-grained target grants are not uniformly enforceable. Unclassified FFI
+symbols bypass the current boundary table. Memory and cryptography remain
+allowed independently of the declared grants.
+
+Embedded `Engine`, compiled `Session` and nested `World` execution also have
+different capability-inheritance paths. Do not treat a CLI policy or
+`Engine.sandboxed()` as complete confinement of third-party code. The relevant
+implementation boundaries are
+[`file.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_cli/src/commands/file.rs),
+[`ffi_extended.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/interpreter/dispatch_table/handlers/ffi_extended.rs)
+and [`script_engine.rs`](https://github.com/verum-lang/verum/blob/main/crates/verum_vbc/src/interpreter/script_engine.rs).
 
 ### Wire-format contract
 

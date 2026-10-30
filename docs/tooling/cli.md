@@ -88,19 +88,16 @@ verum run --deny-all script.vr                # empty grant set
 Arguments after the file in bare `verum script.vr ...` invocations
 are passed to the script. Use `verum run` when setting runner flags.
 
-Either flag installs a permission policy even if the script's
-frontmatter is silent — opt-in to sandboxing without editing
-the source. The resolved policy mixes into the script's VBC
-and AOT cache keys, so two runs with different policies never
-share a cached binary. The interpreter and AOT-compiled binary
-**enforce the resolved policy identically**: every gated FFI
-call (`open`, `connect`, `socket`, `_exit`, …) lands in the
-same `(scope, target_id)` decision table whether the script is
-running under Tier 0 or as a native executable. Full mechanism,
-diagnostics, exit-code contract (143 = capability denied,
-1 = logic), and the wire-format scope-tag mapping live in
-**[Getting Started → Script mode → Sandboxing scripts with
-permissions](/docs/getting-started/script-mode#sandboxing-scripts-with-permissions)**.
+Explicit permission flags install a policy even without frontmatter. Explicit
+empty permission arrays and `--deny-all` select enforced empty grants; omission
+of both declarations and flags retains legacy unrestricted execution. Permission
+mode and grants contribute to VBC and AOT cache identities.
+
+The two policy builders share scope decisions, but gate coverage and target
+identity remain incomplete. Filesystem read/write scopes are merged, some FFI
+calls lack target identity, and unclassified FFI symbols bypass the boundary
+table. These controls do not establish isolation of untrusted code. See
+[Script permissions and enforcement limits](/docs/getting-started/script-mode#enforcement-limits).
 
 `verum test` and `verum bench` form the developer-facing testing
 surface — property-based testing with integrated shrinking,

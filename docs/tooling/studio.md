@@ -216,7 +216,9 @@ cancellation to compiler analysis; queued expired requests are skipped. Compiler
 checkpoints stop interrupted work without publishing a successful verdict or
 retaining partial type information. This is cooperative cancellation, not a
 real-time execution guarantee. Opening another unchanged saved source reuses
-valid analysis for documents already open. A timed-out analysis is not a
+valid analysis for documents already open. Unrelated edits also reuse completed
+checks when their observed module inputs still match; dependency changes trigger
+new checks. A timed-out analysis is not a
 successful check.
 The declaration/context view is a source
 projection for exploring Architecture as Type; it is not evidence of runtime

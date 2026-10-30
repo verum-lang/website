@@ -27,7 +27,11 @@ disk contents. Changes to effective dependency contents recheck open consumers,
 including consumers whose document version has not changed. Opening or closing
 an unchanged saved source reuses the other documents' analysis. Closing an
 unsaved dependency restores its disk contents and invalidates consumers when
-those contents differ. File watcher notifications and analysis requests also
+those contents differ. Reuse is based on the actual module data read by the
+checker, including failed lookups and aliases. Unrelated edits can retain a
+completed check while advancing its project-generation receipt. Re-exports,
+observed declaration changes and newly resolvable imports invalidate that reuse;
+a catalogue scan conservatively depends on the complete catalogue. File watcher notifications and analysis requests also
 detect changed disk sources and manifests.
 
 Each published diagnostic set includes its document version; snapshot requests
