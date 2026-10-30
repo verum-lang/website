@@ -113,6 +113,26 @@ a learned representation, acquisition within a budget or correspondence to an
 external world. They are not additional source-proof tactics or an automatic
 Rust-to-Verum verification pass.
 
+## Reusing execution evidence
+
+The Lean module [ReadEvidence](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ReadEvidence.lean)
+proves full-report agreement for the existing finite primitive/call execution
+model. With identical code, primitive semantics, limits and initial usage,
+inputs need agree only on the model's conservative input footprint. That
+footprint includes every instruction's input operands, including eager calls
+and instructions whose results are unused. Missing inputs remain distinct
+from present values. The theorem preserves stops, all retained registers,
+usage and diagnostics, rather than only the selected output.
+
+The model uses its specified bounded meter and does not cover native branch
+or fold instructions. A runtime trace that records the entire input environment
+needs stronger agreement than this footprint provides. Native reuse also
+requires immutable semantic ownership, recipient-specific interface and
+lifecycle checks, and successful root selection. Reusing historical execution
+evidence does not count as executing the program again: an adapter must account
+for actual shared execution and recipient admission work separately. These
+proofs do not install a runtime cache or certify an arbitrary foreign adapter.
+
 ## Program translation and resource budgets
 
 `verification/certificates/check_resource_transfer.py` checks exact translations
