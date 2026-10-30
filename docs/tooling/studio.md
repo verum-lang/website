@@ -201,10 +201,18 @@ aliases and re-exports. Dependency edits invalidate unchanged consumers as well.
 Use the project refresh control after external changes; returning focus also
 refreshes the current source analysis.
 
-Release standard-library archive metadata and installed binary cogs are not yet
-loaded by this source service. Real projects using these can report unavailable
-library types or methods. Whole-project build and proof acceptance still requires
-the corresponding CLI operation. The declaration/context view is a source
+`verum studio` uses the release compiler's embedded standard-library metadata.
+The standalone server accepts `--stdlib-metadata /path/to/runtime.core_metadata`
+from the matching release. The editor, Structure view and reviewed agent tools
+share the same metadata identity and type analysis. Library symbols without
+source text display their types and declaring module without a navigation target.
+A standalone server without that artifact reports analysis with builtins.
+
+Installed binary cogs and source-only blanket protocol seeding remain outside this
+editor path. Whole-project build and proof acceptance still requires the
+corresponding CLI operation. Analysis requests have a time limit; large library
+implementation sets can exceed it. A timed-out analysis is not a successful check.
+The declaration/context view is a source
 projection for exploring Architecture as Type; it is not evidence of runtime
 implementation correspondence. See [LSP analysis scope](./lsp.md#diagnostics)
 for source-capture limits and dependency coverage.

@@ -33,10 +33,18 @@ replace current results. Positions use LSP UTF-16 columns, including non-BMP
 characters and CRLF line endings. Without a workspace root, analysis remains
 module-local.
 
-This source service does not yet load the compiler's release standard-library
-archive metadata or registry-installed binary cogs. Such imports can remain
-unresolved, and library types or methods can produce unavailable-type diagnostics.
-An empty diagnostics list covers the open module bodies and available dependency
+The release CLI supplies its embedded standard-library type metadata to this
+service. Library imports use the compiler's module-export projection and type
+checker, including declaration ownership, public visibility, constants and static
+values. Snapshots include `library_metadata.sha256`; the artifact identity also
+participates in the project generation hash. Library symbols without source text
+provide type information without an invented navigation location.
+
+Standalone hosts can supply the matching release `.core_metadata` artifact.
+Without it, `analysis_scope` reports analysis with builtins. Registry-installed
+binary cogs are not loaded by the editor service. Source-only blanket protocol
+seeding remains a compiler responsibility. An empty diagnostics list covers the
+open module bodies and available dependency
 declarations, not every dependency body or whole-project contracts. Use the CLI
 project checker for build acceptance. Optional disk lint runs only when the saved
 source matches the buffer; cursor refinement validation is a separate request.
