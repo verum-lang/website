@@ -390,6 +390,32 @@ The private receipt API's affine discipline is enforced by Rust's type checker.
 A declared new run does not certify that the external world reset, and these laws
 establish neither a finite period nor a finite-factor representation of that world.
 
+## Observer cycles across physical transitions
+
+[SourceCycle](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/SourceCycle.lean)
+connects the observer ownership and physical-clock models. A finite phase factor
+must advance on every admitted update within its invariant and determine reads
+for every query. Echoing an external query age does not satisfy this autonomy
+contract. The factor need not have a minimal period or accept every possible
+input.
+
+A paired step binds both receipts to one retained dispatch identity, the actual
+input, the exact observer cut, and the committed physical transition. A tick
+preserves the relative phase offset from the anchor's retained state and age.
+Physical age need not equal observer phase modulo the period. A terminal step
+still commits the observer update, then invalidates the age anchor. An admitted
+new run changes clock origin and invalidates that anchor while retaining the
+observer state; a refused restart preserves both. Re-anchoring uses the retained
+state's actual phase and cannot manufacture phase zero.
+
+These are universal conditional model laws, with semantic rejection controls
+for forged successors, foreign dispatches, stale allocations and invented resets.
+The native adapter must establish that private dispatch identities authenticate
+both receipts and their input, and that actual observer evaluation implements
+the phase factor. Frozen examples alone cannot discharge those obligations.
+The laws establish neither a physical world period nor automatic discovery of
+a suitable factor.
+
 ## Canonical construction partitions
 
 `VerumExternalReplay/ArrivalSlabs.lean` partitions every nonempty finite tuple
