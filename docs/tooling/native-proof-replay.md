@@ -416,6 +416,22 @@ the phase factor. Frozen examples alone cannot discharge those obligations.
 The laws establish neither a physical world period nor automatic discovery of
 a suitable factor.
 
+[BoundedLasso](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/BoundedLasso.lean)
+proves how a delayed membership result can follow a closed deterministic
+transition graph with an initial path and a repeating cycle. For a carrier of
+size `N` whose final state returns to index `c`, it represents any number `k` of
+updates with `min(k, N)` and `k mod (N - c)`. The transport law preserves the
+initial path before applying the cycle modulus, works from every carrier index,
+and proves exact incremental composition. Guarded arithmetic bounds the stored
+values and avoids adding two full-width residues.
+
+This summary represents a transition function, not a unique history or commit
+count: complete cycle turns can have the same summary. Actual ownership and
+revision checks must still enforce one increment per committed update. The proof
+supplies an arithmetic contract for transporting delayed analysis; it does not
+establish native scheduling progress, implementation correspondence or a physical
+world cycle.
+
 ## Canonical construction partitions
 
 `VerumExternalReplay/ArrivalSlabs.lean` partitions every nonempty finite tuple
