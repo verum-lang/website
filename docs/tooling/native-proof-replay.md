@@ -291,6 +291,24 @@ rollback preserves the recorded peak. Poison blocks new admission while retainin
 existing alias and release authority. Resumption preserves the supplied
 computation identity when its account and capacity conditions hold.
 
+`VerumExternalReplay/ResourceWake.lean` models consuming an eligible wait before
+resumed work. Later capacity changes cannot reactivate that consumed gate.
+Still-blocked allocation waits and unchanged evidence-only boundaries remain
+blocked. Readiness does not reserve capacity or guarantee progress: another
+owner or the resumed continuation may consume it, requiring a fresh refusal.
+
+`VerumExternalReplay/AdmissionRound.lean` separates queued visits from the active
+slot. Its exact mathematical debt can exceed a machine word by one without
+wrapping the stored counters. The proofs establish visit accounting and checked
+diagnostic sums; FIFO owner coverage remains a separate caller obligation.
+
+`VerumExternalReplay/PaidPrefix.lean` tracks the next exact identity in a frozen
+prefix of append-only members. Completion implies a positive-paid visit to every
+captured identity. Unpaid, duplicate and out-of-order visits cannot discharge
+unvisited identities. The native caller must preserve those identities and
+supply actual paid dispatches; the proof does not imply semantic progress or
+that the scheduler will eventually dispatch each member.
+
 The model keeps the representable-byte maximum explicit. The native export
 adapter `verification/external/lean/check_resource_ledger_export.py` compares
 frozen account snapshots with proved reserve, grant, alias and release operations.
