@@ -323,7 +323,7 @@ $ verum audit --counterfactual      # what changes if we drop a primitive?
 $ verum audit --adjunctions         # Inline ⊣ Extract / Specialise ⊣ Generalise / …
 $ verum audit --differential-kernel # two independent kernels agree
 $ verum audit --reflection-tower    # ordinal-indexed meta-soundness
-$ verum audit --bundle              # all gates load-bearing as a single L4 verdict
+$ verum audit --bundle              # current gate execution diagnostics; no aggregate proof claim
 ```
 
 The auditor sees stable RFC codes, citations, transitive

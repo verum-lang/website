@@ -154,7 +154,7 @@ archive the JSON as a permanent record.
 ### 3.1 Developer view — the summary
 
 ```text
-ATS-V audit · 14/14 gates · load-bearing · 12.4s
+Required gate executions completed. No bound proof evidence is asserted.
 ```
 
 A single line for the PR description.
@@ -182,9 +182,10 @@ target/audit-reports/
 └── bundle.json           # the aggregate
 ```
 
-Multi-file output. The bundle.json carries the aggregate
-verdict; the per-gate files carry exhaustive detail. Auditors
-inspect the bundle once and zoom into specific gates as needed.
+The bundle carries current execution receipts, identified by run and gate.
+Per-gate files are separate diagnostics; the bundle does not read them as proof
+evidence because they lack exact input/run binding. Its `l4_load_bearing` field
+is false. See the [audit protocol](./audit-protocol.md) for the trust boundary.
 
 ## 4. The discipline — one source, two renderings
 

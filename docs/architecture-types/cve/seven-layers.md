@@ -229,25 +229,12 @@ check protects against this category error.
 
 ## 9. The L4 load-bearing claim
 
-When `verum audit --bundle` reports `verdict: load-bearing`, it
-makes a precise claim across all seven layers:
-
-- L0 — every annotated cog's body type-checks and verifies.
-- L1 — every proof in the corpus re-checks against the trusted
-  base.
-- L2 — every tactic / SMT certificate replays cleanly.
-- L3 — the meta-theory hierarchy discharges every required level.
-- L4 — every Shape is consistent with its body, every
-  anti-pattern is clean, every counterfactual invariant is
-  stable.
-- L5 — the audit report is schema-consistent.
-- L6 — the audit framework's articulation-hygiene check passes
-  (no register prohibitions triggered).
-
-This is the strongest aggregate verdict ATS-V issues. The phrase
-"L4-load-bearing" is shorthand: L0..L3 are *implied* (they are
-prerequisites), L4 is the *aggregate*, and L5..L6 are
-*self-checks*.
+The seven layers describe distinct obligations; a successful process exit does
+not discharge them. `verum audit --bundle` emits run-bound execution diagnostics
+and sets `l4_load_bearing` to false. It neither imports legacy artifacts as
+current evidence nor proves a universal claim about all corpus layers.
+Proof admission requires the exact statement, assumptions and checked witness
+for each obligation. See [native replay](../../tooling/native-proof-replay.md).
 
 ## 10. Why a stratification at all?
 

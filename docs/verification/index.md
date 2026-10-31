@@ -607,14 +607,12 @@ over every `@theorem` / `@lemma` / `@corollary`) ·
 `--attribute-registry` (exports every attribute the compiler knows,
 with targets and arity).
 
-**Aggregator** (1 gate): `--bundle` — emits a single L4 load-bearing
-verdict. It does NOT run every gate above, which this page previously
-claimed: its own help names the four load-bearing gates it executes in
-dependency order — `--bridge-discharge`, `--kernel-discharged-axioms`,
-`--apply-graph` and `--cross-format-roundtrip` — and aggregates their
-JSON into `target/audit-reports/bundle.json`. The last of those four is
-one of the five that were missing from this catalog, so the page
-omitted a gate the aggregator depends on.
+**Aggregator**: `--bundle` runs configured audit gates and publishes current
+execution receipts in `target/audit-reports/bundle.json`, with a fresh run ID and
+executable hash. `checks_passed` records execution status; `l4_load_bearing` is
+false. The bundle does not load older per-gate reports as evidence and does not
+certify every theorem or verification layer. Use [native proof replay](../tooling/native-proof-replay.md)
+for exact-run certificate admission.
 
 See [Soundness gates](./soundness-gates.md) for the
 predicate-level formalisation and

@@ -168,17 +168,19 @@ the catalog has **~45 gates** organised into eight bands:
 
 | Flag | Verifies | Output |
 |------|----------|--------|
-| `--bundle` | Summary of the configured audits, with each gate's scope and obligations retained | `bundle.json` |
+| `--bundle` | Current gate execution diagnostics with run and executable identity; no aggregate proof claim | `bundle.json` |
 
-Gates are *idempotent* — running the same gate twice on
-unchanged source produces byte-identical JSON output (modulo
-timestamps).
+Run-bound receipts have distinct invocation identities even when inputs are
+unchanged. Deterministic semantic outcomes do not make two executions the same run.
 
 ## 2. The bundle aggregator
 
-`verum audit --bundle` orchestrates configured audit gates. Read the emitted
-report to determine which gates and artifacts were actually checked. A
-summary is not an implicit replay of every theorem in a repository.
+`verum audit --bundle` orchestrates configured audit gates and records their
+execution outcomes under a fresh run ID and executable hash. It does not import
+legacy report files, whose inputs and invocation are unbound. `checks_passed`
+reports configured gate execution; `l4_load_bearing` is false. The bundle is not
+proof evidence or an implicit replay of every theorem in a repository. See
+[native replay](../tooling/native-proof-replay.md) for exact-run proof receipts.
 
 The meaning of success is specific to each gate. Dependency resolution,
 metadata consistency, finite diagnostic samples, and certificate replay

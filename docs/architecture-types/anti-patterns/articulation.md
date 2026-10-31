@@ -493,9 +493,8 @@ architectural decisions; AP-036 fires on audit-chronicle prose.
 
 **Remediation.** Either narrow the observer role to one matching
 the assertion content, or qualify the assertion to specify the
-layer it ranges over. Both Verum's `verum audit --bundle` L6
-self-application gate and the LSP hover surface flag the
-mismatch.
+layer it ranges over. This is an articulation review criterion; the current
+`verum audit --bundle` does not establish a universal L6 proof of this property.
 
 ---
 

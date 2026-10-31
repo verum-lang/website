@@ -125,33 +125,11 @@ range is undefined.
 
 ## 3. The L6 audit gate
 
-Articulation hygiene is not a separate audit subcommand; it is
-verified by `verum audit --bundle`'s L6 self-application step.
-The step walks every emitted diagnostic, every audit report
-field, every framework citation, and applies the three register
-prohibitions.
-
-A bundle that triggers any prohibition reports:
-
-```text
-warning[ATS-V-L6-REGISTER-001]: register prohibition triggered
-  --> target/audit-reports/bundle.json (field: gates[3].verdict)
-   |
-   | "verdict": "every artifact is C-V-E"
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ ungrounded universality
-   |                                     (no layer specified)
-help: specify the layer the universality ranges over.
-      Replace with one of:
-        "every L0 artifact is C-V-E"
-        "every L4 cog is C-V-E"
-        ...
-```
-
-The L6 gate is the *self-check* of the audit framework. A
-project's L4 verdict can be load-bearing without the L6 check
-passing — but the audit pipeline reports the discrepancy
-explicitly so reviewers can spot when the audit's own
-articulation drifts from the discipline.
+These are review criteria for audit claims. The current `verum audit --bundle`
+does not implement a universal L6 self-application check over all diagnostics,
+citations and report fields. It emits execution diagnostics with
+`l4_load_bearing: false`; this must not be presented as a proof that every
+articulation rule was checked. See the [audit protocol](../audit-protocol.md).
 
 ## 4. Self-application — does the frame survive?
 

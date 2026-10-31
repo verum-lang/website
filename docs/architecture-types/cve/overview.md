@@ -717,25 +717,12 @@ Every Verum cog declares its `Shape.lifecycle` as one of the
 [seven canonical glyphs](./seven-symbols.md). A glance at
 `@arch_module(lifecycle: …)` tells you the cog's CVE status at a
 single layer (L4 — the architectural shape). To get the full
-seven-layer picture you ask `verum audit --bundle`, which runs
-the per-layer gates and produces a structured report:
-
-```
-$ verum audit --bundle
-        --> Bundle audit · L4 load-bearing aggregator
-
-  L0 — kernel rules                            ✓ 7 / 7   load-bearing
-  L1 — proof bodies                            ✓ 1024    proved
-  L2 — tactic + SMT certs                      ✓ replayed
-  L3 — meta-theory (ZFC + 2-inacc)             ✓ cited
-  L4 — architectural shapes                    ✓ 267 / 267
-  L5 — audit-report self-consistency           ✓ schema-pinned
-  L6 — articulation hygiene                    ✓ no register-prohibition triggered
-```
-
-Every check at every layer is auditable, deterministic, and
-non-vacuous (a liveness-pin synthetic kernel proves the check is
-not silently tautologous).
+seven-layer picture, inspect each obligation and its evidence. The command
+`verum audit --bundle` runs configured gates and records current execution
+outcomes. It does not establish a seven-layer proof: `l4_load_bearing` is false,
+and legacy per-gate files are not imported as bound evidence. See the
+[audit protocol](../audit-protocol.md) and
+[native replay](../../tooling/native-proof-replay.md).
 
 ## 9. CVE in three sentences
 

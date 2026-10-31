@@ -659,12 +659,31 @@ and inconsistent reports fail the gate. Differential campaigns also require
 nonempty work and at least two distinct registered checkers. Agreement between
 algorithms is regression evidence, not a proof of the kernel's soundness.
 
+Portable replay receipts bind a fresh invocation UUID to the exact battery,
+expected outcomes, foundations, producer sources and checker executable hashes.
+Use `--run-id` with a fresh caller-generated UUID for automated workflows; never
+reuse it on a retry. Publication uses atomic replacement. Interrupted work stays
+`running` or `failed`, and per-run receipts live beside the report in its `.runs`
+directory. Consumers use `certificate_runner.require_replay_report` with the
+expected run ID, request manifest and process exit code. A path, an old receipt,
+or an exit code alone cannot establish that the requested replay completed.
+
+Legacy CLI audit artifacts have no such input/run binding. `verum audit --bundle`
+records current gate execution status and executable identity, and does not load
+those files as evidence. Its `checks_passed` field describes configured gate
+execution; `l4_load_bearing` is false. Independent proof admission still requires
+an exact statement, assumptions and a checked certificate.
+
 Universe levels use bounded integers for compact serialization and structured
 successors for larger values. The integer width does not cap the universe
 hierarchy. Both native algorithms and independent Lean replay check ordinary
 formation at these levels, including the kind of the claimed type, without
 overflow exemptions. The Lean successor theorem proves exact increment and
-strict growth; it does not establish the soundness of the entire level normalizer.
+strict growth. The actual compact-offset implementation is structurally total;
+Lean proves exact denotation, preservation of bounded wire literals and
+cancellation of a common offset under the declared wire-domain conditions.
+These laws do not establish the soundness of the entire level normalizer or
+type checker.
 
 ## Scope of the evidence
 
