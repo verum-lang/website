@@ -21,6 +21,11 @@ import resolution and declaration preparation with the compiler. Project types,
 functions, aliases and re-exports therefore feed diagnostics, imported-name
 completion, hover and definition navigation from the same source registry.
 
+Source files beginning with `#!` are analyzed as scripts, including files with
+a UTF-8 BOM. Their top-level statements use the compiler's script scope, and
+diagnostics retain original source positions. Files without a script header
+use module syntax.
+
 The workspace root selects `src/` when present. `Verum.toml` or `verum.toml`
 supplies the cog name and local path dependencies. Open buffers override captured
 disk contents. Changes to effective dependency contents recheck open consumers,

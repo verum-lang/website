@@ -168,6 +168,7 @@ retain their original text.
 The starter experiment is a complete Verum script:
 
 ```verum
+#!/usr/bin/env verum
 let answer = 6 * 7;
 print(answer);
 ```
@@ -203,9 +204,9 @@ fn main() {
 }
 ```
 
-The module checker and stdin scripting entry have different entry syntax.
-A top-level script is compiled when you run it; **Check module** does not
-convert that script into a module.
+The script header selects script parsing for the CLI, LSP and Studio.
+Without it, **Run** still uses stdin scripting, while **Check module** and
+editor analysis apply module syntax.
 
 Studio serializes its own saves and compares the disk revision with the
 revision you opened before replacing a file. A detected external edit
