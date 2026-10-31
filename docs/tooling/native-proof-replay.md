@@ -108,6 +108,17 @@ all abstract states. Clock divisibility needs a commuting phase action and a
 proved closed world clock. Relating its period to a unit-group order requires a
 separate group and implementation-correspondence argument.
 
+[WorldDescent](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/WorldDescent.lean)
+includes the source environment in the concrete state. A witness requires
+coverage of the declared world, agreement of completed actions with its
+transitions, and preservation of every read. It therefore transports all world
+action relations, including identity actions, to the observer. Dependence on
+external inputs can be valid when those inputs respect this contract. An
+absolute-age read cannot descend to a repeating phase if two ages with that
+phase have different read values. Clock divisibility additionally requires a
+proved phase increment and actual world closure; an internal program cycle
+alone supplies neither.
+
 These are Lean model proofs. They do not certify an arbitrary executable,
 a learned representation, acquisition within a budget or correspondence to an
 external world. They are not additional source-proof tactics or an automatic
@@ -220,6 +231,16 @@ preserve the frozen alphabet, child-to-parent association, old counts, sample
 multiplicity and admission behavior. Machine-integer overflow, arbitrary-size
 arithmetic costs, suspension and allocation remain separate obligations. The
 finite comparator remains an independent validation oracle.
+
+[ExactPackets](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ExactPackets.lean)
+proves that complete factor multiplicities can be grouped into exact rational
+powers. Regrouping must preserve every original factor and its multiplicity.
+Common exponents can be cancelled in a quotient when the shared factor is
+strictly positive; absolute probabilities remain separate. These laws assume
+one fixed model throughout the calculation. Equal probability factors do not
+make observation positions interchangeable: count-bank updates must retain
+their full keys. Native enumeration, integer limits, execution costs and
+publication after successful completion require separate correspondence checks.
 
 ## Program translation and resource budgets
 
@@ -460,6 +481,23 @@ supplies an arithmetic contract for transporting delayed analysis; it does not
 establish native scheduling progress, implementation correspondence or a physical
 world cycle.
 
+The [compiler-backed arithmetic replay](https://github.com/verum-lang/verum/blob/main/verification/external/rust_mir/README.md)
+connects a frozen native transport implementation to this model. It compiles
+the actual selected Rust source to MIR, translates its supported unsigned
+operations and control flow, and checks the resulting arithmetic with Lean.
+The proof covers all 64-bit states satisfying the lasso invariant and arbitrary
+logical elapsed counts. Overflow guards, division-by-zero checks and the
+original membership failure remain explicit. Native boundary checks and
+separately compiled semantic mutations supplement the universal proof.
+
+This adapter supports a restricted acyclic scalar subset and rejects unsupported
+instructions. The Rust compiler, reviewed source selection and MIR translator
+remain trusted frontend components; the Lean kernel checks the translated
+proof. This supplementary result has no native Verum certificate yet. It does
+not certify Rust machine code, general foreign programs or the callers that
+advance and consume the summary. Timeouts and tool failures remain
+inconclusive, and cannot satisfy a semantic rejection control.
+
 ## Canonical construction partitions
 
 `VerumExternalReplay/ArrivalSlabs.lean` partitions every nonempty finite tuple
@@ -608,11 +646,25 @@ between samples and is not an instantaneous allocation guarantee. Deployments
 requiring a hard aggregate memory boundary must additionally constrain the
 worker service at the OS or container level.
 
-These policies govern admission and process execution. Native substitution
-normalization still has an internal head-reduction ceiling and can return an
-unfinished conversion as a mismatch; resumable normalization aligned with the
-normalization-by-evaluation checker is not implemented. Structural limits alone
-do not bound normalization cost. Untrusted input must use isolated replay.
+Native substitution normalization has an internal reduction budget. Exhaustion
+propagates as `resource_exhausted`; the checker never returns the unfinished term
+as a normal form or reports it as a type mismatch. Independent Lean replay also
+propagates exhaustion explicitly. Its recursive-depth budget and Rust's cumulative
+budget measure different work; neither is a normalization theorem. Structural
+limits alone do not bound normalization cost. Untrusted input must use isolated replay.
+
+Portable certificate controls require completed semantic verdicts from native
+and independent checking. Empty batteries, unsupported results, exhausted checks
+and inconsistent reports fail the gate. Differential campaigns also require
+nonempty work and at least two distinct registered checkers. Agreement between
+algorithms is regression evidence, not a proof of the kernel's soundness.
+
+Universe levels use bounded integers for compact serialization and structured
+successors for larger values. The integer width does not cap the universe
+hierarchy. Both native algorithms and independent Lean replay check ordinary
+formation at these levels, including the kind of the claimed type, without
+overflow exemptions. The Lean successor theorem proves exact increment and
+strict growth; it does not establish the soundness of the entire level normalizer.
 
 ## Scope of the evidence
 
