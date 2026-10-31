@@ -217,6 +217,37 @@ Run, Check and Prove apply to `.vr` sources; supporting text uses plain-text
 editing without Verum diagnostics. Hidden paths, parent traversal, binary
 content and symlinks are refused.
 
+## Inspect CBGR runtime observations
+
+Choose **Run with CBGR diagnostics** in the command palette, or enable
+**Capture CBGR dispatch failures** in Execution options. The command can have
+its own binding in Keyboard shortcuts. The reviewed agent tool `verum_run`
+accepts the same `runtime_diagnostics: true` option and returns the same receipt.
+Use a Verum executable that supports `--runtime-report`.
+
+The operation retains a bounded report of CBGR errors returned by that
+interpreter's table dispatcher. Inspect the failure kind, register or opaque
+address, generation or epoch values when available, function and bytecode
+location. Counters remain decimal strings so JSON readers do not round them.
+The report states whether CBGR checks were enabled when capture started.
+At most 256 dispatch observations are retained; a full capture reports dropped
+observations explicitly. One failure can appear at several call boundaries.
+
+The report must match both the operation ID and submitted source hash.
+Missing, malformed or mismatched reports remain unavailable. They cannot turn
+into an empty successful capture. These are diagnostic records from a trusted
+local process, not tamper-resistant certificates for hostile programs.
+
+**Reveal source line** is available only when an exact source-map entry refers
+to the compiler's captured entry source and the editor still has that revision.
+The CLI's synthetic script header is accounted for. Dependencies, missing maps
+and cached bytecode without entry-source identity remain bytecode observations;
+Studio does not guess a source location.
+
+This capture does not trace allocation lifetimes, successful reference checks,
+other interpreter instances, or native/AOT execution. An empty capture means
+no covered CBGR error was observed; it is not a proof of memory safety.
+
 ## Inspect proof evidence
 
 Open the identity example, select declaration `identity`, and choose

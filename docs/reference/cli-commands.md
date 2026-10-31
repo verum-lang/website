@@ -72,6 +72,19 @@ Flags:
 - `--release`.
 - `--timings`.
 - Arguments after `--` are forwarded to the program.
+- `--runtime-report FILE` — write bounded CBGR dispatch observations; requires
+  `--interp` and a source file, stdin (`-`) or expression (`-e`), not a project run.
+  The output must be a new file; existing files and symlinks are refused.
+- `--runtime-run-id ID` — optional invocation identity for `--runtime-report`;
+  otherwise a UUID is generated. Accepts 1–128 ASCII letters, digits, `-`, `_` or `.`.
+
+The runtime report identifies submitted source bytes and the CLI's prepared
+source separately. For `-e`, submitted source is the generated `print` statement.
+Compiler refusal leaves observations unavailable; terminating the process may
+leave an incomplete report. Consumers must check schema, run identity and source
+hash before using it. See [Studio runtime observations](../tooling/studio.md#inspect-cbgr-runtime-observations)
+for capture limits and source navigation. Runtime observations do not establish
+memory safety for unexecuted paths.
 
 ### `verum check [PATH]`
 
