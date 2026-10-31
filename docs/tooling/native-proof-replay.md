@@ -350,6 +350,22 @@ concern immutable IDs and the mathematical partition; they do not establish
 native overflow handling, scheduler fairness, resource bounds or correctness of
 the generated programs. Empty tuples require a separate nullary-constructor case.
 
+## FIFO service with resumable work
+
+`VerumExternalReplay/ResumableFifo.lean` extends the shared FIFO service model
+with held-head microsteps. Arrivals append while the selected owner remains at
+the head; a completed quantum removes that owner or requeues it after arrivals
+already admitted. Work or storage refusal preserves the queue and does not
+count as completed service.
+
+An owner already in a finite queue receives completed service within one quantum
+per initial predecessor plus its own, provided each intervening quantum has a
+finite completion witness. Applying this premise requires retained storage,
+eventually usable work and storage grants, finite frozen inputs and terminating
+primitive callbacks. Arbitrary pause prefixes provide no service guarantee.
+The bound counts completed quanta; it supplies no fixed latency, guaranteed
+candidate acceptance, unbounded retention in fixed memory or Rust refinement.
+
 ## Reserving evidence before computation
 
 A deferred computation must retain the declaration that determined its evidence
