@@ -367,6 +367,20 @@ concern immutable IDs and the mathematical partition; they do not establish
 native overflow handling, scheduler fairness, resource bounds or correctness of
 the generated programs. Empty tuples require a separate nullary-constructor case.
 
+[WeightedOrdinals](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/WeightedOrdinals.lean)
+proves ranks for ordered alternative blocks and Cartesian instruction words.
+An alternative occupies `pool^arity × product(child cardinalities)` names.
+Primitive and already captured call alternatives have child weight one; an
+empty child family makes its whole alternative block empty. Selecting only a
+flat subset preserves the original catalogue's full weighted radices.
+
+The laws establish coverage, injectivity and rank bounds, the arithmetic step
+`rank′ = rank × radix + digit`, and disjoint cumulative length blocks including
+output selection. Preceding addresses need not be enumerated. Child counts
+must be exact: saturated lower bounds do not determine an ordinal. Applying
+these laws to a runtime additionally requires the same immutable catalogue,
+factor ownership and ordering as its native enumeration and encoding.
+
 ## FIFO service with resumable work
 
 `VerumExternalReplay/ResumableFifo.lean` extends the shared FIFO service model
