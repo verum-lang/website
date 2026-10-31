@@ -196,6 +196,13 @@ parent-likelihood multiplier is
 Consequently, a first observation has parent-likelihood multiplier one and
 KT multiplier `1 / K`.
 
+The same multiplier can be factored as `(n + 1) / (N + 1)` times
+`((n + 1) / n)^n` times `(N / (N + 1))^N`. The exact equality and positivity
+of its stages are proved. A zero exponent skips its stage before constructing
+the base: `n = 0` would otherwise create a zero denominator, and `N = 0` a
+zero numerator that a positive-ratio cursor must refuse. The factorization
+specifies a value, not an arithmetic work or storage bound.
+
 Both scores retain child KT in the numerator. Compression multiplies by the
 selected child's KT factor divided by its parent's KT factor; the predictive
 score divides by the parent-likelihood factor instead. The selected counts are
