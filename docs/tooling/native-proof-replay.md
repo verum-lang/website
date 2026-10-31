@@ -335,6 +335,21 @@ The private receipt API's affine discipline is enforced by Rust's type checker.
 A declared new run does not certify that the external world reset, and these laws
 establish neither a finite period nor a finite-factor representation of that world.
 
+## Canonical construction partitions
+
+`VerumExternalReplay/ArrivalSlabs.lean` partitions every nonempty finite tuple
+of child arrival IDs by its maximum ID and the first position attaining that
+maximum. Positions before the anchor range strictly below the maximum; positions
+after it may equal the maximum. The constructive selector proves complete
+coverage and disjointness for arbitrary arity, including repeated maxima.
+
+An exact admission predicate, such as a tree-size bound, preserves this unique
+partition for admitted tuples. This permits finite Cartesian regions to be
+scheduled incrementally without requiring a complete size layer first. The laws
+concern immutable IDs and the mathematical partition; they do not establish
+native overflow handling, scheduler fairness, resource bounds or correctness of
+the generated programs. Empty tuples require a separate nullary-constructor case.
+
 ## Reserving evidence before computation
 
 A deferred computation must retain the declaration that determined its evidence
