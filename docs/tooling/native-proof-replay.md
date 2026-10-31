@@ -312,12 +312,28 @@ corpus includes ordinary execution and explicitly labeled injected arithmetic
 boundaries at the exact unsigned 64-bit limit. Proof regressions audit axioms
 and require semantic rejection of altered observations.
 
-This is an external Lean model and finite native correspondence evidence. Origin
-names represent allocation identity observed by the native exporter; numeric
-timestamp equality alone is insufficient. Capture authenticity and the native
-receipt's affine API remain implementation obligations. A declared new run does
-not certify that the external world reset, and these laws establish neither a
-finite period nor a finite-factor representation of that world.
+The Lean exporter supplies finite native correspondence evidence. Complementary
+source-bound Rust checks execute the production clock methods through
+[Kani](https://model-checking.github.io/kani/usage.html), using symbolic full-width
+integers and actual standard-library `Arc` identities. They check primitive
+ownership, refused restart preservation, fresh origins, retained rejected receipts
+and terminal overflow across the inputs admitted by their harnesses. Required
+reachability cases exercise arithmetic boundaries and refusal branches; deliberately
+broken guards, origin checks and overflow behavior must produce counterexamples.
+
+`verification/external/kani/rust_replay.py` retains exact source bytes, explicit
+source selections, harnesses, toolchain identities and raw verification results.
+It rejects missing obligations, unreachable contract assertions and unsatisfied
+required covers. This external symbolic result is separate from a Verum or Lean
+kernel certificate. Source selection and harness assumptions remain reviewable
+parts of the contract; a source hash does not prove a specification adequate.
+
+These primitive checks use sequential Rust semantics and trust the compiler,
+standard-library/allocator model and solver. They do not verify concurrent
+interleavings, complete organism caller composition or capture authenticity.
+The private receipt API's affine discipline is enforced by Rust's type checker.
+A declared new run does not certify that the external world reset, and these laws
+establish neither a finite period nor a finite-factor representation of that world.
 
 ## Reserving evidence before computation
 
