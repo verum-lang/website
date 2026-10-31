@@ -376,6 +376,12 @@ and terminal overflow across the inputs admitted by their harnesses. Required
 reachability cases exercise arithmetic boundaries and refusal branches; deliberately
 broken guards, origin checks and overflow behavior must produce counterexamples.
 
+The executable [native clock regression](https://github.com/verum-lang/verum/blob/main/verification/external/kani/check_native_clock.py)
+also checks that successful consumption retains the exact edge in `Applied`,
+that terminal evidence cannot produce a tick successor, and that an admitted
+restart invalidates points retained from the old origin. Its production source
+bytes are matched to the same native build receipt used by the trace corpus.
+
 `verification/external/kani/rust_replay.py` retains exact source bytes, explicit
 source selections, harnesses, toolchain identities and raw verification results.
 It rejects missing obligations, unreachable contract assertions and unsatisfied
@@ -415,6 +421,28 @@ both receipts and their input, and that actual observer evaluation implements
 the phase factor. Frozen examples alone cannot discharge those obligations.
 The laws establish neither a physical world period nor automatic discovery of
 a suitable factor.
+
+`verification/external/lean/check_source_cycle_export.py` joins native VM
+preparation and commit receipts with the captured dispatch, consumed physical
+receipt and applied clock transition. It checks complete carrier values and
+execution reports, exact allocation identities, public inspection, pending
+halves, and restart preservation. A wrong action cannot become a valid pair
+merely because an autonomous update produces the same successor value.
+
+For supported primitive and lexical-call programs, the adapter independently
+checks the entire eager input footprint and proves execution agreement under
+changes to excluded external inputs. An unused external read still prevents
+this certificate. The exported autonomy flag alone supplies no proof. The
+argument uses fixed primitive semantics and independently valid bindings;
+foreign effects, capture authenticity and complete caller coverage remain
+implementation obligations.
+
+Delayed membership replay derives elapsed updates from the recorded commit
+chain and checks its bounded summary and final carrier index. It does not infer
+history from the summary. Native work receipts must conserve their grant;
+execution reports use explicit verification budgets, without claiming to
+reconstruct the native resource debit. Omitted prefixes and synthetic controls
+remain explicit evidence scopes.
 
 [BoundedLasso](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/BoundedLasso.lean)
 proves how a delayed membership result can follow a closed deterministic
