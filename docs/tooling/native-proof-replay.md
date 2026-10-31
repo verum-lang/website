@@ -700,6 +700,9 @@ removing an available prefix subtracts exactly that amount, preserves valid wire
 literals, and restores the original denotation when the prefix is added back.
 The availability condition is essential: excess removal is not justified by
 truncated natural-number subtraction.
+Maximum flattening and reassembly are total functions in the Lean checker.
+Their proofs preserve the complete finite maximum, including empty input and
+zero removal, and retain valid wire syntax under valid-input conditions.
 These laws do not establish the soundness of the entire level normalizer or
 type checker.
 

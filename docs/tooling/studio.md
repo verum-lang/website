@@ -45,7 +45,7 @@ rails with file and agent status, and Results into a summary strip. Select a
 rail or the Results arrow to restore it. Drag a divider to resize a panel;
 with the divider focused, use the arrow keys, Home or End, or Enter to collapse.
 Panel sizes and collapse preferences are saved in this browser.
-The header provides project search, panel toggles, theme switching and Settings.
+The header provides the command palette, panel toggles, theme switching and Settings.
 Hover an action icon or focus it with the keyboard to see its label. The theme
 button cycles through System, Light and Dark directly; System follows your
 operating-system preference.
@@ -56,15 +56,58 @@ use the bottom navigation to switch panes. In short windows, expanding Results
 uses the central area; collapsing it returns to the editor. Scrollbars remain
 subtle at rest and appear during interaction.
 
-| Action | Shortcut |
+## Keyboard commands
+
+Open the **Command palette** with Command/Ctrl + Shift + P or its header icon.
+Search by translated command name or stable command identifier, use Up/Down to
+select, and Enter to execute. Escape closes the palette and restores focus.
+Unavailable commands remain visible but cannot execute. Palette commands and
+toolbar buttons use the same actions and availability checks.
+
+| Action | Default shortcut |
 | --- | --- |
+| Command palette | Command/Ctrl + Shift + P |
+| Keyboard shortcuts | F1 |
+| Settings | Command/Ctrl + Comma |
 | Find a project file | Command/Ctrl + P |
 | Toggle Explorer | Command/Ctrl + B |
 | Toggle Collaborator | Command/Ctrl + Shift + B |
 | Toggle Results | Command/Ctrl + J |
+| Focus editor / collaborator / results | Alt + 1 / 2 / 3 |
 | Save source | Command/Ctrl + S |
-| Run source | Command/Ctrl + Enter |
-| Check module | Command/Ctrl + Shift + Enter |
+| Run source, with the editor focused | Command/Ctrl + Enter |
+| Check module, with the editor focused | Command/Ctrl + Shift + Enter |
+| Check logical declaration, with the editor focused | Alt + Shift + Enter |
+| Find in source | Command/Ctrl + F |
+| Go to line | Alt + G |
+| Go to definition | F12 |
+| Request completion | Ctrl + Space |
+| Send agent message, with the composer focused | Command/Ctrl + Enter |
+
+Open **Settings → Keyboard shortcuts** or press F1 to search, edit or reset
+bindings. Enter a combination such as `Mod+Shift+K` or `F6`, then press Enter
+in that field or select its Apply icon. `Mod` follows the platform: Command on
+macOS and Ctrl elsewhere. `Ctrl` and `Meta` select explicit modifiers;
+`Alt` and `Shift` can qualify a key. Punctuation uses physical key names such
+as `Slash` or `Comma`. Bindings follow key positions across keyboard layouts.
+An empty binding disables the shortcut; reset restores its default. Original
+Studio combinations remain reserved after remapping so they do not unexpectedly
+invoke a browser action such as Save Page.
+
+Conflicting Studio bindings in overlapping contexts are rejected. The editor
+and agent composer can share a shortcut because their input contexts are
+separate. Core editor commands, including undo, redo, search and completion,
+participate in this registry; their previous bindings stop dispatching after
+remapping. Native text selection, cursor movement and the remaining editor
+editing shortcuts continue to work. Custom bindings take precedence over those
+editor defaults. Browser and operating-system reservations can still prevent
+some combinations from reaching the page.
+
+Preferences are stored in this browser. Tooltips and accessibility shortcut
+hints reflect the active bindings. Dialogs and input-method composition suspend
+workspace dispatch. Tab moves between controls; use arrows in the file tree,
+result tabs and focused dividers. Escape followed by Tab lets you leave the
+editor without inserting indentation.
 
 ## Navigate a project and review changes
 
@@ -99,6 +142,11 @@ The reviewed agent tools `verum_files` and `verum_changes` use these same direct
 path-search and Git services. Filesystem discovery does not establish compiler
 analysis or proof coverage. Verum source proposals retain their source-only
 capability and revision check.
+
+Opening, reloading or creating a document checks that the current draft has
+not changed while a read or confirmation was pending. If you keep typing,
+Studio keeps that draft and announces that the transition must be retried.
+Saving a draft also preserves edits made while the save request is in flight.
 
 ## Choose an interface language
 
