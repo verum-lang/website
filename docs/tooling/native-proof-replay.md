@@ -366,6 +366,21 @@ primitive callbacks. Arbitrary pause prefixes provide no service guarantee.
 The bound counts completed quanta; it supplies no fixed latency, guaranteed
 candidate acceptance, unbounded retention in fixed memory or Rust refinement.
 
+`VerumExternalReplay/WorkDrain.lean` proves accounting for an outer service
+visit using the callback's existing work grant. A positive grant is passed to
+the callback unchanged; its remaining work must not increase. If it spends
+nothing, the handoff consumes one unit. Otherwise there is no extra charge.
+The exact visit cost is `max(1, native work spent)`, with a strictly smaller,
+nonnegative remainder. This outer charge does not rebill unpaid phase changes
+inside a callback.
+
+For any admitted finite sequence, visit costs plus the final remainder equal
+the original grant. Both their sum and the number of visits are bounded by that
+grant; adjoining rounds preserves the equality. Zero grants admit no visits.
+The administrative overhead can vary with grant partitioning. These arithmetic
+laws do not establish callback termination, ownership preservation or native
+implementation correspondence.
+
 ## Reserving evidence before computation
 
 A deferred computation must retain the declaration that determined its evidence
