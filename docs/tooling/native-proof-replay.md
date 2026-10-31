@@ -185,6 +185,35 @@ finite-counter overflow handling, allocation and refusal precedence, and evidenc
 lifetime. Pending execution state remains a separate obligation. These are Lean
 replay laws, not additional Verum source-proof tactics or a runtime cache.
 
+## Online exact score updates
+
+[OnlineScore](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/OnlineScore.lean)
+proves incremental updates directly from the existing finite categorical
+scorer. For a fixed alphabet of size `K`, old context total `N` and old selected
+symbol count `n`, the KT multiplier is `(2n + 1) / (2N + K)`. The empirical
+parent-likelihood multiplier is
+`((n + 1)^(n + 1) / n^n) × (N^N / (N + 1)^(N + 1))`, with `0^0 = 1`.
+Consequently, a first observation has parent-likelihood multiplier one and
+KT multiplier `1 / K`.
+
+Both scores retain child KT in the numerator. Compression multiplies by the
+selected child's KT factor divided by its parent's KT factor; the predictive
+score divides by the parent-likelihood factor instead. The selected counts are
+read before incrementing. The full-bank theorem preserves every other cell,
+and a newly allocated empty child contributes one before its first observation.
+A multirow law transports the correspondence through an existing admitted
+update, preserving positive denominators. Refusals remain sticky through the
+shared continuation semantics; discarding a rejected row cannot produce a
+successful score.
+
+These exact rational laws permit a native implementation to avoid copying the
+whole bank merely to recompute a score. They do not eliminate the retained
+counts, establish a memory bound or certify a native migration. An adapter must
+preserve the frozen alphabet, child-to-parent association, old counts, sample
+multiplicity and admission behavior. Machine-integer overflow, arbitrary-size
+arithmetic costs, suspension and allocation remain separate obligations. The
+finite comparator remains an independent validation oracle.
+
 ## Program translation and resource budgets
 
 `verification/certificates/check_resource_transfer.py` checks exact translations
