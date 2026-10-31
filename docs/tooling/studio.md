@@ -28,6 +28,11 @@ Open the local URL printed by the process. The URL contains the session
 credential; keep it private. The editor assets are bundled, so editing and
 local execution do not need a CDN or a running Node.js service.
 
+Without a token, Studio shows a connection page. The workspace opens only after
+the server accepts the credential; Escape does not bypass that step. The token
+is stored in the current browser tab and checked on every API request. Rejected
+session access locks the workspace again while preserving your editor draft.
+
 CLI builds containing Studio also provide `verum studio DIRECTORY`, with
 `verum playground` as an alias. `--codex` selects the Codex executable;
 `--proof` selects the source proof worker. The default executable names
