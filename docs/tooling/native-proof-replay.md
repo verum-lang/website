@@ -133,6 +133,23 @@ evidence does not count as executing the program again: an adapter must account
 for actual shared execution and recipient admission work separately. These
 proofs do not install a runtime cache or certify an arbitrary foreign adapter.
 
+[ReadReuse](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ReadReuse.lean)
+connects this footprint to the existing input-binding semantics. Its computed
+certificate excludes state only when no eagerly executed input operand refers
+to a state slot. An unused instruction that can fail still contributes to the
+footprint. Both recipients must have valid bindings; absence is never replaced
+with a default value. Successful completion and selected output, together with
+agreement on relevant inputs, prove the same value in the existing pure typed
+lowering.
+
+This permits reasoning about sharing a successful read value across distinct
+observer candidates. Each candidate retains its own update domain, cut, name,
+price and evidence. Equal read values do not transfer a `Reading` capability
+between cuts, and a later update failure belongs to its own candidate. Resource
+refusal cannot be cached as semantic undefinedness. The theorem supplies no
+runtime cache or permission to bypass recipient admission; implementing reuse
+still requires native ownership and accounting correspondence.
+
 ## Exact count-bank continuation
 
 The Lean module [CountBank](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/CountBank.lean)
