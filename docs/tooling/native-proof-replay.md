@@ -135,12 +135,14 @@ proofs do not install a runtime cache or certify an arbitrary foreign adapter.
 
 [ReadReuse](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ReadReuse.lean)
 connects this footprint to the existing input-binding semantics. Its computed
-certificate excludes state only when no eagerly executed input operand refers
-to a state slot. An unused instruction that can fail still contributes to the
-footprint. Both recipients must have valid bindings; absence is never replaced
-with a default value. Successful completion and selected output, together with
-agreement on relevant inputs, prove the same value in the existing pure typed
-lowering.
+certificate can exclude state or selected external ports only when no eagerly
+executed input operand refers to them. An unused instruction that can fail
+still contributes to the footprint. A read at a fixed cut and query can retain
+its value while an excluded revealed-prefix port changes; prefix-dependent
+reads do not satisfy that certificate. Both recipients must have valid bindings,
+and all relevant ports must agree, including whether a value is present.
+Successful completion and selected output then prove the same value in the
+existing pure typed lowering.
 
 This permits reasoning about sharing a successful read value across distinct
 observer candidates. Each candidate retains its own update domain, cut, name,
