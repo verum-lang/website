@@ -150,10 +150,21 @@ certificate can exclude state or selected external ports only when no eagerly
 executed input operand refers to them. An unused instruction that can fail
 still contributes to the footprint. A read at a fixed cut and query can retain
 its value while an excluded revealed-prefix port changes; prefix-dependent
-reads do not satisfy that certificate. Both recipients must have valid bindings,
-and all relevant ports must agree, including whether a value is present.
-Successful completion and selected output then prove the same value in the
-existing pure typed lowering.
+reads do not satisfy that certificate. Constructor-valid binding slots and the
+checked input width imply successful binding in the pure value model; binding
+success need not be assumed separately. All relevant ports must agree, including
+whether a value is present. With equal input widths, the same interface and the
+same starting budget, the model also preserves the complete admission result,
+execution report and resulting budget, including refusals. Successful completion
+and selected output then prove the same value in the existing pure typed lowering.
+
+This binding model projects values; it does not execute foreign cloning code.
+A native implementation may clone every binding slot, including unused ports.
+An arbitrary Rust `Clone` implementation can panic or change observable state,
+and a `Copy` bound alone does not prevent a custom `Clone` implementation.
+Instruction independence therefore does not establish full native call
+independence. Cloning, interface comparison, allocation and captured traces
+require their own implementation correspondence.
 
 This permits reasoning about sharing a successful read value across distinct
 observer candidates. Each candidate retains its own update domain, cut, name,
@@ -665,8 +676,10 @@ Use `--run-id` with a fresh caller-generated UUID for automated workflows; never
 reuse it on a retry. Publication uses atomic replacement. Interrupted work stays
 `running` or `failed`, and per-run receipts live beside the report in its `.runs`
 directory. Consumers use `certificate_runner.require_replay_report` with the
-expected run ID, request manifest and process exit code. A path, an old receipt,
-or an exit code alone cannot establish that the requested replay completed.
+expected run ID, request manifest and process exit code. Request comparison
+preserves exact JSON values at every depth: `true`, `1` and `1.0` cannot substitute
+for one another. A path, an old receipt, or an exit code alone cannot establish
+that the requested replay completed.
 
 Legacy CLI audit artifacts have no such input/run binding. `verum audit --bundle`
 records current gate execution status and executable identity, and does not load
@@ -682,6 +695,11 @@ overflow exemptions. The Lean successor theorem proves exact increment and
 strict growth. The actual compact-offset implementation is structurally total;
 Lean proves exact denotation, preservation of bounded wire literals and
 cancellation of a common offset under the declared wire-domain conditions.
+Prefix extraction and removal are structurally total as well. Lean proves that
+removing an available prefix subtracts exactly that amount, preserves valid wire
+literals, and restores the original denotation when the prefix is added back.
+The availability condition is essential: excess removal is not justified by
+truncated natural-number subtraction.
 These laws do not establish the soundness of the entire level normalizer or
 type checker.
 
