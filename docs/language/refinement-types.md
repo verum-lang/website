@@ -206,6 +206,28 @@ fn abs(x: Int) -> Int { self >= 0 }
 The `self` in the return type refinement refers to the return value;
 `result` can also be used in the `ensures` clause.
 
+## Automatic implication checks
+
+The subtype checker can prove implications between direct `Int` refinements
+without calling a solver. It supports Boolean literals, conjunctions,
+disjunctions and comparisons of the refinement's subject with an unsuffixed
+integer literal representable by `Int`. It preserves the recorded binding:
+`self` and `it` name the implicit subject, while an explicit binder names only
+its own subject.
+
+This checker constructs a bounded Boolean derivation and checks its certificate
+against the exact expressions and implication direction. Numeric weakening uses
+integer comparison rules without overflowing at the endpoint values. Calls,
+free variables, arithmetic on the subject, custom comparisons and floating-point
+predicates require other verification mechanisms; they do not become valid
+because their source text looks similar.
+
+An unproved implication or an exhausted search budget supplies no evidence.
+In particular, knowing that a value has type `Int` does not establish an
+arbitrary refinement of `Int`. This automatic path is separate from SMT-backed
+obligations and does not establish that every language position enforces its
+refinements; the limitations below still apply.
+
 ## Relation to SMT
 
 Refinements are:
