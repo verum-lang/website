@@ -274,11 +274,20 @@ contracted helpers. A successful result lists the checked function contracts
 and call obligations with their owners and callees. Expand **Full checker
 report** to inspect the exact source ranges and proof bundle.
 
+Use **Reveal proof location** beside a declaration, obligation or located
+diagnostic to select its exact source. Call obligations reveal the call site;
+function contracts reveal their declaration. Navigation checks the source and
+range hashes and preserves Unicode character boundaries. Changing the editor
+revision disables old locations; an edit made while navigation is resolving
+also prevents the old range from selecting new text.
+
 Each result records its selected profile, declaration and source revision.
 Editing the buffer marks an older result as belonging to a different revision.
 Studio validates the worker response against that request, the current source
 elaborator and native checker identities, and complete, consistent native
-evidence. A zero exit code or a `verified` status field alone is insufficient.
+evidence. Declaration and dependency ranges must hash to the captured source;
+call ranges must lie inside their captured owning declaration and refer to a
+captured callee. A zero exit code or a `verified` status field alone is insufficient.
 A retained success that lacks this binding, including evidence from another
 checker version, becomes inconclusive when restored. The configured worker and
 local evidence storage remain trusted; these consistency checks are not digital

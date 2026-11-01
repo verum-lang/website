@@ -262,6 +262,29 @@ refusal cannot be cached as semantic undefinedness. The theorem supplies no
 runtime cache or permission to bypass recipient admission; implementing reuse
 still requires native ownership and accounting correspondence.
 
+## Domain support and retained scans
+
+[DomainSupport](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/DomainSupport.lean)
+separates general support laws from a finite exported memo transition model.
+The general laws preserve support under pointwise-equal outputs, combine
+separate case predicates by conjunction, and compose a partially accumulated
+scan with its remaining suffix. Reuse requires an exact domain key and a
+retained entry whose value is the support of the same immutable child outputs.
+
+Intersecting **case supports** is different from intersecting domain bitsets.
+An output bitset of `3` intersects both domain `1` and domain `2`, while those
+two domains have empty intersection. Replacing the two support checks with a
+single intersected-domain check would discard a valid case.
+
+The frozen `synarc-domain-support-native-v1` replay checks captured unary memo
+steps, local cell-count changes, charged refusals and continuation states. It
+retains the scope of that export format; it does not certify replacement
+producer designs. Totals for unrecorded producer lanes are checked for
+arithmetic consistency, not reconstructed from execution. Its foreign-owner
+control concerns the existing flatten boundary. These finite observations and
+general algebraic laws do not establish scheduling, allocation behavior or a
+universal refinement of Rust code.
+
 ## Shared values in foreign exports
 
 The [acquired-observer codec](https://github.com/verum-lang/verum/blob/main/verification/external/lean/acquired_export_codec.py)
