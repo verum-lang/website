@@ -258,6 +258,28 @@ refusal cannot be cached as semantic undefinedness. The theorem supplies no
 runtime cache or permission to bypass recipient admission; implementing reuse
 still requires native ownership and accounting correspondence.
 
+## Shared values in foreign exports
+
+The [acquired-observer codec](https://github.com/verum-lang/verum/blob/main/verification/external/lean/acquired_export_codec.py)
+accepts historical value trees and the explicit `synarc.value-dag.v1` graph
+format. A `ValueDag` has root zero and a nonempty node table. Pair children
+refer to local integer node indices; other nodes use the existing strict leaf
+codecs. Every node must be reachable. Cycles, foreign indices, Boolean indices,
+nested graph nodes and unexpected fields are refused. Forward and backward
+references are valid when the graph is acyclic.
+
+Extraction uses an iterative traversal and emits one shared Lean binding per
+node, avoiding expansion into an exponentially larger tree. Node indices and
+allocation sharing are not semantic identities: sharing one leaf and allocating
+two equal leaves can represent the same value. Value equality is checked in the
+Lean model, not inferred from JSON equality. Compact extraction does not bound
+the cost of subsequent normalization or equality proofs.
+
+The periodic incumbent boundary checker validates each cut's value encoding
+while checking its boundary and ownership projection. It does not replay the
+VM's value transitions. A successful structural check therefore supplies no
+proof of those transitions or of the complete native implementation.
+
 ## Exact count-bank continuation
 
 The Lean module [CountBank](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/CountBank.lean)
