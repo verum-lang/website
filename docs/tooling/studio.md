@@ -111,7 +111,11 @@ Preferences are stored in this browser. Tooltips and accessibility shortcut
 hints reflect the active bindings. Dialogs and input-method composition suspend
 workspace dispatch. Tab moves between controls; use arrows in the file tree,
 result tabs and focused dividers. Escape followed by Tab lets you leave the
-editor without inserting indentation.
+editor without inserting indentation. Local tree and palette controls also
+respect input-method composition and exact key modifiers. Holding Enter does
+not repeatedly open files or execute palette commands; arrow navigation can
+repeat. In the tree, Alt + Enter opens a changed file's review and does nothing
+for an unchanged file.
 
 ## Navigate a project and review changes
 

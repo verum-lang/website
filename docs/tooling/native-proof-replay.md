@@ -339,18 +339,30 @@ pass. Changed producer implementations remain separate verification targets.
 The [source-derived merge proof](https://github.com/verum-lang/verum/blob/main/verification/external/rust_mir/check_constructor_merge.py)
 goes beyond these observations for the constructor's actual `merge` method.
 It compiles unchanged method and type declarations from the retained native
-sources. Compiler metadata supplies field order and nominal enum identities;
-Lean checks full-record equality for arbitrary inputs and retained fields.
+sources. Rustdoc metadata is checked against exhaustive field and variant
+witnesses compiled with the native MIR configuration: rustdoc's implicit
+`cfg(doc)` must not change the admitted layout. The selected method's MIR must
+remain identical when these witnesses are present. Lean checks full-record
+equality for arbitrary inputs and retained fields.
 The same wake model accepts an arbitrary retained frame, so the proof connects
 the implementation's reset to the model when its enabling condition holds.
 No premise assumes that the untouched fields were preserved.
+
+The birth-ticket profile also extracts the actual shared `idle` getter. Its
+result is the explicit sleeping flag; a phase name alone does not establish
+eligibility. The proof composes that getter with the reset and preserves the
+complete building-ticket, admitted-ticket, active-ticket, heap and tuple frame.
+This is a per-visit primitive result. Completion of the surrounding Rust wake
+loop is still a separate correspondence obligation.
 
 Ownership-bearing fields remain arbitrary values, rather than empty container
 substitutes. The frontend refuses operations on uninterpreted fields and retains
 writes preceding a checked-arithmetic panic. Compiled semantic mutations must
 produce counterexamples. This primitive proof assumes a valid exclusive
-reference and trusts the reviewed source selection, Rust compiler, rustdoc and
-MIR translator. It does not yet prove the surrounding heap indexing, reference
+reference and trusts the reviewed source selection, Rust compiler and MIR
+translator, including its native metadata checks. This experimental extraction
+adapter is external verification tooling, not Verum's proof kernel or a native
+Verum certificate. It does not yet prove the surrounding heap indexing, reference
 counting, wake loop, scheduler or machine code. Native allocation checks are
 separate finite controls; they do not establish those universal claims.
 
