@@ -123,7 +123,9 @@ and Home/End to reach the first or last visible entry. Typing a filename prefix
 moves focus within the visible tree. **Collapse folders** restores the root view.
 
 The file filter searches paths across the project, including closed folders.
-Results retain their folder hierarchy. Search stops after 200 matches or 50,000
+After Command/Ctrl + P, type a path and press Enter to open the first matching
+file. Down/Up moves focus to the first/last visible tree entry for further
+keyboard navigation. Results retain their folder hierarchy. Search stops after 200 matches or 50,000
 visited entries and reports truncation; refine the query to narrow the result.
 A single directory can contain at most 10,000 exposed entries. Hidden paths,
 symlinks, `target`, `node_modules` and `llvm` are excluded from navigation.
