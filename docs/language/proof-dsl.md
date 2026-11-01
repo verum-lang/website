@@ -245,6 +245,13 @@ theorem distributivity(a: Int, b: Int, c: Int)
 }
 ```
 
+A structured `proof by induction`, `proof by cases` or
+`proof by contradiction` method owns its branch proofs. Following such a
+method with more tactics is rejected: no trailing tactic may be discarded.
+Put branch evidence inside the method. Named elimination tactics without a
+case block, such as `induction path; exact(base)`, remain ordinary tactic
+sequences; support depends on the selected proof backend.
+
 ### `proof = term`
 
 A proof term — an explicit expression of the proposition's type. Used

@@ -285,6 +285,21 @@ control concerns the existing flatten boundary. These finite observations and
 general algebraic laws do not establish scheduling, allocation behavior or a
 universal refinement of Rust code.
 
+The `synarc-domain-incidence-native-v2` adapter checks a different representation:
+immutable groups of original constructor positions, keyed by exact argument
+domain. [DomainIncidence](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/DomainIncidence.lean)
+proves that grouping preserves every keyed position and its multiplicity.
+The captured plan must equal the canonical grouping of the consumed original
+positions, including their order. Expansion replay checks partial and complete
+case masks, empty-group skipping, owned child continuations, charged refusals
+and local retained-cell changes.
+
+This export describes unary constructors. It records expansion cursors and
+cell counts, but not the contents of the slab appended by Rust. Those
+observations therefore do not prove the publication write, higher-arity
+behavior or replacement producer implementations. The general grouping laws
+and the finite native observations retain these distinct scopes.
+
 ## Shared values in foreign exports
 
 The [acquired-observer codec](https://github.com/verum-lang/verum/blob/main/verification/external/lean/acquired_export_codec.py)
