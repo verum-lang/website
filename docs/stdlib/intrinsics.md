@@ -901,7 +901,6 @@ surface is still being filled in.
 | Reduction and softmax ignore `axis` when compiled ahead of time | They reduce over everything. Under the interpreter `axis` is honoured. |
 | A tensor handle carries no header | It renders as noise inside an f-string, and tensors are not reclaimed — a long-running loop grows. |
 | Element access ignores the strides of a view | Read through the base tensor rather than through a view. |
-| The script cache survives a change to the tensor wire format | Clear `~/.verum/script-cache` after upgrading, or a stale body will run. |
 
 ---
 

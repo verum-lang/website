@@ -192,10 +192,11 @@ fd2cc4b296d5bd54    2.07 MiB       11m ago  0.1.0                 …/probe/p121
 c323f83bf201e4a4    5.66 MiB       11m ago  0.1.0                 …/probe/ctrl2.vr
 ```
 
-Note the `COMPILER` column: the cache key carries the compiler
-**version**, so two compilers built from different sources at the same
-version share entries. Rebuilding the compiler does not invalidate this
-cache.
+The `COMPILER` column displays the version for inspection. Cache identity
+also includes a digest of the executable's bytes: different compiler
+binaries do not share entries merely because they report the same version.
+An identical binary copied to another path keeps the same content identity.
+If that identity cannot be read, the runner refuses to create a cache key.
 
 ## Performance impact
 

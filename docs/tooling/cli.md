@@ -754,11 +754,17 @@ verum cache gc [--max-size BYTES]  # evict LRU until under the size
 verum cache clear                # wipe everything
 ```
 
-The script-mode VBC cache lives at `~/.verum/script-cache/`. It
-is content-addressed by source + compiler version + flags, so a
-hit is always a valid reuse — there is no "stale cache" failure
-mode. `gc` evicts least-recently-accessed entries until under a
-budget; `clear` removes everything.
+The script-mode VBC cache lives at `~/.verum/script-cache/`. Its key
+includes source bytes, the executable's content digest, standard-library
+identity, compiler version and execution flags. Cache lookup also validates
+recorded source dependencies. Changing compiler bytes invalidates entries
+even if the version, file size and timestamp stay the same; copying an
+identical executable preserves its identity. The executable must remain
+unchanged while running. If its content identity cannot be read, script
+execution reports an error instead of reusing a version-only key.
+
+`gc` evicts least-recently-accessed entries until under a budget; `clear`
+removes everything.
 
 ## Health & diagnostics (`verum doctor`)
 
