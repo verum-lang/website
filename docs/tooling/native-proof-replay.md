@@ -300,6 +300,26 @@ observations therefore do not prove the publication write, higher-arity
 behavior or replacement producer implementations. The general grouping laws
 and the finite native observations retain these distinct scopes.
 
+## Append commitment and handoff observations
+
+The [append-handoff adapter](https://github.com/verum-lang/verum/blob/main/verification/external/lean/check_append_handoff_export.py)
+checks the explicit `synarc-causal-constructor-native-v4` observation format.
+It verifies that the catalogue index is committed before an expression is
+handed out, that a pending transaction retains its identity and ordinary
+scheduling cursors, and that refused steps preserve every recorded snapshot
+field. The emitted owner and outputs must match the same arrival previously
+observed by the indexer. Snapshot equality uses exact data, not digest equality
+or a producer-supplied success flag.
+
+The [general handoff laws](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/AppendHandoff.lean)
+state the conditions of the projected handoff function. They do not establish
+that every retained constructor received its wake visit: the format contains
+an `append_ready` flag but omits the raw wake cursor needed to derive that
+property independently. Hidden runtime state, allocation behavior, expression
+semantics and universal Rust correspondence require additional evidence.
+Older export formats and changed producer implementations are separate
+verification targets.
+
 ## Shared values in foreign exports
 
 The [acquired-observer codec](https://github.com/verum-lang/verum/blob/main/verification/external/lean/acquired_export_codec.py)
