@@ -85,8 +85,18 @@ toolbar buttons use the same actions and availability checks.
 | Find in source | Command/Ctrl + F |
 | Go to line | Alt + G |
 | Go to definition | F12 |
+| Format document | Alt + Shift + F |
 | Request completion | Ctrl + Space |
 | Send agent message, with the composer focused | Command/Ctrl + Enter |
+
+**Format document** uses the shared Verum LSP formatting operation and the
+configured Verum executable. It edits the current buffer without saving and
+creates one undo step. If the document changes while formatting, Studio rejects
+the stale result. Invalid ranges, overlapping edits and edits that split a
+Unicode character are rejected before any change is applied. The formatter keeps
+comments attached to the same code tokens and preserves literal spelling.
+Import sorting is skipped in files containing comments or multiline tokens.
+A formatter failure reports its cause and leaves the buffer unchanged.
 
 Open **Settings → Keyboard shortcuts** or press F1 to search, edit or reset
 bindings. Enter a combination such as `Mod+Shift+K` or `F6`, then press Enter
@@ -408,7 +418,10 @@ from the matching release. The editor, Structure view and reviewed agent tools
 share the same metadata identity and type analysis. Exported declaration types
 retain their declaring module through renamed imports, including nested references
 and generic arguments. A library’s private import spelling does not create a new
-public type. Library symbols without source text display their types and declaring
+public type. Public re-exports preserve the source declaration's owner rather
+than the archive module that contains a copied descriptor; unrelated declarations
+with the same name do not establish an identity. Library symbols without source
+text display their types and declaring
 module without a navigation target.
 A standalone server without that artifact reports analysis with builtins.
 
@@ -435,6 +448,8 @@ The reviewed agent tools `verum_analyze` and `verum_project` use this same
 service and snapshot format. Analysis can inspect submitted source without
 writing it to disk; omitting source analyzes the saved file. Language inspection
 cannot execute arbitrary LSP commands or bypass workspace path restrictions.
+The reviewed `verum_format` tool returns revision-bound edits through the same
+formatter without writing files; applying a proposal remains a separate review.
 
 MCP transport, a complete cross-module architecture graph, native-case artifact
 import, interactive debugger stepping, and durable conversation resumption are
