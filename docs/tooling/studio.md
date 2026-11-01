@@ -142,6 +142,9 @@ with the index. An untracked file shows its complete saved text. Unsaved editor
 drafts have a separate dot and are not part of either Git comparison. These
 views are read-only: Studio does not stage, commit, reset or discard Git changes.
 Status refreshes while the page is visible; **Refresh files** requests an update.
+Refresh preserves existing file rows, keyboard focus and change-review buttons.
+If a focused file disappears, focus moves to a surviving parent or neighboring
+row; an empty tree returns focus to the file filter.
 Git status and patches describe their read time, not an atomic repository snapshot.
 
 The reviewed agent tools `verum_files` and `verum_changes` use these same directory,

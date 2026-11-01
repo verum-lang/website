@@ -336,6 +336,24 @@ universal implementation correspondence require additional evidence. Success
 for this bounded export does not imply that other tests of the same producer
 pass. Changed producer implementations remain separate verification targets.
 
+The [source-derived merge proof](https://github.com/verum-lang/verum/blob/main/verification/external/rust_mir/check_constructor_merge.py)
+goes beyond these observations for the constructor's actual `merge` method.
+It compiles unchanged method and type declarations from the retained native
+sources. Compiler metadata supplies field order and nominal enum identities;
+Lean checks full-record equality for arbitrary inputs and retained fields.
+The same wake model accepts an arbitrary retained frame, so the proof connects
+the implementation's reset to the model when its enabling condition holds.
+No premise assumes that the untouched fields were preserved.
+
+Ownership-bearing fields remain arbitrary values, rather than empty container
+substitutes. The frontend refuses operations on uninterpreted fields and retains
+writes preceding a checked-arithmetic panic. Compiled semantic mutations must
+produce counterexamples. This primitive proof assumes a valid exclusive
+reference and trusts the reviewed source selection, Rust compiler, rustdoc and
+MIR translator. It does not yet prove the surrounding heap indexing, reference
+counting, wake loop, scheduler or machine code. Native allocation checks are
+separate finite controls; they do not establish those universal claims.
+
 ## Shared values in foreign exports
 
 The [acquired-observer codec](https://github.com/verum-lang/verum/blob/main/verification/external/lean/acquired_export_codec.py)
