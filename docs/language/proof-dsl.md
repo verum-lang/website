@@ -148,13 +148,13 @@ via top-level theorems that reference the implementation's concrete operations.
 
 ### `corollary` — consequences
 
-A corollary derives from a prior `theorem` or `lemma` via the `from`
-clause. The proof is then allowed to reference that theorem directly.
+A corollary states a consequence as an explicit proposition or postcondition.
+Its proof uses the same checked mechanisms as a theorem or lemma; the name
+alone introduces no assumptions or dependency on another declaration.
 
 ```verum
 corollary add_zero_right(a: Int)
     ensures a + 0 == a
-    from add_comm
 {
     proof by simp
 }
@@ -251,6 +251,22 @@ method with more tactics is rejected: no trailing tactic may be discarded.
 Put branch evidence inside the method. Named elimination tactics without a
 case block, such as `induction path; exact(base)`, remain ordinary tactic
 sequences; support depends on the selected proof backend.
+
+Proof syntax is checked without discarding supplied evidence. Strong and
+well-founded induction keep their distinct method identities; well-founded
+induction requires its `ordered_by` relation. Unknown method names are rejected.
+Nested method or term bodies used as individual structured proof steps,
+`using` modifiers and unsupported tactic configuration blocks are also rejected.
+Use ordinary typed theorem parameters for named hypotheses and state a
+corollary's conclusion explicitly; `given` and `from` clauses are not supported.
+
+Type annotations on structured proof `let` bindings are retained in the syntax
+tree. Retention is separate from verification: the legacy tactic backend
+refuses local definition and pattern-binding operations until it can check
+scope, typing and definedness. It must not turn a computed value into an
+assumed proposition or introduce an equation about an existing free name.
+The [source proof profiles](../tooling/proof-repl.md) specify the forms that can
+currently produce checked certificates.
 
 ### `proof = term`
 
