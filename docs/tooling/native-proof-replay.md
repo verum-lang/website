@@ -148,8 +148,12 @@ The source elaborator is part of the trust boundary; compiler lowering,
 executable behavior, heap ownership, scheduling and liveness require separate
 correspondence arguments. The profile refuses arithmetic, mutation, recursion,
 external calls, and attributed or context-dependent declarations. Circular
-specifications are refused together with recursive bodies. Studio's **Prove**
-action still selects the separate logical theorem profile.
+specifications are refused together with recursive bodies. In Studio, open
+**Execution options**, select **Finite function contract** under **Proof scope**,
+and enter the function name under **Proof declaration**. **Check a declaration**
+uses that exact profile; **Logical theorem** selects the separate intensional
+theorem profile. The reviewed agent tools accept the same explicit
+`proof_profile` selection.
 
 ## Reversible observations and readouts
 
@@ -273,7 +277,11 @@ node, avoiding expansion into an exponentially larger tree. Node indices and
 allocation sharing are not semantic identities: sharing one leaf and allocating
 two equal leaves can represent the same value. Value equality is checked in the
 Lean model, not inferred from JSON equality. Compact extraction does not bound
-the cost of subsequent normalization or equality proofs.
+the cost of subsequent normalization or equality proofs. In particular, a
+deep shared graph can pass structural validation while its emitted Lean
+definition exceeds the recursion or memory budget. Such a replay is
+inconclusive: structural acceptance, byte-identical re-export and smaller
+successful equality proofs cannot substitute for the unfinished semantic check.
 
 The periodic incumbent boundary checker validates each cut's value encoding
 while checking its boundary and ownership projection. It does not replay the

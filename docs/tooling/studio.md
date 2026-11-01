@@ -7,7 +7,7 @@ description: A local graphical workspace for Verum scripts, reviewed agent edits
 # Verum Studio
 
 Verum Studio opens a workspace in your browser. Edit Verum source, run a
-script, check a module, or check a logical theorem while keeping the source
+script, check a module, or check a theorem or finite function contract while keeping the source
 and results visible together.
 
 ## Start a workspace
@@ -81,7 +81,7 @@ toolbar buttons use the same actions and availability checks.
 | Save source | Command/Ctrl + S |
 | Run source, with the editor focused | Command/Ctrl + Enter |
 | Check module, with the editor focused | Command/Ctrl + Shift + Enter |
-| Check logical declaration, with the editor focused | Alt + Shift + Enter |
+| Check a declaration, with the editor focused | Alt + Shift + Enter |
 | Find in source | Command/Ctrl + F |
 | Go to line | Alt + G |
 | Go to definition | F12 |
@@ -252,8 +252,9 @@ no covered CBGR error was observed; it is not a proof of memory safety.
 
 ## Inspect proof evidence
 
-Open the identity example, select declaration `identity`, and choose
-**Prove**:
+Open the identity example. In **Execution options**, select **Logical theorem**
+under **Proof scope**, enter `identity` under **Proof declaration**, and choose
+**Check a declaration**:
 
 ```verum
 theorem identity(A: Type, x: A): A proof = x;
@@ -265,11 +266,29 @@ Changing the proof term from `x` to `A` produces a rejection. This is a
 logical proof judgment; it does not establish runtime implementation
 correspondence or empirical usefulness.
 
-Each result identifies its source revision. Editing the buffer marks an
-older result as belonging to a different revision. Inspect the detailed
-proof report for the declaration, source span, checked judgment, and
-diagnostic. A worker crash or missing report is inconclusive; exhausting
-a resource limit is not a rejected theorem.
+To check an ordinary function body and its contracts, select **Finite function
+contract** and name the function. The
+[finite source profile](./native-proof-replay.md#finite-source-function-contracts)
+checks Boolean and fieldless-variant functions, including guarded calls to
+contracted helpers. A successful result lists the checked function contracts
+and call obligations with their owners and callees. Expand **Full checker
+report** to inspect the exact source ranges and proof bundle.
+
+Each result records its selected profile, declaration and source revision.
+Editing the buffer marks an older result as belonging to a different revision.
+Studio validates the worker response against that request, the current source
+elaborator and native checker identities, and complete, consistent native
+evidence. A zero exit code or a `verified` status field alone is insufficient.
+A retained success that lacks this binding, including evidence from another
+checker version, becomes inconclusive when restored. The configured worker and
+local evidence storage remain trusted; these consistency checks are not digital
+signatures or an independent proof of the worker's implementation.
+
+Unsupported source constructs remain distinct from rejected contracts. A worker
+crash, mismatched or missing report is inconclusive; exhausting a resource limit
+is not a rejected theorem. Proof artifacts have the source worker's output
+budget, separate from ordinary process text, so complete checked bundles are
+not truncated to the console stream limit.
 
 ## Work with an agent
 
@@ -285,7 +304,9 @@ Authentication remains in Codex's supported login flow.
 
 The conversation includes the selected source and whether it contains
 unsaved edits. The agent can request reads, propose a complete source
-replacement, run a script, check a module, or check a theorem. Review the
+replacement, run a script, check a module, or check a theorem or finite function
+contract. The `verum_plan` and `verum_proof` tools share Studio's `proof_profile`
+selection and request validation. Review the
 request before allowing it. Source replacements show the proposed content
 and require the expected disk revision. Built-in shell requests are not
 accepted by Studio; execution tools use Verum.
