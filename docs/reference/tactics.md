@@ -105,7 +105,13 @@ theorem refl<T>(x: T): Path<T>(x, x)
 ### `apply(lemma)`
 
 Applies a lemma or hypothesis. Matches the goal against the lemma's
-conclusion; remaining premises become new subgoals.
+conclusion; remaining premises become new subgoals. The tactic backend
+substitutes the same inferred arguments into the conclusion and every premise.
+Only declared lemma parameters can be inferred; function and predicate names
+remain fixed. Explicit arguments retain their expression structure and must
+match the declared arity. They cannot be replaced by different inferred values
+to make a goal fit. Existential binders are not universally instantiable lemma
+parameters.
 
 ```text
 // Goal: 0 <= n * n
@@ -130,7 +136,9 @@ containers, and standard-library lemmas.
 
 Parameterised form: `simp(on = [lemma1, lemma2])` restricts to a lemma
 set; `simp(off = [lemma3])` excludes specific lemmas from the default
-set.
+set. The tactic backend refuses `simp at hypothesis` until it can check the
+transformation of that particular hypothesis; it does not substitute unfolding
+or goal simplification for the requested operation.
 
 ### `unfold(name)`
 

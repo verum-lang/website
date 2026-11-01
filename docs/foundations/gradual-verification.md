@@ -194,28 +194,25 @@ Historically an alias of `thorough`; today a **distinct** strategy:
 
 ### `certified`
 
-**Intent**: "prove it, and have the proof independently re-checkable".
+**Intent**: require independently checkable evidence for an exact statement.
 
-- Runs `thorough`.
-- **In addition**, cross-verifies the proof term with an orthogonal
-  technique (a different solver, a small independent kernel, a
-  hand-written tactic invariant).
-- Refuses to succeed if any axioms are transitively used.
-- Produces a `.verum-cert` archive consumable by external kernels
-  (Coq, Lean, Dedukti, Metamath).
-- Cost: 3× `formal`. The certificate adds build-artefact size.
-- Use: security-critical code (crypto, consensus, auth boundaries),
-  code going to certification (DO-178C, IEC 62304), code being
-  audited externally.
+A strategy name alone does not supply that evidence. Inspect the report's
+actual evidence kind and checker outcome. Agreement between solvers, a
+structural certificate envelope, or a source provenance record is not a native
+proof term. There is no general foreign certificate archive emitted by
+`verum check --export-proofs`.
 
-```verum
-@verify(certified)
-fn verify_signature(msg: &[Byte], sig: &Signature, pk: &PublicKey) -> Bool
-    where ensures result => signature_valid(msg, sig, pk)
-{ ... }
-```
+The [native replay profiles](/docs/tooling/native-proof-replay) provide a
+concrete checking path for their admitted judgments. Their exact source
+profiles distinguish dependent logical theorems from finite function-body
+contracts. Successful replay requires the actual statement and certificate to
+pass both native algorithms under the selected foundation and limits.
+Unsupported statements and resource exhaustion are explicit non-successes.
 
-Export: `verum check --export-proofs` produces the certificate.
+[Foreign project proof export](/docs/verification/proof-export) remains
+unavailable until the complete typed source statement and proof can be carried
+through the translation. A verification label does not establish regulatory
+certification or correspondence between proved source and executable behavior.
 
 ### `coherent_static`, `coherent_runtime`, `coherent`
 
@@ -390,8 +387,9 @@ but their signatures feed the core's proofs.
   unannotated functions.
 - **`verum verify --report`** — print per-function verification
   status, solver times, and upgrade suggestions.
-- **`verum check --export-proofs`** — emit `.verum-cert` archive
-  for `certified` functions.
+- **[Native proof replay](/docs/tooling/native-proof-replay)** — check an
+  exact native judgment or a supported source declaration under an explicit
+  profile.
 
 See [tooling/cli](/docs/tooling/cli) for the full command surface.
 

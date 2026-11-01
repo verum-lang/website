@@ -470,42 +470,42 @@ Quantifier expressions can appear anywhere an expression is expected —
 in specifications, refinements, and tactic arguments.
 
 ```verum
-theorem all_positive(xs: &List<Int>)
-    requires forall i in 0..xs.len(). xs[i] > 0
-    ensures  forall i in 0..xs.len(). xs[i] * 2 > 0
-{
-    proof by auto
-}
+theorem additive_identity(): forall n: Int. n + 0 == n
+    proof by smt;
 
-theorem exists_root(p: fn(Int) -> Bool)
-    requires exists n: Int. p(n) && n >= 0
-    ensures  exists n: Int. p(n) && n < 1000000
-{
-    proof by smt
-}
+theorem zero_exists(): exists n: Int. n == 0
+    proof by smt;
 ```
+
+These are solver-discharged statements. An existential premise supplies only
+its stated constraints: existence of a nonnegative witness does not imply
+existence of a witness below an arbitrary upper bound. Typed or guarded
+quantifiers also cannot be erased when a backend instantiates a lemma.
 
 See [Quantifiers](/docs/language/quantifiers) for the full grammar.
 
 ## Trust boundaries and certificates
 
-The `certified` strategy produces an independently checkable
-certificate: the generated proof term is exported and re-checked by
-the minimal kernel. Axioms invalidate the certificate.
+A verification annotation requests a mode; it is not evidence that a proof
+has been checked. Solver discharge, native proof checking, foreign translation,
+and correspondence with executable code have different trust boundaries.
 
-```verum
-@verify(certified)
-theorem banking_invariant(account: &Account) {
-    // proof must be axiom-free and pass the external kernel check
-    proof {
-        have balance_ok: account.balance >= 0 by apply(account_invariant)();
-        show account.balance + 0 == account.balance by omega
-    }
-}
-```
+The [native source profiles](/docs/tooling/native-proof-replay) check supported
+source judgments using both native checker algorithms. The logical profile
+preserves dependent types and identity proofs; the finite-function profile
+connects supported function bodies, helper calls and contracts. Each profile
+has explicit admission limits. Unsupported syntax and exhausted resources do
+not count as proved statements. Independent Lean replay provides a separate
+check of supported certificates, not a proof of the whole Rust compiler.
 
-Export: `verum check --export-proofs` writes a `.verum-cert` archive
-acceptable to the external kernels (Coq, Lean, Dedukti, Metamath).
+The project exporter currently refuses foreign proof targets because it does
+not yet preserve complete typed source statements. There is no supported
+`verum check --export-proofs` certificate shortcut. The retained renderer
+components preserve supported explicit arguments and refuse proof bodies whose
+propositions, bindings or generic instantiations they cannot translate. A
+fallback or unfinished scaffold is not a certificate. See
+[Proof Export](/docs/verification/proof-export) for artifact meanings and the
+conditions required before a foreign target can be enabled.
 
 ## See also
 

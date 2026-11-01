@@ -31,9 +31,14 @@ unfinished migration inputs wherever they were previously stored.
 | OWL 2 output | Ontology representation, not automatically a proof of the source contracts |
 | Historical provenance sidecar | Source attribution, not a theorem certificate |
 
-The retained foreign renderers and their formatting tests are implementation
-components, not enabled proof-admission paths. Passing a renderer test does not
-claim target-checker acceptance. For source/native checking today, use the
+The retained foreign renderers are implementation components, not enabled
+project proof-admission paths. Supported applications preserve every explicit
+argument. A renderer refuses intermediate propositions, scoped bindings or
+generic instantiations it cannot faithfully translate; it cannot drop those
+steps and prove only the final conclusion. Formatting tests alone do not
+establish target-checker acceptance. A targeted independent Lean control checks
+an actual rendered application and rejects the same application with an
+incorrect argument. This does not establish general translation soundness. For source/native checking today, use the
 [knowledge-system profile](./knowledge-systems.md) or the explicit
 [finite source-function profile](../tooling/native-proof-replay.md#finite-source-function-contracts).
 
