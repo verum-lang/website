@@ -1654,6 +1654,42 @@ is zero; XOR does not remove this condition. These executable models establish
 mass accounting, without establishing a learned representation, native scorer
 correspondence, null-model dominance or an infinite-horizon statistical bound.
 
+### Fixed-count KT maximum
+
+The native proof certificates establish the exact KT maximum when the full
+per-outcome histogram is fixed. For declared alphabet size `K > 0`, define
+`R(a,n) = product(i < n, a + 2*i)`. A cell with counts `n_y` has likelihood
+`product_y R(1,n_y) / R(K,sum_y n_y)`. Among all finite partitions preserving
+each outcome count, the maximum is
+`product_y (R(1,n_y) / R(K,n_y))`.
+
+The proof constructs a partition attaining this value: one pure cell per
+outcome, including zero-count coordinates. It derives positivity, splitting,
+merging, preservation of the full histogram, zero-cell deletion and division
+by the fixed empirical parent likelihood. A separate factor-range law relates
+the grouped counter traversal starting at zero to the same rising product.
+Equal total counts or the number of observed outcomes cannot replace the full
+histogram or the declared alphabet.
+
+The [constructive arithmetic certificates](https://github.com/verum-lang/verum/blob/main/verification/certificates/generate_fixed_kt.py)
+use induction and identity elimination. Both native checking algorithms verify
+their proof terms; independent Lean replay checks the exact terms with empty
+axiom rosters. The producer shares checked lemmas through ordinary applications
+and balanced products, avoiding repeated expansion without enlarging the trusted
+kernel. These are portable certificates, not additional source-language tactics.
+
+The [frozen scorer replay](https://github.com/verum-lang/verum/blob/main/verification/external/lean/check_fixed_kt_export.py)
+reconstructs counts from ordered context, cell and outcome coordinates, then
+checks exact KT and parent-likelihood fractions and the envelope in Lean.
+Fraction comparisons require positive numerators and denominators. The replay
+binds the export, captured model, producer and checker identities, and requires
+an independently fixed candidate roster. This is finite export correspondence;
+Rust translation, generic `Clone`/`Ord` laws, BigUint implementation correctness
+and physical ownership remain separate obligations. The bound is diagnostic:
+it does not authorize a predictor, admission, pruning or repricing.
+
+### Outcome-blind capacity
+
 `VerumExternalReplay/RefinementCapacity.lean` proves a sharp finite upper bound
 on child KT likelihood divided by empirical parent maximum likelihood. For a
 fixed positive alphabet size `K` and `n` observations, let `q = n / K` and

@@ -207,6 +207,11 @@ finite-counter overflow handling, allocation and refusal precedence, and evidenc
 lifetime. Pending execution state remains a separate obligation. These are Lean
 replay laws, not additional Verum source-proof tactics or a runtime cache.
 
+For an exact maximum over partitions preserving a full outcome histogram, see
+[Fixed-count KT maximum](../architecture/verification-pipeline.md#fixed-count-kt-maximum).
+Its universal native certificates and independent Lean term replay are distinct
+from finite frozen-export checks and from proofs of foreign implementations.
+
 ## Online exact score updates
 
 [OnlineScore](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/OnlineScore.lean)
