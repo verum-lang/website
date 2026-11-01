@@ -24,7 +24,7 @@ reflects build dependency order, not directory layout.
 |-------|---------|-----------|
 | `verum_lexer`        | Tokenisation via `logos`. | `token.rs`, `lexer.rs` |
 | `verum_fast_parser`  | Main recursive-descent parser — direct-to-AST, no lossless overhead. The active parser used by every pipeline. | `decl.rs`, `expr.rs`, `ty.rs`, `stmt.rs`, `pattern.rs`, `proof.rs`, `parser.rs`, `recovery.rs`, `attr_validation.rs`, `safe_interpolation.rs` |
-| `verum_parser`       | The IDE parser: lossless (`syntax_bridge::LosslessParser`) and incremental (`IncrementalDocument`). NOT on the compile path — that is `verum_fast_parser` — but not legacy either: `verum_lsp` builds formatting, diagnostics and semantic tokens on it, and `verum_interactive`, `verum_types` and `verum_vbc` depend on it too. 11.7k lines. | `syntax_bridge.rs`, `incremental.rs`, `ast_sink.rs` |
+| `verum_parser`       | The IDE parser: lossless (`syntax_bridge::LosslessParser`) and incremental (`IncrementalDocument`). NOT on the compile path — that is `verum_fast_parser` — but not legacy either: `verum_lsp` builds formatting, diagnostics and semantic tokens on it, and `verum_types` and `verum_vbc` depend on it too. 11.7k lines. | `syntax_bridge.rs`, `incremental.rs`, `ast_sink.rs` |
 | `verum_ast`          | AST node definitions. | `expr.rs`, `ty.rs`, `pattern.rs`, `decl.rs` |
 | `verum_syntax`       | Lossless (red–green) syntax tree infrastructure used by formatter, IDE, and structured-edit tooling. | `lib.rs` |
 
@@ -62,8 +62,8 @@ reflects build dependency order, not directory layout.
 | `verum_stdlib_precompiler` | Standalone binary that produces `target/precompiled-stdlib/runtime.vbca` and its `core_metadata` companion. Invoked by `verum_compiler/build.rs` when the cached archive's blake3 checksum is stale. Stays out of `verum_cli` to avoid the chicken-and-egg of a CLI that needs an embedded archive in order to build. | `main.rs` |
 | `verum_lsp`         | Language Server Protocol implementation (LSP 3.17): completion, diagnostics, hover, code actions, semantic tokens, refinement validation, exhaustiveness hints, CBGR hints, inline values, type hierarchy, workspace index, script-mode parsing. | `backend.rs`, `completion.rs`, `quick_fixes.rs`, `diagnostics.rs`, `hover.rs`, `exhaustiveness.rs`, `cbgr_hints.rs`, `refinement_validation.rs`, `semantic_tokens.rs`, `workspace_index.rs`, `script/` |
 | `verum_dap`         | Debug Adapter Protocol server. | `adapter.rs`, `server.rs`, `session.rs`, `variables.rs` |
-| `verum_interactive` | REPL and Playbook TUI; reuses the LSP analysis layer for interactive feedback. | `playbook/`, `execution/`, `discovery/`, `output/` |
-| `verum_cli`         | Command-line frontend (binary `verum`). Houses every subcommand: `build`, `run`, `test`, `check`, `lint`, `fmt`, `lsp`, `dap`, `playbook`, `repl`, `bench`, `audit`, `audit_gate`, `cache`, `cog_*`, `cubical`, `doc`, `doctor`, `explain`, `export`, `extract`, `fuzz`, `import`, `init`, `lex_mask`, `lint_*`, `llm_tactic`, `owl2`, `proof_*`, `property`, `publish`, `search`, `smt_check`, … | `main.rs`, `commands/` |
+| `verum_workbench` | Studio host, project analysis, reviewed agent operations and browser workspace. | `src/`, `ui/` |
+| `verum_cli`         | Command-line frontend (binary `verum`). Houses every subcommand: `build`, `run`, `test`, `check`, `lint`, `fmt`, `lsp`, `dap`, `studio`, `repl`, `bench`, `audit`, `audit_gate`, `cache`, `cog_*`, `cubical`, `doc`, `doctor`, `explain`, `export`, `extract`, `fuzz`, `import`, `init`, `lex_mask`, `lint_*`, `llm_tactic`, `owl2`, `proof_*`, `property`, `publish`, `search`, `smt_check`, … | `main.rs`, `commands/` |
 | `verum_integration_tests` | Workspace-wide end-to-end integration suite. | — |
 | `verum_test_support` | Shared helpers the test suites build on, so a fixture is written once rather than per crate. Depended on by `verum_types`, `verum_smt` and `verum_verification`. | — |
 
@@ -119,7 +119,7 @@ conceptual order is:
 8. verum_codegen
 9. verum_compiler
 10. verum_stdlib_precompiler  (build-time tool, invoked by verum_compiler/build.rs)
-11. verum_lsp, verum_dap, verum_interactive, verum_cli
+11. verum_lsp, verum_dap, verum_workbench, verum_cli
 ```
 
 The LLVM/MLIR sub-workspace under `crates/llvm/` builds in its

@@ -234,7 +234,7 @@ const config: Config = {
           items: [
             {label: 'CLI', to: '/docs/tooling/cli'},
             {label: 'LSP', to: '/docs/tooling/lsp'},
-            {label: 'Playbook', to: '/docs/tooling/playbook'},
+            {label: 'Studio', to: '/docs/tooling/studio'},
             {label: 'Cog Packages', to: '/docs/tooling/cog-packages'},
           ],
         },

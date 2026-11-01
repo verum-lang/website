@@ -8,8 +8,7 @@ description: A local graphical workspace for Verum scripts, reviewed agent edits
 
 Verum Studio opens a workspace in your browser. Edit Verum source, run a
 script, check a module, or check a logical theorem while keeping the source
-and results visible together. The terminal [Playbook](./playbook.md) remains
-available for notebook cells and `.vrbook` replay.
+and results visible together.
 
 ## Start a workspace
 

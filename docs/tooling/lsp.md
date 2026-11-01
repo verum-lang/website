@@ -9,7 +9,7 @@ description: Language Server Protocol 3.17 — diagnostics, completion, hover, r
 `verum lsp` runs a **Language Server Protocol 3.17** server over
 stdin/stdout. Every major editor can connect. The server shares its
 indexing infrastructure with
-[Playbook](/docs/tooling/playbook) and the REPL.
+[Studio](/docs/tooling/studio) and the REPL.
 
 ## Features
 
@@ -241,7 +241,6 @@ Features unique to the VS Code extension:
 - Inline counter-example explorer.
 - "Run test at cursor" code lens.
 - Explicit cursor refinement validation with distinct inconclusive outcomes.
-- Embedded Playbook panel.
 
 ### Neovim (nvim-lspconfig)
 
@@ -418,8 +417,7 @@ they replace.
 ## See also
 
 - **[CLI](/docs/tooling/cli)** — `verum lsp` subcommand.
-- **[Playbook](/docs/tooling/playbook)** — TUI built on the same
-  indexer.
+- **[Studio](/docs/tooling/studio)** — graphical workspace using the same language service.
 - **[REPL](/docs/tooling/repl)** — line-oriented interactive mode.
 - **[Installation](/docs/getting-started/installation)** — editor
   setup.

@@ -317,10 +317,8 @@ code against a checked-in reference — are supported via
 
 ## 9. Plugin discovery
 
-Drop-in plugins follow the `verum-<name>` binary convention:
-`verum foo` resolves to a `verum-foo` binary on `PATH` and forwards
-arguments.  This is how `verum bench`, `verum playbook`, and the
-Aletheia CLI integrate without modifying the main `verum` binary.
+The standard library provides an explicit plugin registry for applications
+that assemble their own command surface.
 
 `core.cli.plugin` models plugins rather than finding them:
 `PluginManifest.new(name, version)`, and a `PluginRegistry` you

@@ -7,7 +7,7 @@ description: Install Verum — grab a daily prebuilt dev build for Linux, macOS,
 # Installation
 
 Verum ships as a **single binary** — `verum` — that contains the
-compiler, interpreter, LSP server, Playbook TUI, formatter, and test
+compiler, interpreter, LSP server, Studio, formatter, and test
 runner. Release archives package that executable. The current builds may
 still require system or third-party shared libraries; see the
 [dependency status](#what-the-verum-binary-itself-links-against) below.

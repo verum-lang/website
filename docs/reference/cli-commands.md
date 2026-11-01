@@ -688,32 +688,11 @@ Flags:
 - `--preload <file>`.
 - `--skip-verify`.
 
-### `verum playbook [FILE]`
+### `verum studio [DIRECTORY]`
 
-Notebook-style TUI.
-
-Flags:
-- `--tier <0|1>` — `0` is the interpreter (safe), `1` is AOT (fast).
-- `--vim`.
-- `--preload <file>`.
-- `--tutorial` — start with the interactive language tour.
-- `--profile` — live performance display.
-- `--export <out.vr>` — on exit.
-- `--no-color`.
-
-### `verum playbook-convert to-script <IN>`
-
-Convert a `.vrbook` playbook to a `.vr` script.
-
-Flags:
-- `-o, --output <path>`.
-- `--include-outputs` — keep cell outputs as comments.
-
-### `verum playbook-convert from-script <IN>`
-
-Convert a `.vr` script to a `.vrbook` playbook.
-
-Flags: `-o, --output <path>`.
+Open the graphical workspace. `DIRECTORY` defaults to the current directory.
+Use `--port` to select a local port, `--codex` to select the Codex executable,
+and `--proof` to select the source proof worker. See [Studio](../tooling/studio.md).
 
 ## Packaging
 

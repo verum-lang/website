@@ -78,7 +78,7 @@ flowchart TD
     subgraph L4["Layer 4 — Orchestration & tools"]
         L4A["verum_compiler<br/>pipeline · derives · hygiene"]
         L4B["verum_cli · verum_lsp · verum_dap"]
-        L4C["verum_interactive<br/>REPL + Playbook TUI"]
+        L4C["verum_workbench<br/>Studio workspace · agent tools"]
         L4D["verum_stdlib_precompiler<br/>build-time stdlib archive"]
     end
 
@@ -110,11 +110,10 @@ flowchart TD
 | `verum_compiler`       | Phase orchestration, derives, hygiene, embedded stdlib, incremental compiler. |
 | `verum_lsp`            | LSP 3.17 server. |
 | `verum_dap`            | Debug Adapter Protocol server. |
-| `verum_interactive`    | REPL and Playbook TUI. |
+| `verum_workbench`      | Studio host, shared project analysis and reviewed agent operations. |
 | `verum_cli`            | Command-line frontend (binary `verum`). |
 
-THIS TABLE IS A SELECTION, not the workspace: 19 rows against 39
-members. The 20 it omits are
+The table highlights the main components. Supporting crates include
 
 - `verum_lexer` (in the diagram above, not the table) and
   `verum_stdlib_precompiler` (likewise);
@@ -200,7 +199,7 @@ verifier and advanced optimisation passes. Full phase detail:
   states no restriction, so passing it is itself an attenuation. NOTE
   the word is overloaded on this page: "capability-routed SMT" below is
   about solver selection and has nothing to do with these.
-- LSP 3.17 server, DAP debug server, Playbook notebook TUI, REPL.
+- LSP 3.17 server, DAP debug server, Studio workspace, REPL.
 - A CLI covering the full project lifecycle (build, run, test,
   check, lint, fmt, audit, bench, doc, doctor, publish, …).
 

@@ -150,22 +150,6 @@ from any Verum binary, anywhere — so a deployed artifact can answer
 "what may you do?" years after its build. A non-Verum binary is
 refused with a diagnosis (exit 1), never guessed at.
 
-## Notebook replay
-
-```bash
-verum playbook --replay BOOK.vrbook           # bit-for-bit replay verdict
-verum playbook --freeze REPORT.md BOOK.vrbook # replay + frozen snapshot report
-```
-
-`.vrbook` v2 notebooks carry a content-address chain over their code
-cells. `--replay` recomputes the chain from the sources (an
-out-of-step hand edit is refused before execution, exit 2), re-runs
-every cell from scratch, and compares recorded outputs bit-for-bit —
-the first divergence names its cell and address (exit 3). `--freeze`
-additionally writes the frozen report: sources, chain addresses, and
-the outputs that actually happened on that run. See
-[Playground](/docs/tooling/playbook) for the notebook itself.
-
 ## Verification & analysis
 
 ```bash
@@ -626,10 +610,7 @@ verum diagnose clean [--yes]
 
 ```bash
 verum repl [--preload FILE] [--skip-verify]
-verum playbook [FILE] [--tier 0|1] [--vim] [--preload FILE] [--tutorial] \
-                       [--profile] [--export OUT] [--no-color]
-verum playbook-convert to-script <IN> [-o OUT] [--include-outputs]
-verum playbook-convert from-script <IN> [-o OUT]
+verum studio [DIRECTORY] [--port PORT] [--codex PATH] [--proof PATH]
 ```
 
 ## Packaging
@@ -866,7 +847,7 @@ separate native certification path.
 ```
 
 `-Z`, `-D/-W/-A/-F` are accepted wherever a command compiles code
-(build, run, test, check, fmt, lint, doc, lsp, dap, playbook).
+(build, run, test, check, fmt, lint, doc, lsp, dap).
 
 ## Environment variables
 

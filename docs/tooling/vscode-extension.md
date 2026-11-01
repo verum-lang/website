@@ -310,5 +310,4 @@ the deref in a fallible result.
   run / test / debug actions.
 - **[Installation](/docs/getting-started/installation)** — install
   the `verum` binary the extension drives.
-- **[Playbook](/docs/tooling/playbook)** — terminal UI with the
-  same indexing infrastructure.
+- **[Studio](/docs/tooling/studio)** — graphical workspace using the shared language service.

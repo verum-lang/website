@@ -224,7 +224,7 @@ reuses specialisations across incremental builds.
 
 `phase_interpret` runs the VBC directly with full safety checks.
 Used by `verum run` (default), `verum test`, `verum bench`, the
-Playbook TUI, and `meta fn` evaluation inside Phases 2–4.
+Studio execution, and `meta fn` evaluation inside Phases 2–4.
 
 ### Tier 1 — AOT
 

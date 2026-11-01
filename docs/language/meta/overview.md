@@ -342,12 +342,8 @@ is working in this single 30-line meta function.
 `verum expand-macros --help` answers
 `error: unrecognized subcommand`, and the name appears nowhere in
 `verum --help`. There is no macro-expansion dump command today —
-not under this name, not under `expand`, and not hidden as an
-alias (`verum play` IS such a hidden alias for `playbook`, and it
-answers; this one does not).
+not under this name or under `expand`.
 :::
-  prints the post-expansion source, optionally annotated.
-- The LSP surfaces the same information inline, per-cursor.
 - `CompileDiag` diagnostics participate in the standard error
   pipeline (`verum build`, LSP, CI).
 - Every meta invocation's time and memory usage are visible with

@@ -84,7 +84,7 @@ Crate map:
 - `verum_lexer`, `verum_fast_parser`, `verum_ast`, `verum_types`,
   `verum_cbgr`, `verum_smt`, `verum_vbc`, `verum_codegen`,
   `verum_verification`, `verum_compiler`, `verum_cli`, `verum_lsp`,
-  `verum_interactive`.
+  `verum_workbench`.
 
 See [Architecture → Crate map](/docs/architecture/crate-map) for
 what each does.
