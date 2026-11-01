@@ -354,8 +354,11 @@ hide scripts beside it.
 `verum studio` uses the release compiler's embedded standard-library metadata.
 The standalone server accepts `--stdlib-metadata /path/to/runtime.core_metadata`
 from the matching release. The editor, Structure view and reviewed agent tools
-share the same metadata identity and type analysis. Library symbols without
-source text display their types and declaring module without a navigation target.
+share the same metadata identity and type analysis. Exported declaration types
+retain their declaring module through renamed imports, including nested references
+and generic arguments. A library’s private import spelling does not create a new
+public type. Library symbols without source text display their types and declaring
+module without a navigation target.
 A standalone server without that artifact reports analysis with builtins.
 
 Installed binary cogs and source-only blanket protocol seeding remain outside this
