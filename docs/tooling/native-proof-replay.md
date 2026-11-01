@@ -72,38 +72,52 @@ this native capability does not add a source `funext` tactic.
 The explicit `verum-source-finite/1` profile connects ordinary function bodies
 to their `requires` and `ensures` clauses. It admits Boolean values and closed,
 fieldless variant types, immutable locals, complete unguarded matches,
-conditionals and acyclic calls to local helpers without contracts. Constructors
-must be qualified by their declaring type. Equality operators in this profile
-compare Booleans; variant relations can be expressed with pattern matching.
+conditionals and acyclic calls to local helpers, including contracted helpers.
+Constructors must be qualified by their declaring type. Equality operators in
+this profile compare Booleans; variant relations can use pattern matching.
 
-For example:
+For example, the branch in `publish` establishes the requirement of `finish`:
 
 ```verum
-fn publish(ready: Bool, requested: Bool) -> Bool
+fn finish(ready: Bool, accepted: Bool) -> Bool
     requires ready
-    ensures result == requested
+    ensures result == accepted
 {
-    ready && requested
+    ready && accepted
+}
+
+fn publish(ready: Bool, accepted: Bool) -> Bool
+    ensures result == (ready && accepted)
+{
+    if ready { finish(ready, accepted) } else { false }
 }
 ```
 
-The producer translates the actual function body and binds its computed value
-to `result` in every postcondition. It constructs a proof that, for every
-combination of input constructors, the conjunction of the preconditions implies
-the conjunction of the postconditions. Complete dependent induction supplies
-all cases; the native checkers validate each leaf by reduction. A host Boolean
-result cannot substitute for the proof. The independent Lean replay checks the
-same generated certificate.
+The producer translates each actual function body and binds its computed value
+to `result` in its postconditions. For each contracted function it constructs
+a proof that, for every combination of input constructors, the conjunction of
+the preconditions implies the conjunction of the postconditions. Each call to
+a helper with a precondition contributes a separate proof that the requirement
+holds whenever that call executes. These obligations include calls in contracts
+as well as calls in function bodies.
 
-Submit the exact source to the bounded source worker:
+Obligations follow evaluation: `if`, `match`, `&&` and `||` guard the branches
+they select; function arguments and local initializers remain eager even if
+their values are unused. Contract clauses form an ordered short-circuit
+conjunction. A call used to evaluate a precondition cannot assume that
+precondition or a later clause. A helper without `requires` must justify its
+own calls for every input, even when its caller supplies a constant argument.
 
-```json
-{
-  "profile": "verum-source-finite/1",
-  "declaration": "publish",
-  "source": "fn publish(ready:Bool,requested:Bool)->Bool requires ready ensures result == requested { ready && requested }"
-}
-```
+Complete dependent induction supplies all input cases; both native checkers
+validate the leaves by reduction. Helper contracts, call requirements and the
+selected function's contract form one balanced dependent-pair proof bundle.
+Every component must check: `ensures true` cannot hide an invalid call or a
+false helper promise. Neither a host Boolean result nor an obligation status
+field substitutes for evidence. Independent Lean replay checks the same
+certificate, and direct Lean translation checks the emitted proof terms.
+
+Submit the complete example as `source` in a request with
+`"profile": "verum-source-finite/1"` and `"declaration": "publish"`:
 
 ```sh
 cargo build --locked -p verum_source_proof --bin verum-source-replay
@@ -112,25 +126,30 @@ target/debug/verum-source-replay --worker < request.json
 
 A successful report includes the closed judgment, translated function and its
 type, exact source/declaration hashes, and hashes of the helper and type
-declarations used by the proof. The selected function must have an explicit
+declarations used by the proof. Its `implementation.obligations` entries locate
+each bundle component by owner, kind, and, for call obligations, exact call
+range and callee. A failed component identifies the call or function contract
+in the diagnostic source range. The selected function must have an explicit
 postcondition. Unsupported constructs are refused even in unused arguments or
-unreachable branches. Resource exhaustion is inconclusive.
+unreachable branches. Exhausting an input, proof, process or output budget is
+inconclusive; it never establishes a proof or a counterexample.
 
 The [transition fixture](https://github.com/verum-lang/verum/blob/main/crates/verum_source_proof/tests/fixtures/finite_transition.vr)
-expresses an invariant and a reference transition as ordinary Verum functions.
-Its transition contract checks both invariant preservation and pointwise
-refinement. Changing the implementation while retaining those contracts makes
-the proof fail. The fixture also contains executable checks for every input
-satisfying its precondition.
+expresses invariant preservation and pointwise refinement as ordinary Verum
+functions. The [contracted-call fixture](https://github.com/verum-lang/verum/blob/main/crates/verum_source_proof/tests/fixtures/contracted_transition.vr)
+adds nested helpers and guarded calls. Both include executable checks over all
+inputs satisfying their entry-point preconditions.
 
-The proof establishes the translated source contract under its explicit
+The proof establishes the translated source contracts under explicit
 preconditions. It does not establish that those preconditions are satisfiable
-or that the contract captures every intended requirement. The source elaborator
-is part of the trust boundary; compiler lowering, executable behavior, heap
-ownership, scheduling and liveness require separate correspondence arguments.
-The profile currently refuses arithmetic, mutation, recursion, external calls,
-contracted helper calls and attributed or context-dependent declarations.
-Studio's **Prove** action still selects the separate logical theorem profile.
+or that the contracts capture every intended requirement. Helper definitions
+remain in the translated computation; this is not opaque-module proof reuse.
+The source elaborator is part of the trust boundary; compiler lowering,
+executable behavior, heap ownership, scheduling and liveness require separate
+correspondence arguments. The profile refuses arithmetic, mutation, recursion,
+external calls, and attributed or context-dependent declarations. Circular
+specifications are refused together with recursive bodies. Studio's **Prove**
+action still selects the separate logical theorem profile.
 
 ## Reversible observations and readouts
 
