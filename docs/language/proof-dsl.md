@@ -13,7 +13,7 @@ machine-checkable certificates.
 
 This page documents the syntax and semantics of `theorem`, `lemma`,
 `axiom`, `corollary`, `tactic`, `calc`, and structured proofs
-(`have`/`show`/`obtain`). For the tactic catalogue, see
+(`have`/`show`). For the tactic catalogue, see
 **[reference/tactics](/docs/reference/tactics)**. For how the engine
 chooses a backend, see
 **[verification/smt-routing](/docs/verification/smt-routing)**.
@@ -254,7 +254,9 @@ sequences; support depends on the selected proof backend.
 
 Proof syntax is checked without discarding supplied evidence. Strong and
 well-founded induction keep their distinct method identities; well-founded
-induction requires its `ordered_by` relation. Unknown method names are rejected.
+induction requires its `ordered_by` relation. The legacy tactic backend refuses
+both methods until it has checked eliminator and well-foundedness evidence;
+it does not substitute ordinary induction. Unknown method names are rejected.
 Nested method or term bodies used as individual structured proof steps,
 `using` modifiers and unsupported tactic configuration blocks are also rejected.
 Use ordinary typed theorem parameters for named hypotheses and state a
@@ -262,7 +264,8 @@ corollary's conclusion explicitly; `given` and `from` clauses are not supported.
 
 Type annotations on structured proof `let` bindings are retained in the syntax
 tree. Retention is separate from verification: the legacy tactic backend
-refuses local definition and pattern-binding operations until it can check
+refuses local definitions, existential witness extraction and pattern-binding
+operations until it can check
 scope, typing and definedness. It must not turn a computed value into an
 assumed proposition or introduce an equation about an existing free name.
 The [source proof profiles](../tooling/proof-repl.md) specify the forms that can
@@ -288,27 +291,53 @@ expression at the type level.
 Human-readable, step-by-step proofs that name intermediate facts.
 
 ```verum
-theorem sqrt_lt(n: Int)
-    requires n >= 4
-    ensures sqrt(n) < n
+theorem nonnegative_double(n: Int)
+    requires n >= 0
+    : n * 2 >= 0
 {
     proof {
-        have n_pos: n > 0 by omega;
-        have sqrt_pos: sqrt(n) > 0 by sqrt_positive(n_pos);
-        show sqrt(n) < n by {
-            simp;
-            induction n { cases; omega }
-        }
+        have lower_bound: n >= 0 by assumption;
+        show n * 2 >= 0 by omega;
     }
 }
 ```
 
-Steps:
+- `have name: prop by ...` checks an intermediate proposition before adding it
+  to the context. An omitted justification does not grant an induction hypothesis.
+- `show prop by ...` checks a stated proposition; the enclosing proof must also
+  close its own conclusion.
+- A bare tactic is checked against the actual active goal. Failure is an error,
+  even when another tactic could prove the theorem.
+- `obtain` is parsed, but the legacy backend refuses it until scoped witness
+  introduction is checked.
 
-- `have name: prop by ...` — introduce a named hypothesis.
-- `show prop by ...` — discharge the current goal.
-- `obtain pattern from expr` — eliminate an existential or sum.
-- A bare `tactic;` — apply a tactic to the current goal.
+### Case coverage and induction obligations
+
+Guarded cases first prove that their guards cover the original context, then
+check the original conclusion under every guard. Pattern and `where` guards
+are conjoined. Overlapping guards are allowed; missing coverage is not.
+
+```verum
+theorem excluded_middle(b: Bool): b || !b
+    proof by cases on b {
+        case true => trivial,
+        case false => trivial
+    };
+```
+
+For the legacy tactic backend, integer induction uses three obligations:
+zero, a nonnegative successor step and a nonpositive predecessor step.
+For a theorem `H(n) → P(n)`, the step hypothesis is `H(n) → P(n)`;
+the precondition is checked at the step's actual target. This covers the
+entire mathematical integer domain, including negative values. It does not
+establish fixed-width machine arithmetic correspondence.
+
+Generated induction obligations accept wildcard branches in order. Named
+constructor patterns require typed correspondence evidence and are refused
+by this backend. See [the tactic reference](/docs/reference/tactics#inductiontarget)
+for a complete example. The legacy backend reports tactic/SMT discharge,
+not a replayed native kernel certificate. The source proof profiles retain
+their separate supported fragments and independent replay requirements.
 
 ## Calculational proofs — `calc`
 
