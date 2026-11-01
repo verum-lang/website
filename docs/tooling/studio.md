@@ -253,7 +253,7 @@ no covered CBGR error was observed; it is not a proof of memory safety.
 ## Inspect proof evidence
 
 Open the identity example. In **Execution options**, select **Logical theorem**
-under **Proof scope**, enter `identity` under **Proof declaration**, and choose
+under **Proof scope**, select `identity` under **Proof declaration**, and choose
 **Check a declaration**:
 
 ```verum
@@ -262,12 +262,24 @@ theorem identity(A: Type, x: A): A proof = x;
 
 The source worker checks this declaration using the explicit
 [`verum-source-pi-id/1` logical profile](./native-proof-replay.md).
+The declaration selector comes from the current compiler analysis. It offers
+logical theorems, lemmas and corollaries for the logical scope, and functions
+with postconditions for the finite scope. Axioms and ambiguous duplicate names
+are not offered. Discovery does not imply that a declaration is supported or
+proved; the selected verifier checks it independently.
+
+Studio remembers the proof scope and selection separately for each document
+within the connected session. A single unambiguous target is selected on first
+use. Editing invalidates proof actions until fresh analysis arrives. Removing
+or renaming a selected declaration requires choosing a current target; Studio
+does not substitute another declaration. Locking the session clears selections.
+
 Changing the proof term from `x` to `A` produces a rejection. This is a
 logical proof judgment; it does not establish runtime implementation
 correspondence or empirical usefulness.
 
 To check an ordinary function body and its contracts, select **Finite function
-contract** and name the function. The
+contract** and select the function. The
 [finite source profile](./native-proof-replay.md#finite-source-function-contracts)
 checks Boolean and fieldless-variant functions, including guarded calls to
 contracted helpers. A successful result lists the checked function contracts
@@ -357,9 +369,12 @@ select a diagnostic to navigate to its source range. Completion and hover use
 the language server, and **F12** navigates to a definition. Navigation to another
 file preserves the existing review flow for unsaved changes.
 
-**Structure** projects declarations and explicit context requirements from the
-language server's parsed AST. Select a declaration or requirement to return to
-its source. The project inspector combines the workspace file inventory with
+**Structure** projects declarations, context requirements, preconditions and
+postconditions from the language server's parsed AST. Select a declaration or
+clause to return to its exact source range. Theorem, lemma and corollary cards
+provide a logical proof action; functions with postconditions provide a finite
+contract action. These actions use the same current declaration model as the
+proof selector. The project inspector combines the workspace file inventory with
 analyzed document snapshots. Each snapshot carries its document version,
 source hash and project generation hash. Closed dependencies can be marked as
 **Indexed source**: their declarations are available for imports, while their

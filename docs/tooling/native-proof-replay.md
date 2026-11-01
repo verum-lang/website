@@ -303,7 +303,8 @@ and the finite native observations retain these distinct scopes.
 ## Append commitment and handoff observations
 
 The [append-handoff adapter](https://github.com/verum-lang/verum/blob/main/verification/external/lean/check_append_handoff_export.py)
-checks the explicit `synarc-causal-constructor-native-v4` observation format.
+checks the explicit `synarc-causal-constructor-native-v4` and
+`synarc-causal-constructor-native-v5` observation formats.
 It verifies that the catalogue index is committed before an expression is
 handed out, that a pending transaction retains its identity and ordinary
 scheduling cursors, and that refused steps preserve every recorded snapshot
@@ -312,13 +313,28 @@ observed by the indexer. Snapshot equality uses exact data, not digest equality
 or a producer-supplied success flag.
 
 The [general handoff laws](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/AppendHandoff.lean)
-state the conditions of the projected handoff function. They do not establish
-that every retained constructor received its wake visit: the format contains
-an `append_ready` flag but omits the raw wake cursor needed to derive that
-property independently. Hidden runtime state, allocation behavior, expression
-semantics and universal Rust correspondence require additional evidence.
-Older export formats and changed producer implementations are separate
-verification targets.
+state the conditions of the projected handoff function. The older format
+records an `append_ready` flag without the cursor needed to derive it.
+The newer format exports both the raw wake cursor and the pending catalogue
+owner. Its [wake model](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/WakeHandoff.lean)
+derives readiness from the pending index, committed catalogue length and
+completed constructor traversal. Replay checks the cursor reset at commitment,
+every paid visit and constructor update, and the complete ordered visit sequence
+before handoff. Induction proves that a completed sequence visits exactly the
+constructor indices in order, without skipped or repeated visits.
+
+The pending owner must agree with the same indexed arrival and emitted owner.
+During indexing, a constructor's displayed posting can change because it is a
+lookup into the growing posting bank. Replay checks that lookup against the
+recorded bank separately from the retained constructor fields.
+
+Both formats describe finite frozen observations. The replay retains source,
+binary, export and receipt identities and checks independent mutation controls.
+It neither produces a native Verum certificate nor proves arbitrary executions
+of Rust. Hidden runtime state, allocation behavior, expression semantics and
+universal implementation correspondence require additional evidence. Success
+for this bounded export does not imply that other tests of the same producer
+pass. Changed producer implementations remain separate verification targets.
 
 ## Shared values in foreign exports
 
