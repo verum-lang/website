@@ -1117,9 +1117,37 @@ integer denominators and exact cross-multiplication. Codec composition preserves
 both decoded values and unread suffixes. A separate enumeration witness supplies
 a stable index for each code, exact decoding, and finite cumulative work to reach
 it as the budget grows. Positive mass alone does not prove fair scheduling.
-Concrete grammar Kraft bounds, decoder correctness, native accounting and
-statistical calibration remain separate obligations. This contract does not
-reinterpret the finite uniform-family protocol or certify a native migration.
+The interface-level decoder law is a premise. Concrete native proof
+certificates in
+[`check_prefix_codes.py`](https://github.com/verum-lang/verum/blob/main/verification/certificates/check_prefix_codes.py)
+derive suffix-preserving decoding and prefix-freeness for binary parsing trees
+with explicit rejection, including fixed-width fields, rejected ordinal holes,
+gamma cutoffs and value-dependent continuation trees. They derive Kraft
+subprobability, exact unspent gamma mass, concatenated word prices and the
+paid-look finite sum and tail. The same proof terms are checked independently
+in Lean, with empty axiom rosters. These are portable certificates, not additional
+Verum source-proof tactics or a general Rust translation.
+
+For an emitted gamma/opcode header and arbitrary remainder, the certificates
+prove the exact length `1 + opcodeWidth + 2*high + restLength`. Its mandatory
+minimum yields an optimistic dyadic-price bound. The full emitted word still
+determines the candidate's charge; the header bound cannot replace that charge.
+
+[`check_prefix_export.py`](https://github.com/verum-lang/verum/blob/main/verification/external/lean/check_prefix_export.py)
+replays complete frozen native catalogs, code words and materialized bodies
+against an independent structural parser. It checks lexical Branch/Fold child
+order, recursive ancestor/member/arity fields, arbitrary unread suffixes and
+exact prices. Reports distinguish actual selected controls from unused catalog
+entries, and joint candidate receipts from standalone enumerated components.
+Changing an owner, child order, body, word, recursive edge or price is rejected.
+Native work observations are checked for arithmetic and allowance consistency;
+this is not a general cost theorem or proof of physical pointer ownership.
+
+The universal code laws and finite native observations have different scopes.
+General correspondence between the Rust codec and its model, exhaustive
+traversal, recursive VM execution, native opening-bound integration and
+statistical calibration remain separate obligations. The prefix protocol does
+not reinterpret retained finite-uniform names.
 
 [Classified event mass](https://github.com/verum-lang/verum/blob/main/verification/external/lean/VerumExternalReplay/ClassifiedMass.lean)
 bounds a goal probability from disjoint sets of correctly classified completed
