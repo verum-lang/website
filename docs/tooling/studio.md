@@ -346,6 +346,11 @@ aliases and re-exports. Dependency edits invalidate unchanged consumers as well.
 Use the project refresh control after external changes; returning focus also
 refreshes the current source analysis.
 
+A project manifest selects the project layout: `src/` is the source root when
+that directory exists. Without a manifest, the workspace directory is the
+source root; a nested `src/` remains an ordinary module namespace and does not
+hide scripts beside it.
+
 `verum studio` uses the release compiler's embedded standard-library metadata.
 The standalone server accepts `--stdlib-metadata /path/to/runtime.core_metadata`
 from the matching release. The editor, Structure view and reviewed agent tools
