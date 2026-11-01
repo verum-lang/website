@@ -24,6 +24,7 @@ unfinished migration inputs wherever they were previously stored.
 | `verum-native/1` judgment | Exact native statement and certificate replayed by the portable checker |
 | `verum-native-funext/1` judgment | Native replay under explicitly selected dependent function extensionality |
 | `verum-source-pi-id/1` carrier | Actual source plus selected declaration, elaborated under an explicit logical profile |
+| `verum-source-finite/1` carrier | Actual finite function body and contracts, elaborated into an all-input native judgment |
 | `.vproof` | Minimal closed certificate accepted by `check-proof` under its own input contract |
 | `SmtCertificate` | Solver envelope with a separate replay trust boundary; structural replay is not proof authority |
 | Typed IR | Program representation, not a foreign theorem proof |
@@ -33,7 +34,8 @@ unfinished migration inputs wherever they were previously stored.
 The retained foreign renderers and their formatting tests are implementation
 components, not enabled proof-admission paths. Passing a renderer test does not
 claim target-checker acceptance. For source/native checking today, use the
-[knowledge-system profile](./knowledge-systems.md).
+[knowledge-system profile](./knowledge-systems.md) or the explicit
+[finite source-function profile](../tooling/native-proof-replay.md#finite-source-function-contracts).
 
 ## Conditions for enabling a proof target
 

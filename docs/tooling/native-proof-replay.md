@@ -67,6 +67,71 @@ assumption, not a project-specific axiom or a proof of the entire checker's
 soundness. Source elaboration under `verum-source-pi-id/1` remains intensional;
 this native capability does not add a source `funext` tactic.
 
+## Finite source-function contracts
+
+The explicit `verum-source-finite/1` profile connects ordinary function bodies
+to their `requires` and `ensures` clauses. It admits Boolean values and closed,
+fieldless variant types, immutable locals, complete unguarded matches,
+conditionals and acyclic calls to local helpers without contracts. Constructors
+must be qualified by their declaring type. Equality operators in this profile
+compare Booleans; variant relations can be expressed with pattern matching.
+
+For example:
+
+```verum
+fn publish(ready: Bool, requested: Bool) -> Bool
+    requires ready
+    ensures result == requested
+{
+    ready && requested
+}
+```
+
+The producer translates the actual function body and binds its computed value
+to `result` in every postcondition. It constructs a proof that, for every
+combination of input constructors, the conjunction of the preconditions implies
+the conjunction of the postconditions. Complete dependent induction supplies
+all cases; the native checkers validate each leaf by reduction. A host Boolean
+result cannot substitute for the proof. The independent Lean replay checks the
+same generated certificate.
+
+Submit the exact source to the bounded source worker:
+
+```json
+{
+  "profile": "verum-source-finite/1",
+  "declaration": "publish",
+  "source": "fn publish(ready:Bool,requested:Bool)->Bool requires ready ensures result == requested { ready && requested }"
+}
+```
+
+```sh
+cargo build --locked -p verum_source_proof --bin verum-source-replay
+target/debug/verum-source-replay --worker < request.json
+```
+
+A successful report includes the closed judgment, translated function and its
+type, exact source/declaration hashes, and hashes of the helper and type
+declarations used by the proof. The selected function must have an explicit
+postcondition. Unsupported constructs are refused even in unused arguments or
+unreachable branches. Resource exhaustion is inconclusive.
+
+The [transition fixture](https://github.com/verum-lang/verum/blob/main/crates/verum_source_proof/tests/fixtures/finite_transition.vr)
+expresses an invariant and a reference transition as ordinary Verum functions.
+Its transition contract checks both invariant preservation and pointwise
+refinement. Changing the implementation while retaining those contracts makes
+the proof fail. The fixture also contains executable checks for every input
+satisfying its precondition.
+
+The proof establishes the translated source contract under its explicit
+preconditions. It does not establish that those preconditions are satisfiable
+or that the contract captures every intended requirement. The source elaborator
+is part of the trust boundary; compiler lowering, executable behavior, heap
+ownership, scheduling and liveness require separate correspondence arguments.
+The profile currently refuses arithmetic, mutation, recursion, external calls,
+contracted helper calls and attributed or context-dependent declarations.
+Studio's **Prove** action still selects the separate logical theorem profile.
+
 ## Reversible observations and readouts
 
 The replay battery `verification/certificates/check_adaptive_observation.py`
