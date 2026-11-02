@@ -167,8 +167,20 @@ argument of `extra`. Changing `read` to return `Type(0)` is rejected.
 Protocol result annotations receive the same level checks, including
 calls through qualified protocol bounds. The archive reader checks the
 carried declaration against the descriptor's structural layout and
-rejects conflicting declarations for one owner. These checks do not
-constitute a proof of every runtime layout or of an entire compiler.
+rejects conflicting declarations for one owner. Private type imports and
+renamed bindings belong to that declaring module: an unrelated type with
+the same name cannot supply a missing import. Conflicting declaration
+metadata or a changed import environment must be rejected before a cached
+type can be reused. These checks do not constitute a proof of every runtime
+layout or of an entire compiler.
+
+Preserving a declaration in metadata does not establish support for every
+construct it contains. Native elaboration of a record whose later field type
+depends on an earlier type-valued field remains unsupported. Such a dependency
+is rejected when its field semantics are required; a nominal annotation alone
+does not validate those semantics. In particular, retaining the standard
+library’s `NType` declaration is not a proof that its dependent fields can be
+constructed or projected correctly.
 
 A checked signature does not supply a runtime representation for arbitrary
 types. The level algebra also does not imply support for `imax`, infinite
