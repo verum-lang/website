@@ -184,10 +184,11 @@ or an entire compiler.
 Preserving a declaration in metadata does not establish support for every
 construct it contains. Native elaboration of a record whose later field type
 depends on an earlier type-valued field remains unsupported. Such a dependency
-is rejected when its field semantics are required; a nominal annotation alone
-does not validate those semantics. In particular, retaining the standard
-library’s `NType` declaration is not a proof that its dependent fields can be
-constructed or projected correctly.
+is rejected during declaration loading, even if a function only mentions the
+record in a parameter annotation. For example, the standard library preserves
+`NType` with both fields, but the compiler and language server cannot import it
+as a usable type: the type of `truncation` refers to `carrier` on the same
+record. A different record’s carrier cannot supply that dependency.
 
 A checked signature does not supply a runtime representation for arbitrary
 types. The level algebra also does not imply support for `imax`, infinite
