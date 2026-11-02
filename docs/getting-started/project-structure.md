@@ -15,7 +15,7 @@ After `verum new my-project --profile application`:
 
 ```
 my-project/
-├── verum.toml            # package manifest (also accepts verum.toml)
+├── verum.toml            # package manifest (also accepts Verum.toml)
 ├── README.md             # scaffolded
 ├── .gitignore            # scaffolded
 ├── src/
@@ -166,65 +166,64 @@ sections.
 
 ## The module system
 
-Verum modules are **directory-driven** with explicit `mount`
-statements to import.
+### Module files
+
+The cog name in the manifest determines the first part of each module path.
+For a cog named `my-project`, the compiler registers `src/main.vr` as
+`my_project.main` and `src/model.vr` as `my_project.model`. Renaming the
+checkout directory leaves both paths intact. A nested file adds a segment for
+each directory. For example, `src/handlers/mod.vr` owns `my_project.handlers`.
 
 ### Mounting modules
 
-```verum
-// src/lib.vr
-mount config;                    // → src/config.vr  OR  src/config/mod.vr
-mount handlers.user;             // → src/handlers/user.vr
-mount handlers.{user, order};    // bring multiple in
-mount protocols.*;               // glob — bring everything public
-mount net.http as h;             // alias
+Start with this manifest in an empty directory.
+
+```toml
+[cog]
+name = "my-project"
+version = "0.1.0"
 ```
 
-### Module files
-
-Each `.vr` file under `src/` is a module. A directory becomes a
-module by containing a `mod.vr` file:
-
-```
-src/handlers/
-    mod.vr         # pub module handlers {...}
-    user.vr        # pub module handlers.user {...}
-    order.vr       # pub module handlers.order {...}
-```
-
-Inside `mod.vr`, the directory's submodules are reachable without
-`mount`:
+In `src/model.vr`, give other modules in this cog access to the reading's value.
 
 ```verum
-// src/handlers/mod.vr
-pub module handlers {
-    mount .self.user;          // no effect; already in scope
-    mount .self.order;
+module my_project.model;
 
-    pub fn route(req: &Request) -> Response {
-        match req.path {
-            "/users"  => user.list(req),
-            "/orders" => order.list(req),
-            _ => Response.not_found(),
-        }
-    }
+public type Reading is {
+    public(cog) value: Int,
+};
+
+public fn read() -> Result<Reading, Text> {
+    Result.Ok(Reading { value: 40 })
 }
 ```
 
-### Paths
-
-Four path roots:
-
-- `cog` — the cog's root module.
-- `self` — the current module.
-- `super` — the parent module.
-- *(no prefix)* — path resolved from the current module, then the cog root.
+In `src/main.vr`, mount the function. The type of `reading` comes from its
+return signature, so the caller can use the field without mounting `Reading`
+separately.
 
 ```verum
-cog.types.User            // fully-qualified from cog root
-super.shared_helpers.fmt  // from the parent module
-.self.submodule           // explicit self-rooted
+module my_project.main;
+mount my_project.model.{read};
+
+fn main() {
+    let reading = read().unwrap();
+    print(reading.value + 2);
+}
 ```
+
+From the directory containing the manifest, run `verum check`, then
+`verum run --tier interpret`. The program prints `42`. Remove `public(cog)`
+from the field declaration and check again. The compiler reports `E202` at
+the field access because `value` is now private to `my_project.model`.
+
+### Paths
+
+| Root | Meaning |
+|------|---------|
+| `cog` | The current cog's root module |
+| `self` | The current module |
+| `super` | The parent module |
 
 :::note `crate` currently parses too
 `crate` lexes to the same token as `cog`, so `crate.types.User` and

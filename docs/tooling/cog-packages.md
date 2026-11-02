@@ -9,15 +9,20 @@ A **cog** is Verum's unit of package distribution. The package CLI publishes
 source archives and metadata to a configured HTTP registry. Compiled `.vbca`
 archives have a separate [precompilation workflow](/docs/reference/cli-commands#verum-cog-precompile).
 
-The registry application supports authenticated source publication, durable local
-file storage, and retrieval of the original metadata and archive through the
-interpreter. Identical retries succeed, conflicting releases are refused, and
-accepted releases remain available after restart. A successful client dry run
-only validates the local package; it does not exercise registry storage.
+The reference registry implements bearer authentication, archive admission,
+and immutable release records in a local filesystem store. To check your cog
+without contacting a server, start with `verum package publish --dry-run`.
 
-PostgreSQL-backed publication storage, native execution, complete
-publication-to-installation acceptance, and consumer feature resolution still
-require integration.
+A macOS interpreter built with an older standard-library archive can bind its
+TCP port and accept connections without returning an HTTP response. Before
+uploading a package to a self-hosted instance, send an unauthenticated
+`GET /api/v1/cogs/publish`. A functioning publication route returns
+`405 Method Not Allowed` with `Allow: POST`. This checks the HTTP route.
+For a persistence check, publish to a test registry, restart it with the same
+store, and retrieve the release by name and version.
+
+PostgreSQL-backed publication storage, native server execution, and the full
+publication-to-installation workflow still require end-to-end validation.
 
 ## Configure a registry
 
@@ -77,8 +82,11 @@ not certify source correctness or prove durable storage.
 The reference publishing implementation checks the archive digest, complete gzip
 and tar streams, resource limits, safe relative paths, and agreement between the
 root `Verum.toml` and the submitted source metadata before writing a release.
-Links, duplicate archive paths, incomplete streams, and mismatched metadata are
-refused.
+Archive paths must remain distinct after ASCII case folding. For example,
+`Verum.toml` and `verum.toml` cannot both appear in one archive. A regular file
+and a directory cannot occupy the same path, including when a child entry
+implies its parent directory. The registry also refuses links, incomplete
+streams, and mismatched metadata.
 
 One immutable record stores the exact archive, full metadata, authenticated
 publisher and authority, and a server timestamp. A success receipt follows file

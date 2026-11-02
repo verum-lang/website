@@ -13,7 +13,8 @@ with `mount`.
 
 ```
 src/
-├── lib.vr            // module `my_cog` (root)
+├── main.vr           // module `my_cog.main` (application entry)
+├── lib.vr            // module `my_cog.lib`
 ├── util.vr           // module `my_cog.util`
 ├── http/
 │   ├── mod.vr        // module `my_cog.http`
@@ -21,107 +22,32 @@ src/
 │   └── server.vr     // module `my_cog.http.server`
 ```
 
-The root module is `src/lib.vr` (for libraries) or `src/main.vr` (for
-applications). Its name is the `name` field of `verum.toml`.
+The manifest's cog name supplies the namespace prefix. Hyphens become
+underscores. A file contributes its stem unless it is named `mod.vr`, in
+which case the surrounding directory supplies the module path. The entry
+function is checked in its own file's module, with the same visibility rules
+as its siblings. [Work through a two-file example](/docs/getting-started/project-structure#mounting-modules).
 
 ## `mount` — import
 
-```verum
-mount core.io;               // stdlib module (`core` is the stdlib root)
-mount core.{io, text};       // imports two modules
-mount core.math.frameworks.lurie_htt;
-                             // deep path into a stdlib subtree
-mount util.*;                // glob import (public items only)
-mount http.client as hc;     // aliased import
-mount .self.internal;        // import from the current cog
-mount .super.sibling;        // import from the parent module's sibling
-mount .crate.util;           // import from the cog's root
-```
+A named mount selects declarations from a module. In a cog named
+`my-project`, `mount my_project.model.{read};` makes the model's `read`
+function available to the caller. Mounting a function also preserves the
+types in its signature. Those types resolve in the file that declares the
+function, including through that file's own mounts. A same-named type in
+the caller cannot substitute for the return type.
 
-A `mount` brings names into scope. Verum's stdlib lives under the `core`
-root (not `std`) — every stdlib module is `core.<subpath>`.
+User modules receive an implicit `mount core.prelude.*;` unless the file
+declares `@![no_implicit_prelude]`. This supplies names such as `Result` in
+both the entry file and imported project modules. For other library items,
+mount the declaration from its owning module. A glob such as `mount core.*;`
+requests the exports of the entire root and can substantially increase
+compilation work.
 
-:::caution The stdlib is visible without a mount
-
-This page used to say "there is no implicit import; even items from the
-same cog must be mounted." For your own cog that holds. For the standard
-library it does not, and the difference matters when you are reasoning
-about what a module can reach.
-
-Every **public** `core` symbol resolves bare, however deep it lives:
-
-```verum
-fn main() { print(WAL_MAGIC_LE); }   // compiles, with no mount at all
-```
-
-`WAL_MAGIC_LE` is declared in
-`core/database/sqlite/native/l1_pager/journal/wal.vr` — nine module levels
-down, nowhere near a prelude. The same holds for `OUTPUT_SIZE`
-(`core/hash/crypto/sha256.vr`) and `MAX_EXPAND_OUTPUT_256`
-(`core/security/kdf/hkdf.vr`).
-
-This is not blanket leniency: a name that does not exist is still an error
-(`ZZ_NO_SUCH_CONST_ZZ` gives `E100`). The stdlib's public surface is simply
-all in scope.
-
-Two consequences worth planning around:
-
-- **A `mount` of a stdlib value documents intent; it does not restrict
-  reach.** Deleting one rarely breaks a build, so the imports in a file are
-  not a reliable inventory of what it actually uses.
-- **A misspelled import can land on a namesake instead of failing.** If the
-  module you name does not export the symbol but some *other* module
-  declares one with that name, the bare visibility satisfies it. In the
-  standard library this has bound X.509 certificate validity fields to the
-  unit type `Time` from `core.time`, and an HTTP/2 `Frame` to a terminal
-  render frame — each time with no diagnostic at the import.
-
-:::
-
-:::caution `mount core.*` costs a great deal and buys nothing
-
-A glob of the stdlib root is not a shorter way to write the mount you
-meant. Every public `core` symbol already resolves bare (above), so the
-glob adds no reach — and it makes the compiler enumerate a surface it
-would otherwise never look at.
-
-Checked on one three-line program, identical but for the
-mount line:
-
-```verum
-// none.vr — and the same body under each mount below
-fn main() {
-    let xs = [1, 2, 3];
-    print(f"n={xs.len()}");
-}
-```
-
-```
-verum run none.vr                                 # n=3   exit 0    6s
-verum run glob.vr     # mount core.*;             #       exit 124  killed at 400s
-```
-
-Exit 124 is `timeout` cutting it off, not the program finishing: the
-glob build had not produced an answer after six and a half minutes,
-against six seconds for the identical program. The page used to say
-"minutes", which was true and understated.
-
-**The cost is in building, not in checking.** `verum check` answers in
-about a second for all three spellings — no mount, the precise
-`mount core.collections.list.{List};`, and the glob — so a type-check
-will not warn you about this. It surfaces when you run or build.
-
-**And it buys nothing.** The same file without any mount at all
-type-checks `let m: Map<Text, Int> = Map.new();`, because every public
-`core` symbol already resolves bare (above). The glob is not being
-ignored — `mount core.nosuchmodule.*;` is refused with
-`error<E402>: module not found` — it is doing real work that changes no
-answer.
-
-Mount the module or the item you mean. If you want the import list to
-document what a file uses, the precise form is also the only form that
-does that.
-:::
+The packaged checker can also resolve some public archive constants outside
+the prelude. For example, `fn main() { print(WAL_MAGIC_LE); }` checks without
+a mount. Use a named mount when a dependency must be explicit. Looking at a
+file's mount list alone can miss these ambient names.
 
 ## Visibility
 
