@@ -14,6 +14,12 @@ starting point for understanding transport behavior. Concurrent admission,
 request deadlines, cancellation and draining require additional server logic;
 see [Weft's listener](/docs/stdlib/net/weft/listener).
 
+For an asynchronous listener, `accept_async().await` waits for one connection.
+Use `accept_future()` when an executor or a `select` arm needs to poll the
+accept explicitly. An empty listener returns `Pending`. Dropping the pending
+future leaves the listener open and queued connections available to later
+accepts. After `Ready`, create a new future for the next connection.
+
 ## Server
 
 Save this complete program in a cog's `src/main.vr` and run
