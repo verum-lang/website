@@ -85,6 +85,7 @@ toolbar buttons use the same actions and availability checks.
 | Find in source | Command/Ctrl + F |
 | Go to line | Alt + G |
 | Go to definition | F12 |
+| Next / previous diagnostic in the editor | F8 / Shift + F8 |
 | Format document | Alt + Shift + F |
 | Request completion | Ctrl + Space |
 | Send agent message, with the composer focused | Command/Ctrl + Enter |
@@ -383,7 +384,7 @@ Studio runs the same LSP service used by `verum lsp` on a dedicated analysis
 worker. Diagnostics refer to the current buffer, including unsaved edits.
 Select the analysis indicator in the editor status bar to open **Diagnostics**.
 Select a diagnostic to navigate to its source range. When a write would
-invalidate a dependent witness, the main diagnostic selects the write. Its
+invalidate a dependent witness, the main diagnostic selects the write target or the mutating method name. Its
 related location selects the earlier field projection that established the
 witness's type. Both ranges track edits to the current buffer.
 
