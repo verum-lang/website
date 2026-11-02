@@ -341,14 +341,27 @@ application-data directory under `VerumStudio/codex`. It does not copy
 another application's credentials or store them inside your project.
 Authentication remains in Codex's supported login flow.
 
-The conversation includes the selected source and whether it contains
-unsaved edits. The agent can request reads, propose a complete source
-replacement, run a script, check a module, or check a theorem or finite function
-contract. The `verum_plan` and `verum_proof` tools share Studio's `proof_profile`
-selection and request validation. Review the
-request before allowing it. Source replacements show the proposed content
-and require the expected disk revision. Built-in shell requests are not
-accepted by Studio; execution tools use Verum.
+Choose a role before sending the first message. An **Author** receives the
+selected editor buffer, including unsaved edits, and its saved revision. It
+can propose a source replacement or request a Verum run, check or proof.
+Review the exact proposal before accepting it. A replacement requires the
+expected disk revision. The proof tool uses the same declaration, profile and
+request checks as the Studio proof panel.
+
+Use **Reviewer** for a fresh assessment. Give it the question, expected
+behavior and any run IDs it should inspect. Studio sends the selected path and
+saved revision with the task. The reviewer can inspect the saved code, Git
+changes, compiler diagnostics, definitions and retained operation receipts.
+The host restricts this role to reviewed reads throughout the conversation.
+Use separate Studio tabs to keep an author and a reviewer active concurrently.
+
+For example, ask the reviewer to inspect a run with `verum_receipt`. Supply
+the exact run ID and, when evaluating a specific source, its
+`expected_source_hash`. A mismatched hash is refused. A successful script
+execution establishes an observed result for that invocation. For a theorem,
+inspect the declaration, proof profile and checker result. For a claim about
+native execution, inspect the additional evidence linking the model to that
+implementation.
 
 The integration uses the
 [Codex app-server authentication and tool protocol](https://learn.chatgpt.com/docs/app-server).
