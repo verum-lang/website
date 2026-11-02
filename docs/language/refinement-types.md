@@ -19,7 +19,7 @@ Three equivalent forms:
 type Positive is Int { self > 0 };
 
 // 2. On a type expression
-fn sqrt(x: Float { self >= 0.0 }) -> Float { ... }
+fn square_area(side: Float { self >= 0.0 }) -> Float { side * side }
 
 // 3. On a field
 type User is {
@@ -122,10 +122,10 @@ produces the value:
 
 ```verum
 // Not checked: the refinement rides on a type argument.
-fn stored() -> Result<Int{it >= 0}, ImportError> { ... }
+fn stored() -> Result<Int{it >= 0}, Text> { Result.Ok(0) }
 
 // the refinement is the return type.
-fn count() -> Int{it >= 0} { ... }
+fn count() -> Int{it >= 0} { 0 }
 ```
 
 ## Common patterns
@@ -214,6 +214,14 @@ disjunctions and comparisons of the refinement's subject with an unsuffixed
 integer literal representable by `Int`. It preserves the recorded binding:
 `self` and `it` name the implicit subject, while an explicit binder names only
 its own subject.
+
+A leading comparison can omit the subject. The usual operator precedence
+applies, so `== 1 || == 2 && > 1` means `it == 1 || (it == 2 && it > 1)`.
+The value `1` satisfies the first alternative.
+
+```verum
+fn keep(x: Int { self == 1 }) -> Int { == 1 || == 2 && > 1 } { x }
+```
 
 This checker constructs a bounded Boolean derivation and checks its certificate
 against the exact expressions and implication direction. Numeric weakening uses
