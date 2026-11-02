@@ -56,19 +56,19 @@ right answer 95% of the time.
 
 ## HMAC
 
-:::caution HMAC-SHA-256 depends on the affected SHA-256 finalizer
+### Reuse a key across messages
 
-`HmacSha256.finalize` and `hmac_sha256` finalize SHA-256 states for both
-the inner and outer digest. They therefore depend on
-[`Sha256.finalize`, which has an interpreter byte-conversion failure](/docs/stdlib/hash#corehashcrypto--the-collision-resistant-digests).
-HMAC-SHA-256 inherits that dependency limitation; changing execution tier
-is not a verified workaround.
+Mount `core.mac.hmac.PreparedHmacSha256` when several messages use the same
+key. `PreparedHmacSha256.new(key)` absorbs the keyed inner and outer pads once.
+Each call to `mac(data)` borrows this state and returns a fresh 32-byte tag.
+Treat the prepared state as secret key material. PBKDF2-HMAC-SHA-256 uses
+this operation for successive rounds.
 
-Native HMAC execution also has array-access limitations. Validate the
-selected HMAC variant and backend independently before relying on the
-API examples below.
-
-:::
+The VBC known-answer test checks tags for distinct messages under one key,
+a key longer than the SHA-256 block, and a multi-block PBKDF2 result.
+Native execution requires separate validation for its array handling.
+[Verum known-answer program](https://github.com/verum-lang/verum/blob/main/vcs/specs/L1-core/security/run_pbkdf2_sha256_kat.vr)
+· [Native array storage](/docs/architecture/codegen#storage-of-array-call-results).
 
 ### What is HMAC?
 

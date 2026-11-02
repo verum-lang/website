@@ -109,17 +109,12 @@ let digest: [Byte; 32] = Sha256.digest(data);
 
 ### Streaming operations
 
-```verum
-implement Sha256 {
-    public fn new() -> Sha256;
-    public fn update(&mut self, data: &[Byte]);
-    public fn finalize(self) -> [Byte; 32];
-    public fn digest(data: &[Byte]) -> [Byte; 32];      // one-shot
-}
-
-// Sha384 — identical shape, `finalize` returns [Byte; 48]
-// Sha512 — identical shape, `finalize` returns [Byte; 64]
-```
+Use `update` to feed bytes and `finalize` to consume a streaming state.
+For SHA-256, `fork()` copies the chaining words, byte count and partial block.
+When several messages share a prefix, absorb it once and fork before appending
+each suffix. Finalizing one branch leaves the others available.
+The known-answer program checks both digests after a fork inside a block.
+[SHA-256 fork test](https://github.com/verum-lang/verum/blob/main/vcs/specs/L1-core/security/run_pbkdf2_sha256_kat.vr).
 
 ### Size constants
 
