@@ -192,6 +192,8 @@ control package priority and version choice. The solver uses version ranges,
 constraint propagation, and conflict explanations to select concrete versions.
 It does not fetch or authenticate archive bytes.
 
+`range_from_constraint(&requirement, available)` takes the provider’s catalogue by value. It returns one singleton interval for each distinct version precedence accepted by `matches_default`. The catalogue can be unsorted and contain duplicates. For a requirement such as `1.2.*`, a catalogue containing only `1.2.1` and `1.2.3` yields those two points. A later release of `1.2.2` becomes selectable when the caller evaluates the requirement against the updated catalogue. Prerelease admission follows each alternative in the parsed requirement.
+
 Its `Dependency` record contains only a package and version range. Feature
 activation and development-dependency policy must be handled before producing
 those edges; they are not represented in the returned `Lockfile`. This library

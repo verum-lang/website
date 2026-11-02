@@ -83,34 +83,15 @@ Several primary opcodes are prefixes into second-byte tables:
 
 #### Extended-operand length prefix
 
-Nine of the per-family extended opcodes (`ArithExtended`,
-`FfiExtended`, `MathExtended`, `SimdExtended`, `CharExtended`,
-`CbgrExtended`, `TextExtended`, `MemExtended`, `LogExtended`)
-carry their operands behind a varint length prefix so a
-sequential decoder can skip an unknown sub-op without parsing
-the inside:
+Length-prefixed families include arithmetic, FFI, memory, CBGR, tensors and GPU operations. Their wire layout is
 
 ```text
-[opcode:u8] [sub_op:u8] [varint(len)] [bytes:len]
+[opcode:u8] [sub_op:u8] [varint(operand_byte_count)] [operand bytes]
 ```
 
-The encoder writes the operand byte-count as a varint
-immediately after `sub_op`; the decoder reads the length and
-consumes exactly that many bytes via the
-`decode_extended_operands` helper.  Interpreter
-`handle_*_extended` dispatchers skip the varint after the
-`read_u8(sub_op)` step and proceed with the structural decode
-they did before.
+The byte count lets a structural decoder locate the following instruction even when it only needs to copy the payload. The general-purpose `Extended` opcode uses a different format. Its sub-opcode determines the operands directly.
 
-`TensorExtended`, `GpuExtended`, and the general-purpose
-`Extended` carrier do **not** carry the prefix — they have
-structural per-`sub_op` decoders that already know how far the
-operand block extends, so the prefix would be redundant.
-
-The prefix is what lets the linker, disassembler, and validator
-walk a bytecode stream without an exhaustive sub-op table.
-Adding a new extended sub-op no longer requires touching every
-sequential decoder.
+At execution time each register, integer and floating-point operand must fit inside the current function. A truncated operand raises `InvalidBytecode` at its starting program counter, even when another function follows immediately in the module.
 
 ### Slice opcodes (`CbgrExtended` 0x00–0x0A)
 
@@ -261,7 +242,7 @@ than the compiler in this process: archives loaded from disk,
 modules pulled from a cog registry, files passed on the command
 line, network-loaded bytecode, IPC-shared modules.  The cost is
 `O(N)` in total bytes (hash) + `O(M)` in instruction count, paid
-once at load — the runtime hot path stays gate-free.
+once at load. Execution checks each operand against the active function.
 
 ### Why the architecture matters
 
@@ -279,31 +260,11 @@ The four-pass validated load above operates on already-decoded
 bytes.  Two further defenses live one layer down — at the byte
 decoder itself:
 
-#### Varint canonicality (10-byte boundary)
+#### Full-width variable-length integers
 
-A 10-byte unsigned varint encodes a u64.  At byte 9 (shift = 63),
-only **bit 0** of the 7-bit payload is meaningful — bits 1..6 of
-that byte represent positions 64..69 of the conceptual u70, which
-are NOT representable in u64.  A naive
-`result |= ((byte & 0x7F) as u64) << 63` would silently drop those
-bits via the platform's shift-out-of-range semantics, accepting
-adversarial encodings that smuggle invalid u64 values past the
-type boundary.
+An unsigned VBC integer uses up to ten bytes. Each of the first nine contributes seven payload bits. If a tenth byte is present, its only legal values are `0x00` and `0x01`. A larger payload would exceed 64 bits, and a continuation bit would require an eleventh byte. Nine `0xff` bytes followed by `0x01` encode `u64::MAX`. The same bytes encode `i64::MIN` when the instruction calls for a ZigZag signed integer.
 
-The decoder **rejects** any 10th-byte value with bits 1..6 set
-(`byte & 0x7E != 0` at `shift == 63`) and returns `VarIntOverflow`.
-The legitimate boundary value `u64::MAX` (encoded as
-`[0xFF×9, 0x01]`) is still accepted — only invalid bit positions
-are rejected.  Both decoder surfaces (slice-based `decode_varint`
-and Reader-based `read_varint`) carry the same defense, and the
-signed-varint path (`decode_signed_varint`) inherits it via
-`decode_varint`.
-
-The same canonicality class is enforced at the language level by
-`core/protobuf/wire.vr::read_varint` (Google reference behaviour);
-the two implementations share the audit recipe: any decoder where
-multiple distinct inputs decode to the same value defeats
-round-trip equality and admits forgery.
+The archive and interpreter enforce this width rule. Short values can still have longer encodings. For example, both `00` and `80 00` decode to zero. Systems that need a unique byte representation should use the encoder’s shortest form.
 
 #### Hostile-size allocation guards
 
