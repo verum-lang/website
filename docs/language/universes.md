@@ -198,12 +198,24 @@ fn pack(w: Witness<Int>) -> Pack {
 fn repack(x: &Pack) -> Pack {
     Pack { witness: x.witness, carrier: x.carrier }
 }
+
+fn forward<T>(x: &T) -> &T { x }
+
+fn repack_alias(x: &Pack) -> Pack {
+    let alias = forward(x);
+    Pack { witness: alias.witness, carrier: x.carrier }
+}
 ```
 
 The declaration establishes the dependency. Named arguments may appear in
 either order. In `repack`, both projections come from the same immutable
 binding. Given a second parameter `y: &Pack`, replacing `x.witness` with
 `y.witness` fails because the two carriers have no established equality.
+
+In `repack_alias`, the checker can follow `forward`'s body back to its input.
+An immutable local alias preserves that identity. If a helper selects between
+two references, its return type alone cannot identify which carrier supplied
+the witness. The checker rejects a dependent projection through that result.
 
 To change a carrier, construct the complete replacement together with a
 witness for the new carrier. A spread that inherits an old witness must
