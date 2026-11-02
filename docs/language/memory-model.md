@@ -198,9 +198,11 @@ automatically moves ownership.
 
 An explicit `.clone()` follows the selected type's clone contract.
 For an ordinary record with no declared clone method, the checker inspects its
-field types before allowing the VM to copy the outer record. A field that holds
-an exclusive reference or an affine resource prevents this implicit clone.
-A declared method with a mutable receiver still requires exclusive access.
+field types before allowing the VM to copy the outer record. An exclusive
+reference, an affine resource, or a nested record with writable storage
+prevents this implicit clone. To give a nested value an independent owner,
+define a clone method that constructs the outer value and copies its owned
+fields. A declared method with a mutable receiver requires exclusive access.
 Field-by-field cloning still preserves any sharing specified by those
 fields: a `Shared<T>` clone retains the same cell, and a copied reference
 retains the same referent. See [derives](/docs/language/meta/derives#clone)
