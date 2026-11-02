@@ -115,6 +115,21 @@ cannot equate independent declared levels merely because one call could
 assign them the same value. Likewise, passing a value from `Type(2)`
 through `retain_at` does not justify returning it as `Type(1)`.
 
+A callable bound can refer to the same level as its enclosing function:
+
+```verum
+fn apply<universe u, F: fn() -> Type(u)>(f: F) -> Type(u) { f() }
+fn one(f: fn() -> Type(1)) -> Type(1) { apply(f) }
+fn two(f: fn() -> Type(2)) -> Type(2) { apply(f) }
+```
+
+Here `F: fn() -> Type(u)` constrains the result of invoking a callable; it
+is not a formation bound `F: Type(u)`. The function body and its callable
+bounds share one level substitution at each call. Named functions and
+closures must satisfy the bound, and an explicit closure return annotation
+cannot replace the required result. An immutable alias of a polymorphic
+function retains its declaration's quantifiers and bounds.
+
 Free-function imports preserve level quantifiers through source modules
 and typed library metadata. A metadata signature is elaborated in its
 owning module using the source checking rules. Stale archive schemas and
