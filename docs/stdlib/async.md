@@ -81,10 +81,9 @@ async fn main() {
 This control establishes basic eager async execution, not full executor or
 resource-cleanup correctness.
 
-The construction control `AsyncSemaphore.new(2)` produces a semaphore.
-`Duration.from_millis(250).as_nanos()` returns `250_000_000`, matching
-`Duration.from_nanos(250_000_000).as_nanos()`. These focused checks do not
-establish semaphore lifecycle or general timer scheduling behaviour.
+An acquired semaphore permit consumes one slot. Explicit release and scope
+exit both return the slot exactly once. After the semaphore closes, acquisition
+returns `SemaphoreError.Closed`.
 
 ## `Poll<T>` — the two-state algebra
 
@@ -1073,25 +1072,24 @@ See **[Language → context system](/docs/language/context-system)** for the rul
 ## `semaphore` — cooperative task limiter
 
 ```verum
-mount core.async.semaphore.{AsyncSemaphore, SemaphorePermit};
+mount core.async.semaphore.AsyncSemaphore;
 
-let sem = AsyncSemaphore.new(10);      // cap at 10 concurrent ops
-
-for url in urls {
-    let permit = sem.acquire().await?;
-    spawn(async move {
-        let _p = permit;                // held for task lifetime (RAII)
-        fetch(&url).await;
-    });
+async fn main() {
+    let sem = AsyncSemaphore.new(1);
+    {
+        let permit = sem.acquire().await.unwrap();
+        assert_eq(sem.available_permits(), 0);
+    }
+    assert_eq(sem.available_permits(), 1);
+    sem.close();
+    assert(sem.acquire().await.is_err());
 }
 ```
 
-Async-task counting semaphore — waiters park via `Future` /
-`Waker` instead of blocking an OS thread (unlike
-`core.sync.Semaphore` which futex-blocks). FIFO waiter fairness;
-`try_acquire()` non-blocking fast path; `add_permits(n)`
-runtime resize; `close()` causes pending + future `acquire`
-calls to fail with `SemaphoreError.Closed`.
+Use `try_acquire()` to attempt acquisition without waiting. Transfer the
+permit to the operation that owns the slot, or call `permit.release()` to
+return it early. `add_permits(n)` increases the available capacity.
+Closing the semaphore rejects new acquisitions and wakes pending waiters.
 
 Typical deployments:
 

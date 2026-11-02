@@ -454,13 +454,26 @@ the `typed_row_to_wire_values` helper, so the Row façade's TEXT-decode
 path handles both simple-query and prepared-statement-typed result
 sets uniformly.
 
+## Streaming replication
+
+A replication connection enters streaming mode when PostgreSQL sends
+`CopyBothResponse`. The first WAL frame remains available to the reader.
+Clones of an async connection share the socket. Reads pull frames on demand.
+The handshake and commands use synchronous transport, and idle streaming
+reads release the session lock between timed attempts.
+
+Call `update_received` when a consumer receives WAL, `confirm_flush` after
+durable storage, and `confirm_apply` after downstream application. The tracker
+reports the applied prefix up to the confirmed flush position. Its shutdown
+waits for periodic feedback to stop and returns when the final status frame
+has been written to the socket. PostgreSQL exposes the reported positions
+as `write_lsn`, `flush_lsn`, and `replay_lsn` in `pg_stat_replication`.
+
 ## What's NOT in this module (yet)
 
 * TLS `verify-full` — TLS handshake works (`PtmDisable` mode), but
   `verify-full` mode currently rejects with a "TLS_PENDING" adapter
   error; depends on `core.net.tls` channel-binding wiring.
-* Logical replication consumer (`core.database.postgres.replication`)
-  — pgoutput-format CDC stream.  Spec §6.1.8.
 * Connection-pool resilience patterns (auto-reconnect + retry).
 * `pgvector` typed codec.
 
