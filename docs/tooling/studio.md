@@ -355,6 +355,22 @@ changes, compiler diagnostics, definitions and retained operation receipts.
 The host restricts this role to reviewed reads throughout the conversation.
 Use separate Studio tabs to keep an author and a reviewer active concurrently.
 
+From the architecture view, choose **Inspect document evidence** or the
+evidence button beside a declaration. The packet shows the exact source
+revision, compiler analysis scope, document diagnostic count and the selected
+declaration's contracts or fields. Expand **Machine-readable evidence** to
+inspect the full packet, or use **Copy packet** to hand it to a reviewer.
+
+The reviewed `verum_evidence` tool accepts a workspace path and
+`expected_source_hash`. Use the declaration ID and project revision from
+`verum_analyze` to pin the same selection. An optional `operation_id` attaches
+a retained operation to its exact input document. To attach it to a particular
+declaration, the checker report must also identify that declaration by name,
+UTF-8 byte range and digest. A run's project revision is currently unrecorded.
+The packet reports the compiler's project revision separately. Use
+**Inspect operation evidence** in Results when the editor matches the
+operation's input.
+
 For example, ask the reviewer to inspect a run with `verum_receipt`. Supply
 the exact run ID and, when evaluating a specific source, its
 `expected_source_hash`. A mismatched hash is refused. A successful script
