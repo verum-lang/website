@@ -429,7 +429,7 @@ than the archive module that contains a copied descriptor; unrelated declaration
 with the same name do not establish an identity. Library symbols without source
 text display their types and declaring
 module without a navigation target.
-A standalone server without that artifact reports analysis with builtins.
+In **Diagnostics**, the analysis scope identifies the source files and library information used for the current revision. When Studio used release metadata, expand the scope to see its schema version and SHA-256 digest. Editing the document clears the previous scope until analysis finishes.
 
 Installed binary cogs and source-only blanket protocol seeding remain outside this
 editor path. Whole-project build and proof acceptance still requires the
