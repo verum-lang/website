@@ -353,7 +353,13 @@ behavior and any run IDs it should inspect. Studio sends the selected path and
 saved revision with the task. The reviewer can inspect the saved code, Git
 changes, compiler diagnostics, definitions and retained operation receipts.
 The host restricts this role to reviewed reads throughout the conversation.
-Use separate Studio tabs to keep an author and a reviewer active concurrently.
+To run an independent review while the author works, choose **New conversation**,
+select **Reviewer**, and send the review question. Use the **Conversation**
+selector or the **Switch conversation** keyboard command to move between them.
+Each conversation keeps its own draft, model, transcript and event history.
+A background review request appears in the collaborator panel. Switch to its
+conversation to inspect and approve it. **Stop** interrupts the selected turn.
+These conversations belong to the current browser tab and provider session.
 
 From the architecture view, choose **Inspect document evidence** or the
 evidence button beside a declaration. The packet shows the exact source
