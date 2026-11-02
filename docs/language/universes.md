@@ -128,7 +128,7 @@ is not a formation bound `F: Type(u)`. The function body and its callable
 bounds share one level substitution at each call. Named functions and
 closures must satisfy the bound, and an explicit closure return annotation
 cannot replace the required result. An immutable alias of a polymorphic
-function retains its declaration's quantifiers and bounds.
+function retains its declaration's quantifiers and bounds. Typed function values and higher-order arguments retain pending obligations until their surrounding types have been inferred.
 
 Free-function imports preserve level quantifiers through source modules
 and typed library metadata. A metadata signature is elaborated in its
@@ -141,7 +141,9 @@ substitution composition and cycle detection. Equations requiring a
 more general search over maximum expressions may be refused. Universe
 kind bounds such as `A: Type(u)`, universe-bearing higher-rank signatures,
 and universe-bearing method metadata are refused until their formation
-and binder rules are fully carried through checking. These limitations
+and binder rules are fully carried through checking. Library export also
+refuses universe-bearing nominal types, constants and statics until their
+declarations have a complete metadata representation. These limitations
 are distinct from the supported first-order free-function calls above.
 
 A checked signature does not supply a runtime representation for arbitrary
