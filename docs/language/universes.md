@@ -140,11 +140,35 @@ Call inference handles structural level equalities, with checked
 substitution composition and cycle detection. Equations requiring a
 more general search over maximum expressions may be refused. Universe
 kind bounds such as `A: Type(u)`, universe-bearing higher-rank signatures,
-and universe-bearing method metadata are refused until their formation
-and binder rules are fully carried through checking. Library export also
-refuses universe-bearing nominal types, constants and statics until their
-declarations have a complete metadata representation. These limitations
-are distinct from the supported first-order free-function calls above.
+and standalone universe-bearing method metadata are refused until their
+formation and binder rules are fully carried through checking. Nominal
+universe parameters, including method-local level binders in a nominal
+declaration, remain unsupported in library metadata. Constants and statics
+with universe annotations also require a supported declaration carrier.
+
+Library metadata preserves concrete universe annotations in nominal
+record fields and protocol signatures. The complete declaration is
+checked in its owning module; ordinary type arguments remain distinct
+from universe levels. Compiler and language-service consumers use the
+same declaration loader. For example:
+
+```verum
+public type Carrier<A> is {
+    public value: Type(1),
+    public extra: A,
+};
+
+fn read(x: &Carrier<Int>) -> Type(1) { x.value }
+fn payload(x: &Carrier<Int>) -> Int { x.extra }
+```
+
+Importing this declaration retains both the level of `value` and the
+argument of `extra`. Changing `read` to return `Type(0)` is rejected.
+Protocol result annotations receive the same level checks, including
+calls through qualified protocol bounds. The archive reader checks the
+carried declaration against the descriptor's structural layout and
+rejects conflicting declarations for one owner. These checks do not
+constitute a proof of every runtime layout or of an entire compiler.
 
 A checked signature does not supply a runtime representation for arbitrary
 types. The level algebra also does not imply support for `imax`, infinite
