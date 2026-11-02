@@ -100,15 +100,38 @@ fn retain_at<universe u>(value: Type(u)) -> Type(u) { value }
 The alternative binder spelling is `u: Level`. A level parameter is neither
 a runtime value nor an ordinary type. An undeclared level is an error, and
 two unrelated declarations using the name `u` have distinct identities.
-Nested level binders shadow outer ones without changing their identities.
+Each call receives fresh inference variables for the declaration's level
+parameters. Repeated occurrences of one parameter share that call's
+substitution; independent calls do not share an inferred level:
 
-The grammar provides declared level parameters and maximum expressions.
-The level algebra described above does not by itself establish complete
-support for polymorphic calls, imported signatures or runtime type values.
-Treat source elaboration, instantiation and backend support as separate
-requirements. In particular, do not infer support for `imax`, infinite
-levels or arbitrary arithmetic inside `Type(...)` from the mathematical
-notation on this page.
+```verum
+fn retain_at<universe u>(value: Type(u)) -> Type(u) { value }
+fn first(value: Type(1)) -> Type(1) { retain_at(value) }
+fn second(value: Type(2)) -> Type(2) { retain_at(value) }
+```
+
+The parameter remains rigid while its function body is checked. A body
+cannot equate independent declared levels merely because one call could
+assign them the same value. Likewise, passing a value from `Type(2)`
+through `retain_at` does not justify returning it as `Type(1)`.
+
+Free-function imports preserve level quantifiers through source modules
+and typed library metadata. A metadata signature is elaborated in its
+owning module using the source checking rules. Stale archive schemas and
+malformed level binders require rebuilding or correcting the library;
+they are not interpreted as unconstrained types.
+
+Call inference handles structural level equalities, with checked
+substitution composition and cycle detection. Equations requiring a
+more general search over maximum expressions may be refused. Universe
+kind bounds such as `A: Type(u)`, universe-bearing higher-rank signatures,
+and universe-bearing method metadata are refused until their formation
+and binder rules are fully carried through checking. These limitations
+are distinct from the supported first-order free-function calls above.
+
+A checked signature does not supply a runtime representation for arbitrary
+types. The level algebra also does not imply support for `imax`, infinite
+levels or arbitrary arithmetic inside `Type(...)`.
 
 ## Propositions and computation
 
@@ -133,6 +156,14 @@ normalization semantics and the soundness of its universal ordering rule.
 Replay checks bind a produced normal form to its exact source expression,
 including variable identities and nested operands, before deriving a level
 inequality. An unrelated witness cannot certify a different expression.
+
+Independent replay also checks the exact declaration-to-metavariable map
+and resolved level expressions produced by native instantiation. The
+substitution theorem preserves denotation under explicit valuation
+agreement; unresolved metavariables remain universally quantified. For
+solved examples, the supplied assignment is checked against every
+binding before an equation is certified. This distinguishes a valid
+substitution from a solver's success flag.
 
 This result concerns the level algebra and its checked witnesses. It is not
 a proof of the entire compiler, runtime, polymorphic elaborator or language

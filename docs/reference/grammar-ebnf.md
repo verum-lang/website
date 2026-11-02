@@ -763,8 +763,8 @@ universe_level_expr = integer_lit | identifier
 ```
 
 - `Type(0) : Type(1) : Type(2) : ...` is the predicative hierarchy.
-- `Prop : Type(1)` is the universe of proof-irrelevant propositions.
-- `imax(u, v)` is impredicative max — `0` if `v = 0`, else `max(u, v)`.
+- `Prop : Type(1)` classifies propositions; universe checking alone does not establish proof erasure.
+- `max(u, v)` retains both level operands. `imax` is not supported.
 - Level polymorphism uses `universe u` or `u: Level` in generics.
 
 See [language/universes.md](../language/universes.md).

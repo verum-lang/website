@@ -500,26 +500,34 @@ lives; see [References](/docs/language/references).
 
 ## Universe polymorphism
 
-For dependent-type-heavy code, universe polymorphism prevents
-"Type is too big for itself" paradoxes:
+Universes distinguish types from the universes that contain them. Explicit
+level parameters require the project's type-system setting:
 
-```verum
-fn id<universe u, A: Type(u)>(x: A) -> A { x }
+```toml
+[types]
+universe_polymorphism = true
 ```
 
-`u` is a universe level; `Type(u)` is the type of types at level `u`.
-A polymorphic `id` works for types in `Type(0)` (ordinary values),
-`Type(1)` (types themselves), or higher.
-
-Alternative spelling using a `Level` bound:
+A free function can preserve a type-level value's universe:
 
 ```verum
-fn id<u: Level, A: Type(u)>(x: A) -> A { x }
+fn retain_at<universe u>(value: Type(u)) -> Type(u) { value }
 ```
 
-Most code never touches universes — only proof-heavy code and
-dependently-typed libraries need them. See
-[language/dependent-types](/docs/language/dependent-types).
+The alternative spelling declares the same kind of level parameter:
+
+```verum
+fn retain_at<u: Level>(value: Type(u)) -> Type(u) { value }
+```
+
+Each call instantiates `u` independently; checking the function body keeps
+it rigid. A level parameter is neither an ordinary type parameter nor a
+runtime value. Universe formation bounds such as `A: Type(u)` and
+universe-bearing higher-rank signatures are not accepted. For ordinary
+value polymorphism, use `fn identity<A>(value: A) -> A { value }`.
+
+See [universes](/docs/language/universes) for the hierarchy, imported
+signatures, checked level inference and its limits.
 
 ## Defaults on generic parameters
 

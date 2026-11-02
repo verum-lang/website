@@ -192,7 +192,7 @@ typeof                (* runtime type of an expression                          
 See the following language pages for semantics:
 
 - [`affine` / `linear`](/docs/language/linearity) — resource-kind types.
-- [`Prop` / `Type(n)` / `universe` / `Level` / `max` / `imax`](/docs/language/universes) — universe hierarchy.
+- [`Prop` / `Type(n)` / `universe` / `Level` / `max`](/docs/language/universes) — universe hierarchy.
 - [dependent functions](/docs/language/dependent-types) — `Π` is the
   kernel's name for the type, not a keyword: `Pi (x: A) . B` is a
   parse error. A dependent function is written as an ordinary `fn`.
