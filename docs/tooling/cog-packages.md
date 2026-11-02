@@ -10,8 +10,8 @@ source archives and metadata to a configured HTTP registry. Compiled `.vbca`
 archives have a separate [precompilation workflow](/docs/reference/cli-commands#verum-cog-precompile).
 
 The reference registry implements bearer authentication, archive admission,
-and immutable release records in a local filesystem store. To check your cog
-without contacting a server, start with `verum package publish --dry-run`.
+and immutable release records. Operators can use the default filesystem store or select PostgreSQL.
+To check your cog locally, run `verum package publish --dry-run`.
 
 A macOS interpreter built with an older standard-library archive can bind its
 TCP port and accept connections without returning an HTTP response. Before
@@ -21,8 +21,7 @@ uploading a package to a self-hosted instance, send an unauthenticated
 For a persistence check, publish to a test registry, restart it with the same
 store, and retrieve the release by name and version.
 
-PostgreSQL-backed publication storage, native server execution, and the full
-publication-to-installation workflow still require end-to-end validation.
+For PostgreSQL, apply the registry’s schema migration, give its runtime role `SELECT` and `INSERT` on `public.verum_publications`, and set `VERUM_REGISTRY_STORAGE=postgres`. The adapter stores the complete record in one insert. An identical retry succeeds, while different content at the same coordinate returns a conflict. The storage gate checks competing Verum writers and reads the original bytes after an unclean PostgreSQL restart. Native server execution and the full HTTP publication-to-installation workflow still require end-to-end validation. See the [registry configuration and test commands](https://github.com/verum-lang/registry/blob/main/README.md).
 
 ## Configure a registry
 
