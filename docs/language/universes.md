@@ -181,14 +181,41 @@ complete transport and enforcement of generic protocol or associated-type
 equality bounds through every archive path, nor prove every runtime layout
 or an entire compiler.
 
-Preserving a declaration in metadata does not establish support for every
-construct it contains. Native elaboration of a record whose later field type
-depends on an earlier type-valued field remains unsupported. Such a dependency
-is rejected during declaration loading, even if a function only mentions the
-record in a parameter annotation. For example, the standard library preserves
-`NType` with both fields, but the compiler and language server cannot import it
-as a usable type: the type of `truncation` refers to `carrier` on the same
-record. A different record’s carrier cannot supply that dependency.
+### Records with a type-valued field
+
+An earlier field of type `Type` can determine the type of a later field.
+In this example, choosing `Int` for `carrier` requires a value of type
+`Witness<Int>` for `witness`.
+
+```verum
+public type Witness<A> is { public value: A };
+public type Pack is { public carrier: Type, public witness: Witness<carrier> };
+
+fn pack(w: Witness<Int>) -> Pack {
+    Pack { witness: w, carrier: Int }
+}
+
+fn repack(x: &Pack) -> Pack {
+    Pack { witness: x.witness, carrier: x.carrier }
+}
+```
+
+The declaration establishes the dependency. Named arguments may appear in
+either order. In `repack`, both projections come from the same immutable
+binding. Given a second parameter `y: &Pack`, replacing `x.witness` with
+`y.witness` fails because the two carriers have no established equality.
+
+To change a carrier, construct the complete replacement together with a
+witness for the new carrier. A spread that inherits an old witness must
+satisfy the same check. Direct writes to the carrier and mutable borrows of
+that field are rejected. For dependent projections, use an immutable local
+value or a shared reference. A mutable binding can receive a complete
+replacement.
+
+The standard library uses this relationship in `core.math.hott.NType`.
+Its field `truncation` has type `IsTrunc<carrier, N>`, so both the carrier
+of the receiver and its integer truncation index matter. The fields have
+module visibility.
 
 A checked signature does not supply a runtime representation for arbitrary
 types. The level algebra also does not imply support for `imax`, infinite
