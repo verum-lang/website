@@ -210,7 +210,10 @@ witness for the new carrier. A spread that inherits an old witness must
 satisfy the same check. Direct writes to the carrier and mutable borrows of
 that field are rejected. For dependent projections, use an immutable local
 value or a shared reference. A mutable binding can receive a complete
-replacement.
+replacement. Once a projection identifies the receiver in the type of a
+witness, calling a method with `&mut self` on that receiver is also rejected.
+A method declared with `&self` can still inspect it. The same rule applies
+when the receiver is a field or the method comes from a protocol bound.
 
 The standard library uses this relationship in `core.math.hott.NType`.
 Its field `truncation` has type `IsTrunc<carrier, N>`, so both the carrier

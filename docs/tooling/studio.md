@@ -381,8 +381,13 @@ interruptible or charged to a semantic work budget.
 
 Studio runs the same LSP service used by `verum lsp` on a dedicated analysis
 worker. Diagnostics refer to the current buffer, including unsaved edits.
-Select the analysis indicator in the editor status bar to open **Diagnostics**;
-select a diagnostic to navigate to its source range. Completion and hover use
+Select the analysis indicator in the editor status bar to open **Diagnostics**.
+Select a diagnostic to navigate to its source range. When a write would
+invalidate a dependent witness, the main diagnostic selects the write. Its
+related location selects the earlier field projection that established the
+witness's type. Both ranges track edits to the current buffer.
+
+Completion and hover use
 the language server, and **F12** navigates to a definition. Navigation to another
 file preserves the existing review flow for unsaved changes.
 
