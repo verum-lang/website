@@ -134,7 +134,11 @@ Free-function imports preserve level quantifiers through source modules
 and typed library metadata. A metadata signature is elaborated in its
 owning module using the source checking rules. Stale archive schemas and
 malformed level binders require rebuilding or correcting the library;
-they are not interpreted as unconstrained types.
+they are not interpreted as unconstrained types. Publishing library metadata
+checks a carried free-function signature against its declaring source, including
+level annotations and contracts. A short name and its exact owner-qualified
+spelling identify the same declaration; a matching suffix in another module
+does not. Matching the name and parameter count alone is insufficient.
 
 Call inference handles structural level equalities, with checked
 substitution composition and cycle detection. Equations requiring a
