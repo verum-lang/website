@@ -147,8 +147,8 @@ declaration, remain unsupported in library metadata. Constants and statics
 with universe annotations also require a supported declaration carrier.
 
 Library metadata preserves concrete universe annotations in nominal
-record fields and protocol signatures. The complete declaration is
-checked in its owning module; ordinary type arguments remain distinct
+record fields and protocol signatures. Carried field and method annotations
+are elaborated in their owning module; ordinary type arguments remain distinct
 from universe levels. Compiler and language-service consumers use the
 same declaration loader. For example:
 
@@ -171,8 +171,11 @@ rejects conflicting declarations for one owner. Private type imports and
 renamed bindings belong to that declaring module: an unrelated type with
 the same name cannot supply a missing import. Conflicting declaration
 metadata or a changed import environment must be rejected before a cached
-type can be reused. These checks do not constitute a proof of every runtime
-layout or of an entire compiler.
+type can be reused. A failed declaration load cannot certify its provisional
+type or variant constructors for a later lookup. These checks do not establish
+complete transport and enforcement of generic protocol or associated-type
+equality bounds through every archive path, nor prove every runtime layout
+or an entire compiler.
 
 Preserving a declaration in metadata does not establish support for every
 construct it contains. Native elaboration of a record whose later field type
